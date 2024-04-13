@@ -11,4 +11,5 @@
 # 机器翻译
 翻译使用 [RSS 翻译器](https://rsstranslator.com/) 进行。
 - 目前翻译器：Google 翻译。
+  
 暂无能力为其配置 AI 翻译。
