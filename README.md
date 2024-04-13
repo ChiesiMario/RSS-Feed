@@ -10,4 +10,4 @@
 - 每兩小時更新一次
 # 机器翻译
 翻译使用 [RSS 翻译器](https://rsstranslator.com/) 进行。
-目前翻译器：Google 翻译。
+- 目前翻译器：Google 翻译。
