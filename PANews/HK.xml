@@ -9,8 +9,90 @@
         <generator>RSSHub</generator>
         <webMaster>i@diygod.me (DIYgod)</webMaster>
         <language>en</language>
-        <lastBuildDate>Sun, 14 Apr 2024 02:07:10 GMT</lastBuildDate>
+        <lastBuildDate>Sun, 14 Apr 2024 05:36:42 GMT</lastBuildDate>
         <ttl>1</ttl>
+        <item>
+            <title>深入解讀 Runes 協議的底層設計機制與侷限</title>
+            <description>&lt;blockquote&gt;POS 與 MEV-Boost 的轉變，從根本上重塑了交易生命週期的模式，更精細的環節讓各參與者們產生極致博弈。&lt;/blockquote&gt;&lt;p&gt;作者：十四君&lt;/p&gt;
+&lt;h3&gt;1、Runes(符文) 是什麼？&lt;/h3&gt;
+&lt;p&gt;過去一年，web3 最大的敍事莫過於銘文生態的爆發，最初的起點便是 Ordinals，是一種為 btc 上每個聰給予唯一性序號的技術，可拓展閲讀：解讀比特幣 Oridinals 協議與 BRC20 標準，原理創新與侷限&lt;/p&gt;
+&lt;p&gt;其核心創始人 casey，在去年 9 月就提交了基礎版的 Runes 代碼，但是一直遲遲沒有發佈主網上線，因此在 9 月的銘文熱潮中，runeAlpha 等項目便提前 fork 了該代碼，單獨發行了 RunesAlpha 等協議，雖然有一定抄襲的説法，但是短短數月數億的總市值增長也讓人看到 Runes 協議的無窮潛力。&lt;/p&gt;
+&lt;p&gt;那麼由 Ordinals 協議的創始人 casey 所設計的，官方正版的 Runes 協議也將在 2024.4.20 號左右正式官宣上線。且直接上線 btc 主網，因此各路項目方想要發行 Runes 資產，各路錢包、NFT/FT 交易市場想要支持 Runes 都將面臨區塊鏈行業最難的挑戰之一，如何在沒有測試網的情況直接衝刺主網！&lt;/p&gt;
+&lt;p&gt;而官方的 Twitter 發言更是高度自信~順帶學個新單詞：Seppuku&lt;/p&gt;
+&lt;p&gt;&lt;img style=&quot;display: block; margin-left: auto; margin-right: auto;&quot; src=&quot;https://cdn-img.panewslab.com/yijian/2024/4/13/images/8f7eb136ae6a438680754497503d5124.png&quot; alt=&quot;深入解讀 Runes 協議的底層設計機制與侷限&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt;
+&lt;p&gt;本文，將會系統的梳理符文項目的底層字段變遷，讓大家從根本上理解 Runes 與 Brc20、Arc20 等 FT 協議的差異點，對比優缺理性決策參與。&lt;/p&gt;
+&lt;h3&gt;2、比特幣上是如何記錄額外信息的？&lt;/h3&gt;
+&lt;p&gt;比特幣上有兩種主流的鏈下數據附着在鏈上的方案，銘刻與蝕刻&lt;/p&gt;
+&lt;h4&gt;2.1、蝕刻基礎原理&lt;/h4&gt;
+&lt;p&gt;Runes 使用的是蝕刻技術，是一種簡單直觀記錄信息到鏈上的方式：即寫入 bitc 中 UTXO（未花費交易）的 op-return 字段內，從功能在 Bitcoin Core 客户端 0.9 版中開始啓用的 (14 年），OP-RETURN 會創造了一種明確的可驗證不可消費型輸出，讓數據存在區塊鏈上，類似於 utxo 的輸出，但並不可被消費。&lt;/p&gt;
+&lt;p&gt;在 btc 的區塊鏈瀏覽器中可以輕鬆看到，該筆交易就附着了一個 op-return 的信息，比如下圖：&lt;/p&gt;
+&lt;p&gt;&lt;img style=&quot;display: block; margin-left: auto; margin-right: auto;&quot; src=&quot;https://cdn-img.panewslab.com/yijian/2024/4/13/images/f6ee2e6afc2ec1a14ed7a246bac7de60.png&quot; alt=&quot;深入解讀 Runes 協議的底層設計機制與侷限&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt;
+&lt;p&gt;可以看到，這裏的輸出#3，其實是遊離的，雖然他佔據的一個該筆 utxo 的 output 的輸出位置，但是他是一個閉環的圓矩形，這就説明他是不能被再次轉移消費的，所以他就像是一個交易的備註區一樣，就留在了比特幣的存儲空間上，通過交易哈希區索引找到他。&lt;/p&gt;
+&lt;p&gt;細心的你可能會發現， 為什麼 OP_RETURN 的後面有一個 RUNE_TEST 這就是將具體內容解碼後的結果，點開明細按鈕後，就可以找到 52554e455f54455354 這樣的編碼串，其實一串十六進制編碼數據，解碼後就可以得到 RUNE_TEST，同理，明細裏還有其他的編碼，最終解碼後會成為一串字符串，大概是 json 的格式，從而體現出 Runes 資產的部署、鑄造、發行等等寓意。&lt;/p&gt;
+&lt;h4&gt;2.2、銘刻基礎原理&lt;/h4&gt;
+&lt;p&gt;其實 Ordinals/brc20 等協議中，要嵌入元數據到鏈上，都是寫到交易的見證數據 (witness data, witness field) 中，這一銘刻銘文過程通過隔離見證 (Segregated Witness, SegWit) 和「向 Taproot 支付」(Pay-to-Taproot, P2TR) 的方式實現，其中包含了提交（commit）和揭露（reveal）兩個階段也就是最終 2 筆交易來完成。&lt;/p&gt;
+&lt;p&gt;其實 P2TR 是比特幣的一種交易輸出類型，它是在 2021 年進行的 Taproot 升級中引入的，它使得不同的交易條件可以更加「隱私」地存儲在區塊鏈中，之所以提升隱私是因為只有在揭示的時候，才能看到具體完整內容。具體來説生成 p2tr 地址使用的是腳本 hash，在花費時提供真正腳本（包含銘文數據），所以為了上傳銘文數據，需要先生成一個支付到此腳本生成的 p2tr 地址的 utxo（commit 交易），然後花費這個 utxo 時，需要在見證腳本中提供真正腳本，也就把銘文數據上傳到了鏈上（reveal 交易）。&lt;/p&gt;
+&lt;p&gt;其實 Ordinals 協議非常好理解，就是在完成這個銘刻過程（commit、reveal）兩筆交易都上鍊後，ordinals 協議則定義規定此銘文綁定到了第一個輸入的第一個 sat 上。所以，綁定的過程就是銘刻，綁定到結果就是銘文。&lt;/p&gt;
+&lt;h4&gt;2.3、對比兩者數據上鍊方案&lt;/h4&gt;
+&lt;p&gt;蝕刻：&lt;/p&gt;
+&lt;ul&gt;
+&lt;li&gt;優點：邏輯簡單直觀明確，交易成本低，可以不佔用全節點內存池。&lt;/li&gt;
+&lt;li&gt;缺點：限制於 80 字節長度，需要高度壓縮數據編碼。&lt;/li&gt;
+&lt;/ul&gt;
+&lt;p&gt;銘刻：&lt;/p&gt;
+&lt;ul&gt;
+&lt;li&gt;優點：幾乎不限制大小，有一定隱私保護能力，有多種玩法（時間鎖、工作量證明）等&lt;/li&gt;
+&lt;li&gt;缺點：交易需要 2 次上鍊，導致最終成本較高，commit 存續時間長，對全節點內存池壓力較大。&lt;/li&gt;
+&lt;/ul&gt;
+&lt;h3&gt;3、Runes 底層設計解讀&lt;/h3&gt;
+&lt;p&gt;Runes 協議最初的代碼是 casey 發佈在 Ordinals 0.11.版本上，而最新的 Ordinals 已經演進到 0.18 版本，巨大的版本變化，也讓我們有機會步入一個頂級協議的設計過程中，就像十四君曾經解讀的 ERC721/ERC3525/ERC3475 等標準，拓展閲讀：&lt;/p&gt;
+&lt;p&gt;我們不妨也步入 Runes 的起點和終點兩個版本的字段變化，來解讀 Runes 的價值依規。&lt;/p&gt;
+&lt;h4&gt;3.1、Runes 0.11 版本解讀&lt;/h4&gt;
+&lt;p&gt;最初的 Runes 整體的字段分成 3 個部分，edicts( 資產轉移信息)，etching( 資產部署信息)，burn(銷燬)。&lt;/p&gt;
+&lt;p&gt;&lt;img style=&quot;display: block; margin-left: auto; margin-right: auto;&quot; src=&quot;https://cdn-img.panewslab.com/panews/2024/04/13/images/bbS1YARy2r.png&quot; alt=&quot;深入解讀 Runes 協議的底層設計機制與侷限&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt;
+&lt;p&gt;具體來説，當一筆交易的 op_Return 裏，信息解碼之後能夠呈現 edicts 的信息，且格式正確，那麼鏈下的解析器，就會計算出該用户的資產發生了轉移，其中的 output 就是轉移的目標地。&lt;/p&gt;
+&lt;p&gt;同理 etching 的內容也是直接呈現了部署資產的主要信息，我們可以和 ERC721 對比，最大的差別在於 limit 和 term 限制了 mint 的數量和可 mint 的區間。而這點也就是銘文、符文項目與以太坊智能合約發行資產的根本性差別，由於鏈上缺乏智能合約的驗證，這就少了實時驗證的能力，如果某個項目方發行鏈上的資產還自己運行一套新的銘文協議來定製化自己的白名單 Mint、代幣經濟學釋放速率，版税繳納等等功能，都將會缺乏共識，就沒有人來參與這個項目了，所以銘文協議（brc20、atomical、Runes）等都是統一定義了資產發行的方式，也統一了用户參與 mint 的方式，以公平發射的理念，完全開放用户參與，進一步杜絕了項目方過度幹預資產市場認知的情況。&lt;/p&gt;
+&lt;p&gt;即使是項目方才通過掃貨累計資產來控制市場，也需要付出巨大的 gas 代價，這個過程裏可被用户感知到並且自由選擇。&lt;/p&gt;
+&lt;p&gt;那最初版本的 Runes 協議設計，其實已經挺完善了，因此演變出的 runealpha，哪怕是山寨的也佔據不少的市場規模，累計 82W 的交易筆數，僅手續費就消耗掉 312 個 BTC。&lt;/p&gt;
+&lt;p&gt;用户可以輕易的使用 rune 字段本身的設計實現資產的複合、拆分，甚至一旦 Runes 資產與 Ordinals、atomical 等資產跨協議複合了，也可以藉助 op_Return 多樣的語言表達性，從而實現拆分。&lt;/p&gt;
+&lt;p&gt;那最新的 Runes 協議在 0.18 中實現了什麼，又是怎樣的考慮從而要有這樣的字段呢？&lt;/p&gt;
+&lt;h4&gt;3.2、Runes 0.18 版本解讀&lt;/h4&gt;
+&lt;p&gt;要看懂 Runes 0.18 十分艱難，因為缺乏測試網，基本都只能從 casey 的源代碼裏看邏輯，最終梳理出來字段分 4 個方面：&lt;/p&gt;
+&lt;p&gt;&lt;img style=&quot;display: block; margin-left: auto; margin-right: auto;&quot; src=&quot;https://cdn-img.panewslab.com/panews/2024/04/13/images/pPIMe0Lfel.png&quot; alt=&quot;深入解讀 Runes 協議的底層設計機制與侷限&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt;
+&lt;p&gt;首先 edicts 還是定義資產轉移方向方面的定義，與 runeAlpha 基本一致，差別的是多了一個 pointer 的參數，這是用來修改資產默認轉移方向的，原本的默認轉移是第 0 位，有了這個參數後，可以設置為 1 或者其他，設計理念是為了適配多種 Runes 資產同時轉出的時候，降低 op_Return 編碼量的作用，最終可以降低用户的交易成本。&lt;/p&gt;
+&lt;p&gt;其次，新增了 Mint 字段，由於他的 mint 放在了和 edicts 等同級別的對象裏，這也就意味着一筆交易只能 mint 一個資產，這與之前 RunesAlpha 的時候不同，那時候刻意的設計可以實現一筆交易 mint 大量新資產，這樣一來平衡了技術打資產和普通用户打資產的起跑線，大家都要靠爭 gas 來獲取了。&lt;/p&gt;
+&lt;p&gt;&lt;strong&gt;部署資產的方式鉅變&lt;/strong&gt;&lt;/p&gt;
+&lt;p&gt;最後比較重要的改變是 etching 也就是部署資產的細節設計，完全字段內容如下：&lt;/p&gt;
+&lt;p&gt;&lt;img style=&quot;display: block; margin-left: auto; margin-right: auto;&quot; src=&quot;https://cdn-img.panewslab.com/panews/2024/04/13/images/uKy863Kk2q.png&quot; alt=&quot;深入解讀 Runes 協議的底層設計機制與侷限&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt;
+&lt;p&gt;基本看暈了吧，確實是非常複雜的部署新資產方式，讓我們詳細道來~&lt;/p&gt;
+&lt;p&gt;首先較大的改動點是為了降低 op_Return 編碼量的設計，畢竟 op_Return 限制 80 字節的長度每一個編碼空間都要珍惜。因此 casey 做了資產 id 的變化，從單純的區塊高度+交易序號生成的唯一 id 值變化為字符串形式的區塊高度+冒號+交易序號，由於比特幣主網也才 80 多 w 的區塊高度，所以最終的 id 編碼節約了一半，可別小瞧，在批量 Mint，批量轉移場景就成倍的降低成本了。&lt;/p&gt;
+&lt;p&gt;其次是保障參與者公平性的 terms 字段，現在部署資產開始 Mint 不再是 runealpha 那樣，依據部署資產協議的交易上鍊的區塊高度開始，而是發行方指定的 height 和 offset 作為起終點。這樣一來，用户即使不時時刻刻盯着內存池，從而挖掘最新可以被 mint 的機會，也不用太擔心誤入釣魚山寨項目中。畢竟項目方就可以提前先部署好資產，然後在進行一系列的運營宣發活動，最終讓用户參與，除了區間高度作為參與時間的衡量外還有 cap，作為總 mint 次數，進一步控制了資產發行的規模，不再是無極限 mint，而是限定發行，先到先得。&lt;/p&gt;
+&lt;p&gt;作為資產發行協議，那麼如何控制發行方的規模和權益便是一大挑戰，對於銘文而言，最重要的就是資產名字，那麼 Runes 里名字就是稀缺資源，有一個伴隨減半週期的 Runes 名字長度釋放規則，一開始只能部署較長的名字，時間越久才越能部署少字符數的名字。&lt;/p&gt;
+&lt;p&gt;可以想象，每當一個名字長度釋放週期，那麼就會持續的掀起類似域名那樣的搶注潮流，那如何避免項目方被搶注呢？&lt;/p&gt;
+&lt;p&gt;這便引入了 Runes 這次部署的最重大變化，部署的流程，不再只是一筆 op_Return 的交易，而是一次銘刻，前文有提及，銘刻技術通過 commit 和 reveal 可以進行一定的隱私保護，那麼新版的 premine 就是承擔了這個作用，要求 commit 和 reveal 兩筆交易有一定的間隔，然後被揭示出來的時候市場才知道發行方要使用的名字，這時候，即使其他黑客要想製作釣魚資產，即使是高手在內存池已經看到了該名字，要仿冒，也過不去這個提前量的限制，今兒保護髮行方對名字的掌控力。&lt;/p&gt;
+&lt;p&gt;在 18 版本最後還新增了 turbo 字段，這暫時還沒有明確的公開作用，寓意為參與後面的其他協議層變更。&lt;/p&gt;
+&lt;h3&gt;4、如何評價 Runes 新版協議&lt;/h3&gt;
+&lt;p&gt;通過上文對底層字段的解讀，十四君也不禁感慨，casey 對資產發行的玩法真是見解獨到，短短 2 個月的時間，設計並實現如此貼合市場需求痛點的協議內容。&lt;/p&gt;
+&lt;p&gt;這是一個看價格來衡量價值的市場，銘文協議一開始作為完全差異化智能合約的模式，打開了很多的想象空間，真正的公平 mint 也讓大量用户真正進入 btc 的圈子，又進一步引發 btcL2d 熱潮。但是銘文協議一開始的粗放，導致劣質資產橫飛，滿大街的盜版和 rug 讓銘文生態蒙塵。符文的出現，更高程度定製化的發行管理將會讓市場變得有序。&lt;/p&gt;
+&lt;p&gt;並且 Runes 協議是嵌入在 Ordinals 協議本身當中，藉助 Ordinals 本身的用户基礎，讓 Runes 協議的發行從一開始就站在巨人的肩膀上。作為 FT 協議的定位彌補了原先 Ordinals 只作為 NFT 缺乏市場運作玩法的窘境。&lt;/p&gt;
+&lt;p&gt;最後，採用 op_Return 的方式記錄鏈上數據，幾乎可以讓 Runes 資產擁有任何機構和復現賬本的能力，其中心化程度進一步降低也就可以讓 Runes 資產具備了與 btc 相等的一定安全性能。&lt;/p&gt;
+&lt;p&gt;Runes 協議有什麼缺點呢？確實有&lt;/p&gt;
+&lt;p&gt;首先是市場時機問題，雖然 casey 選定在 btc 減半期同步上線，但是高度緊張的開發時間，甚至在昨天還在變更協議的內容， 這也讓市場上能第一時間接入 Runes 協議的機構越來越少，這樣一來協議生態也就需要更多的時間來發酵。&lt;/p&gt;
+&lt;p&gt;其次是規則複雜性，對於發行管理的規則已經很複雜，但是名字的變化讓發行方一開始可選的是較長的名字選擇，結合特殊的點符號，讓 Runes 協議的名字最大長度甚至變成：&lt;/p&gt;
+&lt;p&gt;B•C•G•D•E•N•L•Q•R•Q•W•D•S•L•R•U•G•S•N•L•B•T•M•F•I•J•A•V&lt;/p&gt;
+&lt;p&gt;幾乎 55 位的長度，這樣變相放大了用户被釣魚的風險，並且移動端插件端等界面也很難完整展示出來。&lt;/p&gt;
+&lt;p&gt;最後是未來兼容性問題，同樣市場火熱的 atomical 協議，現在佈局已經走向 AVM 階段，讓銘文擺脱單純的代幣炒作階段，進一步走向 btc L2 或者 BVM 的敍事中，這點不得不説 casey 稍有落後，也侷限了符文項目只作為發行層面的玩法。&lt;/p&gt;
+&lt;p&gt;本文內容參考資料：&lt;/p&gt;
+&lt;p&gt;runes 協議編解碼分析：https://github.com/okx/js-wallet-sdk&lt;/p&gt;
+&lt;p&gt;ruens 協議官方源碼：https://github.com/ordinals/ord&lt;/p&gt;</description>
+            <link>https://panewslab.com/zh/articledetails/1pyqki3k.html</link>
+            <guid isPermaLink="false">https://panewslab.com/zh/articledetails/1pyqki3k.html</guid>
+            <pubDate>Sun, 14 Apr 2024 02:25:33 GMT</pubDate>
+            <author>十四君</author>
+            <category>深度</category>
+            <category>比特幣</category>
+            <category>Runes</category>
+        </item>
         <item>
             <title>觀點：真的還會有「山寨季」嗎?</title>
             <description>&lt;blockquote&gt;本文從投資者的角度探討了對「山寨季」與高 FDV 代幣的看法，並表示可以使用一些對沖策略獲取盈利。&lt;/blockquote&gt;&lt;p&gt;作者：ROUTE 2 FI&lt;/p&gt;
@@ -1020,65 +1102,6 @@
             <category>比特幣</category>
             <category>Runes</category>
             <category>巨鯨</category>
-        </item>
-        <item>
-            <title>以用户為中心的多線產品佈局，火幣 HTX 這場「翻身仗」誠意幾何？</title>
-            <description>&lt;blockquote&gt;從近幾個月的創新產品和市場動向來看，品牌全新升級的火幣 HTX 正向市場發出跑好「下半場」並開啓多元增長曲線的信號。&lt;/blockquote&gt;&lt;p&gt;近日，海外知名 KOL John Squire 發表了火幣 HTX 及代幣 HTX 增長潛力的調研報告，讓這家「老字號」再次成為市場熱議的話題。如同加密市場 2024 年的強勢開局，從近幾個月的創新產品和市場動向來看，品牌全新升級的火幣 HTX 正向市場發出跑好「下半場」並開啓多元增長曲線的信號。&lt;/p&gt;
-&lt;h3&gt;&lt;strong&gt;以資產價值和用户需求為突破口&lt;/strong&gt;&lt;/h3&gt;
-&lt;p&gt;藉助市場風口和產品打磨，創新求變的火幣 HTX 正展現出更多發展可能性。&lt;/p&gt;
-&lt;p&gt;John Squire 在報告中，從多個方面解析了火幣 HTX 的增長潛力。首先是 HTX DAO 及其治理代幣 HTX。John Squire 認為，HTX DAO 仍處於起步階段，其獨特的流動性捐助機制和去中心化設計理念將使$HTX 隨着時間的推移變得更加有價值，且得益於孫宇晨豐富的項目經驗和 DAO 機制的領先設計。&lt;/p&gt;
-&lt;p&gt;HTX DAO 是於今年 1 月正式成立的，火幣 HTX 拿出平台收入的 50% 捐助到 HTX DAO 的流動性中，具有生態流動性捐助機制和去中心化特性。根據 HTX DAO 公佈的數據，其在 2024 年一季度完成高達 2100 萬美元的生態流動性捐助，將全部用於添加 HTX-TRX 流動性。生態流動性捐助計劃不僅可更好提升 HTX 代幣的流動性並有助於價格穩定，還為生態系統的健康發展注入了新的活力。不僅如此，代幣 HTX 的諸多權益也使其更具升值空間，除了賦予投票上幣和決策治理等權力，還提供抵扣交易手續費、提高理財產品年化收益率和 1.5 倍 Prime 升級速度等多樣價值激勵。&lt;/p&gt;
-&lt;p&gt;同時，上新速度也是交易所獲取流量和打造競爭力的關鍵策略之一，火幣 HTX 在今年一直活躍在資產發掘的前沿。在這些上線的項目中，火幣 HTX 不僅覆蓋了主流區塊鏈代幣以及熱門 MEME 幣等資產，其中絕大部分漲幅超 5 倍，部分如$WIF 和$GTA 甚至數百倍。可觀的造富效應往往是獲取增量資金和用户的直接手段，且優質資產的發現與發行也可最直觀展示平台的實力。&lt;/p&gt;
-&lt;p style=&quot;text-align: center;&quot;&gt;&lt;!-- [if gte vml 1]&gt;&lt;v:shapetype
- id=&quot;_x0000_t75&quot; coordsize=&quot;21600,21600&quot; o:spt=&quot;75&quot; o:preferrelative=&quot;t&quot;
- path=&quot;m@4@5l@4@11@9@11@9@5xe&quot; filled=&quot;f&quot; stroked=&quot;f&quot;&gt;
- &lt;v:stroke join/&gt;
- &lt;v:formulas&gt;
-  &lt;v:f eqn=&quot;if lineDrawn pixelLineWidth 0&quot;/&gt;
-  &lt;v:f eqn=&quot;sum @0 1 0&quot;/&gt;
-  &lt;v:f eqn=&quot;sum 0 0 @1&quot;/&gt;
-  &lt;v:f eqn=&quot;prod @2 1 2&quot;/&gt;
-  &lt;v:f eqn=&quot;prod @3 21600 pixelWidth&quot;/&gt;
-  &lt;v:f eqn=&quot;prod @3 21600 pixelHeight&quot;/&gt;
-  &lt;v:f eqn=&quot;sum @0 0 1&quot;/&gt;
-  &lt;v:f eqn=&quot;prod @6 1 2&quot;/&gt;
-  &lt;v:f eqn=&quot;prod @7 21600 pixelWidth&quot;/&gt;
-  &lt;v:f eqn=&quot;sum @8 21600 0&quot;/&gt;
-  &lt;v:f eqn=&quot;prod @7 21600 pixelHeight&quot;/&gt;
-  &lt;v:f eqn=&quot;sum @10 21600 0&quot;/&gt;
- &lt;/v:formulas&gt;
- &lt;v:path o:extrusionok=&quot;f&quot; gradientshapeok=&quot;t&quot; o:connecttype=&quot;rect&quot;/&gt;
- &lt;o:lock v:ext=&quot;edit&quot; aspectratio=&quot;t&quot;/&gt;
-&lt;/v:shapetype&gt;&lt;v:shape id=&quot;Drawing_x0020_0&quot; o:spid=&quot;_x0000_i1026&quot; type=&quot;#_x0000_t75&quot;
- alt=&quot;圖片&quot; style=&#39;width:396pt;height:252pt;visibility:visible;mso-wrap-style:square&#39;&gt;
- &lt;v:imagedata src=&quot;file:////Users/nancy/Library/Group%20Containers/UBF8T346G9.Office/TemporaryItems/msohtmlclip/clip_image001.jpg&quot;
-  o:title=&quot;圖片&quot;/&gt;
-&lt;/v:shape&gt;&lt;![endif]--&gt;&lt;img src=&quot;https://cdn-img.panewslab.com/panews/2024/04/12/images/RGZ67ME3M3.jpg&quot; alt=&quot;以用户為中心的多線產品佈局，火幣 HTX 這場「翻身仗」誠意幾何？&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt;
-&lt;p&gt;而火幣 HTX 也加快了個各類活動的頻率來提升用户參與度。根據 John Squire 統計，火幣 HTX 上線的活動較往年顯著增加，僅在今年第一季度展開了 202 個活動，其中 1 月份上線了 70 個、2 月份 53 個、3 月份 79 個。&lt;/p&gt;
-&lt;p&gt;另外，火幣 HTX 還從用户體驗和收益出發推出了多個創新措施，John Squire 在報告中也提到了交易挖礦和流動性質押等。其中，交易挖礦允許火幣 HTX 用户交易指定幣種瓜分對應獎池，且交易產生的手續費將全額用於$HTX 回購並 100% 銷燬，該功能的推出不僅可通過有效減少$HTX 的流通量來實現該代幣價值的穩定增長，還有助於提高平台的收入和交易流動性併為用户帶來更多收益機會。&lt;/p&gt;
-&lt;p&gt;而流動性再質押活動則幫助火幣 HTX 用户輕鬆獲取鏈上生態收益。要知道，傳統質押中，用户不僅要承受質押資產價格波動、資產流動性被鎖定以及資產被盜等風險，還要面臨複雜的鏈上操作以及不同鏈上耗時且繁瑣的流程等。針對這些問題，火幣 HTX 推出的流動性再質押活動允許用户憑藉現貨餘額（目前支持 BTC、ETH、USDT、HTX 和 TRX）一鍵參與，降低門檻的同時資產更具靈活性，可隨時進行交易和轉賬操作。同時，火幣 HTX 對項目的嚴格篩選將更好幫助用户收穫潛在優質項目的收益機會，戰隊挖礦、平台貢獻度激勵等玩法的引入更可以加速獎勵獲取，且通過這類第三方平台參與質押也可以降低被反擼的風險，特別是大熱項目。&lt;/p&gt;
-&lt;h3&gt;&lt;strong&gt;憑流量和鈔能力，孫宇晨帶來更多想象空間&lt;/strong&gt;&lt;/h3&gt;
-&lt;p&gt;作為 HTX DAO 的發起人和火幣 HTX 全球顧問委員會成員，擅長市場營銷和流量運作的孫宇晨的加入也為火幣 HTX 和 HTX DAO 發展增添了更多想象空間。儘管孫宇晨本人備受爭議，但在這個「流量為王」的注意力經濟時代，有爭議就有流量，且其產品的行業成果和地位也是毋庸置疑的。&lt;/p&gt;
-&lt;p&gt;數據往往能説明一切。以 TRON 區塊鏈為例，TRONSCAN 最新數據顯示，波場 TRON 賬户總數超 2.2 億個，交易總數突破 74 億，總鎖倉量超 240 億美元。同時，波場 TRON 過去一年協議收入突破 4.6 億美元，超過比特幣等，該收入來自用户為獲取資源和支付手續費而燃燒的 TRX。另外，波場 TRON 網絡上流通的 USDT 數量已超過 568 億枚，佔 USDT 全網供應量超 50%，自今年以來已增發 80 億枚。&lt;/p&gt;
-&lt;p style=&quot;text-align: center;&quot;&gt;&lt;!-- [if gte vml 1]&gt;&lt;v:shape
- id=&quot;Drawing_x0020_1&quot; o:spid=&quot;_x0000_i1025&quot; type=&quot;#_x0000_t75&quot; alt=&quot;圖片&quot;
- style=&#39;width:396pt;height:81pt;visibility:visible;mso-wrap-style:square&#39;&gt;
- &lt;v:imagedata src=&quot;file:////Users/nancy/Library/Group%20Containers/UBF8T346G9.Office/TemporaryItems/msohtmlclip/clip_image002.jpg&quot;
-  o:title=&quot;圖片&quot;/&gt;
-&lt;/v:shape&gt;&lt;![endif]--&gt;&lt;img src=&quot;https://cdn-img.panewslab.com/panews/2024/04/12/images/Q2X0Mmp1Ft.jpg&quot; alt=&quot;以用户為中心的多線產品佈局，火幣 HTX 這場「翻身仗」誠意幾何？&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt;
-&lt;p&gt;而無論是持有者收益還是市值增長，代幣 TRX 的市場表現也同樣可喜。TRONSCAN 數據顯示，TRX 價格和市值在今年 3 月一度創下歷史新高，現市值也已突破 106 億。&lt;/p&gt;
-&lt;p&gt;這些關鍵數據指標增長背後，反映出了波場 TRON 生態的繁榮發展、用户規模的日漸龐大和活躍程度以及代幣市場價值認可度等，這從側面印證了孫宇晨的領導力與專業實力，這一點在前文提到的今年火幣 HTX 發展策略上也有所體現。&lt;/p&gt;
-&lt;p&gt;正如 John Squire 所言，孫宇晨在 TRON 區塊鏈和代幣 TRX 上的多年成功經驗以及敏鋭的市場覺察能力將對火幣 HTX 的市場競爭起着不可小覷的推動作用。&lt;/p&gt;
-&lt;p&gt;行至新十年起點，雖然火幣 HTX 能否給出亮眼戰績短時間無法得到肯定答案，但多措並舉主打「用户」牌正成為贏得更大市場的底氣。&lt;/p&gt;</description>
-            <link>https://panewslab.com/zh/articledetails/iukz46r4.html</link>
-            <guid isPermaLink="false">https://panewslab.com/zh/articledetails/iukz46r4.html</guid>
-            <pubDate>Fri, 12 Apr 2024 09:43:40 GMT</pubDate>
-            <author>Nancy</author>
-            <category>深度</category>
-            <category>PA 原創</category>
-            <category>火幣</category>
-            <category>交易所</category>
-            <category>波場</category>
         </item>
     </channel>
 </rss>
