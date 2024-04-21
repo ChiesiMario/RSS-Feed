@@ -9,8 +9,163 @@
         <generator>RSSHub</generator>
         <webMaster>i@diygod.me (DIYgod)</webMaster>
         <language>en</language>
-        <lastBuildDate>Fri, 19 Apr 2024 16:45:06 GMT</lastBuildDate>
+        <lastBuildDate>Sun, 21 Apr 2024 10:55:58 GMT</lastBuildDate>
         <ttl>1</ttl>
+        <item>
+            <title>Pingap v0.2.0，基於 Pingora 的反向代理軟件</title>
+            <description>&lt;div class=&quot;content&quot;&gt;
+                                                                    
+                                                        &lt;p&gt;Pingap 是基於&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fgithub.com%2Fcloudflare%2Fpingora&quot; target=&quot;_blank&quot;&gt;pingora&lt;/a&gt;開發的，基於&amp;nbsp;Apache-2.0 license 協議開源，源代碼可查閲&lt;span&gt;&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fgithub.com%2Fvicanso%2Fpingap&quot; target=&quot;_blank&quot;&gt;https://github.com/vicanso/pingap&lt;/a&gt;。pingora 提供了各類模塊便於 rust 開發者使用，但並不方便非 rust 開發者使用，因此 pingap 提供了以 toml 的形式配置簡單易用的反向代理，實現支持多 location 代理轉發，通過插件的形式支持更多的需求場景。特性如下：&lt;/span&gt;&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt;支持多 location 配置，可通過請求的路徑與域名篩選&lt;/li&gt; 
+ &lt;li&gt;支持 HTTP1 與 HTTP2 兩種協議&lt;/li&gt; 
+ &lt;li&gt;無中斷請求的配置更新，方便實時更新應用配置&lt;/li&gt; 
+ &lt;li&gt;模板式的請求日誌輸出，可按模板指定各種輸出&lt;/li&gt; 
+ &lt;li&gt;提供 Web 界面式的配置，簡化操作&lt;/li&gt; 
+ &lt;li&gt;支持各種插件形式，根據需要靈活配置各種特性：如靜態文件目錄、服務性能指標、WEB 後台配置應用等&lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;p&gt;&lt;img height=&quot;1050&quot; src=&quot;https://oscimg.oschina.net/oscnet/up-1b44fc5301ff8505e72b842edc25a3a1cd0.png&quot; width=&quot;1452&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
+&lt;h2&gt;Location 的處理邏輯&lt;/h2&gt; 
+&lt;p&gt;該 Server 下的所有 location 在初始化時根據權重按高至低排序，接受到請求時按順序一個個匹配到符合的 location 為止，若無符合的則返回出錯。在選擇對應的 location 之後，判斷是否有配置重寫 pathh(若無則不需要)，添加請求頭 (若無則不需要)，成功響應時添加響應頭 (若無則不需要)。&lt;/p&gt; 
+&lt;pre&gt;&lt;code class=&quot;language-rust&quot;&gt;let header = session.req_header_mut();
+let path = header.uri.path();
+let host = header.uri.host().unwrap_or_default();
+
+let (location_index, lo) = self
+    .locations
+    .iter()
+    .enumerate()
+    .find(|(_, item)| item.matched(host, path))
+    .ok_or_else(|| pingora::Error::new_str(LOCATION_NOT_FOUND))?;
+if let Some(mut new_path) = lo.rewrite(path) {
+    if let Some(query) = header.uri.query() {
+        new_path = format!(&quot;{new_path}?{query}&quot;);
+    }
+    // TODO parse error
+    let _ = new_path.parse::().map(|uri| header.set_uri(uri));
+}
+&lt;/code&gt;&lt;/pre&gt; 
+&lt;p&gt;Location 主要配置請求的匹配、請求頭響應頭的插入，以及各種插件的關聯，是整個流程中的最重要組成部分。下面是相關參數的詳細説明：&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt;&lt;code&gt;upstream&lt;/code&gt;: 配置該 location 對應的 upstream，若該 location 所有的處理均由插件完成，則可不配置&lt;/li&gt; 
+ &lt;li&gt;&lt;code&gt;host&lt;/code&gt;: 匹配的域名，如果是多個域名則使用&lt;code&gt;,&lt;/code&gt;分隔&lt;/li&gt; 
+ &lt;li&gt;&lt;code&gt;path&lt;/code&gt;: 匹配的路徑，具體使用後續細説&lt;/li&gt; 
+ &lt;li&gt;&lt;code&gt;proxy_headers&lt;/code&gt;: 轉發至 upstream 時添加的請求頭&lt;/li&gt; 
+ &lt;li&gt;&lt;code&gt;headers&lt;/code&gt;: 響應至 downstream 時添加的響應頭&lt;/li&gt; 
+ &lt;li&gt;&lt;code&gt;rewrite&lt;/code&gt;: 請求路徑的重寫規則&lt;/li&gt; 
+ &lt;li&gt;&lt;code&gt;proxy_plugins&lt;/code&gt;: 添加至該 location 的插件列表，按順序執行&lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;p&gt;Location 支持配置對應 host(支持多個）與 path 規則，path 支持以下的規則，權重由高至低：&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt;全等模式，配置以&lt;code&gt;=&lt;/code&gt;開始，如&lt;code&gt;=/api&lt;/code&gt;表示匹配 path 等於&lt;code&gt;/api&lt;/code&gt;的請求&lt;/li&gt; 
+ &lt;li&gt;正則模式，配置以&lt;code&gt;~&lt;/code&gt;開始，如&lt;code&gt;~^/(api|rest)&lt;/code&gt;表示匹配 path 以&lt;code&gt;/api&lt;/code&gt;或&lt;code&gt;/rest&lt;/code&gt;開始請求&lt;/li&gt; 
+ &lt;li&gt;前綴模式，如&lt;code&gt;/api&lt;/code&gt;表示匹配 path 為&lt;code&gt;/api&lt;/code&gt;開始的請求&lt;/li&gt; 
+ &lt;li&gt;空模式，若未指定 path 則表示所有的 path 均匹配，一般建議配置一個&lt;code&gt;/&lt;/code&gt;的前綴模式即可，無需使用空模式&lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;h2&gt;插件體系&lt;/h2&gt; 
+&lt;p&gt;Pingap 中通過 Locaton 添加各種插件支持更多的應用場景，如鑑權、流控等。現在插件支持在&lt;code&gt;request_filter&lt;/code&gt;與&lt;code&gt;proxy_upstream_filter&lt;/code&gt;階段執行，均為轉發到上游節點前的處理。下面介紹一下&lt;code&gt;proxy plunin&lt;/code&gt;的具體邏輯，trait 如下：&lt;/p&gt; 
+&lt;pre&gt;&lt;code class=&quot;language-rust&quot;&gt;#[async_trait]
+pub trait ProxyPlugin: Sync + Send {
+    fn category(&amp;amp;self) -&amp;gt; ProxyPluginCategory;
+    fn step(&amp;amp;self) -&amp;gt; ProxyPluginStep;
+    async fn handle(&amp;amp;self, _session: &amp;amp;mut Session, _ctx: &amp;amp;mut State) -&amp;gt; pingora::Result {
+        Ok(false)
+    }
+}
+&lt;/code&gt;&lt;/pre&gt; 
+&lt;p&gt;主要分三個實現：&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt;&lt;code&gt;category&lt;/code&gt;: 插件類型，用於區分該插件是哪類形式的插件&lt;/li&gt; 
+ &lt;li&gt;&lt;code&gt;step&lt;/code&gt;: 插件的執行階段，現只支持在&lt;code&gt;request_filter&lt;/code&gt;與&lt;code&gt;proxy_upstream_filter&lt;/code&gt;階段執行&lt;/li&gt; 
+ &lt;li&gt;&lt;code&gt;handle&lt;/code&gt;: 插件的執行邏輯，若返回的是&lt;code&gt;Ok(true)&lt;/code&gt;，則表示請求已處理完成，不再轉發到上游節點&lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;h2&gt;Upstream 的處理邏輯&lt;/h2&gt; 
+&lt;p&gt;Upstream 的邏輯比較簡單，在匹配 location 後，根據該 location 配置的 upstream 節點列表，按算法選擇可用節點，並將請求轉發至該節點即可。雖然注意，插件也可配置在&lt;code&gt;proxy_upstream_filter&lt;/code&gt;轉發至 upstream 之前執行，可按需配置對應的插件。&lt;/p&gt; 
+&lt;p&gt;Upstream 配置為節點地址列表，配置為域名則會根據解析後的 IP 添加所有節點地址（之後並不會再次刷新域名解析），需要注意節點會使用默認的 tcp health check 的形式檢測節點是否可用，建議配置為 http health chech。下面針對相關參數詳細説明：&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt;&lt;code&gt;addrs&lt;/code&gt;: 節點地址列表，地址為&lt;code&gt;ip:port weight&lt;/code&gt;的形式，&lt;code&gt;weight&lt;/code&gt;權重可不指定，默認為 1&lt;/li&gt; 
+ &lt;li&gt;&lt;code&gt;algo&lt;/code&gt;: 節點的選擇算法，支持&lt;code&gt;hash&lt;/code&gt;與&lt;code&gt;round_robin&lt;/code&gt;兩種形式，如&lt;code&gt;hash:ip&lt;/code&gt;表示按 ip hash 選擇節點。默認為&lt;code&gt;round_robin&lt;/code&gt;&lt;/li&gt; 
+ &lt;li&gt;&lt;code&gt;sni&lt;/code&gt;: 若配置的是 https，需要設置對應的 SNI&lt;/li&gt; 
+ &lt;li&gt;&lt;code&gt;verify_cert&lt;/code&gt;: 若配置的是 http，是否需要校驗證書有效性&lt;/li&gt; 
+ &lt;li&gt;&lt;code&gt;health_check&lt;/code&gt;: 節點健康檢測配置，支持 http 與 tcp 形式&lt;/li&gt; 
+ &lt;li&gt;&lt;code&gt;ipv4_only&lt;/code&gt;: 若配置為域名時，是否僅添加解析的 ipv4 節點&lt;/li&gt; 
+ &lt;li&gt;&lt;code&gt;alpn&lt;/code&gt;: 在 tls 握手時，alpn 的配置，默認為 H1&lt;/li&gt; 
+ &lt;li&gt;&lt;code&gt;connection_timeout&lt;/code&gt;: tcp 連接超時，默認為無&lt;/li&gt; 
+ &lt;li&gt;&lt;code&gt;total_connection_timeout&lt;/code&gt;: 連接超時，對於 https 包括 tls 握手部分，默認為無&lt;/li&gt; 
+ &lt;li&gt;&lt;code&gt;read_timeout&lt;/code&gt;: 讀取超時，默認為無&lt;/li&gt; 
+ &lt;li&gt;&lt;code&gt;write_timeout&lt;/code&gt;: 寫超時，默認為無&lt;/li&gt; 
+ &lt;li&gt;&lt;code&gt;idle_timeout&lt;/code&gt;: 空閒超時，指定連接空閒多久後會自動回收，如果設置為 0，則連接不復用，需要注意有些網絡設備對於無數據的 tcp 連接會過期自動關閉，因此可根據需要設置對應的值。默認為無&lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;h2&gt;WEB 管理後台&lt;/h2&gt; 
+&lt;p&gt;&lt;img height=&quot;1294&quot; src=&quot;https://oscimg.oschina.net/oscnet/up-ba94ab362f9e5ab2d7125eb6cf212e267c5.png&quot; width=&quot;2778&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt;
+                                        &lt;/div&gt;
+                                    </description>
+            <link>https://www.oschina.net/news/288724/pingap-0-2-0</link>
+            <guid isPermaLink="false">https://www.oschina.net/news/288724/pingap-0-2-0</guid>
+            <pubDate>Sun, 21 Apr 2024 06:54:51 GMT</pubDate>
+            <author>來源: 投稿</author>
+        </item>
+        <item>
+            <title>周鴻禕：閉源比開源好？Llama 3 已經給出最好答案</title>
+            <description>&lt;div class=&quot;content&quot;&gt;
+                                                                    
+                                                        &lt;p&gt;周鴻禕在微博迴應了近日被指「攻擊李廠長」（百度 CEO 李彥宏）的報道：&lt;/p&gt; 
+&lt;blockquote&gt; 
+ &lt;p&gt;這兩天有人挑事兒，説我攻擊李廠長。我一直是開源的信徒，但是我説開源好，是 13 號在哈佛講的，李廠長説閉源好，是 16 號在北京講的。&lt;/p&gt; 
+ &lt;p&gt;所以我不是針對李廠長，我還是從產業發展的角度來看開源和閉源。本想詳細論證為什麼開源一定會超過閉源，Llama 已經給出了最好的答案。 ​​​&lt;/p&gt; 
+&lt;/blockquote&gt; 
+&lt;p&gt;周鴻禕説道：&lt;/p&gt; 
+&lt;blockquote&gt; 
+ &lt;p&gt;沒有開源就沒有 Linux，沒有 PHP，沒有 MySQL，甚至沒有互聯網。包括在人工智能發展上，如果沒有當初谷歌開源 Transformer，就不會有 OpenAI 和 GPT。我們都是受益於開源成長起來的個人和公司。&lt;/p&gt; 
+ &lt;p&gt;昨天半夜 Meta 開源了 Llama3，一個 80 億版本，一個 700 億版本，性能都很強，超過了谷歌閉源的 Gemini。據説還有一個 4000 億參數的版本在路上，性能應該會超越 GPT-4。&lt;/p&gt; 
+ &lt;p&gt;開源到底行不行，Llama 已經給了最好的答案。&lt;/p&gt; 
+&lt;/blockquote&gt; 
+&lt;p&gt;&lt;img alt=&quot;&quot; src=&quot;https://oscimg.oschina.net/oscnet/up-d9abc84f03e62bd642d61bd370221bf1845.png&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
+&lt;p&gt;來源：&lt;u&gt;&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fweibo.com%2F1708942053%2FOaBT4BXgZ&quot; target=&quot;_blank&quot;&gt;https://weibo.com/1708942053/OaBT4BXgZ&lt;/a&gt;&lt;/u&gt;&lt;/p&gt;
+                                        &lt;/div&gt;
+                                    </description>
+            <link>https://www.oschina.net/news/288712</link>
+            <guid isPermaLink="false">https://www.oschina.net/news/288712</guid>
+            <pubDate>Sun, 21 Apr 2024 03:49:00 GMT</pubDate>
+            <author>來源: OSCHINA</author>
+        </item>
+        <item>
+            <title>馬化騰周鴻禕握手「泯恩仇」</title>
+            <description>&lt;div class=&quot;content&quot;&gt;
+                                                                    
+                                                        &lt;p&gt;2024 年 4 月 20 日，是中國全功能接入國際互聯網 30 週年的日子，中國互聯網協會在京召開&quot;中國互聯網 30 週年發展座談會——把握機遇再出發&quot;。&lt;/p&gt; 
+&lt;p&gt;&lt;img alt=&quot;&quot; src=&quot;https://oscimg.oschina.net/oscnet/up-3c1156908f387c4154028b16137dc2d2f98.png&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
+&lt;p&gt;工業和信息化部黨組成員、副部長張雲明出席會議並作總結講話，工業和信息化部總工程師趙志國出席會議並作講話。&lt;/p&gt; 
+&lt;p&gt;會議通過三個主題視頻，從不同的視角和表現形式，回顧了中國互聯網 30 年行業發展成就和中國互聯網協會一年來聯合業界開展的中國互聯網 30 年系列活動。&lt;/p&gt; 
+&lt;p&gt;會議間歇，騰訊集團創始人馬化騰、小米集團創始人雷軍、360 創始人周鴻禕、獵豹移動 CEO 傅盛等行業人士線下齊聚。&lt;/p&gt; 
+&lt;p&gt;經歷過 2010 年被外界稱為&lt;strong&gt;「3Q 大戰」&lt;/strong&gt;的紛爭，馬化騰與周鴻禕握手談笑。&lt;/p&gt; 
+&lt;p&gt;&lt;img alt=&quot;&quot; src=&quot;https://oscimg.oschina.net/oscnet/up-acad9b0b6b409baec71624b1b2bc0c4ed97.png&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
+&lt;hr&gt; 
+&lt;blockquote&gt; 
+ &lt;p&gt;2010 年 9 月，奇虎針對騰訊 QQ 先後發佈了 360 隱私保護器和 360 扣扣保鏢，並稱其可以保護 QQ 用户的隱私和網絡安全。11 月 3 日，騰訊宣佈在裝有 360 軟件的電腦上將不能運行 QQ 軟件。&lt;/p&gt; 
+ &lt;p&gt;&lt;img alt=&quot;&quot; src=&quot;https://oscimg.oschina.net/oscnet/up-366c6e5c82493b5e3e2c7394e17bae64d8d.png&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
+ &lt;p&gt;事件同時牽涉到其他奇虎軟件與同類軟件的紛爭，如 360 安全瀏覽器與傲遊瀏覽器和搜狗瀏覽器之間、360 安全衞士和 360 殺毒與多家殺毒軟件之間的紛爭。為此，金山、傲遊、可牛、百度等軟件公司 11 月 5 日聯合召開發佈會，抵制奇虎 360 並宣佈將不兼容 360 系列軟件。&lt;/p&gt; 
+ &lt;p&gt;之後政府介入此次爭鬥事件，責令騰訊停止不兼容行為、奇虎召回 360 扣扣保鏢。&lt;/p&gt; 
+ &lt;p&gt;11 月 21 日騰訊與奇虎兩家公司分別在各自官方網站上發表了對網民的致歉信，也正式結束了此次糾紛事件。&lt;/p&gt; 
+ &lt;p&gt;2011 年 4 月 26 日，北京市朝陽區法院就騰訊起訴奇虎 360 不正當競爭案作出一審判決，奇虎等三家公司賠償騰訊公司人民幣 40 萬元。&lt;/p&gt; 
+&lt;/blockquote&gt; 
+&lt;p&gt;「3Q 大戰」不止對行業產生了極其深遠的影響，在騰訊內部，其「開源」歷史也是以「3Q 大戰」為起點。&lt;/p&gt; 
+&lt;p&gt;騰訊在官方開源網站上&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fopensource.tencent.com%2Fabout&quot; target=&quot;_blank&quot;&gt;介紹稱&lt;/a&gt;，騰訊的開放是從內到外的一個過程。2010 年的「3Q 大戰」後，騰訊開始擁抱「開放」戰略，技術研發也在這種環境下開始向共享、複用和開源邁進。&lt;/p&gt; 
+&lt;p&gt;&lt;img src=&quot;https://oscimg.oschina.net/oscnet/up-ec0c44f8c8b7d9ae94b409f9a31d68bffc0.png&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
+&lt;p&gt;延伸閲讀：&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt;&lt;a href=&quot;https://www.oschina.net/news/13573/Six-months-after-the-complete-transformation-of-Te&quot; target=&quot;_blank&quot;&gt;馬化騰：騰訊半年後徹底轉型，開放和分享&lt;/a&gt;&lt;/li&gt; 
+ &lt;li&gt;&lt;a href=&quot;https://www.oschina.net/news/40017/qihoo-360-will-appeal&quot;&gt;周鴻禕：3Q 大戰判決存地方保護將上訴&lt;/a&gt;&lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;hr&gt; 
+&lt;p&gt;&lt;img alt=&quot;&quot; src=&quot;https://oscimg.oschina.net/oscnet/up-8ed41f4fca165ff16630be729045a889c58.png&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt;
+                                        &lt;/div&gt;
+                                    </description>
+            <link>https://www.oschina.net/news/288709</link>
+            <guid isPermaLink="false">https://www.oschina.net/news/288709</guid>
+            <pubDate>Sun, 21 Apr 2024 03:04:58 GMT</pubDate>
+            <author>來源: OSCHINA</author>
+        </item>
         <item>
             <title>雖然老鄉雞開源的不是代碼，但背後的原因卻讓人很暖心</title>
             <description>&lt;div class=&quot;content&quot;&gt;
@@ -668,7 +823,7 @@
                                     </description>
             <link>https://my.oschina.net/u/4662964/blog/11053556</link>
             <guid isPermaLink="false">https://my.oschina.net/u/4662964/blog/11053556</guid>
-            <pubDate>Fri, 19 Apr 2024 06:08:19 GMT</pubDate>
+            <pubDate>Fri, 19 Apr 2024 06:07:00 GMT</pubDate>
             <author>原創</author>
         </item>
         <item>
@@ -1347,70 +1502,6 @@
             <guid isPermaLink="false">https://www.oschina.net/news/288311</guid>
             <pubDate>Thu, 18 Apr 2024 08:33:00 GMT</pubDate>
             <author>來源: 投稿</author>
-        </item>
-        <item>
-            <title>MoonBit 第二場 MeetUp 來啦！一起聊聊 AI 時代下的新編程</title>
-            <description>&lt;div class=&quot;content&quot;&gt;
-                                                                    
-                                                        &lt;p&gt;&lt;span style=&quot;background-color:transparent&quot;&gt;&lt;span&gt;過去的 2023 年是生成式人工智能引領技術革命的一年。AI 大語言模型如 GPT-4 和&lt;span&gt;&amp;nbsp;&lt;/span&gt;&lt;/span&gt;&lt;span style=&quot;color:var(--weui-LINK)&quot;&gt;LLaMA&lt;/span&gt;&lt;span&gt;&lt;span&gt;&amp;nbsp;&lt;/span&gt;的推出，以及開源社區的活躍，為編程語言的發展帶來了前所未有的挑戰與機遇。編程語言作為軟件開發的基礎設施，始終緊密契合着當下的技術發展與需求，從大型機時代的 Fortran，到個人計算機時代的 C 語言，再到互聯網時代的 Java 和 Python，每種語言都因適應當時的技術趨勢而受到推崇。&lt;/span&gt;&lt;/span&gt;&lt;/p&gt; 
-&lt;p&gt;如何更好地開發 AI 模型和 AI 原生應用是當下開發者工具平台面臨的重要機遇和挑戰。MoonBit 正是在這個時期應運而生，有機會去重新構想整個編程語言工具鏈該如何與 AI 更好地協作。&lt;/p&gt; 
-&lt;p&gt;2024 年 4 月 27 日（下週六），我們將在深圳舉辦第二場 MoonBit 線下 MeetUp，邀請 deepin-IDE 和獅偶編程語言的專家共同探討 AI 時代下的新編程。&lt;/p&gt; 
-&lt;p style=&quot;color:rgba(0, 0, 0, 0.9); margin-left:8px; margin-right:8px; text-align:justify&quot;&gt;&lt;span&gt;&lt;span style=&quot;color:#1f5cc1&quot;&gt;&lt;strong&gt;活動主題：&lt;/strong&gt;&lt;/span&gt;&lt;/span&gt;&lt;span&gt;AI 時代下的新編程&lt;/span&gt;&lt;/p&gt; 
-&lt;p style=&quot;color:rgba(0, 0, 0, 0.9); margin-left:8px; margin-right:8px; text-align:justify&quot;&gt;&lt;span&gt;&lt;span style=&quot;color:#1f5cc1&quot;&gt;&lt;strong&gt;活動地點：&lt;/strong&gt;&lt;/span&gt;&lt;/span&gt;&lt;span&gt;BEEPLUS 深圳 G&amp;amp;G 中心&lt;/span&gt;&lt;/p&gt; 
-&lt;p style=&quot;color:rgba(0, 0, 0, 0.9); margin-left:8px; margin-right:8px; text-align:justify&quot;&gt;&lt;span style=&quot;color:#1f5cc1&quot;&gt;&lt;strong&gt;活動形式：&lt;/strong&gt;&lt;/span&gt;&lt;/p&gt; 
-&lt;p&gt;&lt;span&gt;1、線下小型 MeetUp&lt;/span&gt;&lt;/p&gt; 
-&lt;p&gt;&lt;span&gt;2、線上同步直播（b 站/視頻號），直播預告準備 ing&lt;/span&gt;&lt;/p&gt; 
-&lt;p&gt;&lt;span&gt;&lt;span style=&quot;color:#1f5cc1&quot;&gt;&lt;strong&gt;活動時間：&lt;/strong&gt;&lt;/span&gt;2024.4.27&amp;nbsp;下午&amp;nbsp;14:00-17:00&lt;/span&gt;&lt;/p&gt; 
-&lt;p&gt;&lt;span&gt;&lt;span style=&quot;color:#1f5cc1&quot;&gt;&lt;strong&gt;如何報名：&lt;/strong&gt;&lt;/span&gt;&lt;/span&gt;&lt;span&gt;掃碼下方二維碼 👇&amp;nbsp;報名&lt;/span&gt;&lt;/p&gt; 
-&lt;p&gt;&lt;img height=&quot;439&quot; src=&quot;https://oscimg.oschina.net/oscnet/up-fe2c9c1068c75a369b5747a72f3d9278423.jpg&quot; width=&quot;439&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
-&lt;p&gt;&lt;img height=&quot;4964&quot; src=&quot;https://oscimg.oschina.net/oscnet/up-41c6d87125c7334ca3f393d72824c90fade.jpg&quot; width=&quot;1080&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt;
-                                        &lt;/div&gt;
-                                    </description>
-            <link>https://www.oschina.net/news/288307</link>
-            <guid isPermaLink="false">https://www.oschina.net/news/288307</guid>
-            <pubDate>Thu, 18 Apr 2024 08:19:00 GMT</pubDate>
-            <author>來源: 投稿</author>
-        </item>
-        <item>
-            <title>華為：用 1 年時間將 5000 個常用手機應用全面遷移至鴻蒙</title>
-            <description>&lt;div class=&quot;content&quot;&gt;
-                                                                    
-                                                        &lt;p&gt;在第 21 屆華為分析師大會上，華為副董事長、輪值董事長徐直軍表示，打造鴻蒙原生應用生態，是華為 2024 年最關鍵的事情。過去的鴻蒙操作系統更多是在南向適配各種各樣的端設備，但是在北向的應用上還是共享安卓的應用生態。&lt;/p&gt; 
-&lt;p&gt;該公司希望通過 2024 年一年的時間，先在中國市場把智能手機上使用超過 99% 時間的 5000 個應用，全面遷移到鴻蒙原生操作系統上，真正實現操作系統和應用生態的統一。&lt;/p&gt; 
-&lt;p&gt;&lt;img alt=&quot;&quot; height=&quot;312&quot; src=&quot;https://oscimg.oschina.net/oscnet/up-0c0deb4d48420fc7dcc054ab25e8f9e99b6.png&quot; width=&quot;500&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
-&lt;p&gt;目前已有 4000 多個應用已經明確了遷移計劃，還有不到 1000 個應用正在溝通中。當這 5000 個應用以及其它成千上萬的應用都從安卓生態遷移到鴻蒙操作系統上時，鴻蒙操作系統就真正完成了打造，並真正成為除了蘋果 iOS 和谷歌安卓外的全球第三個移動操作系統。&lt;/p&gt; 
-&lt;p&gt;此外，徐直軍還介紹了 2024 年華為的關鍵戰略，重點闡述了「抓住智能化戰略機遇，推進全面智能化」戰略落地的關鍵舉措。&lt;/p&gt; 
-&lt;p&gt;徐直軍説，全面智能化戰略一方面指為人工智能關鍵技術發展，尤其是大模型訓練和推理提供可持續的算力，構建共贏的生態；另一方面是用 AI 增強華為產品和解決方案的競爭力，包括：以昇騰雲服務與盤古大模型使能行業智能化，打造自動駕駛網絡革命性改變通信網絡運維模式，打造自動駕駛解決方案最終實現無人駕駛，基於盤古大模型打造超級智慧助手小藝。&lt;/p&gt;
-                                        &lt;/div&gt;
-                                    </description>
-            <link>https://www.oschina.net/news/288303</link>
-            <guid isPermaLink="false">https://www.oschina.net/news/288303</guid>
-            <pubDate>Thu, 18 Apr 2024 08:08:00 GMT</pubDate>
-            <author>來源: 投稿</author>
-        </item>
-        <item>
-            <title>Java 是最容易出現第三方漏洞的語言</title>
-            <description>&lt;div class=&quot;content&quot;&gt;
-                                                                    
-                                                        &lt;p&gt;&lt;span style=&quot;color:#000000&quot;&gt;雲應用監控和安全平台 Datadog 發佈了一份最新的「&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Finvestors.datadoghq.com%2Fnews-releases%2Fnews-release-details%2Fdatadogs-state-devsecops-2024-report-finds-organizations-arent&quot; target=&quot;_blank&quot;&gt;2024 年 DevSecOps 狀況&lt;/a&gt;」報告稱，通過分析以各種編程語言編寫的一系列應用程序的安全狀況發現，Java 服務受第三方漏洞的影響最大。&lt;/span&gt;&lt;/p&gt; 
-&lt;p&gt;&lt;span style=&quot;color:#000000&quot;&gt;90% 的 Java 服務容易受到第三方庫引入的一個或多個嚴重或高嚴重性漏洞的影響。而其他編程語言如&amp;nbsp;JavaScript 的這一比例約為 75%、Python 的為 64%、.NET 為 50%，平均數則為 47%。&lt;/span&gt;&lt;/p&gt; 
-&lt;p&gt;&lt;span style=&quot;color:#000000&quot;&gt;&lt;img alt=&quot;&quot; height=&quot;402&quot; src=&quot;https://oscimg.oschina.net/oscnet/up-7c0dc2ff6543616e37b9d56babe8c9a00f7.png&quot; width=&quot;500&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/span&gt;&lt;/p&gt; 
-&lt;p&gt;&lt;span style=&quot;color:#000000&quot;&gt;且&amp;nbsp;Java 服務也更有可能被積極利用。&amp;nbsp;報告發現在 CISA 公佈的一份被威脅者利用的漏洞運行列表，即已知漏洞利用（KEV）目錄中，Java 服務所佔比例過高：55% 的 Java 服務受到影響，而使用其他語言構建的服務只有 7%。&lt;/span&gt;&lt;/p&gt; 
-&lt;p&gt;&lt;span style=&quot;color:#000000&quot;&gt;即使在關注特定類別的漏洞時，這種比例過高的模式也仍然存在。例如，23% 的 Java 服務容易受到遠程代碼執行 (RCE) 的攻擊，影響了 42% 的組織。Datadog 認為，這一高比例可能是由於流行的 Java 庫中存在許多普遍存在的漏洞，例如 Tomcat、Spring Framework、Apache Struts、Log4j 和 ActiveMQ。&lt;/span&gt;&lt;/p&gt; 
-&lt;p&gt;&lt;span style=&quot;color:#000000&quot;&gt;「當我們檢查這些漏洞通常起源於何處時，這一假設得到了加強。在 Java 中，63% 的高危漏洞源自間接依賴項，即間接與應用程序打包在一起的第三方庫。這些漏洞通常更難識別，因為它們出現的附加庫通常會在不知不覺中引入到應用程序中。」&lt;/span&gt;&lt;/p&gt; 
-&lt;p&gt;&lt;span style=&quot;color:#000000&quot;&gt;鑑於此，報告建議開發人員在掃描應用程序漏洞時需要考慮完整的依賴關係樹，而不僅僅是直接依賴關係。瞭解添加到應用程序中的任何新依賴項是否維護良好並經常升級其自身的依賴項也很重要。&lt;/span&gt;&lt;/p&gt; 
-&lt;p&gt;&lt;span style=&quot;color:#000000&quot;&gt;報告的一些其他主要發現還包括：&lt;/span&gt;&lt;/p&gt; 
-&lt;ul style=&quot;list-style-type:disc; margin-left:0; margin-right:0&quot;&gt; 
- &lt;li&gt;&lt;span style=&quot;color:#000000&quot;&gt;雖然來自自動安全掃描器的攻擊代表了最大數量的利用嘗試，但其中絕大多數攻擊是無害的。在發現來自此類掃描程序的數千萬個惡意請求中，只有 0.0065% 成功觸發了漏洞。&lt;/span&gt;&lt;/li&gt; 
- &lt;li&gt;&lt;span style=&quot;color:#000000&quot;&gt;即使短期憑證更實用、更安全，但仍有許多組織在其 CI/CD 管道中繼續依賴長期憑證（這是造成數據泄露的&lt;/span&gt;&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fc212.net%2Fc%2Flink%2F%3Ft%3D0%26l%3Den%26o%3D4142857-1%26h%3D3765677756%26u%3Dhttps%253A%252F%252Fsecuritylabs.datadoghq.com%252Farticles%252Fpublic-cloud-breaches-2022-mccarthy-hopkins%252F%26a%3Dmost%2Bcommon%2Bcauses&quot; target=&quot;_blank&quot;&gt;最常見原因&lt;/a&gt;&lt;span style=&quot;color:#000000&quot;&gt;之一），。 63% 的人至少使用過一次長期憑證來驗證 GitHub Actions pipelines。&lt;/span&gt;&lt;/li&gt; 
-&lt;/ul&gt; 
-&lt;p&gt;&lt;span style=&quot;color:#000000&quot;&gt;更多詳情可&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fwww.datadoghq.com%2Fstate-of-devsecops%2F&quot; target=&quot;_blank&quot;&gt;查看完整報告&lt;/a&gt;。&lt;/span&gt;&lt;/p&gt;
-                                        &lt;/div&gt;
-                                    </description>
-            <link>https://www.oschina.net/news/288288/state-of-devsecops-2024</link>
-            <guid isPermaLink="false">https://www.oschina.net/news/288288/state-of-devsecops-2024</guid>
-            <pubDate>Thu, 18 Apr 2024 07:08:00 GMT</pubDate>
-            <author>來源: OSCHINA</author>
         </item>
     </channel>
 </rss>
