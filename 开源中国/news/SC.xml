@@ -9,8 +9,163 @@
         <generator>RSSHub</generator>
         <webMaster>i@diygod.me (DIYgod)</webMaster>
         <language>en</language>
-        <lastBuildDate>Fri, 19 Apr 2024 16:45:06 GMT</lastBuildDate>
+        <lastBuildDate>Sun, 21 Apr 2024 10:55:58 GMT</lastBuildDate>
         <ttl>1</ttl>
+        <item>
+            <title>Pingap v0.2.0，基于 Pingora 的反向代理软件</title>
+            <description>&lt;div class=&quot;content&quot;&gt;
+                                                                    
+                                                        &lt;p&gt;Pingap 是基于&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fgithub.com%2Fcloudflare%2Fpingora&quot; target=&quot;_blank&quot;&gt;pingora&lt;/a&gt;开发的，基于&amp;nbsp;Apache-2.0 license 协议开源，源代码可查阅&lt;span&gt;&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fgithub.com%2Fvicanso%2Fpingap&quot; target=&quot;_blank&quot;&gt;https://github.com/vicanso/pingap&lt;/a&gt;。pingora 提供了各类模块便于 rust 开发者使用，但并不方便非 rust 开发者使用，因此 pingap 提供了以 toml 的形式配置简单易用的反向代理，实现支持多 location 代理转发，通过插件的形式支持更多的需求场景。特性如下：&lt;/span&gt;&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt;支持多 location 配置，可通过请求的路径与域名筛选&lt;/li&gt; 
+ &lt;li&gt;支持 HTTP1 与 HTTP2 两种协议&lt;/li&gt; 
+ &lt;li&gt;无中断请求的配置更新，方便实时更新应用配置&lt;/li&gt; 
+ &lt;li&gt;模板式的请求日志输出，可按模板指定各种输出&lt;/li&gt; 
+ &lt;li&gt;提供 Web 界面式的配置，简化操作&lt;/li&gt; 
+ &lt;li&gt;支持各种插件形式，根据需要灵活配置各种特性：如静态文件目录、服务性能指标、WEB 后台配置应用等&lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;p&gt;&lt;img height=&quot;1050&quot; src=&quot;https://oscimg.oschina.net/oscnet/up-1b44fc5301ff8505e72b842edc25a3a1cd0.png&quot; width=&quot;1452&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
+&lt;h2&gt;Location 的处理逻辑&lt;/h2&gt; 
+&lt;p&gt;该 Server 下的所有 location 在初始化时根据权重按高至低排序，接受到请求时按顺序一个个匹配到符合的 location 为止，若无符合的则返回出错。在选择对应的 location 之后，判断是否有配置重写 pathh(若无则不需要)，添加请求头 (若无则不需要)，成功响应时添加响应头 (若无则不需要)。&lt;/p&gt; 
+&lt;pre&gt;&lt;code class=&quot;language-rust&quot;&gt;let header = session.req_header_mut();
+let path = header.uri.path();
+let host = header.uri.host().unwrap_or_default();
+
+let (location_index, lo) = self
+    .locations
+    .iter()
+    .enumerate()
+    .find(|(_, item)| item.matched(host, path))
+    .ok_or_else(|| pingora::Error::new_str(LOCATION_NOT_FOUND))?;
+if let Some(mut new_path) = lo.rewrite(path) {
+    if let Some(query) = header.uri.query() {
+        new_path = format!(&quot;{new_path}?{query}&quot;);
+    }
+    // TODO parse error
+    let _ = new_path.parse::().map(|uri| header.set_uri(uri));
+}
+&lt;/code&gt;&lt;/pre&gt; 
+&lt;p&gt;Location 主要配置请求的匹配、请求头响应头的插入，以及各种插件的关联，是整个流程中的最重要组成部分。下面是相关参数的详细说明：&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt;&lt;code&gt;upstream&lt;/code&gt;: 配置该 location 对应的 upstream，若该 location 所有的处理均由插件完成，则可不配置&lt;/li&gt; 
+ &lt;li&gt;&lt;code&gt;host&lt;/code&gt;: 匹配的域名，如果是多个域名则使用&lt;code&gt;,&lt;/code&gt;分隔&lt;/li&gt; 
+ &lt;li&gt;&lt;code&gt;path&lt;/code&gt;: 匹配的路径，具体使用后续细说&lt;/li&gt; 
+ &lt;li&gt;&lt;code&gt;proxy_headers&lt;/code&gt;: 转发至 upstream 时添加的请求头&lt;/li&gt; 
+ &lt;li&gt;&lt;code&gt;headers&lt;/code&gt;: 响应至 downstream 时添加的响应头&lt;/li&gt; 
+ &lt;li&gt;&lt;code&gt;rewrite&lt;/code&gt;: 请求路径的重写规则&lt;/li&gt; 
+ &lt;li&gt;&lt;code&gt;proxy_plugins&lt;/code&gt;: 添加至该 location 的插件列表，按顺序执行&lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;p&gt;Location 支持配置对应 host(支持多个）与 path 规则，path 支持以下的规则，权重由高至低：&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt;全等模式，配置以&lt;code&gt;=&lt;/code&gt;开始，如&lt;code&gt;=/api&lt;/code&gt;表示匹配 path 等于&lt;code&gt;/api&lt;/code&gt;的请求&lt;/li&gt; 
+ &lt;li&gt;正则模式，配置以&lt;code&gt;~&lt;/code&gt;开始，如&lt;code&gt;~^/(api|rest)&lt;/code&gt;表示匹配 path 以&lt;code&gt;/api&lt;/code&gt;或&lt;code&gt;/rest&lt;/code&gt;开始请求&lt;/li&gt; 
+ &lt;li&gt;前缀模式，如&lt;code&gt;/api&lt;/code&gt;表示匹配 path 为&lt;code&gt;/api&lt;/code&gt;开始的请求&lt;/li&gt; 
+ &lt;li&gt;空模式，若未指定 path 则表示所有的 path 均匹配，一般建议配置一个&lt;code&gt;/&lt;/code&gt;的前缀模式即可，无需使用空模式&lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;h2&gt;插件体系&lt;/h2&gt; 
+&lt;p&gt;Pingap 中通过 Locaton 添加各种插件支持更多的应用场景，如鉴权、流控等。现在插件支持在&lt;code&gt;request_filter&lt;/code&gt;与&lt;code&gt;proxy_upstream_filter&lt;/code&gt;阶段执行，均为转发到上游节点前的处理。下面介绍一下&lt;code&gt;proxy plunin&lt;/code&gt;的具体逻辑，trait 如下：&lt;/p&gt; 
+&lt;pre&gt;&lt;code class=&quot;language-rust&quot;&gt;#[async_trait]
+pub trait ProxyPlugin: Sync + Send {
+    fn category(&amp;amp;self) -&amp;gt; ProxyPluginCategory;
+    fn step(&amp;amp;self) -&amp;gt; ProxyPluginStep;
+    async fn handle(&amp;amp;self, _session: &amp;amp;mut Session, _ctx: &amp;amp;mut State) -&amp;gt; pingora::Result {
+        Ok(false)
+    }
+}
+&lt;/code&gt;&lt;/pre&gt; 
+&lt;p&gt;主要分三个实现：&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt;&lt;code&gt;category&lt;/code&gt;: 插件类型，用于区分该插件是哪类形式的插件&lt;/li&gt; 
+ &lt;li&gt;&lt;code&gt;step&lt;/code&gt;: 插件的执行阶段，现只支持在&lt;code&gt;request_filter&lt;/code&gt;与&lt;code&gt;proxy_upstream_filter&lt;/code&gt;阶段执行&lt;/li&gt; 
+ &lt;li&gt;&lt;code&gt;handle&lt;/code&gt;: 插件的执行逻辑，若返回的是&lt;code&gt;Ok(true)&lt;/code&gt;，则表示请求已处理完成，不再转发到上游节点&lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;h2&gt;Upstream 的处理逻辑&lt;/h2&gt; 
+&lt;p&gt;Upstream 的逻辑比较简单，在匹配 location 后，根据该 location 配置的 upstream 节点列表，按算法选择可用节点，并将请求转发至该节点即可。虽然注意，插件也可配置在&lt;code&gt;proxy_upstream_filter&lt;/code&gt;转发至 upstream 之前执行，可按需配置对应的插件。&lt;/p&gt; 
+&lt;p&gt;Upstream 配置为节点地址列表，配置为域名则会根据解析后的 IP 添加所有节点地址（之后并不会再次刷新域名解析），需要注意节点会使用默认的 tcp health check 的形式检测节点是否可用，建议配置为 http health chech。下面针对相关参数详细说明：&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt;&lt;code&gt;addrs&lt;/code&gt;: 节点地址列表，地址为&lt;code&gt;ip:port weight&lt;/code&gt;的形式，&lt;code&gt;weight&lt;/code&gt;权重可不指定，默认为 1&lt;/li&gt; 
+ &lt;li&gt;&lt;code&gt;algo&lt;/code&gt;: 节点的选择算法，支持&lt;code&gt;hash&lt;/code&gt;与&lt;code&gt;round_robin&lt;/code&gt;两种形式，如&lt;code&gt;hash:ip&lt;/code&gt;表示按 ip hash 选择节点。默认为&lt;code&gt;round_robin&lt;/code&gt;&lt;/li&gt; 
+ &lt;li&gt;&lt;code&gt;sni&lt;/code&gt;: 若配置的是 https，需要设置对应的 SNI&lt;/li&gt; 
+ &lt;li&gt;&lt;code&gt;verify_cert&lt;/code&gt;: 若配置的是 http，是否需要校验证书有效性&lt;/li&gt; 
+ &lt;li&gt;&lt;code&gt;health_check&lt;/code&gt;: 节点健康检测配置，支持 http 与 tcp 形式&lt;/li&gt; 
+ &lt;li&gt;&lt;code&gt;ipv4_only&lt;/code&gt;: 若配置为域名时，是否仅添加解析的 ipv4 节点&lt;/li&gt; 
+ &lt;li&gt;&lt;code&gt;alpn&lt;/code&gt;: 在 tls 握手时，alpn 的配置，默认为 H1&lt;/li&gt; 
+ &lt;li&gt;&lt;code&gt;connection_timeout&lt;/code&gt;: tcp 连接超时，默认为无&lt;/li&gt; 
+ &lt;li&gt;&lt;code&gt;total_connection_timeout&lt;/code&gt;: 连接超时，对于 https 包括 tls 握手部分，默认为无&lt;/li&gt; 
+ &lt;li&gt;&lt;code&gt;read_timeout&lt;/code&gt;: 读取超时，默认为无&lt;/li&gt; 
+ &lt;li&gt;&lt;code&gt;write_timeout&lt;/code&gt;: 写超时，默认为无&lt;/li&gt; 
+ &lt;li&gt;&lt;code&gt;idle_timeout&lt;/code&gt;: 空闲超时，指定连接空闲多久后会自动回收，如果设置为 0，则连接不复用，需要注意有些网络设备对于无数据的 tcp 连接会过期自动关闭，因此可根据需要设置对应的值。默认为无&lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;h2&gt;WEB 管理后台&lt;/h2&gt; 
+&lt;p&gt;&lt;img height=&quot;1294&quot; src=&quot;https://oscimg.oschina.net/oscnet/up-ba94ab362f9e5ab2d7125eb6cf212e267c5.png&quot; width=&quot;2778&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt;
+                                        &lt;/div&gt;
+                                    </description>
+            <link>https://www.oschina.net/news/288724/pingap-0-2-0</link>
+            <guid isPermaLink="false">https://www.oschina.net/news/288724/pingap-0-2-0</guid>
+            <pubDate>Sun, 21 Apr 2024 06:54:51 GMT</pubDate>
+            <author>来源: 投稿</author>
+        </item>
+        <item>
+            <title>周鸿祎：闭源比开源好？Llama 3 已经给出最好答案</title>
+            <description>&lt;div class=&quot;content&quot;&gt;
+                                                                    
+                                                        &lt;p&gt;周鸿祎在微博回应了近日被指「攻击李厂长」（百度 CEO 李彦宏）的报道：&lt;/p&gt; 
+&lt;blockquote&gt; 
+ &lt;p&gt;这两天有人挑事儿，说我攻击李厂长。我一直是开源的信徒，但是我说开源好，是 13 号在哈佛讲的，李厂长说闭源好，是 16 号在北京讲的。&lt;/p&gt; 
+ &lt;p&gt;所以我不是针对李厂长，我还是从产业发展的角度来看开源和闭源。本想详细论证为什么开源一定会超过闭源，Llama 已经给出了最好的答案。 ​​​&lt;/p&gt; 
+&lt;/blockquote&gt; 
+&lt;p&gt;周鸿祎说道：&lt;/p&gt; 
+&lt;blockquote&gt; 
+ &lt;p&gt;没有开源就没有 Linux，没有 PHP，没有 MySQL，甚至没有互联网。包括在人工智能发展上，如果没有当初谷歌开源 Transformer，就不会有 OpenAI 和 GPT。我们都是受益于开源成长起来的个人和公司。&lt;/p&gt; 
+ &lt;p&gt;昨天半夜 Meta 开源了 Llama3，一个 80 亿版本，一个 700 亿版本，性能都很强，超过了谷歌闭源的 Gemini。据说还有一个 4000 亿参数的版本在路上，性能应该会超越 GPT-4。&lt;/p&gt; 
+ &lt;p&gt;开源到底行不行，Llama 已经给了最好的答案。&lt;/p&gt; 
+&lt;/blockquote&gt; 
+&lt;p&gt;&lt;img alt=&quot;&quot; src=&quot;https://oscimg.oschina.net/oscnet/up-d9abc84f03e62bd642d61bd370221bf1845.png&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
+&lt;p&gt;来源：&lt;u&gt;&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fweibo.com%2F1708942053%2FOaBT4BXgZ&quot; target=&quot;_blank&quot;&gt;https://weibo.com/1708942053/OaBT4BXgZ&lt;/a&gt;&lt;/u&gt;&lt;/p&gt;
+                                        &lt;/div&gt;
+                                    </description>
+            <link>https://www.oschina.net/news/288712</link>
+            <guid isPermaLink="false">https://www.oschina.net/news/288712</guid>
+            <pubDate>Sun, 21 Apr 2024 03:49:00 GMT</pubDate>
+            <author>来源: OSCHINA</author>
+        </item>
+        <item>
+            <title>马化腾周鸿祎握手「泯恩仇」</title>
+            <description>&lt;div class=&quot;content&quot;&gt;
+                                                                    
+                                                        &lt;p&gt;2024 年 4 月 20 日，是中国全功能接入国际互联网 30 周年的日子，中国互联网协会在京召开&quot;中国互联网 30 周年发展座谈会——把握机遇再出发&quot;。&lt;/p&gt; 
+&lt;p&gt;&lt;img alt=&quot;&quot; src=&quot;https://oscimg.oschina.net/oscnet/up-3c1156908f387c4154028b16137dc2d2f98.png&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
+&lt;p&gt;工业和信息化部党组成员、副部长张云明出席会议并作总结讲话，工业和信息化部总工程师赵志国出席会议并作讲话。&lt;/p&gt; 
+&lt;p&gt;会议通过三个主题视频，从不同的视角和表现形式，回顾了中国互联网 30 年行业发展成就和中国互联网协会一年来联合业界开展的中国互联网 30 年系列活动。&lt;/p&gt; 
+&lt;p&gt;会议间歇，腾讯集团创始人马化腾、小米集团创始人雷军、360 创始人周鸿祎、猎豹移动 CEO 傅盛等行业人士线下齐聚。&lt;/p&gt; 
+&lt;p&gt;经历过 2010 年被外界称为&lt;strong&gt;「3Q 大战」&lt;/strong&gt;的纷争，马化腾与周鸿祎握手谈笑。&lt;/p&gt; 
+&lt;p&gt;&lt;img alt=&quot;&quot; src=&quot;https://oscimg.oschina.net/oscnet/up-acad9b0b6b409baec71624b1b2bc0c4ed97.png&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
+&lt;hr&gt; 
+&lt;blockquote&gt; 
+ &lt;p&gt;2010 年 9 月，奇虎针对腾讯 QQ 先后发布了 360 隐私保护器和 360 扣扣保镖，并称其可以保护 QQ 用户的隐私和网络安全。11 月 3 日，腾讯宣布在装有 360 软件的电脑上将不能运行 QQ 软件。&lt;/p&gt; 
+ &lt;p&gt;&lt;img alt=&quot;&quot; src=&quot;https://oscimg.oschina.net/oscnet/up-366c6e5c82493b5e3e2c7394e17bae64d8d.png&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
+ &lt;p&gt;事件同时牵涉到其他奇虎软件与同类软件的纷争，如 360 安全浏览器与傲游浏览器和搜狗浏览器之间、360 安全衞士和 360 杀毒与多家杀毒软件之间的纷争。为此，金山、傲游、可牛、百度等软件公司 11 月 5 日联合召开发布会，抵制奇虎 360 并宣布将不兼容 360 系列软件。&lt;/p&gt; 
+ &lt;p&gt;之后政府介入此次争斗事件，责令腾讯停止不兼容行为、奇虎召回 360 扣扣保镖。&lt;/p&gt; 
+ &lt;p&gt;11 月 21 日腾讯与奇虎两家公司分别在各自官方网站上发表了对网民的致歉信，也正式结束了此次纠纷事件。&lt;/p&gt; 
+ &lt;p&gt;2011 年 4 月 26 日，北京市朝阳区法院就腾讯起诉奇虎 360 不正当竞争案作出一审判决，奇虎等三家公司赔偿腾讯公司人民币 40 万元。&lt;/p&gt; 
+&lt;/blockquote&gt; 
+&lt;p&gt;「3Q 大战」不止对行业产生了极其深远的影响，在腾讯内部，其「开源」历史也是以「3Q 大战」为起点。&lt;/p&gt; 
+&lt;p&gt;腾讯在官方开源网站上&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fopensource.tencent.com%2Fabout&quot; target=&quot;_blank&quot;&gt;介绍称&lt;/a&gt;，腾讯的开放是从内到外的一个过程。2010 年的「3Q 大战」后，腾讯开始拥抱「开放」战略，技术研发也在这种环境下开始向共享、复用和开源迈进。&lt;/p&gt; 
+&lt;p&gt;&lt;img src=&quot;https://oscimg.oschina.net/oscnet/up-ec0c44f8c8b7d9ae94b409f9a31d68bffc0.png&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
+&lt;p&gt;延伸阅读：&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt;&lt;a href=&quot;https://www.oschina.net/news/13573/Six-months-after-the-complete-transformation-of-Te&quot; target=&quot;_blank&quot;&gt;马化腾：腾讯半年后彻底转型，开放和分享&lt;/a&gt;&lt;/li&gt; 
+ &lt;li&gt;&lt;a href=&quot;https://www.oschina.net/news/40017/qihoo-360-will-appeal&quot;&gt;周鸿祎：3Q 大战判决存地方保护将上诉&lt;/a&gt;&lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;hr&gt; 
+&lt;p&gt;&lt;img alt=&quot;&quot; src=&quot;https://oscimg.oschina.net/oscnet/up-8ed41f4fca165ff16630be729045a889c58.png&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt;
+                                        &lt;/div&gt;
+                                    </description>
+            <link>https://www.oschina.net/news/288709</link>
+            <guid isPermaLink="false">https://www.oschina.net/news/288709</guid>
+            <pubDate>Sun, 21 Apr 2024 03:04:58 GMT</pubDate>
+            <author>来源: OSCHINA</author>
+        </item>
         <item>
             <title>虽然老乡鸡开源的不是代码，但背后的原因却让人很暖心</title>
             <description>&lt;div class=&quot;content&quot;&gt;
@@ -668,7 +823,7 @@
                                     </description>
             <link>https://my.oschina.net/u/4662964/blog/11053556</link>
             <guid isPermaLink="false">https://my.oschina.net/u/4662964/blog/11053556</guid>
-            <pubDate>Fri, 19 Apr 2024 06:08:19 GMT</pubDate>
+            <pubDate>Fri, 19 Apr 2024 06:07:00 GMT</pubDate>
             <author>原创</author>
         </item>
         <item>
@@ -1347,70 +1502,6 @@
             <guid isPermaLink="false">https://www.oschina.net/news/288311</guid>
             <pubDate>Thu, 18 Apr 2024 08:33:00 GMT</pubDate>
             <author>来源: 投稿</author>
-        </item>
-        <item>
-            <title>MoonBit 第二场 MeetUp 来啦！一起聊聊 AI 时代下的新编程</title>
-            <description>&lt;div class=&quot;content&quot;&gt;
-                                                                    
-                                                        &lt;p&gt;&lt;span style=&quot;background-color:transparent&quot;&gt;&lt;span&gt;过去的 2023 年是生成式人工智能引领技术革命的一年。AI 大语言模型如 GPT-4 和&lt;span&gt;&amp;nbsp;&lt;/span&gt;&lt;/span&gt;&lt;span style=&quot;color:var(--weui-LINK)&quot;&gt;LLaMA&lt;/span&gt;&lt;span&gt;&lt;span&gt;&amp;nbsp;&lt;/span&gt;的推出，以及开源社区的活跃，为编程语言的发展带来了前所未有的挑战与机遇。编程语言作为软件开发的基础设施，始终紧密契合着当下的技术发展与需求，从大型机时代的 Fortran，到个人计算机时代的 C 语言，再到互联网时代的 Java 和 Python，每种语言都因适应当时的技术趋势而受到推崇。&lt;/span&gt;&lt;/span&gt;&lt;/p&gt; 
-&lt;p&gt;如何更好地开发 AI 模型和 AI 原生应用是当下开发者工具平台面临的重要机遇和挑战。MoonBit 正是在这个时期应运而生，有机会去重新构想整个编程语言工具链该如何与 AI 更好地协作。&lt;/p&gt; 
-&lt;p&gt;2024 年 4 月 27 日（下周六），我们将在深圳举办第二场 MoonBit 线下 MeetUp，邀请 deepin-IDE 和狮偶编程语言的专家共同探讨 AI 时代下的新编程。&lt;/p&gt; 
-&lt;p style=&quot;color:rgba(0, 0, 0, 0.9); margin-left:8px; margin-right:8px; text-align:justify&quot;&gt;&lt;span&gt;&lt;span style=&quot;color:#1f5cc1&quot;&gt;&lt;strong&gt;活动主题：&lt;/strong&gt;&lt;/span&gt;&lt;/span&gt;&lt;span&gt;AI 时代下的新编程&lt;/span&gt;&lt;/p&gt; 
-&lt;p style=&quot;color:rgba(0, 0, 0, 0.9); margin-left:8px; margin-right:8px; text-align:justify&quot;&gt;&lt;span&gt;&lt;span style=&quot;color:#1f5cc1&quot;&gt;&lt;strong&gt;活动地点：&lt;/strong&gt;&lt;/span&gt;&lt;/span&gt;&lt;span&gt;BEEPLUS 深圳 G&amp;amp;G 中心&lt;/span&gt;&lt;/p&gt; 
-&lt;p style=&quot;color:rgba(0, 0, 0, 0.9); margin-left:8px; margin-right:8px; text-align:justify&quot;&gt;&lt;span style=&quot;color:#1f5cc1&quot;&gt;&lt;strong&gt;活动形式：&lt;/strong&gt;&lt;/span&gt;&lt;/p&gt; 
-&lt;p&gt;&lt;span&gt;1、线下小型 MeetUp&lt;/span&gt;&lt;/p&gt; 
-&lt;p&gt;&lt;span&gt;2、线上同步直播（b 站/视频号），直播预告准备 ing&lt;/span&gt;&lt;/p&gt; 
-&lt;p&gt;&lt;span&gt;&lt;span style=&quot;color:#1f5cc1&quot;&gt;&lt;strong&gt;活动时间：&lt;/strong&gt;&lt;/span&gt;2024.4.27&amp;nbsp;下午&amp;nbsp;14:00-17:00&lt;/span&gt;&lt;/p&gt; 
-&lt;p&gt;&lt;span&gt;&lt;span style=&quot;color:#1f5cc1&quot;&gt;&lt;strong&gt;如何报名：&lt;/strong&gt;&lt;/span&gt;&lt;/span&gt;&lt;span&gt;扫码下方二维码 👇&amp;nbsp;报名&lt;/span&gt;&lt;/p&gt; 
-&lt;p&gt;&lt;img height=&quot;439&quot; src=&quot;https://oscimg.oschina.net/oscnet/up-fe2c9c1068c75a369b5747a72f3d9278423.jpg&quot; width=&quot;439&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
-&lt;p&gt;&lt;img height=&quot;4964&quot; src=&quot;https://oscimg.oschina.net/oscnet/up-41c6d87125c7334ca3f393d72824c90fade.jpg&quot; width=&quot;1080&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt;
-                                        &lt;/div&gt;
-                                    </description>
-            <link>https://www.oschina.net/news/288307</link>
-            <guid isPermaLink="false">https://www.oschina.net/news/288307</guid>
-            <pubDate>Thu, 18 Apr 2024 08:19:00 GMT</pubDate>
-            <author>来源: 投稿</author>
-        </item>
-        <item>
-            <title>华为：用 1 年时间将 5000 个常用手机应用全面迁移至鸿蒙</title>
-            <description>&lt;div class=&quot;content&quot;&gt;
-                                                                    
-                                                        &lt;p&gt;在第 21 届华为分析师大会上，华为副董事长、轮值董事长徐直军表示，打造鸿蒙原生应用生态，是华为 2024 年最关键的事情。过去的鸿蒙操作系统更多是在南向适配各种各样的端设备，但是在北向的应用上还是共享安卓的应用生态。&lt;/p&gt; 
-&lt;p&gt;该公司希望通过 2024 年一年的时间，先在中国市场把智能手机上使用超过 99% 时间的 5000 个应用，全面迁移到鸿蒙原生操作系统上，真正实现操作系统和应用生态的统一。&lt;/p&gt; 
-&lt;p&gt;&lt;img alt=&quot;&quot; height=&quot;312&quot; src=&quot;https://oscimg.oschina.net/oscnet/up-0c0deb4d48420fc7dcc054ab25e8f9e99b6.png&quot; width=&quot;500&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
-&lt;p&gt;目前已有 4000 多个应用已经明确了迁移计划，还有不到 1000 个应用正在沟通中。当这 5000 个应用以及其它成千上万的应用都从安卓生态迁移到鸿蒙操作系统上时，鸿蒙操作系统就真正完成了打造，并真正成为除了苹果 iOS 和谷歌安卓外的全球第三个移动操作系统。&lt;/p&gt; 
-&lt;p&gt;此外，徐直军还介绍了 2024 年华为的关键战略，重点阐述了「抓住智能化战略机遇，推进全面智能化」战略落地的关键举措。&lt;/p&gt; 
-&lt;p&gt;徐直军说，全面智能化战略一方面指为人工智能关键技术发展，尤其是大模型训练和推理提供可持续的算力，构建共赢的生态；另一方面是用 AI 增强华为产品和解决方案的竞争力，包括：以升腾云服务与盘古大模型使能行业智能化，打造自动驾驶网络革命性改变通信网络运维模式，打造自动驾驶解决方案最终实现无人驾驶，基于盘古大模型打造超级智慧助手小艺。&lt;/p&gt;
-                                        &lt;/div&gt;
-                                    </description>
-            <link>https://www.oschina.net/news/288303</link>
-            <guid isPermaLink="false">https://www.oschina.net/news/288303</guid>
-            <pubDate>Thu, 18 Apr 2024 08:08:00 GMT</pubDate>
-            <author>来源: 投稿</author>
-        </item>
-        <item>
-            <title>Java 是最容易出现第三方漏洞的语言</title>
-            <description>&lt;div class=&quot;content&quot;&gt;
-                                                                    
-                                                        &lt;p&gt;&lt;span style=&quot;color:#000000&quot;&gt;云应用监控和安全平台 Datadog 发布了一份最新的「&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Finvestors.datadoghq.com%2Fnews-releases%2Fnews-release-details%2Fdatadogs-state-devsecops-2024-report-finds-organizations-arent&quot; target=&quot;_blank&quot;&gt;2024 年 DevSecOps 状况&lt;/a&gt;」报告称，通过分析以各种编程语言编写的一系列应用程序的安全状况发现，Java 服务受第三方漏洞的影响最大。&lt;/span&gt;&lt;/p&gt; 
-&lt;p&gt;&lt;span style=&quot;color:#000000&quot;&gt;90% 的 Java 服务容易受到第三方库引入的一个或多个严重或高严重性漏洞的影响。而其他编程语言如&amp;nbsp;JavaScript 的这一比例约为 75%、Python 的为 64%、.NET 为 50%，平均数则为 47%。&lt;/span&gt;&lt;/p&gt; 
-&lt;p&gt;&lt;span style=&quot;color:#000000&quot;&gt;&lt;img alt=&quot;&quot; height=&quot;402&quot; src=&quot;https://oscimg.oschina.net/oscnet/up-7c0dc2ff6543616e37b9d56babe8c9a00f7.png&quot; width=&quot;500&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/span&gt;&lt;/p&gt; 
-&lt;p&gt;&lt;span style=&quot;color:#000000&quot;&gt;且&amp;nbsp;Java 服务也更有可能被积极利用。&amp;nbsp;报告发现在 CISA 公布的一份被威胁者利用的漏洞运行列表，即已知漏洞利用（KEV）目录中，Java 服务所占比例过高：55% 的 Java 服务受到影响，而使用其他语言构建的服务只有 7%。&lt;/span&gt;&lt;/p&gt; 
-&lt;p&gt;&lt;span style=&quot;color:#000000&quot;&gt;即使在关注特定类别的漏洞时，这种比例过高的模式也仍然存在。例如，23% 的 Java 服务容易受到远程代码执行 (RCE) 的攻击，影响了 42% 的组织。Datadog 认为，这一高比例可能是由于流行的 Java 库中存在许多普遍存在的漏洞，例如 Tomcat、Spring Framework、Apache Struts、Log4j 和 ActiveMQ。&lt;/span&gt;&lt;/p&gt; 
-&lt;p&gt;&lt;span style=&quot;color:#000000&quot;&gt;「当我们检查这些漏洞通常起源于何处时，这一假设得到了加强。在 Java 中，63% 的高危漏洞源自间接依赖项，即间接与应用程序打包在一起的第三方库。这些漏洞通常更难识别，因为它们出现的附加库通常会在不知不觉中引入到应用程序中。」&lt;/span&gt;&lt;/p&gt; 
-&lt;p&gt;&lt;span style=&quot;color:#000000&quot;&gt;鉴于此，报告建议开发人员在扫描应用程序漏洞时需要考虑完整的依赖关系树，而不仅仅是直接依赖关系。了解添加到应用程序中的任何新依赖项是否维护良好并经常升级其自身的依赖项也很重要。&lt;/span&gt;&lt;/p&gt; 
-&lt;p&gt;&lt;span style=&quot;color:#000000&quot;&gt;报告的一些其他主要发现还包括：&lt;/span&gt;&lt;/p&gt; 
-&lt;ul style=&quot;list-style-type:disc; margin-left:0; margin-right:0&quot;&gt; 
- &lt;li&gt;&lt;span style=&quot;color:#000000&quot;&gt;虽然来自自动安全扫描器的攻击代表了最大数量的利用尝试，但其中绝大多数攻击是无害的。在发现来自此类扫描程序的数千万个恶意请求中，只有 0.0065% 成功触发了漏洞。&lt;/span&gt;&lt;/li&gt; 
- &lt;li&gt;&lt;span style=&quot;color:#000000&quot;&gt;即使短期凭证更实用、更安全，但仍有许多组织在其 CI/CD 管道中继续依赖长期凭证（这是造成数据泄露的&lt;/span&gt;&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fc212.net%2Fc%2Flink%2F%3Ft%3D0%26l%3Den%26o%3D4142857-1%26h%3D3765677756%26u%3Dhttps%253A%252F%252Fsecuritylabs.datadoghq.com%252Farticles%252Fpublic-cloud-breaches-2022-mccarthy-hopkins%252F%26a%3Dmost%2Bcommon%2Bcauses&quot; target=&quot;_blank&quot;&gt;最常见原因&lt;/a&gt;&lt;span style=&quot;color:#000000&quot;&gt;之一），。 63% 的人至少使用过一次长期凭证来验证 GitHub Actions pipelines。&lt;/span&gt;&lt;/li&gt; 
-&lt;/ul&gt; 
-&lt;p&gt;&lt;span style=&quot;color:#000000&quot;&gt;更多详情可&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fwww.datadoghq.com%2Fstate-of-devsecops%2F&quot; target=&quot;_blank&quot;&gt;查看完整报告&lt;/a&gt;。&lt;/span&gt;&lt;/p&gt;
-                                        &lt;/div&gt;
-                                    </description>
-            <link>https://www.oschina.net/news/288288/state-of-devsecops-2024</link>
-            <guid isPermaLink="false">https://www.oschina.net/news/288288/state-of-devsecops-2024</guid>
-            <pubDate>Thu, 18 Apr 2024 07:08:00 GMT</pubDate>
-            <author>来源: OSCHINA</author>
         </item>
     </channel>
 </rss>
