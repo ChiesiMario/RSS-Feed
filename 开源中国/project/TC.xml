@@ -9,8 +9,136 @@
         <generator>RSSHub</generator>
         <webMaster>i@diygod.me (DIYgod)</webMaster>
         <language>en</language>
-        <lastBuildDate>Sat, 20 Apr 2024 11:10:49 GMT</lastBuildDate>
+        <lastBuildDate>Sun, 21 Apr 2024 10:09:50 GMT</lastBuildDate>
         <ttl>1</ttl>
+        <item>
+            <title>Pingap v0.2.0，基於 Pingora 的反向代理軟件</title>
+            <description>&lt;div class=&quot;content&quot;&gt;
+                                                                    
+                                                        &lt;p&gt;Pingap 是基於&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fgithub.com%2Fcloudflare%2Fpingora&quot; target=&quot;_blank&quot;&gt;pingora&lt;/a&gt;開發的，基於&amp;nbsp;Apache-2.0 license 協議開源，源代碼可查閲&lt;span&gt;&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fgithub.com%2Fvicanso%2Fpingap&quot; target=&quot;_blank&quot;&gt;https://github.com/vicanso/pingap&lt;/a&gt;。pingora 提供了各類模塊便於 rust 開發者使用，但並不方便非 rust 開發者使用，因此 pingap 提供了以 toml 的形式配置簡單易用的反向代理，實現支持多 location 代理轉發，通過插件的形式支持更多的需求場景。特性如下：&lt;/span&gt;&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt;支持多 location 配置，可通過請求的路徑與域名篩選&lt;/li&gt; 
+ &lt;li&gt;支持 HTTP1 與 HTTP2 兩種協議&lt;/li&gt; 
+ &lt;li&gt;無中斷請求的配置更新，方便實時更新應用配置&lt;/li&gt; 
+ &lt;li&gt;模板式的請求日誌輸出，可按模板指定各種輸出&lt;/li&gt; 
+ &lt;li&gt;提供 Web 界面式的配置，簡化操作&lt;/li&gt; 
+ &lt;li&gt;支持各種插件形式，根據需要靈活配置各種特性：如靜態文件目錄、服務性能指標、WEB 後台配置應用等&lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;p&gt;&lt;img height=&quot;1050&quot; src=&quot;https://oscimg.oschina.net/oscnet/up-1b44fc5301ff8505e72b842edc25a3a1cd0.png&quot; width=&quot;1452&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
+&lt;h2&gt;Location 的處理邏輯&lt;/h2&gt; 
+&lt;p&gt;該 Server 下的所有 location 在初始化時根據權重按高至低排序，接受到請求時按順序一個個匹配到符合的 location 為止，若無符合的則返回出錯。在選擇對應的 location 之後，判斷是否有配置重寫 pathh(若無則不需要)，添加請求頭 (若無則不需要)，成功響應時添加響應頭 (若無則不需要)。&lt;/p&gt; 
+&lt;pre&gt;&lt;code class=&quot;language-rust&quot;&gt;let header = session.req_header_mut();
+let path = header.uri.path();
+let host = header.uri.host().unwrap_or_default();
+
+let (location_index, lo) = self
+    .locations
+    .iter()
+    .enumerate()
+    .find(|(_, item)| item.matched(host, path))
+    .ok_or_else(|| pingora::Error::new_str(LOCATION_NOT_FOUND))?;
+if let Some(mut new_path) = lo.rewrite(path) {
+    if let Some(query) = header.uri.query() {
+        new_path = format!(&quot;{new_path}?{query}&quot;);
+    }
+    // TODO parse error
+    let _ = new_path.parse::().map(|uri| header.set_uri(uri));
+}
+&lt;/code&gt;&lt;/pre&gt; 
+&lt;p&gt;Location 主要配置請求的匹配、請求頭響應頭的插入，以及各種插件的關聯，是整個流程中的最重要組成部分。下面是相關參數的詳細説明：&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt;&lt;code&gt;upstream&lt;/code&gt;: 配置該 location 對應的 upstream，若該 location 所有的處理均由插件完成，則可不配置&lt;/li&gt; 
+ &lt;li&gt;&lt;code&gt;host&lt;/code&gt;: 匹配的域名，如果是多個域名則使用&lt;code&gt;,&lt;/code&gt;分隔&lt;/li&gt; 
+ &lt;li&gt;&lt;code&gt;path&lt;/code&gt;: 匹配的路徑，具體使用後續細説&lt;/li&gt; 
+ &lt;li&gt;&lt;code&gt;proxy_headers&lt;/code&gt;: 轉發至 upstream 時添加的請求頭&lt;/li&gt; 
+ &lt;li&gt;&lt;code&gt;headers&lt;/code&gt;: 響應至 downstream 時添加的響應頭&lt;/li&gt; 
+ &lt;li&gt;&lt;code&gt;rewrite&lt;/code&gt;: 請求路徑的重寫規則&lt;/li&gt; 
+ &lt;li&gt;&lt;code&gt;proxy_plugins&lt;/code&gt;: 添加至該 location 的插件列表，按順序執行&lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;p&gt;Location 支持配置對應 host(支持多個）與 path 規則，path 支持以下的規則，權重由高至低：&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt;全等模式，配置以&lt;code&gt;=&lt;/code&gt;開始，如&lt;code&gt;=/api&lt;/code&gt;表示匹配 path 等於&lt;code&gt;/api&lt;/code&gt;的請求&lt;/li&gt; 
+ &lt;li&gt;正則模式，配置以&lt;code&gt;~&lt;/code&gt;開始，如&lt;code&gt;~^/(api|rest)&lt;/code&gt;表示匹配 path 以&lt;code&gt;/api&lt;/code&gt;或&lt;code&gt;/rest&lt;/code&gt;開始請求&lt;/li&gt; 
+ &lt;li&gt;前綴模式，如&lt;code&gt;/api&lt;/code&gt;表示匹配 path 為&lt;code&gt;/api&lt;/code&gt;開始的請求&lt;/li&gt; 
+ &lt;li&gt;空模式，若未指定 path 則表示所有的 path 均匹配，一般建議配置一個&lt;code&gt;/&lt;/code&gt;的前綴模式即可，無需使用空模式&lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;h2&gt;插件體系&lt;/h2&gt; 
+&lt;p&gt;Pingap 中通過 Locaton 添加各種插件支持更多的應用場景，如鑑權、流控等。現在插件支持在&lt;code&gt;request_filter&lt;/code&gt;與&lt;code&gt;proxy_upstream_filter&lt;/code&gt;階段執行，均為轉發到上游節點前的處理。下面介紹一下&lt;code&gt;proxy plunin&lt;/code&gt;的具體邏輯，trait 如下：&lt;/p&gt; 
+&lt;pre&gt;&lt;code class=&quot;language-rust&quot;&gt;#[async_trait]
+pub trait ProxyPlugin: Sync + Send {
+    fn category(&amp;amp;self) -&amp;gt; ProxyPluginCategory;
+    fn step(&amp;amp;self) -&amp;gt; ProxyPluginStep;
+    async fn handle(&amp;amp;self, _session: &amp;amp;mut Session, _ctx: &amp;amp;mut State) -&amp;gt; pingora::Result {
+        Ok(false)
+    }
+}
+&lt;/code&gt;&lt;/pre&gt; 
+&lt;p&gt;主要分三個實現：&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt;&lt;code&gt;category&lt;/code&gt;: 插件類型，用於區分該插件是哪類形式的插件&lt;/li&gt; 
+ &lt;li&gt;&lt;code&gt;step&lt;/code&gt;: 插件的執行階段，現只支持在&lt;code&gt;request_filter&lt;/code&gt;與&lt;code&gt;proxy_upstream_filter&lt;/code&gt;階段執行&lt;/li&gt; 
+ &lt;li&gt;&lt;code&gt;handle&lt;/code&gt;: 插件的執行邏輯，若返回的是&lt;code&gt;Ok(true)&lt;/code&gt;，則表示請求已處理完成，不再轉發到上游節點&lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;h2&gt;Upstream 的處理邏輯&lt;/h2&gt; 
+&lt;p&gt;Upstream 的邏輯比較簡單，在匹配 location 後，根據該 location 配置的 upstream 節點列表，按算法選擇可用節點，並將請求轉發至該節點即可。雖然注意，插件也可配置在&lt;code&gt;proxy_upstream_filter&lt;/code&gt;轉發至 upstream 之前執行，可按需配置對應的插件。&lt;/p&gt; 
+&lt;p&gt;Upstream 配置為節點地址列表，配置為域名則會根據解析後的 IP 添加所有節點地址（之後並不會再次刷新域名解析），需要注意節點會使用默認的 tcp health check 的形式檢測節點是否可用，建議配置為 http health chech。下面針對相關參數詳細説明：&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt;&lt;code&gt;addrs&lt;/code&gt;: 節點地址列表，地址為&lt;code&gt;ip:port weight&lt;/code&gt;的形式，&lt;code&gt;weight&lt;/code&gt;權重可不指定，默認為 1&lt;/li&gt; 
+ &lt;li&gt;&lt;code&gt;algo&lt;/code&gt;: 節點的選擇算法，支持&lt;code&gt;hash&lt;/code&gt;與&lt;code&gt;round_robin&lt;/code&gt;兩種形式，如&lt;code&gt;hash:ip&lt;/code&gt;表示按 ip hash 選擇節點。默認為&lt;code&gt;round_robin&lt;/code&gt;&lt;/li&gt; 
+ &lt;li&gt;&lt;code&gt;sni&lt;/code&gt;: 若配置的是 https，需要設置對應的 SNI&lt;/li&gt; 
+ &lt;li&gt;&lt;code&gt;verify_cert&lt;/code&gt;: 若配置的是 http，是否需要校驗證書有效性&lt;/li&gt; 
+ &lt;li&gt;&lt;code&gt;health_check&lt;/code&gt;: 節點健康檢測配置，支持 http 與 tcp 形式&lt;/li&gt; 
+ &lt;li&gt;&lt;code&gt;ipv4_only&lt;/code&gt;: 若配置為域名時，是否僅添加解析的 ipv4 節點&lt;/li&gt; 
+ &lt;li&gt;&lt;code&gt;alpn&lt;/code&gt;: 在 tls 握手時，alpn 的配置，默認為 H1&lt;/li&gt; 
+ &lt;li&gt;&lt;code&gt;connection_timeout&lt;/code&gt;: tcp 連接超時，默認為無&lt;/li&gt; 
+ &lt;li&gt;&lt;code&gt;total_connection_timeout&lt;/code&gt;: 連接超時，對於 https 包括 tls 握手部分，默認為無&lt;/li&gt; 
+ &lt;li&gt;&lt;code&gt;read_timeout&lt;/code&gt;: 讀取超時，默認為無&lt;/li&gt; 
+ &lt;li&gt;&lt;code&gt;write_timeout&lt;/code&gt;: 寫超時，默認為無&lt;/li&gt; 
+ &lt;li&gt;&lt;code&gt;idle_timeout&lt;/code&gt;: 空閒超時，指定連接空閒多久後會自動回收，如果設置為 0，則連接不復用，需要注意有些網絡設備對於無數據的 tcp 連接會過期自動關閉，因此可根據需要設置對應的值。默認為無&lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;h2&gt;WEB 管理後台&lt;/h2&gt; 
+&lt;p&gt;&lt;img height=&quot;1294&quot; src=&quot;https://oscimg.oschina.net/oscnet/up-ba94ab362f9e5ab2d7125eb6cf212e267c5.png&quot; width=&quot;2778&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt;
+                                        &lt;/div&gt;
+                                    </description>
+            <link>https://www.oschina.net/news/288724/pingap-0-2-0</link>
+            <guid isPermaLink="false">https://www.oschina.net/news/288724/pingap-0-2-0</guid>
+            <pubDate>Sun, 21 Apr 2024 06:54:51 GMT</pubDate>
+            <author>來源: 投稿</author>
+        </item>
+        <item>
+            <title>基於 Tailwind CSS + Shadcn 的 Vue3 後台管理模版 2024.0.4 發佈</title>
+            <description>&lt;div class=&quot;content&quot;&gt;
+                                                                    
+                                                        &lt;blockquote&gt; 
+ &lt;p&gt;推薦一套為 Java 開發人員提供方便易用的 SDK 來與目前提供服務的的 Open AI 進行交互組件：&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fgithub.com%2Fdevlive-community%2Fopenai-java-sdk&quot; target=&quot;_blank&quot;&gt;https://github.com/devlive-community/openai-java-sdk&lt;/a&gt;&lt;/p&gt; 
+&lt;/blockquote&gt; 
+&lt;blockquote&gt; 
+ &lt;p&gt;推薦一套功能強大的開源數據中台系統：&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fgithub.com%2Fdevlive-community%2Fdatacap&quot; target=&quot;_blank&quot;&gt;https://github.com/devlive-community/datacap&lt;/a&gt;&lt;/p&gt; 
+&lt;/blockquote&gt; 
+&lt;p style=&quot;color:#333333; text-align:start&quot;&gt;Shadcn UI Vue Admin 是一個使用 Shadcn UI (基於 Tailwind CSS) 和 Vite 和 Vue 製作的管理面板。在構建時考慮了響應能力和可訪問性。&lt;/p&gt; 
+&lt;p style=&quot;color:#333333; text-align:start&quot;&gt;本次版本為公開版本，支持了&lt;span&gt;&amp;nbsp;&lt;/span&gt;&lt;code&gt;Chat&lt;/code&gt;，&lt;code&gt;Footer&lt;/code&gt;&lt;span&gt;&amp;nbsp;&lt;/span&gt;功能。以下是該模版的目前支持的功能截圖。&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt; &lt;p&gt;Chat (重構)&lt;br&gt; &lt;img alt=&quot;&quot; src=&quot;https://cdn.north.devlive.org/images/2024/04/20/17136030225192.jpg&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;Chat Resizable&lt;br&gt; &lt;img alt=&quot;&quot; src=&quot;https://cdn.north.devlive.org/images/2024/04/20/17136030551882.jpg&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;br&gt; &lt;img alt=&quot;&quot; src=&quot;https://cdn.north.devlive.org/images/2024/04/20/17136030653281.jpg&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;Footer&lt;br&gt; &lt;img alt=&quot;&quot; src=&quot;https://cdn.north.devlive.org/images/2024/04/20/17136030889284.jpg&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;Footer Modern&lt;br&gt; &lt;img alt=&quot;&quot; src=&quot;https://cdn.north.devlive.org/images/2024/04/20/17136031778691.jpg&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; &lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;p style=&quot;color:#333333; text-align:start&quot;&gt;該模版的使用方式比較簡單隻要傳遞相應的數據即可，也支持多個 slot 用戶自定義，歡迎大家使用。&lt;/p&gt; 
+&lt;blockquote&gt; 
+ &lt;p&gt;推薦一套全平台數據庫管理工具，建議下載使用:&lt;span&gt;&amp;nbsp;&lt;/span&gt;&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fgithub.com%2Fdevlive-community%2Fdbm&quot; target=&quot;_blank&quot;&gt;https://github.com/devlive-community/dbm&lt;/a&gt;&lt;/p&gt; 
+&lt;/blockquote&gt; 
+&lt;blockquote&gt; 
+ &lt;p&gt;我們即將推出一套開源新系統。InfoSphere 是一款面向企業和個人的開源 Wiki 系統，旨在提供簡單而強大的知識管理解決方案。建議嘗試使用:&lt;span&gt;&amp;nbsp;&lt;/span&gt;&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fgithub.com%2Fdevlive-community%2Fincubator-infosphere&quot; target=&quot;_blank&quot;&gt;https://github.com/devlive-community/incubator-infosphere&lt;/a&gt;&lt;/p&gt; 
+&lt;/blockquote&gt; 
+&lt;p style=&quot;color:#333333; text-align:start&quot;&gt;歡迎大家前往測試站點使用並提出寶貴的建議，如果您有需要實現的佈局，可以提交 issues 我們會在最快的時間內實現。&lt;/p&gt; 
+&lt;p style=&quot;color:#333333; text-align:start&quot;&gt;我們的示例地址為：&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fshadcn.vue.devlive.org%2F&quot; target=&quot;_blank&quot;&gt;https://shadcn.vue.devlive.org/&lt;/a&gt;&lt;/p&gt;
+                                        &lt;/div&gt;
+                                    </description>
+            <link>https://www.oschina.net/news/288650</link>
+            <guid isPermaLink="false">https://www.oschina.net/news/288650</guid>
+            <pubDate>Sat, 20 Apr 2024 09:06:00 GMT</pubDate>
+            <author>來源: 投稿</author>
+        </item>
         <item>
             <title>JS 網頁全自動翻譯 v3.2 發佈，適於 SEO 收錄的源碼翻譯大幅優化</title>
             <description>&lt;div class=&quot;content&quot;&gt;
@@ -150,23 +278,11 @@ translate.execute(); &lt;/span&gt;&lt;span style=&quot;color:#6a737d&quot;&gt;&l
             <title>Yzncms v1.4.2 已經發布，內容管理系統</title>
             <description>&lt;div class=&quot;content&quot;&gt;
                                                                     
-                                                        &lt;p&gt;Yzncms v1.4.2 已經發布，內容管理系統。&lt;/p&gt; 
-&lt;p&gt;此版本更新內容包括：&lt;/p&gt; 
-&lt;ul&gt; 
- &lt;li&gt;【優化】php 版本最低要求為 7.2.5+&lt;/li&gt; 
- &lt;li&gt;【修復】修復無法添加角色的 bug&lt;/li&gt; 
- &lt;li&gt;【修復】修復後台編輯個人資料，退出問題&lt;/li&gt; 
- &lt;li&gt;【新增】添加前後台視圖鈎子&lt;/li&gt; 
- &lt;li&gt;【新增】後台配置和插件配置增加拓展屬性&lt;/li&gt; 
- &lt;li&gt;【修復】後台日誌 xss 優化&lt;/li&gt; 
- &lt;li&gt;【優化】更新 layui2.9.8&lt;/li&gt; 
- &lt;li&gt;【優化】表格 url 支持多級變量&lt;/li&gt; 
- &lt;li&gt;【優化】管理員新增手機字段&lt;/li&gt; 
- &lt;li&gt;【優化】關閉默認開啓調試模式&lt;/li&gt; 
- &lt;li&gt;【優化】thinkphp 安全更新&lt;/li&gt; 
-&lt;/ul&gt; 
-&lt;p&gt;升級補丁包下載地址及説明：&lt;a href=&quot;https://gitee.com/link?target=https%3A%2F%2Fwww.kancloud.cn%2Fken678%2Fyzncms%2F3220448&quot; target=&quot;_blank&quot;&gt;https://www.kancloud.cn/ken678/yzncms/3220448&lt;/a&gt;&lt;/p&gt; 
-&lt;p&gt;詳情查看：&lt;a href=&quot;https://gitee.com/ken678/YZNCMS/releases/v1.4.2&quot;&gt;https://gitee.com/ken678/YZNCMS/releases/v1.4.2&lt;/a&gt;&lt;/p&gt;
+                                                        &lt;p&gt;Yzncms v1.4.2 已經發布，內容管理系統&lt;/p&gt;
+&lt;p&gt;此版本更新內容包括：&lt;/p&gt;
+&lt;p&gt;【優化】php 版本最低要求為 7.2.5+ 【修復】修復無法添加角色的 bug 【修復】修復後台編輯個人資料，退出問題 【新增】添加前後台視圖鈎子 【新增】後台配置和插件配置增加拓展屬性 【修復】後台日誌 xss 優化 【優化】更新 layui2.9.8 【優化】表格 url 支持多級變量 【優化】管理員新增手機字段 【優化】關閉默認開啓調試模式 【優化】thinkphp 安全更新 【優化】後台表格支持設置自定義搜索模板 【優化】百度編輯器支持設置精簡模式 【優化】composer 依賴的拓展升級至 7.2.5 【優化】後台調整和優化部分 html 和 css&lt;/p&gt; 
+&lt;p&gt;升級補丁包下載地址及説明：&lt;a href=&quot;https://gitee.com/link?target=https%3A%2F%2Fwww.kancloud.cn%2Fken678%2Fyzncms%2F3220448&quot; target=&quot;_blank&quot; rel=&quot;nofollow&quot;&gt;https://www.kancloud.cn/ken678/yzncms/3220448&lt;/a&gt;&lt;/p&gt;
+&lt;p&gt;詳情查看：&lt;a href=&quot;https://gitee.com/ken678/YZNCMS/releases/v1.4.2&quot; rel=&quot;nofollow&quot;&gt;https://gitee.com/ken678/YZNCMS/releases/v1.4.2&lt;/a&gt;&lt;/p&gt;
                                         &lt;/div&gt;
                                     </description>
             <link>https://www.oschina.net/news/288514/yzncms-1-4-2-released</link>
@@ -271,7 +387,7 @@ translate.execute(); &lt;/span&gt;&lt;span style=&quot;color:#6a737d&quot;&gt;&l
                                     </description>
             <link>https://www.oschina.net/news/288447/wildfirechat-1-2-5-released</link>
             <guid isPermaLink="false">https://www.oschina.net/news/288447/wildfirechat-1-2-5-released</guid>
-            <pubDate>Fri, 19 Apr 2024 03:32:51 GMT</pubDate>
+            <pubDate>Fri, 19 Apr 2024 03:31:00 GMT</pubDate>
             <author>來源: 投稿</author>
         </item>
         <item>
@@ -812,190 +928,6 @@ translate.execute(); &lt;/span&gt;&lt;span style=&quot;color:#6a737d&quot;&gt;&l
             <guid isPermaLink="false">https://www.oschina.net/news/288272/lxqt-2-0-0-released</guid>
             <pubDate>Thu, 18 Apr 2024 06:05:44 GMT</pubDate>
             <author>來源: OSCHINA</author>
-        </item>
-        <item>
-            <title>DaxPay 支付網關 v2.0.5: 分賬支持和功能優化前瞻</title>
-            <description>&lt;div class=&quot;content&quot;&gt;
-                                                                    
-                                                        &lt;h2&gt;背景&lt;/h2&gt; 
-&lt;p&gt;在平時對接三方支付時，尤其需要對接多家支付的時候，是不是有以下痛點：&lt;/p&gt; 
-&lt;blockquote&gt; 
- &lt;ol&gt; 
-  &lt;li&gt; &lt;p&gt;各家支付系統的調用方式、返回參數、數據簽名、回調格式等都不盡相同，對接時互相之間無法複用&lt;/p&gt; &lt;/li&gt; 
-  &lt;li&gt; &lt;p&gt;各家支付系統提供的支付能力不盡相同，有時候業務系統為了對客戶展現的功能一致，需要寫大量的適配代碼才能實現&lt;/p&gt; &lt;/li&gt; 
-  &lt;li&gt; &lt;p&gt;支付訂單、退款訂單、回調記錄、訂單關閉、對賬分賬等必要功能都需要進行實現，需要考慮各種場景才能保證不出問題&lt;/p&gt; &lt;/li&gt; 
- &lt;/ol&gt; 
-&lt;/blockquote&gt; 
-&lt;p&gt;如果你遇到這些問題，&lt;strong&gt;Dromara DaxPay&lt;/strong&gt;（開源支付網關）或許能幫助到你：&lt;/p&gt; 
-&lt;p&gt;它是**&lt;code&gt;Dromara 開源社區&lt;/code&gt;**旗下新晉的一款開源支付網關係統，將各種支付通道（如支付寶、微信、雲閃付等）的調用方式進行抽象統一，隱藏開發者不需要關注的細節，只需要一份代碼就可以與多家支付通道對接。&lt;code&gt;DaxPay&lt;/code&gt;獨立部署，提供獨立的管理界面，不侵入業務系統也不需要業務系統進行改造，只需要通過&lt;code&gt;http&lt;/code&gt;進行調用就擁有相應的支付能力。&lt;/p&gt; 
-&lt;h2&gt;🥞&amp;nbsp;本次更新內容&lt;/h2&gt; 
-&lt;ul&gt; 
- &lt;li&gt;新增: 支持支付寶分賬功能&lt;/li&gt; 
- &lt;li&gt;新增: 支持微信分賬功能&lt;/li&gt; 
- &lt;li&gt;新增: 分賬接收者和分賬組管理&lt;/li&gt; 
- &lt;li&gt;新增: 支持分賬結果同步功能&lt;/li&gt; 
- &lt;li&gt;新增: 支付通道配置中支持是否支持分賬&lt;/li&gt; 
- &lt;li&gt;新增: SDK 支持分賬接口&lt;/li&gt; 
- &lt;li&gt;優化: 收銀台演示支持設置是否分賬&lt;/li&gt; 
- &lt;li&gt;fix: 修復創建支付訂單報錯時, 訂單保存數據不完整&lt;/li&gt; 
-&lt;/ul&gt; 
-&lt;h2&gt;🛣️下版本開發計劃&lt;/h2&gt; 
-&lt;ol&gt; 
- &lt;li&gt; &lt;p&gt;去除組合支付支持，將系統代碼和業務複雜度降低一個數量級&lt;/p&gt; &lt;/li&gt; 
- &lt;li&gt; &lt;p&gt;去除現金支付和儲值卡支付，只保留錢包支付方式，後期進行能力補全&lt;/p&gt; &lt;/li&gt; 
- &lt;li&gt; &lt;p&gt;合併和去除各通道的流水記錄，減少表數量&lt;/p&gt; &lt;/li&gt; 
- &lt;li&gt; &lt;p&gt;簡化支付、退款、同步、修復等邏輯，改為單通道支持，將各種多對多關係簡化為多對一或一對一&lt;/p&gt; &lt;/li&gt; 
- &lt;li&gt; &lt;p&gt;訂單號統一優化，由現有無意義的雪花 ID 修改為業務編號，方便區分業務類型、運行環境等&lt;/p&gt; &lt;/li&gt; 
- &lt;li&gt; &lt;p&gt;頁面金額顯示統一使用元作為單位&lt;/p&gt; &lt;/li&gt; 
- &lt;li&gt; &lt;p&gt;對賬優化，將現有不直觀的對賬方式修改為原始對賬單、系統對賬單、差異對賬單三類&lt;/p&gt; &lt;/li&gt; 
- &lt;li&gt; &lt;p&gt;優化訂單修復的邏輯，將現有複雜邏輯簡化為更加符合直觀的思維的方式&lt;/p&gt; &lt;/li&gt; 
- &lt;li&gt; &lt;p&gt;支付通道兩個獨立的配置進行合併為，去除冗餘的操作入口&lt;/p&gt; &lt;/li&gt; 
- &lt;li&gt; &lt;p&gt;文檔站進行獨立，與 BootxPlatform 進行分開&lt;/p&gt; &lt;/li&gt; 
-&lt;/ol&gt; 
-&lt;h2&gt;🧭 系統特色&lt;/h2&gt; 
-&lt;ol&gt; 
- &lt;li&gt; &lt;p&gt;基於&lt;code&gt;Spring Boot&lt;/code&gt;、&lt;code&gt;Vue3&lt;/code&gt;主流技術棧，方便對系統進行擴展和改造&lt;/p&gt; &lt;/li&gt; 
- &lt;li&gt; &lt;p&gt;已對接&lt;code&gt;微信支付&lt;/code&gt;、&lt;code&gt;支付寶&lt;/code&gt;、&lt;code&gt;雲閃付&lt;/code&gt;的接口，後續版本將支持&lt;code&gt;V3&lt;/code&gt;版本支付接口&lt;/p&gt; &lt;/li&gt; 
- &lt;li&gt; &lt;p&gt;對接各類支付通道對外提供統一的接口，簡化支付對接的複雜度，也方便後期快速替換或增加新的支付通道&lt;/p&gt; &lt;/li&gt; 
- &lt;li&gt; &lt;p&gt;提供&lt;code&gt;Java&lt;/code&gt;版本的&lt;code&gt;SDK&lt;/code&gt;工具包，簡化業務系統對接流程，同時也可以使用&lt;code&gt;HTTP&lt;/code&gt;方式進行接口調用，保證了更低的耦合性和通用性&lt;/p&gt; &lt;/li&gt; 
- &lt;li&gt; &lt;p&gt;請求、響應、回調數據都支持啓用簽名機制，可根據實際需要進行開關，保證交易的安全可靠&lt;/p&gt; &lt;/li&gt; 
- &lt;li&gt; &lt;p&gt;提供管理平台，可以對各類訂單、記錄、配置進行便捷的操作，方便運營人員進行支付業務的管理&lt;/p&gt; &lt;/li&gt; 
- &lt;li&gt; &lt;p&gt;提供&lt;code&gt;聚合支付&lt;/code&gt;、&lt;code&gt;電腦收銀台&lt;/code&gt;和&lt;code&gt;手機收銀台&lt;/code&gt;的演示模塊，供開發者參考其實現支付功能的邏輯&lt;/p&gt; &lt;/li&gt; 
- &lt;li&gt; &lt;p&gt;系統源碼為商業友好的&lt;code&gt;Apache-2.0&lt;/code&gt;協議，文檔為更加寬鬆的&lt;code&gt;MIT&lt;/code&gt;協議，不需要擔心後續代碼和文檔會突然進行收費&lt;/p&gt; &lt;/li&gt; 
-&lt;/ol&gt; 
-&lt;h2&gt;🍒 文檔和源碼地址&lt;/h2&gt; 
-&lt;h3&gt;文檔地址&lt;/h3&gt; 
-&lt;p&gt;在&lt;a href=&quot;https://bootx.gitee.io/&quot;&gt;Bootx 開源文檔站&lt;/a&gt;下的支付網關 (DaxPay) 模塊下可以進行查閲相關文檔，具體鏈接地址如下：&lt;a href=&quot;https://bootx.gitee.io/daxpay/guides/overview/%E9%A1%B9%E7%9B%AE%E4%BB%8B%E7%BB%8D.html&quot;&gt;快速指南&lt;/a&gt;、&lt;a href=&quot;https://bootx.gitee.io/daxpay/gateway/overview/%E6%8E%A5%E5%8F%A3%E6%B8%85%E5%8D%95.html&quot;&gt;支付對接&lt;/a&gt;、&lt;a href=&quot;https://bootx.gitee.io/daxpay/admin/config/%E5%B9%B3%E5%8F%B0%E9%85%8D%E7%BD%AE.html&quot;&gt;操作手冊&lt;/a&gt;&lt;/p&gt; 
-&lt;h2&gt;🏬 項目和演示地址&lt;/h2&gt; 
-&lt;h3&gt;源碼地址&lt;/h3&gt; 
-&lt;table&gt; 
- &lt;tbody&gt; 
-  &lt;tr&gt; 
-   &lt;th&gt;項目&lt;/th&gt; 
-   &lt;th&gt;GITEE&lt;/th&gt; 
-   &lt;th&gt;GITHUB&lt;/th&gt; 
-  &lt;/tr&gt; 
- &lt;/tbody&gt; 
- &lt;tbody&gt; 
-  &lt;tr&gt; 
-   &lt;td&gt;後端地址&lt;/td&gt; 
-   &lt;td&gt;&lt;a href=&quot;https://gitee.com/dromara/dax-pay&quot;&gt;https://gitee.com/dromara/dax-pay&lt;/a&gt;&lt;/td&gt; 
-   &lt;td&gt;&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fgithub.com%2Fdromara%2Fdax-pay&quot; target=&quot;_blank&quot;&gt;https://github.com/dromara/dax-pay&lt;/a&gt;&lt;/td&gt; 
-  &lt;/tr&gt; 
-  &lt;tr&gt; 
-   &lt;td&gt;Web 前端地址&lt;/td&gt; 
-   &lt;td&gt;&lt;a href=&quot;https://gitee.com/bootx/dax-pay-ui&quot;&gt;https://gitee.com/bootx/dax-pay-ui&lt;/a&gt;&lt;/td&gt; 
-   &lt;td&gt;&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fgithub.com%2Fxxm1995%2Fdax-pay-ui&quot; target=&quot;_blank&quot;&gt;https://github.com/xxm1995/dax-pay-ui&lt;/a&gt;&lt;/td&gt; 
-  &lt;/tr&gt; 
-  &lt;tr&gt; 
-   &lt;td&gt;H5 前端地址&lt;/td&gt; 
-   &lt;td&gt;&lt;a href=&quot;https://gitee.com/bootx/dax-pay-h5&quot;&gt;https://gitee.com/bootx/dax-pay-h5&lt;/a&gt;&lt;/td&gt; 
-   &lt;td&gt;&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fgithub.com%2Fxxm1995%2Fdax-pay-h5&quot; target=&quot;_blank&quot;&gt;https://github.com/xxm1995/dax-pay-h5&lt;/a&gt;&lt;/td&gt; 
-  &lt;/tr&gt; 
- &lt;/tbody&gt; 
-&lt;/table&gt; 
-&lt;h3&gt;管理平台:&lt;/h3&gt; 
-&lt;blockquote&gt; 
- &lt;p&gt;注：演示賬號部分功能修改刪除權限未開放。&lt;/p&gt; 
-&lt;/blockquote&gt; 
-&lt;p&gt;地址：&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fdaxpay.demo.bootx.cn&quot; target=&quot;_blank&quot;&gt;https://daxpay.demo.bootx.cn&lt;/a&gt; 賬號：daxpay 密碼：123456&lt;/p&gt; 
-&lt;h3&gt;網關接口&lt;/h3&gt; 
-&lt;blockquote&gt; 
- &lt;p&gt;注：接口平台只開放支付網關相關的接口，不開放系統其他接口。&lt;/p&gt; 
-&lt;/blockquote&gt; 
-&lt;p&gt;地址: &lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fdaxpay.server.bootx.cn%2Fdoc.html&quot; target=&quot;_blank&quot;&gt;https://daxpay.server.bootx.cn/doc.html&lt;/a&gt; 賬號: daxpay 密碼: 123456&lt;/p&gt; 
-&lt;h3&gt;收銀台&lt;/h3&gt; 
-&lt;blockquote&gt; 
- &lt;p&gt;請勿大額支付，可以通過後台管理平台進行退款&lt;/p&gt; 
-&lt;/blockquote&gt; 
-&lt;p&gt;電腦收銀台地址: &lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fdaxpay.demo.bootx.cn%2F%23%2Fcashier&quot; target=&quot;_blank&quot;&gt;https://daxpay.demo.bootx.cn/#/cashier&lt;/a&gt;&lt;/p&gt; 
-&lt;p&gt;手機收銀台地址: &lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fdaxpay.demo.bootx.cn%2Fh5%2F%23%2Fcashier%2FuniCashier&quot; target=&quot;_blank&quot;&gt;https://daxpay.demo.bootx.cn/h5/#/cashier/uniCashier&lt;/a&gt;&lt;/p&gt; 
-&lt;h2&gt;🥞 核心技術棧&lt;/h2&gt; 
-&lt;table&gt; 
- &lt;tbody&gt; 
-  &lt;tr&gt; 
-   &lt;th&gt;名稱&lt;/th&gt; 
-   &lt;th&gt;描述&lt;/th&gt; 
-   &lt;th&gt;版本要求&lt;/th&gt; 
-  &lt;/tr&gt; 
- &lt;/tbody&gt; 
- &lt;tbody&gt; 
-  &lt;tr&gt; 
-   &lt;td&gt;Jdk&lt;/td&gt; 
-   &lt;td&gt;Java 環境&lt;/td&gt; 
-   &lt;td&gt;1.8+，11 版本可以正常使用，但 17+版本暫不支持&lt;/td&gt; 
-  &lt;/tr&gt; 
-  &lt;tr&gt; 
-   &lt;td&gt;Spring Boot&lt;/td&gt; 
-   &lt;td&gt;開發框架&lt;/td&gt; 
-   &lt;td&gt;2.7.x&lt;/td&gt; 
-  &lt;/tr&gt; 
-  &lt;tr&gt; 
-   &lt;td&gt;Redis&lt;/td&gt; 
-   &lt;td&gt;分佈式緩存&lt;/td&gt; 
-   &lt;td&gt;5.x 版本及以上&lt;/td&gt; 
-  &lt;/tr&gt; 
-  &lt;tr&gt; 
-   &lt;td&gt;MySQL&lt;/td&gt; 
-   &lt;td&gt;數據庫&lt;/td&gt; 
-   &lt;td&gt;基於 5.7.X 版本開發，基本支持 8.x 版本&lt;/td&gt; 
-  &lt;/tr&gt; 
-  &lt;tr&gt; 
-   &lt;td&gt;Vue&lt;/td&gt; 
-   &lt;td&gt;前端框架&lt;/td&gt; 
-   &lt;td&gt;3.x&lt;/td&gt; 
-  &lt;/tr&gt; 
-  &lt;tr&gt; 
-   &lt;td&gt;IJpay&lt;/td&gt; 
-   &lt;td&gt;支付 SDK 開發包&lt;/td&gt; 
-   &lt;td&gt;項目自動管理，不需要額外處理&lt;/td&gt; 
-  &lt;/tr&gt; 
- &lt;/tbody&gt; 
-&lt;/table&gt; 
-&lt;h2&gt;🍎 系統截圖&lt;/h2&gt; 
-&lt;h3&gt;收銀台演示&lt;/h3&gt; 
-&lt;p&gt;&lt;img alt=&quot;&quot; src=&quot;https://oscimg.oschina.net/oscnet/up-eb2d751b879598e0fa64f0f1702dad96274.png&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
-&lt;h3&gt;駕駛艙&lt;/h3&gt; 
-&lt;p&gt;&lt;img alt=&quot;QQ 截圖 20240326141912&quot; src=&quot;https://jsd.cdn.zzko.cn/gh/xxm1995/picx-images-hosting@master/daxpay/QQ%E6%88%AA%E5%9B%BE20240326141912.60u0cpvjg5.webp&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
-&lt;h3&gt;H5 收銀台演示&lt;/h3&gt; 
-&lt;p&gt;&lt;img alt=&quot;h5&quot; src=&quot;https://jsd.cdn.zzko.cn/gh/xxm1995/picx-images-hosting@master/daxpay/h5.839t0s61xr.webp&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
-&lt;h3&gt;支付通道配置&lt;/h3&gt; 
-&lt;p&gt;&lt;img alt=&quot;微信截圖_20240326142208&quot; src=&quot;https://jsd.cdn.zzko.cn/gh/xxm1995/picx-images-hosting@master/daxpay/%E5%BE%AE%E4%BF%A1%E6%88%AA%E5%9B%BE_20240326142208.6bgu5vdv60.webp&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
-&lt;h2&gt;🍻 鳴謝&lt;/h2&gt; 
-&lt;p&gt;感謝 JetBrains 提供的免費開源 License：&lt;/p&gt; 
-&lt;p&gt;&lt;a href=&quot;https://gitee.com/link?target=https%3A%2F%2Fwww.jetbrains.com%2F%3Ffrom%3Dbootx&quot;&gt;&lt;img alt=&quot;JetBrains&quot; src=&quot;https://gitee.com/bootx/dax-pay/raw/gateway/_doc/images/jetbrains.png&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/a&gt;&lt;/p&gt; 
-&lt;p&gt;感謝其他提供靈感和思路的開源項目&lt;/p&gt; 
-&lt;p&gt;&lt;a href=&quot;https://gitee.com/bootx/dax-pay/blob/gateway/_license/LICENSE.md&quot;&gt;部分參考的開源項目和開源許可列表&lt;/a&gt;&lt;/p&gt; 
-&lt;h2&gt;🍷License&lt;/h2&gt; 
-&lt;p&gt;Apache License Version 2.0&lt;/p&gt;
-                                        &lt;/div&gt;
-                                    </description>
-            <link>https://www.oschina.net/news/288269/daxpay-2-0-5-released</link>
-            <guid isPermaLink="false">https://www.oschina.net/news/288269/daxpay-2-0-5-released</guid>
-            <pubDate>Thu, 18 Apr 2024 05:34:00 GMT</pubDate>
-            <author>來源: 投稿</author>
-        </item>
-        <item>
-            <title>SmsForwarder（短信轉發器）v3.3.1 致敬`遙遙領先`版</title>
-            <description>&lt;div class=&quot;content&quot;&gt;
-                                                                    
-                                                        &lt;p style=&quot;color:#24292f; margin-left:0; margin-right:0; text-align:start&quot;&gt;&lt;span style=&quot;background-color:#ffffff; color:#40485b&quot;&gt;致敬&lt;span&gt;&amp;nbsp;&lt;/span&gt;&lt;/span&gt;&lt;code&gt;遙遙領先&lt;/code&gt;&lt;span style=&quot;background-color:#ffffff; color:#40485b&quot;&gt;&lt;span&gt;&amp;nbsp;&lt;/span&gt;&lt;/span&gt;&lt;strong&gt;先鋒計劃&lt;/strong&gt;&lt;span style=&quot;background-color:#ffffff; color:#40485b&quot;&gt;，迎接&lt;span&gt;&amp;nbsp;&lt;/span&gt;&lt;/span&gt;&lt;code&gt;SmsForwarder&lt;/code&gt;&lt;span style=&quot;background-color:#ffffff; color:#40485b&quot;&gt;&lt;span&gt;&amp;nbsp;&lt;/span&gt;&lt;/span&gt;&lt;strong&gt;預覽體驗計劃&lt;/strong&gt;&lt;span style=&quot;background-color:#ffffff; color:#40485b&quot;&gt;，領先與體驗並駕齊驅！&lt;/span&gt;&lt;/p&gt; 
-&lt;hr&gt; 
-&lt;p&gt;&lt;strong&gt;短信轉發器 —— 不僅只轉發短信，備用機必備神器！&lt;/strong&gt;&lt;/p&gt; 
-&lt;p style=&quot;color:#24292f; margin-left:0; margin-right:0; text-align:start&quot;&gt;&lt;span style=&quot;background-color:#ffffff; color:#40485b&quot;&gt;監控 Android 手機短信、來電、APP 通知，並根據指定規則轉發到其他手機：釘釘羣自定義機器人、釘釘企業內機器人、企業微信羣機器人、企業微信應用消息、飛書羣機器人、飛書企業應用、郵箱、bark、webhook、Tg 機器人、Server 醬、PushPlus、手機短信、MQTT、&lt;/span&gt;URL Scheme&lt;span style=&quot;background-color:#ffffff; color:#40485b&quot;&gt;&lt;span&gt;&amp;nbsp;&lt;/span&gt;等&lt;/span&gt;&lt;/p&gt; 
-&lt;p style=&quot;color:#24292f; margin-left:0; margin-right:0; text-align:start&quot;&gt;自帶主動控制服務端、客戶端和 FRP 內網穿透，讓你輕鬆遠程發短信、查短信、查通話、查話簿、查電量、找手機、改話簿等。（v3.0+）&lt;/p&gt; 
-&lt;p style=&quot;color:#333333; margin-left:0; margin-right:0; text-align:left&quot;&gt;&lt;strong&gt;自動任務・快捷指令，輕鬆自動化，助您事半功倍，更多時間享受親情陪伴！（v3.3+）&lt;/strong&gt;&lt;/p&gt; 
-&lt;p style=&quot;color:#333333; margin-left:0; margin-right:0; text-align:left&quot;&gt;&lt;img alt=&quot;&quot; src=&quot;https://oscimg.oschina.net/oscnet/up-94eee006cea09261aa7b9b77364fe3de0a8.jpg&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
-&lt;h3&gt;更新日誌&lt;/h3&gt; 
-&lt;p style=&quot;color:#40485b; margin-left:0; margin-right:0; text-align:start&quot;&gt;修復：&lt;code&gt;定時任務&lt;/code&gt;的&lt;code&gt;Cron 表達式&lt;/code&gt;輸入非法時導致 FC #407&lt;br&gt; 修復：Frpclib 未下載時，自動任務添加啓停 frpc app 自動重啓 #402&lt;br&gt; 修復：WiFi 平板（沒有 GPS 芯片）無法啓用&lt;code&gt;GPS 定位服務&lt;/code&gt;&lt;span&gt;&amp;nbsp;&lt;/span&gt;#391&lt;br&gt; 修復：錯誤的 URL 有效性驗證正則表達式（兼容 IPv6） #286&lt;br&gt; 修復：多個自啓動的 Frpc 無法同時自動啓動 Bug&lt;br&gt; 修復：疑似&lt;code&gt;ResUtils.getString&lt;/code&gt;導致 FC #426&lt;br&gt; 修復：在線更新失敗時手動下載頁面地址&lt;br&gt; 修復：轉發規則自定義發送通道順序失效（將&lt;code&gt;List&amp;lt;T&amp;gt;&lt;/code&gt;按照&lt;code&gt;instr&lt;/code&gt;的順序排序） #422&lt;br&gt; 修復：自動任務觸發條件在測試倒計時沒結束前返回導致 app 自動重啓 #394&lt;br&gt; 修復：自動任務電池狀態中充電器任意無法觸發 #395&lt;br&gt; 新增：&lt;code&gt;{{IP_LIST}}&lt;/code&gt;變量標籤用於獲取&lt;code&gt;本機所有 IP 地址列表&lt;/code&gt;（排除環回地址）&lt;span&gt;&amp;nbsp;&lt;/span&gt;&lt;a href=&quot;https://gitee.com/pp/SmsForwarder/issues/I9CVLZ&quot;&gt;#I9CVLZ:[Suggestion]: 希望能在自定義模板中加入，內網 ip 地址，字段&lt;/a&gt;&lt;br&gt; 新增：&lt;code&gt;通用設置&lt;/code&gt;增加按鈕直接跳轉&lt;code&gt;一鍵換新機&lt;/code&gt;·&lt;code&gt;離線模式&lt;/code&gt;&lt;br&gt; 新增：Frp 內網穿透·編輯配置時語法高亮&lt;br&gt; 新增：發送通道&lt;code&gt;電子郵箱&lt;/code&gt;支持&lt;code&gt;S/MIME&lt;/code&gt;或&lt;code&gt;OpenPGP&lt;/code&gt;加密 #417&lt;br&gt; 新增：監聽&lt;code&gt;Screen&lt;/code&gt;事件&lt;code&gt;延遲執行時再次校驗&lt;/code&gt;&lt;span&gt;&amp;nbsp;&lt;/span&gt;#399&lt;br&gt; 新增：兩個常用標籤&lt;code&gt;網絡狀態&lt;/code&gt;(&lt;code&gt;{{NET_TYPE}}&lt;/code&gt;) 和&lt;code&gt;簡單電池信息&lt;/code&gt;(&lt;code&gt;{{BATTERY_INFO_SIMPLE}}&lt;/code&gt;) #439&lt;br&gt; 新增：免打擾 (禁用轉發) 時間段記錄日誌（配合&lt;code&gt;自動任務&lt;/code&gt;實現延時發送） #411&lt;br&gt; 新增：是否加入 SmsF 預覽體驗計劃（在線更新每週構建版） #416&lt;br&gt; 新增：轉發日誌增加篩選器方便搜索/批量刪除 #433&lt;br&gt; 新增：自動任務·快捷指令 —— 觸發條件：短信廣播、通話廣播、APP 通知 #385 #389&lt;br&gt; 新增：自動任務·快捷指令 —— 觸發條件：藍牙設備（狀態變化、設備發現、連接斷開） #388&lt;br&gt; 新增：自動任務·快捷指令 —— 執行動作：播放警報 #385&lt;br&gt; 新增：自動任務·快捷指令 —— 執行動作：啓停任務 #389&lt;br&gt; 新增：自動任務·快捷指令 —— 執行動作：重發消息&lt;br&gt; 優化：&lt;code&gt;{{BATTERY_PCT}}&lt;/code&gt;保留 2 位小數&lt;br&gt; 優化：&lt;code&gt;Android 5.0&lt;/code&gt;以下&lt;code&gt;TLS 協議&lt;/code&gt;&amp;amp;&lt;code&gt;明文傳輸&lt;/code&gt;&lt;span&gt;&amp;nbsp;&lt;/span&gt;#427 #390 #274 #197&lt;br&gt; 優化：&lt;code&gt;build.gradle&lt;/code&gt;腳本，編譯前後自動清理&lt;br&gt; 優化：&lt;code&gt;Webhook&lt;/code&gt;&lt;span&gt;&amp;nbsp;&lt;/span&gt;非&lt;span&gt;&amp;nbsp;&lt;/span&gt;&lt;code&gt;HTTP 200&lt;/code&gt;&lt;span&gt;&amp;nbsp;&lt;/span&gt;應答時仍可以指定&lt;span&gt;&amp;nbsp;&lt;/span&gt;&lt;code&gt;成功應答關鍵字&lt;/code&gt;&lt;span&gt;&amp;nbsp;&lt;/span&gt;#234&lt;br&gt; 優化：&lt;code&gt;發送通道&lt;/code&gt;參數默認值（避免反序列化時空指針）&lt;br&gt; 優化：&lt;code&gt;一換新新機&lt;/code&gt;·&lt;code&gt;還原設置&lt;/code&gt;時保留本機的&lt;code&gt;設備名稱&lt;/code&gt;和&lt;code&gt;SIM 卡主鍵/備註&lt;/code&gt;&lt;br&gt; 優化：&lt;code&gt;自動任務&lt;/code&gt;觸發條件&lt;code&gt;網絡狀態&lt;/code&gt;：僅&lt;code&gt;Android 10&lt;/code&gt;(含) 以上顯示&lt;code&gt;數據卡槽&lt;/code&gt;選項 #429&lt;br&gt; 優化：&lt;code&gt;自動任務&lt;/code&gt;觸發條件&lt;code&gt;網絡狀態&lt;/code&gt;：延遲 5 秒獲取 WiFi 名稱（給夠搜索信號時間） #429&lt;br&gt; 優化：&lt;code&gt;自動任務·快捷指令&lt;/code&gt;&lt;span&gt;&amp;nbsp;&lt;/span&gt;—— 執行動作：&lt;code&gt;發送短信&lt;/code&gt;支持插入&lt;code&gt;變量標籤&lt;/code&gt;（標籤適用場景參見 wiki 附錄 3） #441&lt;br&gt; 優化：Frpc 默認配置採用 toml 格式&lt;br&gt; 優化：部分手機通知欄異常顯示兩條常駐通知 #392&lt;br&gt; 優化：多語言切換時枚舉常量自動切換語言&lt;br&gt; 優化：發送通道&lt;code&gt;Webhook&lt;/code&gt;支持 http/socks5 代理&lt;br&gt; 優化：放寬&lt;code&gt;Url&lt;/code&gt;和&lt;code&gt;UrlScheme&lt;/code&gt;的正則校驗限制 #431&lt;br&gt; 優化：服務端應答&lt;code&gt;Http 204 No Content&lt;/code&gt;時特殊處理（更新日誌狀態為成功） #234&lt;br&gt; 優化：服務端應答&lt;code&gt;HTTP Status 201-299&lt;/code&gt;時特殊處理（更新日誌狀態為成功） #234&lt;br&gt; 優化：改進 IPv6 正則表達式（避免&lt;code&gt;{{IPV6}}&lt;/code&gt;替換為空）&lt;br&gt; 優化：監聽&lt;code&gt;Screen&lt;/code&gt;事件細分&lt;code&gt;On/Off/Locked/Unlocked&lt;/code&gt;&lt;span&gt;&amp;nbsp;&lt;/span&gt;#399&lt;br&gt; 優化：進入&lt;code&gt;通用設置&lt;/code&gt;時&lt;code&gt;再次檢查&lt;/code&gt;是否已授權&lt;code&gt;已開啓功能&lt;/code&gt;的&lt;code&gt;必需權限&lt;/code&gt;&lt;br&gt; 優化：判斷 Frpclib 是否已經初始化&lt;br&gt; 優化：權限檢查機制判斷（適配 OPPO 應用權限受阻跳轉優化方案）&lt;br&gt; 優化：以&lt;code&gt;Base64&lt;/code&gt;形式保存證書（同時兼容&lt;code&gt;文件路徑&lt;/code&gt;形式） #437&lt;br&gt; 優化：自定義模板可用變量標籤支持正則替換 #421 #423&lt;br&gt; 優化：自定義模板可用變量統一成英文標籤&lt;br&gt; 優化：自定義模板增加&lt;code&gt;{{IPV4}}``{{IPV6}}&lt;/code&gt;標籤 #398&lt;br&gt; 優化：自定義模板增加&lt;code&gt;{{定位信息_經度}}&lt;/code&gt;/&lt;code&gt;{{定位信息_緯度}}&lt;/code&gt;/&lt;code&gt;{{定位信息_地址}}&lt;/code&gt;三個標籤 #400&lt;br&gt; 升級：AgentWeb 依賴（解決存在的內存泄漏問題）&lt;br&gt; 升級：frpclib 到&lt;span&gt;&amp;nbsp;&lt;/span&gt;&lt;code&gt;v0.57.0&lt;/code&gt;&lt;br&gt; 升級：XAOP 依賴&lt;br&gt; 升級：XUI 到&lt;span&gt;&amp;nbsp;&lt;/span&gt;&lt;code&gt;dev-1.2.2&lt;/code&gt;&lt;br&gt; 升級：XUpdate 到&lt;span&gt;&amp;nbsp;&lt;/span&gt;&lt;code&gt;2.1.5&lt;/code&gt;&lt;span&gt;&amp;nbsp;&lt;/span&gt;（兼容 Android 12 &amp;amp; 完善日誌）&lt;br&gt; 升級：依賴版本&lt;br&gt; 整理：code review &amp;amp; 精簡無用資源&lt;br&gt; 回退：&lt;code&gt;{{通知 Scheme}}&lt;/code&gt;(英文系統&lt;code&gt;{{SCHEME}}&lt;/code&gt;) 標籤以獲取應用通知的&lt;code&gt;Scheme&lt;/code&gt;&lt;span&gt;&amp;nbsp;&lt;/span&gt;#272 #276（無解，去除多餘代碼）&lt;/p&gt; 
-&lt;p style=&quot;color:#40485b; margin-left:0; margin-right:0; text-align:start&quot;&gt;&lt;strong&gt;還有一些細微調整參見&lt;code&gt;github&lt;/code&gt;提交記錄&lt;/strong&gt;&lt;/p&gt; 
-&lt;p&gt;&lt;span style=&quot;background-color:#ffffff; color:#40485b&quot;&gt;【強烈建議】&lt;/span&gt;&lt;code&gt;v3.3.0&lt;/code&gt;&lt;span style=&quot;background-color:#ffffff; color:#40485b&quot;&gt;&lt;span&gt;&amp;nbsp;&lt;/span&gt;用戶升級&lt;/span&gt;&lt;/p&gt;
-                                        &lt;/div&gt;
-                                    </description>
-            <link>https://www.oschina.net/news/288249/smsforwarder-3-3-1-released</link>
-            <guid isPermaLink="false">https://www.oschina.net/news/288249/smsforwarder-3-3-1-released</guid>
-            <pubDate>Thu, 18 Apr 2024 03:09:52 GMT</pubDate>
-            <author>來源: 投稿</author>
         </item>
     </channel>
 </rss>
