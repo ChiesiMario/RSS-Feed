@@ -9,8 +9,391 @@
         <generator>RSSHub</generator>
         <webMaster>i@diygod.me (DIYgod)</webMaster>
         <language>en</language>
-        <lastBuildDate>Wed, 24 Apr 2024 01:58:24 GMT</lastBuildDate>
+        <lastBuildDate>Wed, 24 Apr 2024 05:46:10 GMT</lastBuildDate>
         <ttl>1</ttl>
+        <item>
+            <title>Hedgey 攻击事件分析：损失上千万美元的代币授权</title>
+            <description>&lt;blockquote&gt;2024 年 4 月 19 日，Hedgey Token Claim 合约在以太坊、Arbitrum 等多条链上被攻击，损失高达数千万美元......&lt;/blockquote&gt;&lt;p&gt;2024 年 4 月 19 日，Hedgey Token Claim 合约在以太坊、Arbitrum 等多条链上被攻击，损失高达数千万美元。Hedgey 项目方随即发出安全告警，提醒创建代币认领活动的用户通过官方渠道取消代币认领活动。（&lt;a href=&quot;https://twitter.com/hedgeyfinance/status/1781257581488418862&quot; target=&quot;_blank&quot; rel=&quot;nofollow&quot;&gt;&lt;em&gt;https://twitter.com/hedgeyfinance/status/1781257581488418862&lt;/em&gt;&lt;/a&gt;）&lt;/p&gt;
+&lt;p&gt;&lt;img style=&quot;display: block; margin-left: auto; margin-right: auto;&quot; src=&quot;https://cdn-img.panewslab.com/panews/images/19tANQ6k5R.png&quot; alt=&quot;Hedgey 攻击事件分析：损失上千万美元的代币授权&quot; width=&quot;1178&quot; height=&quot;458&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt;
+&lt;p data-role=&quot;title&quot; data-tools=&quot;135 编辑器&quot; data-id=&quot;125378&quot;&gt;&amp;nbsp;&lt;/p&gt;
+&lt;h3&gt;&lt;strong data-brushtype=&quot;text&quot;&gt;攻击简述&lt;/strong&gt;&lt;/h3&gt;
+&lt;p&gt;Hedgey 帮助 DAOs 和链上组织通过链上、程序化的代币发放，将代币分配给他们的团队、贡献者、投资者和社区。本次出现漏洞的工具是其 Token Claims 产品，该产品可以让用户创建一个代币认领页面，通过 CSV 文件添加多达十万多名接收者到白名单中，并控制如何通过流、时间锁、回收等方式释放已认领的代币。&lt;/p&gt;
+&lt;p&gt;而本次攻击事件所利用的合约漏洞在于：Token Claims 产品中的 ClaimCampaigns 合约在创建一个代币认领活动时，将自身的 token 授权给了创建者指定的地址。在该创建者取消认领活动时，将活动创建阶段创建者转入的 token 返还给创建者指定的另一个地址，但并未撤销 token 授权，导致活动创建者的地址依然可以使用 ClaimCampaigns 合约所授权的 token。&lt;/p&gt;
+&lt;h3&gt;&lt;strong data-brushtype=&quot;text&quot;&gt;攻击中涉及的关键地址&lt;/strong&gt;&lt;/h3&gt;
+&lt;p&gt;本次攻击涉及到多笔交易，我们仅以下面这笔盗取 NOBL 代币的交易为例来对攻击原理进行分析。&lt;/p&gt;
+&lt;p&gt;攻击交易：&lt;em&gt;https://etherscan.io/tx/0x017ce9593350cba65d506e1a87e52d2c20079fdfa80a350a89fe6fc875f2d9f9&lt;/em&gt;&lt;/p&gt;
+&lt;p&gt;攻击 EOA：&lt;/p&gt;
+&lt;blockquote data-type=&quot;2&quot; data-url=&quot;&quot; data-author-name=&quot;&quot; data-content-utf8-length=&quot;42&quot; data-source-title=&quot;&quot;&gt;
+&lt;p&gt;&lt;em&gt;0xded2b1a426e1b7d415a40bcad44e98f47181dda2&lt;/em&gt;&lt;/p&gt;
+&lt;/blockquote&gt;
+&lt;p&gt;攻击者（合约）：&lt;/p&gt;
+&lt;blockquote data-type=&quot;2&quot; data-url=&quot;&quot; data-author-name=&quot;&quot; data-content-utf8-length=&quot;42&quot; data-source-title=&quot;&quot;&gt;
+&lt;p&gt;&lt;em&gt;0xd818ff3d5cfc938014b270d0c8029ba04629b549&lt;/em&gt;&lt;/p&gt;
+&lt;/blockquote&gt;
+&lt;p&gt;漏洞合约（ClaimCampaigns）:&lt;/p&gt;
+&lt;blockquote data-type=&quot;2&quot; data-url=&quot;&quot; data-author-name=&quot;&quot; data-content-utf8-length=&quot;42&quot; data-source-title=&quot;&quot;&gt;
+&lt;p&gt;&lt;em&gt;0xbc452fdc8f851d7c5b72e1fe74dfb63bb793d511&lt;/em&gt;&lt;/p&gt;
+&lt;/blockquote&gt;
+&lt;p&gt;被盗代币（NobleBlocks: NOBL Token）：&lt;/p&gt;
+&lt;blockquote data-type=&quot;2&quot; data-url=&quot;&quot; data-author-name=&quot;&quot; data-content-utf8-length=&quot;42&quot; data-source-title=&quot;&quot;&gt;
+&lt;p&gt;&lt;em&gt;0x88b9f5c66342ebaf661b3e2836b807c8cb1b3195&lt;/em&gt;&lt;/p&gt;
+&lt;/blockquote&gt;
+&lt;h3&gt;&lt;strong data-brushtype=&quot;text&quot;&gt;攻击流程分析&lt;/strong&gt;&lt;/h3&gt;
+&lt;h4&gt;&lt;strong&gt;1.&lt;/strong&gt;&lt;strong data-brushtype=&quot;text&quot;&gt;攻击实施&lt;/strong&gt;&lt;/h4&gt;
+&lt;p&gt;在攻击实施阶段，攻击者多次调用漏洞合约的 「 createLockedCampaign 」 函数创建 campaign，再调用「 cancelCampaign 」函数删除 campaign。创建 campaign 时，攻击者向漏洞合约转入指定数量的 NOBL 代币，并获得漏洞合约给其授权的 NOBL 代币使用额度。删除 campaign 时，漏洞合约退还攻击者创建 campaign 时转入的 NOBL 代币，然而此时漏洞合约并未撤销给攻击者授权的 NOBL 代币使用额度。因此攻击者通过创建 campaign 再删除 campaign，可以凭空获取花费漏洞合约持有的 NOBL 代币的权力。&lt;/p&gt;
+&lt;p&gt;具体攻击步骤如下：&lt;/p&gt;
+&lt;ol&gt;
+&lt;li&gt;攻击者调用漏洞合约的「createLockedCampaign 」函数创建 campaign，在参数中将 「 campaign.manager 」和「 claimLockup.tokenLocker 」均设置为攻击者自己，将「 campaign.token 」设置为 NOBL 代币，「 campaign.amount 」设置为「 680000000000000000000000 」（NOBL 代币的 decimal 为 18，因此此处代表 680000 个 NOBL 代币），「 donation.amount 」设置为 0。从「 createLockedCampaign 」函数代码可以看出，攻击者首先将 NOBL 代币转给漏洞合约，然后再通过「 safeIncreaseAllowance 」函数，使漏洞合约给「 claimLockup.tokenLocker 」（攻击者）授权花费漏洞合约持有的 NOBL 代币的权力，此处授权了「 campaign.amount 」这么多的额度给攻击者。
+&lt;p&gt;&lt;img style=&quot;display: block; margin-left: auto; margin-right: auto;&quot; src=&quot;https://cdn-img.panewslab.com/panews/images/GM4LBGbKk8.png&quot; alt=&quot;Hedgey 攻击事件分析：损失上千万美元的代币授权&quot; width=&quot;1500&quot; height=&quot;1887&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt;
+&lt;/li&gt;
+&lt;li&gt;
+&lt;p&gt;攻击者调用「 cancelCampaign 」函数删除第 1 步中创建的 campaign，从函数代码可以看出，漏洞合约将该 campaign 的数据删除，并调用 TransferHelper 库的 「 withdrawTokens 」函数将第 1 步中攻击者转入的 NOBL 代币还给「 campaign.manager 」（攻击者)。至此 campaign 成功被取消，然而第 1 步中漏洞合约授权给攻击者的 NOBL 代币使用额度并没有同步删除。因此攻击者此时还具备花费漏洞合约 NOBL 代币的权力。&lt;/p&gt;
+&lt;p&gt;&lt;img style=&quot;display: block; margin-left: auto; margin-right: auto;&quot; src=&quot;https://cdn-img.panewslab.com/panews/images/i6qovazMMr.png&quot; alt=&quot;Hedgey 攻击事件分析：损失上千万美元的代币授权&quot; width=&quot;1500&quot; height=&quot;456&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt;
+&lt;p&gt;&lt;img style=&quot;display: block; margin-left: auto; margin-right: auto;&quot; src=&quot;https://cdn-img.panewslab.com/panews/images/XY4wgH0Y0h.png&quot; alt=&quot;Hedgey 攻击事件分析：损失上千万美元的代币授权&quot; width=&quot;1500&quot; height=&quot;539&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt;
+&lt;/li&gt;
+&lt;li&gt;
+&lt;p&gt;攻击者重复 25 次第 1 步和第 2 步的操作，最终从漏洞合约获取到了 680000 * 25 = 17000000 个 NOBL 代币的使用额度。&lt;/p&gt;
+&lt;/li&gt;
+&lt;/ol&gt;
+&lt;h4&gt;&lt;strong data-brushtype=&quot;text&quot;&gt;2.收割赃款&lt;/strong&gt;&lt;/h4&gt;
+&lt;p&gt;在收割赃款阶段，攻击者直接调用 NOBL 代币的「 transferFrom 」函数，将 NOBL 代币从漏洞合约转到攻击者 EOA 地址上，由于在攻击实施阶段攻击者已经拿到了花费漏洞合约持有的 NOBL 代币的权力，因此在「 transferFrom 」函数中的额度校验可以顺利通过，最终攻击者成功盗取了漏洞合约中的 NOBL 代币。&lt;/p&gt;
+&lt;p&gt;具体细节请查看交易：&lt;a href=&quot;https://etherscan.io/tx/0x47da1ac72d488f746865891c9196c1632ae04f018b285b762b2b564ad1d3a9e5&quot; target=&quot;_blank&quot; rel=&quot;nofollow&quot;&gt;&lt;em&gt;https://etherscan.io/tx/0x47da1ac72d488f746865891c9196c1632ae04f018b285b762b2b564ad1d3a9e5&lt;/em&gt;&lt;/a&gt;&lt;/p&gt;
+&lt;h3&gt;&lt;strong data-brushtype=&quot;text&quot;&gt;攻击中涉及到的交易&lt;/strong&gt;&lt;/h3&gt;
+&lt;p&gt;通过 ZAN KYT 数据分析，攻击者在从漏洞合约中取走 NOBL token 之前，利用合约漏洞让漏洞合约给攻击者 approve token 的交易 hash 如下（仅罗列了以太坊上的交易）：&lt;/p&gt;
+&lt;p&gt;&lt;img style=&quot;display: block; margin-left: auto; margin-right: auto;&quot; src=&quot;https://cdn-img.panewslab.com/panews/images/H1WitgV8sP.png&quot; alt=&quot;Hedgey 攻击事件分析：损失上千万美元的代币授权&quot; width=&quot;1500&quot; height=&quot;1385&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt;
+&lt;p&gt;目前，攻击者已将部分非法所得转移到了另外一个地址&lt;em&gt;0xd84f48b7D1AaFA7bd5905c95c5d1ffB2625AdA46&lt;/em&gt;上，目前暂时没有其他动作。而 claims 合约的开发者（&lt;em&gt;0x5a4bC2bdA1f6B9929b6efdCef4728246bEc4C635&lt;/em&gt;）通过 Blockscan chat 与攻击者联系，承认了合约中的漏洞并假定了他们的行为为白帽行动，希望攻击者在 24 小时内与他们取得联系。&lt;/p&gt;
+&lt;h3&gt;&lt;strong data-brushtype=&quot;text&quot;&gt;安全建议&lt;/strong&gt;&lt;/h3&gt;
+&lt;p&gt;通过分析本次攻击事件，我们有如下建议：&lt;/p&gt;
+&lt;ol&gt;
+&lt;li&gt;
+&lt;p&gt;&lt;strong&gt;严格审查项目中代币授权的操作&lt;/strong&gt;。项目开发者和合约审计者应该明确哪些业务场景需要代币授权，哪些业务场景需要回收代币授权，避免未回收的代币授权或预期之外多余的授权被攻击者利用。&lt;/p&gt;
+&lt;/li&gt;
+&lt;li&gt;
+&lt;p&gt;&lt;strong&gt;项目应设置紧急暂停机制&lt;/strong&gt;。建议涉及到资金流转的项目都建立完善的暂停机制，当攻击发生时，能及时止损。&lt;/p&gt;
+&lt;/li&gt;
+&lt;/ol&gt;
+&lt;p&gt;本文由 ZAN Team 的 Cara（X 账号&lt;a href=&quot;https://twitter.com/Cara6289&quot; target=&quot;_blank&quot; rel=&quot;nofollow&quot;&gt;@Cara6289&lt;/a&gt;）和 XiG（X 账号 &lt;a href=&quot;https://twitter.com/SHXiGi&quot; target=&quot;&quot; rel=&quot;nofollow&quot;&gt;@SHXiGi&lt;/a&gt;） 共同撰写。&lt;/p&gt;</description>
+            <link>https://panewslab.com/zh/articledetails/88m9tybafu18.html</link>
+            <guid isPermaLink="false">https://panewslab.com/zh/articledetails/88m9tybafu18.html</guid>
+            <pubDate>Wed, 24 Apr 2024 04:00:42 GMT</pubDate>
+            <author>ZAN Team</author>
+            <category>深度</category>
+            <category>合约</category>
+            <category>以太坊</category>
+            <category>DAO</category>
+            <category>安全</category>
+        </item>
+        <item>
+            <title>AI 能成为老牌公链的新敍事吗？盘点 7 个公链与 AI 的结合</title>
+            <description>&lt;blockquote&gt;PANews 盘点了 7 个老牌公链和 AI 的敍事结合，不过从总体来看，即便是与 AI 结合，老牌公链们似乎也较少表现出活力和决心，在蹭热度和真干事的边界上摇摆。&lt;/blockquote&gt;&lt;p&gt;&lt;strong&gt;作者：Frank，PANews&lt;/strong&gt;&lt;/p&gt;
+&lt;p&gt;铁打的牛市，流水的公链。每一轮牛市都有一批公链「引领风骚」，同时，也有一批公链随着一轮牛市的结束彻底「隐入尘烟」。作为最重要的加密基础设施，公链的市值市占率无疑是最高的，它承载着大量投资人和项目的期望，对于缺乏粘性用户的公链，似乎只有不停更新敍事，保持自己的品牌曝光度，才能尽力保留在新一轮牛市的主舞台上。&lt;/p&gt;
+&lt;p&gt;AI 是如今关注度最高也最易出圈的热点赛道。PANews 观察到，前两轮牛市的一些明星公链们在这一轮牛市中并未再焕光彩，而 AI 成为老牌公链们的一个新敍事。本文，PANews 盘点了 7 个老牌公链和 AI 的敍事结合，不过从总体来看，即便是与 AI 结合，老牌公链们似乎也较少表现出活力和决心，在蹭热度和真干事的边界上摇摆。&lt;/p&gt;
+&lt;p&gt;&amp;nbsp;&lt;/p&gt;
+&lt;h3&gt;&lt;strong&gt;Qtum&lt;/strong&gt;&lt;strong&gt;：豪置&lt;/strong&gt;&lt;strong&gt;10000&lt;/strong&gt;&lt;strong&gt;个&lt;/strong&gt;&lt;strong&gt;GPU&lt;/strong&gt;&lt;strong&gt;支持&lt;/strong&gt;&lt;strong&gt;AI&lt;/strong&gt;&lt;/h3&gt;
+&lt;p&gt;4 月 18 日，Qtum 基金会宣布收购并上线 10,000 个 Nvidia GPU，为人工智能项目提供支持。&lt;/p&gt;
+&lt;p&gt;除了推出 GPU 支持计划之外，Qtum 还推出了两个 AI 产品，Qtum Solstice 和 Qtum Qurator 。&lt;/p&gt;
+&lt;p&gt;Qtum Solstice：类似于 ChatGPT 的会话聊天机器人，基于开源模型。此 Alpha 部署将使用户参与有用且智能的对话。&lt;/p&gt;
+&lt;p&gt;Qtum Qurator：类似于 Midjourney 的文本到图像生成模型，也基于开源模型。该实用程序将允许用户生成通常需要在图像处理软件应用程序中进行繁琐工作的图像。&lt;/p&gt;
+&lt;p&gt;Qtum 联合创始人 Miguel Palencia 表示：「我们对人工智能有着雄心勃勃的目标，这需要一个分三阶段的推出计划。今天，我们揭开了第一阶段的面纱，即聊天机器人和图像生成器。接下来的两个阶段将包括建模层，最后是去中心化经济层，它将把 Qtum 区块链上的所有内容融合在一起。」&lt;/p&gt;
+&lt;p&gt;Qtum 基金会表示计划在未来几个月内再提供多达 10 款 AI 相关产品，以进一步利用这 10,000 个 GPU。如此丰富的计算能力将有助于量子链基金会寻找合作伙伴进行合作和联合开发。&lt;/p&gt;
+&lt;p&gt;&amp;nbsp;&lt;/p&gt;
+&lt;h3&gt;&lt;strong&gt;NEAR&lt;/strong&gt;&lt;strong&gt;：坐拥&lt;/strong&gt;&lt;strong&gt;AI&lt;/strong&gt;&lt;strong&gt;宗师级大佬再次回归&lt;/strong&gt;&lt;strong&gt;AI&lt;/strong&gt;&lt;strong&gt;赛道&lt;/strong&gt;&lt;/h3&gt;
+&lt;p&gt;NEAR 联合创始人 Illia Polosukhin 本身对 AI 的成就或许大于区块链。他曾于 2014 年加入 Google Research，致力于开发最终融入人工智能的模型和工具。他也是 Google TensorFlow AI 开源项目的主要代码贡献者，该项目的八位研究人员共同撰写了「注意力就是你所需要的」论文，该论文引入了一种名为 Transformer 的新模型架构，也就是后来 ChatGPT 等流行人工智能产品的技术。可以说，NEAR 与 AI 的关联度是最最强的，甚至在最初创立的时候，NEAR.AI 是一家完全专注于人工智能的公司。&lt;/p&gt;
+&lt;p&gt;然而在 NEAR 初创的几年时间，其主要的目标是打造一条便捷、易用、环保的区块链。直到 2023 年年底，NEAR 宣布推出 NEAR Tasks，这是一个用于通过 NEAR 代币自动支付的智能合约，可以帮助人工智能项目通过这个平台更好的发放奖励。但实际上，这个项目看起来更像是运用区块链的优势为人工智能的发展做优化，而并非通过人工智能改善区块链。&lt;/p&gt;
+&lt;p&gt;在 NEARCON 2023 上，Illia Polosukhin 将 AI 命名为 NEAR 生态系统的核心垂直领域之一。2024 年在英伟达 GTC 召开之前，Illia Polosukhin 作为演讲者出席的预期推动下，NERA 的价格几乎上涨了一倍。&lt;/p&gt;
+&lt;p&gt;目前，NEAR Tasks 仍未正式开放。NEAR 生态中也尚未正式出现 AI 应用的分类。&lt;/p&gt;
+&lt;p&gt;&amp;nbsp;&lt;/p&gt;
+&lt;h3&gt;&lt;strong&gt;Algorand&lt;/strong&gt;&lt;strong&gt;：关于&lt;/strong&gt;&lt;strong&gt;AI&lt;/strong&gt;&lt;strong&gt;有点思考但不多&lt;/strong&gt;&lt;/h3&gt;
+&lt;p&gt;2021 年 7 月，Algorand 曾宣布与 Fortior 合作在 Algorand 区块链上创建人工智能驱动的治理机制和金融资产。此后，Algorand 几乎很少有 AI 方面相关消息。&lt;/p&gt;
+&lt;p&gt;&lt;img src=&quot;https://cdn-img.panewslab.com/panews/2024/04/24/images/c24G6I91wj.png&quot; alt=&quot;AI 能成为老牌公链的新敍事吗？盘点 7 个公链与 AI 的结合&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt;
+&lt;p&gt;一位社群成员曾于今年在论坛上向 Algorand 询问道：是否有计划将 ALGO 应用于人工智能吗？&lt;/p&gt;
+&lt;p&gt;ALGO 官方对此回复，其一直在思考这个问题，去中心化对于人工智能模型来说几乎是必要的，具有去中心化数据网络的开源模型（允许用户或企业使用特定模型出售/共享数据）、处理网络（借出多余的计算能力，如挖掘以允许更多输出）、图像等输出的不可变记录（nfts）。Algorand 一直在努力整理自己的想法，但令感到非常惊讶的是，更多的加密货币项目没有转向这个概念，或者至少没有讨论去中心化网络和人工智能如何建立共生关系。&lt;/p&gt;
+&lt;p&gt;&amp;nbsp;&lt;/p&gt;
+&lt;h3&gt;&lt;strong&gt;DFINITY&lt;/strong&gt;&lt;strong&gt;：优化&lt;/strong&gt;&lt;strong&gt;ICP&lt;/strong&gt;&lt;strong&gt;以运行人工智能大模型&lt;/strong&gt;&lt;/h3&gt;
+&lt;p&gt;DFINITY 基金会创始人兼首席科学家 Dominic Williams 在 2024 年 3 月的一个博客中表示，人工智能和智能合约以及区块链是「完美的合作伙伴关系」，他认为集中式的大模型存在着作恶的可能性，因此人工智能必须是防篡改的。&lt;/p&gt;
+&lt;p&gt;Dominic Williams 表示，接下来 ICP 将升级智能合约的内存容量至 32GB，同时支持 64 位。这样就能运行一些大语言模型。&lt;/p&gt;
+&lt;p&gt;&amp;nbsp;&lt;/p&gt;
+&lt;h3&gt;&lt;strong&gt;Polygon&lt;/strong&gt;&lt;strong&gt;：基于&lt;/strong&gt;&lt;strong&gt;GPT-4&lt;/strong&gt;&lt;strong&gt;推出&lt;/strong&gt;&lt;strong&gt;AI&lt;/strong&gt;&lt;strong&gt;工具&lt;/strong&gt;&lt;/h3&gt;
+&lt;p&gt;Polygon 在 AI 的赛道上目前看来具有足够的敏感度，早在 2023 年 6 月就推出了 Polygon Copilot。但据 PANews 测试发现，该产品似乎无法实现预期的效果，对于多次询问都未能有所反应。&lt;/p&gt;
+&lt;p&gt;&lt;img src=&quot;https://cdn-img.panewslab.com/panews/2024/04/24/images/qqJXAHe3ZZ.png&quot; alt=&quot;AI 能成为老牌公链的新敍事吗？盘点 7 个公链与 AI 的结合&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt;
+&lt;p&gt;除了 Polygon Copilot，Polygon 构建的 AI 产品 Brain 也是一个类似工具，且在功能上较 Polygon Copilot 更好，不仅可以实现问答功能，还提供通过人工智能部署合约、发送交易等功能。&lt;/p&gt;
+&lt;p&gt;此外，4 月 19 日，近期热度较高的 AI 项目 ORA 在迪拜的 Token2049 上宣布与 Polygon 达成合作，在 Polygon 链上引入其人工智能预言机 OAO。&lt;/p&gt;
+&lt;p&gt;&amp;nbsp;&lt;/p&gt;
+&lt;h3&gt;&lt;strong&gt;Polkadot&lt;/strong&gt;&lt;strong&gt;：推出&lt;/strong&gt;&lt;strong&gt;PolkaBot AI&lt;/strong&gt;&lt;strong&gt;聊天机器人&lt;/strong&gt;&lt;/h3&gt;
+&lt;p&gt;2024 年，PolkaBot 推出了一个人工智能教育平台 PolkaBot AI，该平台是一个类似 ChatGpt 的语言模型，目前提供一些关于 PolkaBot 内容检索。&lt;/p&gt;
+&lt;p&gt;&lt;img src=&quot;https://cdn-img.panewslab.com/panews/2024/04/24/images/dj57u2WK2P.png&quot; alt=&quot;AI 能成为老牌公链的新敍事吗？盘点 7 个公链与 AI 的结合&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt;
+&lt;p&gt;截至目前，Polkadot 虽尚未推出官方的 AI 计划，但似乎非常重视生态中 AI 项目的发展。4 月 16 日，Polkadot 官方在博客上发布的一篇文章中，盘点了多个生态相关 AI 项目，其中包括比较热门的 AI 项目 Bittensor。&lt;/p&gt;
+&lt;p&gt;同时，Polkadot 提出，「Polkadot 强大的基础设施具有独特的优势来支持人工智能革命，提供人工智能巨大计算需求所需的可扩展性、互操作性和安全性。」看起来，Polkadot 的目标是为 Web3 与 AI 结合的项目提供基础设施。&lt;/p&gt;
+&lt;p&gt;&amp;nbsp;&lt;/p&gt;
+&lt;h3&gt;&lt;strong&gt;Cardano&lt;/strong&gt;&lt;strong&gt;：用&lt;/strong&gt;&lt;strong&gt;AI&lt;/strong&gt;&lt;strong&gt;模型和区块链比较方式为&lt;/strong&gt;&lt;strong&gt;Cardano&lt;/strong&gt;&lt;strong&gt;辩护&lt;/strong&gt;&lt;/h3&gt;
+&lt;p&gt;尽管目前 Cardano 官方并未有相关 AI 计划推出，但有趣的是，针对社区对 Cardano 不作为的质疑，其创始人曾在今年 4 月通过对比 AI 模型和加密货币的方式作出回应短期敍事并不总是有效，他表示：「我们行业的问题在于，让短期敍事和狂欢叫卖主导了谈话，人工智能也有同样的问题。几个月前，Open AI 统治了一切，但也面临其他语言模型的日益竞争，先是 Claude 3，现在我们有了 Grok 1.5，很快又是 Llama 3。」&lt;/p&gt;
+&lt;p&gt;&amp;nbsp;&lt;/p&gt;
+&lt;h3&gt;&lt;strong&gt;总结&lt;/strong&gt;&lt;/h3&gt;
+&lt;p&gt;从以上这些项目来看，各个老牌公链似乎都想通过 AI 这个社会热点来增加话题度，但是截至目前均未在该赛道进行深入探索和发力。其中，除了 Qtum、NEAR、Polygon 在 AI 产品投入较多以外，其他的公链似乎都停留在蹭热度阶段。但与此同时，Web3+AI 的赛道其实并不冷清，据 Coingecko 显示，目前 AI 项目的总体市值已经达到 232 亿美元，大多数项目采用以太坊和 Solana 作为技术首选。作为老牌公链，若想通过布局 AI 焕发活力，或许需要拿出一些更有力的发展策略和产品才有说服力。&lt;/p&gt;
+&lt;p&gt;&amp;nbsp;&lt;/p&gt;</description>
+            <link>https://panewslab.com/zh/articledetails/rh070jrd.html</link>
+            <guid isPermaLink="false">https://panewslab.com/zh/articledetails/rh070jrd.html</guid>
+            <pubDate>Wed, 24 Apr 2024 03:49:03 GMT</pubDate>
+            <author>Frank</author>
+            <category>NEAR</category>
+            <category>Algorand</category>
+            <category>PA 原创</category>
+            <category>AI</category>
+            <category>Polygon</category>
+            <category>公链</category>
+            <category>Cardano</category>
+            <category>Polkadot</category>
+            <category>ICP</category>
+        </item>
+        <item>
+            <title>比特币 Layer 2 的新策略：RGB++的市场定位，颠覆性进展还是市场适应？</title>
+            <description>&lt;blockquote&gt;推动比特币 Layer 2 前沿：新协议的市场适应与技术挑战。&lt;/blockquote&gt;&lt;p dir=&quot;ltr&quot;&gt;在当今飞速发展的加密货币领域，比特币 Layer 2 解决方案正成为市场的新宠。尤其是 CKB（Nervos 网络）的最新创新——RGB++协议，已经引起了广泛的关注。RGB++不仅在今年初通过创新的资产发行机制推动 CKB 价值飙升，更在短短几个月内实现了超过 300% 的惊人月涨幅。&lt;/p&gt;
+&lt;p dir=&quot;ltr&quot;&gt;&lt;img style=&quot;display: block; margin-left: auto; margin-right: auto;&quot; src=&quot;https://cdn-img.panewslab.com/panews/images/7xJGBZ85dI.png&quot; alt=&quot;比特币 Layer 2 的新策略：RGB++的市场定位，颠覆性进展还是市场适应？&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt;
+&lt;p dir=&quot;ltr&quot;&gt;比特币的价格波动为多个 Layer 2 项目提供了展示其技术的舞台，而 CKB 的表现尤为突出。在 Bitcoin Layer 2 的热门赛道中，CKB 凭借其独特的同构绑定机制和强大的背景（由著名的公链 Nervos 支持），成功地将比特币原链的 UTXO 与 CKB 链上的 Cell 绑定，从而引领了市场新趋势。&lt;/p&gt;
+&lt;p dir=&quot;ltr&quot;&gt;此外，RGB++协议在今年 2 月 22 日由 Trustless Labs 主办的 Twitter Space 中得到了进一步的阐述。在该活动中，RGB++的主要作者和 CKB 联合创始人 Cipher 以及生态负责人 Baiyu，共同分享了他们对于比特币 Layer 2 的深入见解以及 RGB++资产和 CKB 生态建设的未来规划。&lt;/p&gt;
+&lt;p dir=&quot;ltr&quot;&gt;本文将详细介绍 RGB++协议的工作原理，其在市场中的地位，以及它如何可能改变我们理解和利用 Layer 2 解决方案的方式。&lt;/p&gt;
+&lt;h3 dir=&quot;ltr&quot;&gt;固化比特币的扩展痛点，RGB++通过同构绑定实现显著性能提升与互操作性优势&lt;/h3&gt;
+&lt;h4 dir=&quot;ltr&quot;&gt;深度分析：选择 RGB 协议的背后逻辑与挑战&lt;/h4&gt;
+&lt;p dir=&quot;ltr&quot;&gt;团队开发 RGB++协议的初衷源于对比特币二层解决方案市场竞争的深度分析。他们特别关注比特币一层的新协议竞争，其中区分出两种协议类型：一种是利用 UTXO 特性的资产，另一种则不涉及 UTXO。团队选择了第一种类型，特别是选择了如 Atomicals、RGB 和 Taproot Assets 等具有 UTXO 特性的协议。&lt;/p&gt;
+&lt;p dir=&quot;ltr&quot;&gt;选定 RGB 协议作为开发基础的理由是多方面的。首先，团队成员 Cipher 对 RGB 协议有着极大的兴趣，并且与阿剑老师共同进行了深入的研究。RGB 协议以其优雅的设计和为比特币提供的强大扩展能力而著称，但尽管具有如此优势，该协议由于在实际应用中的多个技术和产品问题（如交互式操作问题、数据可用性问题、互操作性问题、智能合约/脚本执行环境的问题等）而未能得到大规模采用。&lt;/p&gt;
+&lt;h4 dir=&quot;ltr&quot;&gt;CKB 团队的比特币二层解决方案&lt;/h4&gt;
+&lt;p dir=&quot;ltr&quot;&gt;RGB++是一个属于比特币一层的资产发行协议，与其他一层资产发行协议如 Ordinals、Runes、BRC20 处于同一层次。它的设计和技术优势体现了 CKB 团队在比特币二层解决方案方面的长期积累。与传统 RGB 协议相比，RGB++避免了通过 P2P 网络交换交易历史和数据的需求，将所有智能组件，如虚拟机、智能合约等直接移至链上，从而大幅简化了链外逻辑并加速了开发过程。&lt;/p&gt;
+&lt;p dir=&quot;ltr&quot;&gt;&lt;img style=&quot;display: block; margin-left: auto; margin-right: auto;&quot; src=&quot;https://cdn-img.panewslab.com/panews/images/un057v89H3.png&quot; alt=&quot;比特币 Layer 2 的新策略：RGB++的市场定位，颠覆性进展还是市场适应？&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt;
+&lt;h4 dir=&quot;ltr&quot;&gt;利用 CKB 技术平台实现传统 RGB 协议的链上处理&lt;/h4&gt;
+&lt;p dir=&quot;ltr&quot;&gt;RGB++协议的核心在于将传统 RGB 协议中需要在客户端处理的复杂逻辑转移到链上处理。这种转变得益于 CKB 技术平台的多年积累，包括独立的 P2P 网络、共享数据、能够验证交易的虚拟机以及非交互式的操作体验。通过这种同构绑定机制，RGB++把比特币的 UTXO 映射到 CKB 的 Cell 上，利用 CKB 链和比特币链上的脚本约束来验证状态计算的正确性和变更所有权的有效性。&lt;/p&gt;
+&lt;h4 dir=&quot;ltr&quot;&gt;开启交易革新的三大利器&lt;/h4&gt;
+&lt;p dir=&quot;ltr&quot;&gt;RGB++的主要优点包括：交易的非交互性—RGB++利用 CKB 的数据托管与计算平台特性，允许交易双方通过异步、非交互的方式进行转账，大大改善了用户体验；交易折叠—通过将多笔 CKB 交易与一笔比特币 RGB++交易对应，提高了低速、低吞吐量的比特币链的性能；以及 BTC 资产与 CKB 链上资产的直接互操作性—通过 UTXO 与 Cell 的映射关联，实现了比特币资产与 CKB 链上资产的直接互动，无需复杂的跨链机制。&lt;/p&gt;
+&lt;h3 dir=&quot;ltr&quot;&gt;解析 RGB++的创新机制，展望比特币 Layer 2 技术的未来发展路径&lt;/h3&gt;
+&lt;h4 dir=&quot;ltr&quot;&gt;RGB 协议的核心机制与挑战&lt;/h4&gt;
+&lt;p dir=&quot;ltr&quot;&gt;RGB 协议是一种独特的 P2P 资产协议，主要在比特币链下运作，其计算系统在某些方面与支付通道相似。它要求用户运行客户端并亲自验证与自己有关的转账行为，这种方式被称为「交互式转账」。即便作为资产的接收方，用户也需确认发送方的转账声明无误后，该声明才能生效。这种方法的优点是增强了隐私保护，因为不同于比特币和以太坊等传统区块链采用的广泛节点共识协议，RGB 协议通过「客户端验证」来保护每个交易的隐私。&lt;/p&gt;
+&lt;p dir=&quot;ltr&quot;&gt;然而，RGB 协议的这种设计也带来了显著的挑战。缺少一个公共的共识过程意味着不同的客户端可能会持有不一致的数据，造成「数据孤岛」。此外，用户必须验证每一笔交易的历史来源，以确认交易的合法性和资产的真实性，这增加了用户的操作复杂度并可能限制了协议的广泛采用。&lt;/p&gt;
+&lt;h4 dir=&quot;ltr&quot;&gt;RGB++协议的创新与优势&lt;/h4&gt;
+&lt;p dir=&quot;ltr&quot;&gt;相比之下，RGB++协议在保持原有 RGB 协议的隐私优势的同时，显著改进了用户体验和系统效率。RGB++通过「同构绑定」机制，将比特币的 UTXO 与 CKB 的 Cell 结合，实现了资产和交易信息的链上管理。这种机制允许所有相关验证逻辑直接在 CKB 链上执行，而非仅在用户的本地客户端进行。这样不仅简化了用户验证资产和交易的过程，也通过集中化的链上验证解决了数据不一致的问题。&lt;/p&gt;
+&lt;p dir=&quot;ltr&quot;&gt;RGB++的另一大优势是交易的非交互性。在 RGB 协议中，如 Alice 想向 Bob 转账，她必须将交易信息发送给 Bob，由他亲自检查并验证。而在 RGB++中，这一过程由 CKB 链自动完成，用户不需要手动介入，极大地简化了交易流程并提高了效率。此外，RGB++利用 CKB 链的计算能力，允许执行更复杂的智能合约和扩展功能，这不仅加强了协议的功能性，还为开发者提供了更多创新的空间。&lt;/p&gt;
+&lt;p dir=&quot;ltr&quot;&gt;综上所述，RGB++在保持 RGB 协议隐私优势的基础上，通过链上集中处理和验证，极大地提高了交易的便捷性和数据的一致性，解决了传统 RGB 协议中的主要痛点。这些改进不仅增强了用户体验，还为 RGB++的广泛采用和未来的发展奠定了坚实的基础。&lt;/p&gt;
+&lt;h3 dir=&quot;ltr&quot;&gt;RGB++粉墨登场：能否在激烈的比特币 L2 竞争中脱颖而出？&lt;/h3&gt;
+&lt;h4 dir=&quot;ltr&quot;&gt;市场潜力与策略&lt;/h4&gt;
+&lt;p dir=&quot;ltr&quot;&gt;当前比特币第二层解决方案（L2）正在快速增长，各种项目如 BounceBit、Merlin Chain、B^2 均已累积了可观的总锁定价值（TVL）。面对这一爆炸性增长，RGB++如何切入这一市场？关键在于其独特的市场定位和战略部署。RGB++不仅作为一种 NFT 和 FT 的发行协议存在，还充分利用了 CKB 链的技术优势来提供一个无缝的交易体验。虽然在比特币主网上操作可能面临较高的 gas 费用和较慢的交易速度，RGB++协议通过直接利用 CKB 的 Dex 进行资产交易来优化这些操作。&lt;/p&gt;
+&lt;h4 dir=&quot;ltr&quot;&gt;CKB 二层链上的整合策略&lt;/h4&gt;
+&lt;p dir=&quot;ltr&quot;&gt;在 CKB 二层链上，RGB++专注于原生资产的发行和跨链资产的支持。比特币和以太坊资产可以通过先进的桥接技术安全地转移到 CKB 上，我们与多家大型机构合作以确保交易的安全和可靠性。此外，我们在 CKB 上推出的资产遵循统一的标准，比如 FT 标准 XUDT 和 NFT 标准，这些都已在主网获得应用。我们还计划推出特定的交易平台，如欧米伽市场，以支持 CKB 原生铭文资产的发行和交易。&lt;/p&gt;
+&lt;h4 dir=&quot;ltr&quot;&gt;面临的挑战与不确定性&lt;/h4&gt;
+&lt;p dir=&quot;ltr&quot;&gt;尽管 RGB++在技术和市场战略上具有明显优势，但其开发过程并非没有挑战。原 RGB 的开发受到了诸多因素的影响，如需要构建在闪电网络上但现有的闪电网络标准并不完全支持 RGB 协议。此外，RGB 的开发工具和虚拟机（AluVM）的完善也需要时间，这些都可能导致开发进度缓慢和市场周期的错失。&lt;/p&gt;
+&lt;p dir=&quot;ltr&quot;&gt;综上所述，RGB++不仅承载了技术创新的希望，还面临着实际应用中的多重挑战。随着我们继续推动技术前沿，努力克服这些挑战，RGB++是否能够在这个竞争激烈的市场中占据一席之地？&lt;/p&gt;
+&lt;p&gt;&lt;strong id=&quot;docs-internal-guid-8ca4bc06-7fff-4b47-4a87-c2036134fb3b&quot;&gt;&lt;/strong&gt;&lt;/p&gt;</description>
+            <link>https://panewslab.com/zh/articledetails/d9sbw0k0k25e.html</link>
+            <guid isPermaLink="false">https://panewslab.com/zh/articledetails/d9sbw0k0k25e.html</guid>
+            <pubDate>Wed, 24 Apr 2024 03:00:57 GMT</pubDate>
+            <author>DeMan</author>
+            <category>深度</category>
+            <category>BTC</category>
+            <category>RGB++</category>
+            <category>CKB</category>
+            <category>公链</category>
+            <category>Runes</category>
+            <category>以太坊</category>
+            <category>安全</category>
+        </item>
+        <item>
+            <title>昨夜今晨重要资讯（4 月 23 日-4 月 24 日）</title>
+            <description>&lt;blockquote&gt;HashKey Capital 与博时国际合作的现货比特币和以太坊 ETF 将于 4 月 30 日开始交易；灰度申请推出迷你版以太坊信托，股票代码为「ETH」；特斯拉今年第一季度未出售或买入比特币，比特币持仓连续七个季度保持不变。&lt;/blockquote&gt;&lt;p dir=&quot;ltr&quot;&gt;&lt;img style=&quot;display: block; margin-left: auto; margin-right: auto;&quot; src=&quot;https://cdn-img.panewslab.com/panews/2024/04/24/images/FN7f8U7K64.png&quot; alt=&quot;昨夜今晨重要资讯（4 月 23 日-4 月 24 日）&quot; width=&quot;1209&quot; height=&quot;605&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt;
+&lt;p dir=&quot;ltr&quot;&gt;&lt;a href=&quot;https://www.panewslab.com/zh/sqarticledetails/j5p3mj1f.html&quot;&gt;美国 SEC 就贝莱德修订后的以太坊现货 ETF 申请征求公众意见&lt;/a&gt;&lt;/p&gt;
+&lt;p dir=&quot;ltr&quot;&gt;据 The Block 报道，美国证券交易委员会（SEC）正在就贝莱德提出的以太坊现货 ETF 修订版本征求公众意见。SEC 要求公众在 21 天内提出意见。贝莱德于 2023 年 11 月提交了以太坊现货 ETF 申请。今年 1 月，SEC 推迟对该申请做出决定，纳斯达克随后于 4 月 19 日提交了修订版本。修订后的文件中讨论了以太坊现货 ETF 的现金创建和赎回过程。&lt;/p&gt;
+&lt;p dir=&quot;ltr&quot;&gt;&lt;a href=&quot;https://www.panewslab.com/zh/sqarticledetails/lset7o33.html&quot;&gt;美国 SEC 推迟对灰度以太坊现货 ETF 做出决定&lt;/a&gt;&lt;/p&gt;
+&lt;p dir=&quot;ltr&quot;&gt;据 The Block 报道，美国证券交易委员会（SEC）在周二提交的一份文件中表示，将对灰度以太坊现货 ETF 做出决定的时间推迟到 2024 年 6 月 23 日。Grayscale 于去年 10 月与 NYSE Arca 共同提交了将 Grayscale 以太坊信托转换为以太坊现货 ETF 的 19b-4 表格。此前，SEC 已将对富兰克林以太坊现货 ETF 做出决定的时间推迟到 2024 年 6 月 11 日。&lt;/p&gt;
+&lt;p dir=&quot;ltr&quot;&gt;&lt;a href=&quot;https://www.panewslab.com/zh/sqarticledetails/vtr07hr8.html&quot;&gt;美国 SEC 延长 Franklin 以太坊现货 ETF 的上市审查期&lt;/a&gt;&lt;/p&gt;
+&lt;p dir=&quot;ltr&quot;&gt;美国证券交易委员会（SEC）决定延长对 Franklin Ethereum ETF 股份上市和交易的提案规则变更的审查期。这意味着 SEC 将花费更长的时间来决定是否批准这一基于 Ethereum 的商品型信托股份，按照 BZX 规则 14.11(e)(4) 进行分类。&lt;/p&gt;
+&lt;p dir=&quot;ltr&quot;&gt;&lt;a href=&quot;https://www.panewslab.com/zh/sqarticledetails/xs5dibe6.html&quot;&gt;中国拟修改反洗钱法，设立反洗钱监测分析机构&lt;/a&gt;&lt;/p&gt;
+&lt;p dir=&quot;ltr&quot;&gt;据中新网报道，反洗钱法修订草案已于今日提请十四届全国人大常委会初次审议。修订草案共 7 章 62 条，规定国务院反洗钱行政主管部门设立反洗钱监测分析机构，开展反洗钱资金监测，负责接受、分析大额交易和可疑交易报告等。&lt;/p&gt;
+&lt;p dir=&quot;ltr&quot;&gt;&lt;a href=&quot;https://www.panewslab.com/zh/sqarticledetails/zddzcfb0.html&quot;&gt;HashKey Capital 与博时国际合作的现货比特币和以太坊 ETF 将于 4 月 30 日开始交易&lt;/a&gt;&lt;/p&gt;
+&lt;p dir=&quot;ltr&quot;&gt;据彭博社报道，HashKey Group 旗下资管公司 HashKey Capital 发言人周三表示，HashKey Capital 与香港资产管理公司博时国际的合作推出的现货比特币和以太坊 ETF 将于 4 月 30 日开始交易。&lt;/p&gt;
+&lt;p dir=&quot;ltr&quot;&gt;&lt;a href=&quot;https://www.panewslab.com/zh/sqarticledetails/mtp4pu33.html&quot;&gt;灰度申请推出迷你版以太坊信托，股票代码为「ETH」&lt;/a&gt;&lt;/p&gt;
+&lt;p dir=&quot;ltr&quot;&gt;据华尔街日报报道，灰度公司周二已向美国证券交易委员会（SEC）申请注册&quot;Grayscale Ethereum Mini Trust&quot;，股票代码为&quot;ETH&quot;。根据一份监管文件，该迷你版以太坊信托将成为现有灰度以太坊信托基金（ETHE）的&quot;分拆&quot;。如果该基金获得监管机构的批准，每个 ETHE 投资者的大部分资产将自动转移到新基金，而他们通过这两只基金持有的以太坊总头寸将保持不变。&lt;/p&gt;
+&lt;p dir=&quot;ltr&quot;&gt;&lt;a href=&quot;https://www.panewslab.com/zh/sqarticledetails/1m81wn96.html&quot;&gt;特斯拉今年第一季度未出售或买入比特币，比特币持仓连续七个季度保持不变&lt;/a&gt;&lt;/p&gt;
+&lt;p dir=&quot;ltr&quot;&gt;特斯拉最新公布的 2024 年第一季度财报显示，该公司今年第一季度总收入为 123 亿美元，远低于预期的 214 亿美元。自由现金流为负 25 亿美元。此外，特斯拉在该季度没有出售或者买入任何比特币，这是其连续第七个季度未进行任何买卖操作。特斯拉目前持有约 9720 枚比特币，当前价值约为 6.47 亿美元，购买成本约为 3.37 亿美元，浮盈 3.1 亿美元。特斯拉上一次减持比特币是在 2022 年第二季度，当时该公司以 9.36 亿美元的价格出售了 3 万多枚比特币，约占其所持比特币的 75%。特斯拉最初在 2021 年初购买了价值 15 亿美元的比特币。&lt;/p&gt;
+&lt;p dir=&quot;ltr&quot;&gt;&lt;a href=&quot;https://www.panewslab.com/zh/sqarticledetails/jj765l96.html&quot;&gt;Arthur Hayes：美国印钞规模会更加夸张，最近的回调是加仓加密货币的时机&lt;/a&gt;&lt;/p&gt;
+&lt;p dir=&quot;ltr&quot;&gt;BitMEX 联合创始人 Arthur Hayes 发文称，现在的加密牛市才刚刚开始，投资者应该大胆向左转弯 (Left Curve)，持有并增加头寸。Hayes 指出，2024 年是关键的一年，多个大国将举行总统大选。特别是美国，目前的执政民主党会不惜一切代价连任，以扭转共和党的政策。而在选举年，如果民众感觉经济陷入衰退，现任总统连任的概率将从 67% 降至 33%。因此，掌控货币和财政政策的执政党，最简单的办法就是大幅增加政府支出，推高名义 GDP 增速，制造一种并未衰退的假象。 数据显示，美国政府支出已占到名义 GDP 的 23%，也就是说，只要政府愿意借钱，名义 GDP 就能随心所欲。而从国会预算办公室 (CBO) 的预测来看，无论是拜登还是特朗普上台，未来美国政府的财政赤字都将持续扩大。此外，围绕美国的地缘冲突还在升级，政客们也乐于继续向盟友提供数十亿美元的援助。 Hayes 强调，只要政府能以低于名义 GDP 增速的利率举债，政客就会不断加大开支。因此在未来，货币印刷的规模只会更加夸张。他建议投资者充分利用最近加密货币价格回调的机会，慢慢建仓。而随着北半球夏季的到来，加密市场的波动性也将下降，这对于非预售轮投资者而言是绝佳的入场时机。除非实际利率转正，否则投资者都应保持乐观。&lt;/p&gt;
+&lt;p dir=&quot;ltr&quot;&gt;&lt;a href=&quot;https://www.panewslab.com/zh/sqarticledetails/81ykw265.html&quot;&gt;Renzo 公布 REZ 代币经济学，以及 5 月 2 日发放的第一季度空投奖励领取流程&lt;/a&gt;&lt;/p&gt;
+&lt;p dir=&quot;ltr&quot;&gt;流动性再质押协议 Renzo 公布了其原生代币 REZ 的经济学模型及领取细节。REZ 总量为 100 亿枚，初始流通量为 10.5 亿枚。社区将分配 30% 的代币，投资者分配 31.56%，核心贡献者分配 20%，基金会分配 13.44%，Binance Launchpool 及流动性挖矿各占 2.5%。 Renzo 第一季奖励将于 4 月 26 日结束，在此日期之前出售其 ezETH 持有量的任何用户可能没有资格获得空投。用户可在 5 月 2 日通过 claim.renzoprotocol.com 领取 REZ。社区将线性分发 5 亿枚 REZ（占总量 5%），依据为用户累积的 ezPoints。排名前 5% 的地址将有 50% 的代币立即解锁，剩余部分在 6 个月内线性释放。第二季奖励将于 4 月 26 日立即开启。 此外，第一季 5% 空投的 2%（即代币总供应量的 0.1%）已分配给以下 NFT 社区：Milady Maker 和 SchizoPosters。&lt;/p&gt;
+&lt;p dir=&quot;ltr&quot;&gt;&lt;a href=&quot;https://www.panewslab.com/zh/sqarticledetails/kjzd0wuw.html&quot;&gt;Coinbase 将上线 Safe (SAFE)&lt;/a&gt;&lt;/p&gt;
+&lt;p dir=&quot;ltr&quot;&gt;Coinbase 宣布将在 Ethereum 网络上支持 Safe（SAFE）ERC-20 代币。SAFE 代币的转账已在 Coinbase 和 Coinbase Exchange 平台上开放。如果流动性条件得到满足，SAFE-USD 交易对将在今日晚些时候分阶段推出。某些支持的司法管辖区可能会限制对 SAFE 的支持。此外，Coinbase 将对 SAFE 代币贴上「实验性」标签。&lt;/p&gt;
+&lt;p dir=&quot;ltr&quot;&gt;&lt;a href=&quot;https://www.panewslab.com/zh/sqarticledetails/pg6qbhel.html&quot;&gt;Jupiter 收购 Ultimate Wallet 及其移动端团队&lt;/a&gt;&lt;/p&gt;
+&lt;p dir=&quot;ltr&quot;&gt;Solana 生态中的去中心化交易平台 Jupiter 宣布收购 Ultimate Wallet 及其移动端团队。Ultimate 应用程序将于 2024 年 5 月 22 日关闭，作为整合的一部分。此外，Jupiter 将启动其新的 Jupiter Mobile 计划，该计划预计于五月份推出 beta 版本。新的移动应用将允许用户通过一键交易任何代币，且不收取任何手续费，旨在提供更加便捷和经济的交易体验给 Solana 生态系统的用户。&lt;/p&gt;
+&lt;p dir=&quot;ltr&quot;&gt;&lt;a href=&quot;https://www.panewslab.com/zh/sqarticledetails/ydxbfqz8.html&quot;&gt;币安将把 Renzo 代码从 EZ 更新为 REZ&lt;/a&gt;&lt;/p&gt;
+&lt;p dir=&quot;ltr&quot;&gt;由于市场上存在另一个项目使用「EZ」作为代币代码，导致社区出现混淆，币安已与 Renzo 项目团队协商决定，将 Renzo 的代币代码从「EZ」更新为「REZ」，该更改已即刻生效。Renzo 的新智能合约地址将在未来五小时内更新至其新币挖矿（Launchpool）的公告中。这一调整旨在消除市场混淆，确保社区成员能够准确识别和交易 Renzo 代币。 今日早些时候报道，币安新币挖矿将上线第 53 期项目 Renzo (EZ)。&lt;/p&gt;
+&lt;p dir=&quot;ltr&quot;&gt;&lt;a href=&quot;https://www.panewslab.com/zh/sqarticledetails/cjase9s2.html&quot;&gt;Gitcoin 启动第 20 期赠款计划，在 Arbitrum 上进行&lt;/a&gt;&lt;/p&gt;
+&lt;p dir=&quot;ltr&quot;&gt;PANews 4 月 23 日消息，Gitcoin 宣布启动其第 20 期赠款计划（Gitcoin Grants 20，简称 GG20），该计划将持续到 5 月 8 日。此次赠款活动将在 Arbitrum 上进行，旨在通过配对资金进一步推动开源软件（OSS）和社区项目的发展。 在 GG20 中，Gitcoin 为开源软件计划分配了 100 万美元的匹配资金池，涵盖四个专门的 OSS 轮次，包括 Hackathon Alumni、dApps &amp;amp; Apps、开发人员工具和库以及 Web3 基础设施等。此外，GG20 还包括五个社区轮次，匹配资金总额为 47.6 万美元，涉及 ENS、气候解决方案、Open Civics、Hypercerts 生态系统和 Token Engineering Commons 等领域。 此次赠款活动利用 Gitcoin Passport 进行女巫攻击防护，该系统现已自动化，无需用户收集 stamp。GG20 的目标是通过战略性的资金分配和支持，加速开源软件和各社区项目的发展，以及促进更广泛的技术和社会进步。&lt;/p&gt;
+&lt;p dir=&quot;ltr&quot;&gt;&lt;a href=&quot;https://www.panewslab.com/zh/sqarticledetails/o21gei6g.html&quot;&gt;富达 FBTC 获得美国两家资管公司共计 4000 万美元投资&lt;/a&gt;&lt;/p&gt;
+&lt;p dir=&quot;ltr&quot;&gt;据 Cointelegraph 报道，富达比特币现货 ETF FBTC 获得美国两家传统资管公司共计 4000 万美元的投资。彭博社分析师 Eric Balchunas 表示，金融顾问公司 Legacy Wealth Management 和 United Capital Management of Kansas 最近分别向 FBTC 投资了 2000 万美元，成为该基金的大股东。据悉，Legacy Wealth Management 管理资产超过 3.59 亿美元，而 United Capital Management of Kansas 管理资产超过 4.36 亿美元。投研公司 Fintel 的数据显示，比特币分别占这两家公司投资组合的 6% 和 5%。&lt;/p&gt;
+&lt;p dir=&quot;ltr&quot;&gt;&lt;a href=&quot;https://www.panewslab.com/zh/sqarticledetails/v59v7py5.html&quot;&gt;潜在竞标者称 FTX 本周将拍卖更多 Solana 代币&lt;/a&gt;&lt;/p&gt;
+&lt;p dir=&quot;ltr&quot;&gt;据彭博社报道，知情人士透露，破产的 FTX 加密货币交易所的破产财产计划本周再次拍卖数量不详的 Solana 代币。下一批 SOL 将会进行「盲拍」。一位知情人士表示，拍卖截止日期为周三，结果将于周四公布。在最近的月度运营报告中，FTX 披露其 3 月份出售了约 3.076 亿美元的 SOL 和 ZBC 代币。 4 月份的出售情况尚未公布。该破产财产的发言人拒绝发表评论。 可能的竞购者包括 Figure Markets、Pantera Capital 和 Abra。 Figure 在其网站上表示，它正在通过特殊目的工具筹集资金来竞标代币。 Abra 首席执行官 Bill Barhydt 在接受采访时表示，该交易平台也将竞标。知情人士透露，Pantera 赢得了早期销售的一部分，并打算参与最新的销售，该公司正在权衡是自行竞购还是通过 SPV 竞购。&lt;/p&gt;
+&lt;p dir=&quot;ltr&quot;&gt;&lt;a href=&quot;https://www.panewslab.com/zh/sqarticledetails/e8vhsluj.html&quot;&gt;LayerZero Labs：随着上半年即将结束，TGE 的时间表越来越近&lt;/a&gt;&lt;/p&gt;
+&lt;p dir=&quot;ltr&quot;&gt;LayerZero Labs 在 X 平台表示，2024 年上半年即将结束，这意味着 TGE（代币生成活动）的时间表越来越近。请注意，应用程序应确保在 LayerZero Scan 上注册合约信息。预计在未来几个月内会看到持续更新。&lt;/p&gt;
+&lt;p dir=&quot;ltr&quot;&gt;&lt;a href=&quot;https://www.panewslab.com/zh/sqarticledetails/ykg67yw0.html&quot;&gt;Injective 的 INJ 3.0 治理提案获得通过，将使 INJ 的通缩性增加四倍&lt;/a&gt;&lt;/p&gt;
+&lt;p dir=&quot;ltr&quot;&gt;Injective 社区通过链上投票以 99.99% 的高通过率批准了 INJ 3.0 代币经济系统的提案，该提案将 INJ 的通缩性增加了四倍。INJ 3.0 的提案主要包括两个方面：一是改变 INJ 的通胀上下限，将下限调至 4%，上限调至 7%，并计划在 2026 年第二季度重新考虑其通缩参数；二是将「通胀率变化参数」从 0.1 增加到 0.5，以增强其对质押活动的响应性。 此次为 Injective 代币经济系统的最大升级，此举减少了代币的铸造属性，并增加了新的参数，使 INJ 成为加密领域中「最具通缩性的资产之一」。根据 4 月 19 日的治理提案，INJ 是基于 Cosmos 的第一层区块链 Injective 的原生代币，由非营利的 Injective Foundation 监管。这一提案的通过标志着 Injective 发展的下一个阶段；自创立以来已有数十亿美元资金流入。Injective Foundation 的首席执行官 Jenna Peterson 表示，为了确保生态系统长期作为机构参与者的伙伴，INJ 必须作为 ultrasound 货币发挥作用，以奖励早期采纳者并吸引新参与者。&lt;/p&gt;
+&lt;p dir=&quot;ltr&quot;&gt;&lt;a href=&quot;https://www.panewslab.com/zh/sqarticledetails/jq2t3a0y.html&quot;&gt;流动性聚合协议 Magpie Protocol 建议用户立即撤销对 Magpie 合约的授权&lt;/a&gt;&lt;/p&gt;
+&lt;p dir=&quot;ltr&quot;&gt;去中心化流动性聚合协议 Magpie Protocol 近日在其官方推特上发布警告，提示用户注意诈骗行为。该协议建议所有已授权并在钱包中持有资金的用户立即撤销对 Magpie 合约的授权。用户可通过访问 revoke.cash 网站来撤销授权。Magpie Protocol 团队表示正在积极评估此次漏洞的影响范围，并将很快提供详细的事后分析更新。&lt;/p&gt;
+&lt;p dir=&quot;ltr&quot;&gt;&lt;a href=&quot;https://www.panewslab.com/zh/sqarticledetails/nj5tyc48.html&quot;&gt;支付公司 Block 计划开发完整的比特币挖矿系统&lt;/a&gt;&lt;/p&gt;
+&lt;p dir=&quot;ltr&quot;&gt;据 Cointelegraph 报道，Jack Dorsey 旗下的支付公司 Block 宣布计划开发完整的比特币挖矿系统，以应对矿商面临的挑战。Block 在最新博客文章中表示，已经完成了用于比特币挖矿的三纳米芯片的开发。该公司目前正在与一家半导体代工厂合作，以完成芯片的设计。Block 表示，这将使其更接近支持去中心化挖矿的目标，其中包括提供独立的挖矿芯片和自己的完整挖矿系统。Jack Dorsey 曾于 2021 年 10 月提出了比特币去中心化挖矿的协作方法。&lt;/p&gt;
+&lt;p dir=&quot;ltr&quot;&gt;&lt;a href=&quot;https://www.panewslab.com/zh/sqarticledetails/sn9tbzq3.html&quot;&gt;数据：4 月 23 日贝莱德 IBIT 交易量 6.61 亿美元，灰度 GBTC 2.24 亿美元&lt;/a&gt;&lt;/p&gt;
+&lt;p dir=&quot;ltr&quot;&gt;据 HODL15Capital 监测，4 月 23 日比特币现货 ETF 交易量数据如下：贝莱德 IBIT 6.61 亿美元，灰度 GBTC 2.24 亿美元，富达 FBTC 2.33 亿美元，ProShares BITO 1.7 亿美元，ARKB 6153 万美元，BITB 6051 万美元。&lt;/p&gt;
+&lt;p dir=&quot;ltr&quot;&gt;&lt;a href=&quot;https://www.panewslab.com/zh/sqarticledetails/f83o0un7.html&quot;&gt;数据：昨日灰度 GBTC 仅净流出 6690 万美元，ETF 单日整体净流入已确认&lt;/a&gt;&lt;/p&gt;
+&lt;p dir=&quot;ltr&quot;&gt;据 Farside Investors 数据监测，4 月 23 日灰度 GBTC 资金净流出 6690 万美元，Bitwise 的 BITB 资金流入约 2320 万美元，Ark 21Shares 的 ARKB 资金流入约 3330 万美元，Franklin 的 EZBC 资金流入 190 万美元，VanEck 的 HODL 资金流出约 190 万美元。 此外，据 Tree News 报道，4 月 23 日贝莱德的 IBIT 资金流入约 3770 万美元。目前尚有部分 ETF 数据未公布。&lt;/p&gt;
+&lt;p dir=&quot;ltr&quot;&gt;&lt;a href=&quot;https://www.panewslab.com/zh/sqarticledetails/w1hob691.html&quot;&gt;疑似孙宇晨地址凌晨再次从币安转出 15389 枚 ETH，价值 4979 万美元&lt;/a&gt;&lt;/p&gt;
+&lt;p dir=&quot;ltr&quot;&gt;据链上分析师@ai_9684xtpa 监测，04.17 以来增持 48,875 枚 ETH 的巨鲸（疑似孙宇晨地址）七小时前再次从币安转出 15,389 枚 ETH，价值 4,979 万美元。 结合「过去三天孙宇晨关联地址从 JustLend 中转出 9,500 万枚 USDT」的信息，疑似其使用这部分稳定币购入的 ETH。目前该巨鲸累计持有 147,442 枚 ETH，总价值 4.76 亿美元，增持部分平均成本 3,044 美元。&lt;/p&gt;
+&lt;p dir=&quot;ltr&quot;&gt;&lt;a href=&quot;https://www.panewslab.com/zh/sqarticledetails/y4a4xvrs.html&quot;&gt;加密钱包公司 Turnkey 完成 1500 万美元 A 轮融资，Lightspeed Faction 和 Galaxy Ventures 领投&lt;/a&gt;&lt;/p&gt;
+&lt;p dir=&quot;ltr&quot;&gt;据 CoinDesk 报道，由前 Coinbase 员工创立的加密货币钱包初创公司 Turnkey 在其 A 轮融资中成功筹集了 1500 万美元。这一轮融资由 Lightspeed Faction 和 Galaxy Ventures 领投，Sequoia、Coinbase Ventures、Alchemy、Figment Capital 和 Mirana Ventures 也参与了投资。此轮融资完成于去年十月，继 2022 年该公司完成 750 万美元种子轮融资后。 Turnkey 的产品套件于去年八月向公众发布，已被多家企业和金融机构使用，包括区块链开发平台 Alchemy，后者利用 Turnkey 提供的工具作为其「钱包即服务」产品的后端[交易]签名者。其他客户还包括专注于企业的钱包如 Mural，以及使用 Turnkey 嵌入式钱包的交易终端。&lt;/p&gt;
+&lt;p dir=&quot;ltr&quot;&gt;&lt;a href=&quot;https://www.panewslab.com/zh/sqarticledetails/tugy2ag7.html&quot;&gt;孙宇晨多个链上地址共持有约 41.65 亿美元的加密资产&lt;/a&gt;&lt;/p&gt;
+&lt;p dir=&quot;ltr&quot;&gt;据链上分析师余烬统计，孙宇晨（Justin Sun）自本轮牛市以来的链上操作显示其资金动向和策略明确。具体操作如下： 孙宇晨在 2023 年 12 月 7 日至 2024 年 1 月 30 日期间通过其 TT2T...kU9N 地址销毁了 10 亿 TUSD，并在随后的 12 月 9 日至 2 月 23 日期间铸造了 21 亿 USDT，涉及多个地址包括 TWGH...jeFP 和 TA6b...aPAL。累计向币安转移了 25.25 亿 USDT，主要通过三个地址进行转移：TT2T...kU9N、TWGH...jeFP、TA6b...aPAL。孙宇晨自 2023 年 12 月 26 日起，通过中心化交易所提取和链上购买的方式，累计购入了 323,799 ETH，总价值约 10.248 亿美元，平均购买价格为 2,942 美元。 孙宇晨目前通过多个 Tron 和 Ethereum 地址持有的主要资产包括：59.89 万 ETH（价值约 19.02 亿美元）、53.64 亿 TRX（价值约 6.02 亿美元）、4.58 亿 USDD（价值 4.58 亿美元）、3.15 亿 TUSD（价值 3.15 亿美元）、3 亿 USDT（价值 3 亿美元）以及 158.9T BTT（价值 2.09 亿美元），总价值约 41.65 亿美元。&lt;/p&gt;
+&lt;p dir=&quot;ltr&quot;&gt;&lt;strong&gt;PANews 新功能「龙」重登场，焕新出发！&lt;/strong&gt;&lt;/p&gt;
+&lt;p dir=&quot;ltr&quot;&gt;PANews APP 及网页端上线 4 大实用新功能，助力获取专属自己的 Alpha 资讯：&lt;/p&gt;
+&lt;p dir=&quot;ltr&quot;&gt;【今日必读】每日热点，迅速掌握；&lt;/p&gt;
+&lt;p dir=&quot;ltr&quot;&gt;【发现】热门活动、行业关键数据实时查看；&lt;/p&gt;
+&lt;p dir=&quot;ltr&quot;&gt;【观点】大 V 观点，看看有无道理；&lt;/p&gt;
+&lt;p dir=&quot;ltr&quot;&gt;【深度】原创文章、行业研报、事件解读，带来深度思考。&lt;a href=&quot;https://www.panewslab.com/download.html&quot;&gt;立即下载&lt;/a&gt;！&lt;/p&gt;</description>
+            <link>https://panewslab.com/zh/articledetails/d99klsga.html</link>
+            <guid isPermaLink="false">https://panewslab.com/zh/articledetails/d99klsga.html</guid>
+            <pubDate>Wed, 24 Apr 2024 02:20:09 GMT</pubDate>
+            <author>PA 一线</author>
+            <category>加密货币</category>
+            <category>区块链</category>
+            <category>ETF</category>
+            <category>比特币</category>
+            <category>以太坊</category>
+        </item>
+        <item>
+            <title>解读币安最新 Launchpool 项目 Renzo：代币经济模型及估值预期</title>
+            <description>&lt;blockquote&gt;相较于过往多期 Launchpool 项目，Renzo 的估值逻辑似乎要清晰许多。&lt;/blockquote&gt;&lt;p&gt;作者：Azuma，Odaily 星球日报&lt;/p&gt;
+&lt;p&gt;&lt;img style=&quot;display: block; margin-left: auto; margin-right: auto;&quot; src=&quot;https://cdn-img.panewslab.com/yijian/2024/4/24/images/1d7484bb2dba6f992f83189d3a2cfa5d.jpg&quot; alt=&quot;解读币安最新 Launchpool 项目 Renzo：代币经济模型及估值预期&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt;
+&lt;p&gt;4 月 23 日，晚间，币安官方宣布流动性再质押协议 Renzo（EZ）将成为该平台新币挖矿的第 53 期项目。&lt;/p&gt;
+&lt;p&gt;自北京时间 4 月 24 日 8: 00 起，用户可以将 BNB、FDUSD 投入至 Launchpool 内获得 EZ 奖励，EZ 挖矿共计将持续 6 天，Launchpool 网站将于挖矿活动开放前更新。&lt;/p&gt;
+&lt;p&gt;Launchpool 结束后，币安将于北京时间 4 月 30 日 20: 00 上市 Renzo (EZ)，并开通 EZ/BTC、EZ/USDT、EZ/BNB、EZ/FDUSD 和 EZ/TRY 交易市场，EZ 将适用种子标签交易规则。&lt;/p&gt;
+&lt;h3&gt;Renzo 业务模型概述&lt;/h3&gt;
+&lt;p&gt;今年早些时候，Odaily 星球日报曾在 Renzo 上线不久写过一篇文章《TVL 月增 1 亿，Renzo 何以在 Restaking 赛道占据一席之地？》，文中详细拆解了 Renzo 的业务模型。&lt;/p&gt;
+&lt;p&gt;简而言之，Renzo 的定位是基于 EigenLayer 的流动性再质押协议，该项目主要想解决直接通过 EigenLayer 进行再质押的两大痛点：一是再质押之后 ETH 的流动性也会被锁定的问题，Renzo 的解决方式是利用衍生代币 ezETH 释放了再质押 ETH 的流动性；二是随着 EigenLayer 主动验证服务（AVS）数量的增多，不同的 AVS 配置策略会呈现截然不同的收益及风险状况，此时 Renzo 可利用其算法来实时平衡收益及风险，替代用户做出复杂的配置选择，帮助用户实现稳健的高收益。&lt;/p&gt;
+&lt;p&gt;&lt;img style=&quot;display: block; margin-left: auto; margin-right: auto;&quot; src=&quot;https://cdn-img.panewslab.com/yijian/2024/4/24/images/696fa5c8cce9385d781a101ce9cce3e6.jpg&quot; alt=&quot;解读币安最新 Launchpool 项目 Renzo：代币经济模型及估值预期&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt;
+&lt;h3&gt;EZ 代币经济模型&lt;/h3&gt;
+&lt;p&gt;在币安正式官宣将上线 Renzo 后不久，EZ 的代币经济模型概况也得以首次披露。&lt;/p&gt;
+&lt;p&gt;EZ 的总供应量将为 100 亿枚，上市时的流通供应量将为 10.5 亿枚，约占代币总供应量的 10.50% 。具体分配机制如下。&lt;/p&gt;
+&lt;ul&gt;
+&lt;li&gt;币安 Launchpool 将分配 2.50% ；&lt;/li&gt;
+&lt;li&gt;空投将分配 10.00% ；&lt;/li&gt;
+&lt;li&gt;投资者及顾问将分配 31.56% ；&lt;/li&gt;
+&lt;li&gt;团队将分配 20.00% ；&lt;/li&gt;
+&lt;li&gt;基金会将分配 13.44% ；&lt;/li&gt;
+&lt;li&gt;DAO 金库将分配 20.00% ；&lt;/li&gt;
+&lt;li&gt;流动性预算将分配 2.50% ；&lt;/li&gt;
+&lt;/ul&gt;
+&lt;p&gt;&lt;img style=&quot;display: block; margin-left: auto; margin-right: auto;&quot; src=&quot;https://cdn-img.panewslab.com/yijian/2024/4/24/images/99f722b746d29d9f8ed867ef20d29cdb.jpg&quot; alt=&quot;解读币安最新 Launchpool 项目 Renzo：代币经济模型及估值预期&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt;
+&lt;p&gt;从代币解锁进度来看，自流通之初起，EZ 的流通占比在接下来的近一年时间内都会保持相对较低的水平，该时段的代币供应主要由币安 Launchpool 以及空投份额组成。不过，到明年 Q1 末开始，EZ 的流通供应将进入加速阶段，投资者需注意该时间节点。&lt;/p&gt;
+&lt;p&gt;&lt;img style=&quot;display: block; margin-left: auto; margin-right: auto;&quot; src=&quot;https://cdn-img.panewslab.com/yijian/2024/4/24/images/f758e32e3190f5abb3f84a690e398bae.jpg&quot; alt=&quot;解读币安最新 Launchpool 项目 Renzo：代币经济模型及估值预期&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt;
+&lt;h3 class=&quot;customstyle_text&quot;&gt;估值概况&lt;/h3&gt;
+&lt;p&gt;相较于币安过往多期的 Launchpool 项目，Rezon 的估值逻辑要相对简单许多，因为 Renzo 有一个非常清晰的对比标的 —— ether.fi。&amp;nbsp;&lt;/p&gt;
+&lt;p class=&quot;ql-direction-ltr ql-long-17354896&quot;&gt;作为流动性再质押赛道的两大直接竞争对手，Renzo 和 ether.fi 除了在业务类型上存在重叠之外，还存在着多项相似之处。&lt;/p&gt;
+&lt;ul class=&quot; list-paddingleft-2&quot;&gt;
+&lt;li&gt;
+&lt;p class=&quot;ql-direction-ltr ql-long-17354896&quot;&gt;第一，&lt;strong&gt;二者的 TVL 几乎旗鼓相当。&lt;/strong&gt;Defillama 数据显示，当前&amp;nbsp;ether.fi 的 TVL 为 38 亿美元，在 LRT 赛道排名第一；Renzo 的 TVL 为 33 亿美元，在 LRT 赛道排名第二。&lt;/p&gt;
+&lt;/li&gt;
+&lt;li&gt;
+&lt;p class=&quot;ql-direction-ltr&quot;&gt;第二，&lt;strong&gt;二者代币 ETHFI 和 EZ 的初始流通比例也几乎一样。&lt;/strong&gt;ETHFI 的初始流通供应量为 1.152 亿枚，占总代币供应量的约 11.52%&amp;nbsp;；EZ 的初始流通供应量将为 10.5&amp;nbsp;亿枚，约占代币总供应量的&amp;nbsp;10.50%&amp;nbsp;&amp;nbsp;&lt;/p&gt;
+&lt;/li&gt;
+&lt;li&gt;
+&lt;p class=&quot;ql-direction-ltr ql-long-17354896&quot;&gt;第三，&lt;strong&gt;二者代币 ETHFI 和 EZ 的首发渠道均是币安&amp;nbsp;Launchpool&lt;/strong&gt;，ether.fi 是此前的第 49 期项目。&lt;/p&gt;
+&lt;/li&gt;
+&lt;/ul&gt;
+&lt;p class=&quot;ql-direction-ltr ql-long-17354896&quot;&gt;基于以上几点，我们大可以通过 ether.fi 上线之后的价格表现来推测 Renzo 的估值状况，详情如下。&lt;/p&gt;
+&lt;p class=&quot;ql-direction-ltr ql-long-17354896&quot;&gt;以 ETHFI 实时价格 3.9 美元计算，&lt;strong&gt;以相同 FDV 计算对应的 EZ 价格将为 0.39 美元，FDV 差值加权后为 0.34 美元；以相同 MC 计算对应的 EZ 价格为 0.43 美元，FDV 差值加权后为 0.37 美元&lt;/strong&gt;。&lt;/p&gt;
+&lt;p&gt;当然了，上述价格仅是我们基于 Renzo 市场竞争状况作出的静态估算，考虑到二者在业务侧重上也存在一定差异，且两期打新之时的市场情绪也略有不同，EZ 的价格表现仍需等待开盘之后才有确定性的答案。&lt;/p&gt;</description>
+            <link>https://panewslab.com/zh/articledetails/9siqqeu4.html</link>
+            <guid isPermaLink="false">https://panewslab.com/zh/articledetails/9siqqeu4.html</guid>
+            <pubDate>Wed, 24 Apr 2024 02:01:37 GMT</pubDate>
+            <author>Odaily 星球日报</author>
+            <category>深度</category>
+            <category>Restaking</category>
+            <category>LRT</category>
+            <category>币安</category>
+            <category>ETH</category>
+            <category>EigenLayer</category>
+        </item>
+        <item>
+            <title>比特币减半深度解析：对投资者影响的全面评估</title>
+            <description>&lt;blockquote&gt;比特币减半是指比特币网络中产生比特币的奖励每四年减半一次的事件。这是比特币协议中一个预先设定的规则，目的是控制比特币的供应，模仿黄金的稀缺性。&lt;/blockquote&gt;&lt;h3&gt;一、引言&lt;/h3&gt;
+&lt;h4&gt;&lt;strong&gt;比特币和其独特性质&lt;/strong&gt;&lt;/h4&gt;
+&lt;p&gt;比特币，作为第一种和最著名的加密货币，自 2009 年由神秘人物中本聪创立以来，已经引起了全球的广泛关注。比特币的核心特性是其去中心化的性质，不依赖于任何中央权威机构，而是通过一个公开的账本——区块链来记录交易。这种设计不仅保证了系统的透明性，还增强了安全性，因为修改任何已经记录的信息需要网络大部分算力的同意。此外，比特币的全球性使其不受特定国家或政策的直接影响，从而成为一种独特的国际货币。&lt;/p&gt;
+&lt;h4&gt;&lt;strong&gt;比特币减半&lt;/strong&gt;&lt;/h4&gt;
+&lt;p&gt;比特币减半是指比特币网络中产生比特币的奖励每四年减半一次的事件。这是比特币协议中一个预先设定的规则，目的是控制比特币的供应，模仿黄金的稀缺性。每产生 210,000 个区块，矿工获得的新比特币数量就会减半。从最初的每个区块奖励 50 比特币开始，到现在 2024 年的 3.125 比特币。这种周期性的供应减少，理论上会在需求不变的情况下推高价格，从而对市场产生重要影响。&lt;/p&gt;
+&lt;h3&gt;二、比特币减半机制解析&lt;/h3&gt;
+&lt;h4&gt;&lt;strong&gt;比特币减半的定义与历史回顾&lt;/strong&gt;&lt;/h4&gt;
+&lt;p&gt;比特币减半是指在比特币网络中，新生成区块的比特币奖励每产生 210,000 个区块减少一半的事件，大约每四年一次。这是比特币算法的核心部分，旨在控制通货膨胀和模仿稀有资源（如黄金）的开采速度逐渐减慢。自 2009 年比特币网络运行以来，从最初的每个区块奖励 50 比特币开始，到现在 2024 年的 3.125 比特币。每次减半后，挖矿奖励都会减少 50%，这直接影响了矿工的收益和整个比特币经济。&lt;/p&gt;
+&lt;h4&gt;&lt;strong&gt;矿商的角色及对减半的响应&lt;/strong&gt;&lt;/h4&gt;
+&lt;p&gt;在比特币网络中，矿商扮演着维护区块链安全和处理交易的关键角色。每当减半发生，矿工的奖励减少，许多效率较低的矿场可能会因为利润下降而被迫退出市场。响应减半，矿商通常会寻求更高效的挖矿设备和更低成本的电力供应，以保持竞争力和盈利能力。&lt;/p&gt;
+&lt;h4&gt;&lt;strong&gt;减半对矿业经济性的影响分析&lt;/strong&gt;&lt;/h4&gt;
+&lt;p&gt;减半事件通常导致挖矿成本与市场价值之间的重大重新评估。矿业的盈利性受到直接影响，因为奖励减少意味着在比特币价格不上涨的情况下，相同的挖矿努力会产生更少的收入。这促使矿业公司评估其运营效率，投资于更先进的技术，或在全球范围内寻找具有成本效益的能源解决方案。&lt;/p&gt;
+&lt;h4&gt;&lt;strong&gt;矿商策略的调整，如设备升级与地理分布的变化&lt;/strong&gt;&lt;/h4&gt;
+&lt;p&gt;为了适应减半带来的挑战，矿商通常采取包括升级硬件、优化挖矿算法、转移到电费更便宜的地区等多种策略。例如，许多矿商从中国迁移到中亚、北欧甚至北美地区，以利用当地较低的能源成本和更稳定的政策环境。&lt;/p&gt;
+&lt;h3&gt;三、减半对比特币供应的影响&lt;/h3&gt;
+&lt;p&gt;减半直接影响比特币的新供应速度，长期来看，这种供应的减少在保持需求稳定的情况下可能推动价格上涨。减半事件通过这种方式影响了比特币的经济模型，使其更像是一种「数字黄金」。&lt;/p&gt;
+&lt;p&gt;&lt;img style=&quot;display: block; margin-left: auto; margin-right: auto;&quot; src=&quot;https://cdn-img.panewslab.com/panews/images/OOjZIgCXxc.png&quot; width=&quot;720&quot; height=&quot;456&quot; alt=&quot;比特币减半深度解析：对投资者影响的全面评估&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt;
+&lt;pre&gt;Source: https://www.tradingview.com/chart/BTCUSD/zDs32rdu-BTC-Halving-Cycle-Top-Analysis-2021-2022/&lt;/pre&gt;
+&lt;h4&gt;&lt;strong&gt;减半前后比特币价格表现&lt;/strong&gt;&lt;/h4&gt;
+&lt;ul&gt;
+&lt;li&gt;2012 年减半： 比特币价格从 12 美元上涨至 1,300 美元，涨幅超过 100 倍，中间需时 357 天。&lt;/li&gt;
+&lt;li&gt;2016 年减半： 比特币价格从 650 美元上涨至 18,000 美元，涨幅超过 27 倍，中间需时 511 天。&lt;/li&gt;
+&lt;li&gt;2020 年减半： 比特币价格从 9,000 美元上涨至 69,000 美元，涨幅超过 7 倍，中间需时 546 天。&lt;/li&gt;
+&lt;/ul&gt;
+&lt;p&gt;&lt;img style=&quot;display: block; margin-left: auto; margin-right: auto;&quot; src=&quot;https://cdn-img.panewslab.com/panews/images/yUFNLzo02E.png&quot; width=&quot;720&quot; height=&quot;434&quot; alt=&quot;比特币减半深度解析：对投资者影响的全面评估&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt;
+&lt;p&gt;短期波动： 过去三次减半后，比特币价格在减半后一个月内出现震荡，但随后在接下来一年内出现大幅上涨。这一现象表明，市场需要时间消化减半的影响，但最终会对减半带来的供应量减少做出反应。&lt;/p&gt;
+&lt;p&gt;长期上涨： 尽管短期内可能出现波动，但历史数据表明比特币减半后长期会带来显著的涨幅。这是因为减半机制会持续减少比特币的供应量，而比特币的总供应量只有 2100 万个，这使得比特币成为一种稀缺资产。&lt;/p&gt;
+&lt;h4&gt;&lt;strong&gt;减半前后比特币价格表现&lt;/strong&gt;&lt;/h4&gt;
+&lt;ul&gt;
+&lt;li&gt;2012 年首次减半： 减半后一个月，比特币价格上涨了 9%。在接下来的一年中，比特币价格飙升了 8,839%。&lt;/li&gt;
+&lt;li&gt;2016 年第二次减半： 减半后一个月，比特币价格下跌了 9%。在接下来的一年中，比特币价格飙升了 285%。&lt;/li&gt;
+&lt;li&gt;2020 年第三次减半： 减半后一个月，比特币价格上涨了 6%。在接下来的一年中，比特币价格飙升了 548%。&lt;/li&gt;
+&lt;/ul&gt;
+&lt;p&gt;矿工抛售压力：矿工可能会在减半后抛售比特币，这可能会导致短期内价格承压。然而，需要考虑的是，矿工的抛售行为往往会受到市场需求的影响。如果市场需求强劲，矿工的抛售行为可能会被吸收，不会对价格造成显著影响。&lt;/p&gt;
+&lt;h4&gt;比特币的主要事件和价格影响 (2018 – 2024)&lt;/h4&gt;
+&lt;p&gt;&lt;img style=&quot;display: block; margin-left: auto; margin-right: auto;&quot; src=&quot;https://cdn-img.panewslab.com/panews/images/4z23397fgB.png&quot; width=&quot;720&quot; alt=&quot;比特币减半深度解析：对投资者影响的全面评估&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt;
+&lt;h4&gt;&lt;strong&gt;BTC 现货 ETF 的推出&lt;/strong&gt;&lt;/h4&gt;
+&lt;p&gt;2024 年 1 月，首只比特币现货 ETF 在美国上市，标志着传统金融市场对数字资产的认可。将进一步推动机构投资者进入加密货币市场，增加比特币的流动性和市场深度，从而对价格产生积极影响。&lt;/p&gt;
+&lt;p&gt;&lt;img style=&quot;display: block; margin-left: auto; margin-right: auto;&quot; src=&quot;https://cdn-img.panewslab.com/panews/images/Sw1A3N8bph.png&quot; width=&quot;720&quot; alt=&quot;比特币减半深度解析：对投资者影响的全面评估&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt;
+&lt;h3&gt;四、比特币作为投资资产的优势&lt;/h3&gt;
+&lt;h4&gt;&lt;strong&gt;比特币与传统资产（如黄金、股票）的比较&lt;/strong&gt;&lt;/h4&gt;
+&lt;p&gt;比特币常被称为「数字黄金」，具有与黄金相似的非政府控制和稀缺性特征，但它在多个方面显示出与传统资产如黄金和股票不同的优势。首先，比特币的全球性和易于交易性提供了超越地理限制的优势，相对于黄金，比特币的存储和转移更为方便和低成本。其次，与股票市场相比，比特币市场几乎全天候运行，提供了更高的流动性和交易灵活性。此外，比特币的价格不受公司业绩或经济政策直接影响，这为投资者提供了一个潜在的避险工具，在全球经济不确定性增加时，比特币可能表现出与传统市场不同步的特性。&lt;/p&gt;
+&lt;p&gt;&lt;img style=&quot;display: block; margin-left: auto; margin-right: auto;&quot; src=&quot;https://cdn-img.panewslab.com/panews/images/iemYibFIBW.png&quot; width=&quot;720&quot; alt=&quot;比特币减半深度解析：对投资者影响的全面评估&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt;
+&lt;p&gt;如图所示，过去一年间，比特币的累计回报率与其他传统资产相比显示出了显著的差异。图中清晰展示了比特币相对于黄金、道琼斯工业平均指数、纳斯达克综合指数、标准普尔 500 指数以及标准普尔 500 债券指数的表现。可以看出，比特币在 2023 年 10 月经历了一段剧烈的增长期，其累计回报率在短时间内迅速攀升，远超其他资产。&lt;/p&gt;
+&lt;p&gt;这种急剧的增长强调了比特币作为一种投资工具的潜力和波动性，而传统资产如股票和债券指数的增长则相对平稳。此外，黄金作为传统的避险资产，其增长和波动均较为温和，与股票和债券指数的表现保持一致。在分析这些不同资产的回报时，比特币的独特性和高波动性为寻求非传统增长机会的投资者提供了一条不同的路径。&lt;/p&gt;
+&lt;p&gt;&lt;img style=&quot;display: block; margin-left: auto; margin-right: auto;&quot; src=&quot;https://cdn-img.panewslab.com/panews/images/PUw2sCktWB.png&quot; width=&quot;720&quot; alt=&quot;比特币减半深度解析：对投资者影响的全面评估&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt;
+&lt;p&gt;如图所示，比特币价格与其 30 天滚动波动性之间存在显著的关联。在大部分时间段内，我们可以看到比特币价格的上升伴随着波动性的增加。尤其是在图中标注的 2024 年初，比特币的价格达到了一个峰值，与此同时，波动性也显著增加，这表明价格的大幅波动和投资者的不确定性增加了市场的波动性。然而，在 2024 年 3 月，比特币价格出现了急剧的下跌，这也反映在波动性的急剧上升上，说明在价格快速变动时，波动性指标是一个反应市场不确定性和投资者情绪变化的重要指标。&lt;/p&gt;
+&lt;p&gt;在加密货币市场中，波动性作为风险的一个度量，是与价格紧密相连的，在进行资产配置时应当考虑到这一点。&lt;/p&gt;
+&lt;h4&gt;&lt;strong&gt;比特币的市场接受度与增长潜力&lt;/strong&gt;&lt;/h4&gt;
+&lt;p&gt;近年来，比特币的市场接受度显著提高，越来越多的金融机构和科技公司开始支持比特币交易或接受比特币作为支付方式。早年，国际支付巨头如 PayPal 和 Square 的加入，使得比特币更加主流化，为普通投资者提供了便捷的投资和使用途径。此外，随着区块链技术的发展和数字货币法规环境的逐步完善，比特币的长期增长潜力被广泛看好。作为一种无国界的货币，比特币在全球经济中的潜在角色正在逐步扩大，其增长潜力得到了许多投资者的认可。&lt;/p&gt;
+&lt;p&gt;&lt;img style=&quot;display: block; margin-left: auto; margin-right: auto;&quot; src=&quot;https://cdn-img.panewslab.com/panews/images/G0kF6S5zUt.png&quot; width=&quot;720&quot; alt=&quot;比特币减半深度解析：对投资者影响的全面评估&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt;
+&lt;p&gt;截至 2024 年 4 月 6 日，多家知名的 ETF 和上市公司持有大量的比特币，反映了市场对比特币的接受度和看好其增长潜力。Grayscale、BlackRock 和 Fidelity 等大型资管机构的比特币现货 ETF 持仓量达到了数十万个单位，管理的资产总值超过 500 亿美元。这一数据不仅显示了机构投资者对比特币投资的积极态度，也暗示了比特币作为一种新兴资产类别，正在得到越来越多传统金融市场参与者的认可。&lt;/p&gt;
+&lt;p&gt;同时，在上市公司中，MicroStrategy、Galaxy Digital Holdings、Marathon Digital Holdings 等公司亦持有相当规模的比特币，总计超过 25 万个，价值超过 170 亿美元。Tesla 等跨国科技公司的参与，更是表明了主流商业领域对比特币未来价值的肯定和预期。&lt;/p&gt;
+&lt;p&gt;总的来看，无论是资产管理行业还是各大上市公司，大规模的比特币持有情况都凸显了市场对其深厚的信心，以及比特币在全球资产配置中作为一种投资工具和价值储存手段的潜在重要性。这种趋势预示着加密货币市场的成熟度提升以及未来更广泛的市场接受度。&lt;/p&gt;
+&lt;h3&gt;五、未来展望与投资机会&lt;/h3&gt;
+&lt;h4&gt;&lt;strong&gt;比特币投资与传统投资组合的多样化效应&lt;/strong&gt;&lt;/h4&gt;
+&lt;p&gt;将比特币纳入传统投资组合可以提供显著的多样化效益。由于比特币与传统金融资产之间的相关性较低，它为投资组合提供了一种风险分散的手段。在全球经济不稳定或通货膨胀环境下，比特币甚至显示出避险资产的特性。通过分析比特币在不同市场条件下的表现，投资者可以更好地理解如何利用这种数字资产来优化其投资组合的风险与回报比。&lt;/p&gt;
+&lt;p&gt;&lt;img style=&quot;display: block; margin-left: auto; margin-right: auto;&quot; src=&quot;https://cdn-img.panewslab.com/panews/images/k5htRs6eUp.png&quot; width=&quot;720&quot; alt=&quot;比特币减半深度解析：对投资者影响的全面评估&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt;
+&lt;p&gt;此图揭示了比特币与传统资产间的低相关性特点，除了与以太坊保持较高相关性外，BTC 与道琼斯、标准普尔 500、纳斯达克以及恒生指数等主流资产的相关性普遍不高。这种低相关性展示了 BTC 作为资产组合中的多元化工具的优势，有助于分散投资组合的系统性风险。尤其在传统市场动荡或面临下行压力时，BTC 的这一特性可能为投资者提供一定程度的保护，从而降低整体投资组合的波动。因此，BTC 的加入，可以被视作一种策略性分配，旨在提高投资组合的风险调整回报率。&lt;/p&gt;
+&lt;p&gt;&lt;img style=&quot;display: block; margin-left: auto; margin-right: auto;&quot; src=&quot;https://cdn-img.panewslab.com/panews/images/n33XyL0D9L.png&quot; width=&quot;720&quot; alt=&quot;比特币减半深度解析：对投资者影响的全面评估&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt;
+&lt;p&gt;此图展示了过去十年间，传统的 60/40 投资组合（股票 60%，债券 40%）与不同比例比特币配置的投资组合的标准化累计回报率对比，以及比特币价格的变化趋势。60/35/5、55/35/10 和 50/35/15 代表的是股票、债券和比特币在投资组合中的比例。随着比特币占比的增加，组合的回报率波动也随之加大。&lt;/p&gt;
+&lt;p&gt;可以观察到，在比特币价格上涨期间，含有比特币配置的组合回报率显著高于传统的 60/40 组合。尤其是在 2020 年之后，随着比特币价格的显著上涨，包含比特币的组合表现出了更强的增长动力。&lt;/p&gt;
+&lt;p&gt;然而，这也伴随着更高的波动性，特别是在比特币价格高峰和回落期间。这表明，虽然将比特币纳入投资组合有可能增加回报，但同时也会增加组合的风险暴露度。&lt;/p&gt;
+&lt;p&gt;&lt;img style=&quot;display: block; margin-left: auto; margin-right: auto;&quot; src=&quot;https://cdn-img.panewslab.com/panews/images/t9SxO7Y1sq.png&quot; width=&quot;720&quot; alt=&quot;比特币减半深度解析：对投资者影响的全面评估&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt;
+&lt;p&gt;此图描绘了比特币与多种资产的滚动 12 个月夏普比率 (Sharpe Ratio)。夏普比率是衡量单位风险所带来的超额回报，一个较高的夏普比率意味着较高的风险调整回报。&lt;/p&gt;
+&lt;p&gt;从图中可见，比特币在某些时期的夏普比率远高于其他资产，表明在承担每单位风险时，其带来的超额回报是最大的。尤其在 2017 年及 2021 年期间，比特币的夏普比率出现了尖峰，这反映了其在这些时间段内投资回报与风险之间的优异比例。然而，也可观察到，比特币的夏普比率呈现出极大的波动性，与其价格的剧烈波动相对应。&lt;/p&gt;
+&lt;p&gt;与此相反，传统股票指数如标准普尔 500 和纳斯达克的夏普比率虽然较低，但波动性较小，反映出更稳定的风险调整回报性能。&lt;/p&gt;
+&lt;p&gt;免责声明：本文所提供的信息仅供参考之用，不构成任何投资或财务建议。本文内容基于当前信息编制，未来可能会有变动，不保证内容的准确性或完整性。在做出任何投资决策之前，请咨询您的财务顾问，以确保符合您个人的财务状况和风险承受能力。&lt;/p&gt;</description>
+            <link>https://panewslab.com/zh/articledetails/84163omqgojp.html</link>
+            <guid isPermaLink="false">https://panewslab.com/zh/articledetails/84163omqgojp.html</guid>
+            <pubDate>Wed, 24 Apr 2024 01:00:35 GMT</pubDate>
+            <author>EXIO</author>
+            <category>挖矿</category>
+            <category>投资</category>
+            <category>比特币</category>
+            <category>去中心化</category>
+            <category>安全</category>
+        </item>
         <item>
             <title>AI 代币再次齐狂飙，资金在为 GPT-5 发布做准备？</title>
             <description>&lt;blockquote&gt;OpenAI 预计 GPT-5 将在年中发布，可能是夏季。&lt;/blockquote&gt;&lt;p&gt;作者：1912212.eth，Foresight News&lt;/p&gt;
@@ -918,351 +1301,6 @@
             <category>币安</category>
             <category>BTC</category>
             <category>BitMEX</category>
-        </item>
-        <item>
-            <title>会卖才是师傅，一览如何高点卖出的终极策略</title>
-            <description>&lt;blockquote&gt;只有把握市场周期的运作规律，才能低吸高抛。&lt;/blockquote&gt;&lt;p&gt;作者：&lt;a href=&quot;https://twitter.com/ardizor/status/1782485989807567038&quot; rel=&quot;nofollow&quot;&gt;ardizor&lt;/a&gt;, 加密研究员&lt;/p&gt;
-&lt;p&gt;编译：Felix, PANews&lt;/p&gt;
-&lt;p&gt;每轮加密牛市往往都遵循相同的模式：99% 的人要么失去一切，要么干脆在盈亏平衡时离开市场，没有能及时获利了结。之所以会出现这种情况，是因为加密市场主要由情绪主导，如恐惧、贪婪和 FOMO。&lt;/p&gt;
-&lt;p&gt;很多人可以告诉你何时买入，但没人能告诉你何时卖出。加密研究员 ardizor 总结了如何以最高价格抛售的策略。虽然不可能精确预测每一次走势，但可以加深对市场结构和规则的了解，帮助确保利润，并在最佳时间平仓。&lt;/p&gt;
-&lt;p&gt;&lt;img style=&quot;display: block; margin-left: auto; margin-right: auto;&quot; src=&quot;https://cdn-img.panewslab.com/yijian/2024/4/23/images/bc12570d97d02347c69d147681a3f0b2.png&quot; alt=&quot;会卖才是师傅，一览如何高点卖出的终极策略&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt;
-&lt;p&gt;与任何其他资产一样，比特币的价格也会遵循特定的模式。这种模式会因人的情感（尤其是 FOMO）而不断重复。下图说明了交易者在不同时间段内的情绪。虽然每个代币可能会有细微的变化，但潜在的情绪是一致的。&lt;/p&gt;
-&lt;p&gt;&lt;img style=&quot;display: block; margin-left: auto; margin-right: auto;&quot; src=&quot;https://cdn-img.panewslab.com/yijian/2024/4/23/images/5652e97e0d51b5721218d3cddd763a9b.png&quot; alt=&quot;会卖才是师傅，一览如何高点卖出的终极策略&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt;
-&lt;p&gt;以 2021 年牛市中的市场周期模型为例。为了实现利润最大化，投资山寨币要在萧条阶段。记住：「当市场流血的时候买入，即便那是你自己的血。」&lt;/p&gt;
-&lt;p&gt;&lt;img style=&quot;display: block; margin-left: auto; margin-right: auto;&quot; src=&quot;https://cdn-img.panewslab.com/yijian/2024/4/23/images/8cc19ea0113c2ae9b5daff3c55cb2121.png&quot; alt=&quot;会卖才是师傅，一览如何高点卖出的终极策略&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt;
-&lt;p&gt;认识到山寨币何时开始真正飙升至关重要。在山寨币看涨阶段，收益可能是比特币或以太坊的 100 倍，因为其上涨潜力可能不仅仅是 2 倍，而是高达 1000 倍。在比特币主导的周期中：&lt;/p&gt;
-&lt;ul&gt;
-&lt;li&gt;如果比特币市占率上升，比特币价格上涨，则山寨币的价格横盘或下跌；&lt;/li&gt;
-&lt;li&gt;如果比特币市占率上升，比特币价格下跌，则山寨币的价格下跌；&lt;/li&gt;
-&lt;li&gt;如果比特币市占率上升，比特币价格横盘，则山寨币的价格下跌；&lt;/li&gt;
-&lt;li&gt;如果比特币市占率下降，比特币价格上涨，则山寨币的价格上涨；&lt;/li&gt;
-&lt;li&gt;如果比特币市占率下降，比特币价格下跌，则山寨币的价格横盘或上涨；&lt;/li&gt;
-&lt;li&gt;如果比特币市占率下降，比特币价格横盘，则山寨币的价格上涨；&lt;/li&gt;
-&lt;/ul&gt;
-&lt;p&gt;&lt;img style=&quot;display: block; margin-left: auto; margin-right: auto;&quot; src=&quot;https://cdn-img.panewslab.com/yijian/2024/4/23/images/7128afc0ff55e1ab84bf5a129c8304ce.png&quot; alt=&quot;会卖才是师傅，一览如何高点卖出的终极策略&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt;
-&lt;p&gt;或许你已经知道市场是如何运作的，但如果没有一个体系，就不能有效管理情绪。以下为你需要牢记的交易规则：&lt;/p&gt;
-&lt;p&gt;&lt;strong&gt;将市场利润视为薪水，而不是彩票中奖&lt;/strong&gt;&lt;/p&gt;
-&lt;p&gt;尊重你的金钱，不要随意挥霍。在这个世界上没有一夜暴富的方法。只有稳扎稳打才能赢得胜利。&lt;/p&gt;
-&lt;p&gt;&lt;strong&gt;根据预期买入，根据消息卖出&lt;/strong&gt;&lt;/p&gt;
-&lt;p&gt;不要在狂欢结束后才出现。当有消息传出时，是卖出的时候，而不是买入的时候。如果买晚了，只能满足那些早买、现在正开着新兰博基尼开怀大笑的人。&lt;/p&gt;
-&lt;p&gt;&lt;strong&gt;如果&lt;/strong&gt;&lt;strong&gt;尚未该&lt;/strong&gt;&lt;strong&gt;持有代币，你会立即从投资组合中购买它吗？&lt;/strong&gt;&lt;/p&gt;
-&lt;p&gt;即使投资很糟糕，人也通常不愿意接受损失或意识到自己做了糟糕的投资。经常想出无数的理由来解释为什么会持有这些代币。在出现亏损的时候，如果问自己上述这个问题，你可能会对你投资组合中垃圾资产的数量感到惊讶。&lt;/p&gt;
-&lt;p&gt;为了实现真正的高收益，在分析有前景的代币时考虑以下因素:&lt;/p&gt;
-&lt;ul&gt;
-&lt;li&gt;上涨潜力是什么？（将该代币与同领域其他代币进行比较）&lt;/li&gt;
-&lt;li&gt;最大持有者和顶级风投是谁？&lt;/li&gt;
-&lt;li&gt;路线图、合作伙伴关系、团队等信息&lt;/li&gt;
-&lt;li&gt;该代币是否即将在 CEX 上市？（上市通常会导致流动性和价格上涨，尤其是在公告发布时）&lt;/li&gt;
-&lt;/ul&gt;
-&lt;p&gt;相关阅读：&lt;a href=&quot;https://www.panewslab.com/zh/articledetails/3usx8i21.html&quot;&gt;从 100 美元到 1 亿美元，探究传奇交易员 GCR 的交易心得及其持仓&lt;/a&gt;&lt;/p&gt;</description>
-            <link>https://panewslab.com/zh/articledetails/y0a49sg7.html</link>
-            <guid isPermaLink="false">https://panewslab.com/zh/articledetails/y0a49sg7.html</guid>
-            <pubDate>Tue, 23 Apr 2024 06:56:01 GMT</pubDate>
-            <author>Felix</author>
-            <category>深度</category>
-            <category>PA 原创</category>
-            <category>投资</category>
-            <category>比特币</category>
-        </item>
-        <item>
-            <title>详解新协议 ERC7683：Uniswap 与 Across 联合制定的跨链意图新标准</title>
-            <description>&lt;blockquote&gt;ERC7683 旨在优化解决方案用户体验，降低进入通用解决方案网络的门槛。&lt;/blockquote&gt;&lt;p&gt;作者：Nick Pai，Archetype&lt;/p&gt;
-&lt;p&gt;编译：深潮 TechFlow&lt;/p&gt;
-&lt;p&gt;这篇文章分为两部分。首先，我阐述了我认为链抽象基础设施对于加密货币的消费者采用至关重要，以及基于意图的架构是设计它的最佳方式。其次，我描述了意图广泛采用的主要障碍：解决方案网络的活跃度。&lt;/p&gt;
-&lt;p&gt;文章最后，我提出了一个解决方案，并介绍了 Across 和 Uniswap 合作制定的标准，该标准基于 CAKE 工作组的反馈。这一标准旨在优化解决方案用户体验，降低进入通用解决方案网络的门槛，使大多数意图可以被路由到此网络，并最终使更大、更具竞争力的解决方案网络得以繁荣。&lt;/p&gt;
-&lt;h3&gt;议程&lt;/h3&gt;
-&lt;p&gt;&lt;strong&gt;问题：&lt;/strong&gt;&lt;/p&gt;
-&lt;ol start=&quot;1&quot;&gt;
-&lt;li&gt;
-&lt;p&gt;定义最终状态：什么使得加密应用「可用」？&lt;/p&gt;
-&lt;/li&gt;
-&lt;li&gt;
-&lt;p&gt;为什么说 &quot;链抽象 &quot;是模块化区块链基本拓扑结构所产生的用户体验问题的解决方案？&lt;/p&gt;
-&lt;/li&gt;
-&lt;li&gt;
-&lt;p&gt;为什么可用的加密应用必须建立在链抽象基础设施之上？&lt;/p&gt;
-&lt;/li&gt;
-&lt;/ol&gt;
-&lt;p&gt;&lt;strong&gt;解决方案空间：&lt;/strong&gt;&lt;/p&gt;
-&lt;ol start=&quot;1&quot;&gt;
-&lt;li&gt;
-&lt;p&gt;基于意图的架构如何产生链抽象&lt;/p&gt;
-&lt;/li&gt;
-&lt;li&gt;
-&lt;p&gt;理解当解决方案网络大且具有竞争力时，意图市场的表现最佳&lt;/p&gt;
-&lt;/li&gt;
-&lt;li&gt;
-&lt;p&gt;启动意图解决方案网络需要引入更多将产生意图的应用&lt;/p&gt;
-&lt;/li&gt;
-&lt;/ol&gt;
-&lt;p&gt;&lt;strong&gt;提议：&lt;/strong&gt;&lt;/p&gt;
-&lt;ol start=&quot;1&quot;&gt;
-&lt;li&gt;
-&lt;p&gt;为什么我们需要一个以「解决方案用户体验」为优先的跨链意图标准，以将解决方案和意图市场扩展到足够大的规模，以实现网络效应&lt;/p&gt;
-&lt;/li&gt;
-&lt;/ol&gt;
-&lt;h3&gt;没有链抽象，就无法构建可用的加密应用&lt;/h3&gt;
-&lt;p&gt;&lt;img style=&quot;display: block; margin-left: auto; margin-right: auto;&quot; src=&quot;https://cdn-img.panewslab.com/yijian/2024/4/23/images/ac258dd3738d31f739401b87f52e0a40.jpg&quot; alt=&quot;详解新协议 ERC7683：Uniswap 与 Across 联合制定的跨链意图新标准&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt;
-&lt;p&gt;我们最优秀和最聪明的人是否在构建多余的基础设施？&lt;/p&gt;
-&lt;p&gt;许多人抱怨最优秀的加密工程师过度关注向终端用户提供更多的区块空间。这种批评是有道理的；相对于需求，为终端用户提供的 L2 解决方案太多了。&lt;/p&gt;
-&lt;p&gt;&lt;strong&gt;然而，我拒绝接受没有任何有用的加密应用程序存在的观点。&lt;/strong&gt;&lt;/p&gt;
-&lt;p&gt;去中心化金融为个人提供了自我保管数字资产的能力，使他们能够绕过苛刻的服务提供商，并使用他们的数字资产购买在真实的世界中有价值的东西。自我保管数据的承诺也为那些越来越担心信任 FAANG（美国市场上五大最受欢迎和表现最佳的科技股的首字母缩写）垄断以保持其数据安全的个人提供了一个乌托邦式的替代方案。&lt;/p&gt;
-&lt;p&gt;我认为，&lt;strong&gt;真正的问题不是缺乏有用的加密应用，而是终端用户试图访问这些应用时的摩擦。&lt;/strong&gt;终端用户在与加密应用交互时应该能体验到以下情况：&lt;/p&gt;
-&lt;ul&gt;
-&lt;li&gt;
-&lt;p&gt;速度：应用应感觉像 web2 应用那样快&lt;/p&gt;
-&lt;/li&gt;
-&lt;li&gt;
-&lt;p&gt;成本：不同于 web2，所有 web3 互动必须产生一些成本，但「每次点击」的成本应该微不足道&lt;/p&gt;
-&lt;/li&gt;
-&lt;li&gt;
-&lt;p&gt;抗审查性（「无需许可」）：任何拥有钱包的人都应该能够与应用交互，只要他们能承担费用&lt;/p&gt;
-&lt;/li&gt;
-&lt;li&gt;
-&lt;p&gt;安全性：点击应该完成用户期望的操作，不应撤销，所有 web3 更新都应该是永久性的&lt;/p&gt;
-&lt;/li&gt;
-&lt;/ul&gt;
-&lt;p&gt;这些是「可用」加密应用的属性。&lt;/p&gt;
-&lt;p&gt;&lt;strong&gt;我们已经试图构建可用的加密很长时间了&lt;/strong&gt;&lt;/p&gt;
-&lt;p&gt;今天的模块化区块链解决方案为消费者提供了所有这些属性，但它们并不都在同一地点提供。&lt;/p&gt;
-&lt;p&gt;2020 年，区块链是单体的，为终端用户提供三个属性中的两个：速度、成本或安全性。然后我们设想了一个&lt;a href=&quot;https://ethereum-magicians.org/t/a-rollup-centric-ethereum-roadmap/4698&quot; rel=&quot;nofollow&quot;&gt;以 rollup 升级为中心的或模块化的未来&lt;/a&gt;，能够同时解锁所有这三个属性。&lt;/p&gt;
-&lt;p&gt;今天，我们已经为这种以 rollup 升级为中心的基础设施奠定了基础。L2 提供了便宜且快速的区块空间，而大多数 L2 提供无需许可的区块空间。相反，L1 提供了抗 WW3 的安全区块空间（可以在&lt;a href=&quot;https://hackmd.io/yrZU2Qd6QAiGaXy1fIxqvg#What-does-blockchain-infrastructure-mean&quot; rel=&quot;nofollow&quot;&gt;我的文章&lt;/a&gt;中阅读更多关于 L1 和 L2 提供的安全性以及用户体验之间的权衡）。这些 L2 通过规范的消息路径安全地连接到 L1，为模块化且互操作的网络奠定了基础。在过去的四年中，我们已经建立了支持有用加密应用的区块链之间的光纤。但为什么模块化区块链如此不可用？&lt;/p&gt;
-&lt;p&gt;&lt;img style=&quot;display: block; margin-left: auto; margin-right: auto;&quot; src=&quot;https://cdn-img.panewslab.com/yijian/2024/4/23/images/2a6d90699f63fd97f94b8e9e270d4f93.jpg&quot; alt=&quot;详解新协议 ERC7683：Uniswap 与 Across 联合制定的跨链意图新标准&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt;
-&lt;p&gt;&lt;strong&gt;模块化区块链网络的必然性在于资本资产将会聚集在最安全的层上，而用户点击将会聚集在更快更便宜的层上。&lt;/strong&gt;&lt;/p&gt;
-&lt;p&gt;模块化的区块链拓扑结构鼓励将安全的区块空间提供在与便宜和快速的区块空间不同的层上。用户自然会倾向于将他们的价值存储在最安全的网络上，但他们会要求与便宜和快速的网络频繁交互。按设计，L2 和 L1 之间的规范路径是缓慢和/或昂贵的。这些现象解释了为什么用户必须穿越这些规范路径，使用 L1 资产支付 L2 交互的费用。这导致了「无法使用」的加密用户体验。&lt;/p&gt;
-&lt;p&gt;&lt;img style=&quot;display: block; margin-left: auto; margin-right: auto;&quot; src=&quot;https://cdn-img.panewslab.com/yijian/2024/4/23/images/f8b48941e5c3816fa07cc26c93fe998c.jpg&quot; alt=&quot;详解新协议 ERC7683：Uniswap 与 Across 联合制定的跨链意图新标准&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt;
-&lt;p&gt;&lt;strong&gt;链抽象的目标是减少用户发送价值穿越这些协议路径的摩擦。&lt;/strong&gt;链抽象者假设用户更倾向于将其所需的最终状态指定给 dapp 作为「意图」，而 dapp 有责任实现他们的意图。用户不应该为了访问低费用和低延迟而妥协安全资产的保管。&lt;/p&gt;
-&lt;p&gt;因此，链抽象在于用户能够安全、廉价和快速地跨网络传输价值。今天的一种常见用户流程是，一个在「安全」链上（如以太坊）拥有 USDC 余额的用户想要在新链（如 Blast 或 Base）上铸造一个 NFT 或交换新代币。以尽可能少的步骤执行这一操作的方法是顺序执行桥接→交换→铸造一系列交易（或交换→桥接→铸造）。&lt;/p&gt;
-&lt;p&gt;在这个例子中，用户的意图是使用他们在安全链上的 USDC 在另一个链上铸造一个 NFT。只要他们收到 NFT 并且他们的 USDC 余额被扣除在他们选择的存管位置，用户就会满意。&lt;/p&gt;
-&lt;h3&gt;基于意图的架构是构建链抽象的唯一途径&lt;/h3&gt;
-&lt;p&gt;链抽象依赖于跨链价值转移，但通过规范消息路径发送价值要么昂贵要么缓慢。「快速桥」为用户提供了跨网络发送价值的廉价和快速替代方案，但它们引入了新的信任假设。消息传递是构建快速桥接的最直观方法，因为它是基于 TCP/IP 架构建模的；它依赖于一个桥接协议作为 TCP 路由器连接两个链。&lt;/p&gt;
-&lt;p&gt;&lt;img style=&quot;display: block; margin-left: auto; margin-right: auto;&quot; src=&quot;https://cdn-img.panewslab.com/yijian/2024/4/23/images/7d1668846b0d33e11d9f4eb275ff4601.jpg&quot; alt=&quot;详解新协议 ERC7683：Uniswap 与 Across 联合制定的跨链意图新标准&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt;
-&lt;pre&gt;ResearchGate 的 TCP/IP 图表&lt;/pre&gt;
-&lt;p&gt;通过消息传递进行价值转移涉及桥协议在原始链和目标链上的合约之间发送消息。这个消息是由用户交易在原始侧触发的，并且一旦消息的「有效性」得到验证，就会被中继到目标侧。&lt;/p&gt;
-&lt;p&gt;只有在发起消息的原始链事务已经完成之后，即该交易已经永久地包含在原始链的规范区块链中后，消息才能被验证。这种验证可以通过有效性证明来完成，证明交易已被包含在原始链的共识中，也可以是一个乐观的提议，或者在原始侧累积了一定数量的见证签名后。一旦消息被中继到目标链上的桥接合约，代币就会释放给用户。&lt;/p&gt;
-&lt;p&gt;&lt;img style=&quot;display: block; margin-left: auto; margin-right: auto;&quot; src=&quot;https://cdn-img.panewslab.com/yijian/2024/4/23/images/dfbfc179c9ca3412814c78d7b29863e7.jpg&quot; alt=&quot;详解新协议 ERC7683：Uniswap 与 Across 联合制定的跨链意图新标准&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt;
-&lt;p&gt;这种架构存在几个根本问题：&lt;/p&gt;
-&lt;ul&gt;
-&lt;li&gt;验证机制必须等待完全确定性后才能将消息发送到目标链协议合约。对于具有乐观确定期的 L2，这可能需要长达七天的时间。&lt;/li&gt;
-&lt;li&gt;每个桥接事务只发送一个跨链消息，或者将消息批量处理在一起，但只有在批处理中的最后一个消息完成后才能发送该批处理。&lt;/li&gt;
-&lt;li&gt;桥接在获取外部流动性方面能力有限，以给用户提供价格改进，因为它必须声明用户意图的履行路径。&lt;/li&gt;
-&lt;/ul&gt;
-&lt;p&gt;基于消息传递的快速桥接根据验证机制的不同，将会出现不安全、缓慢或昂贵的情况。意图市场是一种快速桥接的替代架构，它源于一个关键的见解：&lt;/p&gt;
-&lt;p&gt;&lt;strong&gt;价值是可替代的，对于接收者来说，只要能收到资金，如何转移价值并不重要&lt;/strong&gt;&lt;/p&gt;
-&lt;p&gt;桥接可以将价值转移外包给一个复杂的代理以提高速度和降低成本吗？流动性在链上和链下是动态的，如果桥接机制能够在桥接转移时灵活选择最佳执行路径，则可以实现价格改进。&lt;/p&gt;
-&lt;p&gt;&lt;img style=&quot;display: block; margin-left: auto; margin-right: auto;&quot; src=&quot;https://cdn-img.panewslab.com/yijian/2024/4/23/images/86fdd5ea4b487c240bffe2807bff299d.jpg&quot; alt=&quot;详解新协议 ERC7683：Uniswap 与 Across 联合制定的跨链意图新标准&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt;
-&lt;p&gt;意图机制允许用户指定其价值转移交易可以执行的精确条件或契约。&lt;/p&gt;
-&lt;p&gt;最简化的意图是从链 A 支付 X 代币以在链 B 上收到 Y 代币的订单。&lt;/p&gt;
-&lt;p&gt;桥接协议不需要为了满足用户的跨域意图而在域之间发送消息。相反，协议将价值转移外包给从无许可求解器网络中选择的代理，个体求解器将在稍后从桥接协议那里寻求偿还。相比之下，基于消息传递的机制精确地指定了它们的交易应该如何执行，并且不需要依赖代理的可用性。&lt;/p&gt;
-&lt;p&gt;&lt;strong&gt;意图结算协议&lt;/strong&gt;&lt;/p&gt;
-&lt;p&gt;基于意图的桥接协议可以更精确地标记为意图结算协议，它们负责确保求解器不违反用户指定的条件。意图结算协议为求解器提供了保障，确保他们在履行用户意图时能够得到偿还和奖励。为此，意图结算协议需要向 Oracle 申诉，以验证意图履行的真实性。预言机的安全性可以基于乐观挑战期、见证阈值或基于 ZK 有效性证明等。&lt;/p&gt;
-&lt;p&gt;&lt;strong&gt;由於单个求解器可承担最终风险并确定最佳执行路径，因此意图结算协议可提供快速、低成本的价值转移&lt;/strong&gt;&lt;/p&gt;
-&lt;p&gt;消息传递桥只能在原始链达到最终性时才能进行通信。如今，乐观 Rollup 上的最终性时间为七天，而 ZK Rollup 上为一小时。尽管随着 ZK 轻客户端技术的广泛采用和共享排序器预确认技术的进步，这些最终性时间应该会下降，但对于所有区块链来说，最终性时间永远不太可能对用户来说感觉「即时」，这表明了对快速桥接解决方案的持续需求。在不承担最终性风险的情况下，即使桥想要在中继路径中添加一个额外的受信任代理来担保由于链重新组织而造成的损失，也无法将消息传递速度提高到最终性期间之前。&lt;/p&gt;
-&lt;p&gt;基于意图的架构提供的加速是因为异构求解器网络中的单个求解器可以承担比消息传递协议更多的最终性风险，并在链重组风险完全消失之前满足用户的意图。求解器随后会向用户收取他们在交换更快时间所承担的最终性风险。&lt;/p&gt;
-&lt;p&gt;将跨链意图履行外包给代理也会平均改善用户的价格。在基于意图的桥接中，为了实现用户在目标链上的订单，前端的求解器将在验证他们的履行后由系统返还。这些意图结算可以一起批量处理以分摊成本。与用户不同，填充器不要求即时偿还，并将相应地向用户收取资金前置费用。批量结算并不是基于意图的架构的唯一特点，但是该架构与批量结算更为协同，因为它将偿还步骤与意图实现步骤分开。&lt;/p&gt;
-&lt;p&gt;价格改进的更大来源来自这样的直觉，即价值是可替代的，及时找到最佳路径通常会优于价值转移，然而，有些路径在成本上是无法及时击败的，比如在 CCTP 上传输 USDC 时。&lt;/p&gt;
-&lt;p&gt;消息传递桥必须编码它们将如何向用户传输价值。有些选择以预定的兑换率从流动性池中发送代币，而其他人则向需要随后交换所需的规范代币资产的收件人铸造代表性代币。&lt;/p&gt;
-&lt;p&gt;在履行用户意图时，代理可以从链上和链下的流动性场所组合获取流动性。竞争性求解器网络理论上为用户提供了无限的流动性来源（但即使这些流动性来源也可能在高波动性链上事件期间的一方向趋势中迅速耗尽，如热门 NFT 铸造、空投和 rug pull 事件）。&lt;/p&gt;
-&lt;p&gt;将跨链订单作为意图提交后，求解器可将订单生成的 MEV 内化为价格改进。&lt;/p&gt;
-&lt;p&gt;&lt;img style=&quot;display: block; margin-left: auto; margin-right: auto;&quot; src=&quot;https://cdn-img.panewslab.com/yijian/2024/4/23/images/d23d50399982897b483975d0e8b72be6.jpg&quot; alt=&quot;详解新协议 ERC7683：Uniswap 与 Across 联合制定的跨链意图新标准&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt;
-&lt;p&gt;&lt;strong&gt;基于意图的体系结构从根本上设计为安全的&lt;/strong&gt;&lt;/p&gt;
-&lt;p&gt;&lt;img style=&quot;display: block; margin-left: auto; margin-right: auto;&quot; src=&quot;https://cdn-img.panewslab.com/yijian/2024/4/23/images/5a2d604fd12be70547746bfbf2dc8f9d.jpg&quot; alt=&quot;详解新协议 ERC7683：Uniswap 与 Across 联合制定的跨链意图新标准&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt;
-&lt;p&gt;基于意图的桥接之所以能够安全构建，是因为它们将用户的紧急需求与结算网络的复杂需求分开。求解器可以等待偿还，不像用户，他们将根据结算协议使他们等待偿还的时间向用户收费。因此，意图结算可以使用非常健壮的机制进行验证，而不受严格的时间限制。从安全的角度来看，这是更可取的，因为验证意图实现在直觉上是复杂的。&lt;/p&gt;
-&lt;p&gt;作为生产中意图验证的示例，Across 在经过 90 分钟的乐观挑战期之后批量验证并偿还填充器。当然，结算网络应该努力尽快偿还填充器，以减少最终用户的费用。对乐观挑战机制的改进将是一种 ZK 有效性证明机制，这将要求将意图验证逻辑编码到一个 ZK 电路中。在我看来，验证证明机制将取代乐观挑战机制并使意图结算网络能够更快地偿还用户是不可避免的。&lt;/p&gt;
-&lt;p&gt;&lt;strong&gt;那么，链抽象是如何从基于意图的架构中产生的呢？&lt;/strong&gt;&lt;/p&gt;
-&lt;p&gt;回想一下，链抽象需要快速和廉价的跨链价值转移。它也不应该要求用户在存储其资产的网络上提交链上交易。&lt;/p&gt;
-&lt;p&gt;&lt;img style=&quot;display: block; margin-left: auto; margin-right: auto;&quot; src=&quot;https://cdn-img.panewslab.com/yijian/2024/4/23/images/9da7f9f62579b770d60d9535fb0f8929.jpg&quot; alt=&quot;详解新协议 ERC7683：Uniswap 与 Across 联合制定的跨链意图新标准&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt;
-&lt;p&gt;如果包含 Permit2 或 EIP 3074 签名，用户的意图不需要由用户在链上提交。这对于消息传递和基于意图的桥接都是正确的。这两种架构都可以利用 Permit2 模式，允许用户在原始链钱包上离线签名他们愿意支付的代币数量。&lt;/p&gt;
-&lt;p&gt;基于意图的市场最能支持链抽象，因为它们提供了廉价和快速的跨链价值转移。想象一下，用户可以请求一个求解器为他们提供报价，以用他们在 Optimism 上的 USDC 作为支付进入 Arbitrum 的 WETH 抵押头寸。用户可以将此意图发送到一个 RFQ 拍卖，求解器可以对其进行竞标。拍卖的获胜者随后可以接收用户的签名意图，其中包含一份允许在 Optimism 上花费他们的 USDC、在 Arbitrum 上获得的 WETH 数量以及用于将此 WETH 存入 Arbitrum 抵押头寸的 calldata。求解器随后可以在 Optimism 上提交此交易（代表用户）以启动跨链意图，并从用户的 Optimism 钱包中提取 USDC。最后，求解器可以通过向用户发送 WETH 并将 calldata 转发到用户入链抵押头寸的方式来填充用户的意图。&lt;/p&gt;
-&lt;p&gt;构建链抽象基础设施意味着使用户流程感觉即时和廉价，而无需他们提交链上交易。让我们通过讨论更广泛采用意图的障碍来结束本文。&lt;/p&gt;
-&lt;p&gt;&lt;img style=&quot;display: block; margin-left: auto; margin-right: auto;&quot; src=&quot;https://cdn-img.panewslab.com/yijian/2024/4/23/images/87534175090adb7b4f05a62de1ad142c.jpg&quot; alt=&quot;详解新协议 ERC7683：Uniswap 与 Across 联合制定的跨链意图新标准&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt;
-&lt;p&gt;&lt;strong&gt;为了从基于意图的链抽象中实现最佳的用户体验，我们需要一个有竞争力的求解器网络&lt;/strong&gt;&lt;/p&gt;
-&lt;p&gt;意图为基础的链抽象实现最佳用户体验的关键在于建立一个竞争激烈的求解者网络。连接意图的桥接取决于求解者网络效应，以表现得比消息传递变体更好。这是意图与消息传递架构之间的核心权衡。现实情况是，并非所有产生意图的应用都需要访问一组完全竞争的求解者，并且有些可能更倾向于将它们的意图路由到寡头垄断求解者网络。然而，目前的求解者网络状态尚不成熟，远未达到意图市场依赖的求解者网络活跃性假设的程度。&lt;/p&gt;
-&lt;p&gt;&lt;img style=&quot;display: block; margin-left: auto; margin-right: auto;&quot; src=&quot;https://cdn-img.panewslab.com/yijian/2024/4/23/images/037f98a78dfb372ec7f399db8757c94e.jpg&quot; alt=&quot;详解新协议 ERC7683：Uniswap 与 Across 联合制定的跨链意图新标准&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt;
-&lt;p&gt;我们不希望每个 DApp 都将意图路由到孤立的求解者网络。最佳用户体验的情况是许多 DApp 与相同的求解者池进行通信，并且所有 DApp 都有自由更改它们发送意图的求解者池。&lt;/p&gt;
-&lt;p&gt;&lt;strong&gt;如何引导求解器网络？&lt;/strong&gt;&lt;/p&gt;
-&lt;p&gt;我们必须将求解者用户体验作为首要任务。&lt;/p&gt;
-&lt;p&gt;运行意图求解器是复杂的，需要对构建高性能软件以及管理跨链库存风险具有专业知识。自然而然地，将有少数方对支付运行此代码的启动成本感兴趣。在最佳情况下，为一个 DApp 编写的求解器，如 UniswapX 求解器，可以被重复使用以解决其他产生意图的 DApp，如 Across 和 CowSwap。&lt;/p&gt;
-&lt;p&gt;我们真的需要提高所有基于意图的 DApp 的求解者网络的总资本效率。这将需要解决运行求解者的障碍。&lt;/p&gt;
-&lt;p&gt;为此，我们需要产生意图的 DApp 对任何求解者可见，并确保所有求解者都可以访问多个差异化和竞争激烈的意图结算网络。这将使求解者有信心，他们可以选择将他们的意图履行路由到他们信任的结算网络。结算网络之间的竞争还将降低求解者的成本。&lt;/p&gt;
-&lt;p&gt;&lt;strong&gt;意图结算网络的价值主张是为求解者提供安全性以及可能影响求解者填充意图的其他功能。&lt;/strong&gt;&lt;/p&gt;
-&lt;p&gt;&lt;img style=&quot;display: block; margin-left: auto; margin-right: auto;&quot; src=&quot;https://cdn-img.panewslab.com/yijian/2024/4/23/images/b5ca491497340b458b2d9fce3b7ac8f7.jpg&quot; alt=&quot;详解新协议 ERC7683：Uniswap 与 Across 联合制定的跨链意图新标准&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt;
-&lt;p&gt;求解者对意图结算网络的选择将影响他们向用户提供费用和执行时间保证的能力。一些结算网络可能会提供求解者专属期，这将支持链下拍卖的发展，求解者和用户可以在其中协商并承诺中继费用。（此外，这些意图拍卖可能还提供经济上担保的预确认，进一步增强用户体验。要了解通过拍卖和预确认进行意图发现的用户流程，我建议参阅 Sorella 的 Karthik 的这次演讲）&lt;/p&gt;
-&lt;p&gt;一些结算网络可能提供意图到期（即在达到某个履行期限后将价值发送回用户），意图支持（即结算网络使用自己的资产负债表来履行用户的意图，如果没有求解者履行），或灵活的偿还链（即允许求解者选择其所选择的链进行偿还）。&lt;/p&gt;
-&lt;p&gt;最终，结算网络将激烈竞争，以便快速、廉价地偿还求解者，而不会在安全性上妥协。反过来，求解者将将他们的订单流发送到允许他们向用户提供最便宜费用的结算网络，以便赢得 DApp 的订单流。结算和求解者网络的竞争取决于意图供应链中的所有各方协调使用相同的语言，竞争将导致跨链价值转移的最佳用户体验。&lt;/p&gt;
-&lt;p&gt;&lt;img style=&quot;display: block; margin-left: auto; margin-right: auto;&quot; src=&quot;https://cdn-img.panewslab.com/yijian/2024/4/23/images/9b06de5fd2168d10ae982a6f93ed8295.jpg&quot; alt=&quot;详解新协议 ERC7683：Uniswap 与 Across 联合制定的跨链意图新标准&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt;
-&lt;h3&gt;显然，我们需要一个跨链意图标准&lt;/h3&gt;
-&lt;p&gt;如果求解者可以假设意图将共享共同元素，那么他们可以重复使用他们的代码来解决不同 DApp 发起的意图，从而降低他们的设置成本。如果不同的 DApp 创建符合相同标准的意图，那么它们可以将它们的意图全部路由到相同的求解者池。这将有助于通过让它们能够直接将其跨链意图插入到现有成熟求解者池中，为下一代 DApp 提供接入，而无需单独接入求解者，并且将获得便宜、快速、安全和无许可的价值转移。&lt;/p&gt;
-&lt;p&gt;如果符合标准，第三方跟踪软件也将更容易地跟踪任何新 DApp 的意图状态。&lt;/p&gt;
-&lt;p&gt;这个意图标准应该允许意图主体或求解者指定他们希望在哪个结算网络上结算他们的意图。&lt;/p&gt;
-&lt;p&gt;我设想竞争的结算协议（如 SUAVE、Across、Anoma 和 Khalani）为求解者提供了不同的特性。根据哪个结算网络正在偿还求解者，求解者可以向意图所有者提供不同的价格和时间保证。DApp 和求解者可以同意将用户的意图路由到他们信任的结算网络，以避免审查、维护数据隐私，并且还足够安全以便求解者信任其偿还。&lt;/p&gt;
-&lt;p&gt;通过将结算网络的选择写入意图订单本身，求解者可以将这种确定性融入到他们向用户展示的报价中。求解者和用户可以在提交意图上链之前消除桥梁定价的前期不确定性，从而降低成本。&lt;/p&gt;
-&lt;h3&gt;与 Uniswap 合作，并根据 CAKE 工作组的反馈，Across 和我提出了以下跨链意图标准，将求解者用户体验放在首位&lt;/h3&gt;
-&lt;p&gt;&lt;img style=&quot;display: block; margin-left: auto; margin-right: auto;&quot; src=&quot;https://cdn-img.panewslab.com/yijian/2024/4/23/images/addb2e02a58568ca6a5a8ee2b7307a2c.jpg&quot; alt=&quot;详解新协议 ERC7683：Uniswap 与 Across 联合制定的跨链意图新标准&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt;
-&lt;p&gt;该标准旨在简化解算器的工作。它所做的一个有主见的选择是，用 nonce 和 initiateDeadline 原生支持 Permit2/EIP3074，并为填单者提供了一些保证，如他们将从结算网络获得的退款金额，以及他们可以跟踪的用户意图格式。此外，标准中还定义了一个启动函数，该函数允许填充者（将订单带入链上的人）在链上指定额外的 &quot;填充数据（fillerData）&quot;，而用户在签署 CrossChainOrder 时并不知道这些数据。这样，填写者就能确保他们因提交用户的元交易而获得结算合约的奖励，还能设置还款链等还款特定信息。&lt;/p&gt;
-&lt;p&gt;此标准还旨在使 DApp 更容易跟踪意图完成状态。任何实现此标准的结算合约都应创建一个自定义子类型 ResolvedCrossChainOrder，可以从任意的 orderData 字段解析出来。这可能包括涉及交换的代币、目标链以及其他履行约束。标准中包括了一个 resolve 函数，使 DApp 能够了解如何向用户显示意图状态，以及使求解者知道他们正在处理的确切意图订单结构。&lt;/p&gt;
-&lt;p&gt;&lt;img style=&quot;display: block; margin-left: auto; margin-right: auto;&quot; src=&quot;https://cdn-img.panewslab.com/yijian/2024/4/23/images/ec99ddd86572f70ddc85955e46913e2c.jpg&quot; alt=&quot;详解新协议 ERC7683：Uniswap 与 Across 联合制定的跨链意图新标准&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt;
-&lt;p&gt;此标准的设计目标是增强求解者用户体验，使他们更容易支持多个结算网络，并确定性地计算他们的奖励。我相信这将使他们能够向用户提供更准确、更紧凑的报价。您可以在此帖子和 Ethereum Magicians 论坛上关于这个被命名为 ERC7683 的标准的讨论中阅读更多细节。&lt;/p&gt;
-&lt;h3&gt;结束语&lt;/h3&gt;
-&lt;p&gt;「意图」是令人困惑的，因为它们没有被定义，这种缺乏定义正在造成真实的用户体验缺陷。&lt;/p&gt;
-&lt;p&gt;&lt;img style=&quot;display: block; margin-left: auto; margin-right: auto;&quot; src=&quot;https://cdn-img.panewslab.com/yijian/2024/4/23/images/72fe29ee805fed7290cacc4cd3338274.jpg&quot; alt=&quot;详解新协议 ERC7683：Uniswap 与 Across 联合制定的跨链意图新标准&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt;
-&lt;p&gt;每个人都希望其他人使用他们对意图的标准定义，因此我完全承认标准在实际上是不可能建立的。我认为首先定义意图结算系统，然后试图吸引订单流是建立行业标准的正确方法。&lt;/p&gt;
-&lt;p&gt;在我看来，更可行的方法是，已经拥有大量用户流量并产生许多用户意图的 DApp 将同意符合一些最低标准，这些标准将由它们现有的求解者采纳。这将形成一个新的更大的求解者池。通过获取来自已经突出的场所的合并订单流，这个新的求解者池将赚取更多利润，并能向最终用户提供更好的价格。最终，新的 DApp 也将要求将他们的意图路由到这个求解者池，并支持其意图标准。&lt;/p&gt;
-&lt;p&gt;为了启动这一进程，Across 和 Uniswap 联合提出了一个标准，所有意图供应链参与方在处理从链 A 发送 X 代币并在链 B 上接收 Y 代币的用户订单时使用。通过 UniswapX（在拍卖设计和意图发起方面具有比较优势）和 Across（在结算意图履行方面具有比较优势）运行的订单流可以合并，启动培育一个更大、更有竞争力的求解者网络的过程。&lt;/p&gt;</description>
-            <link>https://panewslab.com/zh/articledetails/sj9gag5v.html</link>
-            <guid isPermaLink="false">https://panewslab.com/zh/articledetails/sj9gag5v.html</guid>
-            <pubDate>Tue, 23 Apr 2024 06:31:48 GMT</pubDate>
-            <author>深潮 TechFlow</author>
-            <category>深度</category>
-            <category>模块化区块链</category>
-            <category>MEV</category>
-            <category>共识</category>
-            <category>NFT</category>
-            <category>预言机</category>
-            <category>Uniswap</category>
-            <category>ETH</category>
-            <category>Optimism</category>
-            <category>去中心化</category>
-            <category>以太坊</category>
-        </item>
-        <item>
-            <title>Twitter Space 视频回顾| Privasea X Space 圆桌 1：Bull market&#39;s key narratives</title>
-            <description>&lt;blockquote&gt;4 月 22 日周一晚 22:00 Privasea CEO &amp;amp; Co-Founder David Jiao 与 OKX Ventures Wiliam；K300 Managing Partner Son Ho；Offchain Labs BD Renna；Tane Founding partner lkuma Michale；Inception Investment Lead Michale 做客 Privasea X Space.&lt;/blockquote&gt;&lt;p&gt;4 月 22 日-4 月 26 日，Privasea、OKX Ventures 、PANews 联合推动，Proof of Human -The world&#39;s first FHEML-based application launch event——每晚相聚 X Space ，Privasea CEO &amp;amp; Co-Founder David Jiao 与行业顶尖从业者展开积极对话，探索本轮牛市中 AI 与 Depin 赛道发展潜力，寻找隐藏在顶流敍事中的绝佳机会！&lt;/p&gt;
-&lt;p&gt;4 月 22 日周一晚 22:00 Privasea CEO &amp;amp; Co-Founder David Jiao 与 OKX Ventures Wiliam；K300 Managing Partner Son Ho；Offchain Labs BD Renna；Tane Founding partner lkuma Michale；Inception Investment Lead Michale 做客 Privasea X Space 圆桌 1：Bull market&#39;s key narratives，围绕 AI、POH（人类证明）和 Web3/Crypto 融合展开讨论！&lt;/p&gt;
-&lt;p&gt;&lt;iframe style=&quot;width: 726px; height: 408px;&quot; src=&quot;https://player.bilibili.com/player.html?bvid=BV1SE421L7HD&amp;amp;page=1&quot; width=&quot;570&quot; height=&quot;299&quot; frameborder=&quot;no&quot; scrolling=&quot;no&quot; allowfullscreen=&quot;allowfullscreen&quot; referrerpolicy=&quot;no-referrer&quot;&gt; &lt;/iframe&gt;&lt;/p&gt;</description>
-            <link>https://panewslab.com/zh/articledetails/3kmhlgk1.html</link>
-            <guid isPermaLink="false">https://panewslab.com/zh/articledetails/3kmhlgk1.html</guid>
-            <pubDate>Tue, 23 Apr 2024 06:07:15 GMT</pubDate>
-            <author>PA 影音</author>
-        </item>
-        <item>
-            <title>Mango Markets1.1 亿资产被盗案件迎来审判，黑客或将获刑 20 年</title>
-            <description>&lt;blockquote&gt;黑客攻击层出不穷，但是一旦被抓现行或将坐穿牢底！&lt;/blockquote&gt;&lt;p dir=&quot;ltr&quot;&gt;2022 年 10 月，Mango Markets 被 Avi Eisenberg 攻击，损失 1.1 亿美元的加密资产。4 月 19 日，纽约曼哈顿陪审团裁定 Mango Markets 攻击者 Avi Eisenberg 犯欺诈和市场操纵罪，纽约地方法院法官 Arun Subramanian 将于 7 月 29 日对其宣判。纽约曼哈顿的陪审团最终裁定 Eisenberg 犯有多重罪名，预计他将面临长达 20 年的监禁。&lt;/p&gt;
-&lt;p dir=&quot;ltr&quot;&gt;此事件不仅揭示了 DeFi 平台潜在的安全风险，也强调了加密市场监管的必要性。尽管 Mango Markets 遭受了这一打击，但它也展示了加密领域自我修复和进化的能力，同时也提醒了投资者在追求高回报的同时，不可忽视安全风险的管理。&lt;/p&gt;
-&lt;p dir=&quot;ltr&quot;&gt;&lt;img style=&quot;display: block; margin-left: auto; margin-right: auto;&quot; src=&quot;https://cdn-img.panewslab.com/panews/images/mhi9Yiqi8w.png&quot; alt=&quot;Mango Markets1.1 亿资产被盗案件迎来审判，黑客或将获刑 20 年&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt;
-&lt;p dir=&quot;ltr&quot;&gt;下面回顾一下此次事件。&lt;/p&gt;
-&lt;h3 dir=&quot;ltr&quot;&gt;简单覆盘 Mango Markets 被盗事件：攻击者操作预言机价格数据得手&lt;/h3&gt;
-&lt;p dir=&quot;ltr&quot;&gt;2022 年 10 月，Eisenberg 利用 Mango Markets 的设计漏洞，通过操纵预言机（Oracles）的价格数据，大幅拉升了平台代币 MNGO 的价格。他接着利用人为提高的代币价值，从平台借贷出相当于 1 亿美元以上的其他资产，最终导致平台资不抵债。此举不仅展示了智能合约设计的缺陷，也暴露了 DeFi 生态中的系统性风险。&lt;/p&gt;
-&lt;p dir=&quot;ltr&quot;&gt;事件发生后，Eisenberg 在波多黎各被美国联邦调查局（FBI）逮捕，并被引渡至纽约面临审判。他面临的指控包括商品欺诈、商品操纵和电信欺诈，这些罪名加起来可能导致最高 20 年的联邦监狱刑期。&lt;/p&gt;
-&lt;p dir=&quot;ltr&quot;&gt;&lt;img style=&quot;display: block; margin-left: auto; margin-right: auto;&quot; src=&quot;https://cdn-img.panewslab.com/panews/images/obPcnPs6Ln.png&quot; alt=&quot;Mango Markets1.1 亿资产被盗案件迎来审判，黑客或将获刑 20 年&quot; width=&quot;768&quot; height=&quot;432&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt;
-&lt;p dir=&quot;ltr&quot;&gt;此案的审判不仅是对 Eisenberg 个人行为的裁决，更广泛地测试了美国法律对 DeFi 领域加密货币诈欺或市场操纵定义的适应性。Eisenberg 的辩护团队将其行为描述为一种合法的市场策略，即利用协议允许的漏洞来执行交易，此观点直接挑战了传统法律对于欺诈和操纵的定义。&lt;/p&gt;
-&lt;h3 dir=&quot;ltr&quot;&gt;「代码即法律」一说是否成立？行业也需要因此掀起严肃的讨论&lt;/h3&gt;
-&lt;p dir=&quot;ltr&quot;&gt;Mango Markets 的操纵事件不仅凸显了市场的脆弱性，也对「代码即法律（Code is law）」的现代解释提出了挑战。案件审判重点开启了关于「代码即法律」的辩论，这是一种观点，认为区块链技术和智能合约应该作为法律的一部分。根据这一原则，只要代码允许的行为都应视为合法，因为所有交易参与者都已经默认接受了代码中固有的规则和逻辑。&lt;/p&gt;
-&lt;p dir=&quot;ltr&quot;&gt;Mango Markets 的事件和随后的审判将为 DeFi 领域设定重要的法律先例。审判结果不仅影响 Eisenberg 的命运，也可能决定 DeFi 设计者如何构建未来的智能合约，以避免类似的操纵行为，同时保护用户资产不受这种攻击的威胁。&lt;/p&gt;
-&lt;p dir=&quot;ltr&quot;&gt;此外，此案可能促使法律界更深入地考虑智能合约和传统法律的关系，特别是在如何处理和解释智能合约中的法律和道德问题上。对于 DeFi 行业，这将是一个检验其成熟度和可持续性的关键时刻，也是监管机构可能介入的信号。&lt;/p&gt;
-&lt;p dir=&quot;ltr&quot;&gt;总之，Mango Markets 案件不仅是一次经济损失，更是对 DeFi 领域安全性和法律定义的一次全面考验。这起事件反映了新技术带来的新挑战，以及现有法律体系在应对快速发展的区块链技术面前可能出现的短板。&lt;/p&gt;
-&lt;p dir=&quot;ltr&quot;&gt;随着「代码即法律」原则的持续争议，业界期待更明确的法律指导和规范来确保区块链技术的健康发展。&lt;/p&gt;
-&lt;h3 dir=&quot;ltr&quot;&gt;虽然资产受损，但是 Mango Markets 对于此次事件的处理方式仍然值得肯定&lt;/h3&gt;
-&lt;p dir=&quot;ltr&quot;&gt;这次黑客事件虽然一度让 Mango Markets 的信誉受损，但反应过程中展现的透明度和处理问题的决心，也在一定程度上重建了用户的信任。平台迅速采取措施，与社区及安全专家合作，不仅修补了安全漏洞，还改进了风险管理和监控系统，以防未来类似的事件再次发生。&lt;/p&gt;
-&lt;p dir=&quot;ltr&quot;&gt;Mango Markets 仍有望利用其在 Solana 平台上的低成本和高效率优势，继续在 DeFi 领域中发展和扩张。安全事件虽是一次严重挫折，但也是一个深刻的学习机会，为 Mango Markets 未来的操作提供了宝贵的经验和教训，特别是在加强用户资产保护和平台安全方面。&lt;/p&gt;
-&lt;p dir=&quot;ltr&quot;&gt;&lt;img style=&quot;display: block; margin-left: auto; margin-right: auto;&quot; src=&quot;https://cdn-img.panewslab.com/panews/images/nk4m38hsd2.png&quot; alt=&quot;Mango Markets1.1 亿资产被盗案件迎来审判，黑客或将获刑 20 年&quot; width=&quot;673&quot; height=&quot;568&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt;
-&lt;p dir=&quot;ltr&quot;&gt;尽管 DeFi 市场的竞争日益激烈，Mango Markets 凭借其创新的产品、改进后的安全措施和持续的技术优化，有望在未来的加密货币金融领域中继续发挥重要作用。对于投资者和用户而言，选择一个能够适应快速变化市场并从危机中快速恢复的平台，将是他们在浩瀚加密市场中航行的关键。&lt;/p&gt;
-&lt;p dir=&quot;ltr&quot;&gt;总之，Mango Markets 经历的黑客事件虽对其是一次打击，但处理危机的方式也展示了其作为一个成熟 DeFi 平台的潜力。随着对 DeFi 安全性和法规要求的持续增强，Mango Markets 未来的路径虽充满挑战，但也充满机遇，预示着其在推动加密货币和区块链技术广泛应用方面的积极可能性。&lt;/p&gt;</description>
-            <link>https://panewslab.com/zh/articledetails/0c8d1g09yxo3.html</link>
-            <guid isPermaLink="false">https://panewslab.com/zh/articledetails/0c8d1g09yxo3.html</guid>
-            <pubDate>Tue, 23 Apr 2024 06:00:36 GMT</pubDate>
-            <author>DeMan</author>
-            <category>深度</category>
-            <category>投资</category>
-            <category>合约</category>
-            <category>黑客</category>
-            <category>安全</category>
-        </item>
-        <item>
-            <title>未来山寨布局思路，2+4 的敍事主线及操作细节</title>
-            <description>&lt;blockquote&gt;聊聊我对接下来山寨布局 2+4 的选币思路及操作细节。&lt;/blockquote&gt;&lt;p&gt;&lt;strong&gt;2+4 的山寨敍事主线及操作细节。&lt;/strong&gt;&lt;/p&gt;
-&lt;p&gt;&lt;strong&gt;「2」：指的是比特币生态和 Ai 作为操作主线。&lt;/strong&gt;结合外部投资市场来看，前者是动荡期的数字黄金，是美元的重要蓄水池，后者是延续美国科技革命的重要支柱，黄金-石油-科技（算力）的美元敍事转变，在下个阶段似乎离不开 Ai 的延续，比特币和算力又息息相关，这两个板块是泡沫的集大成者，左侧如果有大跌，买入来讲是不错的选择，这两个板块的正溢价效应会非常明显。&lt;/p&gt;
-&lt;p&gt;1、比特币生态主要的 3 个板块就是铭文（BRC 20）或者接下来的符文、BTC L2 和一些和比特相关的生态币。&lt;/p&gt;
-&lt;p&gt;a.铭文，肯定我们第一个考虑的就是 ORDI，另外最近 MUBI 表现也非常活跃，成交量平均维持在市值的 50% 以上；&lt;/p&gt;
-&lt;p&gt;b.BTC L2，出来的项目不多，明星项目新上的 MERL，基本都在观望期，；另外就是一些比特生态相关老币的转型，比如 STX；&lt;/p&gt;
-&lt;p&gt;c.比特生态相关的币，这里包含的老庄币就比较多了，比如 QTUM，REN 这些老币。新币的话还有前段时间非常火热的 CORE，还有最近新上的全链项目，ZETA 等等。&lt;/p&gt;
-&lt;p&gt;2、Ai 生态其实也主要分三类，一是人工智能（这里面往下就不细分了），二是大数据，还有就是借着 ai 转型 Ai 公链的一些老项目，比如 NEAR，AR 和 THETA 这类。如果你去 coingecko 搜分类，里面有时候也会把 depin 的一些项目放进去，但其实 depin 和 ai 也挺接近，一个偏算力，一个偏应用。&lt;/p&gt;
-&lt;p&gt;以上两个板块适合追涨和大跌买入，比如腰斩或者比特大跌后右侧企稳的时候，如果只是小跌，还是看新币追涨做波短平快会更好一些。&lt;/p&gt;
-&lt;p&gt;「&lt;strong&gt;4」：指的是以 depin，rwa，gamefi 和 meme 的四大流量板块支线&lt;/strong&gt;。针对未来 2 波行情，这四个板块值得长拿的是 Gamefi，再下来是 RWA，最后是 Depin 和 Meme 板块。&lt;/p&gt;
-&lt;p&gt;3、Gamefi 主要指的是链游，我把游戏组织和元宇宙也算在这里面，主要就是这三类，游戏公链的话一半一半。Gamefi 项目的集中融资年份是 2021 年，那时候链游和元宇宙非常火热，吸引了一众融资，诞生了如 animoca brands 这样的游戏明星风投机构，2 年的洗盘对一个新赛道来说足够了，比如表现优异的 YGG。&lt;/p&gt;
-&lt;p&gt;d.链游更多的是偏 play to earn-play and earn 的转变，像 AXS 从 GALA 的转变，从单个游戏向游戏平台和游戏生态的转变，很多游戏平台也在开发自己的游戏链，做自己应用内的 defi 产品，比如 Gala chain，gala 算是走的比较全面的一个项目。除此之外还有有些新的链游，比如 pixels，sidus，tlm 这类，传统链游项目和以前的 axs 一样，转型是迟早的事，像 gala 一样早早做好全局规划的，不是很多。&lt;/p&gt;
-&lt;p&gt;e.游戏组织主要指的就是 YGG，是来自越南的一个项目，以游戏，项目投资和孵化等为主要的收益手段。&lt;/p&gt;
-&lt;p&gt;f.元宇宙主要值得是以虚拟世界中的虚拟资产的拥有权为核心的项目，比如 sand，除此之外还有 alice，mana。&lt;/p&gt;
-&lt;p&gt;4、RWA 是去年火起来的新概念，指的是真实世界资产，主要是将类似国债的投资品放到 Web3 世界中来，更像是经济下行时候主动选择的标的，最火的标的就是 ondo 和 pendle，还有我们之前推过的 mkr 和 rsr。&lt;/p&gt;
-&lt;p&gt;潜力来说，rsr 还不错，ondo 的话，虽说有大佬加持，但目前才释放 14% 左右，跌起来不知道能去哪，pendle 从历史最低价算到现在也有接近 200 倍了，代币基本全流通，潜力庄币的典范。参考题材和代币流通情况，RSR 和 MKR 相对来说潜力更大一些。&lt;/p&gt;
-&lt;p&gt;5、Meme 板块主要泛指土狗代币，同时除了 BTC 生态的铭文，也可以归属到 MEME 里面来，基本操作都是短平快。MEME 赛道的龙头是狗狗币 DOGE，这个板块还是适合打新，比较偏博彩性质。&lt;/p&gt;
-&lt;p&gt;6、Depin 主要指的是去中心化物理基础设施，我的理解比较片面，主要就是借着 ai 算力的名号来整硬件挖矿的，典型项目有 fil，hnt，除此之外还有类似 rndr 这类做渲染的，这些大都也会被分类到 ai 板块中去，但我个人理解的 ai 还是偏应用和数据处理一些，depin 则偏算力和挖矿一些，这里面的项目大都是暴涨了很多的，要么选新币，要么等大跌再买入会好一些。&lt;/p&gt;</description>
-            <link>https://panewslab.com/zh/articledetails/knen95iutdo8.html</link>
-            <guid isPermaLink="false">https://panewslab.com/zh/articledetails/knen95iutdo8.html</guid>
-            <pubDate>Tue, 23 Apr 2024 05:00:21 GMT</pubDate>
-            <author>DD1 的加密思考</author>
-            <category>深度</category>
-            <category>行情</category>
-            <category>比特币</category>
-            <category>基础设施</category>
-            <category>去中心化</category>
-        </item>
-        <item>
-            <title>羊毛党们怨声载道，拿到 Avail 空投的「幸运儿」究竟是谁？</title>
-            <description>&lt;blockquote&gt;Avail 究竟制定了怎样的空投标准，将代币都分配给了谁，用户的质疑合理吗？&lt;/blockquote&gt;&lt;p&gt;作者：Alex Liu，Foresight News&lt;/p&gt;
-&lt;h3&gt;引言&lt;/h3&gt;
-&lt;p&gt;模块化敍事又一员大将，Avail，4 月 19 日宣布了将进行 Unification Drop 代币空投。354,605 个合格地址将有资格申领总计 6 亿枚代币，其申领时间至 5 月 4 日截止。&lt;/p&gt;
-&lt;p&gt;&lt;img style=&quot;display: block; margin-left: auto; margin-right: auto;&quot; src=&quot;https://cdn-img.panewslab.com/yijian/2024/4/23/images/868bcbe2245d45aa36116e8d35d5473d.jpg&quot; alt=&quot;羊毛党们怨声载道，拿到 Avail 空投的「幸运儿」究竟是谁？&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt;
-&lt;pre&gt;AVAIL 申领界面&lt;/pre&gt;
-&lt;p&gt;这并不令人意外。早在一周前，一张疑似 Avail 空投资格标准的截图就已在 X 上流传，最终被团队确认为「泄露」，挑动了人们的期待 。&lt;/p&gt;
-&lt;p&gt;&lt;img style=&quot;display: block; margin-left: auto; margin-right: auto;&quot; src=&quot;https://cdn-img.panewslab.com/yijian/2024/4/23/images/80353b7c7a976dc3403774e9f68d2bce.jpg&quot; alt=&quot;羊毛党们怨声载道，拿到 Avail 空投的「幸运儿」究竟是谁？&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt;
-&lt;pre&gt;提前流出的空投资格标准&lt;/pre&gt;
-&lt;p&gt;但随之而来的空投申领网站却让不少人失望了 —— 许多之前笃定能有所斩获的测试网参与者、L2 重度活跃用户，在资格查询中得到的却是「Not Eligible」 的结果。一时间网上骂声不断，吐槽规则与标准，甚至质疑公平性，直呼项目方「老鼠仓」的用户大有人在。&lt;/p&gt;
-&lt;p&gt;Avail 究竟制定了怎样的标准，将代币都发配给了谁，用户的质疑合理吗？读完本文，相信你能得出自己的答案。&lt;/p&gt;
-&lt;h3&gt;规则&lt;/h3&gt;
-&lt;p&gt;正式出炉的空投规则和事先泄漏的并无二致。共分为 5 个类别：&lt;/p&gt;
-&lt;ol&gt;
-&lt;li&gt;区块链生态开发者。共 9000 万枚 AVAIL。&lt;/li&gt;
-&lt;li&gt;激励测试网贡献者。共 4950 万枚 AVAIL。&lt;/li&gt;
-&lt;li&gt;Rollup 用户。 共 3.8 亿枚 AVAIL。&lt;/li&gt;
-&lt;li&gt;Polygon PoS 质押者。（即以太坊主网上的 MATIC 质押者），共 7000 万枚。&lt;/li&gt;
-&lt;li&gt;为社区做出重大贡献者。共 1050 万枚。&lt;/li&gt;
-&lt;/ol&gt;
-&lt;p&gt;&lt;img style=&quot;display: block; margin-left: auto; margin-right: auto;&quot; src=&quot;https://cdn-img.panewslab.com/yijian/2024/4/23/images/92502b2fec328a9763fba4f566cdcb66.jpg&quot; alt=&quot;羊毛党们怨声载道，拿到 Avail 空投的「幸运儿」究竟是谁？&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt;
-&lt;pre&gt;Avail 正式的空投标准&lt;/pre&gt;
-&lt;p&gt;这样的规则为何造成了很大的争议？&lt;/p&gt;
-&lt;h3&gt;争议&lt;/h3&gt;
-&lt;h4&gt;&lt;strong&gt;没给 DYM 质押者&lt;/strong&gt;&lt;/h4&gt;
-&lt;p&gt;作为模块化生态的一员，大家一直预期 Avail 将会给同为模块化项目的 Dymension 代币质押者空投，恰如 TIA 质押者收到了 DYM 空投一般。Dymension 作为模块化的结算层，客观上更是 Avail DA 的客户。种种联系造成了不少用户为 Avail 的空投预期而买入 DYM 并质押。&lt;/p&gt;
-&lt;p&gt;但最终空投并没有给到 DYM 质押者。&lt;/p&gt;
-&lt;p&gt;Dymension 的创始人似乎也对此不太满意。他在 Avail 空投宣布细则后发推写到：真正知道该如何空投的基于 Substrate 的 DA，谁在构建？&lt;/p&gt;
-&lt;p&gt;&lt;img style=&quot;display: block; margin-left: auto; margin-right: auto;&quot; src=&quot;https://cdn-img.panewslab.com/yijian/2024/4/23/images/b81c99d5b00319d2d24d8cf9cd15f2b2.jpg&quot; alt=&quot;羊毛党们怨声载道，拿到 Avail 空投的「幸运儿」究竟是谁？&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt;
-&lt;pre&gt;Dymension 创始人所发推文&lt;/pre&gt;
-&lt;p&gt;而 Avail 正是基于 Substrate 构建的 DA，他在内涵什么，不言而喻了。&lt;/p&gt;
-&lt;h4&gt;&lt;strong&gt;测试网节点「抽奖」&lt;/strong&gt;&lt;/h4&gt;
-&lt;p&gt;轻节点的运行者归属在第二类激励测试网贡献者中。但是许多用户，运行了数以月计节点，却没资格申领代币，这是为什么？官方说明：&lt;/p&gt;
-&lt;p&gt;The top performing light client operators who participated in the Light Client Lift-off have also been randomly selected for AVAIL rewards.表现最好的参与 Light Client Lift-off 的轻客户端运营者也被随机选中获得 AVAIL 奖励。&lt;/p&gt;
-&lt;p&gt;随机选择让用户之前投入的时间精力变成了由运气决定的「抽奖」，将命运从自己手中交了出去。而且由于没有更多的信息披露，「随机选取」的过程是否公平也存疑。对此的批评，似乎应该理解。&lt;/p&gt;
-&lt;h4&gt;&lt;strong&gt;两极分化，标准不透明&lt;/strong&gt;&lt;/h4&gt;
-&lt;p&gt;各类资格标准中，分配总量最大、普通散户最有机会获得的，当属「Rollup 用户」一项了。但事实确是如此吗？&lt;/p&gt;
-&lt;p&gt;Avail 官方声称每条 L2 排名前五万的地址有资格，但实际上达到这前五万远比想象中困难。&lt;/p&gt;
-&lt;p&gt;你可能与作者有着类似的经历：在 X 上刷到空投领域的大 V、KOL 带来的 Avail 空投消息，看到他们附上有资格领取几千上万枚 AVAIL 的截图，并声称每个号都有，这是大毛。于是激动的来到官方网站一个一个地址验证资格，并逐渐发现不对劲 —— 包括自己最常用最活跃的的 L2 地址，全军覆没。&lt;/p&gt;
-&lt;p&gt;这是作者和身边朋友的普遍情况。但有的朋友常用的大号没有资格，某个不知道特殊在何处的小号却能领取几千枚。这是为什么？答案是：不知道。Avail 说明了空投资格参考每周的交易数、交易量、Gas 费等等，但标准具体是按什么数据来划分的，却并不透明。&lt;/p&gt;
-&lt;p&gt;不过交易笔数应该确实占了很大权重，社区反应之前在 L2 上 「打铭文」而有很多笔交易的地址，多数都有资格。&lt;/p&gt;
-&lt;p&gt;&lt;img style=&quot;display: block; margin-left: auto; margin-right: auto;&quot; src=&quot;https://cdn-img.panewslab.com/yijian/2024/4/23/images/5d47840dbd2d63ca1335d9e68d05c3cf.jpg&quot; alt=&quot;羊毛党们怨声载道，拿到 Avail 空投的「幸运儿」究竟是谁？&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt;
-&lt;pre&gt;能够获得 AVAIL 的 L2&lt;/pre&gt;
-&lt;p&gt;相对模糊的标准，让社区对项目方「老鼠仓」的指控显得不无可能。要知道，最后代币由 Polkadot 生态的钱包地址领取，代币领完了，大家也无法知道究竟是哪些 L2 地址符合资格让它们领到的。&lt;/p&gt;
-&lt;h4&gt;&lt;strong&gt;过多的「贡献者」份额&lt;/strong&gt;&lt;/h4&gt;
-&lt;p&gt;Lefteris Karapetsas 是以太坊的知名开源开发者，他在一篇相关贴文里写到：&lt;/p&gt;
-&lt;p&gt;我有几个私人 Rollup 地址，它们非常活跃，但什么都没得到，除了一个地址收到了约 300 个代币。而我的 Github、Twitter 和公开地址一共收到了约 87,000 个代币!!! 🤯Starknet 也一样。是的，我是 8 个用户之 1。不要误解，我非常感谢这份认可。但是我想知道为什么 Rollup/Starknet 活动的乘数要比像我这样的知名人士小得多？我的 lefteris.eth 不是一个活跃的 Rollup 用户。只是一个治理参与者。然而，它获得的代币比我拥有的最活跃的 Rollup 地址多了 80 倍。🙏 再次感谢这份认可，但似乎对大多数用户有些不公平，偏爱像我这样的知名人士 / OG。&lt;/p&gt;
-&lt;p&gt;&lt;img style=&quot;display: block; margin-left: auto; margin-right: auto;&quot; src=&quot;https://cdn-img.panewslab.com/yijian/2024/4/23/images/8a1ed2420c5851c0b0c712bdf572f395.jpg&quot; alt=&quot;羊毛党们怨声载道，拿到 Avail 空投的「幸运儿」究竟是谁？&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt;
-&lt;pre&gt;其附在贴文后的空投查询截图&lt;/pre&gt;
-&lt;p&gt;如图可见，除作为开发者获得 13333 枚外，连接推特为他带来了整整 50000 枚的分配。而作为用户时他只能获得 300 枚。悬殊的分配让他也为普通用户打抱不平起来。&lt;/p&gt;
-&lt;p&gt;据作者观察，获得 50000 枚「社区贡献者」分配的人群并不全是 Lefteris 一样令人尊敬的开源贡献者，有的像是与 Avail 关系友好的项目方，有的甚至只是为 Avail 打过广告的 KOL。&lt;/p&gt;
-&lt;p&gt;份额的悬殊与所谓「社区贡献者」实际的良莠不齐也造成了社区的怒火。&lt;/p&gt;
-&lt;h3&gt;总结&lt;/h3&gt;
-&lt;p&gt;Avail 这次的空投似乎糟点确实不少。希望大家能从中总结出对策，在以后做更聪明的「空投猎手」。但即使「空投猎手」们再聪明、再精明，空投的成败也掌握在项目方的手中。&lt;/p&gt;</description>
-            <link>https://panewslab.com/zh/articledetails/wzeu61fa.html</link>
-            <guid isPermaLink="false">https://panewslab.com/zh/articledetails/wzeu61fa.html</guid>
-            <pubDate>Tue, 23 Apr 2024 04:30:53 GMT</pubDate>
-            <author>Foresight News</author>
-            <category>深度</category>
-            <category>主网</category>
-            <category>节点</category>
-            <category>用户</category>
-            <category>Polygon</category>
-            <category>治理</category>
-            <category>空投</category>
         </item>
     </channel>
 </rss>
