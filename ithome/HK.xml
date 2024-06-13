@@ -9,8 +9,497 @@
         <generator>RSSHub</generator>
         <webMaster>i@diygod.me (DIYgod)</webMaster>
         <language>en</language>
-        <lastBuildDate>Wed, 12 Jun 2024 13:36:42 GMT</lastBuildDate>
+        <lastBuildDate>Thu, 13 Jun 2024 14:58:12 GMT</lastBuildDate>
         <ttl>180</ttl>
+        <item>
+            <title>研究人員揭露 Veeam 剛修補的重大漏洞技術細節與利用方式</title>
+            <description>&lt;header&gt;
+        &lt;div class=&quot;img-wrapper&quot;&gt;
+      &lt;div class=&quot;field field-name-field-image field-type-image field-label-hidden&quot;&gt;&lt;div class=&quot;field-items&quot;&gt;&lt;div class=&quot;field-item even&quot;&gt;&lt;img src=&quot;https://s4.itho.me/sites/default/files/styles/picture_size_large/public/field/image/vbem.jpg?itok=Qtj0wAU-&quot; width=&quot;960&quot; height=&quot;420&quot; alt=&quot;&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/div&gt;&lt;/div&gt;&lt;/div&gt;        &lt;/div&gt;
+                    
+      &lt;/header&gt;
+    &lt;div class=&quot;row-fluid&quot;&gt;
+    &lt;div class=&quot;contents-wrap&quot;&gt;
+    &lt;div class=&quot;content&quot;&gt;
+    &lt;div class=&quot;side-extra&quot;&gt;
+      
+  &lt;/div&gt;
+
+&lt;div class=&quot;field field-name-field-photo-source field-type-text field-label-inline clearfix&quot;&gt;&lt;div class=&quot;field-label&quot;&gt;圖片來源:&amp;nbsp;&lt;/div&gt;&lt;div class=&quot;field-items&quot;&gt;&lt;div class=&quot;field-item even&quot;&gt; &lt;p&gt;Veeam&lt;/p&gt;
+ &lt;/div&gt;&lt;/div&gt;&lt;/div&gt;&lt;div class=&quot;field field-name-body field-type-text-with-summary field-label-hidden&quot;&gt;&lt;div class=&quot;field-items&quot;&gt;&lt;div class=&quot;field-item even&quot;&gt; &lt;p&gt;不久前的 5 月 21 日，備份與資料保護軟體廠商 Veeam，發布 Veeam Backup &amp;amp; Replication 備份軟體&lt;a href=&quot;https://www.veeam.com/kb4510&quot;&gt;12.1.2.172 更新版本&lt;/a&gt;，修補 Veeam Backup Enterprise Manager（VBEM）集中管理控制枱的&lt;a href=&quot;https://www.veeam.com/kb4581&quot;&gt;4 個漏洞&lt;/a&gt;，但只提及這些漏洞造成的影響，而未提供技術細節。&lt;/p&gt;
+&lt;p&gt;而資安研究人員 Sina Kheirkha 則於日前針對 Veeam 修補的漏洞中，嚴重程度最高的 CVE-2024-29849，揭露了&lt;a href=&quot;https://summoning.team/blog/veeam-enterprise-manager-cve-2024-29849-auth-bypass/&quot;&gt;技術細節&lt;/a&gt;，以及可行的利用漏洞方式。&lt;/p&gt;
+&lt;p&gt;Veeam 官方的聲明中表示，CVE-2024-29849 是個嚴重性評分高達 9.8 分（滿分 10 分）的重大漏洞，會允許未經身分驗證的攻擊者登入 VBEM，等同允許攻擊者任意執行 VBEM 的管理功能。&lt;/p&gt;
+&lt;p&gt;但 Veeam 的官方訊息只揭露這個漏洞屬於繞過身分驗證性質，而沒有細節資訊。Sina Kheirkha 則表示，經他的研究後，這項漏洞是「Veeam.Backup.Enterprise.RestAPIService.exe」（以下簡稱 Veeam API）所導致，這項服務是在安裝 VBEM 過程中安裝，會監聽（listens）TCP 9398 埠，作為 Web 應用程式的 REST API 伺服器。&lt;/p&gt;
+&lt;p&gt;攻擊者可向存在漏洞的這個 Veeam API，發送特別製作的 VMware 單一登入 （single-sign-on，SSO）token，而 token 中則包含假冒管理者用户的身分驗證請求，以及用於驗證 SSO token 的 STSService URL 網址。&lt;/p&gt;
+&lt;p&gt;這個 SSO token 是透過 Base64 型式編碼，Veeam API 將以 XML 型式對其執行解碼與解讀，並向攻擊者指定的 SSO 驗證 URL 網址，發出基於簡單物件存取協定（SOAP）的請求，來驗證這個 SSO token 的有效性。但這個 URL 網址，會將 SOAP 請求導向到攻擊者設定與控制的惡意伺服器，並正面回應 Veeam API 發出的驗證請求、確認攻擊者發出的 SSO token 是有效的，從而讓 Veeam API 接受攻擊者的身分驗證請求，並授予攻擊者管理者存取權限。&lt;/p&gt;
+&lt;p&gt;Sina Kheirkha 的分析顯示，問題是出在 Veeam API 的 SSO token 驗證程序並不完備，用於驗證 SSO token 有效與否的 STSService URL 網址，本身並不會經過驗證，所以攻擊者可以將 SSO token 驗證請求，導向到自己控制的惡意伺服器伺服器上，所以 Veeam API 向惡意伺服器詢問攻擊者的 SSO token 是否有效時，自然會得到「有效」的回應。&lt;/p&gt;
+&lt;p&gt;Veeam 官方建議用户盡快升級到 12.1.2.172 以上版本，以修補前述漏洞。而無法立即升級到的用户，則可透過這些方式來緩解，包括：限制網路存取，只允許受限制的 IP 位址連接 VBEM 的網頁控制枱；設定防火牆規則，阻擋對於 Veeam API 使用的連接埠非授權存取；為所有使用 VBEM 的用户設定多身分驗證；定期檢視系統日誌，以及早發現任何可以的存取限制；將 VBEM 伺服器與其他關鍵系統的網路相互隔離，以減少橫向移動攻擊的風險。&lt;/p&gt;
+ &lt;/div&gt;&lt;/div&gt;&lt;/div&gt;    &lt;div&gt;
+  &lt;/div&gt;
+  &lt;/div&gt;
+       
+  &lt;/div&gt;&lt;/div&gt;</description>
+            <link>https://www.ithome.com.tw/news/163447</link>
+            <guid isPermaLink="false">https://www.ithome.com.tw/news/163447</guid>
+            <pubDate>Wed, 12 Jun 2024 16:00:00 GMT</pubDate>
+            <author>張明德</author>
+            <category>新聞</category>
+        </item>
+        <item>
+            <title>【資安日報】6 月 13 日，荷蘭針對中國駭客攻擊 Fortinet 防火牆設備的網路間諜行動進行深度調查，駭客挾持全球逾 2 萬台設備</title>
+            <description>&lt;header&gt;
+        &lt;div class=&quot;img-wrapper&quot;&gt;
+      &lt;div class=&quot;field field-name-field-image field-type-image field-label-hidden&quot;&gt;&lt;div class=&quot;field-items&quot;&gt;&lt;div class=&quot;field-item even&quot;&gt;&lt;img src=&quot;https://s4.itho.me/sites/default/files/styles/picture_size_large/public/field/image/20240613.jpg?itok=MffRQdZx&quot; width=&quot;960&quot; height=&quot;420&quot; alt=&quot;&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/div&gt;&lt;/div&gt;&lt;/div&gt;        &lt;/div&gt;
+                    
+      &lt;/header&gt;
+    &lt;div class=&quot;row-fluid&quot;&gt;
+    &lt;div class=&quot;contents-wrap&quot;&gt;
+    &lt;div class=&quot;content&quot;&gt;
+    &lt;div class=&quot;side-extra&quot;&gt;
+      
+  &lt;/div&gt;
+
+&lt;div class=&quot;field field-name-body field-type-text-with-summary field-label-hidden&quot;&gt;&lt;div class=&quot;field-items&quot;&gt;&lt;div class=&quot;field-item even&quot;&gt; &lt;p&gt;荷蘭今年 2 月在國防部察覺中國駭客從事的網路間諜攻擊行動，對方利用重大漏洞 CVE-2022-42475 對 FortiGate 防火牆下手，並植入木馬程式 Coathanger，如今他們公佈新的調查結果，指出這是一起大規模的全球攻擊行動，駭客從 Fortinet 修補漏洞的兩個月前，就進行相關攻擊。&lt;/p&gt;
+&lt;p&gt;值得留意的是，駭客所使用的木馬程式，不僅難以察覺行蹤，更無法透過部署修補程式清除，因此荷蘭軍情機構認為，這起攻擊行動的受害規模，實際上可能還會再擴大。&lt;/p&gt;
+&lt;p&gt;&amp;nbsp;&lt;/p&gt;
+&lt;h3&gt;&lt;strong&gt;【攻擊與威脅】&lt;/strong&gt;&lt;/h3&gt;
+&lt;p&gt;&lt;a href=&quot;https://www.ithome.com.tw/news/163443&quot;&gt;&lt;strong style=&quot;font-size: 22px;&quot;&gt;中國駭客鎖定 Fortinet 防火牆漏洞從事的網路間諜活動受害規模擴大，全球逾 2 萬台防火牆遭到滲透&lt;/strong&gt;&lt;/a&gt;&lt;/p&gt;
+&lt;p&gt;今年 2 月，荷蘭國家網路安全中心（NCSC）、軍事情報暨安全局（MIVD）、情報暨安全總局（AIVD）聯手，針對中國資助的駭客從事的網路間諜攻擊行動公佈調查結果，這些駭客鎖定 FortiGate 防火牆、網頁安全閘道 FortiProxy 的 SSL VPN 漏洞 CVE-2022-42475（CVSS 風險評為 9.8 分），並對防火牆設備植入名為 Coathanger 的 RAT 木馬程式，MIVD 持續進行調查而於本週正式揭露這起攻擊的受害規模，其實遠遠超出先前的發現。&lt;/p&gt;
+&lt;p&gt;他們指出，駭客在 Fortinet 發布修補程式前的 2 個月就開始利用漏洞，有 1.4 萬台設備受到感染，從 2022 年至 2023 年，對方至少掌握逾 2 萬台 FortiGate 防火牆的存取權限。但實際的受害規模，這些軍情機構認為很有可能還會更大，他們研判駭客會藉此漏洞入侵數百個組織，從而進行竊取資料等攻擊行動。&lt;/p&gt;
+&lt;p&gt;&lt;strong style=&quot;font-size: 22px;&quot;&gt;其他攻擊與威脅&lt;/strong&gt;&lt;/p&gt;
+&lt;p&gt;◆&lt;a href=&quot;https://symantec-enterprise-blogs.security.com/threat-intelligence/black-basta-ransomware-zero-day&quot;&gt;&lt;strong style=&quot;font-size: 20px;&quot;&gt;勒索軟體駭客 Black Basta 利用 Windows 零時差漏洞提升權限&lt;/strong&gt;&lt;/a&gt;&lt;/p&gt;
+&lt;!-- notionvc: c69b14a7-6db0-4142-8a36-1a7e125413c0 --&gt;&lt;p&gt;&lt;/p&gt;
+&lt;p&gt;◆&lt;a href=&quot;https://www.wiz.io/blog/dero-cryptojacking-campaign-adapts-to-evade-detection&quot;&gt;&lt;strong style=&quot;font-size: 20px;&quot;&gt;組態配置不當的 Kubernetes 叢集遭到鎖定，駭客將其用於挖掘加密貨幣 Dero&lt;/strong&gt;&lt;/a&gt;&lt;/p&gt;
+&lt;!-- notionvc: ca17a452-67e4-459f-9902-e64a4d8a7e8c --&gt;&lt;p&gt;&lt;/p&gt;
+&lt;p&gt;◆&lt;a href=&quot;https://blog.sucuri.net/2024/06/hundreds-sites-targeted-by-fake-chrome-update-pop-ups.html&quot;&gt;&lt;strong style=&quot;font-size: 20px;&quot;&gt;駭客鎖定 WordPress 網站下手，目的是要脅瀏覽網站的使用者瀏覽器過舊，藉此散佈惡意程式&lt;/strong&gt;&lt;/a&gt;&lt;/p&gt;
+&lt;p&gt;&amp;nbsp;&lt;/p&gt;
+&lt;h3&gt;&lt;strong&gt;【漏洞與修補】&lt;/strong&gt;&lt;/h3&gt;
+&lt;p&gt;&lt;a href=&quot;https://www.ithome.com.tw/news/163436&quot;&gt;&lt;strong style=&quot;font-size: 22px;&quot;&gt;開源機器學習框架 PyTorch 存在重大漏洞，恐導致敏感的 AI 資料遭竊&lt;/strong&gt;&lt;/a&gt;&lt;/p&gt;
+&lt;p&gt;有研究人員於今年 4 月，向漏洞懸賞平台 Huntr 通報開源機器學習框架 PyTorch 存在重大層級漏洞 CVE-2024-5480，CVSS 風險評分達到 10 分，影響 2.2.2 版以前的 PyTorch。對此，Huntr 向通報者提供 1,500 美元予以獎勵，並於近日公佈細節。&lt;/p&gt;
+&lt;p&gt;這項漏洞存在於名為 torch.distributed.rpc 的框架，一旦開發者利用該框架進行 RPC 呼叫，過程中該框架並未驗證相關功能是否如開發者預期執行，使得攻擊者藉此漏洞透過網路使用 RPC 呼叫 Python 的功能，從而載入 Python 程式庫並執行任意命令。&lt;/p&gt;
+&lt;p&gt;由於這項框架通常被用於分散式訓練，像是增強式學習、模型並用、參數伺服器訓練框架等應用場景，而有可能導致上述漏洞的影響範圍相當廣泛。&lt;/p&gt;
+&lt;p&gt;&lt;a href=&quot;https://www.ithome.com.tw/news/163437&quot;&gt;&lt;strong style=&quot;font-size: 22px;&quot;&gt;Google 針對旗下 Pixel 手機發布 6 月份資安公告，權限提升漏洞已被用於攻擊行動&lt;/strong&gt;&lt;/a&gt;&lt;/p&gt;
+&lt;p&gt;本月 11 日 Google 針對 Pixel 手機發布資安公告，修補 50 個資安漏洞，其中有 19 個權限提升漏洞、17 個資訊洩露漏洞、5 個阻斷服務（DoS）漏洞、4 個遠端程式碼執行（RCE）漏洞，以及 5 個高通元件的漏洞。&lt;/p&gt;
+&lt;p&gt;值得留意的是，該公司特別針對存在 Pixel 韌體的權限提升漏洞 CVE-2024-32896 提出警告，他們發現可能被利用的跡象，並指出疑似用於有限的、針對性的攻擊行動。&lt;/p&gt;
+&lt;p&gt;&lt;a href=&quot;https://www.ithome.com.tw/news/163440&quot;&gt;&lt;strong style=&quot;font-size: 22px;&quot;&gt;Arm 針對顯示晶片 Mali GPU 核心驅動程式漏洞提出警告，已出現攻擊行動&lt;/strong&gt;&lt;/a&gt;&lt;/p&gt;
+&lt;p&gt;上週 Arm 針對顯示晶片 Mali GPU 的核心驅動程式漏洞 CVE-2024-4610 提出警告，並指出這項漏洞影響 Bifrost 與 Valhall 兩種 GPU 的核心驅動程式，從 r34p0 至 r40p0 的所有版本都受到影響，他們已在 r41p0 版修補這項漏洞。&lt;/p&gt;
+&lt;p&gt;值得留意的是，Arm 在公告裡提及，他們獲報這項漏洞已被用於實際攻擊行動的情況。6 月 12 日，美國網路安全暨基礎設施安全局（CISA）納入已遭到利用的漏洞目錄（KEV），要求聯邦機構必須於 7 月 3 日之前完成修補。&lt;/p&gt;
+&lt;p&gt;&lt;a href=&quot;https://www.ithome.com.tw/news/163422&quot;&gt;&lt;strong style=&quot;font-size: 22px;&quot;&gt;Adobe 修補內容管理平台 Experience Manager、電商網站平台 Magento 漏洞&lt;/strong&gt;&lt;/a&gt;&lt;/p&gt;
+&lt;p&gt;本週二（6 月 11 日）Adobe 針對旗下 10 款產品發布更新，總共修補 166 個漏洞，其中，144 個與內容管理平台 Experience Manager（AEM）有關，而這次他們對電商網站平台 Adobe Commerce 及 Magento Open Source 發布的資安公告，重大層級漏洞的數量最多，也相當值得留意。&lt;/p&gt;
+&lt;p&gt;除了上述兩種網站系統的漏洞，Adobe 也針對旗下的 XML 文件處理軟體 FrameMaker，揭露與修補兩個漏洞，分別是：CVE-2024-30299、CVE-2024-30300，皆屬於伺服器權限提升類型的弱點，這兩個漏洞 CVSS 風險評為 10 分、9.8 分，是本次最為危險的漏洞。&lt;/p&gt;
+&lt;p&gt;&lt;strong style=&quot;font-size: 22px;&quot;&gt;其他漏洞與修補&lt;/strong&gt;&lt;/p&gt;
+&lt;p&gt;◆&lt;a href=&quot;https://www.securityweek.com/ics-patch-tuesday-advisories-published-by-siemens-schneider-electric-aveva-cisa/&quot;&gt;&lt;strong style=&quot;font-size: 20px;&quot;&gt;西門子、施耐德電機、Aveva 針對工控與 OT 系統漏洞提出警告&lt;/strong&gt;&lt;/a&gt;&lt;/p&gt;
+&lt;!-- notionvc: 7ddde00a-73ba-4286-b56f-8bfde2f22eb3 --&gt;&lt;p&gt;&lt;/p&gt;
+&lt;p&gt;◆&lt;a href=&quot;https://www.securityweek.com/chrome-126-firefox-127-patch-high-severity-vulnerabilities/&quot;&gt;&lt;strong style=&quot;font-size: 20px;&quot;&gt;Chrome 126、Firefox 127 正式推出，修補多項高風險記憶體資安漏洞&lt;/strong&gt;&lt;/a&gt;&lt;/p&gt;
+&lt;!-- notionvc: c18b90d4-440a-4808-9af2-83f6092c3f6f --&gt;&lt;p&gt;&lt;/p&gt;
+&lt;p&gt;&amp;nbsp;&lt;/p&gt;
+&lt;h3&gt;&lt;strong&gt;【資安產業動態】&lt;/strong&gt;&lt;/h3&gt;
+&lt;p&gt;&lt;a href=&quot;https://www.ithome.com.tw/news/163120&quot;&gt;&lt;strong style=&quot;font-size: 22px;&quot;&gt;以儲存為中心的勒索軟體防護架構開始完整成形&lt;/strong&gt;&lt;/a&gt;&lt;/p&gt;
+&lt;p&gt;在已邁入第 10 年的台灣資安大會歷史中，儲存與備份、資料保護廠商，參與台灣資安大會是晚近幾年的事。面對勒索軟體威脅的持續肆虐，儲存設備與備份保護平台現在也無法置身事外。&lt;/p&gt;
+&lt;p&gt;在這幾年的台灣資安大會中，我們便見到在儲存設備領域，勒索軟體防護功能的持續擴展。最初的出發點，是導入不可變儲存技術（immutable storage），防止資料複本遭到惡意刪改。下一步是引進主動偵測能力，確保資料乾淨、不受感染。而到了今年的資安大會，我們從多家廠商的演講與展示當中，進一步見到儲存端開始形成一套完整防護架構，涵蓋資料治理、識別、偵測、資料保護、威脅回應與回復等多個面向。&lt;/p&gt;
+&lt;p&gt;&amp;nbsp;&lt;/p&gt;
+&lt;h3&gt;&lt;strong&gt;【資安關鍵人物】&lt;/strong&gt;&lt;/h3&gt;
+&lt;p&gt;&lt;a href=&quot;https://www.ithome.com.tw/article/163114&quot;&gt;&lt;strong style=&quot;font-size: 22px;&quot;&gt;從重視網路安全到企業安全，為資安創業提供有利條件&lt;/strong&gt;&lt;/a&gt;&lt;/p&gt;
+&lt;p&gt;台灣資安產業在過去十年中，經歷了巨大的變革，從技術和社羣層面到政府政策和產業實踐，都帶來了深遠的影響。身為台灣資安連續創業家、也是奧義智慧創辦人兼執行長邱銘彰表示，十年前，資安技術主要是以賣各種網路和資安設備為主，但隨著技術的發展，以及重視並專研各種資安技術的資安社羣興起，起到了推波助瀾的作用，資安產業逐漸從設備銷售轉向了服務導向。&lt;/p&gt;
+&lt;p&gt;許多企業對於資安的重視層面也有變化，近幾年，從以往只關心資訊安全（Information Security）轉變到網路安全（Cyber Security），而且，現在更重視整體的企業安全（Safety）。邱銘彰認為，這些變化來自於多方因素的影響，從技術的發展到政府政策的改變，都對資安產業帶來深遠的影響，也為後來許多資安新創公司的成立和發展，提供了有利條件。&lt;/p&gt;
+&lt;p&gt;&amp;nbsp;&lt;/p&gt;
+&lt;h3&gt;&lt;strong&gt;近期資安日報&lt;/strong&gt;&lt;/h3&gt;
+&lt;p&gt;&lt;a href=&quot;https://www.ithome.com.tw/news/163429&quot;&gt;&lt;strong&gt;【6 月 12 日】微軟發布 6 月份例行更新，總共針對 49 個漏洞進行公告&lt;/strong&gt;&lt;/a&gt;&lt;/p&gt;
+&lt;p&gt;&lt;a href=&quot;https://www.ithome.com.tw/news/163398&quot;&gt;&lt;strong&gt;【6 月 11 日】紐約時報證實內部資料流入地下論壇，程式碼儲存庫帳密資料外流釀禍&lt;/strong&gt;&lt;/a&gt;&lt;/p&gt;
+&lt;p&gt;&lt;a href=&quot;https://www.ithome.com.tw/news/163361&quot;&gt;&lt;strong&gt;【6 月 7 日】勒索軟體駭客 RansomHub 聲稱入侵老牌筆電製造廠藍天電腦，引起國際資安媒體高度關注&lt;/strong&gt;&lt;/a&gt;&lt;/p&gt;
+ &lt;/div&gt;&lt;/div&gt;&lt;/div&gt;    &lt;div&gt;
+  &lt;/div&gt;
+  &lt;/div&gt;
+       
+  &lt;/div&gt;&lt;/div&gt;</description>
+            <link>https://www.ithome.com.tw/news/163444</link>
+            <guid isPermaLink="false">https://www.ithome.com.tw/news/163444</guid>
+            <pubDate>Wed, 12 Jun 2024 16:00:00 GMT</pubDate>
+            <author>周峻佑</author>
+            <category>新聞</category>
+        </item>
+        <item>
+            <title>中國駭客鎖定 Fortinet 防火牆漏洞從事的網路間諜活動受害規模擴大，全球逾 2 萬台防火牆遭到破壞</title>
+            <description>&lt;header&gt;
+        &lt;div class=&quot;img-wrapper&quot;&gt;
+      &lt;div class=&quot;field field-name-field-image field-type-image field-label-hidden&quot;&gt;&lt;div class=&quot;field-items&quot;&gt;&lt;div class=&quot;field-item even&quot;&gt;&lt;img src=&quot;https://s4.itho.me/sites/default/files/styles/picture_size_large/public/field/image/ilrt6q3fs2-ncsc.png?itok=3wkOwSV-&quot; width=&quot;960&quot; height=&quot;420&quot; alt=&quot;&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/div&gt;&lt;/div&gt;&lt;/div&gt;        &lt;/div&gt;
+                    
+      &lt;/header&gt;
+    &lt;div class=&quot;row-fluid&quot;&gt;
+    &lt;div class=&quot;contents-wrap&quot;&gt;
+    &lt;div class=&quot;content&quot;&gt;
+    &lt;div class=&quot;side-extra&quot;&gt;
+      
+  &lt;/div&gt;
+
+&lt;div class=&quot;field field-name-body field-type-text-with-summary field-label-hidden&quot;&gt;&lt;div class=&quot;field-items&quot;&gt;&lt;div class=&quot;field-item even&quot;&gt; &lt;p&gt;今年 2 月，荷蘭國家網路安全中心（NCSC）、軍事情報暨安全局（MIVD）、情報暨安全總局（AIVD）聯手，&lt;a href=&quot;https://www.ncsc.nl/documenten/publicaties/2024/februari/6/mivd-aivd-advisory-coathanger-tlp-clear&quot;&gt;針對中國資助的駭客從事的網路間諜攻擊行動公佈調查結果&lt;/a&gt;，這些駭客鎖定 FortiGate 防火牆、網頁安全閘道 FortiProxy 的 SSL VPN 漏洞 CVE-2022-42475（CVSS 風險評為 9.8 分），並對防火牆設備植入名為 Coathanger 的 RAT 木馬程式，MIVD 持續進行調查而於本週正式揭露這起攻擊的受害規模，其實遠遠超出先前的發現。&lt;/p&gt;
+&lt;p&gt;先前這些荷蘭軍情機構指出，根據他們的調查，受害用户（user）的數量不到 50 個，其中一個受害組織是荷蘭國防部，所幸因受害網路環境與他們的主要網路環境有所區隔，使得入侵行動的衝擊不致於擴大。當時他們研判，對方的目標是國防部非機密專案的研發部門，以及 2 個外部的合作研究機構，但&lt;a href=&quot;https://www.ncsc.nl/actueel/nieuws/2024/juni/10/aanhoudende-statelijke-cyberspionagecampagne-via-kwetsbare-edge-devices&quot;&gt;MIVD 進一步追查發現&lt;/a&gt;，有數十個西方國家的政府機關、國防工業相關企業，以及國際組織受害。&lt;/p&gt;
+&lt;p&gt;他們指出，駭客在 Fortinet 發布修補程式前的 2 個月就開始利用漏洞，有 1.4 萬台設備受到感染，從 2022 年至 2023 年，對方至少掌握逾 2 萬台 FortiGate 防火牆的存取權限。但實際的受害規模，這些軍情機構認為很有可能還會更大，他們研判駭客會藉此漏洞入侵數百個組織，從而進行竊取資料等攻擊行動。&lt;/p&gt;
+&lt;p&gt;而對於駭客使用的惡意程式 Coathanger，MIVD 指出，即使他們已經公佈相關調查結果，IT 人員還是難以識別及清除，因此，對方很可能仍然能夠存取大量的受害系統。&lt;/p&gt;
+&lt;p&gt;值得留意的是，MIVD 特別提到，一旦受害設備被植入 Coathanger，攻擊者就能永久存取系統，即使 IT 人員部署了更新程式，對方仍保有相關存取權限。這樣的情況，也導致防守端在因應相關的攻擊時，將面臨更加嚴峻的挑戰。&lt;/p&gt;
+ &lt;/div&gt;&lt;/div&gt;&lt;/div&gt;    &lt;div&gt;
+  &lt;/div&gt;
+  &lt;/div&gt;
+       
+  &lt;/div&gt;&lt;/div&gt;</description>
+            <link>https://www.ithome.com.tw/news/163443</link>
+            <guid isPermaLink="false">https://www.ithome.com.tw/news/163443</guid>
+            <pubDate>Wed, 12 Jun 2024 16:00:00 GMT</pubDate>
+            <author>周峻佑</author>
+            <category>資安 </category>
+        </item>
+        <item>
+            <title>健保署聯手 Google 要打造糖尿病風險預測 AI、加速大家醫計畫發展</title>
+            <description>&lt;header&gt;
+        &lt;div class=&quot;img-wrapper&quot;&gt;
+      &lt;div class=&quot;field field-name-field-image field-type-image field-label-hidden&quot;&gt;&lt;div class=&quot;field-items&quot;&gt;&lt;div class=&quot;field-item even&quot;&gt;&lt;img src=&quot;https://s4.itho.me/sites/default/files/styles/picture_size_large/public/field/image/img_1715_-_fu_zhi_.jpg?itok=dmS5PCsw&quot; width=&quot;960&quot; height=&quot;420&quot; alt=&quot;&quot; title=&quot;健保署署長石崇良表示，健保署與 Google 展開 5 年合作，首波打造糖尿病風險預測模型，接下來會擴大到三高風險預測。&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/div&gt;&lt;/div&gt;&lt;/div&gt;          &lt;p class=&quot;caption&quot;&gt; 健保署署長石崇良表示，健保署與 Google 展開 5 年合作，首波打造糖尿病風險預測模型，接下來會擴大到三高風險預測。 &lt;/p&gt;
+        &lt;/div&gt;
+                    
+      &lt;/header&gt;
+    &lt;div class=&quot;row-fluid&quot;&gt;
+    &lt;div class=&quot;contents-wrap&quot;&gt;
+    &lt;div class=&quot;content&quot;&gt;
+    &lt;div class=&quot;side-extra&quot;&gt;
+      
+  &lt;/div&gt;
+
+&lt;div class=&quot;field field-name-field-photo-source field-type-text field-label-inline clearfix&quot;&gt;&lt;div class=&quot;field-label&quot;&gt;圖片來源:&amp;nbsp;&lt;/div&gt;&lt;div class=&quot;field-items&quot;&gt;&lt;div class=&quot;field-item even&quot;&gt; &lt;p&gt;攝影／王若樸&lt;/p&gt;
+ &lt;/div&gt;&lt;/div&gt;&lt;/div&gt;&lt;div class=&quot;field field-name-body field-type-text-with-summary field-label-hidden&quot;&gt;&lt;div class=&quot;field-items&quot;&gt;&lt;div class=&quot;field-item even&quot;&gt; &lt;p&gt;今日（6/13），健保署署長石崇良宣佈與 Google 聯手，要採用 Google Cloud 和 Google Health 的資料工具、AI 和算力等資源，再加上國衞院專業知識，來推動健保署健康台灣計畫，特別是其中的慢性病風險管理 AI 醫療照護研究計畫。他們第一波要打造糖尿病風險預測模型，作為大家醫計畫中的一套 AI 風險預測模型，來根據未患病和已患病民眾的健康資訊，提供風險預測值，並以風險高低作為分級醫療參考。石崇良表示，這個做法可提高民眾病識感，也能加強醫院個案管理。他透露，糖尿病風險預測只是起點，接下來還會擴大到三高疾病的風險預測與健康管理，降低整體台灣疾病負擔。&lt;/p&gt;
+&lt;p&gt;&lt;span style=&quot;font-size:24px;&quot;&gt;&lt;strong&gt;除了癌症，三高併發症也是台灣疾病負擔大宗&lt;/strong&gt;&lt;/span&gt;&lt;/p&gt;
+&lt;p&gt;石崇良指出，國際權威醫學期刊刺胳針刊出一份全球疾病負擔（Global Burden of Disease）圖表，他們收集了 1990 年至 2021 年的疾病資料，將造成民眾死亡與失能的疾病，以方塊大小來表示負擔比。其中，負擔大宗來自癌症、慢性疾病與併發症，包含糖尿病、慢性腎臟病、腦中風和缺血性心臟病等區塊，加總起來佔了全球疾病負擔的 16% 左右。（如下圖）&lt;/p&gt;
+&lt;p&gt;&lt;img alt=&quot;&quot; src=&quot;https://s4.itho.me/sites/default/files/images/%E7%96%BE%E7%97%85%E8%B2%A0%E8%8D%B7.JPG&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt;
+&lt;p&gt;相較起來，台灣的疾病負擔也與全球趨勢類似。癌症依然是大宗，再來是佔比 6% 左右的糖尿病，以及 3% 的慢性腎臟病、10% 的腦中風與缺血性心臟病。「所以這 4 塊疾病，就是我們常講的高血糖、高血脂、高血壓等三高造成的，導致近 20% 的台灣疾病負荷。」石崇良表示，若要讓台灣民眾更健康，就得防治癌症和三高。&lt;/p&gt;
+&lt;p&gt;要降低這些疾病負荷，得先找出致病因。根據台大公共衞生學院流行病學與預防醫學研究所所長林先和等人在 2017 年發表的研究，石崇良點出，這些因子可分為 3 組，包括三高、BC 肝和生活形態（如煙酒、體重、飲食），防範這些因子才能維持健康、降低死亡。&lt;/p&gt;
+&lt;p&gt;&lt;span style=&quot;font-size:24px;&quot;&gt;&lt;strong&gt;力推大家醫計畫，鎖定糖尿病和三高民眾&lt;/strong&gt;&lt;/span&gt;&lt;/p&gt;
+&lt;p&gt;也因此，「我們必須改變過去的照護模式，從以疾病為主的照護，轉為以健康為主的照護。」石崇良表示，這個改變包含 3 部分，一是將過去的分段式照護，轉為協同照護和最終的整合式照護，再來是醫療給付部分，包括從過去疾病治療的論量計酬，轉為過渡期的疾病管理與論病計酬，再到最終的健康管理和論質計酬。但最重要的是，這些轉變得靠數位工具來支撐，不只有電子病歷，還要有雲端資料、AI 數位醫療、IoT 與遠距照護等。（如下圖）&lt;/p&gt;
+&lt;p&gt;&lt;img alt=&quot;&quot; src=&quot;https://s4.itho.me/sites/default/files/images/%E7%85%A7%E8%AD%B7%E6%A8%A1%E5%BC%8F.JPG&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt;
+&lt;p&gt;其中一大轉型計畫，就是健保署今年展開的大家醫計畫。這個計畫以原有的家醫計畫為基礎，對象包含代謝症候羣防治計畫、慢性病 P4P、癌症品質計畫等患者以及三高民眾，要透過全人照護模式，來擴大服務涵蓋率、改變生活形態，進而改善健康狀態。&lt;/p&gt;
+&lt;p&gt;進一步來説，大家醫計畫有個重要工具：家醫大平台，來整合特定民眾的健保資料、穿戴式裝置生理數據和生活形態資料，如血壓、血脂、血糖、眼底鏡、尿蛋白、疫苗施打、戒煙、BC 肝篩檢、癌症篩檢和營養運動睡眠等，一方面透過平台上的數據分析和風險偵測，來通知醫師和個管師，及早與高風險患者溝通、衞教，另也要提供追蹤和異常管理功能，如疫苗注射、篩檢後異常通知等。最後還要提供數據分析和個案慢性病指標，來協助醫師制定個人化治療方案。&lt;/p&gt;
+&lt;p&gt;&lt;img alt=&quot;&quot; src=&quot;https://s4.itho.me/sites/default/files/images/%E5%AE%B6%E9%86%AB%E5%A4%A7%E5%B9%B3%E8%87%BA.JPG&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt;
+&lt;p&gt;&lt;span style=&quot;font-size:24px;&quot;&gt;&lt;strong&gt;聯手 Google、國衞院，打造糖尿病風險預測 AI&lt;/strong&gt;&lt;/span&gt;&lt;/p&gt;
+&lt;p&gt;石崇良表示，健保署目前正建置家醫大平台，預計今年底前完工，之後會逐步優化平台功能。而健保署今日與 Google 展開為期 5 年的合作，預計使用 Google 雲端算力資源、AI 工具和資料處理工具等，來與國衞院共同打造專屬台灣的疾病風險預測模型，第一波瞄準糖尿病風險預測模型。&lt;/p&gt;
+&lt;p&gt;這是因為，在台灣每 10 人就有 1 人罹患糖尿病，且其併發症嚴重，如心血管疾病、腎病、視網膜及神經病變等，需及早介入預防與治療。而且，糖尿病也是台灣疾病負擔大宗之一。&lt;/p&gt;
+&lt;p&gt;因此，在模型訓練資料部分，健保署會採用去識別化的性別、年齡、家族病史、風險資訊、國際疾病分類代碼 ICD-10 和檢驗檢查等資料，同時透過國衞院專業知識找出更多參數，來訓練糖尿病風險預測模型。&lt;/p&gt;
+&lt;p&gt;同時，&lt;a href=&quot;https://taiwan.googleblog.com/2024/06/cloud-summit-taipei-2024-ai-for-healthy-taiwan.html&quot;&gt;Google 表示&lt;/a&gt;，健保署將採用 Google Cloud 一系列為醫療照護產業微調的基礎模型 MedLM，在 Vetex AI 平台上建置、訓練和測試客製化的生成式 AI 大型語言模型。接著，這些模型可用來預測患者第二型糖尿病患者的併發症風險。&lt;/p&gt;
+&lt;p&gt;就流程來説，模型會透過健保署健保雲執行，醫療院所醫師上傳資料到健保雲，模型運算後會傳送結果給醫師和民眾。這個風險預測分 2 種，一是針對未患糖尿病的民眾，模型會提供 10 年內、5 年內和 1 至 3 年內的罹病風險，另一是患糖尿病民眾，模型會提供數種風險預測，如總住院率、特定原因住院率、死亡率、慢性病罹患率等。&lt;/p&gt;
+&lt;p&gt;而風險高低最後會以燈號表示，作為醫療分級參考，比如綠色為低風險、黃綠色為有風險、黃色是中風險、黃橙色中高風險、紅橙色高風險，紅色則是嚴重風險。其中，風險較低的民眾可建議至衞生所、門診就醫，黃色燈號則可轉介至地區醫院、黃橙色至區域醫院，高風險和嚴重風險則至醫學中心，以此達到分級醫療目標。（如下圖）&lt;/p&gt;
+&lt;p&gt;&lt;img alt=&quot;&quot; src=&quot;https://s4.itho.me/sites/default/files/images/IMG_1715.JPG&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt;
+&lt;p&gt;石崇良表示，所有相關資料只有健保署可存取，也會以最高規格來保護。他點出，未來健保署會透過上述風險分級結果，來擬定不同的給付計畫，制定不同風險個案的管理費。健保署也會視照顧成效，來給予獎勵，落實以質計酬的支付轉型目標。&lt;/p&gt;
+&lt;p&gt;他表示，健保署與 Google 聯手的糖尿病風險預測 AI 是第一波應用，藉此拋磚引玉，來推動、擴大到更多慢性病和三高疾病風險管理，提高健康狀態。&lt;/p&gt;
+&lt;p&gt;&lt;!-- notionvc: ce41d572-563c-4d34-97f7-cefce6ee7e67 --&gt;&lt;/p&gt;
+ &lt;/div&gt;&lt;/div&gt;&lt;/div&gt;    &lt;div&gt;
+  &lt;/div&gt;
+  &lt;/div&gt;
+       
+  &lt;/div&gt;&lt;/div&gt;</description>
+            <link>https://www.ithome.com.tw/news/163442</link>
+            <guid isPermaLink="false">https://www.ithome.com.tw/news/163442</guid>
+            <pubDate>Wed, 12 Jun 2024 16:00:00 GMT</pubDate>
+            <author>王若樸</author>
+            <category>醫療 IT</category>
+        </item>
+        <item>
+            <title>問題頻傳，微軟暫停擴大測試 Windows 11 24H2</title>
+            <description>&lt;header&gt;
+        &lt;div class=&quot;img-wrapper&quot;&gt;
+      &lt;div class=&quot;field field-name-field-image field-type-image field-label-hidden&quot;&gt;&lt;div class=&quot;field-items&quot;&gt;&lt;div class=&quot;field-item even&quot;&gt;&lt;img src=&quot;https://s4.itho.me/sites/default/files/styles/picture_size_large/public/field/image/1012-microsoft-windows_11-cyber-security-guan_fang_tu_pian_-960_2.jpg?itok=pw3PgcJS&quot; width=&quot;960&quot; height=&quot;420&quot; alt=&quot;&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/div&gt;&lt;/div&gt;&lt;/div&gt;        &lt;/div&gt;
+                    
+      &lt;/header&gt;
+    &lt;div class=&quot;row-fluid&quot;&gt;
+    &lt;div class=&quot;contents-wrap&quot;&gt;
+    &lt;div class=&quot;content&quot;&gt;
+    &lt;div class=&quot;side-extra&quot;&gt;
+      
+  &lt;/div&gt;
+
+&lt;div class=&quot;field field-name-field-photo-source field-type-text field-label-inline clearfix&quot;&gt;&lt;div class=&quot;field-label&quot;&gt;圖片來源:&amp;nbsp;&lt;/div&gt;&lt;div class=&quot;field-items&quot;&gt;&lt;div class=&quot;field-item even&quot;&gt; &lt;p&gt;微軟&lt;/p&gt;
+ &lt;/div&gt;&lt;/div&gt;&lt;/div&gt;&lt;div class=&quot;field field-name-body field-type-text-with-summary field-label-hidden&quot;&gt;&lt;div class=&quot;field-items&quot;&gt;&lt;div class=&quot;field-item even&quot;&gt; &lt;p&gt;在 6 月 18 日即將開賣 Copilot+ PC 前夕，微軟本週卻將準備擴大測試的通路中緊急移除 Windows 11 24H2。&lt;/p&gt;
+&lt;p&gt;Windows 11 24H2 是微軟實作 AI PC 的作業系統，該公司於 5 月 20 日將 Windows 11 24H2（Build 26100.712）&lt;a href=&quot;https://www.microsoft.com/en-us/windowsinsider/getting-started&quot; target=&quot;_blank&quot;&gt;透過 Release Preview Channel 釋出&lt;/a&gt;給 Insiders 方案成員測試。這個版本包含 HDR 背景支援、Wi-Fi 7 支援、省電功能、Sudo for Windows 及 Rust in Windows Kernel 等功能。不過上週&lt;a href=&quot;https://blogs.windows.com/windows-insider/2024/05/22/releasing-windows-11-version-24h2-to-the-release-preview-channel/&quot; target=&quot;_blank&quot;&gt;微軟在官方部落格公告&lt;/a&gt;，暫時中止以 Release Preview Channel 發布 24H2 版，會在幾周後恢復發布。&lt;/p&gt;
+&lt;p&gt;可能被媒體追問許久，微軟 Windows 主管&lt;a href=&quot;https://x.com/brandonleblanc/status/1799478915582542199&quot; target=&quot;_blank&quot;&gt;Brandon LeBlanc 在推特上説&lt;/a&gt;，他沒有什麼部落格以外的訊息可提供的，微軟正努力讓該 OS 版本儘快發布。&lt;/p&gt;
+&lt;p&gt;網路媒體&lt;a href=&quot;https://www.windowslatest.com/2024/06/10/microsoft-pulls-windows-11-24h2-for-release-preview-testers-likely-due-to-issues/&quot; target=&quot;_blank&quot;&gt;Windows Latest 指出&lt;/a&gt;，一些用户上週安裝 24H2 後即傳問題，例如有用户從 23H2 升級後出現 RunDLL 錯誤訊息。其他用户則抱怨不穩定、Word、電玩應用程式凍住、卡頓甚至當掉等情形。&lt;/p&gt;
+&lt;p&gt;此外，因應資安專家的批評，&lt;a href=&quot;https://www.ithome.com.tw/news/163381&quot; target=&quot;_blank&quot;&gt;微軟也緊急宣佈&lt;/a&gt;在 6 月 18 日 Copilot+ PC 上市前，把可自動快照紀錄用户 PC 使用行為的 Recall 改為預設關閉，以平息隱私疑慮。&lt;/p&gt;
+&lt;p&gt;不過用户如果有備用機或不怕出問題的，現在仍可在 Dev Channel 下載安裝 Windows 11 24H2。&lt;/p&gt;
+ &lt;/div&gt;&lt;/div&gt;&lt;/div&gt;    &lt;div&gt;
+  &lt;/div&gt;
+  &lt;/div&gt;
+       
+  &lt;/div&gt;&lt;/div&gt;</description>
+            <link>https://www.ithome.com.tw/news/163441</link>
+            <guid isPermaLink="false">https://www.ithome.com.tw/news/163441</guid>
+            <pubDate>Wed, 12 Jun 2024 16:00:00 GMT</pubDate>
+            <author>林妍溱</author>
+            <category>新聞</category>
+        </item>
+        <item>
+            <title>Arm 針對顯示晶片 Mali GPU 核心驅動程式漏洞提出警告，已出現攻擊行動</title>
+            <description>&lt;header&gt;
+        &lt;div class=&quot;img-wrapper&quot;&gt;
+      &lt;div class=&quot;field field-name-field-image field-type-image field-label-hidden&quot;&gt;&lt;div class=&quot;field-items&quot;&gt;&lt;div class=&quot;field-item even&quot;&gt;&lt;img src=&quot;https://s4.itho.me/sites/default/files/styles/picture_size_large/public/field/image/xcjtmhscbe-arm-156.jpg?itok=bQm_T_Kx&quot; width=&quot;960&quot; height=&quot;420&quot; alt=&quot;&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/div&gt;&lt;/div&gt;&lt;/div&gt;        &lt;/div&gt;
+                    
+      &lt;/header&gt;
+    &lt;div class=&quot;row-fluid&quot;&gt;
+    &lt;div class=&quot;contents-wrap&quot;&gt;
+    &lt;div class=&quot;content&quot;&gt;
+    &lt;div class=&quot;side-extra&quot;&gt;
+      
+  &lt;/div&gt;
+
+&lt;div class=&quot;field field-name-body field-type-text-with-summary field-label-hidden&quot;&gt;&lt;div class=&quot;field-items&quot;&gt;&lt;div class=&quot;field-item even&quot;&gt; &lt;p&gt;上週 Arm 針對顯示晶片 Mali GPU 的核心驅動程式漏洞 CVE-2024-4610&lt;a href=&quot;https://developer.arm.com/Arm%20Security%20Center/Mali%20GPU%20Driver%20Vulnerabilities&quot;&gt;提出警告&lt;/a&gt;，並指出這項漏洞影響 Bifrost 與 Valhall 兩種 GPU 的核心驅動程式，從 r34p0 至 r40p0 的所有版本都受到影響，他們已在 r41p0 版修補這項漏洞。&lt;/p&gt;
+&lt;p&gt;而對於這項漏洞帶來的影響，該公司指出，攻擊者若是取得本機非特權使用者權限，就有機會產生不當的 GPU 記憶體操作程序，從而存取已被釋出的記憶體空間，&lt;a href=&quot;https://nvd.nist.gov/vuln/detail/CVE-2024-4610&quot;&gt;CVSS 風險評為 5.5 分&lt;/a&gt;。&lt;/p&gt;
+&lt;p&gt;值得留意的是，Arm 在公告裡提及，他們獲報這項漏洞已被用於實際攻擊行動的情況。6 月 12 日，美國網路安全暨基礎設施安全局（CISA）&lt;a href=&quot;https://www.cisa.gov/news-events/alerts/2024/06/12/cisa-adds-two-known-exploited-vulnerabilities-catalog&quot;&gt;納入已遭到利用的漏洞目錄（KEV）&lt;/a&gt;，要求聯邦機構必須於 7 月 3 日之前完成修補。&lt;/p&gt;
+ &lt;/div&gt;&lt;/div&gt;&lt;/div&gt;    &lt;div&gt;
+  &lt;/div&gt;
+  &lt;/div&gt;
+       
+  &lt;/div&gt;&lt;/div&gt;</description>
+            <link>https://www.ithome.com.tw/news/163440</link>
+            <guid isPermaLink="false">https://www.ithome.com.tw/news/163440</guid>
+            <pubDate>Wed, 12 Jun 2024 16:00:00 GMT</pubDate>
+            <author>周峻佑</author>
+            <category>資安 </category>
+        </item>
+        <item>
+            <title>OpenAI 採用甲骨文雲端為運行基礎架構，強調和微軟合作不變</title>
+            <description>&lt;header&gt;
+        &lt;div class=&quot;img-wrapper&quot;&gt;
+      &lt;div class=&quot;field field-name-field-image field-type-image field-label-hidden&quot;&gt;&lt;div class=&quot;field-items&quot;&gt;&lt;div class=&quot;field-item even&quot;&gt;&lt;img src=&quot;https://s4.itho.me/sites/default/files/styles/picture_size_large/public/field/image/0613-oracle_openai_microsoft-960.jpg?itok=lh-31LCt&quot; width=&quot;960&quot; height=&quot;420&quot; alt=&quot;&quot; title=&quot;背景圖片取自&lt;a href=&amp;quot;https://unsplash.com/@taylorvanriper925?utm_content=creditCopyText&amp;amp;utm_medium=referral&amp;amp;utm_source=unsplash&amp;quot;&gt;Taylor Van Riper&lt;/a&gt; on &lt;a href=&amp;quot;https://unsplash.com/photos/yQorCngxzwI?utm_content=creditCopyText&amp;amp;utm_medium=referral&amp;amp;utm_source=unsplash&amp;quot;&gt;Unsplash&lt;/a&gt;&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/div&gt;&lt;/div&gt;&lt;/div&gt;          &lt;p class=&quot;caption&quot;&gt; 背景圖片取自&lt;a href=&quot;https://unsplash.com/@taylorvanriper925?utm_content=creditCopyText&amp;amp;utm_medium=referral&amp;amp;utm_source=unsplash&quot;&gt;Taylor Van Riper&lt;/a&gt; on &lt;a href=&quot;https://unsplash.com/photos/yQorCngxzwI?utm_content=creditCopyText&amp;amp;utm_medium=referral&amp;amp;utm_source=unsplash&quot;&gt;Unsplash&lt;/a&gt; &lt;/p&gt;
+        &lt;/div&gt;
+                    
+      &lt;/header&gt;
+    &lt;div class=&quot;row-fluid&quot;&gt;
+    &lt;div class=&quot;contents-wrap&quot;&gt;
+    &lt;div class=&quot;content&quot;&gt;
+    &lt;div class=&quot;side-extra&quot;&gt;
+      
+  &lt;/div&gt;
+
+&lt;div class=&quot;field field-name-body field-type-text-with-summary field-label-hidden&quot;&gt;&lt;div class=&quot;field-items&quot;&gt;&lt;div class=&quot;field-item even&quot;&gt; &lt;p&gt;甲骨文和 OpenAI 本週&lt;a href=&quot;https://www.oracle.com/news/announcement/openai-selects-oracle-cloud-infrastructure-to-extend-microsoft-azure-ai-platform-2024-06-11/&quot; target=&quot;_blank&quot;&gt;宣佈一項合作&lt;/a&gt;，OpenAI 將以甲骨文雲端基礎架構（Oracle Cloud Infrastructure，OCI）作為擴展微軟 Azure AI 的基礎架構，以執行模型推論等任務。&lt;/p&gt;
+&lt;p&gt;這項合作其實涉及 OpenAI、微軟 Azure 及甲骨文三家業者，目的在讓 OCI 成為類似備援方案，為微軟 Azure AI 擴展到甲骨文雲端，為 OpenAI 負載提供更高處理能力。&lt;/p&gt;
+&lt;p&gt;OpenAI 的 AI 服務光是 ChatGPT，每月用户就超過 1 億，堪稱吃運算資源的怪獸。OpenAI 執行長 Sam Altman 從不諱言其 AI 運算資源需求，&lt;a href=&quot;https://venturebeat.com/ai/sam-altman-wants-up-to-7-trillion-for-ai-chips-the-natural-resources-required-would-be-mind-boggling/&quot; target=&quot;_blank&quot;&gt;外傳他希望&lt;/a&gt;募集 7 兆美元蓋廠自產晶片以加速訓練 AI 模型的任務。&lt;/p&gt;
+&lt;p&gt;或許因為 OpenAI 才宣佈和蘋果合作，使 ChatGPT 整合到蘋果 OS 中，外界揣測可能影響 OpenAI 和微軟的合作關係。OpenAI 在官方新聞發布後&lt;a href=&quot;https://x.com/OpenAI/status/1800778542512550260&quot; target=&quot;_blank&quot;&gt;隨後澄清&lt;/a&gt;，這項合作是讓 OpenAI 使用「OCI 基礎架構上的 Azure AI 平台」執行推論和其他作業。OpenAI 最尖端的模型仍然執行在使用與微軟合作的超級電腦上。&lt;/p&gt;
+&lt;p&gt;在公有雲市場方面，甲骨文 OCI 遠遠落後微軟或是今天宣佈結盟的 Google Cloud。根據市調業者&lt;a href=&quot;https://www.fierce-network.com/multi-cloud/public-cloud-growth-back-baby&quot; target=&quot;_blank&quot;&gt;Synergy 的數據&lt;/a&gt;，截至今年第一季，公有雲市場仍以市佔達 31% 的 AWS 居冠，微軟 Azure 和 Google Cloud 則分別擁有 24% 和 11% 市場。甲骨文則和 IBM、騰訊同為 2%。&lt;/p&gt;
+&lt;p&gt;但甲骨文仍有相當知名的客户，包括 Nvidia DGX Cloud、馬斯克的 xAI，以及 Adept、Modal、MosaicML、Together AI、Twelve Labs 等 AI 業者。在訓練大型語言模型時，OCI 的 Supercluster 可擴展到 64k NVIDIA Blackwell GPU 或 GB200 Grace Blackwell Superchips，透過超低延遲 RDMA 叢集網路連線。OCI Compute 虛擬機器和 OCI 裸機 Nvidia GPU 執行個體並可支援生成式 AI、電腦視覺、自然語言處理、推薦系統等應用程式。&lt;/p&gt;
+ &lt;/div&gt;&lt;/div&gt;&lt;/div&gt;    &lt;div&gt;
+  &lt;/div&gt;
+  &lt;/div&gt;
+       
+  &lt;/div&gt;&lt;/div&gt;</description>
+            <link>https://www.ithome.com.tw/news/163439</link>
+            <guid isPermaLink="false">https://www.ithome.com.tw/news/163439</guid>
+            <pubDate>Wed, 12 Jun 2024 16:00:00 GMT</pubDate>
+            <author>林妍溱</author>
+            <category>新聞</category>
+        </item>
+        <item>
+            <title>甲骨文和 Google Cloud 合作多雲環境、推 Oracle Database@Google Cloud</title>
+            <description>&lt;header&gt;
+        &lt;div class=&quot;img-wrapper&quot;&gt;
+      &lt;div class=&quot;field field-name-field-image field-type-image field-label-hidden&quot;&gt;&lt;div class=&quot;field-items&quot;&gt;&lt;div class=&quot;field-item even&quot;&gt;&lt;img src=&quot;https://s4.itho.me/sites/default/files/styles/picture_size_large/public/field/image/0613-oracle_databasegoogle_cloud-960.jpg?itok=2Dn8zmnj&quot; width=&quot;960&quot; height=&quot;420&quot; alt=&quot;&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/div&gt;&lt;/div&gt;&lt;/div&gt;        &lt;/div&gt;
+                    
+      &lt;/header&gt;
+    &lt;div class=&quot;row-fluid&quot;&gt;
+    &lt;div class=&quot;contents-wrap&quot;&gt;
+    &lt;div class=&quot;content&quot;&gt;
+    &lt;div class=&quot;side-extra&quot;&gt;
+      
+  &lt;/div&gt;
+
+&lt;div class=&quot;field field-name-field-photo-source field-type-text field-label-inline clearfix&quot;&gt;&lt;div class=&quot;field-label&quot;&gt;圖片來源:&amp;nbsp;&lt;/div&gt;&lt;div class=&quot;field-items&quot;&gt;&lt;div class=&quot;field-item even&quot;&gt; &lt;p&gt;Google Cloud&lt;/p&gt;
+ &lt;/div&gt;&lt;/div&gt;&lt;/div&gt;&lt;div class=&quot;field field-name-body field-type-text-with-summary field-label-hidden&quot;&gt;&lt;div class=&quot;field-items&quot;&gt;&lt;div class=&quot;field-item even&quot;&gt; &lt;p&gt;&lt;a href=&quot;https://www.oracle.com/news/announcement/oracle-and-google-cloud-announce-groundbreaking-multicloud-partnership-2024-06-11/&quot; target=&quot;_blank&quot;&gt;甲骨文昨（12）日宣佈&lt;/a&gt;將以合作取代競爭，和 Google Cloud 締結多雲合作，並將推出 Google Cloud 版的 Oracle 資料庫。&lt;/p&gt;
+&lt;p&gt;甲骨文與 Google Cloud 的合作有二階段。其一，甲骨文雲端基礎架構（Oracle Cloud Infrastructure，OCI）和 Google Cloud 將透過 Google Cloud 的跨雲互連（Cross-Cloud Interconnect）整合。OCI 是甲骨文提供的基礎架構硬體。&lt;/p&gt;
+&lt;p&gt;跨雲互連是 Google Cloud 的直接連線服務，一開始將提供全球 11 個區域剛加入的客户，以利將舊雲端平台的一般性任務移轉到 Google Cloud 上，而無需搬移費用。在和甲骨文的合作中，&lt;a href=&quot;https://cloud.google.com/network-connectivity/docs/interconnect/how-to/cci/oci/connectivity-overview&quot; target=&quot;_blank&quot;&gt;跨雲端互連&lt;/a&gt;可在 Google Cloud、OCI 網路之間建立專有實體連線，這可使得部署在二個雲環境的資料交換更快速，也能實現更多元服務模式，雙方客户可獲得 Google Cloud 及甲骨文共同支援服務。&lt;/p&gt;
+&lt;p class=&quot;rtecenter&quot;&gt;&lt;img alt=&quot;&quot; src=&quot;https://s4.itho.me/sites/default/files/images/0613-OCI-Google%20Cross-Cloud-Interconnect.png&quot; style=&quot;width: 600px;&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt;
+&lt;p&gt;&lt;span style=&quot;color:#696969;&quot;&gt;&lt;span style=&quot;font-size:14px;&quot;&gt;圖片來源／甲骨文&lt;/span&gt;&lt;/span&gt;&lt;/p&gt;
+&lt;p&gt;今年下半雙方將推出 Oracle &lt;a href=&quot;mailto:Database@Google&quot;&gt;Database@Google&lt;/a&gt; Cloud，強調這雲端資料庫具備甲骨文最高的資料庫和網路效能，功能和價格也和 OCI 平台上的版本一樣。二家軟體巨人也會合作共同行銷，將 Oracle &lt;a href=&quot;mailto:Database@Google&quot;&gt;Database@Google&lt;/a&gt; Cloud 推向多種產業，包括金融、醫療、零售、製造等。&lt;/p&gt;
+&lt;p class=&quot;rtecenter&quot;&gt;&lt;img alt=&quot;&quot; src=&quot;https://s4.itho.me/sites/default/files/images/0613-Oracle%20Database%40Google%20Cloud-600.jpg&quot; style=&quot;width: 600px;&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt;
+&lt;p&gt;&lt;span style=&quot;font-size:14px;&quot;&gt;&lt;span style=&quot;color:#696969;&quot;&gt;圖片來源／Google Cloud&lt;/span&gt;&lt;/span&gt;&lt;/p&gt;
+&lt;p&gt;雙方合作將可提供甲骨文資料庫客户 Google Cloud 雲端的好處。首先，他們可以在 Google Cloud 上部署甲骨文資料庫，以及相關服務如 Oracle Exadata 資料庫服務、Oracle Autonomous 資料庫服務、MySQL Heatwave、複寫服務 Oracle GoldenGate、或自動化回復與安全管理服務等。其次，甲骨文客户可以更方便使用 Google Cloud AI 服務，如 Vertex AI 和 Gemini 基礎模型，以便執行 AI 推論或預測分析、或是開發 AI 應用。Oracle &lt;a href=&quot;mailto:Database@Google&quot;&gt;Database@Google&lt;/a&gt; Cloud 讓客户得以直接存取部署於 Google Cloud 資料中心的 OCI 硬體上的甲骨文資料庫服務。&lt;/p&gt;
+&lt;p&gt;最後，客户可利用 Oracle Zero-Downtime Migration 等工具，把 Oracle 資料庫搬上 Google Cloud。這項合作提供簡化的採購方式，客户可以從 Google Cloud Marketplace 上購買 Oracle &lt;a href=&quot;mailto:Database@Google&quot;&gt;Database@Google&lt;/a&gt; Cloud，原有甲骨文客户並可以享用自帶授權（Bring Your Own License，BYOL）及折扣方案如 Oracle Support Rewards 的好處。&lt;/p&gt;
+&lt;p&gt;在 Google Cloud 資料中心直接管理 Oracle Database 服務的合作，今年下半將從美國和英國、德國展開，再陸續推向其他國家。先上線的服務包括 Oracle Exadata Database Service、Oracle Autonomous Database Service 和 Oracle Real Application Clusters（RAC）。&lt;/p&gt;
+&lt;p&gt;而 OCI 和 Google 跨雲互連服務今天已可提供給 11 個跨雲互連區域，包括澳洲、巴西、日本、新加坡、印度、美國等。&lt;/p&gt;
+&lt;p&gt;甲骨文並非現在才和競爭者合作。去年 9 月，甲骨文也和微軟&lt;a href=&quot;https://www.ithome.com.tw/news/158781&quot; target=&quot;_blank&quot;&gt;宣佈了類似的合作&lt;/a&gt;，推出了 Oracle &lt;a href=&quot;mailto:Database@Azure&quot;&gt;Database@Azure&lt;/a&gt;的服務，客户得以直接存取部署於 Microsoft Azure 資料中心的 OCI 上的甲骨文資料庫服務。&lt;/p&gt;
+ &lt;/div&gt;&lt;/div&gt;&lt;/div&gt;    &lt;div&gt;
+  &lt;/div&gt;
+  &lt;/div&gt;
+       
+  &lt;/div&gt;&lt;/div&gt;</description>
+            <link>https://www.ithome.com.tw/news/163438</link>
+            <guid isPermaLink="false">https://www.ithome.com.tw/news/163438</guid>
+            <pubDate>Wed, 12 Jun 2024 16:00:00 GMT</pubDate>
+            <author>林妍溱</author>
+            <category>新聞</category>
+        </item>
+        <item>
+            <title>Google 針對旗下 Pixel 手機發布 6 月份資安公告，權限提升漏洞已被用於攻擊行動</title>
+            <description>&lt;header&gt;
+        &lt;div class=&quot;img-wrapper&quot;&gt;
+      &lt;div class=&quot;field field-name-field-image field-type-image field-label-hidden&quot;&gt;&lt;div class=&quot;field-items&quot;&gt;&lt;div class=&quot;field-item even&quot;&gt;&lt;img src=&quot;https://s4.itho.me/sites/default/files/styles/picture_size_large/public/field/image/ndrgsuiub2-pixel.png?itok=MFEZp5Il&quot; width=&quot;960&quot; height=&quot;420&quot; alt=&quot;&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/div&gt;&lt;/div&gt;&lt;/div&gt;        &lt;/div&gt;
+                    
+      &lt;/header&gt;
+    &lt;div class=&quot;row-fluid&quot;&gt;
+    &lt;div class=&quot;contents-wrap&quot;&gt;
+    &lt;div class=&quot;content&quot;&gt;
+    &lt;div class=&quot;side-extra&quot;&gt;
+      
+  &lt;/div&gt;
+
+&lt;div class=&quot;field field-name-body field-type-text-with-summary field-label-hidden&quot;&gt;&lt;div class=&quot;field-items&quot;&gt;&lt;div class=&quot;field-item even&quot;&gt; &lt;p&gt;本月 11 日 Google 針對 Pixel 手機&lt;a href=&quot;https://source.android.com/docs/security/bulletin/pixel/2024-06-01&quot;&gt;發布資安公告&lt;/a&gt;，修補 50 個資安漏洞，其中有 19 個權限提升漏洞、17 個資訊洩露漏洞、5 個阻斷服務（DoS）漏洞、4 個遠端程式碼執行（RCE）漏洞，以及 5 個高通元件的漏洞。&lt;/p&gt;
+&lt;p&gt;從漏洞的危險程度來看，當中 7 個屬於重大層級、24 個高風險層級，其餘為中度風險漏洞。&lt;/p&gt;
+&lt;p&gt;值得留意的是，該公司特別針對存在 Pixel 韌體的權限提升漏洞 CVE-2024-32896 提出警告，他們發現可能被利用的跡象，並指出疑似用於有限的、針對性的攻擊行動。&lt;/p&gt;
+&lt;p&gt;在此之前，Google 曾公佈&lt;a href=&quot;https://www.ithome.com.tw/news/162191&quot;&gt;遭到鑑識公司利用的 Pixel 零時差漏洞&lt;/a&gt;。今年 4 月，他們修補資訊洩露漏洞 CVE-2024-29745、權限提升漏洞 CVE-2024-29748，通報此事的 GrapheneOS 開發人員透露，鑑識公司積極利用這些漏洞，而能在不知道 PIN 碼的情況下解鎖手機。&lt;/p&gt;
+ &lt;/div&gt;&lt;/div&gt;&lt;/div&gt;    &lt;div&gt;
+  &lt;/div&gt;
+  &lt;/div&gt;
+       
+  &lt;/div&gt;&lt;/div&gt;</description>
+            <link>https://www.ithome.com.tw/news/163437</link>
+            <guid isPermaLink="false">https://www.ithome.com.tw/news/163437</guid>
+            <pubDate>Wed, 12 Jun 2024 16:00:00 GMT</pubDate>
+            <author>周峻佑</author>
+            <category>資安 </category>
+        </item>
+        <item>
+            <title>開源機器學習框架 PyTorch 存在重大漏洞，恐導致敏感的 AI 資料遭竊</title>
+            <description>&lt;header&gt;
+        &lt;div class=&quot;img-wrapper&quot;&gt;
+      &lt;div class=&quot;field field-name-field-image field-type-image field-label-hidden&quot;&gt;&lt;div class=&quot;field-items&quot;&gt;&lt;div class=&quot;field-item even&quot;&gt;&lt;img src=&quot;https://s4.itho.me/sites/default/files/styles/picture_size_large/public/field/image/uspnrivdaj-pytorch.png?itok=foBwNHRq&quot; width=&quot;960&quot; height=&quot;420&quot; alt=&quot;&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/div&gt;&lt;/div&gt;&lt;/div&gt;        &lt;/div&gt;
+                    
+      &lt;/header&gt;
+    &lt;div class=&quot;row-fluid&quot;&gt;
+    &lt;div class=&quot;contents-wrap&quot;&gt;
+    &lt;div class=&quot;content&quot;&gt;
+    &lt;div class=&quot;side-extra&quot;&gt;
+      
+  &lt;/div&gt;
+
+&lt;div class=&quot;field field-name-body field-type-text-with-summary field-label-hidden&quot;&gt;&lt;div class=&quot;field-items&quot;&gt;&lt;div class=&quot;field-item even&quot;&gt; &lt;p&gt;有研究人員於今年 4 月，向漏洞懸賞平台 Huntr 通報開源機器學習框架 PyTorch 存在重大層級漏洞 CVE-2024-5480，CVSS 風險評分達到 10 分，影響 2.2.2 版以前的 PyTorch。對此，Huntr 向通報者提供 1,500 美元予以獎勵，&lt;a href=&quot;http://huntr.com/bounties/39811836-c5b3-4999-831e-46fee8fcade3&quot;&gt;並於上週公佈細節&lt;/a&gt;。&lt;/p&gt;
+&lt;p&gt;這項漏洞存在於名為 torch.distributed.rpc 的框架，一旦開發者利用該框架進行 RPC 呼叫，過程中該框架並未驗證相關功能是否如開發者預期執行，使得攻擊者藉此漏洞透過網路使用 RPC 呼叫 Python 的功能，從而載入 Python 程式庫並執行任意命令。&lt;/p&gt;
+&lt;p&gt;由於這項框架通常被用於分散式訓練，像是增強式學習、模型並用、參數伺服器訓練框架等應用場景，而有可能導致上述漏洞的影響範圍相當廣泛。&lt;/p&gt;
+&lt;p&gt;對於漏洞發生的原因，研究人員也提出説明。當 torch.distributed.rpc 框架在使用多處理器執行緒進行 RPC 通訊時，worker 可使用特定的功能（如 rpc.rpc_sync）將功能及張量（tensor）序列化並打包成 PythonUDF 套件，然後使用 PythonCall 進行傳送。&lt;/p&gt;
+&lt;p&gt;接著，master 節點將接收到的套件反序列化處理，並呼叫_run_function，過程中允許 worker 執行特定的功能，但由於功能呼叫並未受到限制，使得攻擊者透過呼叫 Python 內建的功能，就有機會發動遠端程式碼執行（RCE）攻擊。&lt;/p&gt;
+&lt;p&gt;對此，研究人員也提供概念性驗證（PoC）程式碼，並指出該漏洞可能帶來的影響：由於攻擊者可將其用來遠端攻擊分散式訓練的 master 節點，一旦這些節點遭到入侵，對方就有機會竊取與 AI 有關的敏感資料。&lt;/p&gt;
+ &lt;/div&gt;&lt;/div&gt;&lt;/div&gt;    &lt;div&gt;
+  &lt;/div&gt;
+  &lt;/div&gt;
+       
+  &lt;/div&gt;&lt;/div&gt;</description>
+            <link>https://www.ithome.com.tw/news/163436</link>
+            <guid isPermaLink="false">https://www.ithome.com.tw/news/163436</guid>
+            <pubDate>Wed, 12 Jun 2024 16:00:00 GMT</pubDate>
+            <author>周峻佑</author>
+            <category>新聞</category>
+        </item>
+        <item>
+            <title>GovTech 月報第 30 期：政府承諾以穩定供電、建置超級電腦、培育人才 3 做法促台灣成為 AI 島</title>
+            <description>&lt;header&gt;
+        &lt;div class=&quot;img-wrapper&quot;&gt;
+      &lt;div class=&quot;field field-name-field-image field-type-image field-label-hidden&quot;&gt;&lt;div class=&quot;field-items&quot;&gt;&lt;div class=&quot;field-item even&quot;&gt;&lt;img src=&quot;https://s4.itho.me/sites/default/files/styles/picture_size_large/public/field/image/4_1_0.jpg?itok=gKgOxyXQ&quot; width=&quot;960&quot; height=&quot;420&quot; alt=&quot;&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/div&gt;&lt;/div&gt;&lt;/div&gt;        &lt;/div&gt;
+                    
+      &lt;/header&gt;
+    &lt;div class=&quot;row-fluid&quot;&gt;
+    &lt;div class=&quot;contents-wrap&quot;&gt;
+    &lt;div class=&quot;content&quot;&gt;
+    &lt;div class=&quot;side-extra&quot;&gt;
+      
+  &lt;/div&gt;
+
+&lt;div class=&quot;field field-name-field-photo-source field-type-text field-label-inline clearfix&quot;&gt;&lt;div class=&quot;field-label&quot;&gt;圖片來源:&amp;nbsp;&lt;/div&gt;&lt;div class=&quot;field-items&quot;&gt;&lt;div class=&quot;field-item even&quot;&gt; &lt;p&gt;總統府&lt;/p&gt;
+ &lt;/div&gt;&lt;/div&gt;&lt;/div&gt;&lt;div class=&quot;field field-name-body field-type-text-with-summary field-label-hidden&quot;&gt;&lt;div class=&quot;field-items&quot;&gt;&lt;div class=&quot;field-item even&quot;&gt; &lt;p&gt;&lt;span style=&quot;color: rgb(0, 0, 255);&quot;&gt;重點新聞 (0501~0604)&lt;/span&gt;&lt;/p&gt;
+&lt;p&gt;&lt;strong&gt;&lt;font color=&quot;#ffffff&quot;&gt;&lt;span style=&quot;background-color: rgb(51, 153, 255);&quot;&gt;賴清德&lt;/span&gt;&lt;/font&gt;&amp;nbsp;&lt;font color=&quot;#ffffff&quot;&gt;&lt;span style=&quot;background-color: rgb(51, 153, 255);&quot;&gt;AI&lt;/span&gt;&lt;/font&gt;&lt;/strong&gt;&lt;/p&gt;
+&lt;p&gt;&lt;span style=&quot;font-size:22px;&quot;&gt;&lt;strong&gt;總統賴清德：打造台灣成為 AI 島，將穩定能源供應，加強超級電腦建置及人才培育&lt;/strong&gt;&lt;/span&gt;&lt;/p&gt;
+&lt;p&gt;總統賴清德近期在 Computex 開幕致詞時表示，政府將穩定供電提供多元綠電，建置超級電腦，並培養人才等措施，更多企業協助政府投資台灣，以將台灣打造成為人工智慧島。&lt;/p&gt;
+&lt;p&gt;賴清德在致詞時表示，政府將完成 3 項基本工作，第一是，穩定供電並提供多元綠電，以及建立屬於台灣的資料中心；第二是，建置超級電腦，未來若有必要，政府將投資建置符合需求的超級電腦，供產官學研使用，他並對 Nvidia 贈送第一台超級電腦，台積電負擔部分營運費用表示感謝，；第三是，政府將持續培養 ICT 產業、晶圓製造、半導體、人工智慧等領域人才，使台灣成為人工智慧島得以實現。&lt;/p&gt;
+&lt;p&gt;他盼望企業界持續投資台灣，讓 AI 在台灣產業化發展，有更多創新應用，並使國內 100 多萬中小企業能夠 AI 化，讓台灣成為人工智慧島，也能為經濟帶來實質功用，促成民眾生活更好。&lt;/p&gt;
+&lt;p&gt;&lt;strong&gt;&lt;font color=&quot;#ffffff&quot;&gt;&lt;span style=&quot;background-color: rgb(51, 153, 255);&quot;&gt;卓榮泰&lt;/span&gt;&lt;/font&gt;&amp;nbsp;&lt;font color=&quot;#ffffff&quot;&gt;&lt;span style=&quot;background-color: rgb(51, 153, 255);&quot;&gt;AI&lt;/span&gt;&lt;/font&gt;&lt;/strong&gt;&lt;/p&gt;
+&lt;p&gt;&lt;span style=&quot;font-size:22px;&quot;&gt;&lt;strong&gt;行政院長卓榮泰盼公部門運用 AI 提升行政效率&lt;/strong&gt;&lt;/span&gt;&lt;/p&gt;
+&lt;p&gt;行政院長卓榮泰上任舉行首次院會，由國科會報告可信任對話引擎 TAIDE 計畫成果，卓榮泰表示，未來盼望國科會繼續推動 AI 技術及研究，並且與其他部會合作加速產業應用，同時公部門也運用 AI，以提高行政效率。&lt;/p&gt;
+&lt;p&gt;&lt;img alt=&quot;&quot; src=&quot;https://s4.itho.me/sites/default/files/images/MS(1).jpg&quot; style=&quot;width: 600px; height: 337px;&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt;
+&lt;p&gt;國科會報告 TAIDE 推動成果，目前已釋出可商用的 TAIDE-7B 模型，並研發學研使用的 TAIDE-13B，國科會以寫文章、寫信、摘要、英翻中、中翻英 5 項任務，評測 ChatGPT 3.5、TAIDE-7B 與 TAIDE-13B 的表現，0&lt;span class=&quot;s1&quot; style=&quot;font-variant-numeric: normal; font-variant-east-asian: normal; font-variant-alternates: normal; font-kerning: auto; font-optical-sizing: auto; font-feature-settings: normal; font-variation-settings: normal; font-variant-position: normal; font-stretch: normal; line-height: normal; font-family: &amp;quot;PingFang TC&amp;quot;;&quot;&gt;到&lt;/span&gt;10&lt;span class=&quot;s1&quot; style=&quot;font-variant-numeric: normal; font-variant-east-asian: normal; font-variant-alternates: normal; font-kerning: auto; font-optical-sizing: auto; font-feature-settings: normal; font-variation-settings: normal; font-variant-position: normal; font-stretch: normal; line-height: normal; font-family: &amp;quot;PingFang TC&amp;quot;;&quot;&gt;分，&lt;/span&gt;ChatGPT 3.5&lt;span class=&quot;s1&quot; style=&quot;font-variant-numeric: normal; font-variant-east-asian: normal; font-variant-alternates: normal; font-kerning: auto; font-optical-sizing: auto; font-feature-settings: normal; font-variation-settings: normal; font-variant-position: normal; font-stretch: normal; line-height: normal; font-family: &amp;quot;PingFang TC&amp;quot;;&quot;&gt;得分為&lt;/span&gt;8.68&lt;span class=&quot;s1&quot; style=&quot;font-variant-numeric: normal; font-variant-east-asian: normal; font-variant-alternates: normal; font-kerning: auto; font-optical-sizing: auto; font-feature-settings: normal; font-variation-settings: normal; font-variant-position: normal; font-stretch: normal; line-height: normal; font-family: &amp;quot;PingFang TC&amp;quot;;&quot;&gt;分，&lt;/span&gt;TAIDE-7B&lt;span class=&quot;s1&quot; style=&quot;font-variant-numeric: normal; font-variant-east-asian: normal; font-variant-alternates: normal; font-kerning: auto; font-optical-sizing: auto; font-feature-settings: normal; font-variation-settings: normal; font-variant-position: normal; font-stretch: normal; line-height: normal; font-family: &amp;quot;PingFang TC&amp;quot;;&quot;&gt;得分為&lt;/span&gt;8.3&lt;span class=&quot;s1&quot; style=&quot;font-variant-numeric: normal; font-variant-east-asian: normal; font-variant-alternates: normal; font-kerning: auto; font-optical-sizing: auto; font-feature-settings: normal; font-variation-settings: normal; font-variant-position: normal; font-stretch: normal; line-height: normal; font-family: &amp;quot;PingFang TC&amp;quot;;&quot;&gt;分，至於&lt;/span&gt;TAIDE-13B&lt;span class=&quot;s1&quot; style=&quot;font-variant-numeric: normal; font-variant-east-asian: normal; font-variant-alternates: normal; font-kerning: auto; font-optical-sizing: auto; font-feature-settings: normal; font-variation-settings: normal; font-variant-position: normal; font-stretch: normal; line-height: normal; font-family: &amp;quot;PingFang TC&amp;quot;;&quot;&gt;則是&lt;/span&gt;8.74&lt;span class=&quot;s1&quot; style=&quot;font-variant-numeric: normal; font-variant-east-asian: normal; font-variant-alternates: normal; font-kerning: auto; font-optical-sizing: auto; font-feature-settings: normal; font-variation-settings: normal; font-variant-position: normal; font-stretch: normal; line-height: normal; font-family: &amp;quot;PingFang TC&amp;quot;;&quot;&gt;分，表現相當於&lt;/span&gt;ChatGPT 3.5&lt;span class=&quot;s1&quot; style=&quot;font-variant-numeric: normal; font-variant-east-asian: normal; font-variant-alternates: normal; font-kerning: auto; font-optical-sizing: auto; font-feature-settings: normal; font-variation-settings: normal; font-variant-position: normal; font-stretch: normal; line-height: normal; font-family: &amp;quot;PingFang TC&amp;quot;;&quot;&gt;，並且具有在地知識，多輪對話及阻絕產生不當內容的能力。&lt;/span&gt;&lt;/p&gt;
+&lt;p&gt;TAIDE 計畫已與產學研合作開發應用，例如國台客語，但缺少原住民語言，國科會表示，&lt;span class=&quot;s1&quot; style=&quot;font-variant-numeric: normal; font-variant-east-asian: normal; font-variant-alternates: normal; font-kerning: auto; font-optical-sizing: auto; font-feature-settings: normal; font-variation-settings: normal; font-variant-position: normal; font-stretch: normal; line-height: normal; font-family: &amp;quot;Helvetica Neue&amp;quot;;&quot;&gt;TAIDE&lt;/span&gt;模型訓練以文字資料為主，未來會加強原住民語言資料的取得，同時&lt;span class=&quot;s1&quot; style=&quot;font-variant-numeric: normal; font-variant-east-asian: normal; font-variant-alternates: normal; font-kerning: auto; font-optical-sizing: auto; font-feature-settings: normal; font-variation-settings: normal; font-variant-position: normal; font-stretch: normal; line-height: normal; font-family: &amp;quot;Helvetica Neue&amp;quot;;&quot;&gt;TAIDE&lt;/span&gt;也會向多模態發展。國科會也表示，&lt;span class=&quot;s1&quot; style=&quot;font-variant-numeric: normal; font-variant-east-asian: normal; font-variant-alternates: normal; font-kerning: auto; font-optical-sizing: auto; font-feature-settings: normal; font-variation-settings: normal; font-variant-position: normal; font-stretch: normal; line-height: normal; font-family: &amp;quot;Helvetica Neue&amp;quot;;&quot;&gt;TAIDE&lt;/span&gt;為基礎通用模型，已釋出供外界運用，未來公部門可以其業務資料，用於資料彙整、會議記錄彙整、寫公文或回覆民眾的詢問。&lt;/p&gt;
+&lt;div&gt;
+&lt;p&gt;&lt;strong&gt;&lt;font color=&quot;#ffffff&quot;&gt;&lt;span style=&quot;background-color: rgb(51, 153, 255);&quot;&gt;黃彥男&lt;/span&gt;&lt;/font&gt;&amp;nbsp;&lt;font color=&quot;#ffffff&quot;&gt;&lt;span style=&quot;background-color: rgb(51, 153, 255);&quot;&gt;AI&lt;/span&gt;&lt;/font&gt;&lt;/strong&gt;&lt;/p&gt;
+&lt;p&gt;&lt;span style=&quot;font-size:22px;&quot;&gt;&lt;strong&gt;數位部長黃彥男：強化國內數位經濟發展環境，加速政府機關導入 AI&lt;/strong&gt;&lt;/span&gt;&lt;/p&gt;
+&lt;p&gt;新任數位發展部長黃彥男近期首次公開面對媒體，宣示數位部今後的施政方向，包括加強與各部會合作，建造數位高速公路，促進產業轉型及數位經濟發展。此外，作為政府轉型的推手，未來數位部也會透過輔導，加公務機關導入 AI，以提高行政效率&lt;/p&gt;
+&lt;p&gt;黃彥男指出，產業轉型及數位產業發展，仰賴建立數位高速公路，未來善用這條高速公路，促使資料及使用，是數位經濟發展的重要基礎，為了打擊不法行為，數位部計畫建構查詢通報系統，相關部會單位可以快速處理或驗證資料的真實性，讓民眾能夠查詢資訊的真偽，信任數位經濟高速公路提供真實的資訊。此外，也將透過異質通訊網路技術，例如 4G、5G、海纜、微波、衞星等，以強化數位高速公路的韌性。&lt;/p&gt;
+&lt;p&gt;在政府數位轉型工作上，黃彥男指出，基於過去數十年電子化政府發展基礎，導入 AI 是下一個目標，是政府向智慧化發展的關鍵，數位部將在全國推廣 AI 基本訓練，協助公部門人員具備 AI 基本技能，例如使用生成式 AI 預測、摘要內容等，提升行政效率。&lt;/p&gt;
+&lt;p&gt;&lt;strong&gt;&lt;font color=&quot;#ffffff&quot;&gt;&lt;span style=&quot;background-color: rgb(51, 153, 255);&quot;&gt;超級電腦&lt;/span&gt;&lt;/font&gt;&amp;nbsp;&lt;font color=&quot;#ffffff&quot;&gt;&lt;span style=&quot;background-color: rgb(51, 153, 255);&quot;&gt;AI&lt;/span&gt;&lt;/font&gt;&lt;/strong&gt;&lt;/p&gt;
+&lt;p&gt;&lt;span style=&quot;font-size:22px;&quot;&gt;&lt;strong&gt;全球 500 大超級電腦：美國再添一座 Exascale 級超級電腦，台灣 AI 超級電腦添新兵 Taipei1&lt;/strong&gt;&lt;/span&gt;&lt;/p&gt;
+&lt;p&gt;因應全球極端氣候變遷，新型病毒及醫學等研究需求，需仰賴大量運算資源模擬分析研究，近期全球 500 大超級電腦排名出爐，美國超級電腦 Frontier 以 1.2Exaflop/s 蟬連冠軍之外，美國能源部阿拉貢國家實驗室的 Aurora 也以 1.012 Exaflop/s 位居第 2，成為第二個 Exascale 級超級電腦。&lt;/p&gt;
+&lt;p&gt;此次台灣共有 6 台超級電腦進榜，成績最佳的是 Nvidia Taiwan 所建置的 Taipei1 超級電腦，採用 Xeon 處理器及 Nvidia H100，以 22.3 PFlop/s 拿下第 38 名，其他超級電腦包括中央氣象局的兩台超級電腦，國網中心也有三座超級電腦進榜，分別是台灣杉 2 號、3 號及 Forerunner1。&lt;/p&gt;
+&lt;p&gt;&lt;img alt=&quot;&quot; src=&quot;https://s4.itho.me/sites/default/files/images/0514-top500-taiwan-600.jpg&quot; style=&quot;width: 600px; height: 544px;&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt;
+&lt;p&gt;其中 Taipei1 為 Nvidia 建置的 AI 超級電腦，去年底完成建置，目的為協助 AI 研發，經濟部已與 Nvidia 達成協議，Nvidia 將釋出部分運算資源免費供國內使用。經濟部預期在 Nvidia Taipei1 的支持下，有助於我國 AI 模型研發，透過高速運算資源，帶動台灣的生成式 AI 核心技術發展。&lt;/p&gt;
+&lt;p&gt;&lt;strong&gt;&lt;font color=&quot;#ffffff&quot;&gt;&lt;span style=&quot;background-color: rgb(51, 153, 255);&quot;&gt;瑞典&lt;/span&gt;&lt;/font&gt;&amp;nbsp;&lt;font color=&quot;#ffffff&quot;&gt;&lt;span style=&quot;background-color: rgb(51, 153, 255);&quot;&gt;臉部辨識&lt;/span&gt;&lt;/font&gt;&lt;/strong&gt;&lt;/p&gt;
+&lt;p&gt;&lt;span style=&quot;font-size:22px;&quot;&gt;&lt;strong&gt;瑞典擬授權警方用公共場所攝影機即時臉部辨識技術以追蹤識別嫌犯&lt;/strong&gt;&lt;/span&gt;&lt;/p&gt;
+&lt;p&gt;為打擊犯罪，瑞典政府近期表示，有意授權執法單位透過公共場所的攝影機，運用即時臉部辨識技術來追蹤識別涉及特定犯罪程度的嫌犯。&lt;/p&gt;
+&lt;p&gt;去年 12 月瑞典政府即開始對授權執法單位使用監控攝影機，包括運用臉部辨識技術展開研究，近期司法部門提交報告給政府，該報告建議政府授權執法單位使用公共場所監控攝影機來打擊犯罪，但為了避免權力遭到濫用的情形，建議執法單位需獲得司法部門的同意才能使用。瑞典政府傾向採納建議，並準備研擬相關的計畫。&lt;/p&gt;
+&lt;p&gt;在此之前，今年 3 月歐盟通過 AI 使用管理規則，禁止在公共場所使用即時臉部辨識技術，但執法單位可獲得例外，這些例外的案例，例如協尋失蹤者或受害者，以及迫在眉睫的恐怖攻擊威脅。&lt;/p&gt;
+&lt;p&gt;&lt;strong&gt;&lt;font color=&quot;#ffffff&quot;&gt;&lt;span style=&quot;background-color: rgb(51, 153, 255);&quot;&gt;澳洲&lt;/span&gt;&lt;/font&gt;&amp;nbsp;&lt;font color=&quot;#ffffff&quot;&gt;&lt;span style=&quot;background-color: rgb(51, 153, 255);&quot;&gt;數位身分&lt;/span&gt;&lt;/font&gt;&lt;/strong&gt;&lt;/p&gt;
+&lt;p&gt;&lt;span style=&quot;font-size:22px;&quot;&gt;&lt;strong&gt;澳洲通過數位身分法案，建立跨公私部門的全國性數位身分系統&lt;/strong&gt;&lt;/span&gt;&lt;/p&gt;
+&lt;p&gt;澳洲眾議會近期通過數位身分法案及相關的過渡法案，新法預計在今年 11 月就會開始生效，澳洲政府擬建立跨公私部門參與的全國性數位身分系統。&lt;/p&gt;
+&lt;p&gt;澳洲政府稱法案通過，將為澳洲政府得以建立數位身分系統，並允許供應商及服務加入數位身分系統提供確定性，數位身分系統也將改善民眾在網路上的互動隱私及安全性；此外，數位身分法案也允許數位身分服務提供者自願加入認證，以強化其提供的身分驗證服務符合安全、隱私、身分驗證標準。&lt;/p&gt;
+&lt;p&gt;澳洲政府財政部表示，數位身分系統將讓澳洲民眾得以更容易、安全的在網路上證明自己的身分，並且分享更少的身分訊息，讓更少的組織取得，通過更強的監管規範，降低身分被盜用的風險。&lt;/p&gt;
+&lt;p&gt;&lt;strong&gt;&lt;font color=&quot;#ffffff&quot;&gt;&lt;span style=&quot;background-color: rgb(51, 153, 255);&quot;&gt;AI&lt;/span&gt;&lt;/font&gt;&amp;nbsp;&lt;font color=&quot;#ffffff&quot;&gt;&lt;span style=&quot;background-color: rgb(51, 153, 255);&quot;&gt;環境保護&lt;/span&gt;&lt;/font&gt;&lt;/strong&gt;&lt;/p&gt;
+&lt;p&gt;&lt;span style=&quot;font-size:22px;&quot;&gt;&lt;strong&gt;桃園市打造 AI 環境污染辨識系統，協助稽查空氣品質、河川水質、環境衞生及噪音&lt;/strong&gt;&lt;/span&gt;&lt;/p&gt;
+&lt;p&gt;&lt;img alt=&quot;&quot; src=&quot;https://s4.itho.me/sites/default/files/images/AI%E7%92%B0%E5%A2%83%E6%B1%A1%E6%9F%93%E8%BE%A8%E8%AD%98%E7%B3%BB%E7%B5%B1.jpg&quot; style=&quot;width: 600px; height: 338px;&quot; referrerpolicy=&quot;no-referrer&quot;&gt;桃園市每年收到超過 2 萬件的環境污染陳情案件，傳統上以人工稽查，耗費人力、時間，桃園市政府運用 AI 強化環境保護，運用電腦視覺技術打造 AI 環境污染辨識系統，利用這套系統監控空氣品質、河川水質、環境衞生、噪音管制 4 個方面，環保局表示，每年提高稽查效率達 55%。&lt;/p&gt;
+&lt;p&gt;這套 AI 環境污染辨識系統，包含 7 個 AI 影像辨識子系統，包含施工揚塵辨識、機動車輛智慧偵測辨識、判煙辨識、水色辨識、環境衞生辨識、營建路污辨識、改裝排氣管辨識等，並且結合空品感測器物聯網、水質物聯網、聲音照相等，對空氣品質、河川水質、環境衞生、機車噪音加強稽查管制。&lt;/p&gt;
+&lt;p&gt;傳統稽查仰賴人工完成，運用機器視覺的即時監控、辨識，準確率達到 8 成，每件民眾陳情案可節省 30 到 45 分鐘，如果偵測到異常狀況，自動以 Line 或影像發出告警，提高稽查的效率，透過人機合作模式，2023 年 1 月到 2024 年 4 月裁罰違規案件金額達 1,400 萬元。&lt;/p&gt;
+&lt;p&gt;環保局也比較該系統上線後，對環境維護確實帶來效益，他們以實施後和實施前的 3 年（2020 年到 2022 年）平均數據相比，空氣中硫氧化物濃度改善 37%、氮氧化物則改善 6%，空品不良的天數減少 23%；水質方面，河川生化需氧量改善 6.4%。亂丟垃圾的陳情數量下降 51%、噪音陳情數量也下降 23%。&lt;/p&gt;
+&lt;p&gt;&lt;strong&gt;&lt;font color=&quot;#ffffff&quot;&gt;&lt;span style=&quot;background-color: rgb(51, 153, 255);&quot;&gt;森林野火&lt;/span&gt;&lt;/font&gt;&amp;nbsp;&lt;font color=&quot;#ffffff&quot;&gt;&lt;span style=&quot;background-color: rgb(51, 153, 255);&quot;&gt;數位孿生&lt;/span&gt;&lt;/font&gt;&lt;/strong&gt;&lt;/p&gt;
+&lt;p&gt;&lt;span style=&quot;font-size:22px;&quot;&gt;&lt;strong&gt;美國 NASA 要以數位孿生協助救災人員判斷森林野火情勢&lt;/strong&gt;&lt;/span&gt;&lt;/p&gt;
+&lt;p&gt;美國太空總署 NASA 近期公佈一項數位孿生野火 (Wildfire Digital Twin) 研究計畫，結合 AI 及感測數據，協助消防人員及救災單位預判野火燃燒走勢及濃煙飄移方向。&lt;/p&gt;
+&lt;p&gt;美國、加拿大等幅闊地區，其森林經常面臨野火的風險，每當發生野火，除造成大面積珍貴林木被破壞、人民的財產生命蒙受損失，對環境也造成相當大的影響，一項研究顯示，因全球暖化，造成北方的夏季時間延長，使得野火發生的風險增加，去年 8 月一分研究報告顯示，光是野火造成的二氧化碳排放量，約佔全球排放的 25%。&lt;/p&gt;
+&lt;p&gt;該計畫利用蒐集的多種數據，例如現場設備的感測數據，飛行機或太空的偵測數據，加上人工智慧或機器學習技術預測野火燃燒路徑趨勢，產生數位孿生模型。相較於目前的野火及煙霧擴散所使用的模型，每個像素代表的空間解析度約為 10 公里，這個野火數位孿生模型的空間解析度為每像素 10 到 30 公尺，具有更細緻的空間解析度，並且產生模型也只要幾分鐘的時間。&lt;/p&gt;
+&lt;p&gt;這項計畫結合馬裏蘭大學等 6 所大學的研究團隊資源進行研究，針對野火現場缺乏網路通訊及超級電腦運資資源，數位孿生模型可以 API，讓消防救災單位可以在筆電、平板電腦上執行這套野火數位孿生模型。&lt;/p&gt;
+&lt;p&gt;&amp;nbsp;&lt;/p&gt;
+&lt;p&gt;圖片來源／總統府、國科會、TOP500、桃園市政府&lt;/p&gt;
+&lt;p&gt;&lt;span style=&quot;color: rgb(255, 255, 255);&quot;&gt;&lt;strong&gt;&lt;span style=&quot;background-color: rgb(51, 153, 255);&quot;&gt;&amp;nbsp;更多 GovTech 動態&amp;nbsp;&lt;/span&gt;&lt;/strong&gt;&lt;/span&gt;&lt;/p&gt;
+&lt;p&gt;&lt;strong&gt;1.國科會：擬於 10 月底前提出 AI 基本法草案&lt;/strong&gt;&lt;/p&gt;
+&lt;p&gt;&lt;strong&gt;2.歐盟成立 AI 辦公室加強監管 AI 發展&lt;/strong&gt;&lt;/p&gt;
+&lt;p&gt;資料來源：iThome 整理，2024 年 5 月&lt;/p&gt;
+&lt;/div&gt;
+ &lt;/div&gt;&lt;/div&gt;&lt;/div&gt;    &lt;div&gt;
+  &lt;/div&gt;
+  &lt;/div&gt;
+       
+  &lt;/div&gt;&lt;/div&gt;</description>
+            <link>https://www.ithome.com.tw/news/163375</link>
+            <guid isPermaLink="false">https://www.ithome.com.tw/news/163375</guid>
+            <pubDate>Wed, 12 Jun 2024 16:00:00 GMT</pubDate>
+            <author>蘇文彬</author>
+            <category>新聞</category>
+        </item>
+        <item>
+            <title>Google 研究以大型語言模型分析穿戴裝置健康資料，可給出高品質健身與睡眠建議</title>
+            <description>&lt;header&gt;
+        &lt;div class=&quot;img-wrapper&quot;&gt;
+      &lt;div class=&quot;field field-name-field-image field-type-image field-label-hidden&quot;&gt;&lt;div class=&quot;field-items&quot;&gt;&lt;div class=&quot;field-item even&quot;&gt;&lt;img src=&quot;https://s4.itho.me/sites/default/files/styles/picture_size_large/public/field/image/2376_-_advancing_personal_health_and_wellness_insights_with_ai_-_research.google.jpg?itok=OoacanTk&quot; width=&quot;960&quot; height=&quot;420&quot; alt=&quot;&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/div&gt;&lt;/div&gt;&lt;/div&gt;        &lt;/div&gt;
+                    
+      &lt;/header&gt;
+    &lt;div class=&quot;row-fluid&quot;&gt;
+    &lt;div class=&quot;contents-wrap&quot;&gt;
+    &lt;div class=&quot;content&quot;&gt;
+    &lt;div class=&quot;side-extra&quot;&gt;
+      
+  &lt;/div&gt;
+
+&lt;div class=&quot;field field-name-body field-type-text-with-summary field-label-hidden&quot;&gt;&lt;div class=&quot;field-items&quot;&gt;&lt;div class=&quot;field-item even&quot;&gt; &lt;p&gt;大型語言模型已經被用於處理各種模態的資料，包括文字、圖像、音訊和影片等，而現在&lt;a href=&quot;https://research.google/blog/advancing-personal-health-and-wellness-insights-with-ai/&quot;&gt;Google&lt;/a&gt;也將大型語言模型應用於理解和推理個人健康問題和資料上，主要目標是要提升個人健康，該新研究特別著重於睡眠與健身這兩項早期死亡預測因子。&lt;/p&gt;
+&lt;p&gt;Google 研究展示了大型語言模型在健康資料上的潛在應用，可分析穿戴式裝置的健康資料，將零碎的資料點轉化為個人健康報告。大型語言模型利用程式碼生成和資訊檢索工具強化分析能力，使得人工智慧代理可以經迭代處理，分析穿戴式裝置多維時序資料。&lt;/p&gt;
+&lt;p&gt;人工智慧代理運用 Python 直譯器進行複雜運算辨識趨勢，再透過搜尋引擎存取最新的醫療和健康知識庫，就可針對使用者給出個人化的建議和解釋。使用者可以詢問像是「如何在白天感覺更清醒且充滿活力？」等問題，人工智慧代理依據使用者穿戴式裝置所紀錄的睡眠時間，以及運動頻率給出具體建議。&lt;/p&gt;
+&lt;p&gt;穿戴式裝置量測個人生理狀態和行為，紀錄連續且精細的資料，諸如步數、心率變異、睡眠持續時間等，結合大型語言模型，經由提供個人化報告與建議協助使用者實現健康目標。不過這件事並不容易，模型必須能夠對複雜時間序列和零散資料進行推理，並在個人健康背景下生成個人化解釋和建議。&lt;/p&gt;
+&lt;p&gt;研究人員以「如何改善睡眠品質？」問題為例，説明人工智慧代理需要經歷一連串複雜分析步驟才能給出答案。步驟包括檢查資料的可用性、計算平均睡眠時長、辨識一段時間內的睡眠模式異常，並藉由全面分析使用者的健康狀況，做出更具意義和針對性的分析，再加上睡眠標準知識，提供使用者量身打造的睡眠改善建議。&lt;/p&gt;
+&lt;p&gt;Google 研究人員使用了 Gemini 模型微調版本 PH-LLM。透過使用多模態編碼器，PH-LLM 能夠更好地理解和解釋文字及時序感測資料。研究人員創建一組基準資料集，來評估模型與專家的能力差距，在健身領域，無論是 Gemini Ultra 1.0 模型還是 PH-LLM 模型的效能，都與健身專家沒有統計學上的差異，而在睡眠評估上，PH-LLM 則與專家表現接近。&lt;/p&gt;
+&lt;p&gt;過去雖然也有各種大型語言模型的醫療相關應用，但是卻很少使用來自行動或是穿戴式裝置的複雜資料，研究人員認為這些資料對於個人健康監測非常重要。該 Google 研究的主要貢獻，在於展示大型語言模型可以用於分析和解釋穿戴式裝置資料，並且證明其能力可媲美人類專家。&lt;/p&gt;
+ &lt;/div&gt;&lt;/div&gt;&lt;/div&gt;    &lt;div&gt;
+  &lt;/div&gt;
+  &lt;/div&gt;
+       
+  &lt;/div&gt;&lt;/div&gt;</description>
+            <link>https://www.ithome.com.tw/news/163427</link>
+            <guid isPermaLink="false">https://www.ithome.com.tw/news/163427</guid>
+            <pubDate>Wed, 12 Jun 2024 16:00:00 GMT</pubDate>
+            <author>李建興</author>
+            <category>新聞</category>
+        </item>
         <item>
             <title>【資安日報】6 月 12 日，微軟發布 6 月份例行更新，總共針對 49 個漏洞進行公告</title>
             <description>&lt;header&gt;
@@ -83,438 +572,6 @@
             <guid isPermaLink="false">https://www.ithome.com.tw/news/163429</guid>
             <pubDate>Tue, 11 Jun 2024 16:00:00 GMT</pubDate>
             <author>周峻佑</author>
-            <category>新聞</category>
-        </item>
-        <item>
-            <title>整合開發環境 IntelliJ 存在重大漏洞，恐曝露 GitHub 存取憑證</title>
-            <description>&lt;header&gt;
-        &lt;div class=&quot;img-wrapper&quot;&gt;
-      &lt;div class=&quot;field field-name-field-image field-type-image field-label-hidden&quot;&gt;&lt;div class=&quot;field-items&quot;&gt;&lt;div class=&quot;field-item even&quot;&gt;&lt;img src=&quot;https://s4.itho.me/sites/default/files/styles/picture_size_large/public/field/image/rhr31lvp0l.png?itok=2-EZcc5y&quot; width=&quot;960&quot; height=&quot;420&quot; alt=&quot;&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/div&gt;&lt;/div&gt;&lt;/div&gt;        &lt;/div&gt;
-                    
-      &lt;/header&gt;
-    &lt;div class=&quot;row-fluid&quot;&gt;
-    &lt;div class=&quot;contents-wrap&quot;&gt;
-    &lt;div class=&quot;content&quot;&gt;
-    &lt;div class=&quot;side-extra&quot;&gt;
-      
-  &lt;/div&gt;
-
-&lt;div class=&quot;field field-name-body field-type-text-with-summary field-label-hidden&quot;&gt;&lt;div class=&quot;field-items&quot;&gt;&lt;div class=&quot;field-item even&quot;&gt; &lt;p&gt;6 月 11 日軟體開發業者 JetBrains 發布資安公告，指出他們在 5 月 29 日接獲通報，&lt;a href=&quot;https://blog.jetbrains.com/security/2024/06/updates-for-security-issue-affecting-intellij-based-ides-2023-1-and-github-plugin/&quot;&gt;存在整合開發環境（IDE）IntelliJ 平台的漏洞 CVE-2024-37051&lt;/a&gt;，有可能會影響拉取請求而被用於攻擊行動，CVSS 風險評為 9.3 分。&lt;/p&gt;
-&lt;p&gt;當開發者使用基於這套 IDE 平台時，攻擊者會藉由惡意內容，引誘拉取特定 GitHub 專案，從而讓開發者的存取 Token 外流至第三方主機。&lt;/p&gt;
-&lt;p&gt;該公司指出，這項弱點影響 IntelliJ 平台所有 2023.1 以上版本的 IDE，只要開發者同時啟用他們提供的 GitHub 外掛程式，就有可能曝險。他們提供新版 IDE 及外掛程式修補漏洞，並呼籲開發者若曾透過這套 IDE 拉取 GitHub 專案，應註銷外掛程式所用的 Token。&lt;/p&gt;
- &lt;/div&gt;&lt;/div&gt;&lt;/div&gt;    &lt;div&gt;
-  &lt;/div&gt;
-  &lt;/div&gt;
-       
-  &lt;/div&gt;&lt;/div&gt;</description>
-            <link>https://www.ithome.com.tw/news/163424</link>
-            <guid isPermaLink="false">https://www.ithome.com.tw/news/163424</guid>
-            <pubDate>Tue, 11 Jun 2024 16:00:00 GMT</pubDate>
-            <author>周峻佑</author>
-            <category>新聞</category>
-        </item>
-        <item>
-            <title>AWS 雲端安全會議強調資安文化，揭露多項幕後資安利器</title>
-            <description>&lt;header&gt;
-        &lt;div class=&quot;img-wrapper&quot;&gt;
-      &lt;div class=&quot;field field-name-field-image field-type-image field-label-hidden&quot;&gt;&lt;div class=&quot;field-items&quot;&gt;&lt;div class=&quot;field-item even&quot;&gt;&lt;img src=&quot;https://s4.itho.me/sites/default/files/styles/picture_size_large/public/field/image/pg_f4945_1.png?itok=7oJDJWAB&quot; width=&quot;960&quot; height=&quot;420&quot; alt=&quot;&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/div&gt;&lt;/div&gt;&lt;/div&gt;        &lt;/div&gt;
-                    
-      &lt;/header&gt;
-    &lt;div class=&quot;row-fluid&quot;&gt;
-    &lt;div class=&quot;contents-wrap&quot;&gt;
-    &lt;div class=&quot;content&quot;&gt;
-    &lt;div class=&quot;side-extra&quot;&gt;
-      
-  &lt;/div&gt;
-
-&lt;div class=&quot;field field-name-body field-type-text-with-summary field-label-hidden&quot;&gt;&lt;div class=&quot;field-items&quot;&gt;&lt;div class=&quot;field-item even&quot;&gt; &lt;p&gt;「追根究底，資安文化是一切的根源。」AWS 資安長 Chris Betz 在今（11）日於美國費城舉辦的雲端安全會議 re:Inforce 2024 中強調資安文化的重要性。&lt;/p&gt;
-&lt;p&gt;「正是文化，促使組織改變習慣，優先從資安的角度考量；正是文化，驅使我們以資安為本設計系統（Security by Design）；也因為文化的關係，我們將資安賦權於個人，讓整個組織都落實資安，同時也保持敏捷，從而讓業務運作不因資安而妥協。」不過，Chris 也指出：「資安文化並非一蹴可幾，如果沒有持續強化與投資，建立起來的文化也會逐漸流失。」&lt;/p&gt;
-&lt;p&gt;Chris Betz 在擔任 AWS 資安長之前是美國金融機構 Capital One 資安長，在企業端身為多年客户的他雖然理解 AWS 資安，但擔任資安長後對於 AWS 整體資安文化才有更深入的體會。他指出，高階主管對資安的重視程度是建立文化的重要關鍵，AWS 執行長與資安主管固定每週五與各部門總經理、產品經理與開發人員面對面討論資安問題，由執行長固定撥出時間討論資安，足以傳達高階主管對資安的重視程度。&lt;/p&gt;
-&lt;p&gt;「在這個會議中會深入討論資安的挑戰，據以制定產品發展藍圖，要求作出改變，並帶來真正的業務影響。」Chris 表示：「這同時也是一次徹底的檢查，對資安文化產生深遠的影響。」&lt;/p&gt;
-&lt;p&gt;AWS 高階主管親自與各部門討論資安，也強化人人都必須承擔資安責任的重要性。Chris 指出，每個團隊對自己負責的產品服務是最瞭解的，若再有資安當責意識，就能夠在產品設計的早期主動採取正確決策，不淪為被動補漏洞。而為了讓資安落實能擴及全組織，AWS 也透過資安守護者計畫，將資安團隊的資安專家派駐在各個部門，一起參與軟體開發流程，從 Spring 衝刺規畫會議、站立會議到資安審核，提供資安觀點的建議，既協助開發安全的軟體，也將資安最佳作法傳播到全公司上下。&lt;/p&gt;
-&lt;p&gt;同時，AWS 也推動員工自主決策的文化，任何同仁發現資安問題時，都有權力自主判斷將資安問題立即升級至必要的等級。Chris 指出，在他過往任職的經驗中，資安問題等級的提升往往代表負面意涵，然而在 AWS 的資安文化中，反而是要獎勵能及早意識到問題嚴重性，從而讓組織可以更快速採取行動的同仁。&lt;/p&gt;
-&lt;p&gt;此外，Chris 也揭露 AWS 為了打造安全的雲端平台，在這幾年來從硬體自主設計、安全程式語言的選擇、自動化測試驗證、威脅偵測阻擋與合規等方面所做的改變。&lt;/p&gt;
-&lt;p&gt;在硬體自主設計方面，AWS 擁有自主設計的 Graviton 與 Nitro 晶片，去年推出的最新 Graviton 4 晶片，首度增加傳輸介面加密功能，包括 DRAM 記憶體、PCIe 匯流排到 Nitro 加速卡，以及多處理器架構中 Graviton 之間傳輸介面的通訊加密，有助於防範硬體層面的攻擊。而 Nitro 除了藉由執行環境的隔離，確保用户的資料無法被其他人，包括平台營運者 AWS 所取得，亦新增端對端加密功能，提供用户將需要加密保護的敏感人工智慧模型資料載入隔離保護的環境。&lt;/p&gt;
-&lt;p&gt;在安全程式語言方面，Chris 指出，Amazon 與 AWS 近年來都大力擁抱記憶體安全程式語言 Rust，在去年，Amazon 營運中的應用程式已有高達 98% 都採用 Rust 開發，而 AWS 也在去年將內部以 Rust 開發的 AWS Web Crypto 函式庫開源釋出，提供支援 FIPS 加密標準與後量子密碼（PQC）加密功能。&lt;/p&gt;
-&lt;p&gt;在測試與驗證方面，Chris 也提及 AWS 鮮少討論的自動推理（Automated Reasoning），他指出，自動推理是利用數學方法，證明系統設計或實作是否遵守規格，以及證明系統是否依照預期的方式運作，而透過這個作法可以達到大規模的驗證。例如，AWS IAM 身分存取管理平台每秒要處理超過 10 億個 API 存取，而透過自動推理所開發的驗證工具—AWS 去年開源的 Cedar，才有辦法確保如此大規模存取行為的正確性。此外，自動推理也運用在驗證 IPv6 存取控制清單，每日可處理 8 萬次的存取控制清單的驗證，確保其網路架構的安全性。而在法遵方面，Chris 也指出，目前 AWS 已通過 143 個資安標準與認證。&lt;/p&gt;
-&lt;p&gt;此外，自 AWS 去年公開 MedPot 全球蜜罐網路之後，Chris 也首度揭露用於偵測惡意攻擊行為的 Sonaris 系統，他表示，Sonaris 會分析 AWS 基礎架構的網路流量與日誌服務，以偵測惡意攻擊行為，同時會結合資安情資自動發出警報、提供威脅緩解建議或是自動觸發緊急應變措施，例如若 IAM 用户的權限設定存在風險，Sonaris 檢測到就會通報防詐欺團隊以進一步處理，目前包括 AWS Shield、VPC、Amazon S3 與 WAF 都會受到 Sonaris 系統的保護。&lt;/p&gt;
-&lt;p&gt;Chris 指出，在過去 12 個月中，Sonaris 已經阻止超過 240 億次針對 S3 Bucket 的惡意存取行為，也阻擋了超過 2.6 兆次試圖掃描 EC2 主機漏洞的攻擊。&lt;/p&gt;
-&lt;p&gt;在 re:Inforce 2024 首日主題演講中，Chris 也發表多項 AWS 雲端安全新服務，包括 Amazon GuardDuty Malware Protection 惡意程式防護首度支援 Amazon S3，可掃描檢測 S3 儲存物件是否潛在病毒、惡意程式，並移至隔離區阻絕；Amazon IAM 身分存取管理平台繼提供多因素認證之後，更進一步支援 Fido 標準的 Passkey 無密碼登入作為第二個身分驗證方式，用户可以透過裝置的身分驗證機制，如 Windows Hello 臉部辨識或 Apple Touch ID 等，以達到更便利同時確保安全的無密碼登入。此外，Amazon IAM Analyzer 也利用自動推理技術，發掘久未使用的帳户，提供管理者建議縮減帳户權限，同時，亦可在部署前分析檢測具有存取關鍵資源或對外存取權限的帳户，以降低風險。&lt;/p&gt;
-&lt;p&gt;Amazon CloudTrail Lake 稽核資料湖，亦首度整合生成式 AI 技術，提供自然語言查詢介面，讓管理者不需撰寫複雜的 SQL 查詢語法。而 AWS Private CA 也支援 SCEP 通訊協定發布憑證。&lt;/p&gt;
- &lt;/div&gt;&lt;/div&gt;&lt;/div&gt;    &lt;div&gt;
-  &lt;/div&gt;
-  &lt;/div&gt;
-       
-  &lt;/div&gt;&lt;/div&gt;</description>
-            <link>https://www.ithome.com.tw/news/163423</link>
-            <guid isPermaLink="false">https://www.ithome.com.tw/news/163423</guid>
-            <pubDate>Tue, 11 Jun 2024 16:00:00 GMT</pubDate>
-            <author>吳其勳</author>
-            <category>資安 </category>
-        </item>
-        <item>
-            <title>蘋果揭露 Apple Intelligence 所使用的裝置與伺服器模型</title>
-            <description>&lt;header&gt;
-        &lt;div class=&quot;img-wrapper&quot;&gt;
-      &lt;div class=&quot;field field-name-field-image field-type-image field-label-hidden&quot;&gt;&lt;div class=&quot;field-items&quot;&gt;&lt;div class=&quot;field-item even&quot;&gt;&lt;img src=&quot;https://s4.itho.me/sites/default/files/styles/picture_size_large/public/field/image/0612-apple_foundation_model_human_evaluation-960.jpg?itok=1Pecr16P&quot; width=&quot;960&quot; height=&quot;420&quot; alt=&quot;&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/div&gt;&lt;/div&gt;&lt;/div&gt;        &lt;/div&gt;
-                    
-      &lt;/header&gt;
-    &lt;div class=&quot;row-fluid&quot;&gt;
-    &lt;div class=&quot;contents-wrap&quot;&gt;
-    &lt;div class=&quot;content&quot;&gt;
-    &lt;div class=&quot;side-extra&quot;&gt;
-      
-  &lt;/div&gt;
-
-&lt;div class=&quot;field field-name-body field-type-text-with-summary field-label-hidden&quot;&gt;&lt;div class=&quot;field-items&quot;&gt;&lt;div class=&quot;field-item even&quot;&gt; &lt;p&gt;蘋果藉由於旗下 macOS Sequoia、iOS 18 與 iPadOS 18&lt;a href=&quot;https://www.ithome.com.tw/news/163387&quot; target=&quot;_blank&quot;&gt;作業系統中整合 Apple Intelligence&lt;/a&gt;，加入了全球的人工智慧（AI）陣營，Apple Intelligence 是由許多高效能生成式模型所組織，&lt;a href=&quot;https://machinelearning.apple.com/research/introducing-apple-foundation-models&quot; target=&quot;_blank&quot;&gt;本週蘋果揭露了其中的兩個&lt;/a&gt;，一個是裝置上的小型語言模型，另一個是伺服器上的較大型語言模型。&lt;/p&gt;
-&lt;p&gt;其中，在裝置運作的語言模型不到 30 億個參數，另一個較大的語言模型則是透過 Private Cloud Compute 於基於蘋果晶片的伺服器上執行。蘋果利用取得授權的資料，以及透過 AppleBot 蒐集的公開資料來訓練基礎模型，某些授權資料可用來強化特定功能，此外，蘋果亦強調不使用個人資料進行訓練，也會過濾低品質的內容。&lt;/p&gt;
-&lt;p&gt;裝置與伺服器上的模型皆使用分組查詢注意（grouped-query-attention）機制，以優化注意力機制並提高模型效率，並有共享的輸入與輸出詞彙嵌入表，以降低記憶體需求及推論成本。裝置端模型的 Token 數量為 49K，伺服器端模型的 Token 數量則是 100K。&lt;/p&gt;
-&lt;p&gt;蘋果藉由 low-bit palletization 與 Low-Rank Adaptation（LoRA）微調技術，來減少裝置模型在推論時所需的資源，同時維持其準確性，也透過 Talaria 工具、激化量化、嵌入量化，以及關鍵值快取更新等方法來提升模型運作效率，因此，在 iPhone 15 Pro 上，模型收到提示後生成第一個 Token 的時間只要 0.6 毫秒，平均每秒可生成 30 個 Token。&lt;/p&gt;
-&lt;p&gt;在預訓練的模型上，蘋果利用微調層來迎合使用者的日常活動，將小型神經模組（微調器）插入模型中，以改善模型對特定任務的執行能力。蘋果比較了自家裝置模型+微調器、與微軟 Phi-3-mini 在摘錄上的能力，發現不管是在電子郵件或是通知的摘錄上，人類對蘋果模型的摘錄結果都更為滿意。&lt;/p&gt;
-&lt;p class=&quot;rtecenter&quot;&gt;&lt;a href=&quot;https://s4.itho.me/sites/default/files/files/0612-Apple%20Foundation%20Models-600-1.png&quot; onclick=&quot;window.open(this.href, &#39;&#39;, &#39;resizable=no,status=no,location=no,toolbar=no,menubar=no,fullscreen=no,scrollbars=no,dependent=no&#39;); return false;&quot;&gt;&lt;img alt=&quot;&quot; src=&quot;https://s4.itho.me/sites/default/files/images/0612-Apple%20Foundation%20Models-600-1(1).png&quot; style=&quot;width: 600px;&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/a&gt;&lt;/p&gt;
-&lt;p&gt;另外蘋果也比較這兩個模型與開源的 Phi-3、Gemma、Mistral、DBRX 及商用的 GPT-3.5-Turbo 及 GPT-4-Turbo，顯示不管是在裝置模型或伺服器模型上，蘋果多半更受到人類評估人員的青睞，只有伺服器模型明顯落後 GPT-4-Turbo。且不管是在輸出危害、安全提示、指令追蹤能力或是寫作能力上，兩個蘋果模型也都有不亞於其它競爭對手的表現。&lt;/p&gt;
-&lt;p class=&quot;rtecenter&quot;&gt;&lt;a href=&quot;https://s4.itho.me/sites/default/files/files/0612-Apple%20Foundation%20Models-600-2.png&quot; onclick=&quot;window.open(this.href, &#39;&#39;, &#39;resizable=no,status=no,location=no,toolbar=no,menubar=no,fullscreen=no,scrollbars=no,dependent=no&#39;); return false;&quot;&gt;&lt;img alt=&quot;&quot; src=&quot;https://s4.itho.me/sites/default/files/images/0612-Apple%20Foundation%20Models-600-2.png&quot; style=&quot;width: 600px;&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/a&gt;&lt;/p&gt;
-&lt;p&gt;除了這兩個分別位於裝置及伺服器上的基礎模型之外，之後蘋果亦會陸續揭露該公司所使用的其它生成式模型，包括語言、擴散與程式碼模型等。&lt;/p&gt;
-&lt;p&gt;&lt;span style=&quot;font-size:14px;&quot;&gt;&lt;span style=&quot;color:#696969;&quot;&gt;圖片來源／蘋果&lt;/span&gt;&lt;/span&gt;&lt;/p&gt;
- &lt;/div&gt;&lt;/div&gt;&lt;/div&gt;    &lt;div&gt;
-  &lt;/div&gt;
-  &lt;/div&gt;
-       
-  &lt;/div&gt;&lt;/div&gt;</description>
-            <link>https://www.ithome.com.tw/news/163419</link>
-            <guid isPermaLink="false">https://www.ithome.com.tw/news/163419</guid>
-            <pubDate>Tue, 11 Jun 2024 16:00:00 GMT</pubDate>
-            <author>陳曉莉</author>
-            <category>新聞</category>
-        </item>
-        <item>
-            <title>Adobe 修補內容管理平台 Experience Manager、電商網站平台 Magento 漏洞</title>
-            <description>&lt;header&gt;
-        &lt;div class=&quot;img-wrapper&quot;&gt;
-      &lt;div class=&quot;field field-name-field-image field-type-image field-label-hidden&quot;&gt;&lt;div class=&quot;field-items&quot;&gt;&lt;div class=&quot;field-item even&quot;&gt;&lt;img src=&quot;https://s4.itho.me/sites/default/files/styles/picture_size_large/public/field/image/myitszgtg4.png?itok=v39E-6Hr&quot; width=&quot;960&quot; height=&quot;420&quot; alt=&quot;&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/div&gt;&lt;/div&gt;&lt;/div&gt;        &lt;/div&gt;
-                    
-      &lt;/header&gt;
-    &lt;div class=&quot;row-fluid&quot;&gt;
-    &lt;div class=&quot;contents-wrap&quot;&gt;
-    &lt;div class=&quot;content&quot;&gt;
-    &lt;div class=&quot;side-extra&quot;&gt;
-      
-  &lt;/div&gt;
-
-&lt;div class=&quot;field field-name-body field-type-text-with-summary field-label-hidden&quot;&gt;&lt;div class=&quot;field-items&quot;&gt;&lt;div class=&quot;field-item even&quot;&gt; &lt;p&gt;本週二（6 月 11 日）Adobe 針對旗下 10 款產品發布更新，總共修補 166 個漏洞，其中，&lt;a href=&quot;https://helpx.adobe.com/security/products/experience-manager/apsb24-28.html&quot;&gt;大部分與內容管理平台 Experience Manager（AEM）有關&lt;/a&gt;，而這次他們對電商網站平台 Adobe Commerce 及 Magento Open Source 發布的資安公告，重大層級漏洞的數量最多，也相當值得留意。&lt;/p&gt;
-&lt;p&gt;該公司本次針對 AEM 公佈 144 個漏洞，影響 AEM Cloud Service，以及自行管理的 6.5.20 以前版本，大部分漏洞為跨網站指令碼（XSS）漏洞，而有可能被用來執行任意程式碼。其中，最為嚴重的是安全功能繞過漏洞 CVE-2024-26029，這項漏洞發生的原因為不適當的存取控制，CVSS 風險評為 7.5，被 Adobe 列為重大層級。&lt;/p&gt;
-&lt;p&gt;這次 Adobe 公佈最多重大層級漏洞的應用系統，&lt;a href=&quot;https://helpx.adobe.com/security/products/magento/apsb24-40.html&quot;&gt;是電商網站平台 Adobe Commerce 及 Magento Open Source&lt;/a&gt;，他們總共修補了 10 個漏洞，其中有 7 個為重大層級。這些漏洞影響 2.4.7 版以下的 Adobe Commerce、Magento Open Source，以及 1.2.0 至 1.4.0 版的 Adobe Commerce Webhooks 外掛程式。&lt;/p&gt;
-&lt;p&gt;在這些重大層級的電商網站平台漏洞當中，主要與伺服器偽造請求（SSRF）、XML 外部實體參照的限制不當、身分驗證不當、輸入驗證不當，以及未限制危險類型的檔案上傳，而有可能被用於執行任意程式碼、提升權限，或是繞過安全防護功能，CVSS 風險評分介於 8.5 至 8.0。&lt;/p&gt;
-&lt;p&gt;除了上述兩種網站系統的漏洞，Adobe 也針對旗下的 XML 文件處理軟體 FrameMaker，&lt;a href=&quot;https://helpx.adobe.com/security/products/framemaker-publishing-server/apsb24-38.html&quot;&gt;揭露與修補兩個漏洞&lt;/a&gt;，分別是：CVE-2024-30299、CVE-2024-30300，皆屬於伺服器權限提升類型的弱點，這兩個漏洞 CVSS 風險評為 10 分、9.8 分，是本次最為危險的漏洞。&lt;/p&gt;
- &lt;/div&gt;&lt;/div&gt;&lt;/div&gt;    &lt;div&gt;
-  &lt;/div&gt;
-  &lt;/div&gt;
-       
-  &lt;/div&gt;&lt;/div&gt;</description>
-            <link>https://www.ithome.com.tw/news/163422</link>
-            <guid isPermaLink="false">https://www.ithome.com.tw/news/163422</guid>
-            <pubDate>Tue, 11 Jun 2024 16:00:00 GMT</pubDate>
-            <author>周峻佑</author>
-            <category>資安 </category>
-        </item>
-        <item>
-            <title>微軟發布 6 月例行更新，修補已被公佈細節的 DNSSEC 零時差漏洞</title>
-            <description>&lt;header&gt;
-        &lt;div class=&quot;img-wrapper&quot;&gt;
-      &lt;div class=&quot;field field-name-field-image field-type-image field-label-hidden&quot;&gt;&lt;div class=&quot;field-items&quot;&gt;&lt;div class=&quot;field-item even&quot;&gt;&lt;img src=&quot;https://s4.itho.me/sites/default/files/styles/picture_size_large/public/field/image/vznccwxqlm-156.jpg?itok=-ca3SxgQ&quot; width=&quot;960&quot; height=&quot;420&quot; alt=&quot;&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/div&gt;&lt;/div&gt;&lt;/div&gt;        &lt;/div&gt;
-                    
-      &lt;/header&gt;
-    &lt;div class=&quot;row-fluid&quot;&gt;
-    &lt;div class=&quot;contents-wrap&quot;&gt;
-    &lt;div class=&quot;content&quot;&gt;
-    &lt;div class=&quot;side-extra&quot;&gt;
-      
-  &lt;/div&gt;
-
-&lt;div class=&quot;field field-name-body field-type-text-with-summary field-label-hidden&quot;&gt;&lt;div class=&quot;field-items&quot;&gt;&lt;div class=&quot;field-item even&quot;&gt; &lt;p&gt;微軟於 6 月 11 日發布本月例行更新（Patch Tuesday），&lt;a href=&quot;https://msrc.microsoft.com/update-guide/releaseNote/2024-Jun&quot;&gt;總共修補 49 個漏洞&lt;/a&gt;，其中有一個零時差漏洞，而引起關注。&lt;/p&gt;
-&lt;p&gt;此為網域名稱系統安全擴充程式（DNSSEC）的設計缺陷漏洞 CVE-2023-50868，存在於 DNSSEC 驗證機制當中，假如 DNS 解析器使用 NSEC3 回應請求，攻擊者可藉由要求來自 DNSSEC 簽章區域的回應，就有機會讓實作 DNSSEC 驗證機制的解析器耗盡處理器的運算資源，CVSS 風險評為 7.5 分，微軟為 Windows Server 2012 至 2022 版，發布相關的修補程式。&lt;/p&gt;
-&lt;p&gt;這個漏洞有幾個特別的地方，首先，這項漏洞 CVE 編號並非微軟自行登記，而是由資安團體 MITRE 所為，而且，登記的時間在今年 2 月 13 日，距微軟發布修補程式間隔達 4 個月。通報漏洞的資安研究團隊 German National Research Center for Applied Cybersecurity ATHENE 於今年 3 月，發布相關學術論文説明細節。但&lt;a href=&quot;https://www.rapid7.com/blog/post/2024/06/11/patch-tuesday-june-2024/&quot;&gt;資安業者 Rapid7 指出&lt;/a&gt;，這些研究人員在公佈的論文當中，可能淡化了該漏洞的威力，而讓相關機構並未重視如何因應這項漏洞。&lt;/p&gt;
-&lt;p&gt;值得留意的是，該研究團隊也在今年 1 月公佈另一個&lt;a href=&quot;https://www.ithome.com.tw/news/161286&quot;&gt;名為 KeyTrap 的 DNSSEC 漏洞&lt;/a&gt;，而受到各界的高度關注，該漏洞被登記為 CVE-2023-50387。雖然微軟將這兩項 DNSSEC 漏洞都歸類為高風險層級，Rapid7 的研究人員推測，很有可能微軟認為 CVE-2023-50387 較為嚴重，因此延後對 CVE-2023-50868 的處理。&lt;/p&gt;
-&lt;p&gt;除了前述的 DNSSEC 漏洞，Rapid7、&lt;a href=&quot;https://www.zerodayinitiative.com/blog/2024/6/11/the-june-2024-security-update-review&quot;&gt;漏洞懸賞專案 Zero Day Initiative（ZDI）&lt;/a&gt;皆指出，列為重大漏洞的 CVE-2024-30080 也需留意，這是 Microsoft Message Queuing（MSMQ）的遠端程式碼執行（RCE）漏洞，攻擊者可在未經身分驗證的情況下，在啟用 MSMQ 功能的電腦上提升權限，從而執行任意程式碼，CVSS 風險評分達到 9.8。&lt;/p&gt;
-&lt;p&gt;Rapid7 指出，雖然微軟並未透露進一步細節，但這項漏洞利用的複雜程度並不高，不需要取得權限，而且有許多應用程式（如 Exchange）將其列為必要元件，後續情況有待觀察。ZDI 則指出，透過這項漏洞可發展出網路蠕蟲程式，而有可能橫向感染其他 MSMQ 伺服器。&lt;/p&gt;
- &lt;/div&gt;&lt;/div&gt;&lt;/div&gt;    &lt;div&gt;
-  &lt;/div&gt;
-  &lt;/div&gt;
-       
-  &lt;/div&gt;&lt;/div&gt;</description>
-            <link>https://www.ithome.com.tw/news/163421</link>
-            <guid isPermaLink="false">https://www.ithome.com.tw/news/163421</guid>
-            <pubDate>Tue, 11 Jun 2024 16:00:00 GMT</pubDate>
-            <author>周峻佑</author>
-            <category>新聞</category>
-        </item>
-        <item>
-            <title>Apple Vision Pro 本月要鋪貨到其它市場了</title>
-            <description>&lt;header&gt;
-        &lt;div class=&quot;img-wrapper&quot;&gt;
-      &lt;div class=&quot;field field-name-field-image field-type-image field-label-hidden&quot;&gt;&lt;div class=&quot;field-items&quot;&gt;&lt;div class=&quot;field-item even&quot;&gt;&lt;img src=&quot;https://s4.itho.me/sites/default/files/styles/picture_size_large/public/field/image/0611-apple_vision_pro-960.jpg?itok=lKq5eXhs&quot; width=&quot;960&quot; height=&quot;420&quot; alt=&quot;&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/div&gt;&lt;/div&gt;&lt;/div&gt;        &lt;/div&gt;
-                    
-      &lt;/header&gt;
-    &lt;div class=&quot;row-fluid&quot;&gt;
-    &lt;div class=&quot;contents-wrap&quot;&gt;
-    &lt;div class=&quot;content&quot;&gt;
-    &lt;div class=&quot;side-extra&quot;&gt;
-      
-  &lt;/div&gt;
-
-&lt;div class=&quot;field field-name-field-photo-source field-type-text field-label-inline clearfix&quot;&gt;&lt;div class=&quot;field-label&quot;&gt;圖片來源:&amp;nbsp;&lt;/div&gt;&lt;div class=&quot;field-items&quot;&gt;&lt;div class=&quot;field-item even&quot;&gt; &lt;p&gt;蘋果&lt;/p&gt;
- &lt;/div&gt;&lt;/div&gt;&lt;/div&gt;&lt;div class=&quot;field field-name-body field-type-text-with-summary field-label-hidden&quot;&gt;&lt;div class=&quot;field-items&quot;&gt;&lt;div class=&quot;field-item even&quot;&gt; &lt;p&gt;於今年 2 月 2 日正式於美國上市的蘋果空間運算設備 Apple Vision Pro，&lt;a href=&quot;https://www.apple.com/newsroom/2024/06/apple-vision-pro-arrives-in-new-countries-and-regions-beginning-june-28/&quot; target=&quot;_blank&quot;&gt;即將於本月開始&lt;/a&gt;鋪貨至中國、香港、日本與新加坡，下個月開始鋪貨至澳洲、加拿大、法國、德國與英國，前者將在 6 月 13 日開放預訂，6 月 28 日上架，後者則會在 6 月 28 日開放預訂，7 月 12 日上架。&lt;a href=&quot;https://www.apple.com/newsroom/2024/06/visionos-2-brings-new-spatial-computing-experiences-to-apple-vision-pro/&quot; target=&quot;_blank&quot;&gt;蘋果同時宣佈&lt;/a&gt;，將在今年秋天釋出可免費升級的 visionOS 2。&lt;/p&gt;
-&lt;p&gt;Apple Vision Pro 是蘋果的首款混合實境（MR）產品，售價高達 3,499 美元，儘管測試人員對它的能力&lt;a href=&quot;https://www.ithome.com.tw/news/157260&quot; target=&quot;_blank&quot;&gt;感到驚豔&lt;/a&gt;，卻遭 Meta 創辦人暨執行長祖克柏（Mark Zuckerberg）批評它只是個配備了更高解析度的顯示器，利用所有現有技術來推動，卻並沒有太多突破性的產品。且在產品正式問世後，用户也批評它的舒適度，也有人説它的最佳用途是瀏覽照片及看電影，並不值這個價格。蘋果分析師&lt;a href=&quot;https://www.ithome.com.tw/news/162500&quot; target=&quot;_blank&quot;&gt;郭明錤亦曾説&lt;/a&gt;蘋果已將 Apple Vision Pro 今年的出貨量下調至 40~50 萬台。&lt;/p&gt;
-&lt;p class=&quot;rtecenter&quot;&gt;&lt;img alt=&quot;&quot; src=&quot;https://s4.itho.me/sites/default/files/images/0611-Apple%20Vision%20Pro-600.png&quot; style=&quot;width: 600px;&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt;
-&lt;p&gt;迄今蘋果未曾公佈 Apple Vision Pro 的出貨量，但説 App Store 現在已擁有超過 2,000 款專為該裝置所設計的程式，並有逾 150 萬款與之相容的 iOS 和 iPadOS 程式，還有更多的 Mac 應用程式可藉由 Mac Virtual Display 功能於 Apple Vision Pro 上使用。&lt;/p&gt;
-&lt;p&gt;此外，蘋果亦於本週開始預覽 Apple Vision Pro 作業系統 visionOS 2，新版本將讓使用者可直接利用自己的 2D 照片來轉換成空間照片，並提供新的手勢功能以快速存取 Home View 與控制中心，新增對滑鼠及實體 Magic Keyboard 鍵盤的支援，也能保留訪客的眼睛與手部資料 30 天。&lt;/p&gt;
-&lt;p class=&quot;rtecenter&quot;&gt;&lt;img alt=&quot;&quot; src=&quot;https://s4.itho.me/sites/default/files/images/0611-WWDC-Apple-visionOS.png&quot; style=&quot;width: 600px;&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt;
-&lt;p&gt;除了一般使用者的應用程式之外，企業開發人員也打造了各種 visionOS 程式，從培訓、模擬、專案設計到管理等。蘋果表示，visionOS 2 中的條碼掃描或物件追蹤等新工具，將讓這些開發人員得以將程式能力擴展到醫療照護、製造、航太、汽車與其它領域。&lt;/p&gt;
-&lt;p&gt;visionOS 2 正式版預計於今年秋天釋出，屆時將供所有用户免費更新。&lt;/p&gt;
-&lt;p&gt;&lt;span style=&quot;font-size:14px;&quot;&gt;&lt;span style=&quot;color:#696969;&quot;&gt;圖片來源／蘋果&lt;/span&gt;&lt;/span&gt;&lt;/p&gt;
- &lt;/div&gt;&lt;/div&gt;&lt;/div&gt;    &lt;div&gt;
-  &lt;/div&gt;
-  &lt;/div&gt;
-       
-  &lt;/div&gt;&lt;/div&gt;</description>
-            <link>https://www.ithome.com.tw/news/163390</link>
-            <guid isPermaLink="false">https://www.ithome.com.tw/news/163390</guid>
-            <pubDate>Tue, 11 Jun 2024 16:00:00 GMT</pubDate>
-            <author>陳曉莉</author>
-            <category>新聞</category>
-        </item>
-        <item>
-            <title>【台灣資安大會直擊】國內加密貨幣交易所 XREX 打造威脅引擎，快一步揪出詐騙、洗錢帳户</title>
-            <description>&lt;header&gt;
-        &lt;div class=&quot;img-wrapper&quot;&gt;
-      &lt;div class=&quot;field field-name-field-image field-type-image field-label-hidden&quot;&gt;&lt;div class=&quot;field-items&quot;&gt;&lt;div class=&quot;field-item even&quot;&gt;&lt;img src=&quot;https://s4.itho.me/sites/default/files/styles/picture_size_large/public/field/image/xrex.png?itok=tuWgG918&quot; width=&quot;960&quot; height=&quot;420&quot; alt=&quot;&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/div&gt;&lt;/div&gt;&lt;/div&gt;        &lt;/div&gt;
-                    
-      &lt;/header&gt;
-    &lt;div class=&quot;row-fluid&quot;&gt;
-    &lt;div class=&quot;contents-wrap&quot;&gt;
-    &lt;div class=&quot;content&quot;&gt;
-    &lt;div class=&quot;side-extra&quot;&gt;
-      
-  &lt;/div&gt;
-
-&lt;div class=&quot;field field-name-body field-type-text-with-summary field-label-hidden&quot;&gt;&lt;div class=&quot;field-items&quot;&gt;&lt;div class=&quot;field-item even&quot;&gt; &lt;p&gt;在加密貨幣交易所中，用户隨時都能進行交易，這樣的特性雖然帶來便利，卻也被詐騙組織用來快速轉移非法資金。除了設置基礎安全機制增加防禦，交易所主要透過 KYC 和鏈上分析工具，來確認用户真實性和分析資金流向，抵禦詐欺洗錢犯罪。但是，隨著詐騙和洗錢手法不斷升級，既有工具的功能有限，難以因應趨勢變化，成為交易所偵測詐騙和洗錢行為的一大挑戰。&lt;/p&gt;
-&lt;h3&gt;開發威脅引擎，快速辨識可疑帳户&lt;/h3&gt;
-&lt;p&gt;在台灣資安大會上，國內加密貨幣交易所 XREX 分享自家的風控機制。他們開發了一套威脅引擎，整合了用户交易前、交易中、和交易後的資訊，並提供風險評估，協助內部團隊更快速針對犯罪行為做出應變。&lt;/p&gt;
-&lt;p&gt;這款威脅引擎包含多個模組，能分析 KYC、交易行為等資訊，並進行交易監控與性質分析等。引擎在每個階段蒐集的資訊都會分為多個屬性，並針對各別屬性進行風險評估。XREX 首席資安工程師 Wolf Chen 解釋，當模型偵測到異常活動或明顯犯罪態樣，威脅引擎就會啟動分析，並採取必要控管機制。例如，用户的 IP 位址在短時間內出現在不同地區，又或是用户在交易時，其資金與高風險錢包有互動。&lt;/p&gt;
-&lt;p&gt;最後，威脅引擎會針對多個屬性進行評估，依風險高低將帳户分為低風險、中風險和高風險三種類型，並產出每日報表，供內部團隊快速辨識可疑帳户。&lt;/p&gt;
-&lt;h3&gt;情資蒐集：分析現有的詐騙、洗錢模式&lt;/h3&gt;
-&lt;p&gt;除了打造威脅引擎加快預警步調，XREX 內部也有金融犯罪調查團隊，負責情資蒐集，追蹤新形態的詐騙、洗錢模式。&lt;/p&gt;
-&lt;p&gt;XREX 區塊鏈金融犯罪調查師陳梅慧表示，目前與虛幣投資相關的騙局中，詐騙組織通常會鎖定初次接觸虛擬貨幣的民眾，誘導其開立虛擬貨幣帳户，將法幣轉換為 USDT（泰達幣），再轉帳至詐騙錢包。陳梅慧指出，這類騙局通常涉及多位被害者，當交易所發現平台上同時出現多位新註冊用户，並且，這些用户將法幣轉換為 USDT 後，皆轉至同一個錢包，就會觸發交易所的風控機制。&lt;/p&gt;
-&lt;p&gt;「但是，犯罪方也有應變措施去突破風控。」陳梅慧解釋，當交易被風控阻擋，詐騙組織會轉而誘導被害人轉往其他路徑，從本地交易所轉至境外交易所帳户，或是個人錢包，最後再打入詐騙錢包。若這套模式仍舊被風控阻擋，詐騙組織就會引導被害人至實體店面，將資金匯入詐騙錢包。由於實體店面的情蒐能力較弱，較難阻止被害人繼續上當受騙。&lt;/p&gt;
-&lt;p&gt;除了虛擬貨幣投資騙局，許多詐騙組織騙取法幣後，也會透過區塊鏈洗錢，將非法資金轉為虛擬貨幣，最後轉至詐騙錢包。陳梅慧説明，洗錢方通常會在多家本地交易所開設多個人頭帳户，短時間內多次全額轉入和轉出不法資金。&lt;/p&gt;
-&lt;p&gt;若交易所察覺這類帳户使用相同 IP 地址，且資金最終都匯入同一個錢包，就會啟動風控機制。不過，洗錢方也會有應變措施，如同投資詐騙模式，利用境外交易所來規避監控。&lt;/p&gt;
-&lt;h3&gt;建立交易所、銀行和執法單位三方聯防機制至關重要&lt;/h3&gt;
-&lt;p&gt;當交易所進行足夠的情蒐後，要如何實際因應複雜的犯罪模式？陳梅慧認為，交易所、銀行，和執法單位的聯防至關重要，「當我們知道銀行端的用户是警示户，就可以快一步攔截資金。」她也期望，未來境外交易所也能加入聯防體系，共同提升加密貨幣交易所產業的防禦力道。&lt;/p&gt;
-&lt;p&gt;&lt;!-- notionvc: 72adfa12-f4bc-4215-84b2-47195c608e5d --&gt;&lt;/p&gt;
- &lt;/div&gt;&lt;/div&gt;&lt;/div&gt;    &lt;div&gt;
-  &lt;/div&gt;
-  &lt;/div&gt;
-       
-  &lt;/div&gt;&lt;/div&gt;</description>
-            <link>https://www.ithome.com.tw/news/163373</link>
-            <guid isPermaLink="false">https://www.ithome.com.tw/news/163373</guid>
-            <pubDate>Tue, 11 Jun 2024 16:00:00 GMT</pubDate>
-            <author>李昀璇</author>
-            <category>新聞</category>
-        </item>
-        <item>
-            <title>輝達超高密度 GPU 整櫃型 AI 伺服器系統亮相，9 家廠商在 Computex 展出 GB200 NVL72</title>
-            <description>&lt;header&gt;
-        &lt;div class=&quot;img-wrapper&quot;&gt;
-      &lt;div class=&quot;field field-name-field-image field-type-image field-label-hidden&quot;&gt;&lt;div class=&quot;field-items&quot;&gt;&lt;div class=&quot;field-item even&quot;&gt;&lt;img src=&quot;https://s4.itho.me/sites/default/files/styles/picture_size_large/public/field/image/tw-gb200_nvl72-main2.jpg?itok=01RhVJFJ&quot; width=&quot;960&quot; height=&quot;420&quot; alt=&quot;&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/div&gt;&lt;/div&gt;&lt;/div&gt;        &lt;/div&gt;
-                    
-      &lt;/header&gt;
-    &lt;div class=&quot;row-fluid&quot;&gt;
-    &lt;div class=&quot;contents-wrap&quot;&gt;
-    &lt;div class=&quot;content&quot;&gt;
-    &lt;div class=&quot;side-extra&quot;&gt;
-      
-  &lt;/div&gt;
-
-&lt;div class=&quot;field field-name-field-photo-source field-type-text field-label-inline clearfix&quot;&gt;&lt;div class=&quot;field-label&quot;&gt;圖片來源:&amp;nbsp;&lt;/div&gt;&lt;div class=&quot;field-items&quot;&gt;&lt;div class=&quot;field-item even&quot;&gt; &lt;p&gt;攝影／李宗翰&lt;/p&gt;
- &lt;/div&gt;&lt;/div&gt;&lt;/div&gt;&lt;div class=&quot;field field-name-body field-type-text-with-summary field-label-hidden&quot;&gt;&lt;div class=&quot;field-items&quot;&gt;&lt;div class=&quot;field-item even&quot;&gt; &lt;p&gt;搶攻爆量雲端 AI 應用需求商機，Nvidia 持續推出打破市場慣用規格的解決方案！當其他廠商開始重視 GPU、積極推出 GPU 伺服器時，他們早已開始打造 DGX 這類整合應用伺服器設備，而在自家 GPU、GPU 應用設備不斷推陳出新之際，Nvidia 也發展出整櫃型解決方案 DGX BasePOD、DGX SuperPOD，以及與四大公有雲服務業者合作推出 DGX Cloud。&lt;/p&gt;
-&lt;p&gt;這兩年以來，Nvidia 發表結合自家 GPU 與自研 Arm 架構 CPU 的超級晶片 GH200，以創新的方式克服 GPU 記憶體容量供不應求的困境，開創 AI 加速伺服器的新局。例如，在 2023 年 5 月底舉行的台北國際電腦展（Computex）期間，Nvidia 與多家伺服器廠商合作推出搭配 GH200 的產品，並且基於這款融合式加速晶片發表新型態的多機櫃 AI 超級電腦系統 DGX GH200，到了 2023 年底，他們也與公有雲服務龍頭 AWS 共同宣佈，將引進 Nvidia 發展的新型多節點整合機櫃系統 GH200 NVL32。&lt;/p&gt;
-&lt;p&gt;而在今年 6 月初登場的 2024 台北國際電腦展，多達 10 家廠商展出 Nvidia 最新發表的 AI 整櫃伺服器系統 GB200 NVL72，堪稱 2024 年上半全球最大規模的 AI 硬體軍火展示。&lt;/p&gt;
-&lt;p&gt;以 Computex 活動現場而言，展出 Nvidia 這套系統的廠商有哪些？絕大部分都集中在南港展覽館 1 館，例如，1 樓有技嘉科技（Gigabyte），3 樓有緯創集團（Wistron）與緯穎科技（Wiwynn）、廣達集團的雲達科技（QCT），4 樓有美超微（Supermicro）、華碩（Asus）、英業達（Inventec）、華擎科技的子公司永擎電子（ASRock Rack）、富士康科技集團的鴻佰科技（Ingrasys）；和碩聯合科技（Pegatron）則是在台北市北投區的公司總部，展出 Nvidia GB200 NVL72。&lt;/p&gt;
-&lt;p&gt;之所以能在今年 Computex 期間，促成如此盛大的產品展示，最主要的原因可能在於，台灣本身就是全球伺服器研發、設計與生產的重鎮，而在這些廠商與 Nvidia 近期密切合作之下，得以在產地就近展示最新研發製造的 Nvidia 專屬超級電腦伺服器系統。&lt;/p&gt;
-&lt;h3&gt;&lt;span style=&quot;color:#0000FF;&quot;&gt;&lt;strong&gt;Nvidia 發表資料中心 GPU 架構 Blackwell，導入此架構的超級晶片先出場，帶出新一代整櫃型 AI 加速伺服器系統產品上陣&lt;/strong&gt;&lt;/span&gt;&lt;/h3&gt;
-&lt;p&gt;在今年 3 月舉行的 GTC 大會，Nvidia 發表新一代 GPU 架構 Blackwell，也特別標榜結合基於此架構而成的 GPU 晶片 B200 與 Grace CPU 的 GB200 Grace Blackwell Superchip，以及大量採用這顆超級晶片的多節點整櫃系統 GB200 NVL72，當時他們預告 AWS、Google Cloud、Azure、Oracle Cloud Infrastructure 這四大公有雲業者，將是第一批提供搭配 Blackwell 技術運算執行個體服務的廠商，除了微軟，其他三大公有雲均提到將導入 GB200 NVL72 系統。&lt;/p&gt;
-&lt;p&gt;而在 6 月初登場的台北國際電腦展前夕，Nvidia 共同創辦人暨執行長黃仁勳率先發表主題演講，當中透過一段動畫影片秀出 GB200 NVL72 的系統結構。&lt;/p&gt;
-&lt;p&gt;&amp;nbsp;&lt;/p&gt;
-&lt;div class=&quot;media_embed&quot; height=&quot;315px&quot; width=&quot;560px&quot;&gt;
-&lt;iframe allow=&quot;accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share&quot; allowfullscreen=&quot;&quot; frameborder=&quot;0&quot; height=&quot;315px&quot; referrerpolicy=&quot;no-referrer&quot; src=&quot;https://www.youtube.com/embed/t_jiScDhf3M?si=ImbX6CU_flHcQW6S&quot; title=&quot;YouTube video player&quot; width=&quot;560px&quot;&gt;&lt;/iframe&gt;&lt;/div&gt;
-&lt;p&gt;&amp;nbsp;&lt;/p&gt;
-&lt;p&gt;以單台節點而言，依照由小而大的組成順序來看，分別是：將兩顆裸晶統合為單顆 GPU 的 Blackwell，集結兩顆 Blackwell 與單顆 Grace 處理器的 GB200 Grace Blackwell Superchip，搭配 2 張 GB200 超級晶片、ConnectX-800G InfiniBand SuperNIC 網路卡、BlueField-3 資料處理器的 GB200 Compute Node（單台節點有 4 顆 Blackwell 與 2 顆 Grace）。&lt;/p&gt;
-&lt;p&gt;就單台機櫃而言，GB200 NVL72 包含 18 台 GB200 運算節點組成的 GB200 Compute Tray（採用 36 張 GB200 Grace Blackwell Superchip，提供 72 顆 Blackwell 與 36 顆 Grace），9 台各自搭配兩顆 NVLink Switch 晶片組成的交換器組成的 NVLink Switch System。&lt;/p&gt;
-&lt;p&gt;若需建置多櫃型系統，搭配多台 GB200 NVL72 之餘，可結合以多台 Quantum-X800 800G InfiniBand Switch 交換器組成的機櫃進行串聯，組成 GB200 NVL72 Compute Rack，再以多台這樣的運算機櫃系統，建置一座完整的資料中心，提供 3.2 萬顆 Blackwell GPU，成為促成產業新革命的 AI 工廠。&lt;/p&gt;
-&lt;h3&gt;&lt;span style=&quot;color:#0000FF;&quot;&gt;&lt;strong&gt;部分廠商公佈 GB200 NVL72 系統組成機型與技術規格&lt;/strong&gt;&lt;/span&gt;&lt;/h3&gt;
-&lt;p&gt;在 2024 台北國際電腦展期間公開亮相的 GB200 NVL72 當中，外型大同小異，多數廠商現場展出的是單櫃機型，例如，緯穎、永擎、技嘉、美超微、英業達，大多搭配 1U 尺寸的運算節點伺服器，其中，技嘉、英業達、和碩均展出搭配 2U 尺寸的運算節點伺服器，廠商們將這樣的配置稱為 GB200 NVL36。&lt;/p&gt;
-&lt;p&gt;&lt;a href=&quot;https://s4.itho.me/sites/default/files/images/Wiwynn-GB200%20NVL72-1-FB.jpg&quot;&gt;&lt;img alt=&quot;&quot; src=&quot;https://s4.itho.me/sites/default/files/images/Wiwynn-GB200%20NVL72-1-FB.jpg&quot; style=&quot;width: 198px;&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/a&gt;&amp;nbsp;&amp;nbsp;&lt;a href=&quot;https://s4.itho.me/sites/default/files/images/Web-2024-06-07-ASRock%20Rack%20GB200%20NVL72-P1430159-%E6%94%9D%E5%BD%B1-%E6%9D%8E%E5%AE%97%E7%BF%B0.jpg&quot;&gt;&lt;img alt=&quot;&quot; src=&quot;https://s4.itho.me/sites/default/files/images/Web-2024-06-07-ASRock%20Rack%20GB200%20NVL72-P1430159-%E6%94%9D%E5%BD%B1-%E6%9D%8E%E5%AE%97%E7%BF%B0.jpg&quot; style=&quot;width: 198px;&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/a&gt;&amp;nbsp;&amp;nbsp;&lt;a href=&quot;https://s4.itho.me/sites/default/files/images/Web-Gigabyte%20GB200%20NVL72-447796672_1002632334567391_6779329666239324629_n.jpg&quot;&gt;&lt;img alt=&quot;&quot; src=&quot;https://s4.itho.me/sites/default/files/images/Web-Gigabyte%20GB200%20NVL72-447796672_1002632334567391_6779329666239324629_n.jpg&quot; style=&quot;width: 198px;&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/a&gt;&lt;/p&gt;
-&lt;p&gt;以英業達為例，他們展示整櫃式的 GB200 NVL72 之餘，旁邊擺設代號為 Artemis 的 1U 伺服器與 2U 伺服器，當中均配備 2 張 GB200 Grace Blackwell Superchip、ConnectX-7 400Gb/s InfiniBand 網路卡，以及 BlueField-3 400Gb/s 資料處理器。&lt;/p&gt;
-&lt;p&gt;&lt;a href=&quot;https://s4.itho.me/sites/default/files/images/Web-Inventec%20GB200%20NVL72-Computex-2.jpg&quot;&gt;&lt;img alt=&quot;&quot; src=&quot;https://s4.itho.me/sites/default/files/images/Web-Inventec%20GB200%20NVL72-Computex-2.jpg&quot; style=&quot;width: 298px;&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/a&gt;&amp;nbsp;&amp;nbsp;&lt;a href=&quot;https://s4.itho.me/sites/default/files/images/Web-Inventec%20GB200%20NVL72-P1430225.jpg&quot;&gt;&lt;img alt=&quot;&quot; src=&quot;https://s4.itho.me/sites/default/files/images/Web-Inventec%20GB200%20NVL72-P1430225.jpg&quot; style=&quot;width: 148px;&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/a&gt;&amp;nbsp;&amp;nbsp;&lt;a href=&quot;https://s4.itho.me/sites/default/files/images/Web-Inventec%20GB200%20NVL72-P1430233.jpg&quot;&gt;&lt;img alt=&quot;&quot; src=&quot;https://s4.itho.me/sites/default/files/images/Web-Inventec%20GB200%20NVL72-P1430233.jpg&quot; style=&quot;width: 148px;&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/a&gt;&lt;/p&gt;
-&lt;p&gt;其他廠商提供延伸搭配方式，像是雲達、華碩、鴻佰展出的產品，是一座伺服器機櫃搭配一座稱為側車（Side Car）的冷卻機櫃（編按：所謂的側車是一種液態冷卻機櫃搭配伺服器機櫃的部署形式，應該是借用兩輪機車側邊加裝附有單輪乘坐設備的比喻）。&lt;/p&gt;
-&lt;p&gt;&lt;img alt=&quot;&quot; src=&quot;https://s4.itho.me/sites/default/files/images/Web-%E9%B4%BB%E4%BD%B0GB200%20NVL72-DSC00646_1717477976.jpg&quot; style=&quot;width: 600px;&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt;
-&lt;p&gt;以雲達為例，他們與&lt;a href=&quot;https://www.liteon.com/zh-tw/news/press-center/content/qct-nvidia-gb200-nvl72-powersolution&quot;&gt;光寶科技（LiteOn）&lt;/a&gt;展示搭載 Nvidia GB200 NVL72 的 AI 伺服器機櫃，在伺服器方面，雲達揭露當中搭配的伺服器有兩款機型，它們均配備雲達的直達晶片水冷技術（direct-to-chip liquid cooling）。&lt;/p&gt;
-&lt;p&gt;其中一款伺服器，是 2U 機型 QuantaGrid D75B-2U，在 Nvidia GB200 NVL72 的系統建置框架之下，可透過兩座機櫃容納 72 台這樣的設備。另一款是現場展示的 1U 機型 QuantaGrid D75B-1U，在 Nvidia GB200 NVL72 的系統建置框架之下，可透過單座機櫃容納 72 台這樣的設備。D75B-1U 本身搭載 2 張 GB200 Grace Blackwell Superchip，雲達在此標明 CPU 可存取 480 GB 容量的 LPDDR5X 記憶體，GPU 本身配備 144GB 容量 HBM3e 高頻寬記憶體，均搭配冷水板（Cold Plate）形式的液態冷卻配件；儲存裝置方面，這台 1U 伺服器可容納 8 台 E1.S 厚度 15 公釐外形的 PCIe 固態硬碟，以及 1 張 M.2 2280 外形的 PCIe 固態硬碟；在 PCIe 裝置擴充方面，D75B-1U 可容納 2 張雙寬全高全長尺寸的介面卡，以及 2 張半高半長尺寸的介面卡，均支援 PCIe 5.0 x16。&lt;/p&gt;
-&lt;p&gt;&lt;img alt=&quot;&quot; src=&quot;https://s4.itho.me/sites/default/files/images/Web2-2024-06-06-QCT%20GB200%20NVL72-P1420902.jpg&quot; style=&quot;width: 298px;&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&amp;nbsp;&amp;nbsp;&lt;a href=&quot;https://s4.itho.me/sites/default/files/images/Web-QCT%20D75B-1U-1.jpg&quot;&gt;&lt;img alt=&quot;&quot; src=&quot;https://s4.itho.me/sites/default/files/images/Web-QCT%20D75B-1U-1.jpg&quot; style=&quot;width: 198px;&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/a&gt;&amp;nbsp;&amp;nbsp;&lt;a href=&quot;https://s4.itho.me/sites/default/files/images/Web-QCT%20D75B-1U-2.jpg&quot;&gt;&lt;img alt=&quot;&quot; src=&quot;https://s4.itho.me/sites/default/files/images/Web-QCT%20D75B-1U-2.jpg&quot; style=&quot;width: 98px;&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/a&gt;&lt;/p&gt;
-&lt;p&gt;至於機櫃與電源供應的部分，是由&lt;a href=&quot;https://www.liteon.com/zh-tw/news/press-center/content/qct-nvidia-gb200-nvl72-powersolution&quot;&gt;光寶自主設計與製造&lt;/a&gt;，並且是遵循 Nvidia 最新提出的 MGX 機櫃規範的產品，而在 Computex 現場展示的 Nvidia GB200 NVL72 機櫃頂端，也特別標示&lt;a href=&quot;https://www.youtube.com/watch?v=xAGIFITTzgU&amp;amp;ab_channel=QCT&quot;&gt;QoolRack&lt;/a&gt;作為獨立解決方案時，可供應 120 KW 電力。&lt;/p&gt;
-&lt;p&gt;華碩則展出配備 Nvidia GB200 NVL72 系統的&lt;a href=&quot;https://www.asus.com/event/nvidiagb200nvl72/&quot;&gt;Asus ESC AI POD&lt;/a&gt;，以及矗立在旁的液體至氣體熱交換器機櫃（Liquid-to-Air Heat Exchanger），其中，Asus ESC AI POD 搭配的伺服器機型為 ESC NM2N721-E1，特別的是，他們在這個展示用的機櫃套件側邊掛上一整面 LED 看板，持續播放動畫影片介紹 Asus ESC AI POD 的內部構造、電力供應配置與流經的元件，以及 18 台運算槽的統合，Grace CPU、Blackwell GPU 與 NVLink Switch 的互連關係。&lt;/p&gt;
-&lt;p&gt;&lt;img alt=&quot;&quot; src=&quot;https://s4.itho.me/sites/default/files/images/Web-Asus%20GB200%20NVL72-P1430112.jpg&quot; style=&quot;width: 298px;&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&amp;nbsp;&amp;nbsp;&lt;a href=&quot;https://s4.itho.me/sites/default/files/images/Web%20Asus%20GB200%20NVL72-P1430144.jpg&quot;&gt;&lt;img alt=&quot;&quot; src=&quot;https://s4.itho.me/sites/default/files/images/Web%20Asus%20GB200%20NVL72-P1430144.jpg&quot; style=&quot;width: 298px;&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/a&gt;&lt;/p&gt;
-&lt;p&gt;&amp;nbsp;&lt;/p&gt;
-&lt;div class=&quot;media_embed&quot; height=&quot;315px&quot; width=&quot;560px&quot;&gt;
-&lt;iframe allow=&quot;accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share&quot; allowfullscreen=&quot;&quot; frameborder=&quot;0&quot; height=&quot;315px&quot; referrerpolicy=&quot;no-referrer&quot; src=&quot;https://www.youtube.com/embed/YF2FNYop8ZM?si=h-SIn_tdj8Z2Fo63&quot; title=&quot;YouTube video player&quot; width=&quot;560px&quot;&gt;&lt;/iframe&gt;&lt;/div&gt;
-&lt;p&gt;針對 Nvidia GB200 NVL72 系統的運算槽，華碩也在 Computex 現場展示機箱內部設計。我們可看到裡面配備 2 張 GB200 Grace Blackwell Superchip，上面均覆蓋冷水板，而在機箱中間有個他們設計的電源配送板（Power Distribution Board，PDB），可將 48 伏特直流電轉換為 12 伏特直流電，供應 Blackwell GPU 使用；除此之外，這個運算槽還搭配可安裝 E1.S 外形固態硬碟的儲存模組，以及兩張 BlueField-3 資料處理器系列的雙寬全高半長款式 B3240。&lt;/p&gt;
-&lt;p&gt;&lt;img alt=&quot;&quot; src=&quot;https://s4.itho.me/sites/default/files/images/Asus%20ESC%20AI%20POD-Compute%20Tray%20francesco%20sinopoli%20Linkedin.jpg&quot; style=&quot;width: 600px;&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt;
- &lt;/div&gt;&lt;/div&gt;&lt;/div&gt;    &lt;div&gt;
-  &lt;/div&gt;
-  &lt;/div&gt;
-       
-  &lt;/div&gt;&lt;/div&gt;</description>
-            <link>https://www.ithome.com.tw/news/163407</link>
-            <guid isPermaLink="false">https://www.ithome.com.tw/news/163407</guid>
-            <pubDate>Tue, 11 Jun 2024 16:00:00 GMT</pubDate>
-            <author>李宗翰</author>
-            <category>新聞</category>
-        </item>
-        <item>
-            <title>馬斯克撤回對 OpenAI 的訴訟</title>
-            <description>&lt;header&gt;
-        &lt;div class=&quot;img-wrapper&quot;&gt;
-      &lt;div class=&quot;field field-name-field-image field-type-image field-label-hidden&quot;&gt;&lt;div class=&quot;field-items&quot;&gt;&lt;div class=&quot;field-item even&quot;&gt;&lt;img src=&quot;https://s4.itho.me/sites/default/files/styles/picture_size_large/public/field/image/0612-elon_musk-openai-960.jpg?itok=iHMLz1bB&quot; width=&quot;960&quot; height=&quot;420&quot; alt=&quot;&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/div&gt;&lt;/div&gt;&lt;/div&gt;        &lt;/div&gt;
-                    
-      &lt;/header&gt;
-    &lt;div class=&quot;row-fluid&quot;&gt;
-    &lt;div class=&quot;contents-wrap&quot;&gt;
-    &lt;div class=&quot;content&quot;&gt;
-    &lt;div class=&quot;side-extra&quot;&gt;
-      
-  &lt;/div&gt;
-
-&lt;div class=&quot;field field-name-body field-type-text-with-summary field-label-hidden&quot;&gt;&lt;div class=&quot;field-items&quot;&gt;&lt;div class=&quot;field-item even&quot;&gt; &lt;p&gt;根據外電報導，曾共同創辦 OpenAI 的馬斯克（Elon Musk）已於本週二（6/11）撤回對 OpenAI，以及 OpenAI 共同創辦人暨執行長 Sam Altman&lt;a href=&quot;https://www.ithome.com.tw/news/161593&quot; target=&quot;_blank&quot;&gt;的訴訟&lt;/a&gt;。&lt;/p&gt;
-&lt;p&gt;當時馬斯克指控 OpenAI 與 Altman 違反創立時要開源及造福全人類的承諾，轉向積極獲利的道路。&lt;/p&gt;
-&lt;p&gt;根據&lt;a href=&quot;https://www.cnbc.com/2024/06/11/elon-musk-drops-suit-against-openai-and-sam-altman.html&quot; target=&quot;_blank&quot;&gt;CNBC&lt;/a&gt;的報導，專家認為此案建立在一個有問題的基礎上，因為該案的核心並無正式的書面協議。此外，法官原本要在今日（6/12）舉行聽證會，且據稱已打算駁回此案。&lt;/p&gt;
-&lt;p&gt;總之，這或許是馬斯克企圖行銷自己或自家 AI 公司 xAI 的手法，然而，OpenAI 先前即曾公開&lt;a href=&quot;https://openai.com/index/openai-elon-musk/&quot; target=&quot;_blank&quot;&gt;馬斯克的信件&lt;/a&gt;，當時馬斯克自己也説 OpenAI 需要更龐大的資金才能與 DeepMind 競爭，也同意有時不分享科學是正確的選擇，還希望 OpenAI 能與特斯拉合併。此外，馬斯克也未能履行自己對 OpenAI 投入資金的承諾。&lt;/p&gt;
-&lt;p&gt;從 OpenAI 的聲明來看，當初該公司與馬斯克之間所達到的最大共識，就是建置通用人工智慧的所需要的資源，遠比大家想像的要多上許多。&lt;/p&gt;
- &lt;/div&gt;&lt;/div&gt;&lt;/div&gt;    &lt;div&gt;
-  &lt;/div&gt;
-  &lt;/div&gt;
-       
-  &lt;/div&gt;&lt;/div&gt;</description>
-            <link>https://www.ithome.com.tw/news/163418</link>
-            <guid isPermaLink="false">https://www.ithome.com.tw/news/163418</guid>
-            <pubDate>Tue, 11 Jun 2024 16:00:00 GMT</pubDate>
-            <author>陳曉莉</author>
-            <category>新聞</category>
-        </item>
-        <item>
-            <title>勒索軟體駭客 TellYouThePass 鎖定近期公佈的 PHP 重大漏洞</title>
-            <description>&lt;header&gt;
-        &lt;div class=&quot;img-wrapper&quot;&gt;
-      &lt;div class=&quot;field field-name-field-image field-type-image field-label-hidden&quot;&gt;&lt;div class=&quot;field-items&quot;&gt;&lt;div class=&quot;field-item even&quot;&gt;&lt;img src=&quot;https://s4.itho.me/sites/default/files/styles/picture_size_large/public/field/image/code-6-156.jpg?itok=avXLMuQ8&quot; width=&quot;960&quot; height=&quot;420&quot; alt=&quot;&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/div&gt;&lt;/div&gt;&lt;/div&gt;        &lt;/div&gt;
-                    
-      &lt;/header&gt;
-    &lt;div class=&quot;row-fluid&quot;&gt;
-    &lt;div class=&quot;contents-wrap&quot;&gt;
-    &lt;div class=&quot;content&quot;&gt;
-    &lt;div class=&quot;side-extra&quot;&gt;
-      
-  &lt;/div&gt;
-
-&lt;div class=&quot;field field-name-body field-type-text-with-summary field-label-hidden&quot;&gt;&lt;div class=&quot;field-items&quot;&gt;&lt;div class=&quot;field-item even&quot;&gt; &lt;p&gt;上週台灣資安業者戴夫寇爾針對&lt;a href=&quot;https://www.ithome.com.tw/news/163356&quot;&gt;他們向 PHP 通報的重大層級漏洞 CVE-2024-4577&lt;/a&gt;提出警告，呼籲網站管理者儘速套用新版 PHP 程式，或是採取緩解措施，由於全球有近八成網站採用 PHP，這項漏洞很快就有駭客將其用於攻擊行動。&lt;/p&gt;
-&lt;p&gt;在 PHP 於 6 日發布新版軟體修補上述漏洞，隔日 Shadowserver 基金會就發現&lt;a href=&quot;https://x.com/Shadowserver/status/1799053497490698548&quot;&gt;密罐陷阱出現漏洞嘗試利用的情況&lt;/a&gt;。接著在 6 月 8 日，資安業者 Imperva 發現&lt;a href=&quot;https://www.imperva.com/blog/update-cve-2024-4577-quickly-weaponized-to-distribute-tellyouthepass-ransomware/&quot;&gt;勒索軟體駭客組織 TellYouThePass 利用這項漏洞從事攻擊&lt;/a&gt;，他們看到對方成功觸發漏洞後，於受害伺服器上執行 PHP 程式碼，利用名為 system 的功能進行寄生攻擊，透過執行檔 mshta.exe 執行攻擊者網頁伺服器上的 HTML 應用程式檔案。&lt;/p&gt;
-&lt;p&gt;駭客初期於受害主機植入含有惡意 VBScript 指令碼的 HTML 應用程式檔案 dd3.hta，該指令碼包含一個經過 Base64 編碼處理後的長字串，解碼後會產生執行檔，並在記憶體內載入、執行，而這個執行檔就是以.NET 打造的勒索軟體 TellYouThePass 程式。&lt;/p&gt;
-&lt;p&gt;一旦此勒索軟體啟動，便會向 C2 伺服器發送 HTTP 請求，傳送受害主機的系統資訊，為了迴避偵測，駭客將其偽裝成搜尋 CSS 樣式表資源的請求。&lt;/p&gt;
-&lt;p&gt;最終該勒索軟體會列出所有資料夾、終止特定的處理程序、產生加密金鑰並加密檔案，並在網站根目錄留下勒索訊息 READ_ME10.html。&lt;/p&gt;
-&lt;p&gt;有受害者在資安新聞網站 Bleeping Computer 的論壇指出，&lt;a href=&quot;https://www.bleepingcomputer.com/forums/t/798060/tellyouthepass-ransomware-locked;-read-me9html-support-topic/&quot;&gt;對方向他勒索 0.1 個比特幣&lt;/a&gt;，相當於 6,742 美元（新台幣 218,129 元）。&lt;/p&gt;
-&lt;p&gt;值得留意的是，仍有許多網站尚未修補這項漏洞而可能曝險。資安業者 Censys 指出，他們發現&lt;a href=&quot;https://censys.com/cve-2024-4577/&quot;&gt;約有 458,800 個存在漏洞的 PHP 實體&lt;/a&gt;；資安業者 Wiz 表示，&lt;a href=&quot;https://www.wiz.io/blog/critical-rce-php-cgi-vulnerability&quot;&gt;約有 34% 雲端環境存在含有漏洞的 PHP 系統&lt;/a&gt;。&lt;/p&gt;
- &lt;/div&gt;&lt;/div&gt;&lt;/div&gt;    &lt;div&gt;
-  &lt;/div&gt;
-  &lt;/div&gt;
-       
-  &lt;/div&gt;&lt;/div&gt;</description>
-            <link>https://www.ithome.com.tw/news/163417</link>
-            <guid isPermaLink="false">https://www.ithome.com.tw/news/163417</guid>
-            <pubDate>Tue, 11 Jun 2024 16:00:00 GMT</pubDate>
-            <author>周峻佑</author>
-            <category>新聞</category>
-        </item>
-        <item>
-            <title>亞馬遜宣佈在台首座 AWS 區域級資料中心，不只 100% 用再生能源還要投資數十億美元支持雲業務發展</title>
-            <description>&lt;header&gt;
-        &lt;div class=&quot;img-wrapper&quot;&gt;
-      &lt;div class=&quot;field field-name-field-image field-type-image field-label-hidden&quot;&gt;&lt;div class=&quot;field-items&quot;&gt;&lt;div class=&quot;field-item even&quot;&gt;&lt;img src=&quot;https://s4.itho.me/sites/default/files/styles/picture_size_large/public/field/image/pxl_20240612_024801483.jpg?itok=sfrIdI2p&quot; width=&quot;960&quot; height=&quot;420&quot; alt=&quot;&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/div&gt;&lt;/div&gt;&lt;/div&gt;        &lt;/div&gt;
-                    
-      &lt;/header&gt;
-    &lt;div class=&quot;row-fluid&quot;&gt;
-    &lt;div class=&quot;contents-wrap&quot;&gt;
-    &lt;div class=&quot;content&quot;&gt;
-    &lt;div class=&quot;side-extra&quot;&gt;
-      
-  &lt;/div&gt;
-
-&lt;div class=&quot;field field-name-field-photo-source field-type-text field-label-inline clearfix&quot;&gt;&lt;div class=&quot;field-label&quot;&gt;圖片來源:&amp;nbsp;&lt;/div&gt;&lt;div class=&quot;field-items&quot;&gt;&lt;div class=&quot;field-item even&quot;&gt; &lt;p&gt;攝影/餘至浩&lt;/p&gt;
- &lt;/div&gt;&lt;/div&gt;&lt;/div&gt;&lt;div class=&quot;field field-name-body field-type-text-with-summary field-label-hidden&quot;&gt;&lt;div class=&quot;field-items&quot;&gt;&lt;div class=&quot;field-item even&quot;&gt; &lt;p&gt;亞馬遜 AWS 今天宣佈了在台的最新發展計畫，將在台灣興建雲端資料中心。這也是 AWS 十年來在台灣的最大規模投資，同時也是 AWS 在全球公佈的第 40 座區域級（Region）雲端資料中心。AWS 計畫未來 15 年在台投資數十億美元，支持台灣雲端業務發展。&lt;/p&gt;
-&lt;p&gt;AWS 在台灣的雲端資料中心預計將在 2025 年正式上線營運。未來，該資料中心將以「Asia Pacific (Taipei)」的區域名稱，提供區域級公有雲服務。&lt;/p&gt;
-&lt;p&gt;AWS 在台北建置的區域資料中心與兩年前在台灣啟用的 Local Zone 本地雲端機房相比，不僅規模更大，而且提供全套 AWS 服務，同時也能為台灣企業就近提供各種低延遲應用的執行，如線上遊戲、AR/VR 應用，同時也能配合醫療、金融等監管行業法遵的需求。&lt;/p&gt;
-&lt;p&gt;AWS 基礎設施服務副總裁 Prasad Kalyanaraman 表示，在台灣建置的新區域資料中心，未來將可為企業提供各種 AWS 資源及技術服務，包括運算、儲存、資料庫、分析、機器學習和 AI 等，將助於加速企業業務成長與創新。&lt;/p&gt;
-&lt;p&gt;&lt;img alt=&quot;&quot; src=&quot;https://s4.itho.me/sites/default/files/images/PXL_20240612_030245195.jpeg&quot; style=&quot;width: 600px; height: 379px;&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt;
-&lt;p&gt;AWS 台灣也公佈過去至今採用 AWS 公雲的本地企業用户，涵蓋了多個產業，包括台積電、宏碁、國泰金控、中華電信、趨勢科技、遊戲橘子、科科科技、Maicoin 等。&lt;/p&gt;
-&lt;p&gt;AWS 香港暨台灣總經理王定愷透露，隨著台灣區域的啟用，未來，預估本地企業使用 AWS 服務的往返延遲時間有望進一步縮短延 10 毫秒以下。如果根據亞馬遜 WorkSpaces 網站的檢測工具顯示，台灣本地到 AWS 東京區域資料中心的往返時間最短，平均約為 55 毫秒。這意謂著改用台灣區域資料中心後，往返延遲時間將能再減少約 45 毫秒。&lt;/p&gt;
-&lt;p&gt;從資料中心設計來看，AWS 表示，這座台北區域資料中心將是 100% 再生能源，以符合 AWS 對於 2040 年營運淨零碳排的承諾，此外，這座資料中心同樣將由 3 個可用區域（AZ）組成且區域間彼此相隔，每個 AZ 之間都具有獨立的電源、冷卻和實體安全性，並透過冗餘、超低延遲網路串連，來實現應用高可用性與高容錯。&lt;/p&gt;
-&lt;p&gt;&lt;img alt=&quot;&quot; src=&quot;https://s4.itho.me/sites/default/files/images/PXL_20240612_030931800.jpeg&quot; style=&quot;width: 600px; height: 392px;&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt;
-&lt;p&gt;統計到今年 6 月 12 日為止，在 AWS 官網上公佈的全球 Region（區域級）雲端資料中心，加上已公佈但還未啟用的區域，包括台灣區域，全球共有 40 個，其中有 7 座是正在興建中的新雲端資料中心，&lt;/p&gt;
-&lt;p&gt;AWS 近兩年持續擴大其雲端資料中心涵蓋範圍，光是 2023 年就有 4 座雲端資料中心興建計劃，去年 1 月澳洲第 2 座資料中心計畫（14 年 45 億美元）、3 月馬來西亞資料中心（14 年 60 億美元）、8 月以色列資料中心（14 年 72 億美元），以及 12 月加拿大第二座資料中心（14 年 179 億美元）。&lt;/p&gt;
-&lt;p&gt;截至今年 6 月為止，AWS 還宣佈另外兩座新資料中心計畫，分別是 2 月墨西哥資料中心（15 年 50 億美元），以及 3 月沙烏地阿拉伯王國資料中心（53 億美元），最後是今年 6 月台灣資料中心。&lt;/p&gt;
-&lt;p&gt;隨著 AWS 全新雲端資料中心明年初啟用，意謂著台灣目前三大公雲其中的兩家 Google 和 AWS 都已在台灣啟用或即將啟用區域級雲端資料中心，微軟在幾年幾也宣佈將台灣雲端資料中心建置計劃，但目前仍建置中，尚未公佈啟用時程。隨著三大公雲落地台灣，台灣將進到多雲混合雲的競爭時代。&lt;/p&gt;
-&lt;p&gt;&lt;!-- notionvc: 550fc377-18d9-4394-9311-fa0418f057a6 --&gt;&lt;/p&gt;
- &lt;/div&gt;&lt;/div&gt;&lt;/div&gt;    &lt;div&gt;
-  &lt;/div&gt;
-  &lt;/div&gt;
-       
-  &lt;/div&gt;&lt;/div&gt;</description>
-            <link>https://www.ithome.com.tw/news/163410</link>
-            <guid isPermaLink="false">https://www.ithome.com.tw/news/163410</guid>
-            <pubDate>Tue, 11 Jun 2024 16:00:00 GMT</pubDate>
-            <author>餘至浩</author>
-            <category>新聞</category>
-        </item>
-        <item>
-            <title>甲骨文抓 Java 盜版擴大稽核對象</title>
-            <description>&lt;header&gt;
-        &lt;div class=&quot;img-wrapper&quot;&gt;
-      &lt;div class=&quot;field field-name-field-image field-type-image field-label-hidden&quot;&gt;&lt;div class=&quot;field-items&quot;&gt;&lt;div class=&quot;field-item even&quot;&gt;&lt;img src=&quot;https://s4.itho.me/sites/default/files/styles/picture_size_large/public/field/image/0612-oracle-qing_jing_-shi_yi_-guan_fang_tu_pian_-960.jpg?itok=2QTpdF5v&quot; width=&quot;960&quot; height=&quot;420&quot; alt=&quot;&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/div&gt;&lt;/div&gt;&lt;/div&gt;        &lt;/div&gt;
-                    
-      &lt;/header&gt;
-    &lt;div class=&quot;row-fluid&quot;&gt;
-    &lt;div class=&quot;contents-wrap&quot;&gt;
-    &lt;div class=&quot;content&quot;&gt;
-    &lt;div class=&quot;side-extra&quot;&gt;
-      
-  &lt;/div&gt;
-
-&lt;div class=&quot;field field-name-field-photo-source field-type-text field-label-inline clearfix&quot;&gt;&lt;div class=&quot;field-label&quot;&gt;圖片來源:&amp;nbsp;&lt;/div&gt;&lt;div class=&quot;field-items&quot;&gt;&lt;div class=&quot;field-item even&quot;&gt; &lt;p&gt;甲骨文&lt;/p&gt;
- &lt;/div&gt;&lt;/div&gt;&lt;/div&gt;&lt;div class=&quot;field field-name-body field-type-text-with-summary field-label-hidden&quot;&gt;&lt;div class=&quot;field-items&quot;&gt;&lt;div class=&quot;field-item even&quot;&gt; &lt;p&gt;甲骨文一月調漲 Java 授權方案，一些想使用盜版 Java 軟體的企業要小心了，因為甲骨文開始擴大稽核的企業對象。&lt;/p&gt;
-&lt;p&gt;英國 IT 媒體&lt;a href=&quot;https://www.theregister.com/2024/06/10/fortune_200_oracle_java_audit/?td=rt-3a&quot; target=&quot;_blank&quot;&gt;The Register 引述授權業者報導&lt;/a&gt;，甲骨文近日向財星 200 大企業寄發 Java 授權稽核的通知信件，也是首度將稽核企業範疇由超大型企業擴大到大型企業。&lt;/p&gt;
-&lt;p&gt;&lt;a href=&quot;https://www.oracle.com/java/technologies/java-se-subscription-faq.html&quot; target=&quot;_blank&quot;&gt;甲骨文今年初公佈&lt;/a&gt;名為 Java SE 統一訂閲（Java SE Universal Subscription）的授權方案，取代舊式的 Java SE 桌機版訂閲。兩者差別是，Java SE 統一訂閲方案允許用户將 Java 授權用於桌機、伺服器和第三方雲平台。此外，甲骨文支援涵括完整 Java 環境，包括第三方函式庫及 runtime，因此甲骨文也會和第三方業者合作，以提供客户支援。甲骨文形容，新方案是「簡單、低成本的每月訂閲方案」，可提供 24x7 服務、20 多種語言的 Java SE 8 桌機版管理、監控和部署功能。&lt;/p&gt;
-&lt;p&gt;根據&lt;a href=&quot;https://www.oracle.com/a/ocom/docs/corporate/pricing/java-se-subscription-pricelist-5028356.pdf&quot; target=&quot;_blank&quot;&gt;Java SE 統一訂閲文件&lt;/a&gt;，新方案依企業員工人數收費，購買 999 人以下的授權，每人每月 15 美元，但單價依人數級距調降。1,000-2,999 人每人月費 12 美元，4 萬人到 4 萬 9,999 人為每人月費 5.25 美元。5 萬人以上則提供專案價。&lt;/p&gt;
-&lt;p&gt;甲骨文定義的員工為「任何支援內部公司營運的兼職、全職、臨時員工，以及約聘、外包人員」，而不只是使用 Java 軟體的開發人員。&lt;/p&gt;
-&lt;p&gt;雖然官方説詞宣稱更為划算，但業界評估，企業將面臨高漲的成本。根據顧問公司&lt;a href=&quot;https://www.theregister.com/2023/07/24/oracle_java_license_terms/&quot; target=&quot;_blank&quot;&gt;Gartner 的估算&lt;/a&gt;，新方案對大型企業可能造成成本翻揚 2 倍到 5 倍。&lt;/p&gt;
-&lt;p&gt;一家提供從 Java 轉移到開源軟體的服務商原本相信，甲骨文只會稽核財星 50 大（Fortune 50）的超大型企業，應該不會查核財星 100 大或 200 大的公司，雖然甲骨文的確會發信給一些員工幾百人的公司，要求説明 Java 使用狀況。但他們 5 月開始聽到有更小型的企業收到甲骨文的信件，要求補繳授權費用，顯示由於去年全球通膨影響，企業面臨營運壓力，讓甲骨文等軟體巨擘尋求擴大稽核範圍維持營收。&lt;/p&gt;
-&lt;p&gt;根據甲骨文剛發布的&lt;a href=&quot;https://investor.oracle.com/investor-news/news-details/2024/Oracle-Announces-Fiscal-2024-Fourth-Quarter-and-Fiscal-Full-Year-Financial-Results/default.aspx&quot; target=&quot;_blank&quot;&gt;2024 年會計年度第 4 季財報&lt;/a&gt;，上季公司營收 143 億美元，（以美元計價）年增 3%。其中雲端授權和本地授權業務較去年下滑 15%。雲端服務及授權支援則成長 9%。&lt;/p&gt;
- &lt;/div&gt;&lt;/div&gt;&lt;/div&gt;    &lt;div&gt;
-  &lt;/div&gt;
-  &lt;/div&gt;
-       
-  &lt;/div&gt;&lt;/div&gt;</description>
-            <link>https://www.ithome.com.tw/news/163415</link>
-            <guid isPermaLink="false">https://www.ithome.com.tw/news/163415</guid>
-            <pubDate>Tue, 11 Jun 2024 16:00:00 GMT</pubDate>
-            <author>林妍溱</author>
             <category>新聞</category>
         </item>
     </channel>
