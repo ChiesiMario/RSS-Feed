@@ -9,8 +9,65 @@
         <generator>RSSHub</generator>
         <webMaster>i@diygod.me (DIYgod)</webMaster>
         <language>en</language>
-        <lastBuildDate>Thu, 20 Jun 2024 16:00:20 GMT</lastBuildDate>
+        <lastBuildDate>Fri, 21 Jun 2024 02:12:11 GMT</lastBuildDate>
         <ttl>180</ttl>
+        <item>
+            <title>PikiwiDB (Pika) 混合存儲之批量查詢</title>
+            <description>&lt;div class=&quot;content&quot;&gt;
+                                                                                                                    
+                                                        
+                                                                                            &lt;h2&gt;1 背景&lt;/h2&gt; 
+&lt;p&gt;2023 年 11 月發佈的 PikiwiDB(Pika)【下文簡稱 Pika】 v3.5.2 開始支持混合存儲，旨在通過緩存熱點數據提升查詢速度。&lt;/p&gt; 
+&lt;p&gt;Pika v3.5.2 的熱數據緩存只實現了對熱點 Key 的點查 (如 get/hget)，在後續的 v3.5.3 和 v3.5.4 修復若干 bug 後，對熱數據的點查目前已經非常穩定。然而並未支持批量查詢 (如 mget/hmget etc)。&lt;/p&gt; 
+&lt;p&gt;&lt;img src=&quot;https://oscimg.oschina.net/oscnet/2bc871e8-37c3-4759-99fb-392f7af7e9f5.jpg&quot; alt=&quot;&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
+&lt;p&gt;近期業務側（360 AI 推薦）反饋批量查詢速度比較慢，在 40core CPU/256GiB 內存/2TiB SATA SSD 規格機器上數據量超過 100GiB 時，Pika v3.3.6 30% 批量查詢延遲超過 35ms【下文稱之為失敗率】。業務考慮升級 Pika 到 v3.5.4 版本，使用熱數據緩存以提升性能。但由於 Pika 熱數據緩存尚未支持批量查詢，性能並未改善。&lt;/p&gt; 
+&lt;p&gt;為了滿足業務需求，Pika 團隊開發了批量查詢熱數據緩存功能，顯著提升了批量查詢性能，降低了查詢延遲和失敗率。&lt;/p&gt; 
+&lt;h2&gt;2 原理&lt;/h2&gt; 
+&lt;p&gt;以 &lt;code&gt;MGET&lt;/code&gt; 命令為例，批量查詢熱數據緩存採用以下策略：&lt;/p&gt; 
+&lt;ol&gt; 
+ &lt;li&gt;&lt;strong&gt;命中緩存&lt;/strong&gt;: 首先查詢 RedisCache，獲取緩存中的數據。&lt;/li&gt; 
+ &lt;li&gt;&lt;strong&gt;穿透磁盤&lt;/strong&gt;: 對於未命中緩存的 key，從 RocksDB 中獲取相應值。&lt;/li&gt; 
+ &lt;li&gt;&lt;strong&gt;合併結果&lt;/strong&gt;: 將緩存和 RocksDB 中獲取的數據按照原有順序合併。&lt;/li&gt; 
+ &lt;li&gt;&lt;strong&gt;更新緩存&lt;/strong&gt;: 將合併後的數據返回給用户，並將 RocksDB 查詢到的值更新到 RedisCache。&lt;/li&gt; 
+&lt;/ol&gt; 
+&lt;p&gt;這種優化方案能夠有效減少磁盤 IO 操作，提高系統的訪問效率和性能。查詢及更新數據的流程圖如下所示：&lt;/p&gt; 
+&lt;p&gt;&lt;img src=&quot;https://oscimg.oschina.net/oscnet/5e003806-18de-4202-a947-f819452365f1.jpg&quot; alt=&quot;image&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
+&lt;h2&gt;3 效果&lt;/h2&gt; 
+&lt;p&gt;在 16core CPU/20GiB 內存/500GiB SATA SSD 規格虛機上，啓用批量查詢功能後， 緩存使用量和命中率情況如下：&lt;/p&gt; 
+&lt;pre&gt;&lt;code&gt;10.192.52.235:25482&amp;gt; info cache
+# Cache
+cache_status:Ok
+cache_db_num:8
+cache_keys:12262599
+cache_memory:5368709641
+cache_memory_human:5120M
+hits:34677314
+all_cmds:68966333
+hits_per_sec:38352
+read_cmd_per_sec:68074
+hitratio_per_sec:56.34%
+hitratio_all:50.28%
+load_keys_per_sec:0
+waitting_load_keys_num:0
+&lt;/code&gt;&lt;/pre&gt; 
+&lt;p&gt;啓用批量查詢緩存優化功能後，批量命中率為 56%。&lt;/p&gt; 
+&lt;p&gt;&lt;img src=&quot;https://oscimg.oschina.net/oscnet/4e8c97aa-3893-49db-850e-710d2114cedb.jpg&quot; alt=&quot;&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
+&lt;p&gt;啓用批量查詢優化功能後，失敗率降低到 8.9%。相比於 v3.3.6 的 31.7% 的失敗率，失敗率降低了 20%。&lt;/p&gt; 
+&lt;p&gt;&lt;img src=&quot;https://oscimg.oschina.net/oscnet/e7b5e82e-0ae8-49b7-b205-b0452025af03.jpg&quot; alt=&quot;&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
+&lt;p&gt;為了進一步降低失敗率，使用 NVMe 盤替換 SATA SSD 盤後，失敗率進一步降低到 2.55%，失敗率降低 30% 左右。&lt;/p&gt; 
+&lt;p&gt;可見，在實際應用場景中，批量查詢熱數據緩存功能顯著提升了批量查詢性能，降低了查詢延遲和失敗率：批量命中率為 56%，失敗率最終降低到 2.55%。相比之下，未啓用該功能時，批量命中率僅為 30%，失敗率高達 31.7%。&lt;/p&gt; 
+&lt;h2&gt;4 後續&lt;/h2&gt; 
+&lt;p&gt;Pika 緩存批量查詢已經提交到 &lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fgithub.com%2FOpenAtomFoundation%2Fpika%2Fpull%2F2694&quot; target=&quot;_blank&quot;&gt;PR 2694&lt;/a&gt;，近期即將發版的 v3.5.5 和 v4.0.0 將包含該功能，敬請關注。&lt;/p&gt; 
+&lt;p&gt;目前， 首批支持的批量查詢命令為 &lt;code&gt;MGET&lt;/code&gt;，可用於高效地檢索多個字符串鍵的值，還需要在 hashtable/list/zset 等複合數據類型中支持 &lt;code&gt;HMGET/LRANGE/ZRANGE/ZREVRANGE/ZRANGEBYSCORE/ZREVRANGEBYSCORE/ZSCAN&lt;/code&gt; 等命令。相關 issue 任務 &lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fgithub.com%2FOpenAtomFoundation%2Fpika%2Fissues%2F2752&quot; target=&quot;_blank&quot;&gt;issue 2752&lt;/a&gt; 已經建立，歡迎對批量查詢功能感興趣的開發者參與討論和貢獻代碼，共同打造更加強大高效的 Pika！&lt;/p&gt; 
+&lt;h2&gt;5 社區&lt;/h2&gt; 
+&lt;p&gt;PikiwiDB (Pika) 開源社區熱烈歡迎您的參與和支持。如果您有任何問題、意見或建議，請掃碼添加 PikiwiDB 小助手【微信號: PikiwiDB】為好友，它會拉您加入官方微信羣。&lt;/p&gt;
+                                                                                    &lt;/div&gt;
+                                    </description>
+            <link>https://my.oschina.net/dubbogo/blog/11212643</link>
+            <guid isPermaLink="false">https://my.oschina.net/dubbogo/blog/11212643</guid>
+            <pubDate>Fri, 21 Jun 2024 00:56:27 GMT</pubDate>
+            <author>原創</author>
+        </item>
         <item>
             <title>開源日報 | DNF 手遊與 Android 渠道「脱鈎」；GCC 支持兆芯</title>
             <description>&lt;div class=&quot;content&quot;&gt;
@@ -363,21 +420,6 @@
             <guid isPermaLink="false">https://my.oschina.net/u/5783135/blog/11209054</guid>
             <pubDate>Thu, 20 Jun 2024 08:45:00 GMT</pubDate>
             <author>原創</author>
-        </item>
-        <item>
-            <title>上海 AI 產業規模達 3800 億元，34 款大模型通過備案</title>
-            <description>&lt;div class=&quot;content&quot;&gt;
-                                                                                            &lt;p&gt;&lt;span style=&quot;color:#000000&quot;&gt;上海 20 日舉行市政府新聞發佈會，介紹 2024 世界人工智能大會暨人工智能全球治理高級別會議籌備進展情況。&lt;/span&gt;&lt;/p&gt; 
-&lt;p&gt;&lt;span style=&quot;color:#000000&quot;&gt;上海市副市長陳傑透露，上海人工智能產業規上企業從 2018 年 183 家增長到 2023 年的 348 家，產業規模從 1340 億元增長到超 3800 億元，居全國前列。全國首個大模型創新生態社區「模速空間」建成，打造五大專業服務平台，吸引 80 餘家大模型企業入駐。&lt;/span&gt;&lt;/p&gt; 
-&lt;p&gt;&lt;img height=&quot;373&quot; src=&quot;https://oscimg.oschina.net/oscnet/up-7f240986ce86929de190ddfb45ade9e28cd.png&quot; width=&quot;500&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
-&lt;p&gt;&lt;span style=&quot;color:#000000&quot;&gt;大模型方面，目前上海全市已有 34 款大模型通過備案，產生了製造業、金融、具身智能機器人等垂類領域應用。人形機器人，多款通用人形機器人原型機發布，實現雙足避障行走。算力語料，4200 億 Token 的語料數據實現開源，在打造人工智能全棧自主創新生態中發揮引領帶頭作用。&lt;/span&gt;&lt;/p&gt; 
-&lt;p&gt;&lt;span style=&quot;color:#000000&quot;&gt;上海人工智能產業投資基金累計募資 31 億元，母基金部分投資了紅杉、奇績創壇等 12 支子基金，撬動投資規模 572 億元。多層次人才梯隊基本成型，人才規模達到 25 萬人，佔全國近 1/3。&lt;/span&gt;&lt;/p&gt;
-                                        &lt;/div&gt;
-                                    </description>
-            <link>https://www.oschina.net/news/298171</link>
-            <guid isPermaLink="false">https://www.oschina.net/news/298171</guid>
-            <pubDate>Thu, 20 Jun 2024 08:05:45 GMT</pubDate>
-            <author>來源: 投稿</author>
         </item>
         <item>
             <title>嗶哩嗶哩大語言模型 Index-1.9B 發佈</title>
@@ -1806,6 +1848,21 @@
             <author>原創</author>
         </item>
         <item>
+            <title>上海 AI 產業規模達 3800 億元，34 款大模型通過備案</title>
+            <description>&lt;div class=&quot;content&quot;&gt;
+                                                                                            &lt;p&gt;&lt;span style=&quot;color:#000000&quot;&gt;上海 20 日舉行市政府新聞發佈會，介紹 2024 世界人工智能大會暨人工智能全球治理高級別會議籌備進展情況。&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;span style=&quot;color:#000000&quot;&gt;上海市副市長陳傑透露，上海人工智能產業規上企業從 2018 年 183 家增長到 2023 年的 348 家，產業規模從 1340 億元增長到超 3800 億元，居全國前列。全國首個大模型創新生態社區「模速空間」建成，打造五大專業服務平台，吸引 80 餘家大模型企業入駐。&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;img height=&quot;373&quot; src=&quot;https://oscimg.oschina.net/oscnet/up-7f240986ce86929de190ddfb45ade9e28cd.png&quot; width=&quot;500&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;span style=&quot;color:#000000&quot;&gt;大模型方面，目前上海全市已有 34 款大模型通過備案，產生了製造業、金融、具身智能機器人等垂類領域應用。人形機器人，多款通用人形機器人原型機發布，實現雙足避障行走。算力語料，4200 億 Token 的語料數據實現開源，在打造人工智能全棧自主創新生態中發揮引領帶頭作用。&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;span style=&quot;color:#000000&quot;&gt;上海人工智能產業投資基金累計募資 31 億元，母基金部分投資了紅杉、奇績創壇等 12 支子基金，撬動投資規模 572 億元。多層次人才梯隊基本成型，人才規模達到 25 萬人，佔全國近 1/3。&lt;/span&gt;&lt;/p&gt;
+                                        &lt;/div&gt;
+                                    </description>
+            <link>https://www.oschina.net/news/298171</link>
+            <guid isPermaLink="false">https://www.oschina.net/news/298171</guid>
+            <pubDate>Wed, 19 Jun 2024 08:05:00 GMT</pubDate>
+            <author>來源: 投稿</author>
+        </item>
+        <item>
             <title>近 20% 的 Microsoft SQL Server 已不再受支持</title>
             <description>&lt;div class=&quot;content&quot;&gt;
                                                                                             &lt;p&gt;&lt;span style=&quot;color:#000000&quot;&gt;IT 資產管理平台 Lansweeper 發出警告稱，該公司在掃描了超過一百萬的 SQL Server 實例後發現，有 19.8% 的 SQL Server 現已不受微軟支持。&lt;/span&gt;&lt;/p&gt; 
@@ -1916,41 +1973,6 @@
             <link>https://www.oschina.net/news/297911</link>
             <guid isPermaLink="false">https://www.oschina.net/news/297911</guid>
             <pubDate>Wed, 19 Jun 2024 03:15:00 GMT</pubDate>
-            <author>來源: OSCHINA</author>
-        </item>
-        <item>
-            <title>DeepSeek Coder V2 發佈，首個擊敗 GPT-4 Turbo 的開源模型</title>
-            <description>&lt;div class=&quot;content&quot;&gt;
-                                                                                            &lt;p&gt;&lt;span style=&quot;color:#000000&quot;&gt;DeepSeek-Coder-V2 已正式上線和開源，沿用 &lt;a href=&quot;https://www.oschina.net/news/291284&quot;&gt;DeepSeek-V2&lt;/a&gt; 的模型結構，總參數 236B，激活 21B，在代碼、數學的多個榜單上位居全球第二，介於最強閉源模型 GPT-4o 和 GPT-4-Turbo 之間。&lt;/span&gt;&lt;/p&gt; 
-&lt;p&gt;&lt;span style=&quot;color:#000000&quot;&gt;開源模型包含 236B 和 16B 兩種參數規模：&lt;/span&gt;&lt;/p&gt; 
-&lt;ul&gt; 
- &lt;li&gt; &lt;p&gt;&lt;span style=&quot;color:#000000&quot;&gt;DeepSeek-Coder-V2：總參 236B（即官網和 API 版模型），單機 8*80G 可部署，單機 8*80G 可微調（需要技巧）&lt;/span&gt;&lt;/p&gt; &lt;/li&gt; 
- &lt;li&gt; &lt;p&gt;&lt;span style=&quot;color:#000000&quot;&gt;DeepSeek-Coder-V2-Lite：總參 16B，激活 2.4B，支持 FIM，代碼能力接近 DeepSeek-Coder-33B（V1），單卡 40G 可部署，單機 8*80G 可訓練。&lt;/span&gt;&lt;/p&gt; &lt;/li&gt; 
-&lt;/ul&gt; 
-&lt;p&gt;&lt;img height=&quot;202&quot; src=&quot;https://oscimg.oschina.net/oscnet/up-c2aae5afb463d480584aeb1c429d00c927a.png&quot; width=&quot;500&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
-&lt;blockquote&gt; 
- &lt;ul&gt; 
-  &lt;li&gt;&lt;span style=&quot;color:#000000&quot;&gt;模型下載：&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fhuggingface.co%2Fdeepseek-ai&quot; target=&quot;_blank&quot;&gt;https://huggingface.co/deepseek-ai&lt;/a&gt;&lt;/span&gt;&lt;/li&gt; 
-  &lt;li&gt;&lt;span style=&quot;color:#000000&quot;&gt;代碼倉庫：&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fgithub.com%2Fdeepseek-ai%2FDeepSeek-Coder-V2&quot; target=&quot;_blank&quot;&gt;https://github.com/deepseek-ai/DeepSeek-Coder-V2&lt;/a&gt;&lt;/span&gt;&lt;/li&gt; 
-  &lt;li&gt;&lt;span style=&quot;color:#000000&quot;&gt;技術報告：&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fgithub.com%2Fdeepseek-ai%2FDeepSeek-Coder-V2%2Fblob%2Fmain%2Fpaper.pdf&quot; target=&quot;_blank&quot;&gt;https://github.com/deepseek-ai/DeepSeek-Coder-V2/blob/main/paper.pdf&lt;/a&gt;&lt;/span&gt;&lt;/li&gt; 
- &lt;/ul&gt; 
-&lt;/blockquote&gt; 
-&lt;p&gt;&lt;span style=&quot;color:#000000&quot;&gt;&lt;img height=&quot;475&quot; src=&quot;https://oscimg.oschina.net/oscnet/up-602c4648b6f2c797b644dc0ed49a2e256de.png&quot; width=&quot;500&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/span&gt;&lt;/p&gt; 
-&lt;p&gt;&lt;span style=&quot;color:#000000&quot;&gt;在擁有世界前列的代碼、數學能力的同時，DeepSeek-Coder-V2 還具有良好的通用性能，在中英通用能力上位列國內第一梯隊。&lt;/span&gt;&lt;/p&gt; 
-&lt;p&gt;&lt;span style=&quot;color:#000000&quot;&gt;&lt;img height=&quot;506&quot; src=&quot;https://oscimg.oschina.net/oscnet/up-14fb8c56ab15158aa0725c66fb150c90a49.png&quot; width=&quot;500&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/span&gt;&lt;/p&gt; 
-&lt;p&gt;&lt;span style=&quot;color:#000000&quot;&gt;DeepSeek-V2 是在今年 5 月份發佈的一個開源 MoE 模型。公告指出，雖然 DeepSeek-Coder-V2 在評測中綜合得分更高，但在實際應用中，兩個模型各有所長。DeepSeek-V2 是文科生，DeepSeek-Coder-V2 是理科生，精通的技能點不同：&lt;/span&gt;&lt;/p&gt; 
-&lt;p&gt;&lt;span style=&quot;color:#000000&quot;&gt;&lt;img height=&quot;325&quot; src=&quot;https://oscimg.oschina.net/oscnet/up-a1616c245e17d870d5164ae3273f1771416.png&quot; width=&quot;500&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/span&gt;&lt;/p&gt; 
-&lt;p&gt;&lt;span style=&quot;color:#000000&quot;&gt;在 API 服務方面，DeepSeek-Coder-V2 API 支持 32K 上下文，價格和 DeepSeek-V2 一致：&lt;/span&gt;&lt;/p&gt; 
-&lt;p&gt;&lt;img height=&quot;201&quot; src=&quot;https://oscimg.oschina.net/oscnet/up-1accec70e2f19fec486e03250216bccb78d.png&quot; width=&quot;500&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&amp;nbsp;&lt;/p&gt; 
-&lt;p&gt;&lt;strong&gt;相關閲讀：&lt;/strong&gt;&lt;/p&gt; 
-&lt;ul&gt; 
- &lt;li style=&quot;margin-left: 0px; margin-right: 0px; text-align: start;&quot;&gt;&lt;a href=&quot;https://www.oschina.net/news/291284&quot; target=&quot;_blank&quot;&gt;DeepSeek 發佈全球最強開源 MoE 模型&lt;/a&gt;&lt;/li&gt; 
-&lt;/ul&gt;
-                                        &lt;/div&gt;
-                                    </description>
-            <link>https://www.oschina.net/news/297904</link>
-            <guid isPermaLink="false">https://www.oschina.net/news/297904</guid>
-            <pubDate>Wed, 19 Jun 2024 02:56:00 GMT</pubDate>
             <author>來源: OSCHINA</author>
         </item>
     </channel>
