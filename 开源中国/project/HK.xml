@@ -9,8 +9,204 @@
         <generator>RSSHub</generator>
         <webMaster>contact@rsshub.app (RSSHub)</webMaster>
         <language>en</language>
-        <lastBuildDate>Tue, 30 Jul 2024 06:38:10 GMT</lastBuildDate>
+        <lastBuildDate>Tue, 30 Jul 2024 10:09:05 GMT</lastBuildDate>
         <ttl>180</ttl>
+        <item>
+            <title>一款超級強大的 ORM 框架 mybatis-mp 1.6.1-rc1 發佈 - 多主鍵生成器增強</title>
+            <description>&lt;div class=&quot;content&quot;&gt;
+                                                                    
+                                                        &lt;h1&gt;官網 ：&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fmybatis-mp.cn&quot; target=&quot;_blank&quot;&gt;https://mybatis-mp.cn&lt;/a&gt;&lt;/h1&gt; 
+&lt;h2&gt;更新：&lt;/h2&gt; 
+&lt;blockquote&gt; 
+ &lt;p&gt;1： 多主鍵情況，代碼生成器自動生成，類似 getById(Integer id1,Integer id2) 的方法&lt;/p&gt; 
+ &lt;p&gt;2：多主鍵情況，代碼生成器自動生成，類似 deleteById(Integer id1,Integer id2) 的方法&lt;/p&gt; 
+&lt;/blockquote&gt; 
+&lt;h2&gt;1. 單表查詢&lt;/h2&gt; 
+&lt;pre&gt;&lt;code class=&quot;language-java&quot;&gt;SysUser sysUser = QueryChain.of(sysUserMapper)
+        .e&lt;span style=&quot;color:#032f62&quot;&gt;q(SysUser::getId, 1)&lt;/span&gt;
+        .e&lt;span style=&quot;color:#032f62&quot;&gt;q(SysUser::getUserName,&#39;admin&#39;)&lt;/span&gt;
+        .get();
+&lt;/code&gt;&lt;/pre&gt; 
+&lt;h2&gt;2.VO 映射&lt;/h2&gt; 
+&lt;pre&gt;&lt;code class=&quot;language-java&quot;&gt;&lt;span style=&quot;color:#032f62&quot;&gt;@Data&lt;/span&gt;
+&lt;span style=&quot;color:#032f62&quot;&gt;@ResultEntity&lt;/span&gt;(SysUser.class)
+public class SysUserVo {
+
+    &lt;span style=&quot;color:#d73a49&quot;&gt;private&lt;/span&gt; &lt;span style=&quot;color:#d73a49&quot;&gt;Integer&lt;/span&gt; &lt;span style=&quot;color:#d73a49&quot;&gt;id&lt;/span&gt;;
+
+    &lt;span style=&quot;color:#d73a49&quot;&gt;private&lt;/span&gt; &lt;span style=&quot;color:#d73a49&quot;&gt;String&lt;/span&gt; &lt;span style=&quot;color:#d73a49&quot;&gt;userName&lt;/span&gt;;
+
+    &lt;span style=&quot;color:#6a737d&quot;&gt;//字段名字不一樣時&lt;/span&gt;
+    @&lt;span style=&quot;color:#d73a49&quot;&gt;ResultEntityField&lt;/span&gt;(property = &lt;span style=&quot;color:#032f62&quot;&gt;&quot;password&quot;&lt;/span&gt;)
+    &lt;span style=&quot;color:#d73a49&quot;&gt;private&lt;/span&gt; &lt;span style=&quot;color:#d73a49&quot;&gt;String&lt;/span&gt; &lt;span style=&quot;color:#d73a49&quot;&gt;pwd&lt;/span&gt;;
+
+}
+&lt;/code&gt;&lt;/pre&gt; 
+&lt;pre&gt;&lt;code class=&quot;language-java&quot;&gt;SysUserVO sysUserVO = QueryChain.of(sysUserMapper)
+        .e&lt;span style=&quot;color:#032f62&quot;&gt;q(SysUser::getId, 1)&lt;/span&gt;
+        .e&lt;span style=&quot;color:#032f62&quot;&gt;q(SysUser::getUserName,&#39;admin&#39;)&lt;/span&gt;
+        .returnType(SysUserVO.class)
+        .list();
+&lt;/code&gt;&lt;/pre&gt; 
+&lt;h2&gt;join 查詢&lt;/h2&gt; 
+&lt;pre&gt;&lt;code class=&quot;language-java&quot;&gt;&lt;span style=&quot;color:#6a737d&quot;&gt;@Data&lt;/span&gt;
+&lt;span style=&quot;color:#6a737d&quot;&gt;@ResultEntity(SysUser.class)&lt;/span&gt;
+&lt;span style=&quot;color:#d73a49&quot;&gt;public&lt;/span&gt; &lt;span&gt;&lt;span style=&quot;color:#d73a49&quot;&gt;class&lt;/span&gt; &lt;span style=&quot;color:#6f42c1&quot;&gt;SysUserVo&lt;/span&gt; &lt;/span&gt;{
+
+    &lt;span style=&quot;color:#d73a49&quot;&gt;private&lt;/span&gt; Integer id;
+
+    &lt;span style=&quot;color:#d73a49&quot;&gt;private&lt;/span&gt; String userName;
+
+    &lt;span style=&quot;color:#6a737d&quot;&gt;//字段名字不一樣時&lt;/span&gt;
+    &lt;span style=&quot;color:#6a737d&quot;&gt;@ResultEntityField(property = &lt;span&gt;&quot;password&quot;&lt;/span&gt;)&lt;/span&gt;
+    &lt;span style=&quot;color:#d73a49&quot;&gt;private&lt;/span&gt; String pwd;
+    
+    &lt;span style=&quot;color:#6a737d&quot;&gt;//映射一個對象 1 對 1&lt;/span&gt;
+    &lt;span style=&quot;color:#6a737d&quot;&gt;@NestedResultEntity(target = SysRole.class)&lt;/span&gt;
+    prviate SysRole sysRole;
+    
+    &lt;span style=&quot;color:#6a737d&quot;&gt;//映射多個對象 1 對多&lt;/span&gt;
+    &lt;span style=&quot;color:#6a737d&quot;&gt;@NestedResultEntity(target = SysRole.class)&lt;/span&gt;
+    prviate List&amp;lt;SysRole&amp;gt; sysRoles;
+
+}
+&lt;/code&gt;&lt;/pre&gt; 
+&lt;pre&gt;&lt;code class=&quot;language-java&quot;&gt;List&amp;lt;SysUserRoleVO&amp;gt; list = QueryChain.&lt;span style=&quot;color:#d73a49&quot;&gt;of&lt;/span&gt;(sysUserMapper)
+        .&lt;span style=&quot;color:#d73a49&quot;&gt;from&lt;/span&gt;(SysUser&lt;span&gt;.&lt;span style=&quot;color:#d73a49&quot;&gt;class&lt;/span&gt;)&lt;/span&gt;
+        .join(SysUser&lt;span&gt;.&lt;span style=&quot;color:#d73a49&quot;&gt;class&lt;/span&gt;, &lt;span style=&quot;color:#6f42c1&quot;&gt;SysRole&lt;/span&gt;.&lt;span style=&quot;color:#6f42c1&quot;&gt;class&lt;/span&gt;)&lt;/span&gt;
+        .returnType(SysUserRoleVO&lt;span&gt;.&lt;span style=&quot;color:#d73a49&quot;&gt;class&lt;/span&gt;)&lt;/span&gt;
+        .list();
+&lt;/code&gt;&lt;/pre&gt; 
+&lt;h2&gt;還有很多很多超級方便有趣的寫法，歡迎大家來使用&lt;span&gt;&amp;nbsp;&lt;/span&gt;&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fmybatis-mp.cn&quot; target=&quot;_blank&quot;&gt;https://mybatis-mp.cn&lt;/a&gt;&lt;/h2&gt; 
+&lt;p&gt;例如：&lt;/p&gt; 
+&lt;blockquote&gt; 
+ &lt;p style=&quot;margin-left:0; margin-right:0&quot;&gt;1 . 多表 join A 內嵌 B B 內嵌 C 都可以&lt;/p&gt; 
+&lt;/blockquote&gt; 
+&lt;blockquote&gt; 
+ &lt;p style=&quot;margin-left:0; margin-right:0&quot;&gt;2 . 不使用 join 使用 @Fetch 註解 + fetchFilter 方法實現，將 A JOIN B 變成 query A + query B&lt;/p&gt; 
+&lt;/blockquote&gt; 
+&lt;blockquote&gt; 
+ &lt;p style=&quot;margin-left:0; margin-right:0&quot;&gt;3 . 使用 @Paging 註解，實現你的 xml 自動分頁&lt;/p&gt; 
+&lt;/blockquote&gt; 
+&lt;blockquote&gt; 
+ &lt;p style=&quot;margin-left:0; margin-right:0&quot;&gt;4 . 使用 SQL 模板，讓你 ORM 更簡單更容易擴展，再也不怕被框架限制了&lt;/p&gt; 
+&lt;/blockquote&gt;
+                                        &lt;/div&gt;
+                                    </description>
+            <link>https://www.oschina.net/news/304559/mybatis-mp-1-6-1-rc1</link>
+            <guid isPermaLink="false">https://www.oschina.net/news/304559/mybatis-mp-1-6-1-rc1</guid>
+            <pubDate>Tue, 30 Jul 2024 07:24:00 GMT</pubDate>
+            <author>來源: 投稿</author>
+        </item>
+        <item>
+            <title>國產數據庫管理工具 CloudDM v2.8.0 發佈，平台同步和新功能上線</title>
+            <description>&lt;div class=&quot;content&quot;&gt;
+                                                                    
+                                                        &lt;div&gt; 
+ &lt;p style=&quot;margin-left:0; margin-right:0&quot;&gt;&lt;span&gt;CloudDM 個人版&lt;/span&gt;&lt;span style=&quot;color:#333333&quot;&gt;是 &lt;/span&gt;&lt;span&gt;ClouGence&lt;/span&gt;&lt;span style=&quot;color:#333333&quot;&gt; 公司推出的一款&lt;/span&gt;&lt;strong&gt;&lt;span&gt;一站式多數據源開發管理工具&lt;/span&gt;&lt;/strong&gt;&lt;span style=&quot;color:#333333&quot;&gt;，使用它可以方便地訪問和管理 &lt;/span&gt;&lt;span&gt;MySQL、Oracle、PostgreSQL、阿里雲 RDS、Greenplum、TiDB、Redis、StarRocks、Doris、SelectDB、SQL SERVER、ClickHouse、OceanBase 、PolarDB-X 、IBM Db2 等多種不同類型的數據庫。通過 CloudDM 豐富的數據源支持可以避免在多個專業工具之間切換，從而提高工作效率。&lt;/span&gt;&lt;/p&gt; 
+ &lt;p style=&quot;margin-left:0; margin-right:0&quot;&gt;&lt;span&gt;它是本地化的應用程序，沒有後台進程。和 &lt;/span&gt;&lt;strong&gt;&lt;span&gt;DataGrip&lt;/span&gt;&lt;/strong&gt;&lt;span&gt;、&lt;/span&gt;&lt;strong&gt;&lt;span&gt;Navicat&lt;/span&gt;&lt;/strong&gt;&lt;span&gt; 一樣在安裝完成後，只需要雙擊應用程序圖標，便可以方便的管理位於本地計算機或遠程計算機上的數據庫。已支持 &lt;/span&gt;&lt;strong&gt;&lt;span&gt;Windows&lt;/span&gt;&lt;/strong&gt;&lt;span&gt; 和 &lt;/span&gt;&lt;strong&gt;&lt;span&gt;MacOS、Linux&lt;/span&gt;&lt;/strong&gt;&lt;span&gt; 三個操作系統。&lt;/span&gt;&lt;/p&gt; 
+&lt;/div&gt; 
+&lt;p style=&quot;text-align:center&quot;&gt;&lt;img src=&quot;https://oscimg.oschina.net/oscnet/up-8a94365af948142b7db590d03c3dc5e8d5d.png&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
+&lt;div&gt; 
+ &lt;h2&gt;&lt;span&gt;本期亮點&lt;/span&gt;&lt;/h2&gt; 
+ &lt;p&gt;&amp;nbsp;&lt;/p&gt; 
+ &lt;ul&gt; 
+  &lt;li&gt;&lt;span&gt;全新的添加數據源界面&lt;/span&gt;&lt;/li&gt; 
+ &lt;/ul&gt; 
+ &lt;p style=&quot;text-align:center&quot;&gt;&lt;img height=&quot;789&quot; src=&quot;https://oscimg.oschina.net/oscnet/up-8227fa5eb50db10dbcd426a86b18483a518.png&quot; width=&quot;1500&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
+ &lt;ul&gt; 
+  &lt;li&gt;&lt;span&gt;全新的查詢控制枱&lt;/span&gt;&lt;/li&gt; 
+ &lt;/ul&gt; 
+ &lt;p style=&quot;text-align:center&quot;&gt;&lt;img height=&quot;789&quot; src=&quot;https://oscimg.oschina.net/oscnet/up-e1b27dbe801f5557a5bc6a9fbabc2266cc2.png&quot; width=&quot;1500&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
+ &lt;ul&gt; 
+  &lt;li&gt;&lt;span&gt;快捷創建存儲過程&lt;/span&gt;&lt;/li&gt; 
+ &lt;/ul&gt; 
+ &lt;p style=&quot;text-align:center&quot;&gt;&lt;img height=&quot;789&quot; src=&quot;https://oscimg.oschina.net/oscnet/up-965108a8c542486008d0971b433bc0a2f3e.png&quot; width=&quot;1500&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
+ &lt;ul&gt; 
+  &lt;li&gt;&lt;span&gt;快捷創建函數&lt;/span&gt;&lt;/li&gt; 
+ &lt;/ul&gt; 
+ &lt;p style=&quot;text-align:center&quot;&gt;&lt;img height=&quot;789&quot; src=&quot;https://oscimg.oschina.net/oscnet/up-30e1796a35950c1e977dac0e3e3b6377e66.png&quot; width=&quot;1500&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
+ &lt;div&gt; 
+  &lt;h2&gt;&lt;span&gt;更新內容&lt;/span&gt;&lt;/h2&gt; 
+ &lt;/div&gt; 
+ &lt;div&gt; 
+  &lt;ul&gt; 
+   &lt;li&gt;&lt;span style=&quot;color:#333333&quot;&gt;[新增]&lt;/span&gt; 
+    &lt;ul&gt; 
+     &lt;li&gt;&lt;span style=&quot;color:#333333&quot;&gt;新增，全新的添加數據源界面，與 Team 版本保持一致&lt;/span&gt;&lt;/li&gt; 
+     &lt;li&gt;&lt;span style=&quot;color:#000000&quot;&gt;新增，全新的事務功能，可以設置只讀模式、隔離級別等&lt;/span&gt;&lt;/li&gt; 
+     &lt;li&gt;&lt;span style=&quot;color:#000000&quot;&gt;新增，查詢設置功能，現在可以自由的開關數據源的查詢功能&lt;/span&gt;&lt;/li&gt; 
+     &lt;li&gt;&lt;span style=&quot;color:#000000&quot;&gt;新增，全新的查詢控制枱，響應速度更快，右下角執行信息更詳細&lt;/span&gt;&lt;/li&gt; 
+     &lt;li&gt;&lt;span style=&quot;color:#000000&quot;&gt;新增，數據庫連接狀態展示&lt;/span&gt;&lt;/li&gt; 
+     &lt;li&gt;&lt;span style=&quot;color:#000000&quot;&gt;新增，數據生成和壓力測試功能中，選中表時的配置展示增加列配置信息展示&lt;/span&gt;&lt;/li&gt; 
+     &lt;li&gt;&lt;span style=&quot;color:#000000&quot;&gt;新增，數據生成和壓力測試功能中，點擊某個列的生成方式可定位到該列的配置頁面&lt;/span&gt;&lt;/li&gt; 
+     &lt;li&gt;&lt;span style=&quot;color:#000000&quot;&gt;新增 MySQL 數據源支持創建和修改視圖、函數、觸發器、存儲過程等功能&lt;/span&gt;&lt;/li&gt; 
+     &lt;li&gt;&lt;span style=&quot;color:#000000&quot;&gt;新增 Oracle 數據源支持創建和修改視圖、觸發器等功能&lt;/span&gt;&lt;/li&gt; 
+     &lt;li&gt;&lt;span style=&quot;color:#000000&quot;&gt;新增 Oracle 數據源支持創建函數、存儲過程等功能&lt;/span&gt;&lt;/li&gt; 
+     &lt;li&gt;&lt;span style=&quot;color:#000000&quot;&gt;新增 PostgreSQL 數據源支持創建和修改視圖功能&lt;/span&gt;&lt;/li&gt; 
+     &lt;li&gt;&lt;span style=&quot;color:#000000&quot;&gt;新增 PostgreSQL 數據源支持創建觸發器、函數、存儲過程等功能&lt;/span&gt;&lt;/li&gt; 
+    &lt;/ul&gt; &lt;/li&gt; 
+   &lt;li&gt;[優化] 
+    &lt;ul&gt; 
+     &lt;li&gt;&lt;span style=&quot;color:#000000&quot;&gt;優化，軟件啓動速度提升約 40%&lt;/span&gt;&lt;/li&gt; 
+     &lt;li&gt;&lt;span style=&quot;color:#000000&quot;&gt;優化 Schema 定位功能，定位邏輯由定位到選中的 Schema 變換為打開的 Schema&lt;/span&gt;&lt;/li&gt; 
+     &lt;li&gt;&lt;span style=&quot;color:#000000&quot;&gt;優化，查詢控制枱數據展示，滾動條 UI 展示更友好&lt;/span&gt;&lt;/li&gt; 
+     &lt;li&gt;&lt;span style=&quot;color:#000000&quot;&gt;優化，數據生成和壓力測試功能初始化默認參數調整、優化文案顯示&lt;/span&gt;&lt;/li&gt; 
+     &lt;li&gt;&lt;span style=&quot;color:#000000&quot;&gt;優化，數據生成和壓力測試功能生成界面，可展示任務的狀態，優化 UI 展示如字體樣式等&lt;/span&gt;&lt;/li&gt; 
+     &lt;li&gt;&lt;span style=&quot;color:#000000&quot;&gt;優化，數據生成和壓力測試功能日誌獲取界面，移除自動刷新，增加分頁展示日誌信息，按鈕區分顏色等&lt;/span&gt;&lt;/li&gt; 
+     &lt;li&gt;&lt;span style=&quot;color:#000000&quot;&gt;優化，數據生成和壓力測試功能預覽界面增加文字提示，左側表信息一覽優化 UI 展示，右側增加背景色區分增刪改查&lt;/span&gt;&lt;/li&gt; 
+    &lt;/ul&gt; &lt;/li&gt; 
+   &lt;li&gt;&lt;span style=&quot;color:#000000&quot;&gt;[修復]&lt;/span&gt; 
+    &lt;ul&gt; 
+     &lt;li&gt;&lt;span style=&quot;color:#000000&quot;&gt;修復，軟件丟失緩存問題，這個問題曾導致某些用户已有的緩存如數據源信息被清空&lt;/span&gt;&lt;/li&gt; 
+     &lt;li&gt;&lt;span style=&quot;color:#000000&quot;&gt;修復，編輯數據功能中，字段是否為 NULL 顯示錯誤問題&lt;/span&gt;&lt;/li&gt; 
+     &lt;li&gt;&lt;span style=&quot;color:#000000&quot;&gt;修復 Oracle 數據生成和壓力測試功能，某些類型無法生成導致的報錯問題&lt;/span&gt;&lt;/li&gt; 
+     &lt;li&gt;&lt;span style=&quot;color:#000000&quot;&gt;修復 MySQL 編輯數據功能，在某些情況下出現的語句生成錯誤問題&lt;/span&gt;&lt;/li&gt; 
+     &lt;li&gt;&lt;span style=&quot;color:#000000&quot;&gt;修復 PostgreSQL 數據源某些版本庫表列信息展示錯誤的問題&lt;/span&gt;&lt;/li&gt; 
+     &lt;li&gt;&lt;span style=&quot;color:#000000&quot;&gt;修復 PostgreSQL 數據源觸發器、函數、存儲過程等功能名稱相同時，列表不顯示的問題&lt;/span&gt;&lt;/li&gt; 
+     &lt;li&gt;&lt;span style=&quot;color:#000000&quot;&gt;修復 PostgreSQL 數據源創建表時 serial 默認值設置問題，這個問題曾導致建表語句生成錯誤無法執行&lt;/span&gt;&lt;/li&gt; 
+     &lt;li&gt;&lt;span style=&quot;color:#000000&quot;&gt;修復 IBM DB2 數據源查看列信息時，返回 DB2 SQL Error: SQLCODE=-313 錯誤問題&lt;/span&gt;&lt;/li&gt; 
+     &lt;li&gt;&lt;span style=&quot;color:#000000&quot;&gt;修復 IBM DB2，Oracle，SQL SERVER 等數據源創建表時，可配置項類型與精度不匹配問題&lt;/span&gt;&lt;/li&gt; 
+     &lt;li&gt;&lt;span style=&quot;color:#000000&quot;&gt;修復，數據生成和壓力測試功能，平均寫入時間計算錯誤的問題，這個問題曾導致時間顯示會出現負數&lt;/span&gt;&lt;/li&gt; 
+     &lt;li&gt;&lt;span style=&quot;color:#000000&quot;&gt;修復，展開函數和存儲過程功能時，語言國際化設置錯誤問題&lt;/span&gt;&lt;/li&gt; 
+    &lt;/ul&gt; &lt;/li&gt; 
+  &lt;/ul&gt; 
+ &lt;/div&gt; 
+&lt;/div&gt;
+                                        &lt;/div&gt;
+                                    </description>
+            <link>https://www.oschina.net/news/304545/clouddm-2-8-0-released</link>
+            <guid isPermaLink="false">https://www.oschina.net/news/304545/clouddm-2-8-0-released</guid>
+            <pubDate>Tue, 30 Jul 2024 06:30:00 GMT</pubDate>
+            <author>來源: 投稿</author>
+        </item>
+        <item>
+            <title>VirtualBox 7.1 Beta 發佈：採用全新現代化 UI、更換 Logo</title>
+            <description>&lt;div class=&quot;content&quot;&gt;
+                                                                    
+                                                        &lt;p&gt;VirtualBox 7.1 Beta 已發佈。&lt;/p&gt; 
+&lt;p&gt;&lt;img alt=&quot;&quot; src=&quot;https://oscimg.oschina.net/oscnet/up-d43a4806c0eccdd38fec6b8cd2f6f6c8cfa.png&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
+&lt;p&gt;甲骨文稱這是一個重大更新——該版本啓用了具有「現代化的外觀和體驗」的新 UI，並提供了「基礎」和「專業」兩種 UI 模式（「Basic」 &amp;amp; 「Expert」），用於配置不同的界面功能。&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt;Basic：簡化了界面，減少了顯示的選項、設置和詳細信息的數量&lt;/li&gt; 
+ &lt;li&gt;Expert：將 VirtualBox 的所有功能顯示在界面，方便隨時使用&lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;p&gt;下面是兩種不同 UI 模式的測試版截圖：&lt;/p&gt; 
+&lt;p&gt;&lt;img alt=&quot;&quot; src=&quot;https://oscimg.oschina.net/oscnet/up-2afa111362786169e5269bc69b095d7dfe3.png&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
+&lt;p&gt;VirtualBox 7.1 還帶來了各種 OCI 改進、支持 IPv6 的新 NAT 引擎。值得注意的是，該版本是首個正式支持 Apple Silicon 的版本。用户可以在 macOS Arm 主機上虛擬化 Linux 和 BSD VMs，併為剪貼板分享提供 Wayland 支持。&lt;/p&gt; 
+&lt;p&gt;VirtualBox 7.1 還擁有更好的屏幕錄製性能、新的 Microsoft DB/KEX 證書（用於新創建的帶 EFI 的虛擬機）、更好的圖形用户界面可訪問性以及用户界面的 Qt 工具包升級。&lt;/p&gt; 
+&lt;p&gt;&lt;img alt=&quot;&quot; src=&quot;https://oscimg.oschina.net/oscnet/up-68c9ab4027d9cfa85d2135ae08aedfcc3fc.png&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;img alt=&quot;&quot; src=&quot;https://oscimg.oschina.net/oscnet/up-8a3afc7eacc10f9bedda167341fda0df5cd.png&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
+&lt;p&gt;此外，VirtualBox 在這個版本中還使用了全新的 Logo：&lt;/p&gt; 
+&lt;p&gt;&lt;img alt=&quot;&quot; src=&quot;https://oscimg.oschina.net/oscnet/up-84912fb27fe631a948cdce57ce1c98c911b.png&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
+&lt;p&gt;發佈説明：&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fforums.virtualbox.org%2Fviewtopic.php%3Ft%3D111988&quot; target=&quot;_blank&quot;&gt;https://forums.virtualbox.org/viewtopic.php?t=111988&lt;/a&gt;&lt;br&gt; 下載地址：&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fdownload.virtualbox.org%2Fvirtualbox%2F7.1.0_BETA1&quot; target=&quot;_blank&quot;&gt;https://download.virtualbox.org/virtualbox/7.1.0_BETA1&lt;/a&gt;&lt;/p&gt;
+                                        &lt;/div&gt;
+                                    </description>
+            <link>https://www.oschina.net/news/304543/virtualbox-7-1-new-ui</link>
+            <guid isPermaLink="false">https://www.oschina.net/news/304543/virtualbox-7-1-new-ui</guid>
+            <pubDate>Tue, 30 Jul 2024 06:18:00 GMT</pubDate>
+            <author>來源: OSCHINA</author>
+        </item>
         <item>
             <title>Ant Design 5.19.4 發佈，企業級 UI 設計語言和 React 實現</title>
             <description>&lt;div class=&quot;content&quot;&gt;
@@ -308,7 +504,7 @@
                                     </description>
             <link>https://www.oschina.net/news/304509/vassal-3-7-13-released</link>
             <guid isPermaLink="false">https://www.oschina.net/news/304509/vassal-3-7-13-released</guid>
-            <pubDate>Tue, 30 Jul 2024 03:01:50 GMT</pubDate>
+            <pubDate>Tue, 30 Jul 2024 03:01:00 GMT</pubDate>
             <author>來源: OSCHINA</author>
         </item>
         <item>
@@ -795,7 +991,8 @@
         <item>
             <title>開源知識管理系統 InfoSphere 2024.1.4 發佈</title>
             <description>&lt;div class=&quot;content&quot;&gt;
-                                                                                            &lt;blockquote&gt; 
+                                                                    
+                                                        &lt;blockquote&gt; 
  &lt;p&gt;推薦一套基於 SpringBoot 開發的簡單、易用的開源權限管理平台，建議下載使用:&lt;span&gt;&amp;nbsp;&lt;/span&gt;&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fgithub.com%2Fdevlive-community%2Fauthx&quot; target=&quot;_blank&quot;&gt;https://github.com/devlive-community/authx&lt;/a&gt;&lt;/p&gt; 
 &lt;/blockquote&gt; 
 &lt;blockquote&gt; 
@@ -937,313 +1134,6 @@
             <link>https://www.oschina.net/news/304356/solon-2-8-6-released</link>
             <guid isPermaLink="false">https://www.oschina.net/news/304356/solon-2-8-6-released</guid>
             <pubDate>Mon, 29 Jul 2024 03:25:00 GMT</pubDate>
-            <author>來源: 投稿</author>
-        </item>
-        <item>
-            <title>數據備份工具 BackupSerenity V2.2 新增 CSV/XLSX/XLS 導入工具集</title>
-            <description>&lt;div class=&quot;content&quot;&gt;
-                                                                    
-                                                        &lt;p&gt;數據備份工具 BackupSerenity V2.2 新增 CSV,XLSX/XLS 導入工具集&lt;/p&gt; 
-&lt;p&gt;使用場景：在使用數據庫時會有批量數據導入的場景，數據源可能人工生成的 XLS 表格或者是別的系統導出的 CSV&lt;/p&gt; 
-&lt;p&gt;&lt;strong&gt;V2.2 更新內容：&lt;/strong&gt;&lt;/p&gt; 
-&lt;p&gt;wip - 🕔 新增：XLSX 文件批量導入工具集&lt;/p&gt; 
-&lt;p&gt;wip - 🕔 新增：CSV 文件批量導入工具集&lt;/p&gt; 
-&lt;hr&gt; 
-&lt;h1&gt;CSV 工具集操作文檔&lt;/h1&gt; 
-&lt;p&gt;Author: GPT4.0 &amp;amp; heike07&lt;/p&gt; 
-&lt;blockquote&gt;
- 將包含表頭的 CSV 文件批量導入至 MYSQL
-&lt;/blockquote&gt; 
-&lt;h2&gt;文件結構&lt;/h2&gt; 
-&lt;pre&gt;&lt;code class=&quot;language-shell&quot;&gt;|- csv_input_mysql.py 數據批量導入工具
-|- cleaned_datas.py 數據批量文件清洗工具
-|- differ_datas.py 數據批量比對工具
-&lt;/code&gt;&lt;/pre&gt; 
-&lt;h2&gt;數據導入工具&lt;/h2&gt; 
-&lt;p&gt;csv_input_mysql.py&lt;/p&gt; 
-&lt;h3&gt;運行啓動&lt;/h3&gt; 
-&lt;p&gt;啓動腳本&lt;/p&gt; 
-&lt;pre&gt;&lt;code class=&quot;language-shell&quot;&gt;直接執行：
-python3 csv_input_mysql.py
-
-或通過日誌生成
-nohup python3 csv_input_mysql.py &amp;gt; csv_input_mysql.log &amp;amp;
-
-生成的文件名稱 csv_input_mysql.log 可以根據情況修改，如果想保留全部日誌可以將 &amp;gt; 替換為 &amp;gt;&amp;gt; 即可
-&lt;/code&gt;&lt;/pre&gt; 
-&lt;p&gt;查看日誌&lt;/p&gt; 
-&lt;pre&gt;&lt;code class=&quot;language-shell&quot;&gt;vim csv_input_mysql.log
-&lt;/code&gt;&lt;/pre&gt; 
-&lt;h3&gt;調試 DEBUG&lt;/h3&gt; 
-&lt;p&gt;字符串替換&lt;/p&gt; 
-&lt;pre&gt;&lt;code class=&quot;language-shell&quot;&gt;table_name = os.path.splitext(filename)[0].replace(&#39;.&#39;, &#39;-&#39;)
-根據實際情況替換 CSV 文件中分隔符
-&lt;/code&gt;&lt;/pre&gt; 
-&lt;p&gt;Field_type&lt;/p&gt; 
-&lt;pre&gt;&lt;code class=&quot;language-shell&quot;&gt;create_table_query += &quot;`&quot; + header.replace(&#39;&quot;&#39;, &#39;&#39;) + &quot;` TEXT, &quot;
-根據實際情況調整字段類型
-&lt;/code&gt;&lt;/pre&gt; 
-&lt;h2&gt;ERR&lt;/h2&gt; 
-&lt;p&gt;常見錯誤&lt;/p&gt; 
-&lt;pre&gt;&lt;code class=&quot;language-shell&quot;&gt;數據表格 `XXX` 創建失敗: (1059, &quot;Identifier name &#39;XXX&#39; is too long&quot;)
-表名過長，不能超過 64 字符，修改 CSV 文件名稱
-
-數據表格 `XXX2` 創建失敗: (1118, &#39;Row size too large. The maximum row size for the used table type, not counting BLOBs, is 65535. This includes storage overhead, check the manual. You have to change some columns to TEXT or BLOBs&#39;)
-設置為 vchar(255) 的字段長度不足與承載數據長度，嘗試設置成 TEXT 或增大字段設置長度
-&lt;/code&gt;&lt;/pre&gt; 
-&lt;p&gt;字符集錯誤&lt;/p&gt; 
-&lt;pre&gt;&lt;code class=&quot;language-shell&quot;&gt;  File &quot;csv_input_mysql.py&quot;, line 40, in 
-    headers = next(csv_reader)
-  File &quot;/usr/lib64/python3.6/codecs.py&quot;, line 321, in decode
-    (result, consumed) = self._buffer_decode(data, self.errors, final)
-UnicodeDecodeError: &#39;utf-8&#39; codec can&#39;t decode byte 0xb4 in position 0: invalid start byte
-初始文件中有中文，或者編碼非 utf8 ，此時需要修改代碼中 uft8 替換為自己的編碼，比如 gbk、gb2312 等
-&lt;/code&gt;&lt;/pre&gt; 
-&lt;p&gt;數據源（windows&amp;amp;linux） 用於 CSV 生成的操作系統不同的換行符是不一樣的。&lt;/p&gt; 
-&lt;pre&gt;&lt;code class=&quot;language-shell&quot;&gt;導入過程中出現大類警告
-&#39;Warning&#39;, 1262, &#39;Row 64 was truncated; it contained more data than there were input columns&#39;
-
-修改 csv_input_mysql.py 中的
-源數據為 LINUX 導出 CSV 換行修改為： LINES TERMINATED BY &#39;\\\\n&#39;
-源數據為 WINDOES 導出 CSV 換行修改為： LINES TERMINATED BY &#39;\\\\r\\\\n&#39;
-&lt;/code&gt;&lt;/pre&gt; 
-&lt;p&gt;依賴缺失錯誤&lt;/p&gt; 
-&lt;pre&gt;&lt;code class=&quot;language-shell&quot;&gt;執行帶字符編碼檢測的程序 csv_input_data_chardet.py 時提示
-Traceback (most recent call last):
-  File &quot;csv_input_data_chardet.py&quot;, line 5, in 
-    import chardet
-ModuleNotFoundError: No module named &#39;chardet&#39;
-解決方法
-pip3 install chardet
-&lt;/code&gt;&lt;/pre&gt; 
-&lt;h2&gt;批量數據驗證&lt;/h2&gt; 
-&lt;p&gt;源數據無法預估質量，會出現源數據換行等情況，此時可以使用批量清洗工具進行清洗，清洗後即可進行驗證&lt;/p&gt; 
-&lt;h3&gt;如何批量驗證？&lt;/h3&gt; 
-&lt;pre&gt;&lt;code class=&quot;language-shell&quot;&gt;通過數據導入程序進行導入程序後，對原始 csv 進行批量文件清洗
-將原始文件，放入 input 文件夾{沒有創建一下}
-
-執行批量清洗程序
-python3 cleaned_datas.py
-
-執行後可以通過輸出結果查詢結果：
-
-[root@ict181 db_cls]# python3 differ_datas_v3.py 
-cleaned_xxl_job.xxl_job_1.csv: MySQL 行數 = 27, 清洗後行數 = 28, 數據校驗 = 校驗通過
-cleaned_xxl_job.xxl_job_2.csv: MySQL 行數 = 621, 清洗後行數 = 622, 數據校驗 = 校驗通
-cleaned_xxl_job.xxl_job_3.csv: MySQL 行數 = 1, 清洗後行數 = 2, 數據校驗 = 校驗通過
-cleaned_xxl_job.xxl_job_4.csv: MySQL 行數 = 0, 清洗後行數 = 1, 數據校驗 = 校驗通過
-cleaned_xxl_job.xxl_job_5.csv: MySQL 行數 = 73, 清洗後行數 = 74, 數據校驗 = 校驗通過
-cleaned_xxl_job.xxl_job_6.csv: MySQL 行數 = 0, 清洗後行數 = 1, 數據校驗 = 校驗通過
-cleaned_xxl_job.xxl_job_log.csv: MySQL 行數 = 74513, 清洗後行數 = 74514, 數據校驗 = 校驗通過
-cleaned_xxl_job.xxl_job_info.csv: MySQL 行數 = 92, 清洗後行數 = 93, 數據校驗 = 校驗通過
-所有文件的行數對比和數據校驗工作已完成。
-
-通過 nohup 進行後台執行參考前面執行方式
-通過 | grep 進行日誌篩選
-&lt;/code&gt;&lt;/pre&gt; 
-&lt;hr&gt; 
-&lt;h1&gt;XLSX 工具集操作文檔&lt;/h1&gt; 
-&lt;p&gt;Author: GPT4.0 &amp;amp; heike07&lt;/p&gt; 
-&lt;blockquote&gt; 
- &lt;p&gt;將包含表頭的 XLS 和 XLSX 文件批量導入至 MYSQL&lt;/p&gt; 
-&lt;/blockquote&gt; 
-&lt;h2&gt;文件結構&lt;/h2&gt; 
-&lt;pre&gt;&lt;code class=&quot;language-shell&quot;&gt;|- xls_input_mysql.py xls 數據批量導入工具
-|- xls_differ_mysql.py xls 數據批量校驗工具
-&lt;/code&gt;&lt;/pre&gt; 
-&lt;h2&gt;啓動運行&lt;/h2&gt; 
-&lt;pre&gt;&lt;code class=&quot;language-shell&quot;&gt;# python3 xls_input_mysql.py
-usage: xls_input_mysql_v8.py [-h] [--batch_size BATCH_SIZE]
-                             [--field_type FIELD_TYPE]
-                             directory
-xls_input_mysql.py: error: the following arguments are required: directory
-
-默認參數為，必寫，文件路徑 -h 幫助 --batch_size 批量插入行數，默認值{500} --field_type 字段類型，默認值 {vchar(500)}
-根據自身需求進行運行
-&lt;/code&gt;&lt;/pre&gt; 
-&lt;h2&gt;執行示例&lt;/h2&gt; 
-&lt;pre&gt;&lt;code class=&quot;language-shell&quot;&gt;# python3 xls_input_mysql.py ./xls_db/ --field_type &quot;TEXT&quot;
-START | 2024-07-26 16:11:25
-正在處理文件: ./xls_db/改-youfile.xlsx
-檢測到文件編碼: utf-8
-根據編碼 `utf-8` 確定字符集: utf8mb4
-數據表格 `改-youfile` 創建成功
-數據插入成功，批次 1
-END | 2024-07-26 16:11:26
-總執行時間: 00:00:00
-&lt;/code&gt;&lt;/pre&gt; 
-&lt;h2&gt;數據校驗&lt;/h2&gt; 
-&lt;pre&gt;&lt;code class=&quot;language-shell&quot;&gt;通過數據校驗程序進行數據校驗檢查數據條數是否一致
-# python3 xls_differ_mysql.py xls_db/
-文件: youfile.xlsx | Sheet 頁: sheet1 | XLS 數據條數: 327 | MySQL 表: youfile | MySQL 數據條數: 0
-sheet1 - 數據條數不一致。
-文件: 反 youfile.xlsx | Sheet 頁: sheet1 | XLS 數據條數: 327 | MySQL 表: 反_youfile | MySQL 數據條數: 0
-sheet1 - 數據條數不一致。
-文件: 改-youfile.xlsx | Sheet 頁: sheet1 | XLS 數據條數: 327 | MySQL 表: 改-youfile | MySQL 數據條數: 327
-sheet1 - 數據條數一致。
-&lt;/code&gt;&lt;/pre&gt; 
-&lt;h2&gt;ERR&lt;/h2&gt; 
-&lt;p&gt;依賴錯誤&lt;/p&gt; 
-&lt;pre&gt;&lt;code class=&quot;language-shell&quot;&gt;正在處理文件: ./xls_db/youfile.xlsx
-檢測到文件編碼: utf-8
-根據編碼 `utf-8` 確定字符集: utf8mb4
-讀取 Excel 文件失敗: Missing optional dependency &#39;openpyxl&#39;.  Use pip or conda to install openpyxl.
-根據自身環境，選擇安裝
-pip install pandas pymysql chardet xlrd
-&lt;/code&gt;&lt;/pre&gt; 
-&lt;p&gt;字段內容過長&lt;/p&gt; 
-&lt;pre&gt;&lt;code class=&quot;language-shell&quot;&gt;數據插入失敗: (1406, &quot;Data too long for column &#39;修補建議&#39; at row 17&quot;)
-使用 TEXT 參數進行插入
-python3 xls_input_mysql.py ./xls_db/ --field_type &quot;TEXT&quot;
-&lt;/code&gt;&lt;/pre&gt; 
-&lt;p&gt;數據庫鏈接信息不正確&lt;/p&gt; 
-&lt;pre&gt;&lt;code class=&quot;language-shell&quot;&gt;# python3 xls_differ_mysql.py xls_db/
-Traceback (most recent call last):
-  File &quot;/usr/local/lib/python3.6/site-packages/pymysql/connections.py&quot;, line 614, in connect
-    (self.host, self.port), self.connect_timeout, **kwargs
-  File &quot;/usr/lib64/python3.6/socket.py&quot;, line 724, in create_connection
-    raise err
-  File &quot;/usr/lib64/python3.6/socket.py&quot;, line 713, in create_connection
-    sock.connect(sa)
-ConnectionRefusedError: [Errno 111] Connection refused
-
-During handling of the above exception, another exception occurred:
-
-Traceback (most recent call last):
-  File &quot;xls_differ_mysql.py&quot;, line 74, in &amp;lt;module&amp;gt;
-    main()
-  File &quot;xls_differ_mysql.py&quot;, line 63, in main
-    table_name
-  File &quot;xls_differ_mysql.py&quot;, line 24, in get_row_count_from_mysql
-    database=database
-  File &quot;/usr/local/lib/python3.6/site-packages/pymysql/connections.py&quot;, line 353, in __init__
-    self.connect()
-  File &quot;/usr/local/lib/python3.6/site-packages/pymysql/connections.py&quot;, line 664, in connect
-    raise exc
-pymysql.err.OperationalError: (2003, &quot;Can&#39;t connect to MySQL server on &#39;192.168.1.15&#39; ([Errno 111] Connection refused)&quot;)
-解決方法
-檢查數據庫聯繫信息並修改 xls_differ_mysql.py 中的 db_config 函數參數 ↓
-
-    # 數據庫連接信息
-    db_config = {
-        &#39;user&#39;: &#39;you is user&#39;,
-        &#39;password&#39;: &#39;you is password&#39;,
-        &#39;host&#39;: &#39;you is IP&#39;,
-        &#39;port&#39;: 3306,
-        &#39;database&#39;: &#39;you is database name&#39;,
-    }
-&lt;/code&gt;&lt;/pre&gt;
-                                        &lt;/div&gt;
-                                    </description>
-            <link>https://www.oschina.net/news/304352/backupserenity-2-2</link>
-            <guid isPermaLink="false">https://www.oschina.net/news/304352/backupserenity-2-2</guid>
-            <pubDate>Mon, 29 Jul 2024 03:17:00 GMT</pubDate>
-            <author>來源: 投稿</author>
-        </item>
-        <item>
-            <title>Simple Admin - Go 語言分佈式後台管理系統 v1.5.2 發佈</title>
-            <description>&lt;div class=&quot;content&quot;&gt;
-                                                                                            &lt;h2&gt;Simple Admin - Go 語言分佈式後台管理系統 v1.5.2 更新&lt;/h2&gt; 
-&lt;h3&gt;項目介紹&lt;/h3&gt; 
-&lt;p&gt;Simple Admin 是一個開箱即用的分佈式微服務後端管理系統，基於 go-zero 開發，為開發小型到大型項目後台提供了豐富的功能，易於擴展，支持三端代碼生成。 官方自帶多種擴展，助力中小企業快速上雲，快速迭代。項目全部採用中英雙語支持，方便應用出海，深度支持國際化。適合用於微服務學習和商用，開源免費。&lt;/p&gt; 
-&lt;h3&gt;Simple Admin Core / Job / MCMS / FMS / Common v1.5.2 更新&lt;/h3&gt; 
-&lt;h4&gt;介紹&lt;/h4&gt; 
-&lt;p&gt;核心模塊 Core, 定時任務模塊 Job, 消息中心模塊 MCMS, 以及文件管理模塊 FMS 均已升級&lt;/p&gt; 
-&lt;p&gt;核心模塊用於基礎的後台運行，其餘模塊可根據需求選用。&lt;/p&gt; 
-&lt;h4&gt;特性&lt;/h4&gt; 
-&lt;ul&gt; 
- &lt;li&gt;&lt;strong&gt;最新技術棧&lt;/strong&gt;：使用 ent, casbin, kafka 等前沿技術開發&lt;/li&gt; 
- &lt;li&gt;&lt;strong&gt;完全支持 go-swagger&lt;/strong&gt;: 直接在 api 文件內編寫註釋即可直接生成 swagger 文檔&lt;/li&gt; 
- &lt;li&gt;&lt;strong&gt;統一的錯誤處理&lt;/strong&gt;: 整個系統擁有國際化的統一錯誤處理&lt;/li&gt; 
- &lt;li&gt;&lt;strong&gt;國際化&lt;/strong&gt;：內置完善的國際化方案&lt;/li&gt; 
- &lt;li&gt;&lt;strong&gt;服務註冊發現&lt;/strong&gt;: 完善的服務註冊發現機制，原生支持 K8s&lt;/li&gt; 
- &lt;li&gt;&lt;strong&gt;權限&lt;/strong&gt;: 內置完善的動態路由權限生成方案, 集成 RBAC 權限控制&lt;/li&gt; 
- &lt;li&gt;&lt;strong&gt;代碼生成&lt;/strong&gt;: 內置三端 Web, API, RPC 代碼生成&lt;/li&gt; 
- &lt;li&gt;&lt;strong&gt;多種擴展&lt;/strong&gt;: 提供多種擴展，同時具有非常簡單的接入功能&lt;/li&gt; 
- &lt;li&gt;&lt;strong&gt;其他&lt;/strong&gt;: 流量控制， ES 服務&lt;/li&gt; 
- &lt;li&gt;&lt;strong&gt;ORM&lt;/strong&gt;: 強大的 Ent 框架支持&lt;/li&gt; 
-&lt;/ul&gt; 
-&lt;h4&gt;本次更新&lt;/h4&gt; 
-&lt;ul&gt; 
- &lt;li&gt;更新：更新 go zero 代碼至 v1.7.0&lt;/li&gt; 
- &lt;li&gt;優化 (Common): 優化註釋&lt;/li&gt; 
- &lt;li&gt;優化 (Common): 優化 tests&lt;/li&gt; 
- &lt;li&gt;優化 (Core): 優化 user department 和 position 返回值&lt;/li&gt; 
- &lt;li&gt;新增 (Core): 新增 oauth 支持飛書登錄&lt;/li&gt; 
- &lt;li&gt;優化 (Core): oauth scope 字段限制擴大到 100&lt;/li&gt; 
- &lt;li&gt;更新: 更新 all in one 配置&lt;/li&gt; 
- &lt;li&gt;更新: 更新依賴&lt;/li&gt; 
-&lt;/ul&gt; 
-&lt;h3&gt;Simple Admin Backend UI v1.5.2 更新&lt;/h3&gt; 
-&lt;h4&gt;介紹&lt;/h4&gt; 
-&lt;p&gt;Simple Admin UI 是基於 vue-vben-admin 二次開發的為 Simple Admin 專門開發的後台管理界面，基於 Vue3 和 TypeScript 開發， 提供後台錯誤統一處理，國際化等功能，本項目完全免費，可用於學習和商用.&lt;/p&gt; 
-&lt;h4&gt;特性&lt;/h4&gt; 
-&lt;ul&gt; 
- &lt;li&gt;&lt;strong&gt;最新技術棧&lt;/strong&gt;：基於 Vue3/vite5 等最新技術開發&lt;/li&gt; 
- &lt;li&gt;&lt;strong&gt;TypeScript&lt;/strong&gt;: 採用 Typescript 的語言&lt;/li&gt; 
- &lt;li&gt;&lt;strong&gt;主題&lt;/strong&gt;：可配置的主題&lt;/li&gt; 
- &lt;li&gt;&lt;strong&gt;國際化&lt;/strong&gt;：內置完善的國際化方案&lt;/li&gt; 
- &lt;li&gt;&lt;strong&gt;Mock 數據&lt;/strong&gt; 內置 Mock 數據測試方案&lt;/li&gt; 
- &lt;li&gt;&lt;strong&gt;權限&lt;/strong&gt; 支持動態路由權限&lt;/li&gt; 
- &lt;li&gt;&lt;strong&gt;組件&lt;/strong&gt; 二次封裝了多個常用的組件&lt;/li&gt; 
- &lt;li&gt;&lt;strong&gt;Remeda&lt;/strong&gt;: 使用 remeda 作為數據處理工具&lt;/li&gt; 
-&lt;/ul&gt; 
-&lt;h4&gt;本次更新&lt;/h4&gt; 
-&lt;ul&gt; 
- &lt;li&gt;新增 (Configuration): 新增動態配置默認語言&lt;/li&gt; 
- &lt;li&gt;新增 (Configuration): 新增動態配置默認佈局&lt;/li&gt; 
- &lt;li&gt;新增 (Configuration): 新增動態配置消息按鈕&lt;/li&gt; 
- &lt;li&gt;新增 (Configuration): 新增動態配置麪包屑&lt;/li&gt; 
- &lt;li&gt;優化 (ApiSelect): 優化默認 filter 條件&lt;/li&gt; 
- &lt;li&gt;修復 (ApiMultipleSelect): 優化參數顯示，優化 filter 條件&lt;/li&gt; 
- &lt;li&gt;優化 (oauth): 擴大 scope 長度限制&lt;/li&gt; 
- &lt;li&gt;修復 (Table): 優化 search form 參數&lt;/li&gt; 
- &lt;li&gt;更新 (Docker): 更新 dockerfile 鏡像版本&lt;/li&gt; 
- &lt;li&gt;更新： 更新依賴&lt;/li&gt; 
-&lt;/ul&gt; 
-&lt;h3&gt;Goctls v1.8.0 更新&lt;/h3&gt; 
-&lt;h4&gt;介紹&lt;/h4&gt; 
-&lt;p&gt;Goctls 是一個基於 Go Zero 官方生成工具 Goctl 開發的針對 Simple Admin 適配優化的生成工具。提供強大的代碼生成功能，同時集成了許多定製工具，實現快速開發微服務接入後台和前台 。三端代碼生成可以大大提升開發效率，歡迎體驗 。&lt;/p&gt; 
-&lt;h4&gt;特性&lt;/h4&gt; 
-&lt;ul&gt; 
- &lt;li&gt;&lt;strong&gt;go-swagger&lt;/strong&gt; : 基於 go-swagger 生成 API 文檔，只需一行註釋即可生成文檔&lt;/li&gt; 
- &lt;li&gt;&lt;strong&gt;i18n&lt;/strong&gt;: 所有生成模板均實現多國語言支持&lt;/li&gt; 
- &lt;li&gt;&lt;strong&gt;錯誤處理&lt;/strong&gt;: 優化錯誤信息處理, 支持多語言錯誤&lt;/li&gt; 
- &lt;li&gt;&lt;strong&gt;Validator&lt;/strong&gt;: 簡單易用的校驗器, 只需添加 tag 即可校驗&lt;/li&gt; 
- &lt;li&gt;&lt;strong&gt;三端代碼生成&lt;/strong&gt;: 支持三端代碼生成，生成 API, RPC 和 web 端的 CRUD 代碼&lt;/li&gt; 
- &lt;li&gt;&lt;strong&gt;RPC 接口分組&lt;/strong&gt;： rpc logic group 分組&lt;/li&gt; 
- &lt;li&gt;&lt;strong&gt;proto 文件拆分&lt;/strong&gt;: 支持 proto 文件拆分，方便管理&lt;/li&gt; 
- &lt;li&gt;&lt;strong&gt;Ent 支持&lt;/strong&gt;: 全面支持 Ent 代碼生成，包括數據庫導入，schema 生成，模板管理，自動升級等功能&lt;/li&gt; 
- &lt;li&gt;&lt;strong&gt;額外工具&lt;/strong&gt;: 額外工具如本地日誌查看，環境變量查看&lt;/li&gt; 
-&lt;/ul&gt; 
-&lt;h4&gt;本次更新&lt;/h4&gt; 
-&lt;ul&gt; 
- &lt;li&gt;優化 (ent): 添加 schema not found 提示&lt;/li&gt; 
- &lt;li&gt;更新： 更新依賴&lt;/li&gt; 
-&lt;/ul&gt; 
-&lt;p&gt;&lt;span style=&quot;background-color:#ffffff; color:#333333&quot;&gt;文檔地址:&lt;span&gt;&amp;nbsp;&lt;/span&gt;&lt;/span&gt;&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fdoc.ryansu.tech%2Fzh%2Fguide%2Fbasic-config%2Fall_in_one.html&quot; target=&quot;_blank&quot;&gt;點擊訪問&lt;/a&gt;&lt;/p&gt;
-                                        &lt;/div&gt;
-                                    </description>
-            <link>https://www.oschina.net/news/304350/simple-admin-go-1-5-2-released</link>
-            <guid isPermaLink="false">https://www.oschina.net/news/304350/simple-admin-go-1-5-2-released</guid>
-            <pubDate>Mon, 29 Jul 2024 03:12:00 GMT</pubDate>
-            <author>來源: 投稿</author>
-        </item>
-        <item>
-            <title>【重大更新】OnlyOffice 插件 V1.27 震撼發佈</title>
-            <description>&lt;div class=&quot;content&quot;&gt;
-                                                                                            &lt;p style=&quot;color:rgba(0, 0, 0, 0.9); margin-left:0; margin-right:0; text-align:left&quot;&gt;&lt;span&gt;🎉&lt;/span&gt;&lt;span&gt;&amp;nbsp;&lt;/span&gt;親愛的用户們，好消息來啦！onlyoffice 插件現已更新至 V1.27 版本，專為追求高效與安全的您打造！這次更新，我們帶來了哪些亮點呢？快來一睹為快吧！&lt;/p&gt; 
-&lt;p style=&quot;color:rgba(0, 0, 0, 0.9); margin-left:0; margin-right:0; text-align:left&quot;&gt;&lt;span&gt;🔍&lt;/span&gt;&lt;span&gt;&amp;nbsp;&lt;/span&gt;&lt;strong&gt;新增文件與參數檢測&lt;/strong&gt;：再也不用擔心文件丟失或參數錯誤帶來的困擾！我們新增了智能檢測功能，確保您的每一次操作都準確無誤。&lt;span&gt;🔍&lt;/span&gt;&lt;/p&gt; 
-&lt;p style=&quot;color:rgba(0, 0, 0, 0.9); margin-left:0; margin-right:0; text-align:left&quot;&gt;&lt;span&gt;🧹&lt;/span&gt;&lt;span&gt;&amp;nbsp;&lt;/span&gt;&lt;strong&gt;去除殘留代碼&lt;/strong&gt;：徹底清理殘留代碼，讓插件運行更加流暢，響應更快，效率倍增！&lt;span&gt;💨&lt;/span&gt;&lt;/p&gt; 
-&lt;p style=&quot;color:rgba(0, 0, 0, 0.9); margin-left:0; margin-right:0; text-align:left&quot;&gt;&lt;span&gt;🔒&lt;/span&gt;&lt;span&gt;&amp;nbsp;&lt;/span&gt;&lt;strong&gt;文件流地址優化與安全保護&lt;/strong&gt;：優化後的文件流地址顯示更清晰，同時加強了文件安全保護，讓您的數據更安心。&lt;span&gt;📍&lt;/span&gt;&lt;/p&gt; 
-&lt;p style=&quot;color:rgba(0, 0, 0, 0.9); margin-left:0; margin-right:0; text-align:left&quot;&gt;&lt;span&gt;📁&lt;/span&gt;&lt;span&gt;&amp;nbsp;&lt;/span&gt;&lt;strong&gt;無縫對接另存為功能&lt;/strong&gt;：實現與 dzz 系統的深度對接，新增另存為功能，讓您在 onlyoffice 中編輯的文檔直接保存到 dzz，無需繁瑣步驟，工作更高效！&lt;span&gt;💼&lt;/span&gt;&lt;/p&gt; 
-&lt;p style=&quot;color:rgba(0, 0, 0, 0.9); margin-left:0; margin-right:0; text-align:left&quot;&gt;&lt;span&gt;📝&lt;/span&gt;&lt;span&gt;&amp;nbsp;&lt;/span&gt;&lt;strong&gt;錯誤日誌記錄&lt;/strong&gt;：針對文件返回 dzz 保存時可能出現的錯誤，我們增加了詳細的日誌記錄功能，問題排查更便捷，您的數據安全更有保障！&lt;span&gt;🛡️&lt;/span&gt;&lt;/p&gt; 
-&lt;p style=&quot;color:rgba(0, 0, 0, 0.9); margin-left:0; margin-right:0; text-align:left&quot;&gt;&lt;span&gt;🔗&lt;/span&gt;&lt;span&gt;&amp;nbsp;&lt;/span&gt;&lt;strong&gt;便捷返回 dzz&lt;/strong&gt;：一鍵返回 DzzOffice，操作更便捷。無論您在哪裏，都能輕鬆找到回家的路。&lt;/p&gt;
-                                        &lt;/div&gt;
-                                    </description>
-            <link>https://www.oschina.net/news/304345</link>
-            <guid isPermaLink="false">https://www.oschina.net/news/304345</guid>
-            <pubDate>Mon, 29 Jul 2024 03:01:00 GMT</pubDate>
             <author>來源: 投稿</author>
         </item>
     </channel>
