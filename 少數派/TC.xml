@@ -16,14 +16,351 @@
         <generator>RSSHub</generator>
         <webMaster>i@diygod.me (DIYgod)</webMaster>
         <language>zh-cn</language>
-        <lastBuildDate>Thu, 10 Oct 2024 23:14:34 GMT</lastBuildDate>
+        <lastBuildDate>Fri, 11 Oct 2024 04:12:15 GMT</lastBuildDate>
         <ttl>5</ttl>
+        <item>
+            <title>
+                <![CDATA[書籤「上上千」：用 Linkding 和 Trilium 自建服務輕鬆管理]]>
+            </title>
+            <description>
+                <![CDATA[<p style="margin-left:0px;"><strong>Matrix 首頁推薦</strong>&nbsp;</p><p style="margin-left:0px;"><a href="https://sspai.com/matrix">Matrix</a>&nbsp;是少數派的寫作社區，我們主張分享真實的產品體驗，有實用價值的經驗與思考。我們會不定期挑選 Matrix 最優質的文章，展示來自用戶的最真實的體驗和觀點。&nbsp;</p><p style="margin-left:0px;">文章代表作者個人觀點，少數派僅對標題和排版略作修改。</p><hr><h2>前言</h2><p>目前各大主流瀏覽器都會自帶書籤同步功能，無論是 PC 端還是移動端，只要登錄一下賬號就能輕鬆訪問自己收藏的書籤，可以説保存書籤的成本越來越低。但是隨着收藏內容的增多，使用書籤的成本反而會直線上升。</p><p>因為最近在少數派上看到了幾篇網絡書籤的相關文章，就也想和大家分享一下目前我自己使用的一套書籤方案。因為經常查各種資料，所以收藏的書籤很多很雜，數量上應該有幾千個，直接導致傳統的瀏覽器收藏夾基本沒法用，最後只能選了自建網絡書籤服務這條路，在用過許多開源方案後選擇了 Linkding 和 Trilium 相結合的方案。如果你的書籤數量較少，或是不具備自建服務的條件的話，本篇文章可能對你意義不大，大家可以酌情閲讀。</p><p>因為文章中用到的 Linkding 和 Trilium 都屬於自建服務，每個人喜歡的安裝方式可能都有差別，網上相關的安裝教程多如牛毛，所以我在文中並不會介紹相關內容，而是專注於使用經驗方面的分享。當然，安裝的話我建議直接根據我下文中給出的官方文檔中的步驟進行，以免網上中文教程版本滯後。</p><h2>傳統書籤收藏的痛點</h2><h3>查找困難</h3><p><strong>查找困難</strong>是傳統瀏覽器書籤收藏系統最大的痛點，究其本質我個人歸納為可用於查找的信息維度過少。少到什麼程度呢，你可以試試導出自己瀏覽器的書籤，一般會得到一個 html 文件，以 Edge 瀏覽器為例，通常一條書籤記錄會包含如下字段：</p><figure class="table"><table><tbody><tr><td>名稱</td><td>含義</td></tr><tr><td>folder</td><td>所在文件夾名稱（可多層）</td></tr><tr><td>href</td><td>書籤記錄的網址</td></tr><tr><td>add_date</td><td>保存書籤的時間戳（部分瀏覽器並不支持書籤按時間排序）</td></tr><tr><td>icon</td><td>書籤圖標（對搜索而言為無效信息）</td></tr><tr><td>title</td><td>書籤名稱</td></tr></tbody></table></figure><p>看着有五個字段，但實際常被用於搜索的也就兩條，文件夾名稱和書籤名稱。從使用的角度來説，三層文件夾應該是普通人能接受的極限了（我自己只能接受一層文件夾）。單單靠少量的文件夾分類的話肯定是不現實的，因為當書籤量級上來之後，單個文件夾中的書籤數量不可避免地會增加，依舊會面臨翻找困難的情況。這時候想要提高查找速度就必定要用到搜索，文件夾層級有限的情況下就只能在書籤名稱上做文章，較為可行的方法就是在書籤名稱的最後加關鍵詞，加的越多越詳細，後期搜索到的可能性就越高。理論上每次添加書籤時都嚴格按照提前規劃好的文件夾層級以及關鍵詞命名規則的話，最後也能得到一份高度可用的收藏夾。</p><h3>整理困難</h3><p>但這就引申出其另一個痛點，<strong>整理困難</strong>。首先第一個困難就是文件夾的分類，事物的聯繫具有多樣性，每一個書籤指向的內容都不是非此即彼的，很難歸納出一個所有人通用的文件夾分層結構，最多在你長時間的使用中逐漸妥協為一個相對適合你自己使用的框架。但即便如此，你也總會遇到許多讓你糾結其歸屬的書籤，為了方便使用可能某一個書籤需要同時在多個文件層級中保存。除了文件夾更需要費腦筋的是書籤的命名，直接用默認的網頁名稱固然方便，但搜索的時候就難免力不從心。</p><p>瀏覽網頁的時候看到感興趣的內容隨手點一下地址欄旁的收藏按鈕，這應該是很多人使用收藏夾的本能，每次加個書籤都深思熟慮其文件夾歸屬和詳盡的關鍵詞命名未免過於嚴苛，流程繁瑣不説，更重要的是可能會打斷自己的思路，長時間下來定期整理總是逃不掉的。這時候就不得不品味瀏覽器收藏夾那簡陋的多選和拖拽移動功能了，少量使用體驗完美，量大就是折磨了。如果追求高可用性，可能還需要單獨修改每個書籤的名稱，光是想想就夠頭疼的。</p><h3>快照</h3><p>接下來的痛點嚴格來説算是我個人的痛點，和瀏覽器中的收藏夾系統本身無關，屬於我希望它有但是它沒有的功能。首當其衝的就是<strong>快照</strong>功能，雖然這個功能可以通過安裝瀏覽器插件的形式輕鬆實現，但是插件保存的快照終究是另外存放的，需要自己手動保存不説，後期想與書籤對上還免不了一番折騰，便利性上終究差點意思。</p><h3>多端同步</h3><p>最後一個痛點則是<strong>多端同步</strong>，雖然開篇就説了目前的瀏覽器都支持多端同步，但是很尷尬的一點就是，我在各個平台上使用的瀏覽器並不相同，電腦上還好説，直接用 Edge 就行，但是手機、平板之類的移動設備就比較麻煩了，可能會存在多個瀏覽器混用的情況，這時候依託於瀏覽器賬戶的收藏夾同步功能就捉襟見肘了。</p><h2>網絡書籤服務：<strong>Linkding</strong></h2><p><a href="https://linkding.link/">Linkding</a> 是目前為止我用下來最好用的開源網絡書籤服務，基本解決了我上面提到的四個痛點。不過這個服務有幾個比較明顯的缺點，沒法接受的話就不用看下去了。</p><ul><li>操作界面只有英文。當然，中文書籤是支持的，只是設置、按鈕等只有英文。我不太清楚有沒有大佬封裝過中文的鏡像，暫時沒有查找過。不過其實對使用的影響幾乎沒有，總共也就那麼幾個單詞，並沒有什麼太高的門檻。</li><li>部分服務，類似書籤圖標等需要使用魔法或是自行配置相關參數。核心功能其實都是服務器本地運行的，不使用魔法體感下來影響不大。</li><li>默認界面比較樸實，基本就是一堆網頁元素的簡單堆積。理論上如果你懂 css 的話可以在設置中自定義 css 語句來修改顯示效果，想要花裏胡哨也是可以實現的。</li></ul><figure class="image ss-img-wrapper"><img src="https://cdnfile.sspai.com/editor/u_/cs3moitb34t98cknnn90.png?imageView2/2/w/1120/q/90/interlace/1/ignore-error/1" alt="PCG7bNcaoox06qxRZvrcarl1nkg" data-original="https://cdnfile.sspai.com/editor/u_/cs3moitb34t98cknnn90.png" referrerpolicy="no-referrer"></figure><h3>標籤系統</h3><h4>概念介紹</h4><p>先説一下 Linkding 最核心的標籤（Tag）系統，與傳統的文件夾系統不同，標籤系統更加自由和發散。文件夾系統是線性的，一個書籤只能從屬於一個文件夾，一個子文件夾只能從屬於一個父文件夾；而標籤系統則是多對多的關係，一個書籤可以同時擁有無數個標籤，各個標籤之間都是同級的，互相之間沒有從屬關係。</p><figure class="image ss-img-wrapper"><img src="https://cdnfile.sspai.com/editor/u_/cs3moj5b34t98erkk5e0.png?imageView2/2/w/1120/q/90/interlace/1/ignore-error/1" alt="AK4wb09yuodhE2xcXTBcMhiMnPh" data-original="https://cdnfile.sspai.com/editor/u_/cs3moj5b34t98erkk5e0.png" referrerpolicy="no-referrer"></figure><p>乍一看好像區別不大，但實際使用時卻是天壤之別。舉一個簡單的例子，假如我需要在書籤收藏中找到 PyMongo 的官方文檔，那在 Linkding 中只需要先點擊「@文檔」標籤，再點擊「mongodb」標籤，就能輕鬆篩選出所有符合的結果。對於經常需要比對同一類型資料，或是「模糊搜索」的用戶可謂是神器。</p><figure class="image ss-img-wrapper"><img src="https://cdnfile.sspai.com/editor/u_/cs3mojdb34t98idth770.png?imageView2/2/w/1120/q/90/interlace/1/ignore-error/1" alt="FFksbB57toHxSHxrUwicomHHnXc" data-original="https://cdnfile.sspai.com/editor/u_/cs3mojdb34t98idth770.png" referrerpolicy="no-referrer"></figure><h4>使用技巧</h4><p>之前提到過 Linkding 界面只支持英文，這一點對其標籤的排列順序其實也存在着影響。觀察 Tags 這一列就能發現，標籤是按照其首字母分行排列的，對於英文標籤這樣排列非常合理，但是如果使用全中文標籤的話就會遇到一個問題，那就是所有中文開頭的標籤都會被歸類到同一行。</p><p>這個特性對中文標籤來説非常致命，畢竟所有標籤擠在一行想要快速找出其中一個的難度就會大大提高。不過解決的方法非常簡單，就是根據每個中文標籤開頭字符的拼音為其添加一個首字母，類似「x 下載」這樣的形式。進一步地，我們可以利用其排列特性來實現一些別的需求，比如説對於常用鏈接可以添加一個「!常用」的標籤，這樣該標籤就會默認出現在標籤區域的第一行。</p><figure class="image ss-img-wrapper"><img src="https://cdnfile.sspai.com/editor/u_/cs3mojlb34t98idth77g.png?imageView2/2/w/1120/q/90/interlace/1/ignore-error/1" alt="KYMZbRMD6o8cj3xdCXncHgs5n0c" data-original="https://cdnfile.sspai.com/editor/u_/cs3mojlb34t98idth77g.png" referrerpolicy="no-referrer"></figure><p>標籤機制因為其靈活性，剛開始使用的時候可能會有點無所適從，不知從何處入手，收藏的時候可能還會產生一些不必要的糾結，比如這個詞要不要設置成標籤等。這些其實都是正常情況，我剛開始用的時候也是這樣，主要是怕用的久了之後雜亂的標籤和之前的文件夾一樣難以整理。作為一個長期使用過的用戶，我給出兩條參考建議：</p><ul><li>每個鏈接都要分配一個大類，比如可以根據其功能分成「@工具」「@論壇」「@娛樂」等，這些大類不必一次整理清楚，可以想到什麼就寫什麼，不過為了和其他標籤形成區分，推薦以「@」開頭。當某一天你覺得無論是什麼鏈接都能劃分到這些大類之後，就可以開始嘗試將它們合併精簡，最終將大類個數控制在個位數即可。這些大類標籤其實充當着傳統書籤系統中的一級文件夾的角色，如果你平常就有整理書籤文件夾的習慣，可以直接把這些文件夾的名稱套用過來。</li><li>除了大類標籤外，每一個鏈接都儘可能地將所有其涉及的特徵點作為標籤加上去。加標籤的時候不需要有任何的顧慮，所有你腦海中當時跳出來的詞彙都可以作為標籤加上去，多多益善。你加的標籤越多，後續使用的時候找起來就越簡單，唯一要注意的是同義詞不要重複出現，能複用標籤時就儘量不要再創建一個新的類似標籤。</li></ul><h3>書籤結構</h3><h4>概念介紹</h4><p>默認安裝參數下，Linkding 的數據庫使用的是 SQLite，所以書籤數據是以「.sqlite3」後綴的文件格式保存的。只要用 SQLiteStudio 之類的軟件打開就能查看和修改其中的數據。</p><p>我們可以先看一下 Linkding 中書籤的所有字段：</p><figure class="image ss-img-wrapper"><img src="https://cdnfile.sspai.com/editor/u_/cs3mojtb34t98erkk5eg.png?imageView2/2/w/1120/q/90/interlace/1/ignore-error/1" alt="E4ulbSWIho9lpPxqYyXcBFTInOb" data-original="https://cdnfile.sspai.com/editor/u_/cs3mojtb34t98erkk5eg.png" referrerpolicy="no-referrer"></figure><figure class="table"><table><tbody><tr><td>名稱</td><td>含義</td></tr><tr><td>id</td><td>書籤主鍵</td></tr><tr><td>url</td><td>書籤記錄的網址</td></tr><tr><td>title</td><td>書籤名稱</td></tr><tr><td>description</td><td>書籤介紹</td></tr><tr><td>website_title</td><td>網頁默認名稱</td></tr><tr><td>website_description</td><td>網頁默認介紹</td></tr><tr><td>unread</td><td>是否標為待閲讀</td></tr><tr><td>is_archived</td><td>是否標為已歸檔（即不常用書籤或失效書籤）</td></tr><tr><td>web_archive_snapshot_url</td><td>Internet Archive 中該網頁的快照地址</td></tr><tr><td>favicon_file</td><td>圖標文件保存地址</td></tr><tr><td>notes</td><td>關於該書籤的筆記（支持 Markdown 語法）</td></tr><tr><td>preview_image_file</td><td>預覽圖片保存地址</td></tr><tr><td>tags</td><td>標籤與書籤的對應關係在一張單獨的關係表中，上圖中並沒有體現</td></tr></tbody></table></figure><p>與標籤相關的字段比較簡單，就一張標籤信息表和標籤-書籤多對多關係表。</p><figure class="image ss-img-wrapper"><img src="https://cdnfile.sspai.com/editor/u_/cs3mok5b34t98cknnn9g.png?imageView2/2/w/1120/q/90/interlace/1/ignore-error/1" alt="FpgSbA5NFoigKOxXjJjcl0I9nqh" data-original="https://cdnfile.sspai.com/editor/u_/cs3mok5b34t98cknnn9g.png" referrerpolicy="no-referrer"></figure><figure class="image ss-img-wrapper"><img src="https://cdnfile.sspai.com/editor/u_/cs3mokdb34t98cknnna0.png?imageView2/2/w/1120/q/90/interlace/1/ignore-error/1" alt="XBkIbGT9Do9126xXLq7cGsJhnJc" data-original="https://cdnfile.sspai.com/editor/u_/cs3mokdb34t98cknnna0.png" referrerpolicy="no-referrer"></figure><p>常用的幾個書籤屬性在使用瀏覽器插件收藏網頁的時候就可以直接編輯。</p><figure class="image ss-img-wrapper"><img src="https://cdnfile.sspai.com/editor/u_/cs3moklb34t98idth780.png?imageView2/2/w/1120/q/90/interlace/1/ignore-error/1" alt="M5e5bCM0po1mDexcXTfciFNOnmh" data-original="https://cdnfile.sspai.com/editor/u_/cs3moklb34t98idth780.png" referrerpolicy="no-referrer"></figure><p>與傳統書籤系統中可憐的兩三個搜索維度相比，Linkding 明顯領先太多了，表格中出現的字段內容基本都可以作為搜索元素來進行查找。也就是説，無論是標題、介紹，還是筆記中出現的文本都可以作為關鍵詞來檢索，在保持標題簡單明瞭的前提下依舊可以獲得遠超傳統書籤的搜索維度。</p><h4>使用技巧</h4><p>因為書籤的特徵不再只有標題這一個維度，所以保存書籤時一般不需要修改網頁默認的名稱，就算要修改也建議將其修改得更加簡潔明瞭。為了便於後續搜索或再閲讀，description 以及 notes 需要作為修改的重點。大部分情況下 description 可以使用網頁默認描述，要手動編輯的話也儘量用客觀的語句描述其實際內容。而 notes 則可以自由一點，並且其本身支持 Markdown 語法，顯示效果也會好很多。以我自己為例給大家一些參考，某些知識類的文章可能要點就那麼幾句話或是幾行代碼，沒什麼單獨開篇筆記收藏的必要，就可以直接寫在 notes 中；找到合適的素材時可以在 notes 中記錄下該素材的用法或當時的靈感思路等。總結一下就是三點：</p><ul><li>title：簡潔明瞭，一般保持默認即可。</li><li>description：客觀描述網頁內容，一般保持默認即可。</li><li>notes：記錄網頁中的核心知識點、收藏的理由、靈感思路等，一般留空即可。</li></ul><p>unread 和 is_archived 這兩個字段很好理解，前者就是很多瀏覽器自帶的待閲讀功能，後者則是歸檔功能，就是把已經失效或是長時間不會再用到的書籤隱藏到一個單獨的分類中。兩者都可以通過首頁的 Bookmarks 按鈕快速切換，各自都有其獨立的分區。</p><figure class="image ss-img-wrapper"><img src="https://cdnfile.sspai.com/editor/u_/cs3moklb34t98cknnnag.png?imageView2/2/w/1120/q/90/interlace/1/ignore-error/1" alt="XB9EbFELfoUTNGxXwgQcV9pzn5K" data-original="https://cdnfile.sspai.com/editor/u_/cs3moklb34t98cknnnag.png" referrerpolicy="no-referrer"></figure><p>歸檔這個功能我很喜歡，相較於直接把失效書籤刪除，把它們關小黑屋總有一種一朝一日它們還能重見天日的錯覺。反正也不佔什麼空間，留着當個念想總是好的。</p><p>相較於歸檔，待閲讀的花樣就多一點。我一般不把它作為待閲讀列表使用，而是更接近近期常用的概念，或者説是素材庫，把搜索出來也許會用的書籤統一標為待閲讀。Linkding 的批處理功能是相當優秀的，如下圖所示，歸檔、刪除、增加標籤、移除標籤、標記為已讀、標記為未讀，這六個核心功能都支持批處理操作，效率遠超瀏覽器收藏夾。</p><figure class="image ss-img-wrapper"><img src="https://cdnfile.sspai.com/editor/u_/cs3moktb34t98erkk5f0.png?imageView2/2/w/1120/q/90/interlace/1/ignore-error/1" alt="LpuwbUmwso84jixbZhOcoQAJnPf" data-original="https://cdnfile.sspai.com/editor/u_/cs3moktb34t98erkk5f0.png" referrerpolicy="no-referrer"></figure><h4>拓展</h4><p>上面提到過的三張表 bookmarks_bookmark、bookmarks_tag、bookmarks_bookmark_tags 是 Linkding 中最核心的數據表，它們都在 Linkding 數據文件夾的 db.sqlite3 這一數據庫文件中。因為該文件中數據都是公開的，沒有加密一説，操作空間就很大了。</p><figure class="image ss-img-wrapper"><img src="https://cdnfile.sspai.com/editor/u_/cs3mol5b34t98erkk5fg.png?imageView2/2/w/1120/q/90/interlace/1/ignore-error/1" alt="M2aFbzwSkoqFeKxd2zScWUnqnbg" data-original="https://cdnfile.sspai.com/editor/u_/cs3mol5b34t98erkk5fg.png" referrerpolicy="no-referrer"></figure><p>Linkding 雖然自帶導出書籤為 html 文件的功能，但是因為其本身並沒有文件夾的概念，所以使用其導出的文件導入到 Edge 瀏覽器就會存在水土不服的情況。我的服務器有一次宕機之後系統出了點問題，但書籤每天都要用，就寫了個 python 腳本將其按照特定的要求導出為 Edge 可識別的 html 文件應急。具體的導出要求是以「@」開頭的標籤為文件夾，將所有書籤分類放置在其中，同時將每個書籤的標籤彙總後添加到書籤名稱的最後。腳本用起來非常簡單，與 db.sqlite3 文件放置在同一目錄下運行即可。</p><p>這裏給出這個案例有多方面的考慮，一是向大家展示一下 Linkding 這種用單個數據庫文件存儲數據對於個人用戶的便利性，因為需要備份的數據就那麼幾個，甚至以後 Linkding 不再維護，用戶依舊可以很輕鬆地轉移到任何其他平台；二是給大家提供另一種 Linkding 的使用思路，可以將其作為單純的整理工具，使用其強大的批處理界面以及優秀的數據庫結構來整理彙總自己的書籤，最後導出到更常使用的平台。</p><pre class="language-python"><code>import datetime
+import sqlite3
+from typing import Optional
+
+from dateutil.parser import parse
+from lxml import etree
+
+
+class DatabaseManager:
+
+    
+"""
+
+
+    用於讀取書籤數據庫文件
+
+
+    """
+
+
+
+    
+def __init__(self, db_file: str):
+        self.conn = sqlite3.connect(db_file)
+        self.cursor = self.conn.cursor()
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        self.cursor.close()
+        self.conn.close()
+
+    def __iter__(self):
+        self.cursor.execute("select * from bookmarks_bookmark")
+        return self
+
+    def __next__(self):
+        # 獲取單條書籤數據
+        tem = self.cursor.fetchone()
+        if tem is None:
+            raise StopIteration
+        # 根據書籤 id 查找對應的標籤
+        c = self.conn.cursor()
+        cmd = "select bookmarks_tag.name from bookmarks_bookmark_tags " \
+              "join bookmarks_tag on bookmarks_bookmark_tags.tag_id = bookmarks_tag.id " \
+              "where bookmarks_bookmark_tags.bookmark_id = {}"
+        tags = c.execute(cmd.format(tem[0])).fetchall()
+        tags = [tag[0] for tag in tags]
+        res = list(tem)
+        # 將標籤數據以 list 的形式添加到原本書籤數據的最後
+        res.append(tags)
+        c.close()
+        return res
+
+
+def timestr_to_timestamp(timestr: str) -&gt; int:
+
+    
+"""
+
+
+    將字符串形式的時間轉為時間戳
+
+
+    
+:param
+ timestr:
+
+
+    
+:return
+:
+
+
+    """
+
+
+    
+return int(parse(timestr + "+0000").timestamp())
+
+
+class HtmlGenerator:
+
+    
+"""
+
+
+    用於構造 Edge 瀏覽器支持導入的書籤文件
+
+
+    主要參考 Edge 瀏覽器導出的 html 文件格式
+
+
+    """
+
+
+
+    
+def __init__(self):
+        self.root = etree.Element("DT")
+        # 當前時間戳，用於後續一些需要時間戳的場景
+        # self.t = str(int(datetime.datetime.now(datetime.UTC).timestamp()))  # 高版本 python
+        self.t = str(int(datetime.datetime.utcnow().timestamp()))
+        h3 = etree.SubElement(self.root, "H3",
+                              {
+                                  "ADD_DATE": self.t,
+                                  "LAST_MODIFIED": self.t,
+                                  "PERSONAL_TOOLBAR_FOLDER": "true",
+                              })
+        h3.text = "收藏夾欄"
+        # 後續用於存放各文件夾和書籤的元素
+        self.dl = etree.SubElement(self.root, "DL")
+        # 存放各書籤文件夾對應的元素
+        self.folder = {}
+
+    def generate_folder(self, name: str):
+
+        
+"""
+
+
+        創建一個書籤文件夾對應的元素
+
+
+        
+:param
+ name:
+
+
+        
+:return
+:
+
+
+        """
+
+
+        
+dt = etree.SubElement(self.dl, "dt")
+        h3 = etree.SubElement(dt, "H3",
+                              {
+                                  "ADD_DATE": self.t,
+                                  "LAST_MODIFIED": self.t,
+                              })
+        h3.text = name
+        dl = etree.SubElement(dt, "DL")
+        self.folder[name] = dl
+
+    def add_bookmark(self, url: str, add_date: str, title: str, folder: Optional[str] = None):
+
+        
+"""
+
+
+        添加書籤到指定父元素中
+
+
+        
+:param
+ url:
+
+
+        
+:param
+ add_date:
+
+
+        
+:param
+ title:
+
+
+        
+:param
+ folder:
+
+
+        
+:return
+:
+
+
+        """
+
+
+        
+if folder is None:
+            dt = etree.SubElement(self.dl, "dt")
+        else:
+            dt = etree.SubElement(self.folder[folder], "dt")
+        a = etree.SubElement(dt, "A", {
+            "HREF": url,
+            "ADD_DATE": add_date,
+        })
+        a.text = title
+
+    def tostring(self):
+
+        
+"""
+
+
+        將根元素轉化為字符串
+
+
+        
+:return
+:
+
+
+        """
+
+
+        
+return etree.tostring(self.root, encoding="utf-8", pretty_print=True).decode("utf-8")
+
+    def handle_one(self, data: list):
+
+        
+"""
+
+
+        將數據庫中導出的單條書籤數據轉為 html 元素
+
+
+        
+:param
+ data:
+
+
+        
+:return
+:
+
+
+        """
+
+
+        
+# 從原始數據中提取出部分需要的數據
+        url = data[1]
+        title = data[2]
+        add_date = str(timestr_to_timestamp(data[7]))
+        tags = data[17]
+        # 將所有標籤合併為一個整體，添加到書籤名的最後，方便後續在瀏覽器中查找
+        tag = " ".join(tags)
+        if tag != "":
+            tag = "【{}】".format(tag)
+        title += tag
+        # 對於沒有標籤的書籤直接將其置於收藏夾根目錄下
+        if len(tags) == 0:
+            self.add_bookmark(url, add_date, title)
+            return
+        # 根據標籤中帶「@"的標籤名來對書籤進行分類，歸於不同的文件夾中
+        for tag in tags:
+            if "@" in tag and tag[0] == "@":
+                if self.folder.get(tag) is None:
+                    self.generate_folder(tag)
+                self.add_bookmark(url, add_date, title, tag)
+
+    def export_to_edge(self, db: str, path: str):
+
+        
+"""
+
+
+        導出為 Edge 瀏覽器支持的 html 文件
+
+
+        
+:param
+ db:
+
+
+        
+:param
+ path:
+
+
+        
+:return
+:
+
+
+        """
+
+
+        
+with DatabaseManager(db) as d:
+            for data in d:
+                self.handle_one(data)
+        html_template = """&lt;!DOCTYPE NETSCAPE-Bookmark-file-1&gt;
+&lt;!-- This is an automatically generated file.
+     It will be read and overwritten.
+     DO NOT EDIT! --&gt;
+&lt;META HTTP-EQUIV="Content-Type" CONTENT="text/html; charset=UTF-8"&gt;
+&lt;TITLE&gt;Bookmarks&lt;/TITLE&gt;
+&lt;H1&gt;Bookmarks&lt;/H1&gt;
+&lt;DL&gt;{}&lt;/DL&gt;"""
+        with open(path, "w", encoding="utf-8") as f:
+            f.write(html_template.format(self.tostring()))
+
+
+if __name__ == '__main__':
+    h = HtmlGenerator()
+    h.export_to_edge("db.sqlite3", "bookmarks.html")
+
+    
+</code></pre><h3>快照</h3><p>以書籤系統為核心的網絡書籤服務其實有很多，有不少甚至在顏值上吊打 Linkding，但最後還是 Linkding 獲得了我的青睞，很關鍵的一點就是它提供的雙重快照系統。</p><figure class="image ss-img-wrapper"><img src="https://cdnfile.sspai.com/editor/u_/cs3moldb34t98cknnnb0.png?imageView2/2/w/1120/q/90/interlace/1/ignore-error/1" alt="Qtp6b6w54oeTPGxeBX4cUXPOneh" data-original="https://cdnfile.sspai.com/editor/u_/cs3moldb34t98cknnnb0.png" referrerpolicy="no-referrer"></figure><p>上面那個 Internet Archive 是一個在線服務，開啓後服務器會調用該網站的 API 接口將你收藏的網址鏈接提交上去，然後該網站就會抓取該時刻書籤網址上的內容進行保存。Internet Archive 是一個很有名的非營利性數字圖書館，保存着互聯網上不計其數的網頁內容，有興趣的可以去了解捐贈一波。</p><p>當然，這個快照的侷限性非常大，我一般不作為主力使用。首先，想要正常訪問 Internet Archive 的話需要使用一點魔法；其次它的抓取對於一些需要登錄才能訪問相關數據的網站基本沒用，就國內互聯網這個環境，很多抓取都沒有意義。</p><p>下面這個快照則是純正的本地快照，不過該功能只有特定版本的 Docker 鏡像才會開啓，安裝時最好選擇 <a href="https://linkding.link/installation/">latest-plus</a> 版本。該功能開啓後服務器會自動抓取書籤的網頁內容，和 Internet Archive 類似，需要登錄驗證的網頁同樣會抓取失敗。</p><figure class="image ss-img-wrapper"><img src="https://cdnfile.sspai.com/editor/u_/cs3mollb34t98f1iaep0.png?imageView2/2/w/1120/q/90/interlace/1/ignore-error/1" alt="Siypbs27IonROexyokAc9P8Jnae" data-original="https://cdnfile.sspai.com/editor/u_/cs3mollb34t98f1iaep0.png" referrerpolicy="no-referrer"></figure><p>不過這個是有解決辦法的，因為 Linkding 同時提供了手動上傳文件作為快照的備選方案。點開書籤的詳情頁，會有一個「Upload file」的按鈕，點擊即可上傳本地文件。這裏對於文件的格式沒有任何要求，但還是推薦上傳可以用瀏覽器直接打開的 pdf、txt、html 等格式，不然點擊瀏覽按鈕後會直接對該文件進行下載。對於文章類的網頁推薦直接 Ctrl+P 打印為 pdf 上傳，其他網頁則推薦使用瀏覽器插件打包為單個 html 文件後上傳。</p><figure class="image ss-img-wrapper"><img src="https://cdnfile.sspai.com/editor/u_/cs3mollb34t98erkk5g0.png?imageView2/2/w/1120/q/90/interlace/1/ignore-error/1" alt="EXBTb1EyEoQDC3xAohRce1cingd" data-original="https://cdnfile.sspai.com/editor/u_/cs3mollb34t98erkk5g0.png" referrerpolicy="no-referrer"></figure><p>對於一些比較重要的文章其實我個人會更加傾向於直接全文收藏到 Trilium 筆記中，算是對網頁快照的一個補強，具體內容會在 Trilium 章節中詳細介紹。</p><h3>其他</h3><p>Linkding 設置裏面還有兩個可能會用到的功能，這裏給大家介紹一下。首先是 Auto Tagging，顧名思義，就是可以根據你預設的規則在收藏書籤時自動為其加上某些標籤，這裏以嗶哩嗶哩的專欄為例。</p><figure class="image ss-img-wrapper"><img src="https://cdnfile.sspai.com/editor/u_/cs3moltb34t98erkk5gg.png?imageView2/2/w/1120/q/90/interlace/1/ignore-error/1" alt="FapXbcY7LoA5sgxlAqFcZrs3n8c" data-original="https://cdnfile.sspai.com/editor/u_/cs3moltb34t98erkk5gg.png" referrerpolicy="no-referrer"></figure><figure class="image ss-img-wrapper"><img src="https://cdnfile.sspai.com/editor/u_/cs3mom5b34t98f1iaepg.png?imageView2/2/w/1120/q/90/interlace/1/ignore-error/1" alt="AYGkbPWeooCwarxtwpPcPCtjnof" data-original="https://cdnfile.sspai.com/editor/u_/cs3mom5b34t98f1iaepg.png" referrerpolicy="no-referrer"></figure><p>另一個是 Custom CSS，自定義頁面的 CSS，也就是可以更改頁面佈局。這個需要一點專業知識才能玩轉，普通用戶可以試着改改字體大小顏色等，比如説把書籤顏色改成猛男粉。</p><figure class="image ss-img-wrapper"><img src="https://cdnfile.sspai.com/editor/u_/cs3momdb34t98erkk5h0.png?imageView2/2/w/1120/q/90/interlace/1/ignore-error/1" alt="LbyWb8dxIo3CzyxIdjmciP9yn9e" data-original="https://cdnfile.sspai.com/editor/u_/cs3momdb34t98erkk5h0.png" referrerpolicy="no-referrer"></figure><figure class="image ss-img-wrapper"><img src="https://cdnfile.sspai.com/editor/u_/cs3momdb34t98f1iaeq0.png?imageView2/2/w/1120/q/90/interlace/1/ignore-error/1" alt="O6PvbpVquosffzxyoVIcOMKqnlh" data-original="https://cdnfile.sspai.com/editor/u_/cs3momdb34t98f1iaeq0.png" referrerpolicy="no-referrer"></figure><p>最後提一下手機端如何收藏書籤的問題，無論是安卓還是 iOS 都有類似 PC 端瀏覽器插件的實現方式，具體參考<a href="https://linkding.link/how-to/">官方指南</a>。</p><h2>個人筆記服務：Trilium</h2><p><a href="https://github.com/baddate/trilium/wiki">Trilium</a> 是一個可以多端同步的筆記軟件。市面上開源的筆記軟件其實很多，Trilium 應該算是比較小眾的，主要是功能太多，沒有耐心很難體會到它的妙處。我其實只能算是它的初級用戶，只會一些比較簡單的操作，許多高級特性都沒有嘗試過。Trilium 的功能完全可以單獨勝任個人數據庫構建的重任，但下文中我只會簡單介紹一個與書籤相關的特性。</p><p>之前介紹過 Linkding 的快照功能，裏面説了一些特殊情況下的網頁備份方法，但對於圖文類的文章我其實很少使用其手動上傳功能。主要原因是我個人更加喜歡用 Markdown 的格式來記錄圖文數據，於知識記錄而言，pdf 和 html 終究是不夠純粹和方便。</p><p>將網頁轉化為純粹的圖文數據這一需求曾經困擾過我很久，我嘗試過很多不同的開源項目或瀏覽器插件，結果都不盡如人意，總是會存在一些小問題，直到偶然嘗試了一下 Trilium 的瀏覽器插件這一問題才算是落下帷幕。</p><figure class="image ss-img-wrapper"><img src="https://cdnfile.sspai.com/editor/u_/cs3momlb34t98idth78g.png?imageView2/2/w/1120/q/90/interlace/1/ignore-error/1" alt="HbaobDc5LosCkjxO7sbcSYXWnSe" data-original="https://cdnfile.sspai.com/editor/u_/cs3momlb34t98idth78g.png" referrerpolicy="no-referrer"></figure><p>插件上有一個選項是「Save whole page」，可以直接把當前網頁上的圖文保存為一篇本地筆記，識別率相當高，基本不需要修改就可以得到一篇排版正確的筆記，不過它只會保存文章的主體或是帖子的主樓，也就是説評論和跟帖並不會被保存下來。絕大部分博客類的網站都能完美適配，部分站點可能會存在圖片無法顯示的問題，不想一張張圖片手動複製粘貼的話可以參照 Linkding 快照部分講解的方法。</p><p>這項功能完美補全了 Linkding 在待閲讀方面的短板。我目前對於一篇有價值的網頁文章的基本操作流程就是先用 Linkding 的瀏覽器插件保存書籤，然後使用 Trilium 的瀏覽器插件保存圖文到筆記系統。保存書籤是為了方便後續深入閲讀時可以隨時查看有價值的評論或跟帖，保存圖文則是將其作為待閲讀的素材，後續閲讀時可以很方便的刪改整理為自己的筆記。</p><p>插件上另一個常用的選項是「Save windows' tabs as a list」，可以將當前瀏覽器窗口中所有 Tab 頁的網頁鏈接以列表的形式保存到筆記中，設計這個功能的人絕對是懂工作的，後續想要回到同樣的工作場景只需要打開對應筆記點擊列表中的鏈接就能完美復原瀏覽器狀態。</p><figure class="image ss-img-wrapper"><img src="https://cdnfile.sspai.com/editor/u_/cs3momtb34t98cknnnbg.png?imageView2/2/w/1120/q/90/interlace/1/ignore-error/1" alt="B3vhb2yzso3aQOxEG2dcQA9Nncb" data-original="https://cdnfile.sspai.com/editor/u_/cs3momtb34t98cknnnbg.png" referrerpolicy="no-referrer"></figure><p>這可以算是一個額外的專項任務收藏夾，可以將一些日常工作場景下會打開的鏈接提前收藏好，需要用到時就能快速開始該場景下的工作，結合上文中我提到過的使用 Linkding 的 unread 列表來作為近期任務工作區，可以極大的提高工作效率。</p><h2>後記</h2><p>Linkding 和 Trilium 這種本地服務最重要的就是保證數據安全，如果想要使用我的這套方案請務必設置好服務器數據的<strong>定期備份</strong>，數據一旦丟失，想要再次補全的代價實在過於高昂，請務必慎重。</p>]]>
+            </description>
+            <pubDate>Fri, 11 Oct 2024 03:32:58 GMT</pubDate>
+            <guid isPermaLink="false">https://sspai.com/post/92796</guid>
+            <link>https://sspai.com/post/92796</link>
+            <author>
+                <![CDATA[煒智能]]>
+            </author>
+        </item>
+        <item>
+            <title>
+                <![CDATA[派早報：vivo 開發者大會開幕、Intel 發佈新款桌面級 Core Ultra 200S 系列處理器等]]>
+            </title>
+            <description>
+                <![CDATA[<h2>你可能錯過的新鮮事</h2><h3>vivo 開發者大會開幕</h3><figure class="image ss-img-wrapper"><img src="https://cdnfile.sspai.com/editor/u_/cs47095b34t98cknnoig.jpeg?imageView2/2/w/1120/q/90/interlace/1/ignore-error/1" alt="U3cnblyM2odPYTxajGac8jcMnNh" data-original="https://cdnfile.sspai.com/editor/u_/cs47095b34t98cknnoig.jpeg" referrerpolicy="no-referrer"></figure><p>10 月 10 日，vivo 2024 開發者大會開幕，並在上午的開幕演講中重點介紹了藍心智能 AI 戰略及多項新技術。</p><figure class="image ss-img-wrapper"><img src="https://cdnfile.sspai.com/editor/u_/cs4709db34t98erkk700.jpeg?imageView2/2/w/1120/q/90/interlace/1/ignore-error/1" alt="ZC0qbWpN3obL8oxRhSucTrnAnbc" data-original="https://cdnfile.sspai.com/editor/u_/cs4709db34t98erkk700.jpeg" referrerpolicy="no-referrer"></figure><p>vivo 公佈藍心智能 AI 戰略，展示了包括藍心語音大模型、藍河操作系統 2、智能車載及公里級無網通信技術等一系列技術突破。藍心語音大模型支持自然對話、同聲傳譯、情緒理解和人聲模擬等功能；藍河操作系統 2 以 Rust 語言為基礎，vivo 表示該系統全棧自研專為 AI 應用打造。vivo 還發布了公里級無網通信技術，可在無網環境下實現超過 1.5 公里的點對點語音和文字傳輸。vivo 智能車載覆蓋超 8500 款車型，並支持多種數字車鑰匙及 AI 控制功能。</p><p>在開幕式上，vivo 還展示了其藍心大模型矩陣，並表示他們在 PhoneGPT、無障礙產品、隱私保護、家庭智能等多個領域取得了新進展。vivo 宣佈將藍心智能全面向行業開放，併發布了對應的意圖框架白皮書，為服務接入、流轉和分發提供全流程解決方案。在無障礙領域，vivo 也推出了「vivo 看見 - 藍心升級版」和手語翻譯官，幫助殘障用戶更好地融入數字世界。<a href="https://dev.vivo.com.cn/vdc/2024/index.html?channel=gw#/">來源</a></p><h3>Intel 發佈新款桌面級 Core Ultra 200S 系列處理器</h3><p>10 月 10 日，Intel 發佈新一代 Core Ultra 200S 系列處理器，優化能效的同時集成了 AI 加速單元，該系列處理器將於 10 月 24 日正式推出。</p><figure class="image ss-img-wrapper"><img src="https://cdnfile.sspai.com/editor/u_/cs470bdb34t98cknnojg.png?imageView2/2/w/1120/q/90/interlace/1/ignore-error/1" alt="ZLaPb89DGofWaNxh0xbc9BAQnMd" data-original="https://cdnfile.sspai.com/editor/u_/cs470bdb34t98cknnojg.png" referrerpolicy="no-referrer"></figure><p>Intel 表示 Core Ultra 200S 系列台式處理器（代號為 Arrow Lake S），專注於提升每瓦性能，以降低發熱和功耗，並首次在桌面端處理器中集成 NPU。此次發佈的旗艦處理器 Core Ultra 9 285K 擁有 24 核心（8 個 P 核 + 16 個 E 核），取消超線程功能，以實現更高的能效。據悉，新款處理器在單核任務時的功耗減半，在遊戲中功耗最多可減少 165 瓦，並在多項 AI 任務上具備加速能力。同時，Intel 推出新的 LGA-1851 插槽和 Z890 主板，支持最高 24 條 PCIe 4.0 通道、DDR5-6400 內存和 Thunderbolt 4 等功能。</p><p>Intel 表示，雖然新款 Core Ultra 9 285K 的遊戲性能略遜於 AMD 的 Ryzen 7 7800X3D，但在內容創作和 AI 加速方面依然保持領先。此外，Intel 通過降低電壓解決了此前 Raptor Lake 系列的不穩定性問題，新款處理器不會受此影響。Core Ultra 200S 系列還包括 Core Ultra 7 265K 和 Core Ultra 5 245K，以及不帶 GPU 的 KF 版本。<a href="https://www.theverge.com/2024/10/10/24265928/intel-core-ultra-200s-series-specs-release-date-pricing">來源</a></p><h3>任天堂推出 Alarmo 交互式鬧鐘</h3><figure class="image ss-img-wrapper"><img src="https://cdnfile.sspai.com/editor/u_/cs470c5b34t98erkk70g.png?imageView2/2/w/1120/q/90/interlace/1/ignore-error/1" alt="UOgGbSTbdoVc8hxe4sXc0h5pnbb" data-original="https://cdnfile.sspai.com/editor/u_/cs470c5b34t98erkk70g.png" referrerpolicy="no-referrer"></figure><p>任天堂於 10 月 9 日晚正式推出一款交互式鬧鐘 Alarmo。該鬧鐘會通過運動傳感器檢測用戶在牀上的身體活動，並根據動作調整鬧鐘聲音。該鬧鐘還支持將遊戲音效用作鬧鈴聲，內置《塞爾達傳説：荒野之息》《皮克敏 4》《斯普拉遁 3》《超級馬力歐奧德賽》和《健身環大冒險》等 35 個音頻「場景」。用戶也可以將鬧鐘連接到任天堂賬戶，以獲取《集合啦！動物森友會》和《馬裏奧賽車 8》等遊戲中的更多音樂，並在鬧鈴時於鬧鐘屏幕上看到相應的遊戲角色畫面。此外，鬧鐘可在入睡前播放助眠聲音，並在屏幕上顯示睡眠記錄。</p><p>目前，該硬件已開售，售價為 99.99 美元，或 12980 日元。Nintendo Switch Online 會員可在 My Nintendo Store 訂購，也可前往 Nintendo TOKYO/OSAKA/KYOTO 線下門店購買。<a href="https://www.gcores.com/articles/189290">來源</a></p><h3>卡西歐推出 A158W 數字手錶為設計靈感的桌面時鐘</h3><figure class="image ss-img-wrapper"><img src="https://cdnfile.sspai.com/editor/u_/cs470cdb34t98idth8kg.png?imageView2/2/w/1120/q/90/interlace/1/ignore-error/1" alt="M84MbgFJlozFaLxl3PvcRJoSnWe" data-original="https://cdnfile.sspai.com/editor/u_/cs470cdb34t98idth8kg.png" referrerpolicy="no-referrer"></figure><p>卡西歐於 10 月 9 日推出了型號為 DQD-851J-8JF 的桌面時鐘，設計靈感源自經典 A158W 數字手錶。整體採用塑料材質，雖然不支持計時器和整點報時功能，但具備貪睡功能和五檔音量調節的鬧鐘，可用作牀頭鬧鐘。此外，還配備可顯示日期和月份的全自動日曆和溫濕度傳感器。</p><p>在日本使用時，該時鐘會自動通過當地無線電廣播校準時間。如果在日本以外地區使用，則需要手動設置並定期調整時間。時鐘使用兩節 5 號電池供電，售價為 4378 日元。<a href="https://www.theverge.com/2024/10/9/24265964/casio-digital-watch-desk-a158w-clock-japan-retro-vintage">來源</a></p><h3>微軟宣佈新 API 方便第三方公司在 Windows 11 添加通行密鑰</h3><figure class="image ss-img-wrapper"><img src="https://cdnfile.sspai.com/editor/u_/cs470clb34t98erkk710.png?imageView2/2/w/1120/q/90/interlace/1/ignore-error/1" alt="XJm1bv6HvoS4AqxmPzHcBNwrnSm" data-original="https://cdnfile.sspai.com/editor/u_/cs470clb34t98erkk710.png" referrerpolicy="no-referrer"></figure><p>微軟於 10 月 9 日發佈博文，宣佈將與 1Password、Bitwarden 等密碼管理服務公司合作，在 Windows 11 系統中整合通行密鑰服務，讓用戶能跨平台使用 Passkey，以提高密碼安全性。微軟表示，已重新設計 Windows Hello 用戶界面，方便用戶創建和使用 Passkey。在訪問支持通行密鑰的網站時，用戶可以選擇將通行密鑰保存到微軟賬戶，解鎖方式包括面部識別、指紋或 PIN。此外，微軟還在研發 Windows 11 通行密鑰的多設備同步功能，以簡化用戶體驗。<a href="https://blogs.windows.com/windowsdeveloper/2024/10/08/passkeys-on-windows-authenticate-seamlessly-with-passkey-providers/">來源</a></p><h3>字節跳動豆包發佈 AI 智能耳機 Ola Friend</h3><figure class="image ss-img-wrapper"><img src="https://cdnfile.sspai.com/editor/u_/cs470d5b34t98f1iagc0.png?imageView2/2/w/1120/q/90/interlace/1/ignore-error/1" alt="D9Twbi6yfoiYX6x4uHBczb7lnyf" data-original="https://cdnfile.sspai.com/editor/u_/cs470d5b34t98f1iagc0.png" referrerpolicy="no-referrer"></figure><p>字節跳動豆包於 10 月 10 日發佈了首款 AI 智能體耳機 Ola Friend。該耳機採用開放式設計，單耳重量為 6.6 克，搭載豆包大模型，並與豆包 App 深度結合。戴上耳機後，用戶需觸摸耳機或説出喚醒詞，無需打開手機即可通過語音與豆包 App 互動。耳機能以多種情緒語調錶現，如高興、驚訝等，支持「邊聽邊説、隨時打斷」，並能靈活切換話題。</p><p>字節跳動表示耳機接入了字節豆包大模型的 Seed-ASR 語音識別技術，可高精度識別中英文及口音，甚至能通過上下文理解各類信息。硬件方面，該耳機配備 10mm 動圈發聲單元、動態 EQ 1.0、動態低音補償和定向防漏音設計。目前提供白、黑、紫、銀四款配色，配備兩種不同造型的充電倉。該耳機已在電商平台開啓預售，將於 10 月 17 日正式發貨，售價為 1199 元。<a href="https://www.olafriend.cn/product">來源</a></p><h3>亞馬遜宣佈 Apple TV+ 將加入美國區 Prime Video</h3><p>亞馬遜於 10 月 10 日宣佈，美國用戶可從今年 10 月下旬起，通過 Prime Video 訂閲 Apple TV+ 服務，無需單獨下載 Apple TV 應用，每月收費 9.99 美元。</p><p>屆時，用戶可直接通過 Prime Video 觀看 Apple TV+ 的原創節目，例如《晨間直播秀》《流人（Slow Horses）》《無罪的罪人（Presumed Innocent）》《人生切割術（Severance）》《末日地堡（Silo）》《劫機七小時（Hijack）》《診療中（Shrinking）》《戰利品（Loot）》《皇家棕櫚（Palm Royale）》《雙狼（Wolfs）》《鬧事之徒（The Instigators）》等，還包括美職聯和美職棒等體育賽事。</p><p>目前尚不清楚亞馬遜是否允許現有的 Apple TV+ 會員直接通過其賬號在 Prime Video 中登錄。<a href="https://www.aboutamazon.com/news/entertainment/apple-tv-shows-amazon-prime-video-subscription">來源</a></p><h2>看看就行的小道消息</h2><ul><li>科技媒體 Android Authority 在挖掘 Android 15 最新 QPR 更新測試版時發現，Android 11 中首次引入的 Bubbles API 在新系統中以「bubble anything」的形式出現。啓用該功能後，用戶在 Pixel Launcher 中長按任意應用圖標時，會在菜單中看到新的氣泡按鈕，點擊後即會跳出浮動氣泡窗口。此功能與氣泡條結合後，可帶來更優的多任務體驗。不過，目前該功能的具體上線時間尚不明確，鑑於其對多任務處理的重大改進，該功能可能會被保留到 Android 16 中。<a href="https://www.androidauthority.com/android-16-bubble-anything-3489112/">來源</a></li><li>10 月 10 日消息，根據彭博社記者 Jason Schreier 在新書《Play Nice: The Rise, Fall and Future of Blizzard Entertainment》中的披露，《守望先鋒》移動版正在開發中。該書基於 300 多次對現任和前任暴雪員工的採訪，揭示了多個未完成的《守望先鋒》計劃，其中包括被取消的 Netflix 系列劇。儘管發佈日期和開發進展尚未公佈，但 Schreier 表示該項目確實正在推進，顯示出暴雪對移動遊戲市場的重視。<a href="https://esports.gg/news/mobile/overwatch-mobile-confirmed-details-and-more/">來源</a></li></ul><h2>少數派的近期動態</h2><ul><li>少數派 PiPods 真無線耳機清倉特賣只需 199：音質出色、功能全面的無線耳機，105db 高靈敏度，PET + 碳金複合材料振膜，音樂/遊戲雙模式，半入耳式設計，舒適貼耳。<a href="https://sspai.com/page/pipods"><strong>進一步瞭解</strong></a></li><li>雙十一臨近，我們為你帶來了「滿血版」的 K3：少數派定製版 Keychron K3 Max，Max 版本在保留了 K3 系列基本賣點的前提下，最大的改進就是新增了 2.4G 的連接方式，使之成為一款有線 / 藍牙 / 2.4G 的三模鍵盤。<a href="https://sspai.com/post/92779"><strong>進一步瞭解</strong></a></li></ul><h2>你可能錯過的好文章</h2><ul><li>👃 <a href="https://sspai.com/post/92653">已經能測夜間體徵的 Apple Watch，為什麼要再做一個睡眠呼吸暫停提醒</a></li><li>⛰️ <a href="https://sspai.com/post/92519">日本浮生錄 06：漫步古街、高山徒步，在金澤富山暢享夏日</a></li><li>⌨️ <a href="https://sspai.com/post/92779">不變的顏值，更強的連接，少數派定製 Keychron K3 Max</a></li><li>🎬 <a href="https://sspai.com/post/92507">看什麼 Café | 日劇觀看指南：編劇篇</a></li></ul><p>&gt; 下載 <a href="https://sspai.com/page/client">少數派 2.0 客戶端</a>、關注 <a href="https://sspai.com/s/J71e">少數派公眾號</a>，解鎖全新閲讀體驗 📰</p><p>&gt; 實用、好用的 <a href="https://sspai.com/mall">正版軟件</a>，少數派為你呈現 🚀</p>]]>
+            </description>
+            <pubDate>Fri, 11 Oct 2024 00:29:18 GMT</pubDate>
+            <guid isPermaLink="false">https://sspai.com/post/92817</guid>
+            <link>https://sspai.com/post/92817</link>
+            <author>
+                <![CDATA[少數派編輯部]]>
+            </author>
+        </item>
         <item>
             <title>
                 <![CDATA[看什麼 Café | 日劇觀看指南：編劇篇]]>
             </title>
             <description>
-                <![CDATA[<p style="margin-left:0px;">編者按：1895 年在巴黎卡普辛路 14 號的大咖啡館，盧米埃爾兄弟的短片成了咖啡館的助興節目，而咖啡館也正是那時人們談論電影和藝術的重要場所。「看什麼 Café」作為「<a href="https://sspai.com/tag/%E6%9C%AC%E5%91%A8%E7%9C%8B%E4%BB%80%E4%B9%88" target="_blank">本週看什麼</a>」欄目的衍生，旨在為熱愛影視藝術的少數派們創造一個這樣的氛圍：雖然我們無法回到電影誕生的那個年代，但我們依舊可以喝着咖啡，深入探討有關影視藝術的一切。</p><p style="margin-left:0px;">本期「<a href="https://sspai.com/topic/416" target="_blank">看什麼 Café</a>」要討論的主題是「日劇編劇」，我們邀請了日劇迷 <a class="ss-atUser" data-mention="@知道分子吳先先" user-id="c5g363db34teh0gc1tig" href="https://sspai.com/u/hahad">@知道分子吳先先</a>，和大家聊聊那些知名編劇與他們的劇作風格。🙋 歡迎在評論區分享你喜愛的日劇編劇，留下你對日劇的看法。</p><hr><blockquote><p style="margin-left:0;">比起多數派，我更想為少數派書寫。——坂元裕二</p></blockquote><p style="margin-left:0;">一談到日劇，就不會錯過坂元裕二、宮藤官九郎這些名編劇。日本電視劇產業中，編劇的名字往往比導演、演員更響亮，也能讓觀眾更快鎖定作品的風格氣質。比起<a href="https://sspai.com/post/90534">上期談到的電視台欄目</a>，相信更多人是因為青睞某位編劇的作品，持續追 ta 的作品而入坑。</p><p style="margin-left:0;">這篇文章我們就聊一聊幾位知名度高、當下仍在活躍的日劇編劇，介紹他們的代表作與風格，方便追日劇的朋友更好地找出「夢中情作」。</p><h2 style="margin-left:0;">繞不過去的大前輩</h2><p style="margin-left:0;">切入正題之前，先介紹兩位日劇歷史上繞不過去的編劇大前輩。</p><h3 style="margin-left:0;">向田邦子</h3><p style="margin-left:0;">被譽為<strong>「日劇女王」</strong>的向田邦子生於 1929 年，寫過大量家庭題材的廣播劇本和電視劇腳本，和日本電視台的騰飛和發展同處一個時期。</p><p style="margin-left:0;">向田邦子最知名的作品有《寺內貫太郎一家》（1974），講一家東京石材老鋪三代同堂的家長裏短，劇中 31 歲的樹木希林反串年邁的母親，留下了不少珍貴影像。還有《宛如阿修羅》（1979）講一家四姐妹各懷祕密的故事，因為人物刻畫得好，時常被影視和舞台劇翻拍。據説最新版由 Netflix 投資、是枝裕和導演，宮澤理惠、尾野真千子、蒼井優、廣瀨鈴分別主演四姐妹，預計 25 年初上映，想想都令人期待。</p><figure class="image ss-img-wrapper image_resized" style="width:664px;"><img src="https://cdnfile.sspai.com/2024/09/26/f520772114ee028f1f78e0c22050da17.png?imageView2/2/w/1120/q/90/interlace/1/ignore-error/1" data-original="https://cdnfile.sspai.com/2024/09/26/f520772114ee028f1f78e0c22050da17.png" referrerpolicy="no-referrer"><figcaption>向田邦子（左圖）和她的代表作。《宛如阿修羅》多次翻拍，網羅了各個年代的實力女星。</figcaption></figure><p style="margin-left:0;">或許是天妒英才，向田邦子在 51 歲那年在台灣遭遇空難去世，為了紀念她，日劇界以她的名字命名了表彰編劇的獎項<strong>「向田邦子賞」</strong>，每年只頒給一位編劇的一部新作。像木皿泉的《西瓜》、遊川和彥的《女王的教室》、金子茂樹的《我的事説來話長》、三谷幸喜的大河劇《鎌倉殿的 13 人》都是知名的獲獎作品。下面提到的幾位名編劇，也都曾獲過向田邦子獎。</p><h3 style="margin-left:0;">倉本聰</h3><p style="margin-left:0;">倉本聰生於 1935 年，東大出身，從年輕時期就做起了自由編劇。</p><p style="margin-left:0;">倉本聰的作品是清一色的豆瓣高分，最知名的作品是在他中年移住北海道富良野後，和富士電視台合作的《北國之戀》系列（1981-2002），由同一批演員團隊拍了整整 21 年。倉本聰的題材也多為家庭劇，不過和擅長講人心複雜的向田邦子不同，《北國之戀》的世界裏更多是自然與溫情，相當治癒。這個系列的缺點是年代較久，畫質比較差。感興趣的朋友可以看看他後來的幾部作品，同在富良野取景的《溫柔時光》（2005）和以東京為舞台的《敬啓，父親大人》（2007），兩部作品都由二宮和也主演。</p><figure class="image ss-img-wrapper image_resized" style="width:601px;"><img src="https://cdnfile.sspai.com/2024/09/26/fc996401fdd14fc50843c22441f39b4a.png?imageView2/2/w/1120/q/90/interlace/1/ignore-error/1" data-original="https://cdnfile.sspai.com/2024/09/26/fc996401fdd14fc50843c22441f39b4a.png" referrerpolicy="no-referrer"><figcaption>倉本聰（左下）的《安寧之鄉》（右圖）邀請了多位現已不為人知的老昭和電視明星參演。</figcaption></figure><p style="margin-left:0;">2017 年，82 多歲高齡的倉本聰專為一羣無戲可拍的老藝人創作了一部午間劇《安寧之鄉》，每集 15 分鐘，共 100 多集，2019 年還拍了續集《安寧之刻～道》。劇中，倉本聰為這些退休的電視業同行搭建了一個棲身的烏託邦，讓他們在一個僻靜的海邊養老院安度晚年。這部劇也一度治癒了我，讓我覺得老年是一個應該好好準備、好好面對的人生階段，應該被每個人鄭重對待。</p><p style="margin-left:0;">倉本聰、向田邦子，還有另一位編劇山田太一併稱為上世紀的<strong>「三大劇本作家」（シナリオライター御三家）</strong>。國內也翻譯出版過不少向田邦子和倉本聰的劇本和訪談，可以搜來看看。</p><h2 style="margin-left:0;">當今活躍的名編劇</h2><h3 style="margin-left:0;">坂元裕二</h3><p style="margin-left:0;">講到當下最知名的日劇編劇，很多觀眾最先想到的一定是坂元裕二。</p><p style="margin-left:0;">坂元裕二可謂年少成名，19 歲那年獲得了第一屆富士電視台青年劇本大獎，高中畢業直接出道。24 歲那年，從漫畫改編的《東京愛情故事》（1991）讓編劇坂元躋身為名編劇之列。不過在此之後，坂元的事業起起伏伏。尤其是三十多歲到四十歲出頭，他一直未能再寫出令自己滿意的作品，乾脆潛心帶娃做飯，安心讓媳婦森口瑤子外出拍戲。這個過程中，坂元親身以「家庭婦男」的視角，體會到了普通女性在家庭職責和社會身份夾縫中的艱難處境，這也是他後來創作出那麼多真實可信「大女主」角色的基礎。</p><figure class="image ss-img-wrapper image_resized" style="width:303px;"><img src="https://cdnfile.sspai.com/2024/09/26/0c7a6eda855815c9fc3a755ca916f1a4.png?imageView2/2/w/1120/q/90/interlace/1/ignore-error/1" data-original="https://cdnfile.sspai.com/2024/09/26/0c7a6eda855815c9fc3a755ca916f1a4.png" referrerpolicy="no-referrer"><figcaption>坂元裕二（左）和東愛女主鈴木保奈美（右）</figcaption></figure><p style="margin-left:0;">2010 年代起，年過四十的坂元再度進入創作爆發期，原創了大量的經典劇作。電視劇有《Mother》（2010）、《儘管如此也要活下去》（2011）、《最完美的離婚》（2013）、《四重奏》（2017）、《大豆田永久子與三位前夫》（2021）等。這兩年大熱的電影《花束般的戀愛》（2021）、《怪物》（2023）劇本也是坂元原創，《怪物》還為他摘得了戛納電影節的最佳編劇獎，在追捧戛納的日本影視界，此獎可謂至高榮譽。<sup class="ss-footnote" href="" title="本文的主題雖然是電視劇編劇，但這些名編劇也經常受邀為電影創作劇本，而且電視劇和電影劇本數量上基本持平。在此不做過多區分。" footnote-id="1">1</sup></p><p style="margin-left:0;">坂元的不少名作都是<strong>婚戀題材</strong>，加上他<strong>對人物情感的精準刻畫</strong>，誕生了很多經典的熒幕角色。</p><p style="margin-left:0;">我問過很多資深坂元迷，許多人最喜歡的一部劇都是《最完美的離婚》。瑛太和尾野真千子扮演了一對吵吵鬧鬧的「歡喜冤家」。丈夫光生龜毛事多，媳婦結夏粗枝大葉，怎麼看都不搭的兩人第一集就離了婚。雖説兩人分分合合，但到劇終也沒分開，看似鬥嘴不斷，卻時常讓人感動到淚目。整部劇沒什麼大事件，兩對夫妻的日常小事（另一對是綾野剛和真木陽子飾演），螺螄殼裏做道場，讓人看得津津有味，這是坂元的特長。坂元擅長寫信的本事在這部劇裏也爐火純青，正片和特別篇中，光生和結夏寫給彼此的信，被不少營銷號譽為「最美情書」。最美不敢説，但確實溫馨感人，值得一讀。</p><figure class="image ss-img-wrapper image_resized" style="width:664px;"><img src="https://cdnfile.sspai.com/2024/09/26/fac5f11809fa872c80cc6883e1a96b79.png?imageView2/2/w/1120/q/90/interlace/1/ignore-error/1" data-original="https://cdnfile.sspai.com/2024/09/26/fac5f11809fa872c80cc6883e1a96b79.png" referrerpolicy="no-referrer"><figcaption>《最完美的離婚》劇照。四位主角排列組合，每兩個人之間都有交集。</figcaption></figure><p style="margin-left:0;">相比《最完美的離婚》，坂元的另一部劇《四重奏》似乎更加出圈。《四重奏》裏，主角團關於吃炸雞要不要擠檸檬汁的那段對話，已經成為許多人日常吃炸雞時的標配話題。在人物關係設置上，這部劇也不落俗套，從頭到尾，四位主角一直保持全員單戀，從頭到尾無人脫單。直到幾年後，劇中扮演卷真紀的松隆子和扮演別府司的松田龍平再度在《大豆田永久子與三名前夫》裏飾演了一對離婚的夫婦。劇中專門放了一段兩人的相互表白，暢想假如沒有離婚、一直恩愛生活的想象片段。彈幕裏不少人感慨：「坂元終於圓了這對 CP 粉的夢」。</p><figure class="image ss-img-wrapper image_resized" style="width:664px;"><img src="https://cdnfile.sspai.com/2024/09/26/4b950d27a2063e8b65e75ee0e9839b92.png?imageView2/2/w/1120/q/90/interlace/1/ignore-error/1" data-original="https://cdnfile.sspai.com/2024/09/26/4b950d27a2063e8b65e75ee0e9839b92.png" referrerpolicy="no-referrer"><figcaption>《四重奏》（上圖）和《大豆田永久子與三名前夫》（下圖）劇照。</figcaption></figure><p style="margin-left:0;">單單因為坂元擅長描寫男女情愛，擅長寫金句，就把他歸入愛情編劇，似乎有點小看了他。事實上，坂元之所以收穫那麼多的讚譽，絕不只是因為他擅長寫情感戲，更是因為他<strong>對社會有細緻的觀察和關切。</strong></p><p style="margin-left:0;">豆瓣評分 9.4 的催淚神劇《Mother》裏就沒什麼愛情戲份。它以一個誘拐的犯罪故事，講了「母親」這個身份意味着什麼。這個劇裏，你會發現坂元設計了各種各樣的母親：普通的生母、善良的養母、虐待孩子的生母（尾野真千子，飾）、遺棄孩子的生母（田中裕子，飾）、為了保護孩子不惜犯罪的養母（主角，松雪泰子，飾）。雖説錯綜複雜的設計略顯刻意，但每個角色都被賦予了充分的行為動機——連那個讓人恨得牙癢癢，和男友把女兒丟在垃圾袋裏，扔到冰天雪地的「惡母」形象，坂元都給她設計了小傳，讓人看到一個普通女性是如何慢慢支撐不住育兒重任，逐步黑化的。</p><p style="margin-left:0;">這是坂元的有意設計，據説是他在劇作上映後，看到觀眾猛噴惡母，專程加上了這一段，希望讓觀眾看到事情全貌，理解母職艱辛，不是以偏概全，隨便給一個女性扣上「好媽媽」或「壞媽媽」的帽子。在女性議題的處理上，坂元的處理絕對可以打高分。</p><p style="margin-left:0;">瑛太和滿島光主演的苦情劇《儘管如此也要活下去》，愛情也不是核心主題。坂元把重心放在了罪案發生後，犯罪者和被害者家庭裏的每個當事者如何自我救贖、走出陰霾、面對彼此、接納彼此。為了講清楚這個嚴肅的社會議題，他精心設計了每個家庭成員的人物特徵，很禁得起推敲。日本有很多類似「後犯罪」題材的影視劇，我看過不少，《儘管如此也要活下去》絕對算是優秀的一部。</p><figure class="image ss-img-wrapper image_resized" style="width:664px;"><img src="https://cdnfile.sspai.com/2024/09/26/e2834f6e9f8f1565e7c09fc3de085421.png?imageView2/2/w/1120/q/90/interlace/1/ignore-error/1" data-original="https://cdnfile.sspai.com/2024/09/26/e2834f6e9f8f1565e7c09fc3de085421.png" referrerpolicy="no-referrer"><figcaption>《Mother》和《儘管如此還要活下去》海報。</figcaption></figure><p style="margin-left:0;">關於坂元裕二的網絡文章有很多，不少都會給他扣上一個<strong>「金句大師」</strong>的標籤。每逢他的新作上映，都會有營銷號立刻推出名為「跟坂元學寫金句」之類的文章。寫金句確實是坂元的特色，不過，相比把它標籤化，我更喜歡把它理解為坂元對生活有真切的感知，不滿足於寫直白乏味的台詞，而是想在具體場景中把這些細膩的感受用不經意的語言、動作傳遞出來。</p><p style="margin-left:0;">坂元在 NHK 紀錄片《仕事の流儀》裏對自己的這種創作方式也做過解讀：</p><iframe class="ss-videoIframe" src="https://player.bilibili.com/player.html?bvid=BV15t41127eY&amp;autoplay=false" sandbox="allow-scripts allow-same-origin allow-popups" referrerpolicy="no-referrer"> </iframe><blockquote><p style="margin-left:0;">在紙上寫下「喜歡」，是沒法傳達出「喜歡的」。相反，用漫不經心的對話、瑣碎的行為，把周圍逐漸填充完整，這就是寫劇本的過程。坐在巴士上，有一搭沒一搭地聊着天，回到家，想一個人看看電視卻又關了電視，隨手摺起紙，這時突然意識到：「啊，我可能喜歡那個人」。故事就藏在日常的瑣碎中。</p></blockquote><blockquote><p style="margin-left:0;">如果用多數派少數派的説法，我想給少數派、少數人羣寫故事。讓活力值有 10 的人變成 100，鼓舞他們的作品有很多。而我想讓那些是負值的人至少先達到零點，讓 -5 的人先到 -3，這是我的目標。</p></blockquote><p style="margin-left:0;">滿島光在《四重奏》的訪談花絮裏講，她在讀劇本時，覺得每個人説的話都很隨意，單拎出來顯得莫名其妙，但真到大家一起演出來，又恰到好處，這也是我看坂元作品的真切感受。<strong>坂元劇作的魅力就在於日常和深入。</strong>普通作品裏，這兩者往往很難共存，但坂元成功地駕馭了它們，造就了不可複製的獨特風格。</p><h4 style="margin-left:0;">新劇看點</h4><p style="margin-left:0;">坂元近兩年創作以電影腳本為主。去年上線 Netflix 的《瘋狂遊輪》（2023）遭遇口碑滑鐵盧，哪怕宮崎葵和吉澤亮攜手主演，卡司華麗，都掩蓋不住腳本上的嚴重失敗。</p><p style="margin-left:0;">最近發佈的《1ST KISS》（《初吻》）預告片，定檔 25 年 2 月，松隆子和松村北斗合演，是一個講女主時空穿越，回到過去重逢已故愛人的故事，看起來相當不錯。</p><figure class="image ss-img-wrapper image_resized" style="width:267px;"><img src="https://cdnfile.sspai.com/2024/09/26/c9fb43f2cd8be805dde5b92dd475b424.png?imageView2/2/w/1120/q/90/interlace/1/ignore-error/1" data-original="https://cdnfile.sspai.com/2024/09/26/c9fb43f2cd8be805dde5b92dd475b424.png" referrerpolicy="no-referrer"><figcaption>定檔於 2025.2.7 的《1ST KISS 初吻》<br>松隆子和松村北斗主演</figcaption></figure><p style="margin-left:0;">另外還有一個延期的項目，叫《單戀的世界》，由廣瀨鈴、杉咲花、清原果耶三個當紅小花合演，《花束般的戀愛》導演土井裕泰執導。據豆瓣評論説是製作團隊遭遇車禍，不知道什麼時候能完成，可以稍稍期待一下。</p><h3 style="margin-left:0;">宮藤官九郎</h3><p style="margin-left:0;">論知名度，能和坂元裕二旗鼓相當的日劇編劇，大概就要數宮藤官九郎（宮九）了。一想到宮九，就會立刻想到「鬼才」這個詞。宮九的人生絕對是難以複製的精彩，他的才華也少有人企及。</p><p style="margin-left:0;">宮九比坂元略小几歲。他從日本大學藝術學部中途退學，20 歲那年加入了松尾鈴木主持的劇團「大人計劃」，導演、編劇、演員都幹過，後來還提攜過團裏的一個名叫星野源的年輕人。</p><p style="margin-left:0;">1995 年，25 歲的宮九和團裏的阿部隆史（又名阿部貞夫）等三人成立了一個名叫「Group 魂」的樂隊，他負責寫詞，還擔任過吉他手。十年後，這個樂隊的曲子被選上跨年的「紅白歌會」，所以，宮九還作為樂隊成員上過日本的「春晚」演出過。</p><figure class="image ss-img-wrapper image_resized" style="width:664px;"><img src="https://cdnfile.sspai.com/2024/09/26/389188a00d1bed460d66bf1d65d2bd23.png?imageView2/2/w/1120/q/90/interlace/1/ignore-error/1" data-original="https://cdnfile.sspai.com/2024/09/26/389188a00d1bed460d66bf1d65d2bd23.png" referrerpolicy="no-referrer"><figcaption>百變宮九：舞台上演奏吉他（左）、出演《四重奏》（右上）和《被嫌棄的松子的一生》（右下）。</figcaption></figure><p style="margin-left:0;">此外，宮九作為導演和演員，執導和出演過不少影視作品。不帶任何濾鏡，他演得真不錯。剛剛提到的《四重奏》裏，卷真紀離家出走的丈夫就是他演的。深夜劇《古龍兄弟和四苦八苦》裏的租賃大叔也是他，《Border》裏宮九也有客串。電影就更多了，我看過不下十部，比如《被嫌棄的松子一生》中的那個自殺的小説家，《在世界中心呼喚愛》裏成年男主的朋友等等。總之，只要日影日劇看得多，一定不會對宮九的臉陌生。</p><p style="margin-left:0;">説到編劇，30 歲那年，宮九因為改編石田衣良的暢銷小説《池袋西口公園》（2000）嶄露頭角，迅速作為編劇，蜚聲日本。那幾年，和宮九有關的所有影視都是話題作。宮九編劇的電影《Go！》（2001）、《乒乓》（2002）、《69》（2004）每部都是經典，每部都帶有一些 Cult、跳幀的視覺風格，很有朋克的氣質。像長瀨智也、窪冢洋介、阿部隆史也逐漸成了和宮九多次合作的男主角，與宮九作品中常有的<strong>青春主題、搞怪、無釐頭、自戀、男性羣像特色</strong>高度契合。</p><figure class="image ss-img-wrapper image_resized" style="width:664px;"><img src="https://cdnfile.sspai.com/2024/09/26/93eefb82899d1cf0a2267e945bc05bd1.png?imageView2/2/w/1120/q/90/interlace/1/ignore-error/1" data-original="https://cdnfile.sspai.com/2024/09/26/93eefb82899d1cf0a2267e945bc05bd1.png" referrerpolicy="no-referrer"><figcaption>21 世紀初宮九編劇的電影電視劇海報。《Go！大爆走》（左）《池袋西口公園》（中）和《69》（右）。</figcaption></figure><p style="margin-left:0;">宮九極其高產，而且他幾乎沒有明顯的創作斷檔期。每個階段都有佳片問世，風格也各有不同。硬要評出一些經典作品，除了上述提到的之外，還有《木更津貓眼》（2002）、《曼哈頓愛情故事》（2003）、《虎與龍》（2005）、《自戀刑警》（2010）、《還有第 11 人》（2011）、《海女》（2013 晨間劇）、《對不起青春》（2014）、《寬鬆世代又如何》（2016）、《監獄的公主大人》（2017）、《韋馱天：東京奧運的故事》（2019 大河劇）、《我家的故事》（2021）等，均為宮九原創劇本。原諒我報菜名式的羅列，因為除了那部大河劇，我全都看過（自豪臉），真是什麼主題都有，家庭、刑事、校園、婚戀、犯罪、醫療……感覺宮九完全沒有創作瓶頸，完完全全放飛自我。</p><p style="margin-left:0;">因為宮九高產、多變的鬼才風格，很難用一兩句話概括他的作品全貌。不過，有些特點還是共通的。</p><p style="margin-left:0;">首先，宮九的劇<strong>總帶點無釐頭的氣質</strong>。做一個未必恰切的類比，他的作品會讓人聯想到星爺的作品。很多宮九的作品裏都有一個牛批哄哄、自戀到不行、內心又很單純的男主。比如《自戀刑警》裏長瀨智也扮演的刑警，每一集他都會愛上一位女性，瘋狂表白，然後每一集結尾都會發現，這個女子正是他手頭案件的嫌疑人。這個套路集集都有，但就是藉助這股尬勁兒，居然能讓人集集不落看完。《池袋西口公園》《虎與龍》《我家的故事》裏，長瀨智也飾演男主也都是類似的氣質。</p><figure class="image ss-img-wrapper image_resized" style="width:664px;"><img src="https://cdnfile.sspai.com/2024/09/26/c76460a2543878fbcc554341f36dcf85.png?imageView2/2/w/1120/q/90/interlace/1/ignore-error/1" data-original="https://cdnfile.sspai.com/2024/09/26/c76460a2543878fbcc554341f36dcf85.png" referrerpolicy="no-referrer"><figcaption>《自戀刑警》海報（左）、《還有第 11 人！》（右上）和《對不起青春》（右下）劇照。</figcaption></figure><p style="margin-left:0;">有些奇怪的設定，只能是宮九玩出來的。家庭劇《還有第 11 人！》裏，廣末涼子飾演一個死去多年，卻一直在自家壁櫥裏喝悶酒的鬼魂，家裏只有不是她親生的小兒子能看到她。《對不起青春》裏，男主（錦戶亮，飾）的母親去世多年，經常通過男主屋裏的一尊觀音菩薩像現身，兼念整劇的旁白。這些詭異的設定都讓宮九的劇在真真假假、哭哭笑笑中變得更有娛樂性。</p><p style="margin-left:0;">宮九的作品的另一大特色，是<strong>錯綜複雜的男女關係</strong>。和認真刻畫人與人的互動細節、營造故事現實感的坂元裕二不一樣，宮九這裏，人與人之間的關係大多是作為梗出現，用來製造喜劇效果的。最典型的設定要數《曼哈頓愛情故事》，在一家名叫曼哈頓的東京咖啡店裏，七八位男女主人公，最開始是 A 喜歡 B，B 喜歡 C 的關係依次單戀，劇情進展到後半，幾乎沒啥理由，全部反向單戀，從 F 喜歡 G，一直退到 C 喜歡 B，B 喜歡 A。論全員單戀和反轉，還要數宮九的腦洞。</p><figure class="image ss-img-wrapper image_resized" style="width:664px;"><img src="https://cdnfile.sspai.com/2024/09/26/78362ae72bbee240724553328da5a28d.png?imageView2/2/w/1120/q/90/interlace/1/ignore-error/1" data-original="https://cdnfile.sspai.com/2024/09/26/78362ae72bbee240724553328da5a28d.png" referrerpolicy="no-referrer"><figcaption>《曼哈頓愛情故事》海報（左）和《對不起青春》（EP4）劇照。</figcaption></figure><p style="margin-left:0;">校園題材劇《對不起青春》，除了身為老師的男女主人公，宮九還花了不少筆墨描繪了一批正值青春的高中生羣像，他們之間的感情也像浮萍一樣，忽然有一天，全部都變風向了。為此劇中專門放了一張關係圖，幫助觀眾理清關係。這些都作為笑點被宮九加以調侃，又切中了些許的人性，不會讓人感到太過生硬惡俗。</p><p style="margin-left:0;">這麼多劇作中，我最喜歡的宮九劇要數《虎與龍》和《我家的故事》這兩部。它們的共同特色是<strong>把一些日本傳統文化融入了時下的娛樂表達裏</strong>，這也是我覺得宮九最出眾、最有巧思的設計。《虎與龍》裏，男主虎兒是個牛氣哄哄的黑幫小哥，因為落語師傅欠自家老大的錢，所以虎兒選擇拜師學落語，讓師傅拿自己交的學費還錢給負責收債的自己。（看看這設定！）每一集男主都會從師傅那裏學一個經典的落語段子，然後再把它用身邊的故事重新講出來，老段子出新意，特別精彩。</p><figure class="image ss-img-wrapper image_resized" style="width:664px;"><img src="https://cdnfile.sspai.com/2024/09/26/912256cbb2a28213fbcf41a594ff95f4.png?imageView2/2/w/1120/q/90/interlace/1/ignore-error/1" data-original="https://cdnfile.sspai.com/2024/09/26/912256cbb2a28213fbcf41a594ff95f4.png" referrerpolicy="no-referrer"><figcaption>《虎與龍》海報（左）和《我家的故事》海報（右）。<br>宮九到底是有多愛長瀨智也啊！</figcaption></figure><p style="margin-left:0;">而《我家的故事》則是把傳統的高雅藝術「能劇」和日本國民娛樂「摔角」融入在了一起，把國寶傳承問題，和疫情影響、養老介護全部放到一起，融成一鍋粥來討論。夾雜着宮九特有的笑點和亂七八糟的男女關係設定，這兩部劇都<strong>在娛樂和嚴肅中做出了平衡</strong>，讓人看了又看，邊笑邊哭，不由感慨只有宮九才能創作出這等神劇了吧。</p><h4 style="margin-left:0;">新劇看點</h4><p style="margin-left:0;">近兩年宮九作品口碑波動較大，每部劇都有人評論宮九江郎才盡，年紀大了愛説教，但我看完之後，覺得整體還行，放在日劇衰落的大環境下，起碼每部片子裏都有一些笑點和淚點。而且能明顯看出，現在宮九劇的社會關切比以前更深了，這也是我特別欣賞的一點。</p><p style="margin-left:0;">《我們離婚吧》詳細介紹了吊兒郎當的政二代是如何認真拉票、籌備選舉的，普及了不少日本競選的知識。宮九和大石靜合作腳本，玩得就是一個混搭雜糅風。可參見 <a href="https://sspai.com/post/80540" target="_blank">本週看什麼 230623 期</a>。</p><p style="margin-left:0;">《沒有季節的城市》講的是災後重建和人情冷暖，Disney+ 製作，改編自山本週五郎 1960 代的同名小説，舞台移到了現代。池松壯亮領銜主演，強在卡司逆天。可參見 <a href="https://sspai.com/post/82149">本週看什麼 230818 期</a>。</p><p style="margin-left:0;">《不合適也要有個限度！》用一個穿越題材，反思了日本社會近年的「政治正確」問題：上司説句加油就被下屬告成職權騷擾，老師批判兩句就被家長指責為過度教育，主題上可以看成是《寬鬆世代又如何》的延伸。</p><p style="margin-left:0;">剛播完的《新宿野戰醫院》雖然小池榮子的掉渣英語讓人格外不適，但宮九想談論的話題很嚴肅——外國人越來越多的東洋風俗第一街歌舞伎町，每個人的安全、健康、平權問題。感興趣的朋友還可以看一看劇作原型「春山紀念病院」的相關新聞報道。可參見 <a href="https://sspai.com/post/90439" target="_blank">本週看什麼 230712 期</a>。</p><figure class="image ss-img-wrapper image_resized" style="width:664px;"><img src="https://cdnfile.sspai.com/2024/09/26/a9cade97d73120d39d4c2074d471c1a6.png?imageView2/2/w/1120/q/90/interlace/1/ignore-error/1" data-original="https://cdnfile.sspai.com/2024/09/26/a9cade97d73120d39d4c2074d471c1a6.png" referrerpolicy="no-referrer"><figcaption>《最後看見的街》海報。2024.9.21 上映。</figcaption></figure><p style="margin-left:0;">近期，宮九還和朝日電視台合作了一個新劇，叫《最後看見的街》，改編自另一位「三大劇本作家」山田太一的小説，同樣也是穿越題材。9 月 21 日剛上映，無論是篇名，還是主題，感覺宮九都在自己的創作裏不斷循環。目前評分不高，可以關注一下。</p><h3 style="margin-left:0;">古澤良太</h3><p style="margin-left:0;">談日劇，古澤良太也是繞不過去的一位。他原創腳本的《Legal High》在國內早已成為日式神劇的代名詞，劇中古美門律師的<strong>超大信息量、超快語速風格，也是古澤編劇一貫的特點。</strong></p><p style="margin-left:0;">古澤良太是日語文學科班出身，29 歲通過朝日電視台的新人編劇大賽出道，很快挑起了大梁，成為朝日電視台《相棒》系列的主力編劇之一。同一時期，他的電影劇本傑作頻出，昭和懷舊三部曲《永遠的三丁目夕陽》（2005、2007、2012）成為當時口碑、影響力俱佳的作品。後來的《寄生獸》（2014）系列電影也是他改編的。</p><figure class="image ss-img-wrapper"><img src="https://cdnfile.sspai.com/2024/09/26/39782788d582e65a1615319996535ac6.png?imageView2/2/w/1120/q/90/interlace/1/ignore-error/1" data-original="https://cdnfile.sspai.com/2024/09/26/39782788d582e65a1615319996535ac6.png" referrerpolicy="no-referrer"><figcaption>古澤良太編劇的知名電影作品。最右邊是古澤原創的劇本《如月疑雲》。</figcaption></figure><p style="margin-left:0;">古澤良太早先作品中，有兩部非常值得一看。一是他原創劇本的電影《如月疑雲》（2007），整部劇就發生在一間屋子裏，純靠幾個人對話推動劇情發展，非常好看，算是小成本電影佳作。另一個是他改編自同名漫畫的校園題材電視劇《鈴木先生》（2011），長谷川博己主演。這部劇裏探討了很多敏感的教育問題，比如中學生怎麼做性啓蒙？能不能跟同樣是未成年的戀人發生關係？喜歡誰能不能就藏在自己心裏，不告訴別人？如何讓孩子學會尊重他人的價值觀？還有一些更加勁爆的兩性觀點。雖説風格略顯中二，未必合乎現實，但我看完特別感動，尤其認可鈴木老師的教育觀點。</p><figure class="image ss-img-wrapper image_resized" style="width:664px;"><img src="https://cdnfile.sspai.com/2024/09/26/614752bef7ee88cd2c0197d7e868155a.png?imageView2/2/w/1120/q/90/interlace/1/ignore-error/1" data-original="https://cdnfile.sspai.com/2024/09/26/614752bef7ee88cd2c0197d7e868155a.png" referrerpolicy="no-referrer"><figcaption>《鈴木先生》是東京電視台的深夜劇，尺度相當大。<br>本劇的一大看點是眾多日後冉冉升起的 95 後演藝界明星（找找看）。</figcaption></figure><p style="margin-left:0;">2012 年後，古澤良太和富士電視台合作，先後創作了三部電視劇：</p><ul><li>《Legal High》（2012-2014，兩部劇集、兩部 SP）</li><li>《約會～戀愛究竟是什麼》（2015，一部劇集、一部 SP）</li><li>《行騙家族》（2018-2022，一部劇集、一部 SP、三部電影、兩部衍生短劇）。</li></ul><p style="margin-left:0;">由於富士電視台的經營不善，古澤良太的作品還被多次出售過海外版權，因此誕生了中國版的《約會～戀愛究竟是什麼》、韓國版《Legal High》，雖説同為古澤編劇，幾乎可以忽略不算。</p><p style="margin-left:0;">除了《Legal High》裏那種語速快、邏輯強、擅長雄辯的風格之外，<strong>誇張的人物設定也是古澤良太原創劇本的一貫特色。</strong>古美門律師的動作、造型簡直就是日本律政遊戲《逆轉裁判》裏成步堂龍一的原樣復刻。黛律師、阿拉伯王子也都是臉譜化角色，比起真人，更像是動漫人物。《行騙家族》裏，主角團的設定更是誇張，不但「信用欺詐師」的職業高度虛構，每個人都神祕且身懷絕技，長澤雅美飾演的達子智商超羣，小日向文世扮演的理查德輕易就能獲取他人信任，完全衝着爽劇在設計人物。</p><figure class="image ss-img-wrapper image_resized" style="width:664px;"><img src="https://cdnfile.sspai.com/2024/09/26/4005dc0d697f5b3f10d82d31cbf3dbbc.png?imageView2/2/w/1120/q/90/interlace/1/ignore-error/1" data-original="https://cdnfile.sspai.com/2024/09/26/4005dc0d697f5b3f10d82d31cbf3dbbc.png" referrerpolicy="no-referrer"><figcaption>堺雅人老師絕對是在 cosplay 成步堂，百分百還原。</figcaption></figure><p style="margin-left:0;">在我看來，與其説古澤良太是一個日劇編劇，他更像是一個美劇編劇。相比於傳統日劇中的細膩溫情，<strong>他的劇本更強調新奇設定和精妙結構、喜歡埋線索和收伏筆。</strong>而且，我特別欣賞的一點是，他的劇本邏輯設計相當嚴謹，尤其是原創劇集，節奏快、反轉多，結尾還能圓得回去，經常有種看美劇的爽快感。所以，喜歡看美劇的朋友可以多關注他的作品。</p><figure class="image ss-img-wrapper image_resized" style="width:664px;"><img src="https://cdnfile.sspai.com/2024/09/26/3652ff7a42992c89346a4cdca0d49351.png?imageView2/2/w/1120/q/90/interlace/1/ignore-error/1" data-original="https://cdnfile.sspai.com/2024/09/26/3652ff7a42992c89346a4cdca0d49351.png" referrerpolicy="no-referrer"><figcaption>《行騙天下》劇照（左）和《約會～戀愛究竟是什麼》（中、右）兩位主人公。<br>配圖在搞事情，對不起了杏！</figcaption></figure><p style="margin-left:0;">古澤良太的戀愛劇《約會～戀愛究竟是什麼呢～》是我特別喜歡的一部。這部劇設置了一對動漫感十足的「奇葩戀人」，一個是東大數學系畢業的理科直女（杏，飾），一個是啃老十幾年號稱「高等遊民」的文藝男（長谷川博己，飾）。兩個人在無窮無盡的嘴炮和反轉又反轉的劇情中，探討了愛情是什麼、婚姻是什麼、好的約會是什麼一系列的哲學命題，看到最後還覺得挺好挺搭挺甜。算得上是一部「非典型」愛情輕喜劇吧。</p><h3 style="margin-left:0;">野木亞紀子</h3><p style="margin-left:0;">對比前幾位編劇「常青樹」，野木亞紀子算是這十來年的「編劇新秀」。她的成長生涯十分勵志。大學畢業後，她曾在一家紀錄片公司擔任企劃，發現自己的真正興趣是編劇後，潛心創作，持續給富士電視台青年劇本大獎投稿六年（對比坂元，19 歲就獲得了第一屆大獎），最後，野木踩着規定的 35 歲最高投稿年齡，靠着《再見魯賓遜漂流記》獲獎，成功進入編劇界。</p><p style="margin-left:0;">早先幾年，野木亞紀子的劇本創作以改編為主，和 TBS 先後合作的《飛翔情報室》（2013）、《掟上今日子的備忘錄》（2015）、《重版出來！》（2016）都是非常紮實、中規中矩的好作品。直到 2016 年，野木改編的《逃避雖可恥但有用》大獲成功，這讓野木亞紀子的名氣越來越響，有機會擔綱更有挑戰性的原創劇本。</p><figure class="image ss-img-wrapper image_resized" style="width:664px;"><img src="https://cdnfile.sspai.com/2024/09/26/b4be4ed7e4191c77b0015429539e66bf.png?imageView2/2/w/1120/q/90/interlace/1/ignore-error/1" data-original="https://cdnfile.sspai.com/2024/09/26/b4be4ed7e4191c77b0015429539e66bf.png" referrerpolicy="no-referrer"><figcaption>野木老師對新垣結衣的愛全寫在海報上了</figcaption></figure><p style="margin-left:0;">後面的幾部劇很多朋友都很熟悉：野木亞紀子編劇、冢原亞由子導演、新井順子製作人三位女性班底合力打造的《非自然死亡》（2018）、《MIU404》（2020）相繼問世。這兩個作品都是原創的職場單元劇，一集一個相對獨立的小故事，節奏快、內容緊湊，非常耐看。兩部劇的主題曲，米津玄師的《Lemon》和《感電》傳唱程度也格外高，也助推了劇的熱度。</p><p style="margin-left:0;">《非自然死亡》講獨立法醫機構如何輔助案件偵破，《MIU404》講基層機動搜查隊的日常出警和案件調查。這兩個故事不光是在娛樂獵奇，它們都在<strong>關注司法體系相對邊緣、影響力和社會地位不高的基層羣體。</strong>比如，《非自然死亡》反覆強調法醫收入低、工作時間長、責任大，工作環境極其惡劣，連石原里美這樣的美貌醫生都找不到對象。「MIU404」機搜小分隊永遠身處最前線，負責及時出警和初步調查，一旦案件升級就要移交其他科室手中。隊員也經常被瞧不起，沒有太多晉升前途。</p><p style="margin-left:0;">雖説是電視劇，但這兩部劇都有很紮實的調研基礎，有點像紀錄片，讓觀眾看到工作在一線、不太被關注到的職業。劇裏還<strong>探討了大量敏感的日本社會問題</strong>。比如過勞死、新型傳染病對策（2018 年的劇！）、司法醫學界的女性歧視、路怒犯罪、在日外國人生存處境、未成年輟學流浪、線人保護措施缺失等。這是野木亞紀子劇的一個非常出眾的特徵，<strong>她的社會觀察、社會批判都非常直接，</strong>所以也顯得劇比較「硬核」，信息量偏大，趣味性較弱，有時不太能看進去。</p><figure class="image ss-img-wrapper"><img src="https://cdnfile.sspai.com/2024/09/26/6413520162bc69bd8a10cef8004bf3e8.png?imageView2/2/w/1120/q/90/interlace/1/ignore-error/1" data-original="https://cdnfile.sspai.com/2024/09/26/6413520162bc69bd8a10cef8004bf3e8.png" referrerpolicy="no-referrer"><figcaption>《Last Mile》卡司宣傳圖。集合了《非自然死亡》（左上）和《MIU404》（右上）的眾多角色。</figcaption></figure><h4 style="margin-left:0;">新劇看點</h4><p style="margin-left:0;">《非自然死亡》和《MIU404》成功後，製作方 TBS 電視台看到商機，把兩個故事的世界融合成了一個虛構的大世界。故事人物相互串場，劇中機構還能相互支持。今年 8 月新上映的電影《Last Mile》（《最後的里程》）是個大項目，把兩劇的卡司全部集合起來，作為故事的背景線索，仍由野木亞紀子、冢原亞由子、新井順子合作創作。滿島光和岡田將生主演，講一個快遞箱連環爆炸故事。豆瓣和日本 Filmarks 評分都相當高，可以期待一下。</p><figure class="image ss-img-wrapper"><img src="https://cdnfile.sspai.com/2024/09/26/9ba5cef0d2e0115a9a2a922df71a9880.png?imageView2/2/w/1120/q/90/interlace/1/ignore-error/1" data-original="https://cdnfile.sspai.com/2024/09/26/9ba5cef0d2e0115a9a2a922df71a9880.png" referrerpolicy="no-referrer"><figcaption>《犬王》和《去唱卡拉 OK 吧》海報。</figcaption></figure><p>此外，野木亞紀子這兩年改編的其他電影劇本也有不錯的反響，前兩年的高分動畫《平家物語：犬王》，今年新出的漫改電影《去唱卡拉 OK 吧！》（可參見 <a href="https://sspai.com/post/88518" target="_blank">本週看什麼 240503 期</a>）都是由她編劇。野木的作品一直很穩，質量很有保證，後續可以持續關注。</p><h3 style="margin-left:0;">笨蛋節奏（升野英知）</h3><p style="margin-left:0;">很多人知道笨蛋節奏都是因為《重啓人生》這部劇。劇中，編劇扮演的那位負責轉生的工作人員也給不少人留下了深刻的印象。</p><figure class="image ss-img-wrapper image_resized" style="width:464px;"><img src="https://cdnfile.sspai.com/2024/09/26/article/a46390c33b723f7d70513bc8d4d1b103.jpeg?imageView2/2/w/1120/q/90/interlace/1/ignore-error/1" alt="人生就是累積」笨蛋節奏用《重啟人生》再説一次…而且説得漂亮" data-original="https://cdnfile.sspai.com/2024/09/26/article/a46390c33b723f7d70513bc8d4d1b103.jpeg" referrerpolicy="no-referrer"><figcaption>《重啓人生》劇照，左邊就是笨蛋節奏（本名：升野英知）。</figcaption></figure><p style="margin-left:0;">與其説笨蛋節奏説個電視劇編劇，他更知名的身份是一位搞笑藝人。在日本，當搞笑藝人是很多年輕人的夢想，但是真想成功卻難上加難。搞笑藝人通常多才多藝，不但要自己寫故事，還要會表演。作為混演藝圈的人，要情商高、會説話，懂得自我經營。最重要的是運氣好，老天賞飯，有人提攜。關於搞笑藝人有多難出頭的電視劇，《火花》《短劇開始啦》（可參見 <a href="https://sspai.com/post/66249" target="_blank">本週看什麼 210423 期</a>）都值得一看。</p><p style="margin-left:0;">回到笨蛋節奏的故事。20 歲時，升野英知和松下敏宏組成搭檔，起名「笨蛋節奏」，開始從事演藝活動。十年後，搭檔松下敏宏退出演藝圈，升野英知獨自接下了組合名，變成了一個單人搞笑藝人。後來，笨蛋節奏的事業開始騰飛，2006 年到 2010 年，他四次進入日本單人藝人大賽 R-1 的決賽（M-1 是漫才大賽），雖然從未拿過冠軍，但獲得了相當的知名度。</p><p style="margin-left:0;">笨蛋節奏的搞笑風格，很難一兩句話説清楚。B 站有不少他的短劇視頻，可以感受一下：</p><iframe class="ss-videoIframe" src="https://player.bilibili.com/player.html?bvid=BV1e4411j7mX&amp;autoplay=false" sandbox="allow-scripts allow-same-origin allow-popups" referrerpolicy="no-referrer"> </iframe><p style="margin-left:0;">&nbsp;</p><p style="margin-left:0;">作為編劇的笨蛋節奏不是一下子就放出了《重啓人生》（2023）這樣的大招。在此之前，他編劇和反串性別主演的《架空 OL 日誌》（2017）裏，已經形成了很明顯的編劇風格：<strong>女性羣像、以聊天和對話為主、話題極其日常瑣碎、沒有任何稱得上「大事」的情節，全靠着對生活細節的極致觀察、出其不意的事情發展取勝。</strong>夏帆、臼田麻美、三浦透子都是他經常合作的女演員。</p><figure class="image ss-img-wrapper"><img src="https://cdnfile.sspai.com/2024/09/26/738f3bf7b670cf5ff53ccd14963dc133.png?imageView2/2/w/1120/q/90/interlace/1/ignore-error/1" data-original="https://cdnfile.sspai.com/2024/09/26/738f3bf7b670cf5ff53ccd14963dc133.png" referrerpolicy="no-referrer"><figcaption>《架空 OL 日誌》海報圖，其中，笨蛋節奏（左）毫無違和感地飾演一位年輕銀行女性員工。</figcaption></figure><p style="margin-left:0;">他和井浦新合演的《殺意的道程》（2020）也是講兩個普通人為了報仇，無釐頭地要殺一個人。結果整部劇花了大量篇幅在講兩人為這次行動選什麼代號、穿什麼衣服、去超市挑什麼作案工具、日常盯梢怎麼跟，總之相當脫線。</p><p style="margin-left:0;">《重啓人生》可以説是笨蛋節奏的集大成之作。這個作品無論在劇情結構、笑點設置，還有卡司助力上，都沒有可挑之處。歡迎沒有看過的朋友直接去看，在此不做任何劇透。講實話，這麼綿密的埋梗、日常的細節、大量的吐槽編織在一起，可能除了搞笑藝人出身的笨蛋節奏之外，也沒誰能夠駕馭得住了吧。</p><h2 style="margin-left:0;">劇作詞量分析</h2><p style="margin-left:0;">最後做一個趣味對比。學日語的過程中，我曾把這幾位編劇的作品字幕導出，作為日常學習的材料。</p><p style="margin-left:0;">以 45min 的單集為單位，我隨機翻過一些日劇，一般以<strong>單集 900-1000 詞左右居多</strong>。《非自然死亡》《Legal High》《重啓人生》一集的單詞總量（不含重複）差不多，都在 1200 個詞以上，600 個漢字（漢字佔比基本上都是 50% 左右），高於平均值。野木亞紀子、古澤良太、笨蛋節奏的作品雖然風格各不相同，但都屬於較高的對話密度。宮九的作品和上面幾位大體持平，具體還要視題材而定。《對不起青春》《我家的故事》話密對話多，《還有第 11 人！》就明顯少很多，相對更容易理解。</p><p style="margin-left:0;">有趣的是坂元裕二的作品。《四重奏》平均一集只有 750 個詞，370 個漢字，是我迄今找到的詞量最少的一部劇，可能是演奏樂曲的場景佔了很大比例。《最完美的離婚》裏爭吵不斷，一集也不過 800-900 個詞，明顯比前幾位編劇用詞少很多，果然是惜句如金。</p><figure class="image ss-img-wrapper image_resized" style="width:630px;"><img src="https://cdnfile.sspai.com/2024/09/26/806a63f76c18814c08091b9ca1f944ec.png?imageView2/2/w/1120/q/90/interlace/1/ignore-error/1" data-original="https://cdnfile.sspai.com/2024/09/26/806a63f76c18814c08091b9ca1f944ec.png" referrerpolicy="no-referrer"><figcaption>整合了 japanese.io（左）、jpdb.io（中）、Nihongo（右上）等多組數據。<br>由於每集數據不同，只能估算。儘量保證數據準確、有可信度。</figcaption></figure><p style="margin-left:0;">考慮到野木亞紀子的作品多為單元劇，每集主題都不同，我還對比了<strong>全劇的詞數</strong>。《非自然死亡》《MIU404》一騎絕塵，每部劇用詞總數（不含重複）都有 5700 多個，就連《逃避雖可恥但有用》這樣的愛情喜劇都接近 5000，難度遠遠超出其他作品。宮九的幾部作品也在 5000 詞水平，略少一些。相比起來，《四重奏》裏的總單詞量只有 3360，《最完美的離婚》在 3880，也就是説，通過野木亞紀子一部劇學到的生詞，大致相當於坂元一部劇的 1.5-2 倍！而且通過坂元劇、宮九劇、笨蛋節奏作品學到的日常用語還算多，野木劇裏會出現大量社會專業用語，古澤良太作品也是大量抽象用詞，語速又快，難度級別逆天。</p><p style="margin-left:0;">另外，我們通常理解的<strong>「語速」</strong>也能從數據上看出來。《Legal High》和《重啓人生》平台上沒有數據。我就用了另一個知名嘴炮劇《我家的事説來話長》（金子茂樹編劇）來對比，平均每集的詞量在 1200 上下，而這部劇每分鐘的單詞數最高甚至達到了 135 詞（包含重複詞語）！與之相比，野木亞紀子的劇差不多每分鐘 120 詞，屬於很多的了，宮九劇的每分鐘詞量大概是 90-100 詞。坂元的《四重奏》穩定在 80-90 上下，《最完美的離婚》話密一點，平均每分鐘也就 100 詞左右。</p><p style="margin-left:0;">由於手頭資料有限，得出的結論未必特別精準。歡迎大家給我推薦單詞數量、難度統計分析的網站或軟件，我可以提供更多的數據，也可以提供一些好的日語學習適合的劇集。</p><h2 style="margin-left:0;">更多編劇</h2><p style="margin-left:0;">文章篇幅有限，只介紹了我個人持續關注的幾位日劇編劇，肯定有大量缺漏。最後再簡單羅列一些知名的資深編劇和他們擅長的題材及代表作，也歡迎大家多多補充：</p><h3 style="margin-left:0;">編劇</h3><h4 style="margin-left:0;">戀愛類</h4><p style="margin-left:0;">北川悅吏子《悠長假期》《橙色歲月》</p><p style="margin-left:0;">大石靜《第二處女》《大戀愛》《於星降之夜》</p><h4 style="margin-left:0;">劇情類</h4><p style="margin-left:0;">木皿泉《西瓜》《昨夜的咖喱，明日的麪包》</p><p style="margin-left:0;">金子茂樹《求婚大作戰》《我的事説來話長》《短劇開始了》</p><p style="margin-left:0;">岡田惠和《倒數第二次戀愛》《藉着雨點説愛你》</p><p style="margin-left:0;">大島里美《一公升的眼淚》《凪的新生活》《妻子變成小學生》</p><h4 style="margin-left:0;">醫療懸疑劇</h4><p style="margin-left:0;">林宏司《醫龍》《Code Blue》</p><p style="margin-left:0;">森下佳子《仁醫》《天國與地獄》</p><p style="margin-left:0;">井上由美子《白色巨塔》《緊急調取室》《晝顏》</p><h3 style="margin-left:0;">導演（兼編劇）</h3><h4 style="margin-left:0;">推理、劇情類</h4><p style="margin-left:0;">三谷幸喜《古佃任三郎》系列</p><h4 style="margin-left:0;">深夜系</h4><p style="margin-left:0;">大根仁《真幌站前番外地》《大川端偵探社》《地面師》</p><h4 style="margin-left:0;">脫力系</h4><p style="margin-left:0;">三木聰《時效警察》</p><h4 style="margin-left:0;">惡搞系</h4><p style="margin-left:0;">福田雄一《勇者義彥系列》《我是大哥大》《VIVANT》</p><h3 style="margin-left:0;">推薦豆列</h3><ul><li><a href="https://www.douban.com/doulist/248473/" target="_blank">日劇的那些名編劇們 Part·1</a></li><li><a href="https://www.douban.com/doulist/430339/" target="_blank">日劇的那些名編劇們 Part·2</a></li></ul><p style="margin-left:0px;">&gt; 小紅書 📕 關注 <a href="https://www.xiaohongshu.com/user/profile/63f5d65d000000001001d8d4" target="_blank">少數派 sspai</a>、<a href="https://www.xiaohongshu.com/user/profile/62fb4cf90000000012002431" target="_blank">本週看什麼</a>，找到數字時代更好的生活方式 🎊</p><p style="margin-left:0px;">&gt; <a href="https://sspai.com/topic/416">看什麼 Café</a> / <a href="https://sspai.com/topic/419">主題片單</a> 專題頁、<a href="https://sspai.com/page/2021/movie">2021 年度回顧</a>，更多影視推薦盡在 <a href="https://sspai.com/tag/%E6%9C%AC%E5%91%A8%E7%9C%8B%E4%BB%80%E4%B9%88">#本週看什麼</a> 🎬</p>]]>
+                <![CDATA[<p style="margin-left:0px;">編者按：1895 年在巴黎卡普辛路 14 號的大咖啡館，盧米埃爾兄弟的短片成了咖啡館的助興節目，而咖啡館也正是那時人們談論電影和藝術的重要場所。「看什麼 Café」作為「<a href="https://sspai.com/tag/%E6%9C%AC%E5%91%A8%E7%9C%8B%E4%BB%80%E4%B9%88" target="_blank">本週看什麼</a>」欄目的衍生，旨在為熱愛影視藝術的少數派們創造一個這樣的氛圍：雖然我們無法回到電影誕生的那個年代，但我們依舊可以喝着咖啡，深入探討有關影視藝術的一切。</p><p style="margin-left:0px;">本期「<a href="https://sspai.com/topic/416" target="_blank">看什麼 Café</a>」要討論的主題是「日劇編劇」，我們邀請了日劇迷 <a class="ss-atUser" data-mention="@知道分子吳先先" user-id="c5g363db34teh0gc1tig" href="https://sspai.com/u/hahad">@知道分子吳先先</a>，和大家聊聊那些知名編劇與他們的劇作風格。🙋 歡迎在評論區分享你喜愛的日劇編劇，留下你對日劇的看法。</p><hr><blockquote><p style="margin-left:0;">比起多數派，我更想為少數派書寫。——坂元裕二</p></blockquote><p style="margin-left:0;">一談到日劇，就不會錯過坂元裕二、宮藤官九郎這些名編劇。日本電視劇產業中，編劇的名字往往比導演、演員更響亮，也能讓觀眾更快鎖定作品的風格氣質。比起<a href="https://sspai.com/post/90534">上期談到的電視台欄目</a>，相信更多人是因為青睞某位編劇的作品，持續追 ta 的作品而入坑。</p><p style="margin-left:0;">這篇文章我們就聊一聊幾位知名度高、當下仍在活躍的日劇編劇，介紹他們的代表作與風格，方便追日劇的朋友更好地找出「夢中情作」。</p><h2 style="margin-left:0;">繞不過去的大前輩</h2><p style="margin-left:0;">切入正題之前，先介紹兩位日劇歷史上繞不過去的編劇大前輩。</p><h3 style="margin-left:0;">向田邦子</h3><p style="margin-left:0;">被譽為<strong>「日劇女王」</strong>的向田邦子生於 1929 年，寫過大量家庭題材的廣播劇本和電視劇腳本，和日本電視台的騰飛和發展同處一個時期。</p><p style="margin-left:0;">向田邦子最知名的作品有《寺內貫太郎一家》（1974），講一家東京石材老鋪三代同堂的家長裏短，劇中 31 歲的樹木希林反串年邁的母親，留下了不少珍貴影像。還有《宛如阿修羅》（1979）講一家四姐妹各懷祕密的故事，因為人物刻畫得好，時常被影視和舞台劇翻拍。據説最新版由 Netflix 投資、是枝裕和導演，宮澤理惠、尾野真千子、蒼井優、廣瀨鈴分別主演四姐妹，預計 25 年初上映，想想都令人期待。</p><figure class="image ss-img-wrapper image_resized" style="width:664px;"><img src="https://cdnfile.sspai.com/2024/09/26/f520772114ee028f1f78e0c22050da17.png?imageView2/2/w/1120/q/90/interlace/1/ignore-error/1" data-original="https://cdnfile.sspai.com/2024/09/26/f520772114ee028f1f78e0c22050da17.png" referrerpolicy="no-referrer"><figcaption>向田邦子（左圖）和她的代表作。《宛如阿修羅》多次翻拍，網羅了各個年代的實力女星。</figcaption></figure><p style="margin-left:0;">或許是天妒英才，向田邦子在 51 歲那年在台灣遭遇空難去世，為了紀念她，日劇界以她的名字命名了表彰編劇的獎項<strong>「向田邦子賞」</strong>，每年只頒給一位編劇的一部新作。像木皿泉的《西瓜》、遊川和彥的《女王的教室》、金子茂樹的《我的事説來話長》、三谷幸喜的大河劇《鎌倉殿的 13 人》都是知名的獲獎作品。下面提到的幾位名編劇，也都曾獲過向田邦子獎。</p><h3 style="margin-left:0;">倉本聰</h3><p style="margin-left:0;">倉本聰生於 1935 年，東大出身，從年輕時期就做起了自由編劇。</p><p style="margin-left:0;">倉本聰的作品是清一色的豆瓣高分，最知名的作品是在他中年移住北海道富良野後，和富士電視台合作的《北國之戀》系列（1981-2002），由同一批演員團隊拍了整整 21 年。倉本聰的題材也多為家庭劇，不過和擅長講人心複雜的向田邦子不同，《北國之戀》的世界裏更多是自然與溫情，相當治癒。這個系列的缺點是年代較久，畫質比較差。感興趣的朋友可以看看他後來的幾部作品，同在富良野取景的《溫柔時光》（2005）和以東京為舞台的《敬啓，父親大人》（2007），兩部作品都由二宮和也主演。</p><figure class="image ss-img-wrapper image_resized" style="width:601px;"><img src="https://cdnfile.sspai.com/2024/09/26/fc996401fdd14fc50843c22441f39b4a.png?imageView2/2/w/1120/q/90/interlace/1/ignore-error/1" data-original="https://cdnfile.sspai.com/2024/09/26/fc996401fdd14fc50843c22441f39b4a.png" referrerpolicy="no-referrer"><figcaption>倉本聰（左下）的《安寧之鄉》（右圖）邀請了多位現已不為人知的老昭和電視明星參演。</figcaption></figure><p style="margin-left:0;">2017 年，82 多歲高齡的倉本聰專為一羣無戲可拍的老藝人創作了一部午間劇《安寧之鄉》，每集 15 分鐘，共 100 多集，2019 年還拍了續集《安寧之刻～道》。劇中，倉本聰為這些退休的電視業同行搭建了一個棲身的烏託邦，讓他們在一個僻靜的海邊養老院安度晚年。這部劇也一度治癒了我，讓我覺得老年是一個應該好好準備、好好面對的人生階段，應該被每個人鄭重對待。</p><p style="margin-left:0;">倉本聰、向田邦子，還有另一位編劇山田太一併稱為上世紀的<strong>「三大劇本作家」（シナリオライター御三家）</strong>。國內也翻譯出版過不少向田邦子和倉本聰的劇本和訪談，可以搜來看看。</p><h2 style="margin-left:0;">當今活躍的名編劇</h2><h3 style="margin-left:0;">坂元裕二</h3><p style="margin-left:0;">講到當下最知名的日劇編劇，很多觀眾最先想到的一定是坂元裕二。</p><p style="margin-left:0;">坂元裕二可謂年少成名，19 歲那年獲得了第一屆富士電視台青年劇本大獎，高中畢業直接出道。24 歲那年，從漫畫改編的《東京愛情故事》（1991）讓編劇坂元躋身為名編劇之列。不過在此之後，坂元的事業起起伏伏。尤其是三十多歲到四十歲出頭，他一直未能再寫出令自己滿意的作品，乾脆潛心帶娃做飯，安心讓媳婦森口瑤子外出拍戲。這個過程中，坂元親身以「家庭婦男」的視角，體會到了普通女性在家庭職責和社會身份夾縫中的艱難處境，這也是他後來創作出那麼多真實可信「大女主」角色的基礎。</p><figure class="image ss-img-wrapper image_resized" style="width:303px;"><img src="https://cdnfile.sspai.com/2024/09/26/0c7a6eda855815c9fc3a755ca916f1a4.png?imageView2/2/w/1120/q/90/interlace/1/ignore-error/1" data-original="https://cdnfile.sspai.com/2024/09/26/0c7a6eda855815c9fc3a755ca916f1a4.png" referrerpolicy="no-referrer"><figcaption>坂元裕二（左）和東愛女主鈴木保奈美（右）</figcaption></figure><p style="margin-left:0;">2010 年代起，年過四十的坂元再度進入創作爆發期，原創了大量的經典劇作。電視劇有《Mother》（2010）、《儘管如此也要活下去》（2011）、《最完美的離婚》（2013）、《四重奏》（2017）、《大豆田永久子與三位前夫》（2021）等。這兩年大熱的電影《花束般的戀愛》（2021）、《怪物》（2023）劇本也是坂元原創，《怪物》還為他摘得了戛納電影節的最佳編劇獎，在追捧戛納的日本影視界，此獎可謂至高榮譽。<sup class="ss-footnote" href="" title="本文的主題雖然是電視劇編劇，但這些名編劇也經常受邀為電影創作劇本，而且電視劇和電影劇本數量上基本持平。在此不做過多區分。" footnote-id="1">1</sup></p><p style="margin-left:0;">坂元的不少名作都是<strong>婚戀題材</strong>，加上他<strong>對人物情感的精準刻畫</strong>，誕生了很多經典的熒幕角色。</p><p style="margin-left:0;">我問過很多資深坂元迷，許多人最喜歡的一部劇都是《最完美的離婚》。瑛太和尾野真千子扮演了一對吵吵鬧鬧的「歡喜冤家」。丈夫光生龜毛事多，媳婦結夏粗枝大葉，怎麼看都不搭的兩人第一集就離了婚。雖説兩人分分合合，但到劇終也沒分開，看似鬥嘴不斷，卻時常讓人感動到淚目。整部劇沒什麼大事件，兩對夫妻的日常小事（另一對是綾野剛和真木陽子飾演），螺螄殼裏做道場，讓人看得津津有味，這是坂元的特長。坂元擅長寫信的本事在這部劇裏也爐火純青，正片和特別篇中，光生和結夏寫給彼此的信，被不少營銷號譽為「最美情書」。最美不敢説，但確實溫馨感人，值得一讀。</p><figure class="image ss-img-wrapper image_resized" style="width:664px;"><img src="https://cdnfile.sspai.com/2024/09/26/fac5f11809fa872c80cc6883e1a96b79.png?imageView2/2/w/1120/q/90/interlace/1/ignore-error/1" data-original="https://cdnfile.sspai.com/2024/09/26/fac5f11809fa872c80cc6883e1a96b79.png" referrerpolicy="no-referrer"><figcaption>《最完美的離婚》劇照。四位主角排列組合，每兩個人之間都有交集。</figcaption></figure><p style="margin-left:0;">相比《最完美的離婚》，坂元的另一部劇《四重奏》似乎更加出圈。《四重奏》裏，主角團關於吃炸雞要不要擠檸檬汁的那段對話，已經成為許多人日常吃炸雞時的標配話題。在人物關係設置上，這部劇也不落俗套，從頭到尾，四位主角一直保持全員單戀，從頭到尾無人脫單。直到幾年後，劇中扮演卷真紀的松隆子和扮演別府司的松田龍平再度在《大豆田永久子與三名前夫》裏飾演了一對離婚的夫婦。劇中專門放了一段兩人的相互表白，暢想假如沒有離婚、一直恩愛生活的想象片段。彈幕裏不少人感慨：「坂元終於圓了這對 CP 粉的夢」。</p><figure class="image ss-img-wrapper image_resized" style="width:664px;"><img src="https://cdnfile.sspai.com/2024/09/26/4b950d27a2063e8b65e75ee0e9839b92.png?imageView2/2/w/1120/q/90/interlace/1/ignore-error/1" data-original="https://cdnfile.sspai.com/2024/09/26/4b950d27a2063e8b65e75ee0e9839b92.png" referrerpolicy="no-referrer"><figcaption>《四重奏》（上圖）和《大豆田永久子與三名前夫》（下圖）劇照。</figcaption></figure><p style="margin-left:0;">單單因為坂元擅長描寫男女情愛，擅長寫金句，就把他歸入愛情編劇，似乎有點小看了他。事實上，坂元之所以收穫那麼多的讚譽，絕不只是因為他擅長寫情感戲，更是因為他<strong>對社會有細緻的觀察和關切。</strong></p><p style="margin-left:0;">豆瓣評分 9.4 的催淚神劇《Mother》裏就沒什麼愛情戲份。它以一個誘拐的犯罪故事，講了「母親」這個身份意味着什麼。這個劇裏，你會發現坂元設計了各種各樣的母親：普通的生母、善良的養母、虐待孩子的生母（尾野真千子，飾）、遺棄孩子的生母（田中裕子，飾）、為了保護孩子不惜犯罪的養母（主角，松雪泰子，飾）。雖説錯綜複雜的設計略顯刻意，但每個角色都被賦予了充分的行為動機——連那個讓人恨得牙癢癢，和男友把女兒丟在垃圾袋裏，扔到冰天雪地的「惡母」形象，坂元都給她設計了小傳，讓人看到一個普通女性是如何慢慢支撐不住育兒重任，逐步黑化的。</p><p style="margin-left:0;">這是坂元的有意設計，據説是他在劇作上映後，看到觀眾猛噴惡母，專程加上了這一段，希望讓觀眾看到事情全貌，理解母職艱辛，不是以偏概全，隨便給一個女性扣上「好媽媽」或「壞媽媽」的帽子。在女性議題的處理上，坂元的處理絕對可以打高分。</p><p style="margin-left:0;">瑛太和滿島光主演的苦情劇《儘管如此也要活下去》，愛情也不是核心主題。坂元把重心放在了罪案發生後，犯罪者和被害者家庭裏的每個當事者如何自我救贖、走出陰霾、面對彼此、接納彼此。為了講清楚這個嚴肅的社會議題，他精心設計了每個家庭成員的人物特徵，很禁得起推敲。日本有很多類似「後犯罪」題材的影視劇，我看過不少，《儘管如此也要活下去》絕對算是優秀的一部。</p><figure class="image ss-img-wrapper image_resized" style="width:664px;"><img src="https://cdnfile.sspai.com/2024/09/26/e2834f6e9f8f1565e7c09fc3de085421.png?imageView2/2/w/1120/q/90/interlace/1/ignore-error/1" data-original="https://cdnfile.sspai.com/2024/09/26/e2834f6e9f8f1565e7c09fc3de085421.png" referrerpolicy="no-referrer"><figcaption>《Mother》和《儘管如此還要活下去》海報。</figcaption></figure><p style="margin-left:0;">關於坂元裕二的網絡文章有很多，不少都會給他扣上一個<strong>「金句大師」</strong>的標籤。每逢他的新作上映，都會有營銷號立刻推出名為「跟坂元學寫金句」之類的文章。寫金句確實是坂元的特色，不過，相比把它標籤化，我更喜歡把它理解為坂元對生活有真切的感知，不滿足於寫直白乏味的台詞，而是想在具體場景中把這些細膩的感受用不經意的語言、動作傳遞出來。</p><p style="margin-left:0;">坂元在 NHK 紀錄片《仕事の流儀》裏對自己的這種創作方式也做過解讀：</p><iframe class="ss-videoIframe" src="https://player.bilibili.com/player.html?bvid=BV15t41127eY&amp;autoplay=false" sandbox="allow-scripts allow-same-origin allow-popups" referrerpolicy="no-referrer"> </iframe><blockquote><p style="margin-left:0;">在紙上寫下「喜歡」，是沒法傳達出「喜歡的」。相反，用漫不經心的對話、瑣碎的行為，把周圍逐漸填充完整，這就是寫劇本的過程。坐在巴士上，有一搭沒一搭地聊着天，回到家，想一個人看看電視卻又關了電視，隨手摺起紙，這時突然意識到：「啊，我可能喜歡那個人」。故事就藏在日常的瑣碎中。</p></blockquote><blockquote><p style="margin-left:0;">如果用多數派少數派的説法，我想給少數派、少數人羣寫故事。讓活力值有 10 的人變成 100，鼓舞他們的作品有很多。而我想讓那些是負值的人至少先達到零點，讓 -5 的人先到 -3，這是我的目標。</p></blockquote><p style="margin-left:0;">滿島光在《四重奏》的訪談花絮裏講，她在讀劇本時，覺得每個人説的話都很隨意，單拎出來顯得莫名其妙，但真到大家一起演出來，又恰到好處，這也是我看坂元作品的真切感受。<strong>坂元劇作的魅力就在於日常和深入。</strong>普通作品裏，這兩者往往很難共存，但坂元成功地駕馭了它們，造就了不可複製的獨特風格。</p><h4 style="margin-left:0;">新劇看點</h4><p style="margin-left:0;">坂元近兩年創作以電影腳本為主。去年上線 Netflix 的《瘋狂遊輪》（2023）遭遇口碑滑鐵盧，哪怕宮崎葵和吉澤亮攜手主演，卡司華麗，都掩蓋不住腳本上的嚴重失敗。</p><p style="margin-left:0;">最近發佈的《1ST KISS》（《初吻》）預告片，定檔 25 年 2 月，松隆子和松村北斗合演，是一個講女主時空穿越，回到過去重逢已故愛人的故事，看起來相當不錯。</p><figure class="image ss-img-wrapper image_resized" style="width:267px;"><img src="https://cdnfile.sspai.com/2024/09/26/c9fb43f2cd8be805dde5b92dd475b424.png?imageView2/2/w/1120/q/90/interlace/1/ignore-error/1" data-original="https://cdnfile.sspai.com/2024/09/26/c9fb43f2cd8be805dde5b92dd475b424.png" referrerpolicy="no-referrer"><figcaption>定檔於 2025.2.7 的《1ST KISS 初吻》<br>松隆子和松村北斗主演</figcaption></figure><p style="margin-left:0;">另外還有一個延期的項目，叫《單戀的世界》，由廣瀨鈴、杉咲花、清原果耶三個當紅小花合演，《花束般的戀愛》導演土井裕泰執導。據豆瓣評論説是製作團隊遭遇車禍，不知道什麼時候能完成，可以稍稍期待一下。</p><h3 style="margin-left:0;">宮藤官九郎</h3><p style="margin-left:0;">論知名度，能和坂元裕二旗鼓相當的日劇編劇，大概就要數宮藤官九郎（宮九）了。一想到宮九，就會立刻想到「鬼才」這個詞。宮九的人生絕對是難以複製的精彩，他的才華也少有人企及。</p><p style="margin-left:0;">宮九比坂元略小几歲。他從日本大學藝術學部中途退學，20 歲那年加入了松尾鈴木主持的劇團「大人計劃」，導演、編劇、演員都幹過，後來還提攜過團裏的一個名叫星野源的年輕人。</p><p style="margin-left:0;">1995 年，25 歲的宮九和團裏的阿部隆史（又名阿部貞夫）等三人成立了一個名叫「Group 魂」的樂隊，他負責寫詞，還擔任過吉他手。十年後，這個樂隊的曲子被選上跨年的「紅白歌會」，所以，宮九還作為樂隊成員上過日本的「春晚」演出過。</p><figure class="image ss-img-wrapper image_resized" style="width:664px;"><img src="https://cdnfile.sspai.com/2024/09/26/389188a00d1bed460d66bf1d65d2bd23.png?imageView2/2/w/1120/q/90/interlace/1/ignore-error/1" data-original="https://cdnfile.sspai.com/2024/09/26/389188a00d1bed460d66bf1d65d2bd23.png" referrerpolicy="no-referrer"><figcaption>百變宮九：舞台上演奏吉他（左）、出演《四重奏》（右上）和《被嫌棄的松子的一生》（右下）。</figcaption></figure><p style="margin-left:0;">此外，宮九作為導演和演員，執導和出演過不少影視作品。不帶任何濾鏡，他演得真不錯。剛剛提到的《四重奏》裏，卷真紀離家出走的丈夫就是他演的。深夜劇《古龍兄弟和四苦八苦》裏的租賃大叔也是他，《Border》裏宮九也有客串。電影就更多了，我看過不下十部，比如《被嫌棄的松子一生》中的那個自殺的小説家，《在世界中心呼喚愛》裏成年男主的朋友等等。總之，只要日影日劇看得多，一定不會對宮九的臉陌生。</p><p style="margin-left:0;">説到編劇，30 歲那年，宮九因為改編石田衣良的暢銷小説《池袋西口公園》（2000）嶄露頭角，迅速作為編劇，蜚聲日本。那幾年，和宮九有關的所有影視都是話題作。宮九編劇的電影《Go！》（2001）、《乒乓》（2002）、《69》（2004）每部都是經典，每部都帶有一些 Cult、跳幀的視覺風格，很有朋克的氣質。像長瀨智也、窪冢洋介、阿部隆史也逐漸成了和宮九多次合作的男主角，與宮九作品中常有的<strong>青春主題、搞怪、無釐頭、自戀、男性羣像特色</strong>高度契合。</p><figure class="image ss-img-wrapper image_resized" style="width:664px;"><img src="https://cdnfile.sspai.com/2024/09/26/93eefb82899d1cf0a2267e945bc05bd1.png?imageView2/2/w/1120/q/90/interlace/1/ignore-error/1" data-original="https://cdnfile.sspai.com/2024/09/26/93eefb82899d1cf0a2267e945bc05bd1.png" referrerpolicy="no-referrer"><figcaption>21 世紀初宮九編劇的電影電視劇海報。《Go！大爆走》（左）《池袋西口公園》（中）和《69》（右）。</figcaption></figure><p style="margin-left:0;">宮九極其高產，而且他幾乎沒有明顯的創作斷檔期。每個階段都有佳片問世，風格也各有不同。硬要評出一些經典作品，除了上述提到的之外，還有《木更津貓眼》（2002）、《曼哈頓愛情故事》（2003）、《虎與龍》（2005）、《自戀刑警》（2010）、《還有第 11 人》（2011）、《海女》（2013 晨間劇）、《對不起青春》（2014）、《寬鬆世代又如何》（2016）、《監獄的公主大人》（2017）、《韋馱天：東京奧運的故事》（2019 大河劇）、《我家的故事》（2021）等，均為宮九原創劇本。原諒我報菜名式的羅列，因為除了那部大河劇，我全都看過（自豪臉），真是什麼主題都有，家庭、刑事、校園、婚戀、犯罪、醫療……感覺宮九完全沒有創作瓶頸，完完全全放飛自我。</p><p style="margin-left:0;">因為宮九高產、多變的鬼才風格，很難用一兩句話概括他的作品全貌。不過，有些特點還是共通的。</p><p style="margin-left:0;">首先，宮九的劇<strong>總帶點無釐頭的氣質</strong>。做一個未必恰切的類比，他的作品會讓人聯想到星爺的作品。很多宮九的作品裏都有一個牛批哄哄、自戀到不行、內心又很單純的男主。比如《自戀刑警》裏長瀨智也扮演的刑警，每一集他都會愛上一位女性，瘋狂表白，然後每一集結尾都會發現，這個女子正是他手頭案件的嫌疑人。這個套路集集都有，但就是藉助這股尬勁兒，居然能讓人集集不落看完。《池袋西口公園》《虎與龍》《我家的故事》裏，長瀨智也飾演男主也都是類似的氣質。</p><figure class="image ss-img-wrapper image_resized" style="width:664px;"><img src="https://cdnfile.sspai.com/2024/09/26/c76460a2543878fbcc554341f36dcf85.png?imageView2/2/w/1120/q/90/interlace/1/ignore-error/1" data-original="https://cdnfile.sspai.com/2024/09/26/c76460a2543878fbcc554341f36dcf85.png" referrerpolicy="no-referrer"><figcaption>《自戀刑警》海報（左）、《還有第 11 人！》（右上）和《對不起青春》（右下）劇照。</figcaption></figure><p style="margin-left:0;">有些奇怪的設定，只能是宮九玩出來的。家庭劇《還有第 11 人！》裏，廣末涼子飾演一個死去多年，卻一直在自家壁櫥裏喝悶酒的鬼魂，家裏只有不是她親生的小兒子能看到她。《對不起青春》裏，男主（錦戶亮，飾）的母親去世多年，經常通過男主屋裏的一尊觀音菩薩像現身，兼念整劇的旁白。這些詭異的設定都讓宮九的劇在真真假假、哭哭笑笑中變得更有娛樂性。</p><p style="margin-left:0;">宮九的作品的另一大特色，是<strong>錯綜複雜的男女關係</strong>。和認真刻畫人與人的互動細節、營造故事現實感的坂元裕二不一樣，宮九這裏，人與人之間的關係大多是作為梗出現，用來製造喜劇效果的。最典型的設定要數《曼哈頓愛情故事》，在一家名叫曼哈頓的東京咖啡店裏，七八位男女主人公，最開始是 A 喜歡 B，B 喜歡 C 的關係依次單戀，劇情進展到後半，幾乎沒啥理由，全部反向單戀，從 F 喜歡 G，一直退到 C 喜歡 B，B 喜歡 A。論全員單戀和反轉，還要數宮九的腦洞。</p><figure class="image ss-img-wrapper image_resized" style="width:664px;"><img src="https://cdnfile.sspai.com/2024/09/26/78362ae72bbee240724553328da5a28d.png?imageView2/2/w/1120/q/90/interlace/1/ignore-error/1" data-original="https://cdnfile.sspai.com/2024/09/26/78362ae72bbee240724553328da5a28d.png" referrerpolicy="no-referrer"><figcaption>《曼哈頓愛情故事》海報（左）和《對不起青春》（EP4）劇照。</figcaption></figure><p style="margin-left:0;">校園題材劇《對不起青春》，除了身為老師的男女主人公，宮九還花了不少筆墨描繪了一批正值青春的高中生羣像，他們之間的感情也像浮萍一樣，忽然有一天，全部都變風向了。為此劇中專門放了一張關係圖，幫助觀眾理清關係。這些都作為笑點被宮九加以調侃，又切中了些許的人性，不會讓人感到太過生硬惡俗。</p><p style="margin-left:0;">這麼多劇作中，我最喜歡的宮九劇要數《虎與龍》和《我家的故事》這兩部。它們的共同特色是<strong>把一些日本傳統文化融入了時下的娛樂表達裏</strong>，這也是我覺得宮九最出眾、最有巧思的設計。《虎與龍》裏，男主虎兒是個牛氣哄哄的黑幫小哥，因為落語師傅欠自家老大的錢，所以虎兒選擇拜師學落語，讓師傅拿自己交的學費還錢給負責收債的自己。（看看這設定！）每一集男主都會從師傅那裏學一個經典的落語段子，然後再把它用身邊的故事重新講出來，老段子出新意，特別精彩。</p><figure class="image ss-img-wrapper image_resized" style="width:664px;"><img src="https://cdnfile.sspai.com/2024/09/26/912256cbb2a28213fbcf41a594ff95f4.png?imageView2/2/w/1120/q/90/interlace/1/ignore-error/1" data-original="https://cdnfile.sspai.com/2024/09/26/912256cbb2a28213fbcf41a594ff95f4.png" referrerpolicy="no-referrer"><figcaption>《虎與龍》海報（左）和《我家的故事》海報（右）。<br>宮九到底是有多愛長瀨智也啊！</figcaption></figure><p style="margin-left:0;">而《我家的故事》則是把傳統的高雅藝術「能劇」和日本國民娛樂「摔角」融入在了一起，把國寶傳承問題，和疫情影響、養老介護全部放到一起，融成一鍋粥來討論。夾雜着宮九特有的笑點和亂七八糟的男女關係設定，這兩部劇都<strong>在娛樂和嚴肅中做出了平衡</strong>，讓人看了又看，邊笑邊哭，不由感慨只有宮九才能創作出這等神劇了吧。</p><h4 style="margin-left:0;">新劇看點</h4><p style="margin-left:0;">近兩年宮九作品口碑波動較大，每部劇都有人評論宮九江郎才盡，年紀大了愛説教，但我看完之後，覺得整體還行，放在日劇衰落的大環境下，起碼每部片子裏都有一些笑點和淚點。而且能明顯看出，現在宮九劇的社會關切比以前更深了，這也是我特別欣賞的一點。</p><p style="margin-left:0;">《我們離婚吧》詳細介紹了吊兒郎當的政二代是如何認真拉票、籌備選舉的，普及了不少日本競選的知識。宮九和大石靜合作腳本，玩得就是一個混搭雜糅風。可參見 <a href="https://sspai.com/post/80540" target="_blank">本週看什麼 230623 期</a>。</p><p style="margin-left:0;">《沒有季節的城市》講的是災後重建和人情冷暖，Disney+ 製作，改編自山本週五郎 1960 代的同名小説，舞台移到了現代。池松壯亮領銜主演，強在卡司逆天。可參見 <a href="https://sspai.com/post/82149">本週看什麼 230818 期</a>。</p><p style="margin-left:0;">《不合適也要有個限度！》用一個穿越題材，反思了日本社會近年的「政治正確」問題：上司説句加油就被下屬告成職權騷擾，老師批判兩句就被家長指責為過度教育，主題上可以看成是《寬鬆世代又如何》的延伸。</p><p style="margin-left:0;">剛播完的《新宿野戰醫院》雖然小池榮子的掉渣英語讓人格外不適，但宮九想談論的話題很嚴肅——外國人越來越多的東洋風俗第一街歌舞伎町，每個人的安全、健康、平權問題。感興趣的朋友還可以看一看劇作原型「春山紀念病院」的相關新聞報道。可參見 <a href="https://sspai.com/post/90439" target="_blank">本週看什麼 230712 期</a>。</p><figure class="image ss-img-wrapper image_resized" style="width:664px;"><img src="https://cdnfile.sspai.com/2024/09/26/a9cade97d73120d39d4c2074d471c1a6.png?imageView2/2/w/1120/q/90/interlace/1/ignore-error/1" data-original="https://cdnfile.sspai.com/2024/09/26/a9cade97d73120d39d4c2074d471c1a6.png" referrerpolicy="no-referrer"><figcaption>《最後看見的街》海報。2024.9.21 上映。</figcaption></figure><p style="margin-left:0;">近期，宮九還和朝日電視台合作了一個新劇，叫《最後看見的街》，改編自另一位「三大劇本作家」山田太一的小説，同樣也是穿越題材。9 月 21 日剛上映，無論是篇名，還是主題，感覺宮九都在自己的創作裏不斷循環。目前評分不高，可以關注一下。</p><h3 style="margin-left:0;">古澤良太</h3><p style="margin-left:0;">談日劇，古澤良太也是繞不過去的一位。他原創腳本的《Legal High》在國內早已成為日式神劇的代名詞，劇中古美門律師的<strong>超大信息量、超快語速風格，也是古澤編劇一貫的特點。</strong></p><p style="margin-left:0;">古澤良太是日語文學科班出身，29 歲通過朝日電視台的新人編劇大賽出道，很快挑起了大梁，成為朝日電視台《相棒》系列的主力編劇之一。同一時期，他的電影劇本傑作頻出，昭和懷舊三部曲《永遠的三丁目夕陽》（2005、2007、2012）成為當時口碑、影響力俱佳的作品。後來的《寄生獸》（2014）系列電影也是他改編的。</p><figure class="image ss-img-wrapper"><img src="https://cdnfile.sspai.com/2024/09/26/39782788d582e65a1615319996535ac6.png?imageView2/2/w/1120/q/90/interlace/1/ignore-error/1" data-original="https://cdnfile.sspai.com/2024/09/26/39782788d582e65a1615319996535ac6.png" referrerpolicy="no-referrer"><figcaption>古澤良太編劇的知名電影作品。最右邊是古澤原創的劇本《如月疑雲》。</figcaption></figure><p style="margin-left:0;">古澤良太早先作品中，有兩部非常值得一看。一是他原創劇本的電影《如月疑雲》（2007），整部劇就發生在一間屋子裏，純靠幾個人對話推動劇情發展，非常好看，算是小成本電影佳作。另一個是他改編自同名漫畫的校園題材電視劇《鈴木先生》（2011），長谷川博己主演。這部劇裏探討了很多敏感的教育問題，比如中學生怎麼做性啓蒙？能不能跟同樣是未成年的戀人發生關係？喜歡誰能不能就藏在自己心裏，不告訴別人？如何讓孩子學會尊重他人的價值觀？還有一些更加勁爆的兩性觀點。雖説風格略顯中二，未必合乎現實，但我看完特別感動，尤其認可鈴木老師的教育觀點。</p><figure class="image ss-img-wrapper image_resized" style="width:664px;"><img src="https://cdnfile.sspai.com/2024/09/26/614752bef7ee88cd2c0197d7e868155a.png?imageView2/2/w/1120/q/90/interlace/1/ignore-error/1" data-original="https://cdnfile.sspai.com/2024/09/26/614752bef7ee88cd2c0197d7e868155a.png" referrerpolicy="no-referrer"><figcaption>《鈴木先生》是東京電視台的深夜劇，尺度相當大。<br>本劇的一大看點是眾多日後冉冉升起的 95 後演藝界明星（找找看）。</figcaption></figure><p style="margin-left:0;">2012 年後，古澤良太和富士電視台合作，先後創作了三部電視劇：</p><ul><li>《Legal High》（2012-2014，兩部劇集、兩部 SP）</li><li>《約會～戀愛究竟是什麼》（2015，一部劇集、一部 SP）</li><li>《行騙家族》（2018-2022，一部劇集、一部 SP、三部電影、兩部衍生短劇）。</li></ul><p style="margin-left:0;">由於富士電視台的經營不善，古澤良太的作品還被多次出售過海外版權，因此誕生了中國版的《約會～戀愛究竟是什麼》、韓國版《Legal High》，雖説同為古澤編劇，幾乎可以忽略不算。</p><p style="margin-left:0;">除了《Legal High》裏那種語速快、邏輯強、擅長雄辯的風格之外，<strong>誇張的人物設定也是古澤良太原創劇本的一貫特色。</strong>古美門律師的動作、造型簡直就是日本律政遊戲《逆轉裁判》裏成步堂龍一的原樣復刻。黛律師、阿拉伯王子也都是臉譜化角色，比起真人，更像是動漫人物。《行騙家族》裏，主角團的設定更是誇張，不但「信用欺詐師」的職業高度虛構，每個人都神祕且身懷絕技，長澤雅美飾演的達子智商超羣，小日向文世扮演的理查德輕易就能獲取他人信任，完全衝着爽劇在設計人物。</p><figure class="image ss-img-wrapper image_resized" style="width:664px;"><img src="https://cdnfile.sspai.com/2024/09/26/4005dc0d697f5b3f10d82d31cbf3dbbc.png?imageView2/2/w/1120/q/90/interlace/1/ignore-error/1" data-original="https://cdnfile.sspai.com/2024/09/26/4005dc0d697f5b3f10d82d31cbf3dbbc.png" referrerpolicy="no-referrer"><figcaption>堺雅人老師絕對是在 cosplay 成步堂，百分百還原。</figcaption></figure><p style="margin-left:0;">在我看來，與其説古澤良太是一個日劇編劇，他更像是一個美劇編劇。相比於傳統日劇中的細膩溫情，<strong>他的劇本更強調新奇設定和精妙結構、喜歡埋線索和收伏筆。</strong>而且，我特別欣賞的一點是，他的劇本邏輯設計相當嚴謹，尤其是原創劇集，節奏快、反轉多，結尾還能圓得回去，經常有種看美劇的爽快感。所以，喜歡看美劇的朋友可以多關注他的作品。</p><figure class="image ss-img-wrapper image_resized" style="width:664px;"><img src="https://cdnfile.sspai.com/2024/09/26/3652ff7a42992c89346a4cdca0d49351.png?imageView2/2/w/1120/q/90/interlace/1/ignore-error/1" data-original="https://cdnfile.sspai.com/2024/09/26/3652ff7a42992c89346a4cdca0d49351.png" referrerpolicy="no-referrer"><figcaption>《行騙天下》劇照（左）和《約會～戀愛究竟是什麼》（中、右）兩位主人公。<br>配圖在搞事情，對不起了杏！</figcaption></figure><p style="margin-left:0;">古澤良太的戀愛劇《約會～戀愛究竟是什麼呢～》是我特別喜歡的一部。這部劇設置了一對動漫感十足的「奇葩戀人」，一個是東大數學系畢業的理科直女（杏，飾），一個是啃老十幾年號稱「高等遊民」的文藝男（長谷川博己，飾）。兩個人在無窮無盡的嘴炮和反轉又反轉的劇情中，探討了愛情是什麼、婚姻是什麼、好的約會是什麼一系列的哲學命題，看到最後還覺得挺好挺搭挺甜。算得上是一部「非典型」愛情輕喜劇吧。</p><h3 style="margin-left:0;">野木亞紀子</h3><p style="margin-left:0;">對比前幾位編劇「常青樹」，野木亞紀子算是這十來年的「編劇新秀」。她的成長生涯十分勵志。大學畢業後，她曾在一家紀錄片公司擔任企劃，發現自己的真正興趣是編劇後，潛心創作，持續給富士電視台青年劇本大獎投稿六年（對比坂元，19 歲就獲得了第一屆大獎），最後，野木踩着規定的 35 歲最高投稿年齡，靠着《再見魯賓遜漂流記》獲獎，成功進入編劇界。</p><p style="margin-left:0;">早先幾年，野木亞紀子的劇本創作以改編為主，和 TBS 先後合作的《飛翔情報室》（2013）、《掟上今日子的備忘錄》（2015）、《重版出來！》（2016）都是非常紮實、中規中矩的好作品。直到 2016 年，野木改編的《逃避雖可恥但有用》大獲成功，這讓野木亞紀子的名氣越來越響，有機會擔綱更有挑戰性的原創劇本。</p><figure class="image ss-img-wrapper image_resized" style="width:664px;"><img src="https://cdnfile.sspai.com/2024/09/26/b4be4ed7e4191c77b0015429539e66bf.png?imageView2/2/w/1120/q/90/interlace/1/ignore-error/1" data-original="https://cdnfile.sspai.com/2024/09/26/b4be4ed7e4191c77b0015429539e66bf.png" referrerpolicy="no-referrer"><figcaption>野木老師對新垣結衣的愛全寫在海報上了</figcaption></figure><p style="margin-left:0;">後面的幾部劇很多朋友都很熟悉：野木亞紀子編劇、冢原亞由子導演、新井順子製作人三位女性班底合力打造的《非自然死亡》（2018）、《MIU404》（2020）相繼問世。這兩個作品都是原創的職場單元劇，一集一個相對獨立的小故事，節奏快、內容緊湊，非常耐看。兩部劇的主題曲，米津玄師的《Lemon》和《感電》傳唱程度也格外高，也助推了劇的熱度。</p><p style="margin-left:0;">《非自然死亡》講獨立法醫機構如何輔助案件偵破，《MIU404》講基層機動搜查隊的日常出警和案件調查。這兩個故事不光是在娛樂獵奇，它們都在<strong>關注司法體系相對邊緣、影響力和社會地位不高的基層羣體。</strong>比如，《非自然死亡》反覆強調法醫收入低、工作時間長、責任大，工作環境極其惡劣，連石原里美這樣的美貌醫生都找不到對象。「MIU404」機搜小分隊永遠身處最前線，負責及時出警和初步調查，一旦案件升級就要移交其他科室手中。隊員也經常被瞧不起，沒有太多晉升前途。</p><p style="margin-left:0;">雖説是電視劇，但這兩部劇都有很紮實的調研基礎，有點像紀錄片，讓觀眾看到工作在一線、不太被關注到的職業。劇裏還<strong>探討了大量敏感的日本社會問題</strong>。比如過勞死、新型傳染病對策（2018 年的劇！）、司法醫學界的女性歧視、路怒犯罪、在日外國人生存處境、未成年輟學流浪、線人保護措施缺失等。這是野木亞紀子劇的一個非常出眾的特徵，<strong>她的社會觀察、社會批判都非常直接，</strong>所以也顯得劇比較「硬核」，信息量偏大，趣味性較弱，有時不太能看進去。</p><figure class="image ss-img-wrapper"><img src="https://cdnfile.sspai.com/2024/09/26/6413520162bc69bd8a10cef8004bf3e8.png?imageView2/2/w/1120/q/90/interlace/1/ignore-error/1" data-original="https://cdnfile.sspai.com/2024/09/26/6413520162bc69bd8a10cef8004bf3e8.png" referrerpolicy="no-referrer"><figcaption>《Last Mile》卡司宣傳圖。集合了《非自然死亡》（左上）和《MIU404》（右上）的眾多角色。</figcaption></figure><h4 style="margin-left:0;">新劇看點</h4><p style="margin-left:0;">《非自然死亡》和《MIU404》成功後，製作方 TBS 電視台看到商機，把兩個故事的世界融合成了一個虛構的大世界。故事人物相互串場，劇中機構還能相互支持。今年 8 月新上映的電影《Last Mile》（《最後的里程》）是個大項目，把兩劇的卡司全部集合起來，作為故事的背景線索，仍由野木亞紀子、冢原亞由子、新井順子合作創作。滿島光和岡田將生主演，講一個快遞箱連環爆炸故事。豆瓣和日本 Filmarks 評分都相當高，可以期待一下。</p><figure class="image ss-img-wrapper"><img src="https://cdnfile.sspai.com/2024/09/26/9ba5cef0d2e0115a9a2a922df71a9880.png?imageView2/2/w/1120/q/90/interlace/1/ignore-error/1" data-original="https://cdnfile.sspai.com/2024/09/26/9ba5cef0d2e0115a9a2a922df71a9880.png" referrerpolicy="no-referrer"><figcaption>《犬王》和《去唱卡拉 OK 吧》海報。</figcaption></figure><p>此外，野木亞紀子這兩年改編的其他電影劇本也有不錯的反響，前兩年的高分動畫《平家物語：犬王》，今年新出的漫改電影《去唱卡拉 OK 吧！》（可參見 <a href="https://sspai.com/post/88518" target="_blank">本週看什麼 240503 期</a>）都是由她編劇。野木的作品一直很穩，質量很有保證，後續可以持續關注。</p><h3 style="margin-left:0;">笨蛋節奏（升野英知）</h3><p style="margin-left:0;">很多人知道笨蛋節奏都是因為《重啓人生》這部劇。劇中，編劇扮演的那位負責轉生的工作人員也給不少人留下了深刻的印象。</p><figure class="image ss-img-wrapper image_resized" style="width:464px;"><img src="https://cdnfile.sspai.com/2024/09/26/article/a46390c33b723f7d70513bc8d4d1b103.jpeg?imageView2/2/w/1120/q/90/interlace/1/ignore-error/1" alt="人生就是累積」笨蛋節奏用《重啟人生》再説一次…而且説得漂亮" data-original="https://cdnfile.sspai.com/2024/09/26/article/a46390c33b723f7d70513bc8d4d1b103.jpeg" referrerpolicy="no-referrer"><figcaption>《重啓人生》劇照，左邊就是笨蛋節奏（本名：升野英知）。</figcaption></figure><p style="margin-left:0;">與其説笨蛋節奏説個電視劇編劇，他更知名的身份是一位搞笑藝人。在日本，當搞笑藝人是很多年輕人的夢想，但是真想成功卻難上加難。搞笑藝人通常多才多藝，不但要自己寫故事，還要會表演。作為混演藝圈的人，要情商高、會説話，懂得自我經營。最重要的是運氣好，老天賞飯，有人提攜。關於搞笑藝人有多難出頭的電視劇，《火花》《短劇開始啦》（可參見 <a href="https://sspai.com/post/66249" target="_blank">本週看什麼 210423 期</a>）都值得一看。</p><p style="margin-left:0;">回到笨蛋節奏的故事。20 歲時，升野英知和松下敏宏組成搭檔，起名「笨蛋節奏」，開始從事演藝活動。十年後，搭檔松下敏宏退出演藝圈，升野英知獨自接下了組合名，變成了一個單人搞笑藝人。後來，笨蛋節奏的事業開始騰飛，2006 年到 2010 年，他四次進入日本單人藝人大賽 R-1 的決賽（M-1 是漫才大賽），雖然從未拿過冠軍，但獲得了相當的知名度。</p><p style="margin-left:0;">笨蛋節奏的搞笑風格，很難一兩句話説清楚。B 站有不少他的短劇視頻，可以感受一下：</p><iframe class="ss-videoIframe" src="https://player.bilibili.com/player.html?bvid=BV1e4411j7mX&amp;autoplay=false" sandbox="allow-scripts allow-same-origin allow-popups" referrerpolicy="no-referrer"> </iframe><p style="margin-left:0;">&nbsp;</p><p style="margin-left:0;">作為編劇的笨蛋節奏不是一下子就放出了《重啓人生》（2023）這樣的大招。在此之前，他編劇和反串性別主演的《架空 OL 日誌》（2017）裏，已經形成了很明顯的編劇風格：<strong>女性羣像、以聊天和對話為主、話題極其日常瑣碎、沒有任何稱得上「大事」的情節，全靠着對生活細節的極致觀察、出其不意的事情發展取勝。</strong>夏帆、臼田麻美、三浦透子都是他經常合作的女演員。</p><figure class="image ss-img-wrapper"><img src="https://cdnfile.sspai.com/2024/09/26/738f3bf7b670cf5ff53ccd14963dc133.png?imageView2/2/w/1120/q/90/interlace/1/ignore-error/1" data-original="https://cdnfile.sspai.com/2024/09/26/738f3bf7b670cf5ff53ccd14963dc133.png" referrerpolicy="no-referrer"><figcaption>《架空 OL 日誌》海報圖，其中，笨蛋節奏（左）毫無違和感地飾演一位年輕銀行女性員工。</figcaption></figure><p style="margin-left:0;">他和井浦新合演的《殺意的道程》（2020）也是講兩個普通人為了報仇，無釐頭地要殺一個人。結果整部劇花了大量篇幅在講兩人為這次行動選什麼代號、穿什麼衣服、去超市挑什麼作案工具、日常盯梢怎麼跟，總之相當脫線。</p><p style="margin-left:0;">《重啓人生》可以説是笨蛋節奏的集大成之作。這個作品無論在劇情結構、笑點設置，還有卡司助力上，都沒有可挑之處。歡迎沒有看過的朋友直接去看，在此不做任何劇透。講實話，這麼綿密的埋梗、日常的細節、大量的吐槽編織在一起，可能除了搞笑藝人出身的笨蛋節奏之外，也沒誰能夠駕馭得住了吧。</p><h2 style="margin-left:0;">劇作詞量分析</h2><p style="margin-left:0;">最後做一個趣味對比。學日語的過程中，我曾把這幾位編劇的作品字幕導出，作為日常學習的材料。</p><p style="margin-left:0;">以 45min 的單集為單位，我隨機翻過一些日劇，一般以<strong>單集 900-1000 詞左右居多</strong>。《非自然死亡》《Legal High》《重啓人生》一集的單詞總量（不含重複）差不多，都在 1200 個詞以上，600 個漢字（漢字佔比基本上都是 50% 左右），高於平均值。野木亞紀子、古澤良太、笨蛋節奏的作品雖然風格各不相同，但都屬於較高的對話密度。宮九的作品和上面幾位大體持平，具體還要視題材而定。《對不起青春》《我家的故事》話密對話多，《還有第 11 人！》就明顯少很多，相對更容易理解。</p><p style="margin-left:0;">有趣的是坂元裕二的作品。《四重奏》平均一集只有 750 個詞，370 個漢字，是我迄今找到的詞量最少的一部劇，可能是演奏樂曲的場景佔了很大比例。《最完美的離婚》裏爭吵不斷，一集也不過 800-900 個詞，明顯比前幾位編劇用詞少很多，果然是惜句如金。</p><figure class="image ss-img-wrapper image_resized" style="width:630px;"><img src="https://cdnfile.sspai.com/2024/09/26/806a63f76c18814c08091b9ca1f944ec.png?imageView2/2/w/1120/q/90/interlace/1/ignore-error/1" data-original="https://cdnfile.sspai.com/2024/09/26/806a63f76c18814c08091b9ca1f944ec.png" referrerpolicy="no-referrer"><figcaption>整合了 japanese.io（左）、jpdb.io（中）、Nihongo（右上）等多組數據。<br>由於每集數據不同，只能估算。儘量保證數據準確、有可信度。</figcaption></figure><p style="margin-left:0;">考慮到野木亞紀子的作品多為單元劇，每集主題都不同，我還對比了<strong>全劇的詞數</strong>。《非自然死亡》《MIU404》一騎絕塵，每部劇用詞總數（不含重複）都有 5700 多個，就連《逃避雖可恥但有用》這樣的愛情喜劇都接近 5000，難度遠遠超出其他作品。宮九的幾部作品也在 5000 詞水平，略少一些。相比起來，《四重奏》裏的總單詞量只有 3360，《最完美的離婚》在 3880，也就是説，通過野木亞紀子一部劇學到的生詞，大致相當於坂元一部劇的 1.5-2 倍！而且通過坂元劇、宮九劇、笨蛋節奏作品學到的日常用語還算多，野木劇裏會出現大量社會專業用語，古澤良太作品也是大量抽象用詞，語速又快，難度級別逆天。</p><p style="margin-left:0;">另外，我們通常理解的<strong>「語速」</strong>也能從數據上看出來。《Legal High》和《重啓人生》平台上沒有數據。我就用了另一個知名嘴炮劇《我家的事説來話長》（金子茂樹編劇）來對比，平均每集的詞量在 1200 上下，而這部劇每分鐘的單詞數最高甚至達到了 135 詞（包含重複詞語）！與之相比，野木亞紀子的劇差不多每分鐘 120 詞，屬於很多的了，宮九劇的每分鐘詞量大概是 90-100 詞。坂元的《四重奏》穩定在 80-90 上下，《最完美的離婚》話密一點，平均每分鐘也就 100 詞左右。</p><p style="margin-left:0;">由於手頭資料有限，得出的結論未必特別精準。歡迎大家給我推薦單詞數量、難度統計分析的網站或軟件，我可以提供更多的數據，也可以提供一些好的日語學習適合的劇集。</p><h2 style="margin-left:0;">更多編劇</h2><p style="margin-left:0;">文章篇幅有限，只介紹了我個人持續關注的幾位日劇編劇，肯定有大量缺漏。最後再簡單羅列一些知名的資深編劇和他們擅長的題材及代表作，也歡迎大家多多補充：</p><h3 style="margin-left:0;">編劇</h3><h4 style="margin-left:0;">戀愛類</h4><p style="margin-left:0;">北川悅吏子《悠長假期》《橙色歲月》</p><p style="margin-left:0;">大石靜《第二處女》《大戀愛》《於星降之夜》</p><h4 style="margin-left:0;">劇情類</h4><p style="margin-left:0;">木皿泉《西瓜》《昨夜的咖喱，明日的麪包》</p><p style="margin-left:0;">金子茂樹《求婚大作戰》《我的事説來話長》《短劇開始了》</p><p style="margin-left:0;">岡田惠和《倒數第二次戀愛》《藉着雨點説愛你》</p><p style="margin-left:0;">大島里美《一公升的眼淚》《凪的新生活》《妻子變成小學生》</p><h4 style="margin-left:0;">醫療懸疑劇</h4><p style="margin-left:0;">林宏司《醫龍》《Code Blue》</p><p style="margin-left:0;">森下佳子《仁醫》《天國與地獄》</p><p style="margin-left:0;">井上由美子《白色巨塔》《緊急調取室》《晝顏》</p><h3 style="margin-left:0;">導演（兼編劇）</h3><h4 style="margin-left:0;">推理、劇情類</h4><p style="margin-left:0;">三谷幸喜《古佃任三郎》系列</p><h4 style="margin-left:0;">深夜系</h4><p style="margin-left:0;">大根仁《真幌站前番外地》《大川端偵探社》《地面師》</p><h4 style="margin-left:0;">脫力系</h4><p style="margin-left:0;">三木聰《時效警察》</p><h4 style="margin-left:0;">惡搞系</h4><p style="margin-left:0;">福田雄一《勇者義彥系列》《我是大哥大》</p><h3 style="margin-left:0;">推薦豆列</h3><ul><li><a href="https://www.douban.com/doulist/248473/" target="_blank">日劇的那些名編劇們 Part·1</a></li><li><a href="https://www.douban.com/doulist/430339/" target="_blank">日劇的那些名編劇們 Part·2</a></li></ul><p style="margin-left:0px;">&gt; 小紅書 📕 關注 <a href="https://www.xiaohongshu.com/user/profile/63f5d65d000000001001d8d4" target="_blank">少數派 sspai</a>、<a href="https://www.xiaohongshu.com/user/profile/62fb4cf90000000012002431" target="_blank">本週看什麼</a>，找到數字時代更好的生活方式 🎊</p><p style="margin-left:0px;">&gt; <a href="https://sspai.com/topic/416">看什麼 Café</a> / <a href="https://sspai.com/topic/419">主題片單</a> 專題頁、<a href="https://sspai.com/page/2021/movie">2021 年度回顧</a>，更多影視推薦盡在 <a href="https://sspai.com/tag/%E6%9C%AC%E5%91%A8%E7%9C%8B%E4%BB%80%E4%B9%88">#本週看什麼</a> 🎬</p>]]>
             </description>
             <pubDate>Thu, 10 Oct 2024 09:30:00 GMT</pubDate>
             <guid isPermaLink="false">https://sspai.com/post/92507</guid>
@@ -128,323 +465,6 @@
             <link>https://sspai.com/post/92764</link>
             <author>
                 <![CDATA[谷豐]]>
-            </author>
-        </item>
-        <item>
-            <title>
-                <![CDATA[打造自主、安全、可控的攝像頭：我的智能家居監控方案]]>
-            </title>
-            <description>
-                <![CDATA[<p style="margin-left:0px;"><strong>Matrix 首頁推薦</strong>&nbsp;</p><p style="margin-left:0px;"><a href="https://sspai.com/matrix">Matrix</a>&nbsp;是少數派的寫作社區，我們主張分享真實的產品體驗，有實用價值的經驗與思考。我們會不定期挑選 Matrix 最優質的文章，展示來自用戶的最真實的體驗和觀點。&nbsp;</p><p style="margin-left:0px;">文章代表作者個人觀點，少數派僅對標題和排版略作修改。</p><hr><p>最近買了一個攝像頭，放在家裏看寵物，稍微折騰了下，目前算是比較滿意了。</p><p><strong>如果你對家庭監控的安全性和隱私性要求比較高，可以參考下我的方案。如果不想折騰，建議直接用原廠的 App 和雲服務。</strong></p><h2>自建方案簡介</h2><p>買了個支持 ONVIF 協議的 IP 攝像頭，通過 ONVIF 協議接入和羣暉的監控 Surveillance Station，攝像頭進行 24H 監控，視頻存儲在羣暉外掛的 USB 硬盤上，配合 Home Assistant 和 Node-RED，實現了一些動靜通知、回家離家自動開關等自動化的功能。攝像頭斷開外網訪問，只能在家裏內網或者 VPN 訪問，保證了視頻的安全性。</p><h2>為什麼要自建監控？</h2><p>幾個月我寫了一篇文章<a href="https://luolei.org/personal-decoupling-cybersecurity">《脫鈎: 我的個人網絡安全策略》</a>，分享我與中國互聯網服務和產品脫鈎的一些經驗。</p><p>在那篇文章中，我介紹了我已經把大多數據資產都轉移到了境外服務或者下雲，主要目的就是為了保護自己的隱私和數據安全。</p><p>對「智能家居」來説，脫鈎或者下雲是不實際的，我是小米生態的重度用戶，門鎖和門禁攝像頭，都是小米生的產品，這些產品基本都強依賴於小米的雲服務。入住新家兩年以來，這種基於雲的服務，的確也帶來了很多便利。</p><p><strong>攝像頭不同於其他智能設備，這是一個極其敏感的，打破了「網絡」與「現實」邊界的設備，他可以直接看到、聽到鏡頭裏的一切。</strong></p><p>好幾年前，我通過一個業內的渠道，得知某攝像頭的雲存儲服務，曾經將用戶的監控視頻未加密處理，就直接存在某公有云的 bucket 裏。從那之後，我就再也沒在家裏開啓過攝像頭。</p><p>前幾年，眾多在各種亂七八糟網站上泄漏出來的視頻，想必大家也都有所耳聞。基於上面種種考量，我決定自建監控方案。首先説下我的這套監控方案的優缺點。</p><h2>自建對比原廠優缺點</h2><figure class="table"><table><thead><tr><th style="border:1px solid var(--borderColor-default);padding:6px 13px;">項目</th><th style="border:1px solid var(--borderColor-default);padding:6px 13px;">自建方案</th><th style="border:1px solid var(--borderColor-default);padding:6px 13px;">原廠</th></tr></thead><tbody><tr><td style="border:1px solid var(--borderColor-default);padding:6px 13px;">操作性</td><td style="border:1px solid var(--borderColor-default);padding:6px 13px;">❌ 需要折騰，挺麻煩</td><td style="border:1px solid var(--borderColor-default);padding:6px 13px;">✅ 上手即用</td></tr><tr><td style="border:1px solid var(--borderColor-default);padding:6px 13px;">安全性</td><td style="border:1px solid var(--borderColor-default);padding:6px 13px;">✅ 本地存儲，內網訪問，理論可與外網完全隔離</td><td style="border:1px solid var(--borderColor-default);padding:6px 13px;">❌ 雲服務、雲存儲，存在隱私泄露的可能</td></tr><tr><td style="border:1px solid var(--borderColor-default);padding:6px 13px;">經濟性</td><td style="border:1px solid var(--borderColor-default);padding:6px 13px;">✅ 無額外費用</td><td style="border:1px solid var(--borderColor-default);padding:6px 13px;">❌ 雲存儲一般都要額外收費</td></tr><tr><td style="border:1px solid var(--borderColor-default);padding:6px 13px;">存儲空間</td><td style="border:1px solid var(--borderColor-default);padding:6px 13px;">✅ 無空間限制,理論可無限拓展存儲</td><td style="border:1px solid var(--borderColor-default);padding:6px 13px;">❌ 雲存儲空間有限,時長有限</td></tr><tr><td style="border:1px solid var(--borderColor-default);padding:6px 13px;">共享性</td><td style="border:1px solid var(--borderColor-default);padding:6px 13px;">❌ 不方便共享給家人</td><td style="border:1px solid var(--borderColor-default);padding:6px 13px;">✅ 便捷分享控制</td></tr><tr><td style="border:1px solid var(--borderColor-default);padding:6px 13px;">外網訪問</td><td style="border:1px solid var(--borderColor-default);padding:6px 13px;">❌ VPN 訪問 (可開啓公網權限:但不建議)</td><td style="border:1px solid var(--borderColor-default);padding:6px 13px;">✅ 直接公網即可訪問</td></tr><tr><td style="border:1px solid var(--borderColor-default);padding:6px 13px;">HomeKit 支持</td><td style="border:1px solid var(--borderColor-default);padding:6px 13px;">✅ 支持</td><td style="border:1px solid var(--borderColor-default);padding:6px 13px;">❌ 大多不支持</td></tr></tbody></table></figure><h2>設備清單</h2><figure class="table"><table><thead><tr><th style="border:1px solid var(--borderColor-default);padding:6px 13px;">設備</th><th style="border:1px solid var(--borderColor-default);padding:6px 13px;">品牌</th><th style="border:1px solid var(--borderColor-default);padding:6px 13px;">型號</th><th style="border:1px solid var(--borderColor-default);padding:6px 13px;">價格</th></tr></thead><tbody><tr><td style="border:1px solid var(--borderColor-default);padding:6px 13px;">攝像頭</td><td style="border:1px solid var(--borderColor-default);padding:6px 13px;">TP-Link</td><td style="border:1px solid var(--borderColor-default);padding:6px 13px;"><a href="https://www.tp-link.com.cn/product_1893.html">800 萬全綵雲台無線網絡攝像機 TL-IPC48AW 全綵</a></td><td style="border:1px solid var(--borderColor-default);padding:6px 13px;">￥279</td></tr><tr><td style="border:1px solid var(--borderColor-default);padding:6px 13px;">NAS</td><td style="border:1px solid var(--borderColor-default);padding:6px 13px;">羣暉</td><td style="border:1px solid var(--borderColor-default);padding:6px 13px;"><a href="https://global.synologydownload.com/download/Document/Hardware/DataSheet/DiskStation/16-year/DS216+/chs/Synology_DS216_Plus_Data_Sheet_chs.pdf">DS216+</a></td><td style="border:1px solid var(--borderColor-default);padding:6px 13px;">￥0 (舊設備)</td></tr><tr><td style="border:1px solid var(--borderColor-default);padding:6px 13px;">外接硬盤盒</td><td style="border:1px solid var(--borderColor-default);padding:6px 13px;">淘寶工廠店</td><td style="border:1px solid var(--borderColor-default);padding:6px 13px;">2.5 寸 USB3.1 Type-C 硬盤盒</td><td style="border:1px solid var(--borderColor-default);padding:6px 13px;">￥21</td></tr><tr><td style="border:1px solid var(--borderColor-default);padding:6px 13px;">外接監控存儲 SSD</td><td style="border:1px solid var(--borderColor-default);padding:6px 13px;">飢餓鯊 OCZ</td><td style="border:1px solid var(--borderColor-default);padding:6px 13px;">Arc100 240G 固態硬盤</td><td style="border:1px solid var(--borderColor-default);padding:6px 13px;">￥0 (舊設備)</td></tr></tbody></table></figure><p>這次除了攝像頭是新購的，其他都是原有的老設備。這裏的花銷大頭是羣暉的 NAS，理論上如果你有其他 NAS，或者開源的軟路由什麼的，也能實現類似的功能。無非就是需要花費更多時間折騰罷了。</p><h2>系統架構</h2><figure class="table"><table><thead><tr><th style="border:1px solid var(--borderColor-default);padding:6px 13px;">名稱</th><th style="border:1px solid var(--borderColor-default);padding:6px 13px;">説明</th><th style="border:1px solid var(--borderColor-default);padding:6px 13px;">配置難度</th></tr></thead><tbody><tr><td style="border:1px solid var(--borderColor-default);padding:6px 13px;"><a href="https://www.synology.cn/zh-cn/surveillance">SurveillanceStation</a></td><td style="border:1px solid var(--borderColor-default);padding:6px 13px;">羣暉自帶監控中心套件</td><td style="border:1px solid var(--borderColor-default);padding:6px 13px;">低</td></tr><tr><td style="border:1px solid var(--borderColor-default);padding:6px 13px;"><a href="https://www.home-assistant.io/">Home Assistant</a></td><td style="border:1px solid var(--borderColor-default);padding:6px 13px;">開源智能家庭家庭解決方案，與米家和 HomeKit 等聯動</td><td style="border:1px solid var(--borderColor-default);padding:6px 13px;">高</td></tr><tr><td style="border:1px solid var(--borderColor-default);padding:6px 13px;"><a href="https://github.com/node-red/node-red">Node-RED</a></td><td style="border:1px solid var(--borderColor-default);padding:6px 13px;">開源的流程編排工具，配合 HA 實現各種事件處理自動化</td><td style="border:1px solid var(--borderColor-default);padding:6px 13px;">高</td></tr></tbody></table></figure><p>上面就是我的這套監控系統的核心架構，除了 SurveillanceStation 屬於傻瓜級上手可用，後面的 Home Assistant 和 Node-Red 都需要花費一定的時間和學習。由於我之前就有一些 HA 和 Node-RED 的使用經驗，這次只是集成下 SurveillanceStation，所以整體花費的時間還是比較少的。</p><h2>配套 App</h2><figure class="table"><table><thead><tr><th style="border:1px solid var(--borderColor-default);padding:6px 13px;">名稱</th><th style="border:1px solid var(--borderColor-default);padding:6px 13px;">説明</th><th style="border:1px solid var(--borderColor-default);padding:6px 13px;">安卓</th><th style="border:1px solid var(--borderColor-default);padding:6px 13px;">iOS</th><th style="border:1px solid var(--borderColor-default);padding:6px 13px;">Web</th><th style="border:1px solid var(--borderColor-default);padding:6px 13px;">實時監控</th><th style="border:1px solid var(--borderColor-default);padding:6px 13px;">回放</th><th style="border:1px solid var(--borderColor-default);padding:6px 13px;">推送信息</th></tr></thead><tbody><tr><td style="border:1px solid var(--borderColor-default);padding:6px 13px;">Home Assistant</td><td style="border:1px solid var(--borderColor-default);padding:6px 13px;">HA 的客戶端</td><td style="border:1px solid var(--borderColor-default);padding:6px 13px;">✅</td><td style="border:1px solid var(--borderColor-default);padding:6px 13px;">✅</td><td style="border:1px solid var(--borderColor-default);padding:6px 13px;">✅</td><td style="border:1px solid var(--borderColor-default);padding:6px 13px;">✅</td><td style="border:1px solid var(--borderColor-default);padding:6px 13px;">❌</td><td style="border:1px solid var(--borderColor-default);padding:6px 13px;">✅</td></tr><tr><td style="border:1px solid var(--borderColor-default);padding:6px 13px;">DS CAM</td><td style="border:1px solid var(--borderColor-default);padding:6px 13px;">羣暉監控套件的配套 App</td><td style="border:1px solid var(--borderColor-default);padding:6px 13px;">✅</td><td style="border:1px solid var(--borderColor-default);padding:6px 13px;">✅</td><td style="border:1px solid var(--borderColor-default);padding:6px 13px;">❌</td><td style="border:1px solid var(--borderColor-default);padding:6px 13px;">✅</td><td style="border:1px solid var(--borderColor-default);padding:6px 13px;">✅</td><td style="border:1px solid var(--borderColor-default);padding:6px 13px;">✅</td></tr><tr><td style="border:1px solid var(--borderColor-default);padding:6px 13px;">Bark</td><td style="border:1px solid var(--borderColor-default);padding:6px 13px;">自建的 iOS 的消息推送服務</td><td style="border:1px solid var(--borderColor-default);padding:6px 13px;">❌</td><td style="border:1px solid var(--borderColor-default);padding:6px 13px;">✅</td><td style="border:1px solid var(--borderColor-default);padding:6px 13px;">❌</td><td style="border:1px solid var(--borderColor-default);padding:6px 13px;">❌</td><td style="border:1px solid var(--borderColor-default);padding:6px 13px;">❌</td><td style="border:1px solid var(--borderColor-default);padding:6px 13px;">✅</td></tr><tr><td style="border:1px solid var(--borderColor-default);padding:6px 13px;">Telegram</td><td style="border:1px solid var(--borderColor-default);padding:6px 13px;">極其方便和自由的社交 App</td><td style="border:1px solid var(--borderColor-default);padding:6px 13px;">✅</td><td style="border:1px solid var(--borderColor-default);padding:6px 13px;">✅</td><td style="border:1px solid var(--borderColor-default);padding:6px 13px;">✅</td><td style="border:1px solid var(--borderColor-default);padding:6px 13px;">❌</td><td style="border:1px solid var(--borderColor-default);padding:6px 13px;">❌</td><td style="border:1px solid var(--borderColor-default);padding:6px 13px;">✅</td></tr></tbody></table></figure><h2>攝像頭選購</h2><p>搭建自己的監控體系，<strong>基本的要求就是攝像頭需要支持 ONVIF 協議或者 rtsp 協議</strong>，這是安防設備的通用協議，方便用戶自己集成到各種系統中。</p><p>購買攝像頭之前，需要務必確認攝像頭支持 ONVIF 協議，小米的許多攝像頭就不支持。</p><ul><li><a href="https://security.tp-link.com.cn/service/detail_article_4417.html">怎麼判斷攝像機支不支持 Onvif 協議？</a></li><li><a href="https://www.v2ex.com/t/983607">V2EX: 網絡攝像頭有什麼通用協議嗎？</a></li><li><a href="https://www.zhihu.com/question/404251421">知乎: 為什麼家用攝像頭基本上都不支持 onvif/rtsp 協議呢?</a></li></ul><p>這次我購買的攝像頭是 TP-Link 的 <a href="https://www.tp-link.com.cn/product_1893.html">TL-IPC48AW</a>，屬於比較經典的系列。</p><ul><li>支持 ONVIF 協議</li><li>支持 4K 15 幀錄製。</li><li>Wi-Fi 2.4G</li><li>紅外夜視 (方便夜晚和弱光環境監控)</li><li>支持 Micro SD 卡存儲</li><li>1 個 RJ45 口，支持網線直連</li></ul><p>硬傷是 Wi-Fi 不支持 5G。除了基礎的硬件功能，還有各種雲服務支持，AI 檢測什麼的，但是由於我也沒打算用自帶的 App（美區 App Store 居然還沒 TP-Link App) ，所以也無所謂了。</p><h2>關閉攝像頭外網訪問</h2><p>防止攝像頭能訪問外網，首先就是關閉攝像頭的外網訪問權限，僅限內網用戶訪問。</p><p>按照以下步驟設置即可：</p><ul><li>給攝像頭設置<strong>固定 IP</strong></li><li>在路由器層禁止該 IP 訪問外網</li><li>如果使用 OpenWrt 等網關，在<strong>防火牆層設置屏蔽規則</strong></li></ul><pre class="language-shell"><code>#TP-Link 攝像頭，防火牆規則
-
-iptables -I FORWARD  -m mac --mac-source E4:DD:66:82:DE:F4 -j DROP
-iptables -I FORWARD -s 10.0.0.12 -d 10.0.0.0/16 -j ACCEPT
-iptables -I FORWARD -s 10.0.0.0/16 -d 10.0.0.12 -j ACCEPT
-iptables -I FORWARD -s 10.0.0.12 -j REJECT</code></pre><p>我家使用的是小米路由器，網關使用的是 OpenWrt，除了在小米的控制枱關閉外網權限，同時在防火牆設置裏，通過添加過濾攝像頭 IP 和 MAC 地址的規則，禁止攝像頭訪問外網。</p><figure class="image ss-img-wrapper"><img src="https://cdnfile.sspai.com/2024/09/26/article/92c41170f694f3277992e8521e7cd784.jpeg?imageView2/2/w/1120/q/90/interlace/1/ignore-error/1" alt="" data-original="https://cdnfile.sspai.com/2024/09/26/article/92c41170f694f3277992e8521e7cd784.jpeg" referrerpolicy="no-referrer"></figure><p>設置完畢後，可以看到這個時候再訪問 TP-Link 自帶的 App，提示是設備離線狀態。但是如果你是在局域網通過內網 IP 訪問，依舊可以正常訪問。</p><h2>如何配置外網訪問</h2><p>將家庭內網暴露到外網，或者內網穿透，是一個與「監控」系統本身不太相關的問題。</p><p>從安全的角度考量，我不希望攝像頭直接暴露在外網，所以我只是在有需要的時候，通過 zerotier 來訪問家裏的監控系統。實際上還有一些其他方案，比如 WireGuard 等，這裏就不做討論了。</p><ul><li><a href="https://www.zerotier.com/">ZeroTier</a></li><li><a href="https://www.wireguard.com/">WireGuard</a></li><li><a href="https://post.smzdm.com/p/741270/">無公網 IP 搞定羣暉+ZEROTIER ONE 實現內網穿透</a></li><li><a href="https://www.bilibili.com/read/cv15337265/">使用 frp 和 Shadowsocks 實現安全訪問內網服務</a></li></ul><h2>接入羣暉 SurveillanceStation</h2><p>羣暉的 SurveillanceStation 是一個非常成熟的監控套件，這個也是我們的監控系統的核心。之所以選擇羣暉，是因為我家裏有一台羣暉。其他廠商也有類似的監控套件，也有第三方的開源解決方案，建議大家就自行研究了。</p><p>這部分的內容，以 ONVIF 羣暉 NAS 等關鍵詞組合搜索，網上有很多教程，我在這裏就不贅述了。</p><ul><li><a href="https://post.smzdm.com/p/awzzgemk/">NAS 變身 NVR 錄像機，接入監控攝像頭實現實時錄製、遠程回放、存儲！</a></li><li><a href="https://post.smzdm.com/p/arqvmw3q/">家庭雙攝像頭添加到羣暉 Surveillance 套件</a></li></ul><h2>將監控視頻存儲到外接 USB 硬盤</h2><p>我的羣暉 DS216+ 是雙盤位，使用兩塊機械硬盤做了 RAID1。</p><p><strong>由於監控的過程中一直會寫入硬盤，會對硬盤壽命造成嚴重影響。強烈建議非專業需求，不要將監控視頻與其他數據混存。</strong></p><figure class="image ss-img-wrapper"><img src="https://cdnfile.sspai.com/2024/09/26/article/e7f9a415b18cd9c61046733c1581b8c7.jpeg?imageView2/2/w/1120/q/90/interlace/1/ignore-error/1" alt="" data-original="https://cdnfile.sspai.com/2024/09/26/article/e7f9a415b18cd9c61046733c1581b8c7.jpeg" referrerpolicy="no-referrer"></figure><p>為瞭解決這個問題，我使用了一塊沒用的 240G 的 SSD，通過 USB3.0 接口外接到羣暉上，作為監控的存儲盤。上圖就是我目前實際掛載的樣子，這樣有個好處:</p><ul><li><strong>不影響主硬盤的壽命</strong></li><li>USB3.0 搭配 SSD 硬盤，讀寫速度更快，回放時更流暢</li></ul><p>雖然這樣做，不如直接將視頻存儲在 NAS 的主硬盤上保險，但是我的目的主要就是看看最近的視頻，監控錄製的視頻也不需要長期存儲，所以這樣做對於我來説倒是一個更經濟合理的選擇。</p><p>由於<strong>羣暉默認不允許外接硬盤作為存儲盤</strong>，這裏需要一定的小技巧，外接硬盤掛載成正常的文件路徑，需要通過 SSH 登錄到羣暉，配合 <code>ln -s</code> 軟鏈的方式掛載外接硬盤。</p><ul><li>參考教程: <a href="https://post.smzdm.com/p/559269/">NAS 羣暉 DSM 進階教程：保護硬盤，使用外接設備下載資源</a></li><li><a href="https://community.synology.com/enu/forum/3/post/132261?page=2&amp;sort=oldest">Surveillance Station should allow external USB Disk as Storage</a></li></ul><figure class="image ss-img-wrapper"><img src="https://cdnfile.sspai.com/2024/09/26/article/34601e65cc32219eb5e4cdcf9c2041c7.jpeg?imageView2/2/w/1120/q/90/interlace/1/ignore-error/1" alt="" data-original="https://cdnfile.sspai.com/2024/09/26/article/34601e65cc32219eb5e4cdcf9c2041c7.jpeg" referrerpolicy="no-referrer"></figure><p>首先登錄羣暉的 SurveillanceStation，在「網絡攝像機」&gt;「編輯攝像機」&gt;「錄製」裏添加新的存儲器，這裏默認是隻能在羣暉主硬盤空間上存儲，這裏我命名為 camera_storage。</p><figure class="image ss-img-wrapper"><img src="https://cdnfile.sspai.com/2024/09/26/article/de02f31cc66cd24b28773c6ac0cfb32a.jpeg?imageView2/2/w/1120/q/90/interlace/1/ignore-error/1" alt="" data-original="https://cdnfile.sspai.com/2024/09/26/article/de02f31cc66cd24b28773c6ac0cfb32a.jpeg" referrerpolicy="no-referrer"></figure><p>接下來需要通過 SSH 登錄到羣暉，進入跟路徑，找到當前掛載的盤符，這個時候可以看到外接的硬盤已經被掛載到了 <code>/volumeUSB1/</code> 目錄下。</p><pre class="language-shell"><code># 通過 SSH 登錄羣暉,通過軟鏈將外掛硬盤掛載到共享文件夾,突破羣暉的限制
-
-ssh  luolei@10.0.0.5
-
-ln
- -s /volumeUSB1/usbshare/ /volume2/camera_storage
-
-#DSM 7.0 後，上述掛載的方法需要做一些調整,具體方法見下</code></pre><p>接下來再去「編輯攝像機」&gt;「錄製」裏，把錄製存儲器選擇為剛剛創建的 camera_storage，這樣後續監控視頻都會默認直接保存在外接硬盤上了。</p><p>DSM 7.0 後，上述掛載的方法需要做一些調整，不能再通過軟鏈接<code>ln -s</code>的方式映射盤符。簡要説明新的步驟</p><ul><li>依舊同上添加新的存儲器</li><li>在<strong>控制面板</strong> &gt; <strong>任務計劃</strong> &gt; <strong>新增觸發的任務</strong></li><li>創建任務:用戶選擇 <strong>root</strong> (必須使用 root)，事件選擇:<strong>開機</strong></li><li><strong>任務設置</strong> &gt; <strong>用戶定義的腳本</strong>: mount -o bind /volumeUSB1/usbshare /volume2/camera_storage</li><li>重啓之後，再去 SurveillanceStation 裏設置即可</li></ul><h2>接入 HomeKit</h2><p>如果想在 iPhone 的 Home App 裏看到監控視頻，需要通過 Home Assistant 將攝像頭接入到 HomeKit。這一部分也有比較多的教程和文章，我找了幾篇比較詳細的，供大家參考。</p><ul><li><a href="https://zhuanlan.zhihu.com/p/669220623">通過 home assistant 將 onvif 協議攝像頭加入 homekit</a></li><li><a href="https://bbs.hassbian.com/thread-12038-1-1.html">請問有人在 ha 用 onvif 連接成功 TPLINK 的攝像頭麼</a></li></ul><p>在這裏分享一個小優化點，HA 自帶的 ONVIF 協議添加攝像頭看到的實時畫面延遲較大（我自己觀察約 5 秒)，如果使用 WebRTC Camera 取流可以大大降低延遲。具體的步驟可參考:</p><ul><li><a href="https://www.bilibili.com/read/cv22505112/">HomeAssistant 海康、大華攝像機 rtsp 取流不再卡頓</a></li></ul><h2>監控效果</h2><p>截止到一步，家庭監控的接入、錄製、存儲、實時監控、回放等功能都已經實現了。目前我主要就是通過羣暉的 DS Cam 來進行實時監控和回放。</p><figure class="image ss-img-wrapper"><img src="https://cdnfile.sspai.com/2024/09/26/article/dd5dd0301d5fee50688f105fbb7602c5.jpeg?imageView2/2/w/1120/q/90/interlace/1/ignore-error/1" alt="" data-original="https://cdnfile.sspai.com/2024/09/26/article/dd5dd0301d5fee50688f105fbb7602c5.jpeg" referrerpolicy="no-referrer"></figure><p>DS Cam 有網頁版和 App 版，使用起來還是很方便的，在監控畫面有動靜的時候，在時間軸上也有標記，方便快速定位。</p><figure class="image ss-img-wrapper"><img src="https://cdnfile.sspai.com/2024/09/26/article/4fea0160402766f49f034bbb5fc63c61.jpeg?imageView2/2/w/1120/q/90/interlace/1/ignore-error/1" alt="" data-original="https://cdnfile.sspai.com/2024/09/26/article/4fea0160402766f49f034bbb5fc63c61.jpeg" referrerpolicy="no-referrer"></figure><p>出門在外時，一般我就使用 App 查看監控，TP-Link 這個攝像頭本身支持語音通話，但是通過<code>ONVIF</code>接入羣暉這麼一圈後，就沒有了，暫時還沒找到解決方案，沒法遠程逗狗了，算是一個小小的不方便。</p><figure class="image ss-img-wrapper"><img src="https://cdnfile.sspai.com/2024/09/26/article/7dbde034ecb6ec4a94c442b3df7d87d3.jpeg?imageView2/2/w/1120/q/90/interlace/1/ignore-error/1" alt="" data-original="https://cdnfile.sspai.com/2024/09/26/article/7dbde034ecb6ec4a94c442b3df7d87d3.jpeg" referrerpolicy="no-referrer"></figure><p>同樣的，通過 iOS 自動的 Home 也能看到監控畫面，但是 HomeKit 的實時監控畫面延遲也是比較大的，大概是每 10 秒刷新一次。通過 Home Assistant，則是可以實現更低延遲的監控畫面。</p><h2>進階：動靜通知和自動化管理</h2><p>接下來就是一些進階的功能了，主要是為瞭解決監控動靜提醒，以及離家在家模式的自動化管理。</p><p>首先思考下面幾個問題？</p><ul><li>我家的攝像頭是否需要 24 小時監控？</li><li>不同位置的攝像頭是否需要不同的監控策略？</li><li>如果有人在特定時間出現在監控中，是否需要提醒？</li></ul><p>現在不少人家裏都有攝像頭，有些攝像頭是用來對着門口，有些攝像頭對着客餐廳，有些攝像頭對着兒童房的嬰兒牀。不同的位置，對於監控的需求是不一樣的。</p><p>我家目前就裝了一台攝像頭，對着客廳和大門玄關入口。實際上，我並不太需要這個攝像頭一直錄製。畢竟有時候，我在家還是比較灑脫和坦蕩，我不希望自己的一舉一動都被攝像頭記錄下來。</p><p>這個時候，就可以通過 SurveillanceStation、Home Assistant 和 Node-RED 來實現一些自動化的功能了。</p><p>一句話來介紹這個的原理：<strong>通過自定義規則，觸發 webhook，來切換攝像頭的開關和觸發通知。</strong></p><figure class="image ss-img-wrapper"><img src="https://cdnfile.sspai.com/2024/09/26/article/1fbaafcb1839ef591f750468f3070612.jpeg?imageView2/2/w/1120/q/90/interlace/1/ignore-error/1" alt="" data-original="https://cdnfile.sspai.com/2024/09/26/article/1fbaafcb1839ef591f750468f3070612.jpeg" referrerpolicy="no-referrer"></figure><p>羣暉 SurveillanceStation 支持自定義操作規則，在這裏我設置了三個規則:</p><ul><li>在家模式: 人員在家時，關閉攝像頭</li><li>離家模式: 人員離家時，開啓攝像頭</li><li>動靜通知: 監控畫面出現動靜時，發送通知</li></ul><figure class="image ss-img-wrapper"><img src="https://cdnfile.sspai.com/2024/09/26/article/beb319673ce6a55db50c22790e1a7589.jpeg?imageView2/2/w/1120/q/90/interlace/1/ignore-error/1" alt="" data-original="https://cdnfile.sspai.com/2024/09/26/article/beb319673ce6a55db50c22790e1a7589.jpeg" referrerpolicy="no-referrer"></figure><figure class="image ss-img-wrapper"><img src="https://cdnfile.sspai.com/2024/09/26/article/8c9d2bf249780bb6d4ff86d478c7f51d.jpeg?imageView2/2/w/1120/q/90/interlace/1/ignore-error/1" alt="" data-original="https://cdnfile.sspai.com/2024/09/26/article/8c9d2bf249780bb6d4ff86d478c7f51d.jpeg" referrerpolicy="no-referrer"></figure><p>這個的原理也十分簡單，以在家模式舉例，通過設置事件源為 WebHook 外部設備，羣暉暴露了一個 WebHook 接口，通過普通的網絡請求觸發這個接口，就可以關閉攝像頭。</p><figure class="image ss-img-wrapper"><img src="https://cdnfile.sspai.com/2024/09/26/article/1157b772e3cf1a6fc927ce2c612ec5cb.jpeg?imageView2/2/w/1120/q/90/interlace/1/ignore-error/1" alt="" data-original="https://cdnfile.sspai.com/2024/09/26/article/1157b772e3cf1a6fc927ce2c612ec5cb.jpeg" referrerpolicy="no-referrer"></figure><figure class="image ss-img-wrapper"><img src="https://cdnfile.sspai.com/2024/09/26/article/8309e864e9d6d198d176df7adf8aaa2f.jpeg?imageView2/2/w/1120/q/90/interlace/1/ignore-error/1" alt="" data-original="https://cdnfile.sspai.com/2024/09/26/article/8309e864e9d6d198d176df7adf8aaa2f.jpeg" referrerpolicy="no-referrer"></figure><p>而動靜通知模式，則是反過來的操作，當監控畫面出現動靜時，羣暉會主動向我的第三方 Node-Red 定義的接口觸發請求，Node-Red 會執行抓取當前畫面、推送畫面到 Telegram、Bark 等通知渠道的動作。</p><h2>HA 自動化：離家自動開啓攝像頭</h2><p>如果想做到更加智能和自動化，比如離開家時自動開啓攝像頭，這個時候就需要通過 Home Assistant 來實現了。</p><p>Home Assistant 裏的「設置」&gt;「自動化與場景」支持自己創建自動化。可以通過設置不同的 if then 邏輯來控制不同的設備和流程。</p><figure class="image ss-img-wrapper"><img src="https://cdnfile.sspai.com/2024/09/26/article/60431b0c00fe8f31f63a45df5a44b031.jpeg?imageView2/2/w/1120/q/90/interlace/1/ignore-error/1" alt="" data-original="https://cdnfile.sspai.com/2024/09/26/article/60431b0c00fe8f31f63a45df5a44b031.jpeg" referrerpolicy="no-referrer"></figure><p>以我的需求為例，當我的手機離開家時（地理圍欄)，就會自動發送一條通知到我的手機，並請求我的羣暉的 WebHook API 開啓攝像頭。</p><pre class="language-shell"><code>rest_command:
-  bark_push:
-    url: https://push.bark.demo/notification
-    method: POST
-    payload: '{"body": "{{ body }}","title": "{{ title }}","icon":"https://static.is26.com/share/icon-vm.png"}'
-    content_type: "application/json; charset=utf-8"
-    verify_ssl: true
-
-  camera_on:
-    url: http://10.0.0.5:5000/webapi/SurveillanceStation/Webhook/Incoming/v1?token=iQRJyuOYPIZODrWMRfT
-    method: GET
-
-  camera_off:
-    url: http://10.0.0.5:5000/webapi/SurveillanceStation/Webhook/Incoming/v1?token=iVufyERsmJZEM1UJ7M
-    method: GET</code></pre><p>這只是我的一個簡單的示例，同理，當你回到家時，希望什麼時候關閉攝像頭，也可以根據你的實際需求，實現更復雜的自動化功能。上面我使用到了 HA 自帶的 RESTful Command 功能。有關 Home Assistant 的自動化 RESTful Command 配置，可以參考下面的文章。</p><ul><li><a href="https://www.home-assistant.io/integrations/rest_command/">RESTful Command</a></li><li><a href="https://post.smzdm.com/p/a0q93po0/">一起 DIY 智能家居，篇十二：為 homeassistant 和獨立傳感器添加短信電話通知</a></li></ul><p>有關「離家」和「在家」模式，可以參考下下面的討論：</p><ul><li><a href="https://post.smzdm.com/p/aoo8lg9r/">米家自動化-用米家傳感器判定家中有人和家中無人的方法-修正版</a></li><li><a href="https://bbs.hassbian.com/thread-10096-1-1.html">[進階教程] 準確、及時、自動判斷離家回家--多種方案試用後的最終選擇</a></li></ul><h2>Node-Red 自動化：推送至即時通訊工具</h2><p>弄完上面的流程後，監控的大多需求都已經滿足了，最後我們再來補全出現動靜&gt;截取攝像頭畫面&gt;推送圖像這個環節。</p><p>羣暉本身自帶的動靜通知功能，也能通過 DS Cam 接受通知，這裏我沒有使用自動的方案，而是通過 Node-Red 來實現。</p><figure class="image ss-img-wrapper"><img src="https://cdnfile.sspai.com/2024/09/26/article/deaa95f01d2aa9c11a9c80ecf852490c.jpeg?imageView2/2/w/1120/q/90/interlace/1/ignore-error/1" alt="" data-original="https://cdnfile.sspai.com/2024/09/26/article/deaa95f01d2aa9c11a9c80ecf852490c.jpeg" referrerpolicy="no-referrer"></figure><p>首先放流程圖，整個的流程邏輯是這樣的:</p><ul><li>Node-Red 暴露一個 http 接口 <code>/api/camera/capture</code>,用於被動接受羣暉的 WebHook 請求</li><li>Node-Red 通過網絡請求，調用羣暉 Surveillance API 接口，獲得當前所有攝像頭信息</li><li>繼續通過網絡請求，調用羣暉 Surveillance API 接口，截圖指定攝像頭的實時畫面</li><li>最終將獲得的截圖發送到 Telegram</li></ul><p>同理，最終的通知截圖也可以使用釘釘、企業微信等其他渠道，我選擇 Telegram 是因為之前已經集成了，加上 Telegram 對內容幾乎完全沒有限制，相對而言我更放心點。</p><p>複製下面的 JSON ，導入到 Node-Red，修正對應的賬號、密碼、IP、端口和 Telegram bot ChatId 即可</p><p>展開查看 Node-Red 流程配置文件</p><pre class="language-javascript"><code>[
-  {
-    "id": "a07703f3752fc82a",
-    "type": "tab",
-    "label": "抓取羣暉攝像頭推送到 Telegram",
-    "disabled": false,
-    "info": ""
-  },
-  {
-    "id": "3902801a557a738e",
-    "type": "www-request",
-    "z": "a07703f3752fc82a",
-    "name": "獲取 sid",
-    "method": "GET",
-    "ret": "obj",
-    "url": "",
-    "follow-redirects": true,
-    "persistent-http": true,
-    "tls": "",
-    "x": 880,
-    "y": 300,
-    "wires": [["cabd07b9c918bd13"]],
-    "inputLabels": ["輸入"],
-    "outputLabels": ["輸出"]
-  },
-  {
-    "id": "6e7a90e85b1d736b",
-    "type": "change",
-    "z": "a07703f3752fc82a",
-    "name": "設置羣輝用戶名、密碼、攝像頭 ID",
-    "rules": [
-      {
-        "t": "set",
-        "p": "dsm_account",
-        "pt": "msg",
-        "to": "username",
-        "tot": "str"
-      },
-      {
-        "t": "set",
-        "p": "dsm_passwd",
-        "pt": "msg",
-        "to": "password",
-        "tot": "str"
-      },
-      {
-        "t": "set",
-        "p": "dsm_camera_id",
-        "pt": "msg",
-        "to": "1",
-        "tot": "str"
-      },
-      {
-        "t": "set",
-        "p": "dsm_domain",
-        "pt": "msg",
-        "to": "10.0.0.5",
-        "tot": "str"
-      },
-      {
-        "t": "set",
-        "p": "dsm_port",
-        "pt": "msg",
-        "to": "5000",
-        "tot": "str"
-      }
-    ],
-    "action": "",
-    "property": "",
-    "from": "",
-    "to": "",
-    "reg": false,
-    "x": 420,
-    "y": 240,
-    "wires": [["c18d4fe0633037a4"]]
-  },
-  {
-    "id": "833f9be33b550d84",
-    "type": "www-request",
-    "z": "a07703f3752fc82a",
-    "name": "GetSnapshot",
-    "method": "GET",
-    "ret": "bin",
-    "url": "",
-    "follow-redirects": true,
-    "persistent-http": true,
-    "tls": "",
-    "x": 890,
-    "y": 500,
-    "wires": [["45ea4313512d68a6", "1957d8308081700b"]]
-  },
-  {
-    "id": "c18d4fe0633037a4",
-    "type": "function",
-    "z": "a07703f3752fc82a",
-    "name": "url_sid",
-    "func": "msg.url = `http://${msg.dsm_domain}:${msg.dsm_port}/webapi/auth.cgi?api=SYNO.API.Auth&amp;method=login&amp;version=3&amp;account=${msg.dsm_account}&amp;passwd=${msg.dsm_passwd}&amp;session=SurveillanceStation&amp;&amp;format=cookie`;\nconsole.log(msg)\nreturn msg;",
-    "outputs": 1,
-    "noerr": 0,
-    "initialize": "",
-    "finalize": "",
-    "libs": [],
-    "x": 690,
-    "y": 240,
-    "wires": [["3902801a557a738e"]]
-  },
-  {
-    "id": "f3df28b20f02dd3e",
-    "type": "function",
-    "z": "a07703f3752fc82a",
-    "name": "url_snapshot",
-    "func": "var sid;\nsid = msg.payload.data.sid;\nmsg.url = `http://${msg.dsm_domain}:${msg.dsm_port}/webapi/entry.cgi?version=9&amp;id=${msg.dsm_camera_id}&amp;api=\"SYNO.SurveillanceStation.Camera\"&amp;method=\"GetSnapshot\"&amp;profileType=0&amp;_sid=${sid}`;\nreturn msg;",
-    "outputs": 1,
-    "noerr": 0,
-    "initialize": "",
-    "finalize": "",
-    "libs": [],
-    "x": 690,
-    "y": 500,
-    "wires": [["833f9be33b550d84"]]
-  },
-  {
-    "id": "cabd07b9c918bd13",
-    "type": "switch",
-    "z": "a07703f3752fc82a",
-    "name": "",
-    "property": "payload.error.code",
-    "propertyType": "msg",
-    "rules": [
-      {
-        "t": "nnull"
-      },
-      {
-        "t": "else"
-      }
-    ],
-    "checkall": "true",
-    "repair": false,
-    "outputs": 2,
-    "x": 570,
-    "y": 400,
-    "wires": [["3902801a557a738e"], ["f3df28b20f02dd3e"]],
-    "inputLabels": ["輸入"]
-  },
-  {
-    "id": "dcb9b48e6b3c1fee",
-    "type": "inject",
-    "z": "a07703f3752fc82a",
-    "name": "手動觸發",
-    "props": [
-      {
-        "p": "payload"
-      },
-      {
-        "p": "topic",
-        "vt": "str"
-      }
-    ],
-    "repeat": "",
-    "crontab": "",
-    "once": false,
-    "onceDelay": 0.1,
-    "topic": "",
-    "payload": "",
-    "payloadType": "date",
-    "x": 140,
-    "y": 220,
-    "wires": [["6e7a90e85b1d736b"]]
-  },
-  {
-    "id": "45ea4313512d68a6",
-    "type": "image",
-    "z": "a07703f3752fc82a",
-    "name": "",
-    "width": "360",
-    "data": "payload",
-    "dataType": "msg",
-    "thumbnail": false,
-    "active": true,
-    "pass": false,
-    "outputs": 0,
-    "x": 1120,
-    "y": 500,
-    "wires": []
-  },
-  {
-    "id": "c8427c30a83ac775",
-    "type": "telegram sender",
-    "z": "a07703f3752fc82a",
-    "name": "",
-    "bot": "ff58d9095b6d2cda",
-    "haserroroutput": true,
-    "outputs": 2,
-    "x": 1420,
-    "y": 780,
-    "wires": [[], []]
-  },
-  {
-    "id": "1957d8308081700b",
-    "type": "function",
-    "z": "a07703f3752fc82a",
-    "name": "圖像轉 TG 格式",
-    "func": "msg.payload = {\n    chatId: 10000, \n    type: \"photo\",\n    content: msg.payload,\n    caption: \"家裏有動靜,監控提醒\"\n};\nreturn msg;\n",
-    "outputs": 1,
-    "noerr": 0,
-    "initialize": "",
-    "finalize": "",
-    "libs": [],
-    "x": 880,
-    "y": 740,
-    "wires": [["c8427c30a83ac775"]]
-  },
-  {
-    "id": "02fe4781ca3fbb7b",
-    "type": "http in",
-    "z": "a07703f3752fc82a",
-    "name": "/api/camera/capture",
-    "url": "/api/camera/capture",
-    "method": "get",
-    "upload": false,
-    "swaggerDoc": "",
-    "x": 90,
-    "y": 280,
-    "wires": [["6e7a90e85b1d736b", "fb5663502a675986"]]
-  },
-  {
-    "id": "fb5663502a675986",
-    "type": "http response",
-    "z": "a07703f3752fc82a",
-    "name": "",
-    "statusCode": "200",
-    "headers": {
-      "code": "0"
-    },
-    "x": 600,
-    "y": 680,
-    "wires": []
-  },
-  {
-    "id": "ff58d9095b6d2cda",
-    "type": "telegram bot",
-    "botname": "拉布管家",
-    "usernames": "",
-    "chatids": "10000",
-    "baseapiurl": "",
-    "updatemode": "polling",
-    "pollinterval": "300",
-    "usesocks": false,
-    "sockshost": "",
-    "socksprotocol": "socks5",
-    "socksport": "6667",
-    "socksusername": "anonymous",
-    "sockspassword": "",
-    "bothost": "",
-    "botpath": "",
-    "localbotport": "8443",
-    "publicbotport": "8443",
-    "privatekey": "",
-    "certificate": "",
-    "useselfsignedcertificate": false,
-    "sslterminated": false,
-    "verboselogging": false
-  }
-]</code></pre><p>有關這部分的參考文章:</p><ul><li><a href="https://bbs.hassbian.com/thread-21241-1-1.html">NodeRed + Surveillance Station Web API + goCQhttp 監控動檢自動推送</a></li><li><a href="https://flows.nodered.org/node/node-red-contrib-telegrambot">node-red-contrib-telegrambot</a></li></ul><figure class="image ss-img-wrapper"><img src="https://cdnfile.sspai.com/2024/09/26/article/ba747108ad1cd7bfc263cdf46e015eea.jpeg?imageView2/2/w/1120/q/90/interlace/1/ignore-error/1" alt="" data-original="https://cdnfile.sspai.com/2024/09/26/article/ba747108ad1cd7bfc263cdf46e015eea.jpeg" referrerpolicy="no-referrer"></figure><p>配置好了之後，建議在羣暉攝像頭的事件檢測那裏再精確配置下動作檢測區域和靈敏度，避免誤報。</p><h2>總結</h2><p>從購買攝像頭到最終的監控系統搭建，整個過程大概花了我一個下午的時間。基本上所有的步驟，都能在網上找到詳細的教程和資料。</p><p>除了上面所説的功能，理論上，只要想法夠多，還能實現更多的功能，比如:</p><ul><li>想要雲端存儲，配置個同步任務，把監控視頻同步到雲盤即可（哪怕家裏被人放火燒了，也能看到過去的視頻）</li><li>想要人臉或者寵物識別: 接入圖像識別 API，實現人臉識別（實現更精確的動靜通知）</li></ul><p>小小的搗鼓一番，獲得一個功能基本完善，但是更安全和經濟的自主監控方案，還是一次挺有趣的折騰過程。</p><p style="margin-left:0px;">&gt; 下載少數派 <a href="https://sspai.com/page/client">客戶端</a>、關注 <a href="https://sspai.com/s/J71e">少數派公眾號</a>，瞭解更多的新玩意 🆒</p><p style="margin-left:0px;">&gt; 特惠、好用的硬件產品，盡在 <a href="https://shop549593764.taobao.com/?spm=a230r.7195193.1997079397.2.2ddc7e0bPqKQHc" target="_blank">少數派 sspai 官方店鋪 </a>🛒</p>]]>
-            </description>
-            <pubDate>Wed, 09 Oct 2024 03:35:42 GMT</pubDate>
-            <guid isPermaLink="false">https://sspai.com/post/92566</guid>
-            <link>https://sspai.com/post/92566</link>
-            <author>
-                <![CDATA[羅羅磊磊]]>
-            </author>
-        </item>
-        <item>
-            <title>
-                <![CDATA[派早報：原生鴻蒙系統公測開啓、Google 在反壟斷訴訟中敗訴等]]>
-            </title>
-            <description>
-                <![CDATA[<h2>你可能錯過的新鮮事</h2><h3>原生鴻蒙系統公測開啓</h3><p>10 月 8 日，原生鴻蒙系統正式面向用戶<a href="https://finance.sina.com.cn/jjxw/2024-10-08/doc-incrvnkv4056326.shtml">開啓公測</a>，首批公測機型包括華為 Mate 60 系列、華為 Mate X5 系列、華為 MatePad Pro 13.2 英寸系列，用戶可通過「我的華為」APP 中的「升級嚐鮮」入口申請升級。華為此前表示，國內市場 TOP 5000 應用已經全部啓動鴻蒙原生開發，目前已有超 1 萬個應用和元服務上架 HarmonyOS NEXT 應用市場。鴻蒙版微信也於當日開啓邀請內測，已升級至原生鴻蒙操作系統 HarmonyOS NEXT 的用戶可在收到邀請後體驗。</p><h3>Google 在反壟斷訴訟中敗訴</h3><p>據 The Verge <a href="https://www.theverge.com/policy/2024/10/7/24243316/epic-google-permanent-injunction-ruling-third-party-stores">報道</a>，美國地方法官 James Donato 近日裁定 Google Play 商店構成非法壟斷，標誌着 Epic 在這場自 2020 年 8 月開始的反壟斷訴訟中取得階段性勝利。本次裁定結果除了下令 Google 在三年之內開放 Play 商店、允許第三方應用商店進行內部分發以引入合理競爭，還要求 Google 開放 Google Play 商店的完整應用目錄，並取消 Play 商店在內購結算系統方面的部分強制要求，向開發者和用戶明確告知可用的替代支付結算方案。Google 方面於晚些時候發佈<a href="https://blog.google/outreach-initiatives/public-policy/epic-games-verdict-appeal/">博文</a>回應稱將對該裁決結果提起上訴。</p><h3>Apple 將於 2025 年 2 月舉辦 Swift 學生挑戰賽</h3><p>10 月 8 日 Apple <a href="https://www.apple.com.cn/newsroom/2024/10/apples-swift-student-challenge-to-open-in-february-2025/">宣佈</a>，2025 年 Swift Student Challenge 將於 2 月開放作品提交，為期三週。學生、教育工作者及他們的支持者可訪問 <a href="http://developer.apple.com/">Apple 開發者網站</a>瞭解如何準備參賽、完成報名並在申請開放時獲取通知。Apple 本次將選出 350 名 Swift Student Challenge 獲獎者，表彰參賽作品在開拓創新、靈感創意、社會影響或多元包容等方面的特色，其中 50 名傑出獲獎者還將得到額外表彰並受邀在明年夏天前往位於加州庫比提諾的 Apple 總部。此外 Apple 還將推出新版 Swift Coding Club 資源和新的《使用 Swift 開發》教程。</p><h3>高通發佈 Networking Pro A7 Elite 無線網絡平台</h3><p>高通於 10 月 7 日<a href="https://www.ithome.com/0/800/558.htm">推出</a> Networking Pro A7 Elite 無線網絡平台，該平台集成了 10G 光纖（XGS-PON）、以太網、射頻前端模塊和濾波器，採用四核最高 1.8GHz 的 CPU、Wi-Fi 模塊支持 Wi-Fi 7（802.11be）、峯值速率 33Gbps，NPU 最高 40 TOPS。目前該平台正在進行樣品測試，並計劃在 10 月 8 日至 10 日的巴黎 Network X 上展示。</p><h3>《荒野大鏢客：救贖 》及其 DLC 將於 10 月 29 日推出 PC 版</h3><p>Rockstar Games 於 10 月 8 日<a href="https://www.rockstargames.com/newswire/article/o3314a19koo147/red-dead-redemption-and-undead-nightmare-coming-to-pc-october-29">宣佈</a>，旗下游戲《荒野大鏢客：救贖 》及其 DLC「不死噩夢」將於 10 月 29 日通過 Steam 和 Epic 遊戲商城登陸 PC 平台。PC 版本為 Double Eleven 工作室合作開發，相比 PS3 原版還將額外帶來原生 4K 分辨率、超寬屏支持、HDR10 以及鍵鼠操作適配，同時也支持英偉達 DLSS 3.7、幀生成、AMD FSR 3.0 等現代圖形渲染特性。</p><h2>少數派的近期動態</h2><ul><li>不割手的水獺刀，隨身帶着隨時用：Slice #00200 開箱刀「拆獺」特別版，幫你絲滑拆開日常生活的大小包裝，首發特惠 ¥45 元起。<a href="https://sspai.com/post/91966"><strong>進一步瞭解</strong></a></li><li>少數派 PiPods 真無線耳機清倉特賣只需 199：音質出色、功能全面的無線耳機，105db 高靈敏度，PET + 碳金複合材料振膜，音樂/遊戲雙模式，半入耳式設計，舒適貼耳。<a href="https://sspai.com/page/pipods"><strong>進一步瞭解</strong></a></li></ul><h2>你可能錯過的文章</h2><ul><li><a href="https://sspai.com/post/92452">5G 套餐如何做到「便宜大碗」？CPE、MiFi 和物聯卡初探</a></li><li><a href="https://sspai.com/post/92657">感謝捉蟲：聊聊自動更正的前世今生</a></li><li><a href="https://sspai.com/post/91848">從三維設計師入坑三年，我是這樣使用 Mac 的</a></li></ul><p>&gt; 關注 <a href="https://sspai.com/s/J71e">少數派公眾號</a>，解鎖全新閲讀體驗 📰</p><p>&gt; 實用、好用的 <a href="https://sspai.com/mall">正版軟件</a>，少數派為你呈現 🚀</p>]]>
-            </description>
-            <pubDate>Tue, 08 Oct 2024 23:30:00 GMT</pubDate>
-            <guid isPermaLink="false">https://sspai.com/post/92760</guid>
-            <link>https://sspai.com/post/92760</link>
-            <author>
-                <![CDATA[少數派編輯部]]>
             </author>
         </item>
     </channel>
