@@ -16,14 +16,351 @@
         <generator>RSSHub</generator>
         <webMaster>i@diygod.me (DIYgod)</webMaster>
         <language>zh-cn</language>
-        <lastBuildDate>Thu, 10 Oct 2024 23:14:34 GMT</lastBuildDate>
+        <lastBuildDate>Fri, 11 Oct 2024 04:12:15 GMT</lastBuildDate>
         <ttl>5</ttl>
+        <item>
+            <title>
+                <![CDATA[书签「上上千」：用 Linkding 和 Trilium 自建服务轻松管理]]>
+            </title>
+            <description>
+                <![CDATA[<p style="margin-left:0px;"><strong>Matrix 首页推荐</strong>&nbsp;</p><p style="margin-left:0px;"><a href="https://sspai.com/matrix">Matrix</a>&nbsp;是少数派的写作社区，我们主张分享真实的产品体验，有实用价值的经验与思考。我们会不定期挑选 Matrix 最优质的文章，展示来自用户的最真实的体验和观点。&nbsp;</p><p style="margin-left:0px;">文章代表作者个人观点，少数派仅对标题和排版略作修改。</p><hr><h2>前言</h2><p>目前各大主流浏览器都会自带书签同步功能，无论是 PC 端还是移动端，只要登录一下账号就能轻松访问自己收藏的书签，可以说保存书签的成本越来越低。但是随着收藏内容的增多，使用书签的成本反而会直线上升。</p><p>因为最近在少数派上看到了几篇网络书签的相关文章，就也想和大家分享一下目前我自己使用的一套书签方案。因为经常查各种资料，所以收藏的书签很多很杂，数量上应该有几千个，直接导致传统的浏览器收藏夹基本没法用，最后只能选了自建网络书签服务这条路，在用过许多开源方案后选择了 Linkding 和 Trilium 相结合的方案。如果你的书签数量较少，或是不具备自建服务的条件的话，本篇文章可能对你意义不大，大家可以酌情阅读。</p><p>因为文章中用到的 Linkding 和 Trilium 都属于自建服务，每个人喜欢的安装方式可能都有差别，网上相关的安装教程多如牛毛，所以我在文中并不会介绍相关内容，而是专注于使用经验方面的分享。当然，安装的话我建议直接根据我下文中给出的官方文档中的步骤进行，以免网上中文教程版本滞后。</p><h2>传统书签收藏的痛点</h2><h3>查找困难</h3><p><strong>查找困难</strong>是传统浏览器书签收藏系统最大的痛点，究其本质我个人归纳为可用于查找的信息维度过少。少到什么程度呢，你可以试试导出自己浏览器的书签，一般会得到一个 html 文件，以 Edge 浏览器为例，通常一条书签记录会包含如下字段：</p><figure class="table"><table><tbody><tr><td>名称</td><td>含义</td></tr><tr><td>folder</td><td>所在文件夹名称（可多层）</td></tr><tr><td>href</td><td>书签记录的网址</td></tr><tr><td>add_date</td><td>保存书签的时间戳（部分浏览器并不支持书签按时间排序）</td></tr><tr><td>icon</td><td>书签图标（对搜索而言为无效信息）</td></tr><tr><td>title</td><td>书签名称</td></tr></tbody></table></figure><p>看着有五个字段，但实际常被用于搜索的也就两条，文件夹名称和书签名称。从使用的角度来说，三层文件夹应该是普通人能接受的极限了（我自己只能接受一层文件夹）。单单靠少量的文件夹分类的话肯定是不现实的，因为当书签量级上来之后，单个文件夹中的书签数量不可避免地会增加，依旧会面临翻找困难的情况。这时候想要提高查找速度就必定要用到搜索，文件夹层级有限的情况下就只能在书签名称上做文章，较为可行的方法就是在书签名称的最后加关键词，加的越多越详细，后期搜索到的可能性就越高。理论上每次添加书签时都严格按照提前规划好的文件夹层级以及关键词命名规则的话，最后也能得到一份高度可用的收藏夹。</p><h3>整理困难</h3><p>但这就引申出其另一个痛点，<strong>整理困难</strong>。首先第一个困难就是文件夹的分类，事物的联系具有多样性，每一个书签指向的内容都不是非此即彼的，很难归纳出一个所有人通用的文件夹分层结构，最多在你长时间的使用中逐渐妥协为一个相对适合你自己使用的框架。但即便如此，你也总会遇到许多让你纠结其归属的书签，为了方便使用可能某一个书签需要同时在多个文件层级中保存。除了文件夹更需要费脑筋的是书签的命名，直接用默认的网页名称固然方便，但搜索的时候就难免力不从心。</p><p>浏览网页的时候看到感兴趣的内容随手点一下地址栏旁的收藏按钮，这应该是很多人使用收藏夹的本能，每次加个书签都深思熟虑其文件夹归属和详尽的关键词命名未免过于严苛，流程繁琐不说，更重要的是可能会打断自己的思路，长时间下来定期整理总是逃不掉的。这时候就不得不品味浏览器收藏夹那简陋的多选和拖拽移动功能了，少量使用体验完美，量大就是折磨了。如果追求高可用性，可能还需要单独修改每个书签的名称，光是想想就够头疼的。</p><h3>快照</h3><p>接下来的痛点严格来说算是我个人的痛点，和浏览器中的收藏夹系统本身无关，属于我希望它有但是它没有的功能。首当其冲的就是<strong>快照</strong>功能，虽然这个功能可以通过安装浏览器插件的形式轻松实现，但是插件保存的快照终究是另外存放的，需要自己手动保存不说，后期想与书签对上还免不了一番折腾，便利性上终究差点意思。</p><h3>多端同步</h3><p>最后一个痛点则是<strong>多端同步</strong>，虽然开篇就说了目前的浏览器都支持多端同步，但是很尴尬的一点就是，我在各个平台上使用的浏览器并不相同，电脑上还好说，直接用 Edge 就行，但是手机、平板之类的移动设备就比较麻烦了，可能会存在多个浏览器混用的情况，这时候依托于浏览器账户的收藏夹同步功能就捉襟见肘了。</p><h2>网络书签服务：<strong>Linkding</strong></h2><p><a href="https://linkding.link/">Linkding</a> 是目前为止我用下来最好用的开源网络书签服务，基本解决了我上面提到的四个痛点。不过这个服务有几个比较明显的缺点，没法接受的话就不用看下去了。</p><ul><li>操作界面只有英文。当然，中文书签是支持的，只是设置、按钮等只有英文。我不太清楚有没有大佬封装过中文的镜像，暂时没有查找过。不过其实对使用的影响几乎没有，总共也就那么几个单词，并没有什么太高的门槛。</li><li>部分服务，类似书签图标等需要使用魔法或是自行配置相关参数。核心功能其实都是服务器本地运行的，不使用魔法体感下来影响不大。</li><li>默认界面比较朴实，基本就是一堆网页元素的简单堆积。理论上如果你懂 css 的话可以在设置中自定义 css 语句来修改显示效果，想要花里胡哨也是可以实现的。</li></ul><figure class="image ss-img-wrapper"><img src="https://cdnfile.sspai.com/editor/u_/cs3moitb34t98cknnn90.png?imageView2/2/w/1120/q/90/interlace/1/ignore-error/1" alt="PCG7bNcaoox06qxRZvrcarl1nkg" data-original="https://cdnfile.sspai.com/editor/u_/cs3moitb34t98cknnn90.png" referrerpolicy="no-referrer"></figure><h3>标签系统</h3><h4>概念介绍</h4><p>先说一下 Linkding 最核心的标签（Tag）系统，与传统的文件夹系统不同，标签系统更加自由和发散。文件夹系统是线性的，一个书签只能从属于一个文件夹，一个子文件夹只能从属于一个父文件夹；而标签系统则是多对多的关系，一个书签可以同时拥有无数个标签，各个标签之间都是同级的，互相之间没有从属关系。</p><figure class="image ss-img-wrapper"><img src="https://cdnfile.sspai.com/editor/u_/cs3moj5b34t98erkk5e0.png?imageView2/2/w/1120/q/90/interlace/1/ignore-error/1" alt="AK4wb09yuodhE2xcXTBcMhiMnPh" data-original="https://cdnfile.sspai.com/editor/u_/cs3moj5b34t98erkk5e0.png" referrerpolicy="no-referrer"></figure><p>乍一看好像区别不大，但实际使用时却是天壤之别。举一个简单的例子，假如我需要在书签收藏中找到 PyMongo 的官方文档，那在 Linkding 中只需要先点击「@文档」标签，再点击「mongodb」标签，就能轻松筛选出所有符合的结果。对于经常需要比对同一类型资料，或是「模糊搜索」的用户可谓是神器。</p><figure class="image ss-img-wrapper"><img src="https://cdnfile.sspai.com/editor/u_/cs3mojdb34t98idth770.png?imageView2/2/w/1120/q/90/interlace/1/ignore-error/1" alt="FFksbB57toHxSHxrUwicomHHnXc" data-original="https://cdnfile.sspai.com/editor/u_/cs3mojdb34t98idth770.png" referrerpolicy="no-referrer"></figure><h4>使用技巧</h4><p>之前提到过 Linkding 界面只支持英文，这一点对其标签的排列顺序其实也存在着影响。观察 Tags 这一列就能发现，标签是按照其首字母分行排列的，对于英文标签这样排列非常合理，但是如果使用全中文标签的话就会遇到一个问题，那就是所有中文开头的标签都会被归类到同一行。</p><p>这个特性对中文标签来说非常致命，毕竟所有标签挤在一行想要快速找出其中一个的难度就会大大提高。不过解决的方法非常简单，就是根据每个中文标签开头字符的拼音为其添加一个首字母，类似「x 下载」这样的形式。进一步地，我们可以利用其排列特性来实现一些别的需求，比如说对于常用链接可以添加一个「!常用」的标签，这样该标签就会默认出现在标签区域的第一行。</p><figure class="image ss-img-wrapper"><img src="https://cdnfile.sspai.com/editor/u_/cs3mojlb34t98idth77g.png?imageView2/2/w/1120/q/90/interlace/1/ignore-error/1" alt="KYMZbRMD6o8cj3xdCXncHgs5n0c" data-original="https://cdnfile.sspai.com/editor/u_/cs3mojlb34t98idth77g.png" referrerpolicy="no-referrer"></figure><p>标签机制因为其灵活性，刚开始使用的时候可能会有点无所适从，不知从何处入手，收藏的时候可能还会产生一些不必要的纠结，比如这个词要不要设置成标签等。这些其实都是正常情况，我刚开始用的时候也是这样，主要是怕用的久了之后杂乱的标签和之前的文件夹一样难以整理。作为一个长期使用过的用户，我给出两条参考建议：</p><ul><li>每个链接都要分配一个大类，比如可以根据其功能分成「@工具」「@论坛」「@娱乐」等，这些大类不必一次整理清楚，可以想到什么就写什么，不过为了和其他标签形成区分，推荐以「@」开头。当某一天你觉得无论是什么链接都能划分到这些大类之后，就可以开始尝试将它们合并精简，最终将大类个数控制在个位数即可。这些大类标签其实充当着传统书签系统中的一级文件夹的角色，如果你平常就有整理书签文件夹的习惯，可以直接把这些文件夹的名称套用过来。</li><li>除了大类标签外，每一个链接都尽可能地将所有其涉及的特征点作为标签加上去。加标签的时候不需要有任何的顾虑，所有你脑海中当时跳出来的词汇都可以作为标签加上去，多多益善。你加的标签越多，后续使用的时候找起来就越简单，唯一要注意的是同义词不要重复出现，能复用标签时就尽量不要再创建一个新的类似标签。</li></ul><h3>书签结构</h3><h4>概念介绍</h4><p>默认安装参数下，Linkding 的数据库使用的是 SQLite，所以书签数据是以「.sqlite3」后缀的文件格式保存的。只要用 SQLiteStudio 之类的软件打开就能查看和修改其中的数据。</p><p>我们可以先看一下 Linkding 中书签的所有字段：</p><figure class="image ss-img-wrapper"><img src="https://cdnfile.sspai.com/editor/u_/cs3mojtb34t98erkk5eg.png?imageView2/2/w/1120/q/90/interlace/1/ignore-error/1" alt="E4ulbSWIho9lpPxqYyXcBFTInOb" data-original="https://cdnfile.sspai.com/editor/u_/cs3mojtb34t98erkk5eg.png" referrerpolicy="no-referrer"></figure><figure class="table"><table><tbody><tr><td>名称</td><td>含义</td></tr><tr><td>id</td><td>书签主键</td></tr><tr><td>url</td><td>书签记录的网址</td></tr><tr><td>title</td><td>书签名称</td></tr><tr><td>description</td><td>书签介绍</td></tr><tr><td>website_title</td><td>网页默认名称</td></tr><tr><td>website_description</td><td>网页默认介绍</td></tr><tr><td>unread</td><td>是否标为待阅读</td></tr><tr><td>is_archived</td><td>是否标为已归档（即不常用书签或失效书签）</td></tr><tr><td>web_archive_snapshot_url</td><td>Internet Archive 中该网页的快照地址</td></tr><tr><td>favicon_file</td><td>图标文件保存地址</td></tr><tr><td>notes</td><td>关于该书签的笔记（支持 Markdown 语法）</td></tr><tr><td>preview_image_file</td><td>预览图片保存地址</td></tr><tr><td>tags</td><td>标签与书签的对应关系在一张单独的关系表中，上图中并没有体现</td></tr></tbody></table></figure><p>与标签相关的字段比较简单，就一张标签信息表和标签-书签多对多关系表。</p><figure class="image ss-img-wrapper"><img src="https://cdnfile.sspai.com/editor/u_/cs3mok5b34t98cknnn9g.png?imageView2/2/w/1120/q/90/interlace/1/ignore-error/1" alt="FpgSbA5NFoigKOxXjJjcl0I9nqh" data-original="https://cdnfile.sspai.com/editor/u_/cs3mok5b34t98cknnn9g.png" referrerpolicy="no-referrer"></figure><figure class="image ss-img-wrapper"><img src="https://cdnfile.sspai.com/editor/u_/cs3mokdb34t98cknnna0.png?imageView2/2/w/1120/q/90/interlace/1/ignore-error/1" alt="XBkIbGT9Do9126xXLq7cGsJhnJc" data-original="https://cdnfile.sspai.com/editor/u_/cs3mokdb34t98cknnna0.png" referrerpolicy="no-referrer"></figure><p>常用的几个书签属性在使用浏览器插件收藏网页的时候就可以直接编辑。</p><figure class="image ss-img-wrapper"><img src="https://cdnfile.sspai.com/editor/u_/cs3moklb34t98idth780.png?imageView2/2/w/1120/q/90/interlace/1/ignore-error/1" alt="M5e5bCM0po1mDexcXTfciFNOnmh" data-original="https://cdnfile.sspai.com/editor/u_/cs3moklb34t98idth780.png" referrerpolicy="no-referrer"></figure><p>与传统书签系统中可怜的两三个搜索维度相比，Linkding 明显领先太多了，表格中出现的字段内容基本都可以作为搜索元素来进行查找。也就是说，无论是标题、介绍，还是笔记中出现的文本都可以作为关键词来检索，在保持标题简单明了的前提下依旧可以获得远超传统书签的搜索维度。</p><h4>使用技巧</h4><p>因为书签的特征不再只有标题这一个维度，所以保存书签时一般不需要修改网页默认的名称，就算要修改也建议将其修改得更加简洁明了。为了便于后续搜索或再阅读，description 以及 notes 需要作为修改的重点。大部分情况下 description 可以使用网页默认描述，要手动编辑的话也尽量用客观的语句描述其实际内容。而 notes 则可以自由一点，并且其本身支持 Markdown 语法，显示效果也会好很多。以我自己为例给大家一些参考，某些知识类的文章可能要点就那么几句话或是几行代码，没什么单独开篇笔记收藏的必要，就可以直接写在 notes 中；找到合适的素材时可以在 notes 中记录下该素材的用法或当时的灵感思路等。总结一下就是三点：</p><ul><li>title：简洁明了，一般保持默认即可。</li><li>description：客观描述网页内容，一般保持默认即可。</li><li>notes：记录网页中的核心知识点、收藏的理由、灵感思路等，一般留空即可。</li></ul><p>unread 和 is_archived 这两个字段很好理解，前者就是很多浏览器自带的待阅读功能，后者则是归档功能，就是把已经失效或是长时间不会再用到的书签隐藏到一个单独的分类中。两者都可以通过首页的 Bookmarks 按钮快速切换，各自都有其独立的分区。</p><figure class="image ss-img-wrapper"><img src="https://cdnfile.sspai.com/editor/u_/cs3moklb34t98cknnnag.png?imageView2/2/w/1120/q/90/interlace/1/ignore-error/1" alt="XB9EbFELfoUTNGxXwgQcV9pzn5K" data-original="https://cdnfile.sspai.com/editor/u_/cs3moklb34t98cknnnag.png" referrerpolicy="no-referrer"></figure><p>归档这个功能我很喜欢，相较于直接把失效书签删除，把它们关小黑屋总有一种一朝一日它们还能重见天日的错觉。反正也不占什么空间，留着当个念想总是好的。</p><p>相较于归档，待阅读的花样就多一点。我一般不把它作为待阅读列表使用，而是更接近近期常用的概念，或者说是素材库，把搜索出来也许会用的书签统一标为待阅读。Linkding 的批处理功能是相当优秀的，如下图所示，归档、删除、增加标签、移除标签、标记为已读、标记为未读，这六个核心功能都支持批处理操作，效率远超浏览器收藏夹。</p><figure class="image ss-img-wrapper"><img src="https://cdnfile.sspai.com/editor/u_/cs3moktb34t98erkk5f0.png?imageView2/2/w/1120/q/90/interlace/1/ignore-error/1" alt="LpuwbUmwso84jixbZhOcoQAJnPf" data-original="https://cdnfile.sspai.com/editor/u_/cs3moktb34t98erkk5f0.png" referrerpolicy="no-referrer"></figure><h4>拓展</h4><p>上面提到过的三张表 bookmarks_bookmark、bookmarks_tag、bookmarks_bookmark_tags 是 Linkding 中最核心的数据表，它们都在 Linkding 数据文件夹的 db.sqlite3 这一数据库文件中。因为该文件中数据都是公开的，没有加密一说，操作空间就很大了。</p><figure class="image ss-img-wrapper"><img src="https://cdnfile.sspai.com/editor/u_/cs3mol5b34t98erkk5fg.png?imageView2/2/w/1120/q/90/interlace/1/ignore-error/1" alt="M2aFbzwSkoqFeKxd2zScWUnqnbg" data-original="https://cdnfile.sspai.com/editor/u_/cs3mol5b34t98erkk5fg.png" referrerpolicy="no-referrer"></figure><p>Linkding 虽然自带导出书签为 html 文件的功能，但是因为其本身并没有文件夹的概念，所以使用其导出的文件导入到 Edge 浏览器就会存在水土不服的情况。我的服务器有一次宕机之后系统出了点问题，但书签每天都要用，就写了个 python 脚本将其按照特定的要求导出为 Edge 可识别的 html 文件应急。具体的导出要求是以「@」开头的标签为文件夹，将所有书签分类放置在其中，同时将每个书签的标签汇总后添加到书签名称的最后。脚本用起来非常简单，与 db.sqlite3 文件放置在同一目录下运行即可。</p><p>这里给出这个案例有多方面的考虑，一是向大家展示一下 Linkding 这种用单个数据库文件存储数据对于个人用户的便利性，因为需要备份的数据就那么几个，甚至以后 Linkding 不再维护，用户依旧可以很轻松地转移到任何其他平台；二是给大家提供另一种 Linkding 的使用思路，可以将其作为单纯的整理工具，使用其强大的批处理界面以及优秀的数据库结构来整理汇总自己的书签，最后导出到更常使用的平台。</p><pre class="language-python"><code>import datetime
+import sqlite3
+from typing import Optional
+
+from dateutil.parser import parse
+from lxml import etree
+
+
+class DatabaseManager:
+
+    
+"""
+
+
+    用于读取书签数据库文件
+
+
+    """
+
+
+
+    
+def __init__(self, db_file: str):
+        self.conn = sqlite3.connect(db_file)
+        self.cursor = self.conn.cursor()
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        self.cursor.close()
+        self.conn.close()
+
+    def __iter__(self):
+        self.cursor.execute("select * from bookmarks_bookmark")
+        return self
+
+    def __next__(self):
+        # 获取单条书签数据
+        tem = self.cursor.fetchone()
+        if tem is None:
+            raise StopIteration
+        # 根据书签 id 查找对应的标签
+        c = self.conn.cursor()
+        cmd = "select bookmarks_tag.name from bookmarks_bookmark_tags " \
+              "join bookmarks_tag on bookmarks_bookmark_tags.tag_id = bookmarks_tag.id " \
+              "where bookmarks_bookmark_tags.bookmark_id = {}"
+        tags = c.execute(cmd.format(tem[0])).fetchall()
+        tags = [tag[0] for tag in tags]
+        res = list(tem)
+        # 将标签数据以 list 的形式添加到原本书签数据的最后
+        res.append(tags)
+        c.close()
+        return res
+
+
+def timestr_to_timestamp(timestr: str) -&gt; int:
+
+    
+"""
+
+
+    将字符串形式的时间转为时间戳
+
+
+    
+:param
+ timestr:
+
+
+    
+:return
+:
+
+
+    """
+
+
+    
+return int(parse(timestr + "+0000").timestamp())
+
+
+class HtmlGenerator:
+
+    
+"""
+
+
+    用于构造 Edge 浏览器支持导入的书签文件
+
+
+    主要参考 Edge 浏览器导出的 html 文件格式
+
+
+    """
+
+
+
+    
+def __init__(self):
+        self.root = etree.Element("DT")
+        # 当前时间戳，用于后续一些需要时间戳的场景
+        # self.t = str(int(datetime.datetime.now(datetime.UTC).timestamp()))  # 高版本 python
+        self.t = str(int(datetime.datetime.utcnow().timestamp()))
+        h3 = etree.SubElement(self.root, "H3",
+                              {
+                                  "ADD_DATE": self.t,
+                                  "LAST_MODIFIED": self.t,
+                                  "PERSONAL_TOOLBAR_FOLDER": "true",
+                              })
+        h3.text = "收藏夹栏"
+        # 后续用于存放各文件夹和书签的元素
+        self.dl = etree.SubElement(self.root, "DL")
+        # 存放各书签文件夹对应的元素
+        self.folder = {}
+
+    def generate_folder(self, name: str):
+
+        
+"""
+
+
+        创建一个书签文件夹对应的元素
+
+
+        
+:param
+ name:
+
+
+        
+:return
+:
+
+
+        """
+
+
+        
+dt = etree.SubElement(self.dl, "dt")
+        h3 = etree.SubElement(dt, "H3",
+                              {
+                                  "ADD_DATE": self.t,
+                                  "LAST_MODIFIED": self.t,
+                              })
+        h3.text = name
+        dl = etree.SubElement(dt, "DL")
+        self.folder[name] = dl
+
+    def add_bookmark(self, url: str, add_date: str, title: str, folder: Optional[str] = None):
+
+        
+"""
+
+
+        添加书签到指定父元素中
+
+
+        
+:param
+ url:
+
+
+        
+:param
+ add_date:
+
+
+        
+:param
+ title:
+
+
+        
+:param
+ folder:
+
+
+        
+:return
+:
+
+
+        """
+
+
+        
+if folder is None:
+            dt = etree.SubElement(self.dl, "dt")
+        else:
+            dt = etree.SubElement(self.folder[folder], "dt")
+        a = etree.SubElement(dt, "A", {
+            "HREF": url,
+            "ADD_DATE": add_date,
+        })
+        a.text = title
+
+    def tostring(self):
+
+        
+"""
+
+
+        将根元素转化为字符串
+
+
+        
+:return
+:
+
+
+        """
+
+
+        
+return etree.tostring(self.root, encoding="utf-8", pretty_print=True).decode("utf-8")
+
+    def handle_one(self, data: list):
+
+        
+"""
+
+
+        将数据库中导出的单条书签数据转为 html 元素
+
+
+        
+:param
+ data:
+
+
+        
+:return
+:
+
+
+        """
+
+
+        
+# 从原始数据中提取出部分需要的数据
+        url = data[1]
+        title = data[2]
+        add_date = str(timestr_to_timestamp(data[7]))
+        tags = data[17]
+        # 将所有标签合并为一个整体，添加到书签名的最后，方便后续在浏览器中查找
+        tag = " ".join(tags)
+        if tag != "":
+            tag = "【{}】".format(tag)
+        title += tag
+        # 对于没有标签的书签直接将其置于收藏夹根目录下
+        if len(tags) == 0:
+            self.add_bookmark(url, add_date, title)
+            return
+        # 根据标签中带「@"的标签名来对书签进行分类，归于不同的文件夹中
+        for tag in tags:
+            if "@" in tag and tag[0] == "@":
+                if self.folder.get(tag) is None:
+                    self.generate_folder(tag)
+                self.add_bookmark(url, add_date, title, tag)
+
+    def export_to_edge(self, db: str, path: str):
+
+        
+"""
+
+
+        导出为 Edge 浏览器支持的 html 文件
+
+
+        
+:param
+ db:
+
+
+        
+:param
+ path:
+
+
+        
+:return
+:
+
+
+        """
+
+
+        
+with DatabaseManager(db) as d:
+            for data in d:
+                self.handle_one(data)
+        html_template = """&lt;!DOCTYPE NETSCAPE-Bookmark-file-1&gt;
+&lt;!-- This is an automatically generated file.
+     It will be read and overwritten.
+     DO NOT EDIT! --&gt;
+&lt;META HTTP-EQUIV="Content-Type" CONTENT="text/html; charset=UTF-8"&gt;
+&lt;TITLE&gt;Bookmarks&lt;/TITLE&gt;
+&lt;H1&gt;Bookmarks&lt;/H1&gt;
+&lt;DL&gt;{}&lt;/DL&gt;"""
+        with open(path, "w", encoding="utf-8") as f:
+            f.write(html_template.format(self.tostring()))
+
+
+if __name__ == '__main__':
+    h = HtmlGenerator()
+    h.export_to_edge("db.sqlite3", "bookmarks.html")
+
+    
+</code></pre><h3>快照</h3><p>以书签系统为核心的网络书签服务其实有很多，有不少甚至在颜值上吊打 Linkding，但最后还是 Linkding 获得了我的青睐，很关键的一点就是它提供的双重快照系统。</p><figure class="image ss-img-wrapper"><img src="https://cdnfile.sspai.com/editor/u_/cs3moldb34t98cknnnb0.png?imageView2/2/w/1120/q/90/interlace/1/ignore-error/1" alt="Qtp6b6w54oeTPGxeBX4cUXPOneh" data-original="https://cdnfile.sspai.com/editor/u_/cs3moldb34t98cknnnb0.png" referrerpolicy="no-referrer"></figure><p>上面那个 Internet Archive 是一个在线服务，开启后服务器会调用该网站的 API 接口将你收藏的网址链接提交上去，然后该网站就会抓取该时刻书签网址上的内容进行保存。Internet Archive 是一个很有名的非营利性数字图书馆，保存着互联网上不计其数的网页内容，有兴趣的可以去了解捐赠一波。</p><p>当然，这个快照的局限性非常大，我一般不作为主力使用。首先，想要正常访问 Internet Archive 的话需要使用一点魔法；其次它的抓取对于一些需要登录才能访问相关数据的网站基本没用，就国内互联网这个环境，很多抓取都没有意义。</p><p>下面这个快照则是纯正的本地快照，不过该功能只有特定版本的 Docker 镜像才会开启，安装时最好选择 <a href="https://linkding.link/installation/">latest-plus</a> 版本。该功能开启后服务器会自动抓取书签的网页内容，和 Internet Archive 类似，需要登录验证的网页同样会抓取失败。</p><figure class="image ss-img-wrapper"><img src="https://cdnfile.sspai.com/editor/u_/cs3mollb34t98f1iaep0.png?imageView2/2/w/1120/q/90/interlace/1/ignore-error/1" alt="Siypbs27IonROexyokAc9P8Jnae" data-original="https://cdnfile.sspai.com/editor/u_/cs3mollb34t98f1iaep0.png" referrerpolicy="no-referrer"></figure><p>不过这个是有解决办法的，因为 Linkding 同时提供了手动上传文件作为快照的备选方案。点开书签的详情页，会有一个「Upload file」的按钮，点击即可上传本地文件。这里对于文件的格式没有任何要求，但还是推荐上传可以用浏览器直接打开的 pdf、txt、html 等格式，不然点击浏览按钮后会直接对该文件进行下载。对于文章类的网页推荐直接 Ctrl+P 打印为 pdf 上传，其他网页则推荐使用浏览器插件打包为单个 html 文件后上传。</p><figure class="image ss-img-wrapper"><img src="https://cdnfile.sspai.com/editor/u_/cs3mollb34t98erkk5g0.png?imageView2/2/w/1120/q/90/interlace/1/ignore-error/1" alt="EXBTb1EyEoQDC3xAohRce1cingd" data-original="https://cdnfile.sspai.com/editor/u_/cs3mollb34t98erkk5g0.png" referrerpolicy="no-referrer"></figure><p>对于一些比较重要的文章其实我个人会更加倾向于直接全文收藏到 Trilium 笔记中，算是对网页快照的一个补强，具体内容会在 Trilium 章节中详细介绍。</p><h3>其他</h3><p>Linkding 设置里面还有两个可能会用到的功能，这里给大家介绍一下。首先是 Auto Tagging，顾名思义，就是可以根据你预设的规则在收藏书签时自动为其加上某些标签，这里以哔哩哔哩的专栏为例。</p><figure class="image ss-img-wrapper"><img src="https://cdnfile.sspai.com/editor/u_/cs3moltb34t98erkk5gg.png?imageView2/2/w/1120/q/90/interlace/1/ignore-error/1" alt="FapXbcY7LoA5sgxlAqFcZrs3n8c" data-original="https://cdnfile.sspai.com/editor/u_/cs3moltb34t98erkk5gg.png" referrerpolicy="no-referrer"></figure><figure class="image ss-img-wrapper"><img src="https://cdnfile.sspai.com/editor/u_/cs3mom5b34t98f1iaepg.png?imageView2/2/w/1120/q/90/interlace/1/ignore-error/1" alt="AYGkbPWeooCwarxtwpPcPCtjnof" data-original="https://cdnfile.sspai.com/editor/u_/cs3mom5b34t98f1iaepg.png" referrerpolicy="no-referrer"></figure><p>另一个是 Custom CSS，自定义页面的 CSS，也就是可以更改页面布局。这个需要一点专业知识才能玩转，普通用户可以试着改改字体大小颜色等，比如说把书签颜色改成猛男粉。</p><figure class="image ss-img-wrapper"><img src="https://cdnfile.sspai.com/editor/u_/cs3momdb34t98erkk5h0.png?imageView2/2/w/1120/q/90/interlace/1/ignore-error/1" alt="LbyWb8dxIo3CzyxIdjmciP9yn9e" data-original="https://cdnfile.sspai.com/editor/u_/cs3momdb34t98erkk5h0.png" referrerpolicy="no-referrer"></figure><figure class="image ss-img-wrapper"><img src="https://cdnfile.sspai.com/editor/u_/cs3momdb34t98f1iaeq0.png?imageView2/2/w/1120/q/90/interlace/1/ignore-error/1" alt="O6PvbpVquosffzxyoVIcOMKqnlh" data-original="https://cdnfile.sspai.com/editor/u_/cs3momdb34t98f1iaeq0.png" referrerpolicy="no-referrer"></figure><p>最后提一下手机端如何收藏书签的问题，无论是安卓还是 iOS 都有类似 PC 端浏览器插件的实现方式，具体参考<a href="https://linkding.link/how-to/">官方指南</a>。</p><h2>个人笔记服务：Trilium</h2><p><a href="https://github.com/baddate/trilium/wiki">Trilium</a> 是一个可以多端同步的笔记软件。市面上开源的笔记软件其实很多，Trilium 应该算是比较小众的，主要是功能太多，没有耐心很难体会到它的妙处。我其实只能算是它的初级用户，只会一些比较简单的操作，许多高级特性都没有尝试过。Trilium 的功能完全可以单独胜任个人数据库构建的重任，但下文中我只会简单介绍一个与书签相关的特性。</p><p>之前介绍过 Linkding 的快照功能，里面说了一些特殊情况下的网页备份方法，但对于图文类的文章我其实很少使用其手动上传功能。主要原因是我个人更加喜欢用 Markdown 的格式来记录图文数据，于知识记录而言，pdf 和 html 终究是不够纯粹和方便。</p><p>将网页转化为纯粹的图文数据这一需求曾经困扰过我很久，我尝试过很多不同的开源项目或浏览器插件，结果都不尽如人意，总是会存在一些小问题，直到偶然尝试了一下 Trilium 的浏览器插件这一问题才算是落下帷幕。</p><figure class="image ss-img-wrapper"><img src="https://cdnfile.sspai.com/editor/u_/cs3momlb34t98idth78g.png?imageView2/2/w/1120/q/90/interlace/1/ignore-error/1" alt="HbaobDc5LosCkjxO7sbcSYXWnSe" data-original="https://cdnfile.sspai.com/editor/u_/cs3momlb34t98idth78g.png" referrerpolicy="no-referrer"></figure><p>插件上有一个选项是「Save whole page」，可以直接把当前网页上的图文保存为一篇本地笔记，识别率相当高，基本不需要修改就可以得到一篇排版正确的笔记，不过它只会保存文章的主体或是帖子的主楼，也就是说评论和跟帖并不会被保存下来。绝大部分博客类的网站都能完美适配，部分站点可能会存在图片无法显示的问题，不想一张张图片手动复制粘贴的话可以参照 Linkding 快照部分讲解的方法。</p><p>这项功能完美补全了 Linkding 在待阅读方面的短板。我目前对于一篇有价值的网页文章的基本操作流程就是先用 Linkding 的浏览器插件保存书签，然后使用 Trilium 的浏览器插件保存图文到笔记系统。保存书签是为了方便后续深入阅读时可以随时查看有价值的评论或跟帖，保存图文则是将其作为待阅读的素材，后续阅读时可以很方便的删改整理为自己的笔记。</p><p>插件上另一个常用的选项是「Save windows' tabs as a list」，可以将当前浏览器窗口中所有 Tab 页的网页链接以列表的形式保存到笔记中，设计这个功能的人绝对是懂工作的，后续想要回到同样的工作场景只需要打开对应笔记点击列表中的链接就能完美复原浏览器状态。</p><figure class="image ss-img-wrapper"><img src="https://cdnfile.sspai.com/editor/u_/cs3momtb34t98cknnnbg.png?imageView2/2/w/1120/q/90/interlace/1/ignore-error/1" alt="B3vhb2yzso3aQOxEG2dcQA9Nncb" data-original="https://cdnfile.sspai.com/editor/u_/cs3momtb34t98cknnnbg.png" referrerpolicy="no-referrer"></figure><p>这可以算是一个额外的专项任务收藏夹，可以将一些日常工作场景下会打开的链接提前收藏好，需要用到时就能快速开始该场景下的工作，结合上文中我提到过的使用 Linkding 的 unread 列表来作为近期任务工作区，可以极大的提高工作效率。</p><h2>后记</h2><p>Linkding 和 Trilium 这种本地服务最重要的就是保证数据安全，如果想要使用我的这套方案请务必设置好服务器数据的<strong>定期备份</strong>，数据一旦丢失，想要再次补全的代价实在过于高昂，请务必慎重。</p>]]>
+            </description>
+            <pubDate>Fri, 11 Oct 2024 03:32:58 GMT</pubDate>
+            <guid isPermaLink="false">https://sspai.com/post/92796</guid>
+            <link>https://sspai.com/post/92796</link>
+            <author>
+                <![CDATA[炜智能]]>
+            </author>
+        </item>
+        <item>
+            <title>
+                <![CDATA[派早报：vivo 开发者大会开幕、Intel 发布新款桌面级 Core Ultra 200S 系列处理器等]]>
+            </title>
+            <description>
+                <![CDATA[<h2>你可能错过的新鲜事</h2><h3>vivo 开发者大会开幕</h3><figure class="image ss-img-wrapper"><img src="https://cdnfile.sspai.com/editor/u_/cs47095b34t98cknnoig.jpeg?imageView2/2/w/1120/q/90/interlace/1/ignore-error/1" alt="U3cnblyM2odPYTxajGac8jcMnNh" data-original="https://cdnfile.sspai.com/editor/u_/cs47095b34t98cknnoig.jpeg" referrerpolicy="no-referrer"></figure><p>10 月 10 日，vivo 2024 开发者大会开幕，并在上午的开幕演讲中重点介绍了蓝心智能 AI 战略及多项新技术。</p><figure class="image ss-img-wrapper"><img src="https://cdnfile.sspai.com/editor/u_/cs4709db34t98erkk700.jpeg?imageView2/2/w/1120/q/90/interlace/1/ignore-error/1" alt="ZC0qbWpN3obL8oxRhSucTrnAnbc" data-original="https://cdnfile.sspai.com/editor/u_/cs4709db34t98erkk700.jpeg" referrerpolicy="no-referrer"></figure><p>vivo 公布蓝心智能 AI 战略，展示了包括蓝心语音大模型、蓝河操作系统 2、智能车载及公里级无网通信技术等一系列技术突破。蓝心语音大模型支持自然对话、同声传译、情绪理解和人声模拟等功能；蓝河操作系统 2 以 Rust 语言为基础，vivo 表示该系统全栈自研专为 AI 应用打造。vivo 还发布了公里级无网通信技术，可在无网环境下实现超过 1.5 公里的点对点语音和文字传输。vivo 智能车载覆盖超 8500 款车型，并支持多种数字车钥匙及 AI 控制功能。</p><p>在开幕式上，vivo 还展示了其蓝心大模型矩阵，并表示他们在 PhoneGPT、无障碍产品、隐私保护、家庭智能等多个领域取得了新进展。vivo 宣布将蓝心智能全面向行业开放，并发布了对应的意图框架白皮书，为服务接入、流转和分发提供全流程解决方案。在无障碍领域，vivo 也推出了「vivo 看见 - 蓝心升级版」和手语翻译官，帮助残障用户更好地融入数字世界。<a href="https://dev.vivo.com.cn/vdc/2024/index.html?channel=gw#/">来源</a></p><h3>Intel 发布新款桌面级 Core Ultra 200S 系列处理器</h3><p>10 月 10 日，Intel 发布新一代 Core Ultra 200S 系列处理器，优化能效的同时集成了 AI 加速单元，该系列处理器将于 10 月 24 日正式推出。</p><figure class="image ss-img-wrapper"><img src="https://cdnfile.sspai.com/editor/u_/cs470bdb34t98cknnojg.png?imageView2/2/w/1120/q/90/interlace/1/ignore-error/1" alt="ZLaPb89DGofWaNxh0xbc9BAQnMd" data-original="https://cdnfile.sspai.com/editor/u_/cs470bdb34t98cknnojg.png" referrerpolicy="no-referrer"></figure><p>Intel 表示 Core Ultra 200S 系列台式处理器（代号为 Arrow Lake S），专注于提升每瓦性能，以降低发热和功耗，并首次在桌面端处理器中集成 NPU。此次发布的旗舰处理器 Core Ultra 9 285K 拥有 24 核心（8 个 P 核 + 16 个 E 核），取消超线程功能，以实现更高的能效。据悉，新款处理器在单核任务时的功耗减半，在游戏中功耗最多可减少 165 瓦，并在多项 AI 任务上具备加速能力。同时，Intel 推出新的 LGA-1851 插槽和 Z890 主板，支持最高 24 条 PCIe 4.0 通道、DDR5-6400 内存和 Thunderbolt 4 等功能。</p><p>Intel 表示，虽然新款 Core Ultra 9 285K 的游戏性能略逊于 AMD 的 Ryzen 7 7800X3D，但在内容创作和 AI 加速方面依然保持领先。此外，Intel 通过降低电压解决了此前 Raptor Lake 系列的不稳定性问题，新款处理器不会受此影响。Core Ultra 200S 系列还包括 Core Ultra 7 265K 和 Core Ultra 5 245K，以及不带 GPU 的 KF 版本。<a href="https://www.theverge.com/2024/10/10/24265928/intel-core-ultra-200s-series-specs-release-date-pricing">来源</a></p><h3>任天堂推出 Alarmo 交互式闹钟</h3><figure class="image ss-img-wrapper"><img src="https://cdnfile.sspai.com/editor/u_/cs470c5b34t98erkk70g.png?imageView2/2/w/1120/q/90/interlace/1/ignore-error/1" alt="UOgGbSTbdoVc8hxe4sXc0h5pnbb" data-original="https://cdnfile.sspai.com/editor/u_/cs470c5b34t98erkk70g.png" referrerpolicy="no-referrer"></figure><p>任天堂于 10 月 9 日晚正式推出一款交互式闹钟 Alarmo。该闹钟会通过运动传感器检测用户在床上的身体活动，并根据动作调整闹钟声音。该闹钟还支持将游戏音效用作闹铃声，内置《塞尔达传说：荒野之息》《皮克敏 4》《斯普拉遁 3》《超级马力欧奥德赛》和《健身环大冒险》等 35 个音频「场景」。用户也可以将闹钟连接到任天堂账户，以获取《集合啦！动物森友会》和《马里奥赛车 8》等游戏中的更多音乐，并在闹铃时于闹钟屏幕上看到相应的游戏角色画面。此外，闹钟可在入睡前播放助眠声音，并在屏幕上显示睡眠记录。</p><p>目前，该硬件已开售，售价为 99.99 美元，或 12980 日元。Nintendo Switch Online 会员可在 My Nintendo Store 订购，也可前往 Nintendo TOKYO/OSAKA/KYOTO 线下门店购买。<a href="https://www.gcores.com/articles/189290">来源</a></p><h3>卡西欧推出 A158W 数字手表为设计灵感的桌面时钟</h3><figure class="image ss-img-wrapper"><img src="https://cdnfile.sspai.com/editor/u_/cs470cdb34t98idth8kg.png?imageView2/2/w/1120/q/90/interlace/1/ignore-error/1" alt="M84MbgFJlozFaLxl3PvcRJoSnWe" data-original="https://cdnfile.sspai.com/editor/u_/cs470cdb34t98idth8kg.png" referrerpolicy="no-referrer"></figure><p>卡西欧于 10 月 9 日推出了型号为 DQD-851J-8JF 的桌面时钟，设计灵感源自经典 A158W 数字手表。整体采用塑料材质，虽然不支持计时器和整点报时功能，但具备贪睡功能和五档音量调节的闹钟，可用作床头闹钟。此外，还配备可显示日期和月份的全自动日历和温湿度传感器。</p><p>在日本使用时，该时钟会自动通过当地无线电广播校准时间。如果在日本以外地区使用，则需要手动设置并定期调整时间。时钟使用两节 5 号电池供电，售价为 4378 日元。<a href="https://www.theverge.com/2024/10/9/24265964/casio-digital-watch-desk-a158w-clock-japan-retro-vintage">来源</a></p><h3>微软宣布新 API 方便第三方公司在 Windows 11 添加通行密钥</h3><figure class="image ss-img-wrapper"><img src="https://cdnfile.sspai.com/editor/u_/cs470clb34t98erkk710.png?imageView2/2/w/1120/q/90/interlace/1/ignore-error/1" alt="XJm1bv6HvoS4AqxmPzHcBNwrnSm" data-original="https://cdnfile.sspai.com/editor/u_/cs470clb34t98erkk710.png" referrerpolicy="no-referrer"></figure><p>微软于 10 月 9 日发布博文，宣布将与 1Password、Bitwarden 等密码管理服务公司合作，在 Windows 11 系统中整合通行密钥服务，让用户能跨平台使用 Passkey，以提高密码安全性。微软表示，已重新设计 Windows Hello 用户界面，方便用户创建和使用 Passkey。在访问支持通行密钥的网站时，用户可以选择将通行密钥保存到微软账户，解锁方式包括面部识别、指纹或 PIN。此外，微软还在研发 Windows 11 通行密钥的多设备同步功能，以简化用户体验。<a href="https://blogs.windows.com/windowsdeveloper/2024/10/08/passkeys-on-windows-authenticate-seamlessly-with-passkey-providers/">来源</a></p><h3>字节跳动豆包发布 AI 智能耳机 Ola Friend</h3><figure class="image ss-img-wrapper"><img src="https://cdnfile.sspai.com/editor/u_/cs470d5b34t98f1iagc0.png?imageView2/2/w/1120/q/90/interlace/1/ignore-error/1" alt="D9Twbi6yfoiYX6x4uHBczb7lnyf" data-original="https://cdnfile.sspai.com/editor/u_/cs470d5b34t98f1iagc0.png" referrerpolicy="no-referrer"></figure><p>字节跳动豆包于 10 月 10 日发布了首款 AI 智能体耳机 Ola Friend。该耳机采用开放式设计，单耳重量为 6.6 克，搭载豆包大模型，并与豆包 App 深度结合。戴上耳机后，用户需触摸耳机或说出唤醒词，无需打开手机即可通过语音与豆包 App 互动。耳机能以多种情绪语调表现，如高兴、惊讶等，支持「边听边说、随时打断」，并能灵活切换话题。</p><p>字节跳动表示耳机接入了字节豆包大模型的 Seed-ASR 语音识别技术，可高精度识别中英文及口音，甚至能通过上下文理解各类信息。硬件方面，该耳机配备 10mm 动圈发声单元、动态 EQ 1.0、动态低音补偿和定向防漏音设计。目前提供白、黑、紫、银四款配色，配备两种不同造型的充电仓。该耳机已在电商平台开启预售，将于 10 月 17 日正式发货，售价为 1199 元。<a href="https://www.olafriend.cn/product">来源</a></p><h3>亚马逊宣布 Apple TV+ 将加入美国区 Prime Video</h3><p>亚马逊于 10 月 10 日宣布，美国用户可从今年 10 月下旬起，通过 Prime Video 订阅 Apple TV+ 服务，无需单独下载 Apple TV 应用，每月收费 9.99 美元。</p><p>届时，用户可直接通过 Prime Video 观看 Apple TV+ 的原创节目，例如《晨间直播秀》《流人（Slow Horses）》《无罪的罪人（Presumed Innocent）》《人生切割术（Severance）》《末日地堡（Silo）》《劫机七小时（Hijack）》《诊疗中（Shrinking）》《战利品（Loot）》《皇家棕榈（Palm Royale）》《双狼（Wolfs）》《闹事之徒（The Instigators）》等，还包括美职联和美职棒等体育赛事。</p><p>目前尚不清楚亚马逊是否允许现有的 Apple TV+ 会员直接通过其账号在 Prime Video 中登录。<a href="https://www.aboutamazon.com/news/entertainment/apple-tv-shows-amazon-prime-video-subscription">来源</a></p><h2>看看就行的小道消息</h2><ul><li>科技媒体 Android Authority 在挖掘 Android 15 最新 QPR 更新测试版时发现，Android 11 中首次引入的 Bubbles API 在新系统中以「bubble anything」的形式出现。启用该功能后，用户在 Pixel Launcher 中长按任意应用图标时，会在菜单中看到新的气泡按钮，点击后即会跳出浮动气泡窗口。此功能与气泡条结合后，可带来更优的多任务体验。不过，目前该功能的具体上线时间尚不明确，鉴于其对多任务处理的重大改进，该功能可能会被保留到 Android 16 中。<a href="https://www.androidauthority.com/android-16-bubble-anything-3489112/">来源</a></li><li>10 月 10 日消息，根据彭博社记者 Jason Schreier 在新书《Play Nice: The Rise, Fall and Future of Blizzard Entertainment》中的披露，《守望先锋》移动版正在开发中。该书基于 300 多次对现任和前任暴雪员工的采访，揭示了多个未完成的《守望先锋》计划，其中包括被取消的 Netflix 系列剧。尽管发布日期和开发进展尚未公布，但 Schreier 表示该项目确实正在推进，显示出暴雪对移动游戏市场的重视。<a href="https://esports.gg/news/mobile/overwatch-mobile-confirmed-details-and-more/">来源</a></li></ul><h2>少数派的近期动态</h2><ul><li>少数派 PiPods 真无线耳机清仓特卖只需 199：音质出色、功能全面的无线耳机，105db 高灵敏度，PET + 碳金复合材料振膜，音乐/游戏双模式，半入耳式设计，舒适贴耳。<a href="https://sspai.com/page/pipods"><strong>进一步了解</strong></a></li><li>双十一临近，我们为你带来了「满血版」的 K3：少数派定制版 Keychron K3 Max，Max 版本在保留了 K3 系列基本卖点的前提下，最大的改进就是新增了 2.4G 的连接方式，使之成为一款有线 / 蓝牙 / 2.4G 的三模键盘。<a href="https://sspai.com/post/92779"><strong>进一步了解</strong></a></li></ul><h2>你可能错过的好文章</h2><ul><li>👃 <a href="https://sspai.com/post/92653">已经能测夜间体征的 Apple Watch，为什么要再做一个睡眠呼吸暂停提醒</a></li><li>⛰️ <a href="https://sspai.com/post/92519">日本浮生录 06：漫步古街、高山徒步，在金泽富山畅享夏日</a></li><li>⌨️ <a href="https://sspai.com/post/92779">不变的颜值，更强的连接，少数派定制 Keychron K3 Max</a></li><li>🎬 <a href="https://sspai.com/post/92507">看什么 Café | 日剧观看指南：编剧篇</a></li></ul><p>&gt; 下载 <a href="https://sspai.com/page/client">少数派 2.0 客户端</a>、关注 <a href="https://sspai.com/s/J71e">少数派公众号</a>，解锁全新阅读体验 📰</p><p>&gt; 实用、好用的 <a href="https://sspai.com/mall">正版软件</a>，少数派为你呈现 🚀</p>]]>
+            </description>
+            <pubDate>Fri, 11 Oct 2024 00:29:18 GMT</pubDate>
+            <guid isPermaLink="false">https://sspai.com/post/92817</guid>
+            <link>https://sspai.com/post/92817</link>
+            <author>
+                <![CDATA[少数派编辑部]]>
+            </author>
+        </item>
         <item>
             <title>
                 <![CDATA[看什么 Café | 日剧观看指南：编剧篇]]>
             </title>
             <description>
-                <![CDATA[<p style="margin-left:0px;">编者按：1895 年在巴黎卡普辛路 14 号的大咖啡馆，卢米埃尔兄弟的短片成了咖啡馆的助兴节目，而咖啡馆也正是那时人们谈论电影和艺术的重要场所。「看什么 Café」作为「<a href="https://sspai.com/tag/%E6%9C%AC%E5%91%A8%E7%9C%8B%E4%BB%80%E4%B9%88" target="_blank">本周看什么</a>」栏目的衍生，旨在为热爱影视艺术的少数派们创造一个这样的氛围：虽然我们无法回到电影诞生的那个年代，但我们依旧可以喝着咖啡，深入探讨有关影视艺术的一切。</p><p style="margin-left:0px;">本期「<a href="https://sspai.com/topic/416" target="_blank">看什么 Café</a>」要讨论的主题是「日剧编剧」，我们邀请了日剧迷 <a class="ss-atUser" data-mention="@知道分子吴先先" user-id="c5g363db34teh0gc1tig" href="https://sspai.com/u/hahad">@知道分子吴先先</a>，和大家聊聊那些知名编剧与他们的剧作风格。🙋 欢迎在评论区分享你喜爱的日剧编剧，留下你对日剧的看法。</p><hr><blockquote><p style="margin-left:0;">比起多数派，我更想为少数派书写。——坂元裕二</p></blockquote><p style="margin-left:0;">一谈到日剧，就不会错过坂元裕二、宫藤官九郎这些名编剧。日本电视剧产业中，编剧的名字往往比导演、演员更响亮，也能让观众更快锁定作品的风格气质。比起<a href="https://sspai.com/post/90534">上期谈到的电视台栏目</a>，相信更多人是因为青睐某位编剧的作品，持续追 ta 的作品而入坑。</p><p style="margin-left:0;">这篇文章我们就聊一聊几位知名度高、当下仍在活跃的日剧编剧，介绍他们的代表作与风格，方便追日剧的朋友更好地找出「梦中情作」。</p><h2 style="margin-left:0;">绕不过去的大前辈</h2><p style="margin-left:0;">切入正题之前，先介绍两位日剧历史上绕不过去的编剧大前辈。</p><h3 style="margin-left:0;">向田邦子</h3><p style="margin-left:0;">被誉为<strong>「日剧女王」</strong>的向田邦子生于 1929 年，写过大量家庭题材的广播剧本和电视剧脚本，和日本电视台的腾飞和发展同处一个时期。</p><p style="margin-left:0;">向田邦子最知名的作品有《寺内贯太郎一家》（1974），讲一家东京石材老铺三代同堂的家长里短，剧中 31 岁的树木希林反串年迈的母亲，留下了不少珍贵影像。还有《宛如阿修罗》（1979）讲一家四姐妹各怀秘密的故事，因为人物刻画得好，时常被影视和舞台剧翻拍。据说最新版由 Netflix 投资、是枝裕和导演，宫泽理惠、尾野真千子、苍井优、广濑铃分别主演四姐妹，预计 25 年初上映，想想都令人期待。</p><figure class="image ss-img-wrapper image_resized" style="width:664px;"><img src="https://cdnfile.sspai.com/2024/09/26/f520772114ee028f1f78e0c22050da17.png?imageView2/2/w/1120/q/90/interlace/1/ignore-error/1" data-original="https://cdnfile.sspai.com/2024/09/26/f520772114ee028f1f78e0c22050da17.png" referrerpolicy="no-referrer"><figcaption>向田邦子（左图）和她的代表作。《宛如阿修罗》多次翻拍，网罗了各个年代的实力女星。</figcaption></figure><p style="margin-left:0;">或许是天妒英才，向田邦子在 51 岁那年在台湾遭遇空难去世，为了纪念她，日剧界以她的名字命名了表彰编剧的奖项<strong>「向田邦子赏」</strong>，每年只颁给一位编剧的一部新作。像木皿泉的《西瓜》、游川和彦的《女王的教室》、金子茂树的《我的事说来话长》、三谷幸喜的大河剧《镰仓殿的 13 人》都是知名的获奖作品。下面提到的几位名编剧，也都曾获过向田邦子奖。</p><h3 style="margin-left:0;">仓本聪</h3><p style="margin-left:0;">仓本聪生于 1935 年，东大出身，从年轻时期就做起了自由编剧。</p><p style="margin-left:0;">仓本聪的作品是清一色的豆瓣高分，最知名的作品是在他中年移住北海道富良野后，和富士电视台合作的《北国之恋》系列（1981-2002），由同一批演员团队拍了整整 21 年。仓本聪的题材也多为家庭剧，不过和擅长讲人心复杂的向田邦子不同，《北国之恋》的世界里更多是自然与温情，相当治愈。这个系列的缺点是年代较久，画质比较差。感兴趣的朋友可以看看他后来的几部作品，同在富良野取景的《温柔时光》（2005）和以东京为舞台的《敬启，父亲大人》（2007），两部作品都由二宫和也主演。</p><figure class="image ss-img-wrapper image_resized" style="width:601px;"><img src="https://cdnfile.sspai.com/2024/09/26/fc996401fdd14fc50843c22441f39b4a.png?imageView2/2/w/1120/q/90/interlace/1/ignore-error/1" data-original="https://cdnfile.sspai.com/2024/09/26/fc996401fdd14fc50843c22441f39b4a.png" referrerpolicy="no-referrer"><figcaption>仓本聪（左下）的《安宁之乡》（右图）邀请了多位现已不为人知的老昭和电视明星参演。</figcaption></figure><p style="margin-left:0;">2017 年，82 多岁高龄的仓本聪专为一群无戏可拍的老艺人创作了一部午间剧《安宁之乡》，每集 15 分钟，共 100 多集，2019 年还拍了续集《安宁之刻～道》。剧中，仓本聪为这些退休的电视业同行搭建了一个栖身的乌托邦，让他们在一个僻静的海边养老院安度晚年。这部剧也一度治愈了我，让我觉得老年是一个应该好好准备、好好面对的人生阶段，应该被每个人郑重对待。</p><p style="margin-left:0;">仓本聪、向田邦子，还有另一位编剧山田太一并称为上世纪的<strong>「三大剧本作家」（シナリオライター御三家）</strong>。国内也翻译出版过不少向田邦子和仓本聪的剧本和访谈，可以搜来看看。</p><h2 style="margin-left:0;">当今活跃的名编剧</h2><h3 style="margin-left:0;">坂元裕二</h3><p style="margin-left:0;">讲到当下最知名的日剧编剧，很多观众最先想到的一定是坂元裕二。</p><p style="margin-left:0;">坂元裕二可谓年少成名，19 岁那年获得了第一届富士电视台青年剧本大奖，高中毕业直接出道。24 岁那年，从漫画改编的《东京爱情故事》（1991）让编剧坂元跻身为名编剧之列。不过在此之后，坂元的事业起起伏伏。尤其是三十多岁到四十岁出头，他一直未能再写出令自己满意的作品，干脆潜心带娃做饭，安心让媳妇森口瑶子外出拍戏。这个过程中，坂元亲身以「家庭妇男」的视角，体会到了普通女性在家庭职责和社会身份夹缝中的艰难处境，这也是他后来创作出那么多真实可信「大女主」角色的基础。</p><figure class="image ss-img-wrapper image_resized" style="width:303px;"><img src="https://cdnfile.sspai.com/2024/09/26/0c7a6eda855815c9fc3a755ca916f1a4.png?imageView2/2/w/1120/q/90/interlace/1/ignore-error/1" data-original="https://cdnfile.sspai.com/2024/09/26/0c7a6eda855815c9fc3a755ca916f1a4.png" referrerpolicy="no-referrer"><figcaption>坂元裕二（左）和东爱女主铃木保奈美（右）</figcaption></figure><p style="margin-left:0;">2010 年代起，年过四十的坂元再度进入创作爆发期，原创了大量的经典剧作。电视剧有《Mother》（2010）、《尽管如此也要活下去》（2011）、《最完美的离婚》（2013）、《四重奏》（2017）、《大豆田永久子与三位前夫》（2021）等。这两年大热的电影《花束般的恋爱》（2021）、《怪物》（2023）剧本也是坂元原创，《怪物》还为他摘得了戛纳电影节的最佳编剧奖，在追捧戛纳的日本影视界，此奖可谓至高荣誉。<sup class="ss-footnote" href="" title="本文的主题虽然是电视剧编剧，但这些名编剧也经常受邀为电影创作剧本，而且电视剧和电影剧本数量上基本持平。在此不做过多区分。" footnote-id="1">1</sup></p><p style="margin-left:0;">坂元的不少名作都是<strong>婚恋题材</strong>，加上他<strong>对人物情感的精准刻画</strong>，诞生了很多经典的荧幕角色。</p><p style="margin-left:0;">我问过很多资深坂元迷，许多人最喜欢的一部剧都是《最完美的离婚》。瑛太和尾野真千子扮演了一对吵吵闹闹的「欢喜冤家」。丈夫光生龟毛事多，媳妇结夏粗枝大叶，怎么看都不搭的两人第一集就离了婚。虽说两人分分合合，但到剧终也没分开，看似斗嘴不断，却时常让人感动到泪目。整部剧没什么大事件，两对夫妻的日常小事（另一对是绫野刚和真木阳子饰演），螺蛳壳里做道场，让人看得津津有味，这是坂元的特长。坂元擅长写信的本事在这部剧里也炉火纯青，正片和特别篇中，光生和结夏写给彼此的信，被不少营销号誉为「最美情书」。最美不敢说，但确实温馨感人，值得一读。</p><figure class="image ss-img-wrapper image_resized" style="width:664px;"><img src="https://cdnfile.sspai.com/2024/09/26/fac5f11809fa872c80cc6883e1a96b79.png?imageView2/2/w/1120/q/90/interlace/1/ignore-error/1" data-original="https://cdnfile.sspai.com/2024/09/26/fac5f11809fa872c80cc6883e1a96b79.png" referrerpolicy="no-referrer"><figcaption>《最完美的离婚》剧照。四位主角排列组合，每两个人之间都有交集。</figcaption></figure><p style="margin-left:0;">相比《最完美的离婚》，坂元的另一部剧《四重奏》似乎更加出圈。《四重奏》里，主角团关于吃炸鸡要不要挤柠檬汁的那段对话，已经成为许多人日常吃炸鸡时的标配话题。在人物关系设置上，这部剧也不落俗套，从头到尾，四位主角一直保持全员单恋，从头到尾无人脱单。直到几年后，剧中扮演卷真纪的松隆子和扮演别府司的松田龙平再度在《大豆田永久子与三名前夫》里饰演了一对离婚的夫妇。剧中专门放了一段两人的相互表白，畅想假如没有离婚、一直恩爱生活的想象片段。弹幕里不少人感慨：「坂元终于圆了这对 CP 粉的梦」。</p><figure class="image ss-img-wrapper image_resized" style="width:664px;"><img src="https://cdnfile.sspai.com/2024/09/26/4b950d27a2063e8b65e75ee0e9839b92.png?imageView2/2/w/1120/q/90/interlace/1/ignore-error/1" data-original="https://cdnfile.sspai.com/2024/09/26/4b950d27a2063e8b65e75ee0e9839b92.png" referrerpolicy="no-referrer"><figcaption>《四重奏》（上图）和《大豆田永久子与三名前夫》（下图）剧照。</figcaption></figure><p style="margin-left:0;">单单因为坂元擅长描写男女情爱，擅长写金句，就把他归入爱情编剧，似乎有点小看了他。事实上，坂元之所以收获那么多的赞誉，绝不只是因为他擅长写情感戏，更是因为他<strong>对社会有细致的观察和关切。</strong></p><p style="margin-left:0;">豆瓣评分 9.4 的催泪神剧《Mother》里就没什么爱情戏份。它以一个诱拐的犯罪故事，讲了「母亲」这个身份意味着什么。这个剧里，你会发现坂元设计了各种各样的母亲：普通的生母、善良的养母、虐待孩子的生母（尾野真千子，饰）、遗弃孩子的生母（田中裕子，饰）、为了保护孩子不惜犯罪的养母（主角，松雪泰子，饰）。虽说错综复杂的设计略显刻意，但每个角色都被赋予了充分的行为动机——连那个让人恨得牙痒痒，和男友把女儿丢在垃圾袋里，扔到冰天雪地的「恶母」形象，坂元都给她设计了小传，让人看到一个普通女性是如何慢慢支撑不住育儿重任，逐步黑化的。</p><p style="margin-left:0;">这是坂元的有意设计，据说是他在剧作上映后，看到观众猛喷恶母，专程加上了这一段，希望让观众看到事情全貌，理解母职艰辛，不是以偏概全，随便给一个女性扣上「好妈妈」或「坏妈妈」的帽子。在女性议题的处理上，坂元的处理绝对可以打高分。</p><p style="margin-left:0;">瑛太和满岛光主演的苦情剧《尽管如此也要活下去》，爱情也不是核心主题。坂元把重心放在了罪案发生后，犯罪者和被害者家庭里的每个当事者如何自我救赎、走出阴霾、面对彼此、接纳彼此。为了讲清楚这个严肃的社会议题，他精心设计了每个家庭成员的人物特征，很禁得起推敲。日本有很多类似「后犯罪」题材的影视剧，我看过不少，《尽管如此也要活下去》绝对算是优秀的一部。</p><figure class="image ss-img-wrapper image_resized" style="width:664px;"><img src="https://cdnfile.sspai.com/2024/09/26/e2834f6e9f8f1565e7c09fc3de085421.png?imageView2/2/w/1120/q/90/interlace/1/ignore-error/1" data-original="https://cdnfile.sspai.com/2024/09/26/e2834f6e9f8f1565e7c09fc3de085421.png" referrerpolicy="no-referrer"><figcaption>《Mother》和《尽管如此还要活下去》海报。</figcaption></figure><p style="margin-left:0;">关于坂元裕二的网络文章有很多，不少都会给他扣上一个<strong>「金句大师」</strong>的标签。每逢他的新作上映，都会有营销号立刻推出名为「跟坂元学写金句」之类的文章。写金句确实是坂元的特色，不过，相比把它标签化，我更喜欢把它理解为坂元对生活有真切的感知，不满足于写直白乏味的台词，而是想在具体场景中把这些细腻的感受用不经意的语言、动作传递出来。</p><p style="margin-left:0;">坂元在 NHK 纪录片《仕事の流仪》里对自己的这种创作方式也做过解读：</p><iframe class="ss-videoIframe" src="https://player.bilibili.com/player.html?bvid=BV15t41127eY&amp;autoplay=false" sandbox="allow-scripts allow-same-origin allow-popups" referrerpolicy="no-referrer"> </iframe><blockquote><p style="margin-left:0;">在纸上写下「喜欢」，是没法传达出「喜欢的」。相反，用漫不经心的对话、琐碎的行为，把周围逐渐填充完整，这就是写剧本的过程。坐在巴士上，有一搭没一搭地聊着天，回到家，想一个人看看电视却又关了电视，随手折起纸，这时突然意识到：「啊，我可能喜欢那个人」。故事就藏在日常的琐碎中。</p></blockquote><blockquote><p style="margin-left:0;">如果用多数派少数派的说法，我想给少数派、少数人群写故事。让活力值有 10 的人变成 100，鼓舞他们的作品有很多。而我想让那些是负值的人至少先达到零点，让 -5 的人先到 -3，这是我的目标。</p></blockquote><p style="margin-left:0;">满岛光在《四重奏》的访谈花絮里讲，她在读剧本时，觉得每个人说的话都很随意，单拎出来显得莫名其妙，但真到大家一起演出来，又恰到好处，这也是我看坂元作品的真切感受。<strong>坂元剧作的魅力就在于日常和深入。</strong>普通作品里，这两者往往很难共存，但坂元成功地驾驭了它们，造就了不可复制的独特风格。</p><h4 style="margin-left:0;">新剧看点</h4><p style="margin-left:0;">坂元近两年创作以电影脚本为主。去年上线 Netflix 的《疯狂游轮》（2023）遭遇口碑滑铁卢，哪怕宫崎葵和吉泽亮携手主演，卡司华丽，都掩盖不住脚本上的严重失败。</p><p style="margin-left:0;">最近发布的《1ST KISS》（《初吻》）预告片，定档 25 年 2 月，松隆子和松村北斗合演，是一个讲女主时空穿越，回到过去重逢已故爱人的故事，看起来相当不错。</p><figure class="image ss-img-wrapper image_resized" style="width:267px;"><img src="https://cdnfile.sspai.com/2024/09/26/c9fb43f2cd8be805dde5b92dd475b424.png?imageView2/2/w/1120/q/90/interlace/1/ignore-error/1" data-original="https://cdnfile.sspai.com/2024/09/26/c9fb43f2cd8be805dde5b92dd475b424.png" referrerpolicy="no-referrer"><figcaption>定档于 2025.2.7 的《1ST KISS 初吻》<br>松隆子和松村北斗主演</figcaption></figure><p style="margin-left:0;">另外还有一个延期的项目，叫《单恋的世界》，由广濑铃、杉咲花、清原果耶三个当红小花合演，《花束般的恋爱》导演土井裕泰执导。据豆瓣评论说是制作团队遭遇车祸，不知道什么时候能完成，可以稍稍期待一下。</p><h3 style="margin-left:0;">宫藤官九郎</h3><p style="margin-left:0;">论知名度，能和坂元裕二旗鼓相当的日剧编剧，大概就要数宫藤官九郎（宫九）了。一想到宫九，就会立刻想到「鬼才」这个词。宫九的人生绝对是难以复制的精彩，他的才华也少有人企及。</p><p style="margin-left:0;">宫九比坂元略小几岁。他从日本大学艺术学部中途退学，20 岁那年加入了松尾铃木主持的剧团「大人计划」，导演、编剧、演员都干过，后来还提携过团里的一个名叫星野源的年轻人。</p><p style="margin-left:0;">1995 年，25 岁的宫九和团里的阿部隆史（又名阿部贞夫）等三人成立了一个名叫「Group 魂」的乐队，他负责写词，还担任过吉他手。十年后，这个乐队的曲子被选上跨年的「红白歌会」，所以，宫九还作为乐队成员上过日本的「春晚」演出过。</p><figure class="image ss-img-wrapper image_resized" style="width:664px;"><img src="https://cdnfile.sspai.com/2024/09/26/389188a00d1bed460d66bf1d65d2bd23.png?imageView2/2/w/1120/q/90/interlace/1/ignore-error/1" data-original="https://cdnfile.sspai.com/2024/09/26/389188a00d1bed460d66bf1d65d2bd23.png" referrerpolicy="no-referrer"><figcaption>百变宫九：舞台上演奏吉他（左）、出演《四重奏》（右上）和《被嫌弃的松子的一生》（右下）。</figcaption></figure><p style="margin-left:0;">此外，宫九作为导演和演员，执导和出演过不少影视作品。不带任何滤镜，他演得真不错。刚刚提到的《四重奏》里，卷真纪离家出走的丈夫就是他演的。深夜剧《古龙兄弟和四苦八苦》里的租赁大叔也是他，《Border》里宫九也有客串。电影就更多了，我看过不下十部，比如《被嫌弃的松子一生》中的那个自杀的小说家，《在世界中心呼唤爱》里成年男主的朋友等等。总之，只要日影日剧看得多，一定不会对宫九的脸陌生。</p><p style="margin-left:0;">说到编剧，30 岁那年，宫九因为改编石田衣良的畅销小说《池袋西口公园》（2000）崭露头角，迅速作为编剧，蜚声日本。那几年，和宫九有关的所有影视都是话题作。宫九编剧的电影《Go！》（2001）、《乒乓》（2002）、《69》（2004）每部都是经典，每部都带有一些 Cult、跳帧的视觉风格，很有朋克的气质。像长濑智也、洼冢洋介、阿部隆史也逐渐成了和宫九多次合作的男主角，与宫九作品中常有的<strong>青春主题、搞怪、无厘头、自恋、男性群像特色</strong>高度契合。</p><figure class="image ss-img-wrapper image_resized" style="width:664px;"><img src="https://cdnfile.sspai.com/2024/09/26/93eefb82899d1cf0a2267e945bc05bd1.png?imageView2/2/w/1120/q/90/interlace/1/ignore-error/1" data-original="https://cdnfile.sspai.com/2024/09/26/93eefb82899d1cf0a2267e945bc05bd1.png" referrerpolicy="no-referrer"><figcaption>21 世纪初宫九编剧的电影电视剧海报。《Go！大爆走》（左）《池袋西口公园》（中）和《69》（右）。</figcaption></figure><p style="margin-left:0;">宫九极其高产，而且他几乎没有明显的创作断档期。每个阶段都有佳片问世，风格也各有不同。硬要评出一些经典作品，除了上述提到的之外，还有《木更津猫眼》（2002）、《曼哈顿爱情故事》（2003）、《虎与龙》（2005）、《自恋刑警》（2010）、《还有第 11 人》（2011）、《海女》（2013 晨间剧）、《对不起青春》（2014）、《宽松世代又如何》（2016）、《监狱的公主大人》（2017）、《韦驮天：东京奥运的故事》（2019 大河剧）、《我家的故事》（2021）等，均为宫九原创剧本。原谅我报菜名式的罗列，因为除了那部大河剧，我全都看过（自豪脸），真是什么主题都有，家庭、刑事、校园、婚恋、犯罪、医疗……感觉宫九完全没有创作瓶颈，完完全全放飞自我。</p><p style="margin-left:0;">因为宫九高产、多变的鬼才风格，很难用一两句话概括他的作品全貌。不过，有些特点还是共通的。</p><p style="margin-left:0;">首先，宫九的剧<strong>总带点无厘头的气质</strong>。做一个未必恰切的类比，他的作品会让人联想到星爷的作品。很多宫九的作品里都有一个牛批哄哄、自恋到不行、内心又很单纯的男主。比如《自恋刑警》里长濑智也扮演的刑警，每一集他都会爱上一位女性，疯狂表白，然后每一集结尾都会发现，这个女子正是他手头案件的嫌疑人。这个套路集集都有，但就是借助这股尬劲儿，居然能让人集集不落看完。《池袋西口公园》《虎与龙》《我家的故事》里，长濑智也饰演男主也都是类似的气质。</p><figure class="image ss-img-wrapper image_resized" style="width:664px;"><img src="https://cdnfile.sspai.com/2024/09/26/c76460a2543878fbcc554341f36dcf85.png?imageView2/2/w/1120/q/90/interlace/1/ignore-error/1" data-original="https://cdnfile.sspai.com/2024/09/26/c76460a2543878fbcc554341f36dcf85.png" referrerpolicy="no-referrer"><figcaption>《自恋刑警》海报（左）、《还有第 11 人！》（右上）和《对不起青春》（右下）剧照。</figcaption></figure><p style="margin-left:0;">有些奇怪的设定，只能是宫九玩出来的。家庭剧《还有第 11 人！》里，广末凉子饰演一个死去多年，却一直在自家壁橱里喝闷酒的鬼魂，家里只有不是她亲生的小儿子能看到她。《对不起青春》里，男主（锦户亮，饰）的母亲去世多年，经常通过男主屋里的一尊观音菩萨像现身，兼念整剧的旁白。这些诡异的设定都让宫九的剧在真真假假、哭哭笑笑中变得更有娱乐性。</p><p style="margin-left:0;">宫九的作品的另一大特色，是<strong>错综复杂的男女关系</strong>。和认真刻画人与人的互动细节、营造故事现实感的坂元裕二不一样，宫九这里，人与人之间的关系大多是作为梗出现，用来制造喜剧效果的。最典型的设定要数《曼哈顿爱情故事》，在一家名叫曼哈顿的东京咖啡店里，七八位男女主人公，最开始是 A 喜欢 B，B 喜欢 C 的关系依次单恋，剧情进展到后半，几乎没啥理由，全部反向单恋，从 F 喜欢 G，一直退到 C 喜欢 B，B 喜欢 A。论全员单恋和反转，还要数宫九的脑洞。</p><figure class="image ss-img-wrapper image_resized" style="width:664px;"><img src="https://cdnfile.sspai.com/2024/09/26/78362ae72bbee240724553328da5a28d.png?imageView2/2/w/1120/q/90/interlace/1/ignore-error/1" data-original="https://cdnfile.sspai.com/2024/09/26/78362ae72bbee240724553328da5a28d.png" referrerpolicy="no-referrer"><figcaption>《曼哈顿爱情故事》海报（左）和《对不起青春》（EP4）剧照。</figcaption></figure><p style="margin-left:0;">校园题材剧《对不起青春》，除了身为老师的男女主人公，宫九还花了不少笔墨描绘了一批正值青春的高中生群像，他们之间的感情也像浮萍一样，忽然有一天，全部都变风向了。为此剧中专门放了一张关系图，帮助观众理清关系。这些都作为笑点被宫九加以调侃，又切中了些许的人性，不会让人感到太过生硬恶俗。</p><p style="margin-left:0;">这么多剧作中，我最喜欢的宫九剧要数《虎与龙》和《我家的故事》这两部。它们的共同特色是<strong>把一些日本传统文化融入了时下的娱乐表达里</strong>，这也是我觉得宫九最出众、最有巧思的设计。《虎与龙》里，男主虎儿是个牛气哄哄的黑帮小哥，因为落语师傅欠自家老大的钱，所以虎儿选择拜师学落语，让师傅拿自己交的学费还钱给负责收债的自己。（看看这设定！）每一集男主都会从师傅那里学一个经典的落语段子，然后再把它用身边的故事重新讲出来，老段子出新意，特别精彩。</p><figure class="image ss-img-wrapper image_resized" style="width:664px;"><img src="https://cdnfile.sspai.com/2024/09/26/912256cbb2a28213fbcf41a594ff95f4.png?imageView2/2/w/1120/q/90/interlace/1/ignore-error/1" data-original="https://cdnfile.sspai.com/2024/09/26/912256cbb2a28213fbcf41a594ff95f4.png" referrerpolicy="no-referrer"><figcaption>《虎与龙》海报（左）和《我家的故事》海报（右）。<br>宫九到底是有多爱长濑智也啊！</figcaption></figure><p style="margin-left:0;">而《我家的故事》则是把传统的高雅艺术「能剧」和日本国民娱乐「摔角」融入在了一起，把国宝传承问题，和疫情影响、养老介护全部放到一起，融成一锅粥来讨论。夹杂着宫九特有的笑点和乱七八糟的男女关系设定，这两部剧都<strong>在娱乐和严肃中做出了平衡</strong>，让人看了又看，边笑边哭，不由感慨只有宫九才能创作出这等神剧了吧。</p><h4 style="margin-left:0;">新剧看点</h4><p style="margin-left:0;">近两年宫九作品口碑波动较大，每部剧都有人评论宫九江郎才尽，年纪大了爱说教，但我看完之后，觉得整体还行，放在日剧衰落的大环境下，起码每部片子里都有一些笑点和泪点。而且能明显看出，现在宫九剧的社会关切比以前更深了，这也是我特别欣赏的一点。</p><p style="margin-left:0;">《我们离婚吧》详细介绍了吊儿郎当的政二代是如何认真拉票、筹备选举的，普及了不少日本竞选的知识。宫九和大石静合作脚本，玩得就是一个混搭杂糅风。可参见 <a href="https://sspai.com/post/80540" target="_blank">本周看什么 230623 期</a>。</p><p style="margin-left:0;">《没有季节的城市》讲的是灾后重建和人情冷暖，Disney+ 制作，改编自山本周五郎 1960 代的同名小说，舞台移到了现代。池松壮亮领衔主演，强在卡司逆天。可参见 <a href="https://sspai.com/post/82149">本周看什么 230818 期</a>。</p><p style="margin-left:0;">《不合适也要有个限度！》用一个穿越题材，反思了日本社会近年的「政治正确」问题：上司说句加油就被下属告成职权骚扰，老师批判两句就被家长指责为过度教育，主题上可以看成是《宽松世代又如何》的延伸。</p><p style="margin-left:0;">刚播完的《新宿野战医院》虽然小池荣子的掉渣英语让人格外不适，但宫九想谈论的话题很严肃——外国人越来越多的东洋风俗第一街歌舞伎町，每个人的安全、健康、平权问题。感兴趣的朋友还可以看一看剧作原型「春山纪念病院」的相关新闻报道。可参见 <a href="https://sspai.com/post/90439" target="_blank">本周看什么 230712 期</a>。</p><figure class="image ss-img-wrapper image_resized" style="width:664px;"><img src="https://cdnfile.sspai.com/2024/09/26/a9cade97d73120d39d4c2074d471c1a6.png?imageView2/2/w/1120/q/90/interlace/1/ignore-error/1" data-original="https://cdnfile.sspai.com/2024/09/26/a9cade97d73120d39d4c2074d471c1a6.png" referrerpolicy="no-referrer"><figcaption>《最后看见的街》海报。2024.9.21 上映。</figcaption></figure><p style="margin-left:0;">近期，宫九还和朝日电视台合作了一个新剧，叫《最后看见的街》，改编自另一位「三大剧本作家」山田太一的小说，同样也是穿越题材。9 月 21 日刚上映，无论是篇名，还是主题，感觉宫九都在自己的创作里不断循环。目前评分不高，可以关注一下。</p><h3 style="margin-left:0;">古泽良太</h3><p style="margin-left:0;">谈日剧，古泽良太也是绕不过去的一位。他原创脚本的《Legal High》在国内早已成为日式神剧的代名词，剧中古美门律师的<strong>超大信息量、超快语速风格，也是古泽编剧一贯的特点。</strong></p><p style="margin-left:0;">古泽良太是日语文学科班出身，29 岁通过朝日电视台的新人编剧大赛出道，很快挑起了大梁，成为朝日电视台《相棒》系列的主力编剧之一。同一时期，他的电影剧本杰作频出，昭和怀旧三部曲《永远的三丁目夕阳》（2005、2007、2012）成为当时口碑、影响力俱佳的作品。后来的《寄生兽》（2014）系列电影也是他改编的。</p><figure class="image ss-img-wrapper"><img src="https://cdnfile.sspai.com/2024/09/26/39782788d582e65a1615319996535ac6.png?imageView2/2/w/1120/q/90/interlace/1/ignore-error/1" data-original="https://cdnfile.sspai.com/2024/09/26/39782788d582e65a1615319996535ac6.png" referrerpolicy="no-referrer"><figcaption>古泽良太编剧的知名电影作品。最右边是古泽原创的剧本《如月疑云》。</figcaption></figure><p style="margin-left:0;">古泽良太早先作品中，有两部非常值得一看。一是他原创剧本的电影《如月疑云》（2007），整部剧就发生在一间屋子里，纯靠几个人对话推动剧情发展，非常好看，算是小成本电影佳作。另一个是他改编自同名漫画的校园题材电视剧《铃木先生》（2011），长谷川博己主演。这部剧里探讨了很多敏感的教育问题，比如中学生怎么做性启蒙？能不能跟同样是未成年的恋人发生关系？喜欢谁能不能就藏在自己心里，不告诉别人？如何让孩子学会尊重他人的价值观？还有一些更加劲爆的两性观点。虽说风格略显中二，未必合乎现实，但我看完特别感动，尤其认可铃木老师的教育观点。</p><figure class="image ss-img-wrapper image_resized" style="width:664px;"><img src="https://cdnfile.sspai.com/2024/09/26/614752bef7ee88cd2c0197d7e868155a.png?imageView2/2/w/1120/q/90/interlace/1/ignore-error/1" data-original="https://cdnfile.sspai.com/2024/09/26/614752bef7ee88cd2c0197d7e868155a.png" referrerpolicy="no-referrer"><figcaption>《铃木先生》是东京电视台的深夜剧，尺度相当大。<br>本剧的一大看点是众多日后冉冉升起的 95 后演艺界明星（找找看）。</figcaption></figure><p style="margin-left:0;">2012 年后，古泽良太和富士电视台合作，先后创作了三部电视剧：</p><ul><li>《Legal High》（2012-2014，两部剧集、两部 SP）</li><li>《约会～恋爱究竟是什么》（2015，一部剧集、一部 SP）</li><li>《行骗家族》（2018-2022，一部剧集、一部 SP、三部电影、两部衍生短剧）。</li></ul><p style="margin-left:0;">由于富士电视台的经营不善，古泽良太的作品还被多次出售过海外版权，因此诞生了中国版的《约会～恋爱究竟是什么》、韩国版《Legal High》，虽说同为古泽编剧，几乎可以忽略不算。</p><p style="margin-left:0;">除了《Legal High》里那种语速快、逻辑强、擅长雄辩的风格之外，<strong>夸张的人物设定也是古泽良太原创剧本的一贯特色。</strong>古美门律师的动作、造型简直就是日本律政游戏《逆转裁判》里成步堂龙一的原样复刻。黛律师、阿拉伯王子也都是脸谱化角色，比起真人，更像是动漫人物。《行骗家族》里，主角团的设定更是夸张，不但「信用欺诈师」的职业高度虚构，每个人都神秘且身怀绝技，长泽雅美饰演的达子智商超群，小日向文世扮演的理查德轻易就能获取他人信任，完全冲着爽剧在设计人物。</p><figure class="image ss-img-wrapper image_resized" style="width:664px;"><img src="https://cdnfile.sspai.com/2024/09/26/4005dc0d697f5b3f10d82d31cbf3dbbc.png?imageView2/2/w/1120/q/90/interlace/1/ignore-error/1" data-original="https://cdnfile.sspai.com/2024/09/26/4005dc0d697f5b3f10d82d31cbf3dbbc.png" referrerpolicy="no-referrer"><figcaption>堺雅人老师绝对是在 cosplay 成步堂，百分百还原。</figcaption></figure><p style="margin-left:0;">在我看来，与其说古泽良太是一个日剧编剧，他更像是一个美剧编剧。相比于传统日剧中的细腻温情，<strong>他的剧本更强调新奇设定和精妙结构、喜欢埋线索和收伏笔。</strong>而且，我特别欣赏的一点是，他的剧本逻辑设计相当严谨，尤其是原创剧集，节奏快、反转多，结尾还能圆得回去，经常有种看美剧的爽快感。所以，喜欢看美剧的朋友可以多关注他的作品。</p><figure class="image ss-img-wrapper image_resized" style="width:664px;"><img src="https://cdnfile.sspai.com/2024/09/26/3652ff7a42992c89346a4cdca0d49351.png?imageView2/2/w/1120/q/90/interlace/1/ignore-error/1" data-original="https://cdnfile.sspai.com/2024/09/26/3652ff7a42992c89346a4cdca0d49351.png" referrerpolicy="no-referrer"><figcaption>《行骗天下》剧照（左）和《约会～恋爱究竟是什么》（中、右）两位主人公。<br>配图在搞事情，对不起了杏！</figcaption></figure><p style="margin-left:0;">古泽良太的恋爱剧《约会～恋爱究竟是什么呢～》是我特别喜欢的一部。这部剧设置了一对动漫感十足的「奇葩恋人」，一个是东大数学系毕业的理科直女（杏，饰），一个是啃老十几年号称「高等游民」的文艺男（长谷川博己，饰）。两个人在无穷无尽的嘴炮和反转又反转的剧情中，探讨了爱情是什么、婚姻是什么、好的约会是什么一系列的哲学命题，看到最后还觉得挺好挺搭挺甜。算得上是一部「非典型」爱情轻喜剧吧。</p><h3 style="margin-left:0;">野木亚纪子</h3><p style="margin-left:0;">对比前几位编剧「常青树」，野木亚纪子算是这十来年的「编剧新秀」。她的成长生涯十分励志。大学毕业后，她曾在一家纪录片公司担任企划，发现自己的真正兴趣是编剧后，潜心创作，持续给富士电视台青年剧本大奖投稿六年（对比坂元，19 岁就获得了第一届大奖），最后，野木踩着规定的 35 岁最高投稿年龄，靠着《再见鲁宾逊漂流记》获奖，成功进入编剧界。</p><p style="margin-left:0;">早先几年，野木亚纪子的剧本创作以改编为主，和 TBS 先后合作的《飞翔情报室》（2013）、《掟上今日子的备忘录》（2015）、《重版出来！》（2016）都是非常扎实、中规中矩的好作品。直到 2016 年，野木改编的《逃避虽可耻但有用》大获成功，这让野木亚纪子的名气越来越响，有机会担纲更有挑战性的原创剧本。</p><figure class="image ss-img-wrapper image_resized" style="width:664px;"><img src="https://cdnfile.sspai.com/2024/09/26/b4be4ed7e4191c77b0015429539e66bf.png?imageView2/2/w/1120/q/90/interlace/1/ignore-error/1" data-original="https://cdnfile.sspai.com/2024/09/26/b4be4ed7e4191c77b0015429539e66bf.png" referrerpolicy="no-referrer"><figcaption>野木老师对新垣结衣的爱全写在海报上了</figcaption></figure><p style="margin-left:0;">后面的几部剧很多朋友都很熟悉：野木亚纪子编剧、冢原亚由子导演、新井顺子制作人三位女性班底合力打造的《非自然死亡》（2018）、《MIU404》（2020）相继问世。这两个作品都是原创的职场单元剧，一集一个相对独立的小故事，节奏快、内容紧凑，非常耐看。两部剧的主题曲，米津玄师的《Lemon》和《感电》传唱程度也格外高，也助推了剧的热度。</p><p style="margin-left:0;">《非自然死亡》讲独立法医机构如何辅助案件侦破，《MIU404》讲基层机动搜查队的日常出警和案件调查。这两个故事不光是在娱乐猎奇，它们都在<strong>关注司法体系相对边缘、影响力和社会地位不高的基层群体。</strong>比如，《非自然死亡》反复强调法医收入低、工作时间长、责任大，工作环境极其恶劣，连石原里美这样的美貌医生都找不到对象。「MIU404」机搜小分队永远身处最前线，负责及时出警和初步调查，一旦案件升级就要移交其他科室手中。队员也经常被瞧不起，没有太多晋升前途。</p><p style="margin-left:0;">虽说是电视剧，但这两部剧都有很扎实的调研基础，有点像纪录片，让观众看到工作在一线、不太被关注到的职业。剧里还<strong>探讨了大量敏感的日本社会问题</strong>。比如过劳死、新型传染病对策（2018 年的剧！）、司法医学界的女性歧视、路怒犯罪、在日外国人生存处境、未成年辍学流浪、线人保护措施缺失等。这是野木亚纪子剧的一个非常出众的特征，<strong>她的社会观察、社会批判都非常直接，</strong>所以也显得剧比较「硬核」，信息量偏大，趣味性较弱，有时不太能看进去。</p><figure class="image ss-img-wrapper"><img src="https://cdnfile.sspai.com/2024/09/26/6413520162bc69bd8a10cef8004bf3e8.png?imageView2/2/w/1120/q/90/interlace/1/ignore-error/1" data-original="https://cdnfile.sspai.com/2024/09/26/6413520162bc69bd8a10cef8004bf3e8.png" referrerpolicy="no-referrer"><figcaption>《Last Mile》卡司宣传图。集合了《非自然死亡》（左上）和《MIU404》（右上）的众多角色。</figcaption></figure><h4 style="margin-left:0;">新剧看点</h4><p style="margin-left:0;">《非自然死亡》和《MIU404》成功后，制作方 TBS 电视台看到商机，把两个故事的世界融合成了一个虚构的大世界。故事人物相互串场，剧中机构还能相互支持。今年 8 月新上映的电影《Last Mile》（《最后的里程》）是个大项目，把两剧的卡司全部集合起来，作为故事的背景线索，仍由野木亚纪子、冢原亚由子、新井顺子合作创作。满岛光和冈田将生主演，讲一个快递箱连环爆炸故事。豆瓣和日本 Filmarks 评分都相当高，可以期待一下。</p><figure class="image ss-img-wrapper"><img src="https://cdnfile.sspai.com/2024/09/26/9ba5cef0d2e0115a9a2a922df71a9880.png?imageView2/2/w/1120/q/90/interlace/1/ignore-error/1" data-original="https://cdnfile.sspai.com/2024/09/26/9ba5cef0d2e0115a9a2a922df71a9880.png" referrerpolicy="no-referrer"><figcaption>《犬王》和《去唱卡拉 OK 吧》海报。</figcaption></figure><p>此外，野木亚纪子这两年改编的其他电影剧本也有不错的反响，前两年的高分动画《平家物语：犬王》，今年新出的漫改电影《去唱卡拉 OK 吧！》（可参见 <a href="https://sspai.com/post/88518" target="_blank">本周看什么 240503 期</a>）都是由她编剧。野木的作品一直很稳，质量很有保证，后续可以持续关注。</p><h3 style="margin-left:0;">笨蛋节奏（升野英知）</h3><p style="margin-left:0;">很多人知道笨蛋节奏都是因为《重启人生》这部剧。剧中，编剧扮演的那位负责转生的工作人员也给不少人留下了深刻的印象。</p><figure class="image ss-img-wrapper image_resized" style="width:464px;"><img src="https://cdnfile.sspai.com/2024/09/26/article/a46390c33b723f7d70513bc8d4d1b103.jpeg?imageView2/2/w/1120/q/90/interlace/1/ignore-error/1" alt="人生就是累积」笨蛋节奏用《重启人生》再说一次…而且说得漂亮" data-original="https://cdnfile.sspai.com/2024/09/26/article/a46390c33b723f7d70513bc8d4d1b103.jpeg" referrerpolicy="no-referrer"><figcaption>《重启人生》剧照，左边就是笨蛋节奏（本名：升野英知）。</figcaption></figure><p style="margin-left:0;">与其说笨蛋节奏说个电视剧编剧，他更知名的身份是一位搞笑艺人。在日本，当搞笑艺人是很多年轻人的梦想，但是真想成功却难上加难。搞笑艺人通常多才多艺，不但要自己写故事，还要会表演。作为混演艺圈的人，要情商高、会说话，懂得自我经营。最重要的是运气好，老天赏饭，有人提携。关于搞笑艺人有多难出头的电视剧，《火花》《短剧开始啦》（可参见 <a href="https://sspai.com/post/66249" target="_blank">本周看什么 210423 期</a>）都值得一看。</p><p style="margin-left:0;">回到笨蛋节奏的故事。20 岁时，升野英知和松下敏宏组成搭档，起名「笨蛋节奏」，开始从事演艺活动。十年后，搭档松下敏宏退出演艺圈，升野英知独自接下了组合名，变成了一个单人搞笑艺人。后来，笨蛋节奏的事业开始腾飞，2006 年到 2010 年，他四次进入日本单人艺人大赛 R-1 的决赛（M-1 是漫才大赛），虽然从未拿过冠军，但获得了相当的知名度。</p><p style="margin-left:0;">笨蛋节奏的搞笑风格，很难一两句话说清楚。B 站有不少他的短剧视频，可以感受一下：</p><iframe class="ss-videoIframe" src="https://player.bilibili.com/player.html?bvid=BV1e4411j7mX&amp;autoplay=false" sandbox="allow-scripts allow-same-origin allow-popups" referrerpolicy="no-referrer"> </iframe><p style="margin-left:0;">&nbsp;</p><p style="margin-left:0;">作为编剧的笨蛋节奏不是一下子就放出了《重启人生》（2023）这样的大招。在此之前，他编剧和反串性别主演的《架空 OL 日志》（2017）里，已经形成了很明显的编剧风格：<strong>女性群像、以聊天和对话为主、话题极其日常琐碎、没有任何称得上「大事」的情节，全靠着对生活细节的极致观察、出其不意的事情发展取胜。</strong>夏帆、臼田麻美、三浦透子都是他经常合作的女演员。</p><figure class="image ss-img-wrapper"><img src="https://cdnfile.sspai.com/2024/09/26/738f3bf7b670cf5ff53ccd14963dc133.png?imageView2/2/w/1120/q/90/interlace/1/ignore-error/1" data-original="https://cdnfile.sspai.com/2024/09/26/738f3bf7b670cf5ff53ccd14963dc133.png" referrerpolicy="no-referrer"><figcaption>《架空 OL 日志》海报图，其中，笨蛋节奏（左）毫无违和感地饰演一位年轻银行女性员工。</figcaption></figure><p style="margin-left:0;">他和井浦新合演的《杀意的道程》（2020）也是讲两个普通人为了报仇，无厘头地要杀一个人。结果整部剧花了大量篇幅在讲两人为这次行动选什么代号、穿什么衣服、去超市挑什么作案工具、日常盯梢怎么跟，总之相当脱线。</p><p style="margin-left:0;">《重启人生》可以说是笨蛋节奏的集大成之作。这个作品无论在剧情结构、笑点设置，还有卡司助力上，都没有可挑之处。欢迎没有看过的朋友直接去看，在此不做任何剧透。讲实话，这么绵密的埋梗、日常的细节、大量的吐槽编织在一起，可能除了搞笑艺人出身的笨蛋节奏之外，也没谁能够驾驭得住了吧。</p><h2 style="margin-left:0;">剧作词量分析</h2><p style="margin-left:0;">最后做一个趣味对比。学日语的过程中，我曾把这几位编剧的作品字幕导出，作为日常学习的材料。</p><p style="margin-left:0;">以 45min 的单集为单位，我随机翻过一些日剧，一般以<strong>单集 900-1000 词左右居多</strong>。《非自然死亡》《Legal High》《重启人生》一集的单词总量（不含重复）差不多，都在 1200 个词以上，600 个汉字（汉字占比基本上都是 50% 左右），高于平均值。野木亚纪子、古泽良太、笨蛋节奏的作品虽然风格各不相同，但都属于较高的对话密度。宫九的作品和上面几位大体持平，具体还要视题材而定。《对不起青春》《我家的故事》话密对话多，《还有第 11 人！》就明显少很多，相对更容易理解。</p><p style="margin-left:0;">有趣的是坂元裕二的作品。《四重奏》平均一集只有 750 个词，370 个汉字，是我迄今找到的词量最少的一部剧，可能是演奏乐曲的场景占了很大比例。《最完美的离婚》里争吵不断，一集也不过 800-900 个词，明显比前几位编剧用词少很多，果然是惜句如金。</p><figure class="image ss-img-wrapper image_resized" style="width:630px;"><img src="https://cdnfile.sspai.com/2024/09/26/806a63f76c18814c08091b9ca1f944ec.png?imageView2/2/w/1120/q/90/interlace/1/ignore-error/1" data-original="https://cdnfile.sspai.com/2024/09/26/806a63f76c18814c08091b9ca1f944ec.png" referrerpolicy="no-referrer"><figcaption>整合了 japanese.io（左）、jpdb.io（中）、Nihongo（右上）等多组数据。<br>由于每集数据不同，只能估算。尽量保证数据准确、有可信度。</figcaption></figure><p style="margin-left:0;">考虑到野木亚纪子的作品多为单元剧，每集主题都不同，我还对比了<strong>全剧的词数</strong>。《非自然死亡》《MIU404》一骑绝尘，每部剧用词总数（不含重复）都有 5700 多个，就连《逃避虽可耻但有用》这样的爱情喜剧都接近 5000，难度远远超出其他作品。宫九的几部作品也在 5000 词水平，略少一些。相比起来，《四重奏》里的总单词量只有 3360，《最完美的离婚》在 3880，也就是说，通过野木亚纪子一部剧学到的生词，大致相当于坂元一部剧的 1.5-2 倍！而且通过坂元剧、宫九剧、笨蛋节奏作品学到的日常用语还算多，野木剧里会出现大量社会专业用语，古泽良太作品也是大量抽象用词，语速又快，难度级别逆天。</p><p style="margin-left:0;">另外，我们通常理解的<strong>「语速」</strong>也能从数据上看出来。《Legal High》和《重启人生》平台上没有数据。我就用了另一个知名嘴炮剧《我家的事说来话长》（金子茂树编剧）来对比，平均每集的词量在 1200 上下，而这部剧每分钟的单词数最高甚至达到了 135 词（包含重复词语）！与之相比，野木亚纪子的剧差不多每分钟 120 词，属于很多的了，宫九剧的每分钟词量大概是 90-100 词。坂元的《四重奏》稳定在 80-90 上下，《最完美的离婚》话密一点，平均每分钟也就 100 词左右。</p><p style="margin-left:0;">由于手头资料有限，得出的结论未必特别精准。欢迎大家给我推荐单词数量、难度统计分析的网站或软件，我可以提供更多的数据，也可以提供一些好的日语学习适合的剧集。</p><h2 style="margin-left:0;">更多编剧</h2><p style="margin-left:0;">文章篇幅有限，只介绍了我个人持续关注的几位日剧编剧，肯定有大量缺漏。最后再简单罗列一些知名的资深编剧和他们擅长的题材及代表作，也欢迎大家多多补充：</p><h3 style="margin-left:0;">编剧</h3><h4 style="margin-left:0;">恋爱类</h4><p style="margin-left:0;">北川悦吏子《悠长假期》《橙色岁月》</p><p style="margin-left:0;">大石静《第二处女》《大恋爱》《于星降之夜》</p><h4 style="margin-left:0;">剧情类</h4><p style="margin-left:0;">木皿泉《西瓜》《昨夜的咖喱，明日的面包》</p><p style="margin-left:0;">金子茂树《求婚大作战》《我的事说来话长》《短剧开始了》</p><p style="margin-left:0;">冈田惠和《倒数第二次恋爱》《借着雨点说爱你》</p><p style="margin-left:0;">大岛里美《一公升的眼泪》《凪的新生活》《妻子变成小学生》</p><h4 style="margin-left:0;">医疗悬疑剧</h4><p style="margin-left:0;">林宏司《医龙》《Code Blue》</p><p style="margin-left:0;">森下佳子《仁医》《天国与地狱》</p><p style="margin-left:0;">井上由美子《白色巨塔》《紧急调取室》《昼颜》</p><h3 style="margin-left:0;">导演（兼编剧）</h3><h4 style="margin-left:0;">推理、剧情类</h4><p style="margin-left:0;">三谷幸喜《古佃任三郎》系列</p><h4 style="margin-left:0;">深夜系</h4><p style="margin-left:0;">大根仁《真幌站前番外地》《大川端侦探社》《地面师》</p><h4 style="margin-left:0;">脱力系</h4><p style="margin-left:0;">三木聪《时效警察》</p><h4 style="margin-left:0;">恶搞系</h4><p style="margin-left:0;">福田雄一《勇者义彦系列》《我是大哥大》《VIVANT》</p><h3 style="margin-left:0;">推荐豆列</h3><ul><li><a href="https://www.douban.com/doulist/248473/" target="_blank">日剧的那些名编剧们 Part·1</a></li><li><a href="https://www.douban.com/doulist/430339/" target="_blank">日剧的那些名编剧们 Part·2</a></li></ul><p style="margin-left:0px;">&gt; 小红书 📕 关注 <a href="https://www.xiaohongshu.com/user/profile/63f5d65d000000001001d8d4" target="_blank">少数派 sspai</a>、<a href="https://www.xiaohongshu.com/user/profile/62fb4cf90000000012002431" target="_blank">本周看什么</a>，找到数字时代更好的生活方式 🎊</p><p style="margin-left:0px;">&gt; <a href="https://sspai.com/topic/416">看什么 Café</a> / <a href="https://sspai.com/topic/419">主题片单</a> 专题页、<a href="https://sspai.com/page/2021/movie">2021 年度回顾</a>，更多影视推荐尽在 <a href="https://sspai.com/tag/%E6%9C%AC%E5%91%A8%E7%9C%8B%E4%BB%80%E4%B9%88">#本周看什么</a> 🎬</p>]]>
+                <![CDATA[<p style="margin-left:0px;">编者按：1895 年在巴黎卡普辛路 14 号的大咖啡馆，卢米埃尔兄弟的短片成了咖啡馆的助兴节目，而咖啡馆也正是那时人们谈论电影和艺术的重要场所。「看什么 Café」作为「<a href="https://sspai.com/tag/%E6%9C%AC%E5%91%A8%E7%9C%8B%E4%BB%80%E4%B9%88" target="_blank">本周看什么</a>」栏目的衍生，旨在为热爱影视艺术的少数派们创造一个这样的氛围：虽然我们无法回到电影诞生的那个年代，但我们依旧可以喝着咖啡，深入探讨有关影视艺术的一切。</p><p style="margin-left:0px;">本期「<a href="https://sspai.com/topic/416" target="_blank">看什么 Café</a>」要讨论的主题是「日剧编剧」，我们邀请了日剧迷 <a class="ss-atUser" data-mention="@知道分子吴先先" user-id="c5g363db34teh0gc1tig" href="https://sspai.com/u/hahad">@知道分子吴先先</a>，和大家聊聊那些知名编剧与他们的剧作风格。🙋 欢迎在评论区分享你喜爱的日剧编剧，留下你对日剧的看法。</p><hr><blockquote><p style="margin-left:0;">比起多数派，我更想为少数派书写。——坂元裕二</p></blockquote><p style="margin-left:0;">一谈到日剧，就不会错过坂元裕二、宫藤官九郎这些名编剧。日本电视剧产业中，编剧的名字往往比导演、演员更响亮，也能让观众更快锁定作品的风格气质。比起<a href="https://sspai.com/post/90534">上期谈到的电视台栏目</a>，相信更多人是因为青睐某位编剧的作品，持续追 ta 的作品而入坑。</p><p style="margin-left:0;">这篇文章我们就聊一聊几位知名度高、当下仍在活跃的日剧编剧，介绍他们的代表作与风格，方便追日剧的朋友更好地找出「梦中情作」。</p><h2 style="margin-left:0;">绕不过去的大前辈</h2><p style="margin-left:0;">切入正题之前，先介绍两位日剧历史上绕不过去的编剧大前辈。</p><h3 style="margin-left:0;">向田邦子</h3><p style="margin-left:0;">被誉为<strong>「日剧女王」</strong>的向田邦子生于 1929 年，写过大量家庭题材的广播剧本和电视剧脚本，和日本电视台的腾飞和发展同处一个时期。</p><p style="margin-left:0;">向田邦子最知名的作品有《寺内贯太郎一家》（1974），讲一家东京石材老铺三代同堂的家长里短，剧中 31 岁的树木希林反串年迈的母亲，留下了不少珍贵影像。还有《宛如阿修罗》（1979）讲一家四姐妹各怀秘密的故事，因为人物刻画得好，时常被影视和舞台剧翻拍。据说最新版由 Netflix 投资、是枝裕和导演，宫泽理惠、尾野真千子、苍井优、广濑铃分别主演四姐妹，预计 25 年初上映，想想都令人期待。</p><figure class="image ss-img-wrapper image_resized" style="width:664px;"><img src="https://cdnfile.sspai.com/2024/09/26/f520772114ee028f1f78e0c22050da17.png?imageView2/2/w/1120/q/90/interlace/1/ignore-error/1" data-original="https://cdnfile.sspai.com/2024/09/26/f520772114ee028f1f78e0c22050da17.png" referrerpolicy="no-referrer"><figcaption>向田邦子（左图）和她的代表作。《宛如阿修罗》多次翻拍，网罗了各个年代的实力女星。</figcaption></figure><p style="margin-left:0;">或许是天妒英才，向田邦子在 51 岁那年在台湾遭遇空难去世，为了纪念她，日剧界以她的名字命名了表彰编剧的奖项<strong>「向田邦子赏」</strong>，每年只颁给一位编剧的一部新作。像木皿泉的《西瓜》、游川和彦的《女王的教室》、金子茂树的《我的事说来话长》、三谷幸喜的大河剧《镰仓殿的 13 人》都是知名的获奖作品。下面提到的几位名编剧，也都曾获过向田邦子奖。</p><h3 style="margin-left:0;">仓本聪</h3><p style="margin-left:0;">仓本聪生于 1935 年，东大出身，从年轻时期就做起了自由编剧。</p><p style="margin-left:0;">仓本聪的作品是清一色的豆瓣高分，最知名的作品是在他中年移住北海道富良野后，和富士电视台合作的《北国之恋》系列（1981-2002），由同一批演员团队拍了整整 21 年。仓本聪的题材也多为家庭剧，不过和擅长讲人心复杂的向田邦子不同，《北国之恋》的世界里更多是自然与温情，相当治愈。这个系列的缺点是年代较久，画质比较差。感兴趣的朋友可以看看他后来的几部作品，同在富良野取景的《温柔时光》（2005）和以东京为舞台的《敬启，父亲大人》（2007），两部作品都由二宫和也主演。</p><figure class="image ss-img-wrapper image_resized" style="width:601px;"><img src="https://cdnfile.sspai.com/2024/09/26/fc996401fdd14fc50843c22441f39b4a.png?imageView2/2/w/1120/q/90/interlace/1/ignore-error/1" data-original="https://cdnfile.sspai.com/2024/09/26/fc996401fdd14fc50843c22441f39b4a.png" referrerpolicy="no-referrer"><figcaption>仓本聪（左下）的《安宁之乡》（右图）邀请了多位现已不为人知的老昭和电视明星参演。</figcaption></figure><p style="margin-left:0;">2017 年，82 多岁高龄的仓本聪专为一群无戏可拍的老艺人创作了一部午间剧《安宁之乡》，每集 15 分钟，共 100 多集，2019 年还拍了续集《安宁之刻～道》。剧中，仓本聪为这些退休的电视业同行搭建了一个栖身的乌托邦，让他们在一个僻静的海边养老院安度晚年。这部剧也一度治愈了我，让我觉得老年是一个应该好好准备、好好面对的人生阶段，应该被每个人郑重对待。</p><p style="margin-left:0;">仓本聪、向田邦子，还有另一位编剧山田太一并称为上世纪的<strong>「三大剧本作家」（シナリオライター御三家）</strong>。国内也翻译出版过不少向田邦子和仓本聪的剧本和访谈，可以搜来看看。</p><h2 style="margin-left:0;">当今活跃的名编剧</h2><h3 style="margin-left:0;">坂元裕二</h3><p style="margin-left:0;">讲到当下最知名的日剧编剧，很多观众最先想到的一定是坂元裕二。</p><p style="margin-left:0;">坂元裕二可谓年少成名，19 岁那年获得了第一届富士电视台青年剧本大奖，高中毕业直接出道。24 岁那年，从漫画改编的《东京爱情故事》（1991）让编剧坂元跻身为名编剧之列。不过在此之后，坂元的事业起起伏伏。尤其是三十多岁到四十岁出头，他一直未能再写出令自己满意的作品，干脆潜心带娃做饭，安心让媳妇森口瑶子外出拍戏。这个过程中，坂元亲身以「家庭妇男」的视角，体会到了普通女性在家庭职责和社会身份夹缝中的艰难处境，这也是他后来创作出那么多真实可信「大女主」角色的基础。</p><figure class="image ss-img-wrapper image_resized" style="width:303px;"><img src="https://cdnfile.sspai.com/2024/09/26/0c7a6eda855815c9fc3a755ca916f1a4.png?imageView2/2/w/1120/q/90/interlace/1/ignore-error/1" data-original="https://cdnfile.sspai.com/2024/09/26/0c7a6eda855815c9fc3a755ca916f1a4.png" referrerpolicy="no-referrer"><figcaption>坂元裕二（左）和东爱女主铃木保奈美（右）</figcaption></figure><p style="margin-left:0;">2010 年代起，年过四十的坂元再度进入创作爆发期，原创了大量的经典剧作。电视剧有《Mother》（2010）、《尽管如此也要活下去》（2011）、《最完美的离婚》（2013）、《四重奏》（2017）、《大豆田永久子与三位前夫》（2021）等。这两年大热的电影《花束般的恋爱》（2021）、《怪物》（2023）剧本也是坂元原创，《怪物》还为他摘得了戛纳电影节的最佳编剧奖，在追捧戛纳的日本影视界，此奖可谓至高荣誉。<sup class="ss-footnote" href="" title="本文的主题虽然是电视剧编剧，但这些名编剧也经常受邀为电影创作剧本，而且电视剧和电影剧本数量上基本持平。在此不做过多区分。" footnote-id="1">1</sup></p><p style="margin-left:0;">坂元的不少名作都是<strong>婚恋题材</strong>，加上他<strong>对人物情感的精准刻画</strong>，诞生了很多经典的荧幕角色。</p><p style="margin-left:0;">我问过很多资深坂元迷，许多人最喜欢的一部剧都是《最完美的离婚》。瑛太和尾野真千子扮演了一对吵吵闹闹的「欢喜冤家」。丈夫光生龟毛事多，媳妇结夏粗枝大叶，怎么看都不搭的两人第一集就离了婚。虽说两人分分合合，但到剧终也没分开，看似斗嘴不断，却时常让人感动到泪目。整部剧没什么大事件，两对夫妻的日常小事（另一对是绫野刚和真木阳子饰演），螺蛳壳里做道场，让人看得津津有味，这是坂元的特长。坂元擅长写信的本事在这部剧里也炉火纯青，正片和特别篇中，光生和结夏写给彼此的信，被不少营销号誉为「最美情书」。最美不敢说，但确实温馨感人，值得一读。</p><figure class="image ss-img-wrapper image_resized" style="width:664px;"><img src="https://cdnfile.sspai.com/2024/09/26/fac5f11809fa872c80cc6883e1a96b79.png?imageView2/2/w/1120/q/90/interlace/1/ignore-error/1" data-original="https://cdnfile.sspai.com/2024/09/26/fac5f11809fa872c80cc6883e1a96b79.png" referrerpolicy="no-referrer"><figcaption>《最完美的离婚》剧照。四位主角排列组合，每两个人之间都有交集。</figcaption></figure><p style="margin-left:0;">相比《最完美的离婚》，坂元的另一部剧《四重奏》似乎更加出圈。《四重奏》里，主角团关于吃炸鸡要不要挤柠檬汁的那段对话，已经成为许多人日常吃炸鸡时的标配话题。在人物关系设置上，这部剧也不落俗套，从头到尾，四位主角一直保持全员单恋，从头到尾无人脱单。直到几年后，剧中扮演卷真纪的松隆子和扮演别府司的松田龙平再度在《大豆田永久子与三名前夫》里饰演了一对离婚的夫妇。剧中专门放了一段两人的相互表白，畅想假如没有离婚、一直恩爱生活的想象片段。弹幕里不少人感慨：「坂元终于圆了这对 CP 粉的梦」。</p><figure class="image ss-img-wrapper image_resized" style="width:664px;"><img src="https://cdnfile.sspai.com/2024/09/26/4b950d27a2063e8b65e75ee0e9839b92.png?imageView2/2/w/1120/q/90/interlace/1/ignore-error/1" data-original="https://cdnfile.sspai.com/2024/09/26/4b950d27a2063e8b65e75ee0e9839b92.png" referrerpolicy="no-referrer"><figcaption>《四重奏》（上图）和《大豆田永久子与三名前夫》（下图）剧照。</figcaption></figure><p style="margin-left:0;">单单因为坂元擅长描写男女情爱，擅长写金句，就把他归入爱情编剧，似乎有点小看了他。事实上，坂元之所以收获那么多的赞誉，绝不只是因为他擅长写情感戏，更是因为他<strong>对社会有细致的观察和关切。</strong></p><p style="margin-left:0;">豆瓣评分 9.4 的催泪神剧《Mother》里就没什么爱情戏份。它以一个诱拐的犯罪故事，讲了「母亲」这个身份意味着什么。这个剧里，你会发现坂元设计了各种各样的母亲：普通的生母、善良的养母、虐待孩子的生母（尾野真千子，饰）、遗弃孩子的生母（田中裕子，饰）、为了保护孩子不惜犯罪的养母（主角，松雪泰子，饰）。虽说错综复杂的设计略显刻意，但每个角色都被赋予了充分的行为动机——连那个让人恨得牙痒痒，和男友把女儿丢在垃圾袋里，扔到冰天雪地的「恶母」形象，坂元都给她设计了小传，让人看到一个普通女性是如何慢慢支撑不住育儿重任，逐步黑化的。</p><p style="margin-left:0;">这是坂元的有意设计，据说是他在剧作上映后，看到观众猛喷恶母，专程加上了这一段，希望让观众看到事情全貌，理解母职艰辛，不是以偏概全，随便给一个女性扣上「好妈妈」或「坏妈妈」的帽子。在女性议题的处理上，坂元的处理绝对可以打高分。</p><p style="margin-left:0;">瑛太和满岛光主演的苦情剧《尽管如此也要活下去》，爱情也不是核心主题。坂元把重心放在了罪案发生后，犯罪者和被害者家庭里的每个当事者如何自我救赎、走出阴霾、面对彼此、接纳彼此。为了讲清楚这个严肃的社会议题，他精心设计了每个家庭成员的人物特征，很禁得起推敲。日本有很多类似「后犯罪」题材的影视剧，我看过不少，《尽管如此也要活下去》绝对算是优秀的一部。</p><figure class="image ss-img-wrapper image_resized" style="width:664px;"><img src="https://cdnfile.sspai.com/2024/09/26/e2834f6e9f8f1565e7c09fc3de085421.png?imageView2/2/w/1120/q/90/interlace/1/ignore-error/1" data-original="https://cdnfile.sspai.com/2024/09/26/e2834f6e9f8f1565e7c09fc3de085421.png" referrerpolicy="no-referrer"><figcaption>《Mother》和《尽管如此还要活下去》海报。</figcaption></figure><p style="margin-left:0;">关于坂元裕二的网络文章有很多，不少都会给他扣上一个<strong>「金句大师」</strong>的标签。每逢他的新作上映，都会有营销号立刻推出名为「跟坂元学写金句」之类的文章。写金句确实是坂元的特色，不过，相比把它标签化，我更喜欢把它理解为坂元对生活有真切的感知，不满足于写直白乏味的台词，而是想在具体场景中把这些细腻的感受用不经意的语言、动作传递出来。</p><p style="margin-left:0;">坂元在 NHK 纪录片《仕事の流仪》里对自己的这种创作方式也做过解读：</p><iframe class="ss-videoIframe" src="https://player.bilibili.com/player.html?bvid=BV15t41127eY&amp;autoplay=false" sandbox="allow-scripts allow-same-origin allow-popups" referrerpolicy="no-referrer"> </iframe><blockquote><p style="margin-left:0;">在纸上写下「喜欢」，是没法传达出「喜欢的」。相反，用漫不经心的对话、琐碎的行为，把周围逐渐填充完整，这就是写剧本的过程。坐在巴士上，有一搭没一搭地聊着天，回到家，想一个人看看电视却又关了电视，随手折起纸，这时突然意识到：「啊，我可能喜欢那个人」。故事就藏在日常的琐碎中。</p></blockquote><blockquote><p style="margin-left:0;">如果用多数派少数派的说法，我想给少数派、少数人群写故事。让活力值有 10 的人变成 100，鼓舞他们的作品有很多。而我想让那些是负值的人至少先达到零点，让 -5 的人先到 -3，这是我的目标。</p></blockquote><p style="margin-left:0;">满岛光在《四重奏》的访谈花絮里讲，她在读剧本时，觉得每个人说的话都很随意，单拎出来显得莫名其妙，但真到大家一起演出来，又恰到好处，这也是我看坂元作品的真切感受。<strong>坂元剧作的魅力就在于日常和深入。</strong>普通作品里，这两者往往很难共存，但坂元成功地驾驭了它们，造就了不可复制的独特风格。</p><h4 style="margin-left:0;">新剧看点</h4><p style="margin-left:0;">坂元近两年创作以电影脚本为主。去年上线 Netflix 的《疯狂游轮》（2023）遭遇口碑滑铁卢，哪怕宫崎葵和吉泽亮携手主演，卡司华丽，都掩盖不住脚本上的严重失败。</p><p style="margin-left:0;">最近发布的《1ST KISS》（《初吻》）预告片，定档 25 年 2 月，松隆子和松村北斗合演，是一个讲女主时空穿越，回到过去重逢已故爱人的故事，看起来相当不错。</p><figure class="image ss-img-wrapper image_resized" style="width:267px;"><img src="https://cdnfile.sspai.com/2024/09/26/c9fb43f2cd8be805dde5b92dd475b424.png?imageView2/2/w/1120/q/90/interlace/1/ignore-error/1" data-original="https://cdnfile.sspai.com/2024/09/26/c9fb43f2cd8be805dde5b92dd475b424.png" referrerpolicy="no-referrer"><figcaption>定档于 2025.2.7 的《1ST KISS 初吻》<br>松隆子和松村北斗主演</figcaption></figure><p style="margin-left:0;">另外还有一个延期的项目，叫《单恋的世界》，由广濑铃、杉咲花、清原果耶三个当红小花合演，《花束般的恋爱》导演土井裕泰执导。据豆瓣评论说是制作团队遭遇车祸，不知道什么时候能完成，可以稍稍期待一下。</p><h3 style="margin-left:0;">宫藤官九郎</h3><p style="margin-left:0;">论知名度，能和坂元裕二旗鼓相当的日剧编剧，大概就要数宫藤官九郎（宫九）了。一想到宫九，就会立刻想到「鬼才」这个词。宫九的人生绝对是难以复制的精彩，他的才华也少有人企及。</p><p style="margin-left:0;">宫九比坂元略小几岁。他从日本大学艺术学部中途退学，20 岁那年加入了松尾铃木主持的剧团「大人计划」，导演、编剧、演员都干过，后来还提携过团里的一个名叫星野源的年轻人。</p><p style="margin-left:0;">1995 年，25 岁的宫九和团里的阿部隆史（又名阿部贞夫）等三人成立了一个名叫「Group 魂」的乐队，他负责写词，还担任过吉他手。十年后，这个乐队的曲子被选上跨年的「红白歌会」，所以，宫九还作为乐队成员上过日本的「春晚」演出过。</p><figure class="image ss-img-wrapper image_resized" style="width:664px;"><img src="https://cdnfile.sspai.com/2024/09/26/389188a00d1bed460d66bf1d65d2bd23.png?imageView2/2/w/1120/q/90/interlace/1/ignore-error/1" data-original="https://cdnfile.sspai.com/2024/09/26/389188a00d1bed460d66bf1d65d2bd23.png" referrerpolicy="no-referrer"><figcaption>百变宫九：舞台上演奏吉他（左）、出演《四重奏》（右上）和《被嫌弃的松子的一生》（右下）。</figcaption></figure><p style="margin-left:0;">此外，宫九作为导演和演员，执导和出演过不少影视作品。不带任何滤镜，他演得真不错。刚刚提到的《四重奏》里，卷真纪离家出走的丈夫就是他演的。深夜剧《古龙兄弟和四苦八苦》里的租赁大叔也是他，《Border》里宫九也有客串。电影就更多了，我看过不下十部，比如《被嫌弃的松子一生》中的那个自杀的小说家，《在世界中心呼唤爱》里成年男主的朋友等等。总之，只要日影日剧看得多，一定不会对宫九的脸陌生。</p><p style="margin-left:0;">说到编剧，30 岁那年，宫九因为改编石田衣良的畅销小说《池袋西口公园》（2000）崭露头角，迅速作为编剧，蜚声日本。那几年，和宫九有关的所有影视都是话题作。宫九编剧的电影《Go！》（2001）、《乒乓》（2002）、《69》（2004）每部都是经典，每部都带有一些 Cult、跳帧的视觉风格，很有朋克的气质。像长濑智也、洼冢洋介、阿部隆史也逐渐成了和宫九多次合作的男主角，与宫九作品中常有的<strong>青春主题、搞怪、无厘头、自恋、男性群像特色</strong>高度契合。</p><figure class="image ss-img-wrapper image_resized" style="width:664px;"><img src="https://cdnfile.sspai.com/2024/09/26/93eefb82899d1cf0a2267e945bc05bd1.png?imageView2/2/w/1120/q/90/interlace/1/ignore-error/1" data-original="https://cdnfile.sspai.com/2024/09/26/93eefb82899d1cf0a2267e945bc05bd1.png" referrerpolicy="no-referrer"><figcaption>21 世纪初宫九编剧的电影电视剧海报。《Go！大爆走》（左）《池袋西口公园》（中）和《69》（右）。</figcaption></figure><p style="margin-left:0;">宫九极其高产，而且他几乎没有明显的创作断档期。每个阶段都有佳片问世，风格也各有不同。硬要评出一些经典作品，除了上述提到的之外，还有《木更津猫眼》（2002）、《曼哈顿爱情故事》（2003）、《虎与龙》（2005）、《自恋刑警》（2010）、《还有第 11 人》（2011）、《海女》（2013 晨间剧）、《对不起青春》（2014）、《宽松世代又如何》（2016）、《监狱的公主大人》（2017）、《韦驮天：东京奥运的故事》（2019 大河剧）、《我家的故事》（2021）等，均为宫九原创剧本。原谅我报菜名式的罗列，因为除了那部大河剧，我全都看过（自豪脸），真是什么主题都有，家庭、刑事、校园、婚恋、犯罪、医疗……感觉宫九完全没有创作瓶颈，完完全全放飞自我。</p><p style="margin-left:0;">因为宫九高产、多变的鬼才风格，很难用一两句话概括他的作品全貌。不过，有些特点还是共通的。</p><p style="margin-left:0;">首先，宫九的剧<strong>总带点无厘头的气质</strong>。做一个未必恰切的类比，他的作品会让人联想到星爷的作品。很多宫九的作品里都有一个牛批哄哄、自恋到不行、内心又很单纯的男主。比如《自恋刑警》里长濑智也扮演的刑警，每一集他都会爱上一位女性，疯狂表白，然后每一集结尾都会发现，这个女子正是他手头案件的嫌疑人。这个套路集集都有，但就是借助这股尬劲儿，居然能让人集集不落看完。《池袋西口公园》《虎与龙》《我家的故事》里，长濑智也饰演男主也都是类似的气质。</p><figure class="image ss-img-wrapper image_resized" style="width:664px;"><img src="https://cdnfile.sspai.com/2024/09/26/c76460a2543878fbcc554341f36dcf85.png?imageView2/2/w/1120/q/90/interlace/1/ignore-error/1" data-original="https://cdnfile.sspai.com/2024/09/26/c76460a2543878fbcc554341f36dcf85.png" referrerpolicy="no-referrer"><figcaption>《自恋刑警》海报（左）、《还有第 11 人！》（右上）和《对不起青春》（右下）剧照。</figcaption></figure><p style="margin-left:0;">有些奇怪的设定，只能是宫九玩出来的。家庭剧《还有第 11 人！》里，广末凉子饰演一个死去多年，却一直在自家壁橱里喝闷酒的鬼魂，家里只有不是她亲生的小儿子能看到她。《对不起青春》里，男主（锦户亮，饰）的母亲去世多年，经常通过男主屋里的一尊观音菩萨像现身，兼念整剧的旁白。这些诡异的设定都让宫九的剧在真真假假、哭哭笑笑中变得更有娱乐性。</p><p style="margin-left:0;">宫九的作品的另一大特色，是<strong>错综复杂的男女关系</strong>。和认真刻画人与人的互动细节、营造故事现实感的坂元裕二不一样，宫九这里，人与人之间的关系大多是作为梗出现，用来制造喜剧效果的。最典型的设定要数《曼哈顿爱情故事》，在一家名叫曼哈顿的东京咖啡店里，七八位男女主人公，最开始是 A 喜欢 B，B 喜欢 C 的关系依次单恋，剧情进展到后半，几乎没啥理由，全部反向单恋，从 F 喜欢 G，一直退到 C 喜欢 B，B 喜欢 A。论全员单恋和反转，还要数宫九的脑洞。</p><figure class="image ss-img-wrapper image_resized" style="width:664px;"><img src="https://cdnfile.sspai.com/2024/09/26/78362ae72bbee240724553328da5a28d.png?imageView2/2/w/1120/q/90/interlace/1/ignore-error/1" data-original="https://cdnfile.sspai.com/2024/09/26/78362ae72bbee240724553328da5a28d.png" referrerpolicy="no-referrer"><figcaption>《曼哈顿爱情故事》海报（左）和《对不起青春》（EP4）剧照。</figcaption></figure><p style="margin-left:0;">校园题材剧《对不起青春》，除了身为老师的男女主人公，宫九还花了不少笔墨描绘了一批正值青春的高中生群像，他们之间的感情也像浮萍一样，忽然有一天，全部都变风向了。为此剧中专门放了一张关系图，帮助观众理清关系。这些都作为笑点被宫九加以调侃，又切中了些许的人性，不会让人感到太过生硬恶俗。</p><p style="margin-left:0;">这么多剧作中，我最喜欢的宫九剧要数《虎与龙》和《我家的故事》这两部。它们的共同特色是<strong>把一些日本传统文化融入了时下的娱乐表达里</strong>，这也是我觉得宫九最出众、最有巧思的设计。《虎与龙》里，男主虎儿是个牛气哄哄的黑帮小哥，因为落语师傅欠自家老大的钱，所以虎儿选择拜师学落语，让师傅拿自己交的学费还钱给负责收债的自己。（看看这设定！）每一集男主都会从师傅那里学一个经典的落语段子，然后再把它用身边的故事重新讲出来，老段子出新意，特别精彩。</p><figure class="image ss-img-wrapper image_resized" style="width:664px;"><img src="https://cdnfile.sspai.com/2024/09/26/912256cbb2a28213fbcf41a594ff95f4.png?imageView2/2/w/1120/q/90/interlace/1/ignore-error/1" data-original="https://cdnfile.sspai.com/2024/09/26/912256cbb2a28213fbcf41a594ff95f4.png" referrerpolicy="no-referrer"><figcaption>《虎与龙》海报（左）和《我家的故事》海报（右）。<br>宫九到底是有多爱长濑智也啊！</figcaption></figure><p style="margin-left:0;">而《我家的故事》则是把传统的高雅艺术「能剧」和日本国民娱乐「摔角」融入在了一起，把国宝传承问题，和疫情影响、养老介护全部放到一起，融成一锅粥来讨论。夹杂着宫九特有的笑点和乱七八糟的男女关系设定，这两部剧都<strong>在娱乐和严肃中做出了平衡</strong>，让人看了又看，边笑边哭，不由感慨只有宫九才能创作出这等神剧了吧。</p><h4 style="margin-left:0;">新剧看点</h4><p style="margin-left:0;">近两年宫九作品口碑波动较大，每部剧都有人评论宫九江郎才尽，年纪大了爱说教，但我看完之后，觉得整体还行，放在日剧衰落的大环境下，起码每部片子里都有一些笑点和泪点。而且能明显看出，现在宫九剧的社会关切比以前更深了，这也是我特别欣赏的一点。</p><p style="margin-left:0;">《我们离婚吧》详细介绍了吊儿郎当的政二代是如何认真拉票、筹备选举的，普及了不少日本竞选的知识。宫九和大石静合作脚本，玩得就是一个混搭杂糅风。可参见 <a href="https://sspai.com/post/80540" target="_blank">本周看什么 230623 期</a>。</p><p style="margin-left:0;">《没有季节的城市》讲的是灾后重建和人情冷暖，Disney+ 制作，改编自山本周五郎 1960 代的同名小说，舞台移到了现代。池松壮亮领衔主演，强在卡司逆天。可参见 <a href="https://sspai.com/post/82149">本周看什么 230818 期</a>。</p><p style="margin-left:0;">《不合适也要有个限度！》用一个穿越题材，反思了日本社会近年的「政治正确」问题：上司说句加油就被下属告成职权骚扰，老师批判两句就被家长指责为过度教育，主题上可以看成是《宽松世代又如何》的延伸。</p><p style="margin-left:0;">刚播完的《新宿野战医院》虽然小池荣子的掉渣英语让人格外不适，但宫九想谈论的话题很严肃——外国人越来越多的东洋风俗第一街歌舞伎町，每个人的安全、健康、平权问题。感兴趣的朋友还可以看一看剧作原型「春山纪念病院」的相关新闻报道。可参见 <a href="https://sspai.com/post/90439" target="_blank">本周看什么 230712 期</a>。</p><figure class="image ss-img-wrapper image_resized" style="width:664px;"><img src="https://cdnfile.sspai.com/2024/09/26/a9cade97d73120d39d4c2074d471c1a6.png?imageView2/2/w/1120/q/90/interlace/1/ignore-error/1" data-original="https://cdnfile.sspai.com/2024/09/26/a9cade97d73120d39d4c2074d471c1a6.png" referrerpolicy="no-referrer"><figcaption>《最后看见的街》海报。2024.9.21 上映。</figcaption></figure><p style="margin-left:0;">近期，宫九还和朝日电视台合作了一个新剧，叫《最后看见的街》，改编自另一位「三大剧本作家」山田太一的小说，同样也是穿越题材。9 月 21 日刚上映，无论是篇名，还是主题，感觉宫九都在自己的创作里不断循环。目前评分不高，可以关注一下。</p><h3 style="margin-left:0;">古泽良太</h3><p style="margin-left:0;">谈日剧，古泽良太也是绕不过去的一位。他原创脚本的《Legal High》在国内早已成为日式神剧的代名词，剧中古美门律师的<strong>超大信息量、超快语速风格，也是古泽编剧一贯的特点。</strong></p><p style="margin-left:0;">古泽良太是日语文学科班出身，29 岁通过朝日电视台的新人编剧大赛出道，很快挑起了大梁，成为朝日电视台《相棒》系列的主力编剧之一。同一时期，他的电影剧本杰作频出，昭和怀旧三部曲《永远的三丁目夕阳》（2005、2007、2012）成为当时口碑、影响力俱佳的作品。后来的《寄生兽》（2014）系列电影也是他改编的。</p><figure class="image ss-img-wrapper"><img src="https://cdnfile.sspai.com/2024/09/26/39782788d582e65a1615319996535ac6.png?imageView2/2/w/1120/q/90/interlace/1/ignore-error/1" data-original="https://cdnfile.sspai.com/2024/09/26/39782788d582e65a1615319996535ac6.png" referrerpolicy="no-referrer"><figcaption>古泽良太编剧的知名电影作品。最右边是古泽原创的剧本《如月疑云》。</figcaption></figure><p style="margin-left:0;">古泽良太早先作品中，有两部非常值得一看。一是他原创剧本的电影《如月疑云》（2007），整部剧就发生在一间屋子里，纯靠几个人对话推动剧情发展，非常好看，算是小成本电影佳作。另一个是他改编自同名漫画的校园题材电视剧《铃木先生》（2011），长谷川博己主演。这部剧里探讨了很多敏感的教育问题，比如中学生怎么做性启蒙？能不能跟同样是未成年的恋人发生关系？喜欢谁能不能就藏在自己心里，不告诉别人？如何让孩子学会尊重他人的价值观？还有一些更加劲爆的两性观点。虽说风格略显中二，未必合乎现实，但我看完特别感动，尤其认可铃木老师的教育观点。</p><figure class="image ss-img-wrapper image_resized" style="width:664px;"><img src="https://cdnfile.sspai.com/2024/09/26/614752bef7ee88cd2c0197d7e868155a.png?imageView2/2/w/1120/q/90/interlace/1/ignore-error/1" data-original="https://cdnfile.sspai.com/2024/09/26/614752bef7ee88cd2c0197d7e868155a.png" referrerpolicy="no-referrer"><figcaption>《铃木先生》是东京电视台的深夜剧，尺度相当大。<br>本剧的一大看点是众多日后冉冉升起的 95 后演艺界明星（找找看）。</figcaption></figure><p style="margin-left:0;">2012 年后，古泽良太和富士电视台合作，先后创作了三部电视剧：</p><ul><li>《Legal High》（2012-2014，两部剧集、两部 SP）</li><li>《约会～恋爱究竟是什么》（2015，一部剧集、一部 SP）</li><li>《行骗家族》（2018-2022，一部剧集、一部 SP、三部电影、两部衍生短剧）。</li></ul><p style="margin-left:0;">由于富士电视台的经营不善，古泽良太的作品还被多次出售过海外版权，因此诞生了中国版的《约会～恋爱究竟是什么》、韩国版《Legal High》，虽说同为古泽编剧，几乎可以忽略不算。</p><p style="margin-left:0;">除了《Legal High》里那种语速快、逻辑强、擅长雄辩的风格之外，<strong>夸张的人物设定也是古泽良太原创剧本的一贯特色。</strong>古美门律师的动作、造型简直就是日本律政游戏《逆转裁判》里成步堂龙一的原样复刻。黛律师、阿拉伯王子也都是脸谱化角色，比起真人，更像是动漫人物。《行骗家族》里，主角团的设定更是夸张，不但「信用欺诈师」的职业高度虚构，每个人都神秘且身怀绝技，长泽雅美饰演的达子智商超群，小日向文世扮演的理查德轻易就能获取他人信任，完全冲着爽剧在设计人物。</p><figure class="image ss-img-wrapper image_resized" style="width:664px;"><img src="https://cdnfile.sspai.com/2024/09/26/4005dc0d697f5b3f10d82d31cbf3dbbc.png?imageView2/2/w/1120/q/90/interlace/1/ignore-error/1" data-original="https://cdnfile.sspai.com/2024/09/26/4005dc0d697f5b3f10d82d31cbf3dbbc.png" referrerpolicy="no-referrer"><figcaption>堺雅人老师绝对是在 cosplay 成步堂，百分百还原。</figcaption></figure><p style="margin-left:0;">在我看来，与其说古泽良太是一个日剧编剧，他更像是一个美剧编剧。相比于传统日剧中的细腻温情，<strong>他的剧本更强调新奇设定和精妙结构、喜欢埋线索和收伏笔。</strong>而且，我特别欣赏的一点是，他的剧本逻辑设计相当严谨，尤其是原创剧集，节奏快、反转多，结尾还能圆得回去，经常有种看美剧的爽快感。所以，喜欢看美剧的朋友可以多关注他的作品。</p><figure class="image ss-img-wrapper image_resized" style="width:664px;"><img src="https://cdnfile.sspai.com/2024/09/26/3652ff7a42992c89346a4cdca0d49351.png?imageView2/2/w/1120/q/90/interlace/1/ignore-error/1" data-original="https://cdnfile.sspai.com/2024/09/26/3652ff7a42992c89346a4cdca0d49351.png" referrerpolicy="no-referrer"><figcaption>《行骗天下》剧照（左）和《约会～恋爱究竟是什么》（中、右）两位主人公。<br>配图在搞事情，对不起了杏！</figcaption></figure><p style="margin-left:0;">古泽良太的恋爱剧《约会～恋爱究竟是什么呢～》是我特别喜欢的一部。这部剧设置了一对动漫感十足的「奇葩恋人」，一个是东大数学系毕业的理科直女（杏，饰），一个是啃老十几年号称「高等游民」的文艺男（长谷川博己，饰）。两个人在无穷无尽的嘴炮和反转又反转的剧情中，探讨了爱情是什么、婚姻是什么、好的约会是什么一系列的哲学命题，看到最后还觉得挺好挺搭挺甜。算得上是一部「非典型」爱情轻喜剧吧。</p><h3 style="margin-left:0;">野木亚纪子</h3><p style="margin-left:0;">对比前几位编剧「常青树」，野木亚纪子算是这十来年的「编剧新秀」。她的成长生涯十分励志。大学毕业后，她曾在一家纪录片公司担任企划，发现自己的真正兴趣是编剧后，潜心创作，持续给富士电视台青年剧本大奖投稿六年（对比坂元，19 岁就获得了第一届大奖），最后，野木踩着规定的 35 岁最高投稿年龄，靠着《再见鲁宾逊漂流记》获奖，成功进入编剧界。</p><p style="margin-left:0;">早先几年，野木亚纪子的剧本创作以改编为主，和 TBS 先后合作的《飞翔情报室》（2013）、《掟上今日子的备忘录》（2015）、《重版出来！》（2016）都是非常扎实、中规中矩的好作品。直到 2016 年，野木改编的《逃避虽可耻但有用》大获成功，这让野木亚纪子的名气越来越响，有机会担纲更有挑战性的原创剧本。</p><figure class="image ss-img-wrapper image_resized" style="width:664px;"><img src="https://cdnfile.sspai.com/2024/09/26/b4be4ed7e4191c77b0015429539e66bf.png?imageView2/2/w/1120/q/90/interlace/1/ignore-error/1" data-original="https://cdnfile.sspai.com/2024/09/26/b4be4ed7e4191c77b0015429539e66bf.png" referrerpolicy="no-referrer"><figcaption>野木老师对新垣结衣的爱全写在海报上了</figcaption></figure><p style="margin-left:0;">后面的几部剧很多朋友都很熟悉：野木亚纪子编剧、冢原亚由子导演、新井顺子制作人三位女性班底合力打造的《非自然死亡》（2018）、《MIU404》（2020）相继问世。这两个作品都是原创的职场单元剧，一集一个相对独立的小故事，节奏快、内容紧凑，非常耐看。两部剧的主题曲，米津玄师的《Lemon》和《感电》传唱程度也格外高，也助推了剧的热度。</p><p style="margin-left:0;">《非自然死亡》讲独立法医机构如何辅助案件侦破，《MIU404》讲基层机动搜查队的日常出警和案件调查。这两个故事不光是在娱乐猎奇，它们都在<strong>关注司法体系相对边缘、影响力和社会地位不高的基层群体。</strong>比如，《非自然死亡》反复强调法医收入低、工作时间长、责任大，工作环境极其恶劣，连石原里美这样的美貌医生都找不到对象。「MIU404」机搜小分队永远身处最前线，负责及时出警和初步调查，一旦案件升级就要移交其他科室手中。队员也经常被瞧不起，没有太多晋升前途。</p><p style="margin-left:0;">虽说是电视剧，但这两部剧都有很扎实的调研基础，有点像纪录片，让观众看到工作在一线、不太被关注到的职业。剧里还<strong>探讨了大量敏感的日本社会问题</strong>。比如过劳死、新型传染病对策（2018 年的剧！）、司法医学界的女性歧视、路怒犯罪、在日外国人生存处境、未成年辍学流浪、线人保护措施缺失等。这是野木亚纪子剧的一个非常出众的特征，<strong>她的社会观察、社会批判都非常直接，</strong>所以也显得剧比较「硬核」，信息量偏大，趣味性较弱，有时不太能看进去。</p><figure class="image ss-img-wrapper"><img src="https://cdnfile.sspai.com/2024/09/26/6413520162bc69bd8a10cef8004bf3e8.png?imageView2/2/w/1120/q/90/interlace/1/ignore-error/1" data-original="https://cdnfile.sspai.com/2024/09/26/6413520162bc69bd8a10cef8004bf3e8.png" referrerpolicy="no-referrer"><figcaption>《Last Mile》卡司宣传图。集合了《非自然死亡》（左上）和《MIU404》（右上）的众多角色。</figcaption></figure><h4 style="margin-left:0;">新剧看点</h4><p style="margin-left:0;">《非自然死亡》和《MIU404》成功后，制作方 TBS 电视台看到商机，把两个故事的世界融合成了一个虚构的大世界。故事人物相互串场，剧中机构还能相互支持。今年 8 月新上映的电影《Last Mile》（《最后的里程》）是个大项目，把两剧的卡司全部集合起来，作为故事的背景线索，仍由野木亚纪子、冢原亚由子、新井顺子合作创作。满岛光和冈田将生主演，讲一个快递箱连环爆炸故事。豆瓣和日本 Filmarks 评分都相当高，可以期待一下。</p><figure class="image ss-img-wrapper"><img src="https://cdnfile.sspai.com/2024/09/26/9ba5cef0d2e0115a9a2a922df71a9880.png?imageView2/2/w/1120/q/90/interlace/1/ignore-error/1" data-original="https://cdnfile.sspai.com/2024/09/26/9ba5cef0d2e0115a9a2a922df71a9880.png" referrerpolicy="no-referrer"><figcaption>《犬王》和《去唱卡拉 OK 吧》海报。</figcaption></figure><p>此外，野木亚纪子这两年改编的其他电影剧本也有不错的反响，前两年的高分动画《平家物语：犬王》，今年新出的漫改电影《去唱卡拉 OK 吧！》（可参见 <a href="https://sspai.com/post/88518" target="_blank">本周看什么 240503 期</a>）都是由她编剧。野木的作品一直很稳，质量很有保证，后续可以持续关注。</p><h3 style="margin-left:0;">笨蛋节奏（升野英知）</h3><p style="margin-left:0;">很多人知道笨蛋节奏都是因为《重启人生》这部剧。剧中，编剧扮演的那位负责转生的工作人员也给不少人留下了深刻的印象。</p><figure class="image ss-img-wrapper image_resized" style="width:464px;"><img src="https://cdnfile.sspai.com/2024/09/26/article/a46390c33b723f7d70513bc8d4d1b103.jpeg?imageView2/2/w/1120/q/90/interlace/1/ignore-error/1" alt="人生就是累积」笨蛋节奏用《重启人生》再说一次…而且说得漂亮" data-original="https://cdnfile.sspai.com/2024/09/26/article/a46390c33b723f7d70513bc8d4d1b103.jpeg" referrerpolicy="no-referrer"><figcaption>《重启人生》剧照，左边就是笨蛋节奏（本名：升野英知）。</figcaption></figure><p style="margin-left:0;">与其说笨蛋节奏说个电视剧编剧，他更知名的身份是一位搞笑艺人。在日本，当搞笑艺人是很多年轻人的梦想，但是真想成功却难上加难。搞笑艺人通常多才多艺，不但要自己写故事，还要会表演。作为混演艺圈的人，要情商高、会说话，懂得自我经营。最重要的是运气好，老天赏饭，有人提携。关于搞笑艺人有多难出头的电视剧，《火花》《短剧开始啦》（可参见 <a href="https://sspai.com/post/66249" target="_blank">本周看什么 210423 期</a>）都值得一看。</p><p style="margin-left:0;">回到笨蛋节奏的故事。20 岁时，升野英知和松下敏宏组成搭档，起名「笨蛋节奏」，开始从事演艺活动。十年后，搭档松下敏宏退出演艺圈，升野英知独自接下了组合名，变成了一个单人搞笑艺人。后来，笨蛋节奏的事业开始腾飞，2006 年到 2010 年，他四次进入日本单人艺人大赛 R-1 的决赛（M-1 是漫才大赛），虽然从未拿过冠军，但获得了相当的知名度。</p><p style="margin-left:0;">笨蛋节奏的搞笑风格，很难一两句话说清楚。B 站有不少他的短剧视频，可以感受一下：</p><iframe class="ss-videoIframe" src="https://player.bilibili.com/player.html?bvid=BV1e4411j7mX&amp;autoplay=false" sandbox="allow-scripts allow-same-origin allow-popups" referrerpolicy="no-referrer"> </iframe><p style="margin-left:0;">&nbsp;</p><p style="margin-left:0;">作为编剧的笨蛋节奏不是一下子就放出了《重启人生》（2023）这样的大招。在此之前，他编剧和反串性别主演的《架空 OL 日志》（2017）里，已经形成了很明显的编剧风格：<strong>女性群像、以聊天和对话为主、话题极其日常琐碎、没有任何称得上「大事」的情节，全靠着对生活细节的极致观察、出其不意的事情发展取胜。</strong>夏帆、臼田麻美、三浦透子都是他经常合作的女演员。</p><figure class="image ss-img-wrapper"><img src="https://cdnfile.sspai.com/2024/09/26/738f3bf7b670cf5ff53ccd14963dc133.png?imageView2/2/w/1120/q/90/interlace/1/ignore-error/1" data-original="https://cdnfile.sspai.com/2024/09/26/738f3bf7b670cf5ff53ccd14963dc133.png" referrerpolicy="no-referrer"><figcaption>《架空 OL 日志》海报图，其中，笨蛋节奏（左）毫无违和感地饰演一位年轻银行女性员工。</figcaption></figure><p style="margin-left:0;">他和井浦新合演的《杀意的道程》（2020）也是讲两个普通人为了报仇，无厘头地要杀一个人。结果整部剧花了大量篇幅在讲两人为这次行动选什么代号、穿什么衣服、去超市挑什么作案工具、日常盯梢怎么跟，总之相当脱线。</p><p style="margin-left:0;">《重启人生》可以说是笨蛋节奏的集大成之作。这个作品无论在剧情结构、笑点设置，还有卡司助力上，都没有可挑之处。欢迎没有看过的朋友直接去看，在此不做任何剧透。讲实话，这么绵密的埋梗、日常的细节、大量的吐槽编织在一起，可能除了搞笑艺人出身的笨蛋节奏之外，也没谁能够驾驭得住了吧。</p><h2 style="margin-left:0;">剧作词量分析</h2><p style="margin-left:0;">最后做一个趣味对比。学日语的过程中，我曾把这几位编剧的作品字幕导出，作为日常学习的材料。</p><p style="margin-left:0;">以 45min 的单集为单位，我随机翻过一些日剧，一般以<strong>单集 900-1000 词左右居多</strong>。《非自然死亡》《Legal High》《重启人生》一集的单词总量（不含重复）差不多，都在 1200 个词以上，600 个汉字（汉字占比基本上都是 50% 左右），高于平均值。野木亚纪子、古泽良太、笨蛋节奏的作品虽然风格各不相同，但都属于较高的对话密度。宫九的作品和上面几位大体持平，具体还要视题材而定。《对不起青春》《我家的故事》话密对话多，《还有第 11 人！》就明显少很多，相对更容易理解。</p><p style="margin-left:0;">有趣的是坂元裕二的作品。《四重奏》平均一集只有 750 个词，370 个汉字，是我迄今找到的词量最少的一部剧，可能是演奏乐曲的场景占了很大比例。《最完美的离婚》里争吵不断，一集也不过 800-900 个词，明显比前几位编剧用词少很多，果然是惜句如金。</p><figure class="image ss-img-wrapper image_resized" style="width:630px;"><img src="https://cdnfile.sspai.com/2024/09/26/806a63f76c18814c08091b9ca1f944ec.png?imageView2/2/w/1120/q/90/interlace/1/ignore-error/1" data-original="https://cdnfile.sspai.com/2024/09/26/806a63f76c18814c08091b9ca1f944ec.png" referrerpolicy="no-referrer"><figcaption>整合了 japanese.io（左）、jpdb.io（中）、Nihongo（右上）等多组数据。<br>由于每集数据不同，只能估算。尽量保证数据准确、有可信度。</figcaption></figure><p style="margin-left:0;">考虑到野木亚纪子的作品多为单元剧，每集主题都不同，我还对比了<strong>全剧的词数</strong>。《非自然死亡》《MIU404》一骑绝尘，每部剧用词总数（不含重复）都有 5700 多个，就连《逃避虽可耻但有用》这样的爱情喜剧都接近 5000，难度远远超出其他作品。宫九的几部作品也在 5000 词水平，略少一些。相比起来，《四重奏》里的总单词量只有 3360，《最完美的离婚》在 3880，也就是说，通过野木亚纪子一部剧学到的生词，大致相当于坂元一部剧的 1.5-2 倍！而且通过坂元剧、宫九剧、笨蛋节奏作品学到的日常用语还算多，野木剧里会出现大量社会专业用语，古泽良太作品也是大量抽象用词，语速又快，难度级别逆天。</p><p style="margin-left:0;">另外，我们通常理解的<strong>「语速」</strong>也能从数据上看出来。《Legal High》和《重启人生》平台上没有数据。我就用了另一个知名嘴炮剧《我家的事说来话长》（金子茂树编剧）来对比，平均每集的词量在 1200 上下，而这部剧每分钟的单词数最高甚至达到了 135 词（包含重复词语）！与之相比，野木亚纪子的剧差不多每分钟 120 词，属于很多的了，宫九剧的每分钟词量大概是 90-100 词。坂元的《四重奏》稳定在 80-90 上下，《最完美的离婚》话密一点，平均每分钟也就 100 词左右。</p><p style="margin-left:0;">由于手头资料有限，得出的结论未必特别精准。欢迎大家给我推荐单词数量、难度统计分析的网站或软件，我可以提供更多的数据，也可以提供一些好的日语学习适合的剧集。</p><h2 style="margin-left:0;">更多编剧</h2><p style="margin-left:0;">文章篇幅有限，只介绍了我个人持续关注的几位日剧编剧，肯定有大量缺漏。最后再简单罗列一些知名的资深编剧和他们擅长的题材及代表作，也欢迎大家多多补充：</p><h3 style="margin-left:0;">编剧</h3><h4 style="margin-left:0;">恋爱类</h4><p style="margin-left:0;">北川悦吏子《悠长假期》《橙色岁月》</p><p style="margin-left:0;">大石静《第二处女》《大恋爱》《于星降之夜》</p><h4 style="margin-left:0;">剧情类</h4><p style="margin-left:0;">木皿泉《西瓜》《昨夜的咖喱，明日的面包》</p><p style="margin-left:0;">金子茂树《求婚大作战》《我的事说来话长》《短剧开始了》</p><p style="margin-left:0;">冈田惠和《倒数第二次恋爱》《借着雨点说爱你》</p><p style="margin-left:0;">大岛里美《一公升的眼泪》《凪的新生活》《妻子变成小学生》</p><h4 style="margin-left:0;">医疗悬疑剧</h4><p style="margin-left:0;">林宏司《医龙》《Code Blue》</p><p style="margin-left:0;">森下佳子《仁医》《天国与地狱》</p><p style="margin-left:0;">井上由美子《白色巨塔》《紧急调取室》《昼颜》</p><h3 style="margin-left:0;">导演（兼编剧）</h3><h4 style="margin-left:0;">推理、剧情类</h4><p style="margin-left:0;">三谷幸喜《古佃任三郎》系列</p><h4 style="margin-left:0;">深夜系</h4><p style="margin-left:0;">大根仁《真幌站前番外地》《大川端侦探社》《地面师》</p><h4 style="margin-left:0;">脱力系</h4><p style="margin-left:0;">三木聪《时效警察》</p><h4 style="margin-left:0;">恶搞系</h4><p style="margin-left:0;">福田雄一《勇者义彦系列》《我是大哥大》</p><h3 style="margin-left:0;">推荐豆列</h3><ul><li><a href="https://www.douban.com/doulist/248473/" target="_blank">日剧的那些名编剧们 Part·1</a></li><li><a href="https://www.douban.com/doulist/430339/" target="_blank">日剧的那些名编剧们 Part·2</a></li></ul><p style="margin-left:0px;">&gt; 小红书 📕 关注 <a href="https://www.xiaohongshu.com/user/profile/63f5d65d000000001001d8d4" target="_blank">少数派 sspai</a>、<a href="https://www.xiaohongshu.com/user/profile/62fb4cf90000000012002431" target="_blank">本周看什么</a>，找到数字时代更好的生活方式 🎊</p><p style="margin-left:0px;">&gt; <a href="https://sspai.com/topic/416">看什么 Café</a> / <a href="https://sspai.com/topic/419">主题片单</a> 专题页、<a href="https://sspai.com/page/2021/movie">2021 年度回顾</a>，更多影视推荐尽在 <a href="https://sspai.com/tag/%E6%9C%AC%E5%91%A8%E7%9C%8B%E4%BB%80%E4%B9%88">#本周看什么</a> 🎬</p>]]>
             </description>
             <pubDate>Thu, 10 Oct 2024 09:30:00 GMT</pubDate>
             <guid isPermaLink="false">https://sspai.com/post/92507</guid>
@@ -128,323 +465,6 @@
             <link>https://sspai.com/post/92764</link>
             <author>
                 <![CDATA[谷丰]]>
-            </author>
-        </item>
-        <item>
-            <title>
-                <![CDATA[打造自主、安全、可控的摄像头：我的智能家居监控方案]]>
-            </title>
-            <description>
-                <![CDATA[<p style="margin-left:0px;"><strong>Matrix 首页推荐</strong>&nbsp;</p><p style="margin-left:0px;"><a href="https://sspai.com/matrix">Matrix</a>&nbsp;是少数派的写作社区，我们主张分享真实的产品体验，有实用价值的经验与思考。我们会不定期挑选 Matrix 最优质的文章，展示来自用户的最真实的体验和观点。&nbsp;</p><p style="margin-left:0px;">文章代表作者个人观点，少数派仅对标题和排版略作修改。</p><hr><p>最近买了一个摄像头，放在家里看宠物，稍微折腾了下，目前算是比较满意了。</p><p><strong>如果你对家庭监控的安全性和隐私性要求比较高，可以参考下我的方案。如果不想折腾，建议直接用原厂的 App 和云服务。</strong></p><h2>自建方案简介</h2><p>买了个支持 ONVIF 协议的 IP 摄像头，通过 ONVIF 协议接入和群晖的监控 Surveillance Station，摄像头进行 24H 监控，视频存储在群晖外挂的 USB 硬盘上，配合 Home Assistant 和 Node-RED，实现了一些动静通知、回家离家自动开关等自动化的功能。摄像头断开外网访问，只能在家里内网或者 VPN 访问，保证了视频的安全性。</p><h2>为什么要自建监控？</h2><p>几个月我写了一篇文章<a href="https://luolei.org/personal-decoupling-cybersecurity">《脱钩: 我的个人网络安全策略》</a>，分享我与中国互联网服务和产品脱钩的一些经验。</p><p>在那篇文章中，我介绍了我已经把大多数据资产都转移到了境外服务或者下云，主要目的就是为了保护自己的隐私和数据安全。</p><p>对「智能家居」来说，脱钩或者下云是不实际的，我是小米生态的重度用户，门锁和门禁摄像头，都是小米生的产品，这些产品基本都强依赖于小米的云服务。入住新家两年以来，这种基于云的服务，的确也带来了很多便利。</p><p><strong>摄像头不同于其他智能设备，这是一个极其敏感的，打破了「网络」与「现实」边界的设备，他可以直接看到、听到镜头里的一切。</strong></p><p>好几年前，我通过一个业内的渠道，得知某摄像头的云存储服务，曾经将用户的监控视频未加密处理，就直接存在某公有云的 bucket 里。从那之后，我就再也没在家里开启过摄像头。</p><p>前几年，众多在各种乱七八糟网站上泄漏出来的视频，想必大家也都有所耳闻。基于上面种种考量，我决定自建监控方案。首先说下我的这套监控方案的优缺点。</p><h2>自建对比原厂优缺点</h2><figure class="table"><table><thead><tr><th style="border:1px solid var(--borderColor-default);padding:6px 13px;">项目</th><th style="border:1px solid var(--borderColor-default);padding:6px 13px;">自建方案</th><th style="border:1px solid var(--borderColor-default);padding:6px 13px;">原厂</th></tr></thead><tbody><tr><td style="border:1px solid var(--borderColor-default);padding:6px 13px;">操作性</td><td style="border:1px solid var(--borderColor-default);padding:6px 13px;">❌ 需要折腾，挺麻烦</td><td style="border:1px solid var(--borderColor-default);padding:6px 13px;">✅ 上手即用</td></tr><tr><td style="border:1px solid var(--borderColor-default);padding:6px 13px;">安全性</td><td style="border:1px solid var(--borderColor-default);padding:6px 13px;">✅ 本地存储，内网访问，理论可与外网完全隔离</td><td style="border:1px solid var(--borderColor-default);padding:6px 13px;">❌ 云服务、云存储，存在隐私泄露的可能</td></tr><tr><td style="border:1px solid var(--borderColor-default);padding:6px 13px;">经济性</td><td style="border:1px solid var(--borderColor-default);padding:6px 13px;">✅ 无额外费用</td><td style="border:1px solid var(--borderColor-default);padding:6px 13px;">❌ 云存储一般都要额外收费</td></tr><tr><td style="border:1px solid var(--borderColor-default);padding:6px 13px;">存储空间</td><td style="border:1px solid var(--borderColor-default);padding:6px 13px;">✅ 无空间限制,理论可无限拓展存储</td><td style="border:1px solid var(--borderColor-default);padding:6px 13px;">❌ 云存储空间有限,时长有限</td></tr><tr><td style="border:1px solid var(--borderColor-default);padding:6px 13px;">共享性</td><td style="border:1px solid var(--borderColor-default);padding:6px 13px;">❌ 不方便共享给家人</td><td style="border:1px solid var(--borderColor-default);padding:6px 13px;">✅ 便捷分享控制</td></tr><tr><td style="border:1px solid var(--borderColor-default);padding:6px 13px;">外网访问</td><td style="border:1px solid var(--borderColor-default);padding:6px 13px;">❌ VPN 访问 (可开启公网权限:但不建议)</td><td style="border:1px solid var(--borderColor-default);padding:6px 13px;">✅ 直接公网即可访问</td></tr><tr><td style="border:1px solid var(--borderColor-default);padding:6px 13px;">HomeKit 支持</td><td style="border:1px solid var(--borderColor-default);padding:6px 13px;">✅ 支持</td><td style="border:1px solid var(--borderColor-default);padding:6px 13px;">❌ 大多不支持</td></tr></tbody></table></figure><h2>设备清单</h2><figure class="table"><table><thead><tr><th style="border:1px solid var(--borderColor-default);padding:6px 13px;">设备</th><th style="border:1px solid var(--borderColor-default);padding:6px 13px;">品牌</th><th style="border:1px solid var(--borderColor-default);padding:6px 13px;">型号</th><th style="border:1px solid var(--borderColor-default);padding:6px 13px;">价格</th></tr></thead><tbody><tr><td style="border:1px solid var(--borderColor-default);padding:6px 13px;">摄像头</td><td style="border:1px solid var(--borderColor-default);padding:6px 13px;">TP-Link</td><td style="border:1px solid var(--borderColor-default);padding:6px 13px;"><a href="https://www.tp-link.com.cn/product_1893.html">800 万全彩云台无线网络摄像机 TL-IPC48AW 全彩</a></td><td style="border:1px solid var(--borderColor-default);padding:6px 13px;">￥279</td></tr><tr><td style="border:1px solid var(--borderColor-default);padding:6px 13px;">NAS</td><td style="border:1px solid var(--borderColor-default);padding:6px 13px;">群晖</td><td style="border:1px solid var(--borderColor-default);padding:6px 13px;"><a href="https://global.synologydownload.com/download/Document/Hardware/DataSheet/DiskStation/16-year/DS216+/chs/Synology_DS216_Plus_Data_Sheet_chs.pdf">DS216+</a></td><td style="border:1px solid var(--borderColor-default);padding:6px 13px;">￥0 (旧设备)</td></tr><tr><td style="border:1px solid var(--borderColor-default);padding:6px 13px;">外接硬盘盒</td><td style="border:1px solid var(--borderColor-default);padding:6px 13px;">淘宝工厂店</td><td style="border:1px solid var(--borderColor-default);padding:6px 13px;">2.5 寸 USB3.1 Type-C 硬盘盒</td><td style="border:1px solid var(--borderColor-default);padding:6px 13px;">￥21</td></tr><tr><td style="border:1px solid var(--borderColor-default);padding:6px 13px;">外接监控存储 SSD</td><td style="border:1px solid var(--borderColor-default);padding:6px 13px;">饥饿鲨 OCZ</td><td style="border:1px solid var(--borderColor-default);padding:6px 13px;">Arc100 240G 固态硬盘</td><td style="border:1px solid var(--borderColor-default);padding:6px 13px;">￥0 (旧设备)</td></tr></tbody></table></figure><p>这次除了摄像头是新购的，其他都是原有的老设备。这里的花销大头是群晖的 NAS，理论上如果你有其他 NAS，或者开源的软路由什么的，也能实现类似的功能。无非就是需要花费更多时间折腾罢了。</p><h2>系统架构</h2><figure class="table"><table><thead><tr><th style="border:1px solid var(--borderColor-default);padding:6px 13px;">名称</th><th style="border:1px solid var(--borderColor-default);padding:6px 13px;">说明</th><th style="border:1px solid var(--borderColor-default);padding:6px 13px;">配置难度</th></tr></thead><tbody><tr><td style="border:1px solid var(--borderColor-default);padding:6px 13px;"><a href="https://www.synology.cn/zh-cn/surveillance">SurveillanceStation</a></td><td style="border:1px solid var(--borderColor-default);padding:6px 13px;">群晖自带监控中心套件</td><td style="border:1px solid var(--borderColor-default);padding:6px 13px;">低</td></tr><tr><td style="border:1px solid var(--borderColor-default);padding:6px 13px;"><a href="https://www.home-assistant.io/">Home Assistant</a></td><td style="border:1px solid var(--borderColor-default);padding:6px 13px;">开源智能家庭家庭解决方案，与米家和 HomeKit 等联动</td><td style="border:1px solid var(--borderColor-default);padding:6px 13px;">高</td></tr><tr><td style="border:1px solid var(--borderColor-default);padding:6px 13px;"><a href="https://github.com/node-red/node-red">Node-RED</a></td><td style="border:1px solid var(--borderColor-default);padding:6px 13px;">开源的流程编排工具，配合 HA 实现各种事件处理自动化</td><td style="border:1px solid var(--borderColor-default);padding:6px 13px;">高</td></tr></tbody></table></figure><p>上面就是我的这套监控系统的核心架构，除了 SurveillanceStation 属于傻瓜级上手可用，后面的 Home Assistant 和 Node-Red 都需要花费一定的时间和学习。由于我之前就有一些 HA 和 Node-RED 的使用经验，这次只是集成下 SurveillanceStation，所以整体花费的时间还是比较少的。</p><h2>配套 App</h2><figure class="table"><table><thead><tr><th style="border:1px solid var(--borderColor-default);padding:6px 13px;">名称</th><th style="border:1px solid var(--borderColor-default);padding:6px 13px;">说明</th><th style="border:1px solid var(--borderColor-default);padding:6px 13px;">安卓</th><th style="border:1px solid var(--borderColor-default);padding:6px 13px;">iOS</th><th style="border:1px solid var(--borderColor-default);padding:6px 13px;">Web</th><th style="border:1px solid var(--borderColor-default);padding:6px 13px;">实时监控</th><th style="border:1px solid var(--borderColor-default);padding:6px 13px;">回放</th><th style="border:1px solid var(--borderColor-default);padding:6px 13px;">推送信息</th></tr></thead><tbody><tr><td style="border:1px solid var(--borderColor-default);padding:6px 13px;">Home Assistant</td><td style="border:1px solid var(--borderColor-default);padding:6px 13px;">HA 的客户端</td><td style="border:1px solid var(--borderColor-default);padding:6px 13px;">✅</td><td style="border:1px solid var(--borderColor-default);padding:6px 13px;">✅</td><td style="border:1px solid var(--borderColor-default);padding:6px 13px;">✅</td><td style="border:1px solid var(--borderColor-default);padding:6px 13px;">✅</td><td style="border:1px solid var(--borderColor-default);padding:6px 13px;">❌</td><td style="border:1px solid var(--borderColor-default);padding:6px 13px;">✅</td></tr><tr><td style="border:1px solid var(--borderColor-default);padding:6px 13px;">DS CAM</td><td style="border:1px solid var(--borderColor-default);padding:6px 13px;">群晖监控套件的配套 App</td><td style="border:1px solid var(--borderColor-default);padding:6px 13px;">✅</td><td style="border:1px solid var(--borderColor-default);padding:6px 13px;">✅</td><td style="border:1px solid var(--borderColor-default);padding:6px 13px;">❌</td><td style="border:1px solid var(--borderColor-default);padding:6px 13px;">✅</td><td style="border:1px solid var(--borderColor-default);padding:6px 13px;">✅</td><td style="border:1px solid var(--borderColor-default);padding:6px 13px;">✅</td></tr><tr><td style="border:1px solid var(--borderColor-default);padding:6px 13px;">Bark</td><td style="border:1px solid var(--borderColor-default);padding:6px 13px;">自建的 iOS 的消息推送服务</td><td style="border:1px solid var(--borderColor-default);padding:6px 13px;">❌</td><td style="border:1px solid var(--borderColor-default);padding:6px 13px;">✅</td><td style="border:1px solid var(--borderColor-default);padding:6px 13px;">❌</td><td style="border:1px solid var(--borderColor-default);padding:6px 13px;">❌</td><td style="border:1px solid var(--borderColor-default);padding:6px 13px;">❌</td><td style="border:1px solid var(--borderColor-default);padding:6px 13px;">✅</td></tr><tr><td style="border:1px solid var(--borderColor-default);padding:6px 13px;">Telegram</td><td style="border:1px solid var(--borderColor-default);padding:6px 13px;">极其方便和自由的社交 App</td><td style="border:1px solid var(--borderColor-default);padding:6px 13px;">✅</td><td style="border:1px solid var(--borderColor-default);padding:6px 13px;">✅</td><td style="border:1px solid var(--borderColor-default);padding:6px 13px;">✅</td><td style="border:1px solid var(--borderColor-default);padding:6px 13px;">❌</td><td style="border:1px solid var(--borderColor-default);padding:6px 13px;">❌</td><td style="border:1px solid var(--borderColor-default);padding:6px 13px;">✅</td></tr></tbody></table></figure><h2>摄像头选购</h2><p>搭建自己的监控体系，<strong>基本的要求就是摄像头需要支持 ONVIF 协议或者 rtsp 协议</strong>，这是安防设备的通用协议，方便用户自己集成到各种系统中。</p><p>购买摄像头之前，需要务必确认摄像头支持 ONVIF 协议，小米的许多摄像头就不支持。</p><ul><li><a href="https://security.tp-link.com.cn/service/detail_article_4417.html">怎么判断摄像机支不支持 Onvif 协议？</a></li><li><a href="https://www.v2ex.com/t/983607">V2EX: 网络摄像头有什么通用协议吗？</a></li><li><a href="https://www.zhihu.com/question/404251421">知乎: 为什么家用摄像头基本上都不支持 onvif/rtsp 协议呢?</a></li></ul><p>这次我购买的摄像头是 TP-Link 的 <a href="https://www.tp-link.com.cn/product_1893.html">TL-IPC48AW</a>，属于比较经典的系列。</p><ul><li>支持 ONVIF 协议</li><li>支持 4K 15 帧录制。</li><li>Wi-Fi 2.4G</li><li>红外夜视 (方便夜晚和弱光环境监控)</li><li>支持 Micro SD 卡存储</li><li>1 个 RJ45 口，支持网线直连</li></ul><p>硬伤是 Wi-Fi 不支持 5G。除了基础的硬件功能，还有各种云服务支持，AI 检测什么的，但是由于我也没打算用自带的 App（美区 App Store 居然还没 TP-Link App) ，所以也无所谓了。</p><h2>关闭摄像头外网访问</h2><p>防止摄像头能访问外网，首先就是关闭摄像头的外网访问权限，仅限内网用户访问。</p><p>按照以下步骤设置即可：</p><ul><li>给摄像头设置<strong>固定 IP</strong></li><li>在路由器层禁止该 IP 访问外网</li><li>如果使用 OpenWrt 等网关，在<strong>防火墙层设置屏蔽规则</strong></li></ul><pre class="language-shell"><code>#TP-Link 摄像头，防火墙规则
-
-iptables -I FORWARD  -m mac --mac-source E4:DD:66:82:DE:F4 -j DROP
-iptables -I FORWARD -s 10.0.0.12 -d 10.0.0.0/16 -j ACCEPT
-iptables -I FORWARD -s 10.0.0.0/16 -d 10.0.0.12 -j ACCEPT
-iptables -I FORWARD -s 10.0.0.12 -j REJECT</code></pre><p>我家使用的是小米路由器，网关使用的是 OpenWrt，除了在小米的控制枱关闭外网权限，同时在防火墙设置里，通过添加过滤摄像头 IP 和 MAC 地址的规则，禁止摄像头访问外网。</p><figure class="image ss-img-wrapper"><img src="https://cdnfile.sspai.com/2024/09/26/article/92c41170f694f3277992e8521e7cd784.jpeg?imageView2/2/w/1120/q/90/interlace/1/ignore-error/1" alt="" data-original="https://cdnfile.sspai.com/2024/09/26/article/92c41170f694f3277992e8521e7cd784.jpeg" referrerpolicy="no-referrer"></figure><p>设置完毕后，可以看到这个时候再访问 TP-Link 自带的 App，提示是设备离线状态。但是如果你是在局域网通过内网 IP 访问，依旧可以正常访问。</p><h2>如何配置外网访问</h2><p>将家庭内网暴露到外网，或者内网穿透，是一个与「监控」系统本身不太相关的问题。</p><p>从安全的角度考量，我不希望摄像头直接暴露在外网，所以我只是在有需要的时候，通过 zerotier 来访问家里的监控系统。实际上还有一些其他方案，比如 WireGuard 等，这里就不做讨论了。</p><ul><li><a href="https://www.zerotier.com/">ZeroTier</a></li><li><a href="https://www.wireguard.com/">WireGuard</a></li><li><a href="https://post.smzdm.com/p/741270/">无公网 IP 搞定群晖+ZEROTIER ONE 实现内网穿透</a></li><li><a href="https://www.bilibili.com/read/cv15337265/">使用 frp 和 Shadowsocks 实现安全访问内网服务</a></li></ul><h2>接入群晖 SurveillanceStation</h2><p>群晖的 SurveillanceStation 是一个非常成熟的监控套件，这个也是我们的监控系统的核心。之所以选择群晖，是因为我家里有一台群晖。其他厂商也有类似的监控套件，也有第三方的开源解决方案，建议大家就自行研究了。</p><p>这部分的内容，以 ONVIF 群晖 NAS 等关键词组合搜索，网上有很多教程，我在这里就不赘述了。</p><ul><li><a href="https://post.smzdm.com/p/awzzgemk/">NAS 变身 NVR 录像机，接入监控摄像头实现实时录制、远程回放、存储！</a></li><li><a href="https://post.smzdm.com/p/arqvmw3q/">家庭双摄像头添加到群晖 Surveillance 套件</a></li></ul><h2>将监控视频存储到外接 USB 硬盘</h2><p>我的群晖 DS216+ 是双盘位，使用两块机械硬盘做了 RAID1。</p><p><strong>由于监控的过程中一直会写入硬盘，会对硬盘寿命造成严重影响。强烈建议非专业需求，不要将监控视频与其他数据混存。</strong></p><figure class="image ss-img-wrapper"><img src="https://cdnfile.sspai.com/2024/09/26/article/e7f9a415b18cd9c61046733c1581b8c7.jpeg?imageView2/2/w/1120/q/90/interlace/1/ignore-error/1" alt="" data-original="https://cdnfile.sspai.com/2024/09/26/article/e7f9a415b18cd9c61046733c1581b8c7.jpeg" referrerpolicy="no-referrer"></figure><p>为了解决这个问题，我使用了一块没用的 240G 的 SSD，通过 USB3.0 接口外接到群晖上，作为监控的存储盘。上图就是我目前实际挂载的样子，这样有个好处:</p><ul><li><strong>不影响主硬盘的寿命</strong></li><li>USB3.0 搭配 SSD 硬盘，读写速度更快，回放时更流畅</li></ul><p>虽然这样做，不如直接将视频存储在 NAS 的主硬盘上保险，但是我的目的主要就是看看最近的视频，监控录制的视频也不需要长期存储，所以这样做对于我来说倒是一个更经济合理的选择。</p><p>由于<strong>群晖默认不允许外接硬盘作为存储盘</strong>，这里需要一定的小技巧，外接硬盘挂载成正常的文件路径，需要通过 SSH 登录到群晖，配合 <code>ln -s</code> 软链的方式挂载外接硬盘。</p><ul><li>参考教程: <a href="https://post.smzdm.com/p/559269/">NAS 群晖 DSM 进阶教程：保护硬盘，使用外接设备下载资源</a></li><li><a href="https://community.synology.com/enu/forum/3/post/132261?page=2&amp;sort=oldest">Surveillance Station should allow external USB Disk as Storage</a></li></ul><figure class="image ss-img-wrapper"><img src="https://cdnfile.sspai.com/2024/09/26/article/34601e65cc32219eb5e4cdcf9c2041c7.jpeg?imageView2/2/w/1120/q/90/interlace/1/ignore-error/1" alt="" data-original="https://cdnfile.sspai.com/2024/09/26/article/34601e65cc32219eb5e4cdcf9c2041c7.jpeg" referrerpolicy="no-referrer"></figure><p>首先登录群晖的 SurveillanceStation，在「网络摄像机」&gt;「编辑摄像机」&gt;「录制」里添加新的存储器，这里默认是只能在群晖主硬盘空间上存储，这里我命名为 camera_storage。</p><figure class="image ss-img-wrapper"><img src="https://cdnfile.sspai.com/2024/09/26/article/de02f31cc66cd24b28773c6ac0cfb32a.jpeg?imageView2/2/w/1120/q/90/interlace/1/ignore-error/1" alt="" data-original="https://cdnfile.sspai.com/2024/09/26/article/de02f31cc66cd24b28773c6ac0cfb32a.jpeg" referrerpolicy="no-referrer"></figure><p>接下来需要通过 SSH 登录到群晖，进入跟路径，找到当前挂载的盘符，这个时候可以看到外接的硬盘已经被挂载到了 <code>/volumeUSB1/</code> 目录下。</p><pre class="language-shell"><code># 通过 SSH 登录群晖,通过软链将外挂硬盘挂载到共享文件夹,突破群晖的限制
-
-ssh  luolei@10.0.0.5
-
-ln
- -s /volumeUSB1/usbshare/ /volume2/camera_storage
-
-#DSM 7.0 后，上述挂载的方法需要做一些调整,具体方法见下</code></pre><p>接下来再去「编辑摄像机」&gt;「录制」里，把录制存储器选择为刚刚创建的 camera_storage，这样后续监控视频都会默认直接保存在外接硬盘上了。</p><p>DSM 7.0 后，上述挂载的方法需要做一些调整，不能再通过软链接<code>ln -s</code>的方式映射盘符。简要说明新的步骤</p><ul><li>依旧同上添加新的存储器</li><li>在<strong>控制面板</strong> &gt; <strong>任务计划</strong> &gt; <strong>新增触发的任务</strong></li><li>创建任务:用户选择 <strong>root</strong> (必须使用 root)，事件选择:<strong>开机</strong></li><li><strong>任务设置</strong> &gt; <strong>用户定义的脚本</strong>: mount -o bind /volumeUSB1/usbshare /volume2/camera_storage</li><li>重启之后，再去 SurveillanceStation 里设置即可</li></ul><h2>接入 HomeKit</h2><p>如果想在 iPhone 的 Home App 里看到监控视频，需要通过 Home Assistant 将摄像头接入到 HomeKit。这一部分也有比较多的教程和文章，我找了几篇比较详细的，供大家参考。</p><ul><li><a href="https://zhuanlan.zhihu.com/p/669220623">通过 home assistant 将 onvif 协议摄像头加入 homekit</a></li><li><a href="https://bbs.hassbian.com/thread-12038-1-1.html">请问有人在 ha 用 onvif 连接成功 TPLINK 的摄像头么</a></li></ul><p>在这里分享一个小优化点，HA 自带的 ONVIF 协议添加摄像头看到的实时画面延迟较大（我自己观察约 5 秒)，如果使用 WebRTC Camera 取流可以大大降低延迟。具体的步骤可参考:</p><ul><li><a href="https://www.bilibili.com/read/cv22505112/">HomeAssistant 海康、大华摄像机 rtsp 取流不再卡顿</a></li></ul><h2>监控效果</h2><p>截止到一步，家庭监控的接入、录制、存储、实时监控、回放等功能都已经实现了。目前我主要就是通过群晖的 DS Cam 来进行实时监控和回放。</p><figure class="image ss-img-wrapper"><img src="https://cdnfile.sspai.com/2024/09/26/article/dd5dd0301d5fee50688f105fbb7602c5.jpeg?imageView2/2/w/1120/q/90/interlace/1/ignore-error/1" alt="" data-original="https://cdnfile.sspai.com/2024/09/26/article/dd5dd0301d5fee50688f105fbb7602c5.jpeg" referrerpolicy="no-referrer"></figure><p>DS Cam 有网页版和 App 版，使用起来还是很方便的，在监控画面有动静的时候，在时间轴上也有标记，方便快速定位。</p><figure class="image ss-img-wrapper"><img src="https://cdnfile.sspai.com/2024/09/26/article/4fea0160402766f49f034bbb5fc63c61.jpeg?imageView2/2/w/1120/q/90/interlace/1/ignore-error/1" alt="" data-original="https://cdnfile.sspai.com/2024/09/26/article/4fea0160402766f49f034bbb5fc63c61.jpeg" referrerpolicy="no-referrer"></figure><p>出门在外时，一般我就使用 App 查看监控，TP-Link 这个摄像头本身支持语音通话，但是通过<code>ONVIF</code>接入群晖这么一圈后，就没有了，暂时还没找到解决方案，没法远程逗狗了，算是一个小小的不方便。</p><figure class="image ss-img-wrapper"><img src="https://cdnfile.sspai.com/2024/09/26/article/7dbde034ecb6ec4a94c442b3df7d87d3.jpeg?imageView2/2/w/1120/q/90/interlace/1/ignore-error/1" alt="" data-original="https://cdnfile.sspai.com/2024/09/26/article/7dbde034ecb6ec4a94c442b3df7d87d3.jpeg" referrerpolicy="no-referrer"></figure><p>同样的，通过 iOS 自动的 Home 也能看到监控画面，但是 HomeKit 的实时监控画面延迟也是比较大的，大概是每 10 秒刷新一次。通过 Home Assistant，则是可以实现更低延迟的监控画面。</p><h2>进阶：动静通知和自动化管理</h2><p>接下来就是一些进阶的功能了，主要是为了解决监控动静提醒，以及离家在家模式的自动化管理。</p><p>首先思考下面几个问题？</p><ul><li>我家的摄像头是否需要 24 小时监控？</li><li>不同位置的摄像头是否需要不同的监控策略？</li><li>如果有人在特定时间出现在监控中，是否需要提醒？</li></ul><p>现在不少人家里都有摄像头，有些摄像头是用来对着门口，有些摄像头对着客餐厅，有些摄像头对着儿童房的婴儿床。不同的位置，对于监控的需求是不一样的。</p><p>我家目前就装了一台摄像头，对着客厅和大门玄关入口。实际上，我并不太需要这个摄像头一直录制。毕竟有时候，我在家还是比较洒脱和坦荡，我不希望自己的一举一动都被摄像头记录下来。</p><p>这个时候，就可以通过 SurveillanceStation、Home Assistant 和 Node-RED 来实现一些自动化的功能了。</p><p>一句话来介绍这个的原理：<strong>通过自定义规则，触发 webhook，来切换摄像头的开关和触发通知。</strong></p><figure class="image ss-img-wrapper"><img src="https://cdnfile.sspai.com/2024/09/26/article/1fbaafcb1839ef591f750468f3070612.jpeg?imageView2/2/w/1120/q/90/interlace/1/ignore-error/1" alt="" data-original="https://cdnfile.sspai.com/2024/09/26/article/1fbaafcb1839ef591f750468f3070612.jpeg" referrerpolicy="no-referrer"></figure><p>群晖 SurveillanceStation 支持自定义操作规则，在这里我设置了三个规则:</p><ul><li>在家模式: 人员在家时，关闭摄像头</li><li>离家模式: 人员离家时，开启摄像头</li><li>动静通知: 监控画面出现动静时，发送通知</li></ul><figure class="image ss-img-wrapper"><img src="https://cdnfile.sspai.com/2024/09/26/article/beb319673ce6a55db50c22790e1a7589.jpeg?imageView2/2/w/1120/q/90/interlace/1/ignore-error/1" alt="" data-original="https://cdnfile.sspai.com/2024/09/26/article/beb319673ce6a55db50c22790e1a7589.jpeg" referrerpolicy="no-referrer"></figure><figure class="image ss-img-wrapper"><img src="https://cdnfile.sspai.com/2024/09/26/article/8c9d2bf249780bb6d4ff86d478c7f51d.jpeg?imageView2/2/w/1120/q/90/interlace/1/ignore-error/1" alt="" data-original="https://cdnfile.sspai.com/2024/09/26/article/8c9d2bf249780bb6d4ff86d478c7f51d.jpeg" referrerpolicy="no-referrer"></figure><p>这个的原理也十分简单，以在家模式举例，通过设置事件源为 WebHook 外部设备，群晖暴露了一个 WebHook 接口，通过普通的网络请求触发这个接口，就可以关闭摄像头。</p><figure class="image ss-img-wrapper"><img src="https://cdnfile.sspai.com/2024/09/26/article/1157b772e3cf1a6fc927ce2c612ec5cb.jpeg?imageView2/2/w/1120/q/90/interlace/1/ignore-error/1" alt="" data-original="https://cdnfile.sspai.com/2024/09/26/article/1157b772e3cf1a6fc927ce2c612ec5cb.jpeg" referrerpolicy="no-referrer"></figure><figure class="image ss-img-wrapper"><img src="https://cdnfile.sspai.com/2024/09/26/article/8309e864e9d6d198d176df7adf8aaa2f.jpeg?imageView2/2/w/1120/q/90/interlace/1/ignore-error/1" alt="" data-original="https://cdnfile.sspai.com/2024/09/26/article/8309e864e9d6d198d176df7adf8aaa2f.jpeg" referrerpolicy="no-referrer"></figure><p>而动静通知模式，则是反过来的操作，当监控画面出现动静时，群晖会主动向我的第三方 Node-Red 定义的接口触发请求，Node-Red 会执行抓取当前画面、推送画面到 Telegram、Bark 等通知渠道的动作。</p><h2>HA 自动化：离家自动开启摄像头</h2><p>如果想做到更加智能和自动化，比如离开家时自动开启摄像头，这个时候就需要通过 Home Assistant 来实现了。</p><p>Home Assistant 里的「设置」&gt;「自动化与场景」支持自己创建自动化。可以通过设置不同的 if then 逻辑来控制不同的设备和流程。</p><figure class="image ss-img-wrapper"><img src="https://cdnfile.sspai.com/2024/09/26/article/60431b0c00fe8f31f63a45df5a44b031.jpeg?imageView2/2/w/1120/q/90/interlace/1/ignore-error/1" alt="" data-original="https://cdnfile.sspai.com/2024/09/26/article/60431b0c00fe8f31f63a45df5a44b031.jpeg" referrerpolicy="no-referrer"></figure><p>以我的需求为例，当我的手机离开家时（地理围栏)，就会自动发送一条通知到我的手机，并请求我的群晖的 WebHook API 开启摄像头。</p><pre class="language-shell"><code>rest_command:
-  bark_push:
-    url: https://push.bark.demo/notification
-    method: POST
-    payload: '{"body": "{{ body }}","title": "{{ title }}","icon":"https://static.is26.com/share/icon-vm.png"}'
-    content_type: "application/json; charset=utf-8"
-    verify_ssl: true
-
-  camera_on:
-    url: http://10.0.0.5:5000/webapi/SurveillanceStation/Webhook/Incoming/v1?token=iQRJyuOYPIZODrWMRfT
-    method: GET
-
-  camera_off:
-    url: http://10.0.0.5:5000/webapi/SurveillanceStation/Webhook/Incoming/v1?token=iVufyERsmJZEM1UJ7M
-    method: GET</code></pre><p>这只是我的一个简单的示例，同理，当你回到家时，希望什么时候关闭摄像头，也可以根据你的实际需求，实现更复杂的自动化功能。上面我使用到了 HA 自带的 RESTful Command 功能。有关 Home Assistant 的自动化 RESTful Command 配置，可以参考下面的文章。</p><ul><li><a href="https://www.home-assistant.io/integrations/rest_command/">RESTful Command</a></li><li><a href="https://post.smzdm.com/p/a0q93po0/">一起 DIY 智能家居，篇十二：为 homeassistant 和独立传感器添加短信电话通知</a></li></ul><p>有关「离家」和「在家」模式，可以参考下下面的讨论：</p><ul><li><a href="https://post.smzdm.com/p/aoo8lg9r/">米家自动化-用米家传感器判定家中有人和家中无人的方法-修正版</a></li><li><a href="https://bbs.hassbian.com/thread-10096-1-1.html">[进阶教程] 准确、及时、自动判断离家回家--多种方案试用后的最终选择</a></li></ul><h2>Node-Red 自动化：推送至即时通讯工具</h2><p>弄完上面的流程后，监控的大多需求都已经满足了，最后我们再来补全出现动静&gt;截取摄像头画面&gt;推送图像这个环节。</p><p>群晖本身自带的动静通知功能，也能通过 DS Cam 接受通知，这里我没有使用自动的方案，而是通过 Node-Red 来实现。</p><figure class="image ss-img-wrapper"><img src="https://cdnfile.sspai.com/2024/09/26/article/deaa95f01d2aa9c11a9c80ecf852490c.jpeg?imageView2/2/w/1120/q/90/interlace/1/ignore-error/1" alt="" data-original="https://cdnfile.sspai.com/2024/09/26/article/deaa95f01d2aa9c11a9c80ecf852490c.jpeg" referrerpolicy="no-referrer"></figure><p>首先放流程图，整个的流程逻辑是这样的:</p><ul><li>Node-Red 暴露一个 http 接口 <code>/api/camera/capture</code>,用于被动接受群晖的 WebHook 请求</li><li>Node-Red 通过网络请求，调用群晖 Surveillance API 接口，获得当前所有摄像头信息</li><li>继续通过网络请求，调用群晖 Surveillance API 接口，截图指定摄像头的实时画面</li><li>最终将获得的截图发送到 Telegram</li></ul><p>同理，最终的通知截图也可以使用钉钉、企业微信等其他渠道，我选择 Telegram 是因为之前已经集成了，加上 Telegram 对内容几乎完全没有限制，相对而言我更放心点。</p><p>复制下面的 JSON ，导入到 Node-Red，修正对应的账号、密码、IP、端口和 Telegram bot ChatId 即可</p><p>展开查看 Node-Red 流程配置文件</p><pre class="language-javascript"><code>[
-  {
-    "id": "a07703f3752fc82a",
-    "type": "tab",
-    "label": "抓取群晖摄像头推送到 Telegram",
-    "disabled": false,
-    "info": ""
-  },
-  {
-    "id": "3902801a557a738e",
-    "type": "www-request",
-    "z": "a07703f3752fc82a",
-    "name": "获取 sid",
-    "method": "GET",
-    "ret": "obj",
-    "url": "",
-    "follow-redirects": true,
-    "persistent-http": true,
-    "tls": "",
-    "x": 880,
-    "y": 300,
-    "wires": [["cabd07b9c918bd13"]],
-    "inputLabels": ["输入"],
-    "outputLabels": ["输出"]
-  },
-  {
-    "id": "6e7a90e85b1d736b",
-    "type": "change",
-    "z": "a07703f3752fc82a",
-    "name": "设置群辉用户名、密码、摄像头 ID",
-    "rules": [
-      {
-        "t": "set",
-        "p": "dsm_account",
-        "pt": "msg",
-        "to": "username",
-        "tot": "str"
-      },
-      {
-        "t": "set",
-        "p": "dsm_passwd",
-        "pt": "msg",
-        "to": "password",
-        "tot": "str"
-      },
-      {
-        "t": "set",
-        "p": "dsm_camera_id",
-        "pt": "msg",
-        "to": "1",
-        "tot": "str"
-      },
-      {
-        "t": "set",
-        "p": "dsm_domain",
-        "pt": "msg",
-        "to": "10.0.0.5",
-        "tot": "str"
-      },
-      {
-        "t": "set",
-        "p": "dsm_port",
-        "pt": "msg",
-        "to": "5000",
-        "tot": "str"
-      }
-    ],
-    "action": "",
-    "property": "",
-    "from": "",
-    "to": "",
-    "reg": false,
-    "x": 420,
-    "y": 240,
-    "wires": [["c18d4fe0633037a4"]]
-  },
-  {
-    "id": "833f9be33b550d84",
-    "type": "www-request",
-    "z": "a07703f3752fc82a",
-    "name": "GetSnapshot",
-    "method": "GET",
-    "ret": "bin",
-    "url": "",
-    "follow-redirects": true,
-    "persistent-http": true,
-    "tls": "",
-    "x": 890,
-    "y": 500,
-    "wires": [["45ea4313512d68a6", "1957d8308081700b"]]
-  },
-  {
-    "id": "c18d4fe0633037a4",
-    "type": "function",
-    "z": "a07703f3752fc82a",
-    "name": "url_sid",
-    "func": "msg.url = `http://${msg.dsm_domain}:${msg.dsm_port}/webapi/auth.cgi?api=SYNO.API.Auth&amp;method=login&amp;version=3&amp;account=${msg.dsm_account}&amp;passwd=${msg.dsm_passwd}&amp;session=SurveillanceStation&amp;&amp;format=cookie`;\nconsole.log(msg)\nreturn msg;",
-    "outputs": 1,
-    "noerr": 0,
-    "initialize": "",
-    "finalize": "",
-    "libs": [],
-    "x": 690,
-    "y": 240,
-    "wires": [["3902801a557a738e"]]
-  },
-  {
-    "id": "f3df28b20f02dd3e",
-    "type": "function",
-    "z": "a07703f3752fc82a",
-    "name": "url_snapshot",
-    "func": "var sid;\nsid = msg.payload.data.sid;\nmsg.url = `http://${msg.dsm_domain}:${msg.dsm_port}/webapi/entry.cgi?version=9&amp;id=${msg.dsm_camera_id}&amp;api=\"SYNO.SurveillanceStation.Camera\"&amp;method=\"GetSnapshot\"&amp;profileType=0&amp;_sid=${sid}`;\nreturn msg;",
-    "outputs": 1,
-    "noerr": 0,
-    "initialize": "",
-    "finalize": "",
-    "libs": [],
-    "x": 690,
-    "y": 500,
-    "wires": [["833f9be33b550d84"]]
-  },
-  {
-    "id": "cabd07b9c918bd13",
-    "type": "switch",
-    "z": "a07703f3752fc82a",
-    "name": "",
-    "property": "payload.error.code",
-    "propertyType": "msg",
-    "rules": [
-      {
-        "t": "nnull"
-      },
-      {
-        "t": "else"
-      }
-    ],
-    "checkall": "true",
-    "repair": false,
-    "outputs": 2,
-    "x": 570,
-    "y": 400,
-    "wires": [["3902801a557a738e"], ["f3df28b20f02dd3e"]],
-    "inputLabels": ["输入"]
-  },
-  {
-    "id": "dcb9b48e6b3c1fee",
-    "type": "inject",
-    "z": "a07703f3752fc82a",
-    "name": "手动触发",
-    "props": [
-      {
-        "p": "payload"
-      },
-      {
-        "p": "topic",
-        "vt": "str"
-      }
-    ],
-    "repeat": "",
-    "crontab": "",
-    "once": false,
-    "onceDelay": 0.1,
-    "topic": "",
-    "payload": "",
-    "payloadType": "date",
-    "x": 140,
-    "y": 220,
-    "wires": [["6e7a90e85b1d736b"]]
-  },
-  {
-    "id": "45ea4313512d68a6",
-    "type": "image",
-    "z": "a07703f3752fc82a",
-    "name": "",
-    "width": "360",
-    "data": "payload",
-    "dataType": "msg",
-    "thumbnail": false,
-    "active": true,
-    "pass": false,
-    "outputs": 0,
-    "x": 1120,
-    "y": 500,
-    "wires": []
-  },
-  {
-    "id": "c8427c30a83ac775",
-    "type": "telegram sender",
-    "z": "a07703f3752fc82a",
-    "name": "",
-    "bot": "ff58d9095b6d2cda",
-    "haserroroutput": true,
-    "outputs": 2,
-    "x": 1420,
-    "y": 780,
-    "wires": [[], []]
-  },
-  {
-    "id": "1957d8308081700b",
-    "type": "function",
-    "z": "a07703f3752fc82a",
-    "name": "图像转 TG 格式",
-    "func": "msg.payload = {\n    chatId: 10000, \n    type: \"photo\",\n    content: msg.payload,\n    caption: \"家里有动静,监控提醒\"\n};\nreturn msg;\n",
-    "outputs": 1,
-    "noerr": 0,
-    "initialize": "",
-    "finalize": "",
-    "libs": [],
-    "x": 880,
-    "y": 740,
-    "wires": [["c8427c30a83ac775"]]
-  },
-  {
-    "id": "02fe4781ca3fbb7b",
-    "type": "http in",
-    "z": "a07703f3752fc82a",
-    "name": "/api/camera/capture",
-    "url": "/api/camera/capture",
-    "method": "get",
-    "upload": false,
-    "swaggerDoc": "",
-    "x": 90,
-    "y": 280,
-    "wires": [["6e7a90e85b1d736b", "fb5663502a675986"]]
-  },
-  {
-    "id": "fb5663502a675986",
-    "type": "http response",
-    "z": "a07703f3752fc82a",
-    "name": "",
-    "statusCode": "200",
-    "headers": {
-      "code": "0"
-    },
-    "x": 600,
-    "y": 680,
-    "wires": []
-  },
-  {
-    "id": "ff58d9095b6d2cda",
-    "type": "telegram bot",
-    "botname": "拉布管家",
-    "usernames": "",
-    "chatids": "10000",
-    "baseapiurl": "",
-    "updatemode": "polling",
-    "pollinterval": "300",
-    "usesocks": false,
-    "sockshost": "",
-    "socksprotocol": "socks5",
-    "socksport": "6667",
-    "socksusername": "anonymous",
-    "sockspassword": "",
-    "bothost": "",
-    "botpath": "",
-    "localbotport": "8443",
-    "publicbotport": "8443",
-    "privatekey": "",
-    "certificate": "",
-    "useselfsignedcertificate": false,
-    "sslterminated": false,
-    "verboselogging": false
-  }
-]</code></pre><p>有关这部分的参考文章:</p><ul><li><a href="https://bbs.hassbian.com/thread-21241-1-1.html">NodeRed + Surveillance Station Web API + goCQhttp 监控动检自动推送</a></li><li><a href="https://flows.nodered.org/node/node-red-contrib-telegrambot">node-red-contrib-telegrambot</a></li></ul><figure class="image ss-img-wrapper"><img src="https://cdnfile.sspai.com/2024/09/26/article/ba747108ad1cd7bfc263cdf46e015eea.jpeg?imageView2/2/w/1120/q/90/interlace/1/ignore-error/1" alt="" data-original="https://cdnfile.sspai.com/2024/09/26/article/ba747108ad1cd7bfc263cdf46e015eea.jpeg" referrerpolicy="no-referrer"></figure><p>配置好了之后，建议在群晖摄像头的事件检测那里再精确配置下动作检测区域和灵敏度，避免误报。</p><h2>总结</h2><p>从购买摄像头到最终的监控系统搭建，整个过程大概花了我一个下午的时间。基本上所有的步骤，都能在网上找到详细的教程和资料。</p><p>除了上面所说的功能，理论上，只要想法够多，还能实现更多的功能，比如:</p><ul><li>想要云端存储，配置个同步任务，把监控视频同步到云盘即可（哪怕家里被人放火烧了，也能看到过去的视频）</li><li>想要人脸或者宠物识别: 接入图像识别 API，实现人脸识别（实现更精确的动静通知）</li></ul><p>小小的捣鼓一番，获得一个功能基本完善，但是更安全和经济的自主监控方案，还是一次挺有趣的折腾过程。</p><p style="margin-left:0px;">&gt; 下载少数派 <a href="https://sspai.com/page/client">客户端</a>、关注 <a href="https://sspai.com/s/J71e">少数派公众号</a>，了解更多的新玩意 🆒</p><p style="margin-left:0px;">&gt; 特惠、好用的硬件产品，尽在 <a href="https://shop549593764.taobao.com/?spm=a230r.7195193.1997079397.2.2ddc7e0bPqKQHc" target="_blank">少数派 sspai 官方店铺 </a>🛒</p>]]>
-            </description>
-            <pubDate>Wed, 09 Oct 2024 03:35:42 GMT</pubDate>
-            <guid isPermaLink="false">https://sspai.com/post/92566</guid>
-            <link>https://sspai.com/post/92566</link>
-            <author>
-                <![CDATA[罗罗磊磊]]>
-            </author>
-        </item>
-        <item>
-            <title>
-                <![CDATA[派早报：原生鸿蒙系统公测开启、Google 在反垄断诉讼中败诉等]]>
-            </title>
-            <description>
-                <![CDATA[<h2>你可能错过的新鲜事</h2><h3>原生鸿蒙系统公测开启</h3><p>10 月 8 日，原生鸿蒙系统正式面向用户<a href="https://finance.sina.com.cn/jjxw/2024-10-08/doc-incrvnkv4056326.shtml">开启公测</a>，首批公测机型包括华为 Mate 60 系列、华为 Mate X5 系列、华为 MatePad Pro 13.2 英寸系列，用户可通过「我的华为」APP 中的「升级尝鲜」入口申请升级。华为此前表示，国内市场 TOP 5000 应用已经全部启动鸿蒙原生开发，目前已有超 1 万个应用和元服务上架 HarmonyOS NEXT 应用市场。鸿蒙版微信也于当日开启邀请内测，已升级至原生鸿蒙操作系统 HarmonyOS NEXT 的用户可在收到邀请后体验。</p><h3>Google 在反垄断诉讼中败诉</h3><p>据 The Verge <a href="https://www.theverge.com/policy/2024/10/7/24243316/epic-google-permanent-injunction-ruling-third-party-stores">报道</a>，美国地方法官 James Donato 近日裁定 Google Play 商店构成非法垄断，标志着 Epic 在这场自 2020 年 8 月开始的反垄断诉讼中取得阶段性胜利。本次裁定结果除了下令 Google 在三年之内开放 Play 商店、允许第三方应用商店进行内部分发以引入合理竞争，还要求 Google 开放 Google Play 商店的完整应用目录，并取消 Play 商店在内购结算系统方面的部分强制要求，向开发者和用户明确告知可用的替代支付结算方案。Google 方面于晚些时候发布<a href="https://blog.google/outreach-initiatives/public-policy/epic-games-verdict-appeal/">博文</a>回应称将对该裁决结果提起上诉。</p><h3>Apple 将于 2025 年 2 月举办 Swift 学生挑战赛</h3><p>10 月 8 日 Apple <a href="https://www.apple.com.cn/newsroom/2024/10/apples-swift-student-challenge-to-open-in-february-2025/">宣布</a>，2025 年 Swift Student Challenge 将于 2 月开放作品提交，为期三周。学生、教育工作者及他们的支持者可访问 <a href="http://developer.apple.com/">Apple 开发者网站</a>了解如何准备参赛、完成报名并在申请开放时获取通知。Apple 本次将选出 350 名 Swift Student Challenge 获奖者，表彰参赛作品在开拓创新、灵感创意、社会影响或多元包容等方面的特色，其中 50 名杰出获奖者还将得到额外表彰并受邀在明年夏天前往位于加州库比提诺的 Apple 总部。此外 Apple 还将推出新版 Swift Coding Club 资源和新的《使用 Swift 开发》教程。</p><h3>高通发布 Networking Pro A7 Elite 无线网络平台</h3><p>高通于 10 月 7 日<a href="https://www.ithome.com/0/800/558.htm">推出</a> Networking Pro A7 Elite 无线网络平台，该平台集成了 10G 光纤（XGS-PON）、以太网、射频前端模块和滤波器，采用四核最高 1.8GHz 的 CPU、Wi-Fi 模块支持 Wi-Fi 7（802.11be）、峰值速率 33Gbps，NPU 最高 40 TOPS。目前该平台正在进行样品测试，并计划在 10 月 8 日至 10 日的巴黎 Network X 上展示。</p><h3>《荒野大镖客：救赎 》及其 DLC 将于 10 月 29 日推出 PC 版</h3><p>Rockstar Games 于 10 月 8 日<a href="https://www.rockstargames.com/newswire/article/o3314a19koo147/red-dead-redemption-and-undead-nightmare-coming-to-pc-october-29">宣布</a>，旗下游戏《荒野大镖客：救赎 》及其 DLC「不死噩梦」将于 10 月 29 日通过 Steam 和 Epic 游戏商城登陆 PC 平台。PC 版本为 Double Eleven 工作室合作开发，相比 PS3 原版还将额外带来原生 4K 分辨率、超宽屏支持、HDR10 以及键鼠操作适配，同时也支持英伟达 DLSS 3.7、帧生成、AMD FSR 3.0 等现代图形渲染特性。</p><h2>少数派的近期动态</h2><ul><li>不割手的水獭刀，随身带着随时用：Slice #00200 开箱刀「拆獭」特别版，帮你丝滑拆开日常生活的大小包装，首发特惠 ¥45 元起。<a href="https://sspai.com/post/91966"><strong>进一步了解</strong></a></li><li>少数派 PiPods 真无线耳机清仓特卖只需 199：音质出色、功能全面的无线耳机，105db 高灵敏度，PET + 碳金复合材料振膜，音乐/游戏双模式，半入耳式设计，舒适贴耳。<a href="https://sspai.com/page/pipods"><strong>进一步了解</strong></a></li></ul><h2>你可能错过的文章</h2><ul><li><a href="https://sspai.com/post/92452">5G 套餐如何做到「便宜大碗」？CPE、MiFi 和物联卡初探</a></li><li><a href="https://sspai.com/post/92657">感谢捉虫：聊聊自动更正的前世今生</a></li><li><a href="https://sspai.com/post/91848">从三维设计师入坑三年，我是这样使用 Mac 的</a></li></ul><p>&gt; 关注 <a href="https://sspai.com/s/J71e">少数派公众号</a>，解锁全新阅读体验 📰</p><p>&gt; 实用、好用的 <a href="https://sspai.com/mall">正版软件</a>，少数派为你呈现 🚀</p>]]>
-            </description>
-            <pubDate>Tue, 08 Oct 2024 23:30:00 GMT</pubDate>
-            <guid isPermaLink="false">https://sspai.com/post/92760</guid>
-            <link>https://sspai.com/post/92760</link>
-            <author>
-                <![CDATA[少数派编辑部]]>
             </author>
         </item>
     </channel>
