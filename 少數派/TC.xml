@@ -16,8 +16,134 @@
         <generator>RSSHub</generator>
         <webMaster>i@diygod.me (DIYgod)</webMaster>
         <language>zh-cn</language>
-        <lastBuildDate>Tue, 22 Oct 2024 02:34:23 GMT</lastBuildDate>
+        <lastBuildDate>Tue, 22 Oct 2024 07:34:33 GMT</lastBuildDate>
         <ttl>5</ttl>
+        <item>
+            <title>
+                <![CDATA[學會配置 Fontconfig，讓 Linux 中文字體更順心]]>
+            </title>
+            <description>
+                <![CDATA[<p>相較於我們熟悉的 Windows，用戶在使用 Linux 發行版的過程中，或多或少會面對各種各樣的字體顯示問題，非常影響使用體驗，相信也讓包括我在內的不少用戶苦不堪言。</p><p>下面的情況，或許你遇到過：</p><ul><li>缺少熟悉的宋體、楷體、仿宋等字體，無法順暢地在 Linux 下辦公</li><li>當系統語言並非簡體中文時，簡體中文字形變成日文、韓文的風格，很影響觀感</li><li>Windows 下的「點陣字體」（字體的 hinting 優化）也出現在了 Linux 裏</li><li>安裝第三方字體後，系統顯示的中文字體會變成剛剛安裝的字體</li><li>還有其他潛伏着的問題……</li></ul><p><strong>但是，不要被這些問題給嚇住。</strong>瞭解了 Linux 的字體配置機制，探究問題的本質，這些問題其實都是小意思，都可以用針對性的方案逐個擊破。從此，Linux 也有了不輸給 Windows 的使用體驗，對於現在政企電腦國產化<sup class="ss-footnote" href="" title="政企國產化廣泛使用統信 UOS、麒麟 Linux 等國產 Linux 發行版，基於 Debian。" footnote-id="1">1</sup>，以及一般用戶日常使用 Linux 的場景，都有極大益處。</p><h2>背景知識：Linux 字體，離不開 Fontconfig</h2><p><strong>在 Linux 當中，字體是由 fontconfig 來統一管理的</strong>，它是由 Free Desktop 推出的字體管理工具，通用於各大發行版，甚至在 Windows 下也能使用。</p><p>Fontconfig 擁有開箱即用的便捷性，可以自動掃描特定目錄下的所有字體。使用 Windows 的用戶或許有這樣的體驗：直接把字體文件放進 <code>C:\Windows\Fonts </code>目錄下，就能安裝了。在 Linux 中，這同樣可以做到——你只需把字體放在指定目錄下即可，通常是系統字體目錄（<code>/usr/share/fonts/</code>），或用戶字體目錄（如<code>~/.fonts/</code>）。<sup class="ss-footnote" href="" title="注意不同發行版的字體目錄有所不同，請參考對應發行版的文檔。" footnote-id="2">2</sup></p><p>然而另一方面，fontconfig 是由配置文件驅動的。配置文件的合理與否，直接關係到 Linux 字體顯示的表現。Fontconfig 的配置文件採用 XML 格式，支持的功能特性極其強大；相應地，它的參數種類繁多，擁有一定的門檻。想要合理配置字體，還要一番功夫。</p><p>幸運的是，本教程只需使用 fontconfig 配置文件的極小一部分功能，包括後備字體的配置、禁用 hinting 功能。需要編寫的 XML 代碼量自然也少很多。</p><p>那麼，接下來，筆者就將根據幾個常見的問題場景，為大家提供各個擊破的解決方案。且看下文分解。</p><blockquote><p>注意：閲讀本文，需要你瞭解 <a href="https://www.runoob.com/xml/xml-tutorial.html" target="_blank">XML 文件的基礎知識</a>。</p></blockquote><h2>安裝基本字體，解決中文字體無法顯示的問題</h2><p>現在的 Linux 發行版，其默認字體以 Noto 系列為大宗，中文字體為對應的 Noto CJK 系列，<sup class="ss-footnote" href="" title="早期的發行版（如 2015 年之前的 Ubuntu）有可能使用其他字體，例如 Droid Sans Fallback。" footnote-id="3">3</sup>通常各大發行版都有自帶。</p><p>但如果你用的是 Arch Linux、Alpine 這些需要「純手工」配置的操作系統，這些字體包是不會默認安裝的，需要你手動安裝。一旦漏掉中文字體，那麼在顯示中文的地方，你就只能看到一片空白，或者是「豆腐塊（囗）」。更麻煩的是，如果漏掉英文字體，且系統默認語言為英文，那麼你就只能面對茫茫一片空白，只能對着界面「乾瞪眼」。</p><p>要解決這個問題，只需安裝對應發行版的 Noto 字體包，即可解決最基本的文字顯示問題。以下列舉部分發行版的安裝命令：</p><pre class="language-shell"><code># Arch Linux。其中 noto-fonts 為西文字體，noto-fonts-cjk 為中日韓文字體
+sudo pacman -S noto-fonts noto-fonts-cjk
+
+# Ubuntu
+sudo apt install fonts-noto-core fonts-noto-cjk
+
+# Alpine
+sudo apk update
+sudo apk add --upgrade font-noto font-noto-cjk
+
+# Void Linux
+sudo xbps-install -Su noto-fonts-ttf noto-fonts-cjk</code></pre><p>另外，如果你希望使用第三方字體來作為界面顯示字體，則 Noto 字體包就不是剛需。你只需把你喜歡的字體複製到發行版的字體目錄下即可，例如 Arch Linux 的字體目錄為<code>/usr/share/fonts/</code>。</p><blockquote><p><strong>注意：</strong>為便於管理，請將字體文件放到字體文件夾的二級目錄裏，例如<code>/usr/share/fonts/TTF</code>（或<code>/usr/share/fonts/</code>下的其他子目錄）。</p></blockquote><h2>正確設置區域，解決字體顯示混亂的問題</h2><p>Linux 系統的區域（locale）設置，直接決定了系統顯示的語言、時間格式、數字格式等體驗。如果區域設置不符合規範，那麼系統會使用內置的默認區域「<code>C</code>」，它會導致字體顯示異常，例如：</p><ul><li>在終端應用（如 Konsole）裏輸入中文並按退格鍵時，文字還在，但只顯示一半</li><li><a href="https://ohmyz.sh/" target="_blank">Oh My Zsh</a> 等使用特殊字符的終端擴展，在使用時會出現亂碼</li><li>部分軟件在顯示中文時可能出現亂碼</li></ul><p>要解決字體顯示問題，你需要進入桌面環境的「區域設置」，將區域設置為正確的值。</p><h3>0）確保已經激活了目標區域</h3><p>Linux 發行版提供了世界各地各種語言的區域支持。一般像 Ubuntu、Deepin、Zorin OS、銀河麒麟這些新手向發行版，默認已經幫你配置好。<sup class="ss-footnote" href="" title="嚴格來説，是使用 Calamares、YaST 等安裝程序框架所安裝的發行版，都會在安裝過程中為你自動配置，包括區域、時區等參數。" footnote-id="4">4</sup>但對於 Arch Linux 這些需要「純手工」安裝的發行版，往往需要我們自行檢查並激活區域支持。</p><p>通常，我們至少需要保證英語、簡體中文的區域支持打開。</p><ul><li><strong>第一步：</strong>用 root 權限的文本編輯器打開<code>/etc/locale.gen</code>，找到以下幾行，將它們前面的井號（「<code>#</code>」）刪掉，然後保存：</li></ul><pre class="language-shell"><code>#en_US.UTF-8 UTF-8
+...
+#zh_CN.UTF-8 UTF-8</code></pre><ul><li><strong>第二步：</strong>在終端中運行以下命令，讓系統重新激活區域支持：</li></ul><pre class="language-shell"><code>sudo locale-gen</code></pre><p>命令執行結果如下所示：</p><pre class="language-shell"><code>sudo locale-gen
+Generating locales...
+  en_US.UTF-8... done
+  zh_CN.UTF-8... done
+Generation complete.</code></pre><ul><li><strong>提示：</strong>如果你還需要其他區域的支持，就取消相應行前的註釋。例如，想啓用日文支持，就取消註釋<code>ja_JP.UTF-8 UTF-8</code>這一行。</li></ul><h3>1）在桌面環境的設置裏設置區域</h3><p>常用的桌面環境，通常在各自的「系統設置」程序中提供語言設置的入口，不同桌面環境的入口也有所不同。具體可參考各個發行版和桌面環境的文檔。</p><ul><li><strong>Gnome：</strong>在「活動面板（Activities）」中，鍵入「Region &amp; Language」</li><li><strong>KDE：</strong>打開「系統設置（System Settings）」→「區域和語言（Region &amp; Language）」→「語言（Language）」</li><li><strong>Cinnamon：</strong>打開「系統設置（System Settings）」→「語言（Languages）」</li><li><strong>Deepin、UOS：</strong>打開「控制中心」→「鍵盤和語言」<sup class="ss-footnote" href="" title="國產操作系統通常已經配置好區域和語言，無需幹預。" footnote-id="5">5</sup></li></ul><h3>2）對於輕量級桌面環境</h3><p>有些輕量級桌面環境沒有配備區域設置，例如 MATE Desktop。這時，你可以藉助第三方軟件 <a href="https://github.com/linuxmint/mintlocale" target="_blank"><strong>mintlocale</strong></a> 完成設置，它是 Linux Mint 的語言設置工具，通用於其他發行版。</p><p>Arch Linux 用戶可以直接從 AUR 安裝（假設你已經安裝了 <a href="https://aur.archlinux.org/packages/yay">Yay</a> 這款 AUR 助手）：</p><pre class="language-shell"><code>yay -S mintlocale</code></pre><p>在終端中運行 mintlocale，然後按你的需要，依次設置以下參數：</p><figure class="table"><table><thead><tr><th>參數</th><th>作用</th></tr></thead><tbody><tr><td>Language</td><td><strong>決定系統語言。這是非常重要的參數</strong></td></tr><tr><td>Region</td><td>決定系統所在的地區。區域設置決定了數字、貨幣、度量衡等格式，為應用程序所採用</td></tr><tr><td>Time format</td><td>決定時間／日期的格式，不同區域有不同的時間日期表示方式</td></tr><tr><td>System locale</td><td>顯示當前已設置的區域設置</td></tr></tbody></table></figure><p>你需要將這些參數設置為正確的國家／地區、語言，例如中國大陸的簡體中文對應「Chinese, China」。</p><figure class="image ss-img-wrapper"><img src="https://cdnfile.sspai.com/2024/10/16/e293f4fa12ccc150eb9d5c976ad0c44a.png?imageView2/2/w/1120/q/90/interlace/1/ignore-error/1" data-original="https://cdnfile.sspai.com/2024/10/16/e293f4fa12ccc150eb9d5c976ad0c44a.png" referrerpolicy="no-referrer"><figcaption>mintlocale 的界面。</figcaption></figure><p>設置完成後，點擊「Apply System-Wide」，全局應用區域設置。期間會要求你輸入密碼（該設置需要 root 權限）。</p><p>最後，重啓電腦，即可生效。因區域設置導致的字體問題就得到解決。</p><h2>安裝 Windows 字體，解決辦公缺少字體的問題</h2><blockquote><p>聲明：</p><p>由於潛在的授權許可條款，使用 Windows 內置字體可能存在一定的法律風險。</p><p>這些字體應當用於個人及非商用場合；商用場合應當獲得字體版權方的授權。</p></blockquote><p>長期以來，在政府、企業辦公領域主流的操作系統都是 Windows。在這一背景下，Windows 自帶的中易宋體（SimSun）、仿宋（SimFang）、楷體（SimKai）、Times New Roman 等字體都成為了規範字體；微軟雅黑等用於界面顯示的字體也深入人心，是 PPT 製作的常備字體。</p><p>不過，上面這些字體由於涉及到授權許可問題，是不會隨 Linux 發行版提供的。有些開發者也設計了這些字體的開源「平替」，例如 UKai、UMing，但它們的顯示效果還是和 Windows 自帶的字體有明顯區別，不能完全替代。</p><p>因此，如果你需要使用 Linux 辦公，尤其是在政企中使用，那麼就有必要將 Windows 的這些字體安裝到系統中。</p><h3>1）通用的方式：直接從 Windows 中複製</h3><p>最直接、最簡單的方法，就是從一台 Windows 電腦中提取字體。</p><ul><li><strong>第一步，</strong>你可以直接進入 Windows 的字體目錄（如<code>C:\Windows\Fonts\</code>），選中你需要的字體，然後按 Ctrl+C 複製，粘貼到可移動磁盤中，或者是刻錄成光盤，等。<sup class="ss-footnote" href="" title="很多政府機關不允許連接 U 盤，只能使用光盤。那麼就用刻錄機和刻錄盤來傳輸文件吧。" footnote-id="6">6</sup></li></ul><figure class="image ss-img-wrapper"><img src="https://cdnfile.sspai.com/2024/10/17/314157b540998c874934cdd0bbf27ce7.png?imageView2/2/w/1120/q/90/interlace/1/ignore-error/1" data-original="https://cdnfile.sspai.com/2024/10/17/314157b540998c874934cdd0bbf27ce7.png" referrerpolicy="no-referrer"><figcaption>在 Windows 的字體目錄中，選擇你要導出的字體。</figcaption></figure><ul><li><strong>第二步，</strong>在你的 Linux 電腦上，插入你保存了字體的磁盤或光盤。打開文件管理器，瀏覽到磁盤或光盤的路徑，右擊空白處選擇「打開終端」（或其他類似的選項）。</li><li><strong>第三步，</strong>在終端中運行以下命令，將字體複製到 Linux 發行版的字體目錄中。<strong>注意，你需要 root 權限。</strong></li></ul><pre class="language-shell"><code># 建立一個專門的子目錄，存放來自 Windows 的字體
+sudo mkdir /usr/share/fonts/Windows_TTF/
+
+# 由於 Linux 下的文件區分大小寫，因此我們要兼顧大小寫，以便所有字體都能複製到目標位置
+sudo cp *.TTF *.ttf *.OTF *.otf /usr/share/fonts/Windows_TTF/</code></pre><ul><li><strong>第四步，</strong>在終端中運行<code>fc-cache</code>，刷新字體緩存，使更改生效：</li></ul><pre class="language-null"><code>fc-cache -v</code></pre><h3>2）如果你是 Arch Linux 用戶：可以安裝 AUR 包</h3><p>如果你是 Arch Linux 及其衍生版（如 Manjaro）的用戶，AUR 裏提供了幾組字體安裝包，可以極其方便地為 Arch Linux 補充 Windows 必備字體。</p><p><strong>構建過程中，它們會實時從微軟的官方鏡像</strong><sup class="ss-footnote" href="" title="包括 Windows 的安裝 ISO、可選功能包。" footnote-id="7">7</sup><strong>獲取字體文件，因此安裝過程需要全程保持網絡暢通。</strong></p><p>這些包有以下幾種類型：</p><figure class="table"><table><thead><tr><th>包名</th><th>説明</th></tr></thead><tbody><tr><td><code>ttf-ms-win10-auto-&lt;區域&gt;</code></td><td><p>從 Windows 10 安裝鏡像中獲取指定區域的系統基礎字體。</p><p><code>&lt;區域&gt;</code>為小寫的區域代碼，例如，中文對應的包名為<code>ttf-ms-win10-auto-zh_cn</code>。</p></td></tr><tr><td><code>ttf-ms-win10-auto</code></td><td>從 Windows 10 安裝鏡像中獲取系統基礎字體，主要是英文字體（如 Segoe UI、Times New Roman）。</td></tr><tr><td><code>ttf-ms-win11-auto-&lt;區域&gt;</code></td><td>類似於<code>ttf-ms-win10-auto-&lt;區域&gt;</code>，區別在於它從 Windows 11 鏡像中獲取。</td></tr><tr><td><code>ttf-ms-win11-auto</code></td><td>類似於<code>ttf-ms-win10-auto</code>，區別在於它從 Windows 11 鏡像中獲取。</td></tr><tr><td><code>ttf-ms-win11-fod-auto-&lt;語言&gt;</code></td><td><p>從 Windows 11 可選功能包中，獲取指定語言的擴展字體。</p><p><code>&lt;語言&gt;</code>為目標語言的代碼，例如簡體中文對應<code>hans</code>，繁體中文對應<code>hant</code>，日語對應<code>jpan</code>。</p></td></tr></tbody></table></figure><p><strong>對於簡體中文用戶，筆者建議選擇基於 Windows 11 的包，以保證字體的更新。你可以通過 Yay 來進行安裝：</strong></p><pre class="language-shell"><code>yay -S --noconfirm ttf-ms-win11-auto ttf-ms-win11-auto-zh_cn ttf-ms-win11-fod-auto-hans</code></pre><p>上述三個包，包含了以下字體：</p><figure class="table"><table><thead><tr><th>包名</th><th>包含的字體</th></tr></thead><tbody><tr><td><code>ttf-ms-win11-auto</code></td><td>Segoe UI、Times New Roman、Courier New 等</td></tr><tr><td><code>ttf-ms-win11-auto-zh_cn</code></td><td>中易宋體、微軟雅黑</td></tr><tr><td><code>ttf-ms-win11-fod-auto-hans</code></td><td>中易楷體、中易仿宋、中易黑體、等線</td></tr></tbody></table></figure><p>安裝完成後，這些字體就可以使用了。<sup class="ss-footnote" href="" title="安裝過程中會自動運行 fc-cache 更新字體緩存。" footnote-id="8">8</sup></p><blockquote><p><strong>注意：</strong></p><ul><li>安裝過程使用 <a href="https://github.com/fangfufu/httpdirfs/">httpdirfs</a> 來遠程在線掛載微軟官方 ISO 鏡像，因此需要全程保持網絡暢通。視網絡環境不同，安裝速度也有所不同，請保持耐心。</li><li>AUR 還提供了不帶<code>auto</code>字樣的包（例如<code>ttf-ms-win11</code>），但是筆者不建議安裝，因為它們需要你自己下載安裝鏡像，並自行提取鏡像裏的文件，很麻煩。</li></ul></blockquote><h2>設置後備字體，解決字體顯示「變色龍」的問題</h2><p>在按照上一章的步驟安裝 Windows 字體後，你或許會發現這樣一種情況：<strong>中文字體變了</strong>。</p><p>原本統一使用 Noto Sans CJK 字體顯示（與 Android 的默認字體一致），但現在竟然莫名其妙地變成了微軟雅黑，甚至是仿宋和楷體。</p><p>而如果你的系統語言並不是簡體中文，或者是軟件的字體設置為英文字體（如，Hack Nerd Font），那麼在顯示簡中漢字的時候也會出現問題：字形不是大陸規範字形，而是變成日文甚至韓文的漢字字形。</p><p>那麼，這個問題又將如何解決？</p><figure class="image ss-img-wrapper"><img src="https://cdnfile.sspai.com/2024/10/18/55a858d0e2bc54fc6b181521f171c142.png?imageView2/2/w/1120/q/90/interlace/1/ignore-error/1" data-original="https://cdnfile.sspai.com/2024/10/18/55a858d0e2bc54fc6b181521f171c142.png" referrerpolicy="no-referrer"><figcaption>日文系統環境下，Bing 的搜索結果，可見這裏混雜了 MS Gothic 與微軟雅黑這兩種字體。</figcaption></figure><h3>1）「罪魁禍首」：<strong>Fontconfig 的後備字體機制</strong></h3><p>造成以上這兩種情況的原因，就來自 fontconfig 的後備字體（fallback font）機制。它會在顯示一個字形而當前字體沒有該字形時，自動選擇另一種字體來顯示。</p><p><strong>如果後備字體沒有配置好，fontconfig 就會按特定規則選擇字體，例如你剛剛安裝的字體，這樣一來字體顯示就會變得很「詭異」。</strong></p><p>接下來，不妨更進一步分析前文的兩個問題。</p><ul><li>看看第一個問題。現在的桌面環境，設置的默認字體都為英文字體，例如 Noto Sans。這些字體是不包含中文字符的，一旦顯示中文字符，就會觸發 fontconfig 的後備字體機制。在安裝 Windows 字體前，電腦沒有其他中文字體，因此自然會選中 Noto Sans CJK；然而，安裝仿宋、楷體這樣的中文字體後，fontconfig 有了「新選擇」，原先的後備字體就被頂掉了。</li><li>再看看第二個問題。對於多語言的環境，fontconfig 會根據系統語言選擇對應語言的字體，例如，日文環境下就選擇 Noto Sans CJK JP、MS Gothic 等<sup class="ss-footnote" href="" title="MS Gothic 是 Windows 自帶的日文字體。你可以按前文的講解，從 Windows 中獲取，或者是安裝 ttf-ms-win11-fod-auto-jpan 這個包。" footnote-id="9">9</sup>。但是，日文字體沒有收錄簡體漢字，因此在顯示簡體漢字的場合，同樣會觸發 fontconfig 的後備字體機制，優先選擇新安裝的中文字體。於是，同樣會導致字體顯示效果變得詭異。</li></ul><p>因此，只有正確配置 fontconfig 的後備字體，才能改善字體的顯示錶現。</p><h3>2）如何配置後備字體？</h3><p>接下來，我們就來編寫一個 fontconfig 配置文件，為常見的字體配置一個後備字體序列。</p><ul><li><strong>第一步：</strong>在用戶主目錄的<code>.config/fontconfig</code>子目錄下，創建文件<code>fonts.conf</code>。如果沒有該目錄，就新建一個。</li><li><strong>第二步：</strong>打開<code>fonts.conf</code>，填入以下內容。務必結合你的實際情況，參考代碼中的註釋來修改。</li></ul><blockquote><p><strong>注意：</strong>如果<code>fonts.conf</code>已有內容，就把<code>&lt;fontconfig&gt;</code>節點裏的所有 XML 節點都追加到現有的<code>&lt;fontconfig&gt;</code>節點裏。</p></blockquote><pre class="language-htmlembedded"><code>&lt;?xml version="1.0"?&gt;
+&lt;!DOCTYPE fontconfig SYSTEM "urn:fontconfig:fonts.dtd"&gt;
+
+&lt;fontconfig&gt;
+    &lt;!--
+        為你電腦上的字體配置後備字體序列。
+        每個字體對應一個&lt;alias&gt; 小節。
+    --&gt;
+    &lt;alias&gt;
+        &lt;!--
+            &lt;family&gt; 字段，是你要設置後備字體的字體名稱。
+            【提示】字體名稱可以是字體的中文名（在 WPS 等軟件看到的名字），例如「宋體」
+        --&gt;
+        &lt;family&gt;Cantarell&lt;/family&gt; &lt;!-- 這裏的 Cantarell 是一個英文字體，我們需要為其配置後備中文字體。 --&gt;
+        &lt;!--
+            &lt;prefer&gt; 字段，是一個後備字體的列表，可以包含多個&lt;family&gt;字段。
+            後備字體的顯示順序自上而下排列，優先顯示排序靠前的字體，
+            如果靠前的字體沒有可以顯示的字符，那麼後面的字體就會頂上。
+        --&gt;
+        &lt;prefer&gt;
+            &lt;family&gt;DengXian&lt;/family&gt;
+            &lt;family&gt;Noto Sans CJK SC&lt;/family&gt;            &lt;!-- 建議使用 Noto Sans CJK SC 作為兜底 --&gt;
+        &lt;/prefer&gt;
+    &lt;/alias&gt;
+
+    &lt;!--
+        後面的設置項，格式都是一樣的，這裏不再贅述。
+    --&gt;
+    &lt;alias&gt;
+        &lt;family&gt;Hack Nerd Font&lt;/family&gt;
+        &lt;prefer&gt;
+            &lt;family&gt;Noto Sans CJK SC&lt;/family&gt;
+        &lt;/prefer&gt;
+    &lt;/alias&gt;
+
+    &lt;alias&gt;
+        &lt;family&gt;Noto Sans&lt;/family&gt;
+        &lt;prefer&gt;
+            &lt;family&gt;Noto Sans CJK SC&lt;/family&gt;
+        &lt;/prefer&gt;
+    &lt;/alias&gt;
+
+    &lt;alias&gt;
+        &lt;family&gt;Noto Sans Mono&lt;/family&gt;
+        &lt;prefer&gt;
+            &lt;family&gt;Noto Sans Mono CJK SC&lt;/family&gt;
+            &lt;family&gt;Noto Sans CJK SC&lt;/family&gt;
+        &lt;/prefer&gt;
+    &lt;/alias&gt;
+
+    &lt;alias&gt;
+        &lt;family&gt;Noto Serif&lt;/family&gt;
+        &lt;prefer&gt;
+            &lt;family&gt;Noto Serif CJK SC&lt;/family&gt;
+        &lt;/prefer&gt;
+    &lt;/alias&gt;
+
+    &lt;!--
+        這裏的 MS Gothic 是 Windows 自帶的日文字體，相當於我們的黑體。
+        該字體沒有收錄簡體中文字符，所以我們要設置中易黑體（SimHei）作為後備。
+    --&gt;
+    &lt;alias&gt;
+        &lt;family&gt;MS Gothic&lt;/family&gt;
+        &lt;prefer&gt;
+            &lt;family&gt;SimHei&lt;/family&gt;
+            &lt;family&gt;Noto Sans CJK SC&lt;/family&gt;
+        &lt;/prefer&gt;
+    &lt;/alias&gt;
+
+    &lt;alias&gt;
+        &lt;family&gt;sans-serif&lt;/family&gt;
+        &lt;prefer&gt;
+            &lt;family&gt;Noto Sans CJK SC&lt;/family&gt;
+        &lt;/prefer&gt;
+    &lt;/alias&gt;
+
+&lt;/fontconfig&gt;
+</code></pre><ul><li><strong>第三步：</strong>寫好<code>fonts.conf</code>之後，刷新字體緩存。注意這裏的<code>fc-cache</code>需要帶上<code>-f</code>參數，強制刷新，否則後備字體有可能不會生效。</li></ul><pre class="language-shell"><code>fc-cache -f -v</code></pre><p>完成字體緩存刷新後，重新打開應用程序，你就能看到更改生效。</p><figure class="image ss-img-wrapper"><img src="https://cdnfile.sspai.com/2024/10/18/9d3b7b106bc2ffa0eb14ba4585da77a5.png?imageView2/2/w/1120/q/90/interlace/1/ignore-error/1" data-original="https://cdnfile.sspai.com/2024/10/18/9d3b7b106bc2ffa0eb14ba4585da77a5.png" referrerpolicy="no-referrer"><figcaption>設置了後備字體的效果。雖然是 Noto Sans CJK SC 與 JP 的混雜，但明顯比設置前協調多了。</figcaption></figure><p>按照以上的方法設置後，你的電腦字體顯示就會非常穩定，不會再出現字體顯示不統一等問題。</p><blockquote><p><strong>注意：</strong>後備字體設置只對<code>fonts.conf</code>當中的字體生效。如果你還使用其他字體，你需要為這些字體增加相應的配置。</p></blockquote><h2>禁用 Hinting，解決特定字體顯示效果拉胯的問題</h2><p>熟悉 Windows 的朋友都知道，在 Windows 當中，若屏幕分辨率和縮放比率較低，則一些字體顯示出來的效果一言難盡，例如：</p><ul><li>宋體、細明體（PMingLiU）、MS Gothic、MS Mincho 等東亞語言字體，統統顯示為點陣</li><li>微軟雅黑的顯示效果與打印效果大相徑庭</li></ul><p>以上這些現象的產生，是因為這些字體自帶了 hinting（字體微調）數據，會在特定的字號下，顯示經過專門設計的位圖字體。宋體的點陣就是這麼來的。該技術的初衷是保證在低分辨率下，屏幕界面的文字依然能清晰顯示，但隨着高分屏的普及，這一技術如今反而拖了顯示效果的後腿。</p><p>不幸的是，Linux 發行版的字體渲染也支持 hinting。因此，同樣的 Windows 字體，如果安裝到 Linux 中，你同樣要面對讓你一言難盡的顯示效果，不知道該用什麼語言來形容。</p><figure class="image ss-img-wrapper"><img src="https://cdnfile.sspai.com/2024/10/20/b286b97d12491076f7e2afab56f9c92e.png?imageView2/2/w/1120/q/90/interlace/1/ignore-error/1" data-original="https://cdnfile.sspai.com/2024/10/20/b286b97d12491076f7e2afab56f9c92e.png" referrerpolicy="no-referrer"><figcaption>以國考的報名系統為例。文本框中的提示文字為宋體，但因 hinting 而顯示為我們熟悉的點陣。</figcaption></figure><p>幸運的是，同樣通過配置 fontconfig，我們<strong>可以輕鬆禁用這些字體的 hinting 功能。</strong></p><ul><li><strong>第一步：</strong>打開用戶主目錄的<code>.config/fontconfig/fonts.conf</code>。如果沒有，那就新建一個。</li><li><strong>第二步：</strong>在<code>&lt;fontconfig&gt;</code>節點中，補充與 hinting 設置相關的節點。同樣是每個字體對應一個<code>&lt;match&gt;</code>節點。</li></ul><pre class="language-htmlembedded"><code>
+  &lt;!--
+    禁用特定字體的 Hinting 功能。
+    下面的代碼就是讓 Fontconfig 匹配特定的字體，然後修改參數以禁用它們的 Hinting 功能。
+  --&gt;
+  &lt;match target="font"&gt;
+    &lt;test name="family" compare="eq" ignore-blanks="true"&gt;
+    &lt;!-- &lt;string&gt;節點，在這裏指定字體的名字。例如中易宋體就是 SimSun --&gt;
+    &lt;!-- 【提示】字體名稱可以是字體的中文名（在 WPS 等軟件看到的名字），例如「宋體」 --&gt;
+      &lt;string&gt;宋體&lt;/string&gt;  
+    &lt;/test&gt;
+    &lt;edit name="hinting" mode="assign"&gt;
+      &lt;bool&gt;false&lt;/bool&gt;
+    &lt;/edit&gt;
+  &lt;/match&gt;</code></pre><ul><li><strong>第三步：</strong>設置完成後，更新字體緩存：</li></ul><pre class="language-shell"><code>fc-cache -fv</code></pre><p>這樣，重新打開相應的程序，你就會看到字體渲染有了明顯改善：</p><figure class="image ss-img-wrapper"><img src="https://cdnfile.sspai.com/2024/10/20/aac428086c4c070c030e54757b740ab2.png?imageView2/2/w/1120/q/90/interlace/1/ignore-error/1" data-original="https://cdnfile.sspai.com/2024/10/20/aac428086c4c070c030e54757b740ab2.png" referrerpolicy="no-referrer"><figcaption>禁用 hinting 後，沒有了點陣，宋體的顯示效果與打印效果一致。</figcaption></figure><h2>寫在最後</h2><p>作為日常使用 Arch Linux 的作者，筆者一直致力於讓自己的電腦用起來更加舒服，尤其是字體顯示的表現。</p><p>以上的經驗，就是我自己在「調教」Arch Linux 字體顯示中積累而成的，一步步實踐下來，現在屏幕上的字體顯示格外舒適，無論是日常使用，還是作為重中之重的辦公，都與 Windows 不相上下，掃清了顧慮，迎來了舒爽。</p><p>如果你也像我一樣日常使用 Linux，或者是因工作需要而離不開 Linux──尤其是使用政企統一配備的國產電腦、國產 Linux 發行版，那麼期待這篇教程能對你有所啓發。</p><h4>關聯閲讀：</h4><ul><li><a href="https://sspai.com/post/90194" target="_blank">終於可以在 Linux 下愉快打印了：Linux 發行版配置打印機攻略</a></li><li><a href="https://sspai.com/post/91396" target="_blank">終於可以愉快地掃描了：Linux 掃描儀配置與使用攻略</a></li><li><a href="https://sspai.com/post/89194" target="_blank">沒錯，我日常就用 Linux：談談我的 Linux 發行版使用體會</a></li></ul><p style="margin-left:0px;">&gt; 關注&nbsp;<a href="https://sspai.com/link?target=https%3A%2F%2Fwww.xiaohongshu.com%2Fuser%2Fprofile%2F63f5d65d000000001001d8d4" target="_blank">少數派小紅書</a>，感受精彩數字生活 🍃</p><p style="margin-left:0px;">&gt; 實用、好用的&nbsp;<a href="https://sspai.com/mall">正版軟件</a>，少數派為你呈現 🚀</p>]]>
+            </description>
+            <pubDate>Tue, 22 Oct 2024 03:30:00 GMT</pubDate>
+            <guid isPermaLink="false">https://sspai.com/post/92955</guid>
+            <link>https://sspai.com/post/92955</link>
+            <author>
+                <![CDATA[愛拼安小匠]]>
+            </author>
+        </item>
         <item>
             <title>
                 <![CDATA[派早報：騰訊會議將調整免費版權益，美滿電子向客戶發函通知漲價等]]>
@@ -166,20 +292,6 @@ docker compose -f firefly-iii.yml up -d</code></pre><p>服務部署完成後，�
             <link>https://sspai.com/post/92911</link>
             <author>
                 <![CDATA[風馬牛]]>
-            </author>
-        </item>
-        <item>
-            <title>
-                <![CDATA[具透 Plus | Firefox 垂直標籤、Windows 版 sudo 等近期半成品功能]]>
-            </title>
-            <description>
-                <![CDATA[具透 Plus | Firefox 垂直標籤、Windows 版 sudo 等近期半成品功能]]>
-            </description>
-            <pubDate>Thu, 17 Oct 2024 11:44:48 GMT</pubDate>
-            <guid isPermaLink="false">https://sspai.com/post/92995</guid>
-            <link>https://sspai.com/post/92995</link>
-            <author>
-                <![CDATA[少數派編輯部]]>
             </author>
         </item>
     </channel>
