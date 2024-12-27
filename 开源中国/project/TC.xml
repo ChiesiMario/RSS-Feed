@@ -9,8 +9,357 @@
         <generator>RSSHub</generator>
         <webMaster>contact@rsshub.app (RSSHub)</webMaster>
         <language>en</language>
-        <lastBuildDate>Fri, 27 Dec 2024 02:37:12 GMT</lastBuildDate>
+        <lastBuildDate>Fri, 27 Dec 2024 07:36:19 GMT</lastBuildDate>
         <ttl>5</ttl>
+        <item>
+            <title>利用 deepin-IDE 的 AI 能力，我實現了文件加密擴展</title>
+            <description>&lt;div class=&quot;content&quot;&gt;
+                                                                    
+                                                        &lt;p&gt;經過多輪迭代，deepin 文件管理器（dde-file-manager）的擴展功能已經趨於穩定，看到越來越豐富的文管新功能，&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fwww.deepin.org%2Fzh%2Fdeepin-ide-implement-file-encryption-extension%2F&quot; target=&quot;_blank&quot;&gt;作為一名技術愛好者，也想自己動手寫個插件擴展一下文管的功能。&lt;/a&gt;&lt;/p&gt; 
+&lt;p&gt;我選擇的開發工具是 deepin-IDE，原因有兩個：一是 deepin-IDE 本身集成了文管的插件模板，對研發者而言只需要通過引導創建模板代碼，然後在上面修修改改即可，不用再去閲讀大量的文管源碼；還有一個原因是 deepin-IDE 已經支持了較多的 AI 能力，包括註釋添加、代碼翻譯、修復 bug、解釋代碼、代碼審查、生成單元測試和生成提交信息，正好藉此機會看看能帶來多少的效率提升。&lt;/p&gt; 
+&lt;p&gt;首先説下結論，有模板 + AI 的助力，整個開發過程體驗下來還是非常順暢，讓我僅用不到兩個小時的時間就把功能加上，接下來就分享給大家完整的開發過程。&lt;/p&gt; 
+&lt;h1&gt;&lt;strong&gt;Part 1&amp;nbsp; 準備工作&lt;/strong&gt;&lt;/h1&gt; 
+&lt;p&gt;首先通過應用商店，下載最新版本的 deepin-IDE ：&lt;/p&gt; 
+&lt;p style=&quot;text-align:center&quot;&gt;&lt;img alt=&quot;&quot; height=&quot;724&quot; src=&quot;https://www.deepin.org/wp-content/uploads/2024/12/%E4%BC%81%E4%B8%9A%E5%BE%AE%E4%BF%A1%E6%88%AA%E5%9B%BE_17352640412517.png&quot; width=&quot;1080&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
+&lt;p&gt;啓動 deepin-IDE，首先看到的是最近訪問頁面，點擊下圖中的按鈕，在彈出的引導界面選擇文管插件，隨後按照嚮導一步一步的完成配置。&lt;/p&gt; 
+&lt;p style=&quot;text-align:center&quot;&gt;&lt;img alt=&quot;&quot; height=&quot;425&quot; src=&quot;https://www.deepin.org/wp-content/uploads/2024/12/%E4%BC%81%E4%B8%9A%E5%BE%AE%E4%BF%A1%E6%88%AA%E5%9B%BE_1735264045606.png&quot; width=&quot;374&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
+&lt;p&gt;引導完成後在工程樹可以看到插件模板的代碼結構：&lt;/p&gt; 
+&lt;p style=&quot;text-align:center&quot;&gt;&lt;img alt=&quot;&quot; height=&quot;474&quot; src=&quot;https://www.deepin.org/wp-content/uploads/2024/12/%E4%BC%81%E4%B8%9A%E5%BE%AE%E4%BF%A1%E6%88%AA%E5%9B%BE_17352640484229.png&quot; width=&quot;351&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
+&lt;p&gt;在這個模板裏面有説明文檔，按照指引將工程配置一遍，在編譯後插件文件會自動安裝到指定位置，文管檢測到插件變化，提示用戶進行更新：&lt;/p&gt; 
+&lt;p style=&quot;text-align:center&quot;&gt;&lt;img alt=&quot;&quot; height=&quot;159&quot; src=&quot;https://oscimg.oschina.net/oscnet//dcbe96d30822bae6fe5770dfc731fe66.png&quot; width=&quot;380&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
+&lt;p&gt;為了測試插件是否安裝成功，打開文管並選中某個文件右鍵，已經可以看到新增的右鍵菜單：&lt;/p&gt; 
+&lt;p style=&quot;text-align:center&quot;&gt;&lt;img alt=&quot;&quot; height=&quot;615&quot; src=&quot;https://oscimg.oschina.net/oscnet//ada95666a1a662874bae9b8e63d110b6.png&quot; width=&quot;509&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
+&lt;p&gt;這些右鍵菜單都是插件模板已經實現的功能，我們要做的是修改這些代碼，在這個過程中就可以體驗 deepin-IDE 的 AI 輔助編程功能。需要注意的是，如果想要體驗完整的 AI 功能，還需要做一個準備工作，就是登陸 AI 插件關聯的網站：在 IDE 界面的消息界面，會彈出 AI 插件登陸提示：&lt;/p&gt; 
+&lt;p style=&quot;text-align:center&quot;&gt;&lt;img alt=&quot;&quot; height=&quot;131&quot; src=&quot;https://oscimg.oschina.net/oscnet//3d967e94949b5c781c04c331a95b9073.png&quot; width=&quot;418&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
+&lt;p&gt;點擊登陸按鈕，完成登陸後就可以使用全部的 AI 功能。到這裏，所有的準備工作就算完成。&lt;/p&gt; 
+&lt;p&gt;&amp;nbsp;&lt;/p&gt; 
+&lt;h1&gt;&lt;strong&gt;Part 2&amp;nbsp; 解釋功能&lt;/strong&gt;&lt;/h1&gt; 
+&lt;p&gt;要新增加密功能，第一步應該在文管中添加右鍵菜單。找到對應的源文件，閲讀代碼並定位到如下的位置：&lt;/p&gt; 
+&lt;blockquote&gt; 
+ &lt;p&gt;bool MyMenuPlugin::buildNormalMenu(DFMExtMenu *main, const std::string&lt;br&gt; ¤tPath,&lt;br&gt; const std::string &amp;amp;focusPath, const&lt;br&gt; std::list&amp;amp;pathList,&lt;br&gt; bool onDesktop)&lt;br&gt; {&lt;br&gt; ...&lt;br&gt; //&amp;nbsp;通過代理創建 action，此 action 在堆區分配，不自行釋放將內存泄露！&lt;br&gt; auto&amp;nbsp;rootAction&amp;nbsp;{&amp;nbsp;m_proxy-&amp;gt;createAction()&amp;nbsp;};rootAction-&amp;gt;setText(&quot;角標管理&quot;);&lt;br&gt; //&amp;nbsp;通過代理創建 menu，此 menu 在堆區分配，不自行釋放將內存泄露！&lt;br&gt; auto menu { m_proxy-&amp;gt;createMenu() };&lt;br&gt; //&amp;nbsp;二級菜單在&amp;nbsp;Hover&amp;nbsp;中創建，以減少一級菜單顯示的性能開銷&lt;br&gt; rootAction-&amp;gt;setMenu(menu);rootAction-&amp;gt;registerHovered([this, pathList](DFMExtAction *action) {&lt;br&gt; if&amp;nbsp;(!action-&amp;gt;menu()-&amp;gt;actions().empty())return;auto&amp;nbsp;favoriteEmblemAct&amp;nbsp;{&amp;nbsp;m_proxy-&amp;gt;createAction()&amp;nbsp;};favoriteEmblemAct-&amp;gt;setText(&quot;角標設置為 favorite&quot;);favoriteEmblemAct-&amp;gt;setIcon(&quot;emblem-favorite&quot;);favoriteEmblemAct-&amp;gt;registerTriggered([this,&amp;nbsp;pathList](DFMExtAction&amp;nbsp;*,bool) {&lt;br&gt; std::for_each(pathList.begin(), pathList.end(), [this](conststd::string &amp;amp;path) {setEmblemIcon(path, &quot;emblem-favorite&quot;);&lt;br&gt; });&lt;br&gt; });&lt;br&gt; ...&lt;br&gt; return true;&lt;br&gt; }&lt;/p&gt; 
+&lt;/blockquote&gt; 
+&lt;p&gt;代碼註釋很詳細，添加的方法也很簡單，只需要自己創建一個菜單和 Action，通過接口註冊進去就可以了。具體的邏輯是寫在 Action 的回調裏面處理，用⼾觸發菜單時會自動執行。&lt;/p&gt; 
+&lt;p&gt;以上對代碼的理解是基於個人的經驗，在這種對代碼不是很熟悉的場景下，正好可以試試 AI 的解釋功能。&lt;/p&gt; 
+&lt;p&gt;選中這段代碼，右鍵點擊解釋代碼選項，得到如下的結果：&lt;/p&gt; 
+&lt;p style=&quot;text-align:center&quot;&gt;&lt;img alt=&quot;&quot; height=&quot;468&quot; src=&quot;https://oscimg.oschina.net/oscnet//8ea405fc893573ad80c9d503d71b22ee.png&quot; width=&quot;1080&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
+&lt;p&gt;着重看紅色方框裏面的內容，其中功能描述部分還是比較準確的，和個人的理解相近，除此之外 AI 還把函數的參數都解釋了一遍，這比自己閲讀代碼得到的信息更多。&lt;/p&gt; 
+&lt;p&gt;不過這個功能還是存在槽點，後面羅列出來的具體步驟還是有些繁雜，不如「show me the code」來的更加直接。&lt;/p&gt; 
+&lt;p&gt;但換個場景想想，假設我正在翻看其它語言的代碼，或者涉及到算法、shader 代碼，解釋功能的優勢就體現出來了，就像文言文裏面的白話註釋，可以不用，但不能沒有。&lt;/p&gt; 
+&lt;p&gt;所以啊，在當前 AI 功能眼花繚亂的背景下，只有在合適的場景、合適的需求下去使用，才會得到事半功倍的效果。&lt;/p&gt; 
+&lt;p&gt;&amp;nbsp;&lt;/p&gt; 
+&lt;h1&gt;&lt;strong&gt;Part 3&amp;nbsp; 智能問答&lt;/strong&gt;&lt;/h1&gt; 
+&lt;p&gt;理解到代碼的大概意思，接下來就是手搓代碼的過程。&lt;/p&gt; 
+&lt;p&gt;第一步將模板中已有的代碼進行修改，比如去掉多餘的 Action，修改菜單名字等，讓其符合我的最終需求，效果如下：&lt;/p&gt; 
+&lt;p style=&quot;text-align:center&quot;&gt;&lt;img alt=&quot;&quot; height=&quot;615&quot; src=&quot;https://oscimg.oschina.net/oscnet//e6f6760c70656c62b4e79bded8026a4f.png&quot; width=&quot;509&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
+&lt;p&gt;有了界面，接下來就是添加加密和解密的邏輯。&lt;/p&gt; 
+&lt;p&gt;對於不怎麼使用加密工具的研發者來説，並不知道使用什麼加密工具以及如何什麼樣的參數。在這個場景下，相信大部分的小夥伴已經不假思索的打開 ChatGPT 進行問答操作了。&lt;/p&gt; 
+&lt;p&gt;不過這次是在 deepin-IDE 裏面，我直接展開 deepin-IDE 左側的問答界面進行查詢，在進⾏了多番連續的問答後得到如下答案：&lt;/p&gt; 
+&lt;p style=&quot;text-align:center&quot;&gt;&lt;img alt=&quot;&quot; height=&quot;479&quot; src=&quot;https://oscimg.oschina.net/oscnet//690a8231a463901e7b914f90e3bf8777.png&quot; width=&quot;862&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
+&lt;p&gt;&amp;nbsp;&lt;/p&gt; 
+&lt;h1&gt;&lt;strong&gt;Part 4&amp;nbsp; 代碼補全&lt;/strong&gt;&lt;/h1&gt; 
+&lt;p style=&quot;text-align:center&quot;&gt;為了把加解密功能加進去，我在對應的類中添加了兩個函數，分別用於加密和解密，然後開始輸入代碼，在敲完函數體回車後，就得到 deepin-IDE 的代碼補全提示：&lt;img alt=&quot;&quot; height=&quot;294&quot; src=&quot;https://oscimg.oschina.net/oscnet//e11be2b7c85d1b673d50e65cbb4224e2.png&quot; width=&quot;638&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
+&lt;p&gt;敲擊快捷鍵 Ctrl+T 填入對應的代碼，隨後再次利用這個功能，便快速得到完整的函數代碼：&lt;/p&gt; 
+&lt;p style=&quot;text-align:center&quot;&gt;&lt;img alt=&quot;&quot; height=&quot;180&quot; src=&quot;https://oscimg.oschina.net/oscnet//d3673e850649ecd0dc1ca5a6970993a9.png&quot; width=&quot;1080&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
+&lt;p&gt;以同樣的方法，我把代碼解密的函數代碼也補充完成。&lt;/p&gt; 
+&lt;p&gt;體驗下來，補全的代碼解決了我大約 90% 的工作量，不過並沒有完全符合功能需求，原來的文件還遺留在本地。&lt;/p&gt; 
+&lt;p&gt;我在靠後的位置先寫上註釋，説明需要刪除原來的文件，隨後輕點回車，不待我反應過來，補全內容已經直接呈現：&lt;/p&gt; 
+&lt;p style=&quot;text-align:center&quot;&gt;&lt;img alt=&quot;&quot; height=&quot;314&quot; src=&quot;https://oscimg.oschina.net/oscnet//247d2456bc0ce0a2856cc436736dfd9e.png&quot; width=&quot;641&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
+&lt;p&gt;為了保持和之前一樣的優雅，我愉快的按下了 Ctrl + T 快捷鍵。隨後多次、重複的使用 AI 代碼補全功能，將剩餘的函數一一實現。&lt;/p&gt; 
+&lt;p&gt;最後編譯整個工程，然後隨便找了個「README.md」文件試了試成果。這是文件裏面原來的內容：&lt;/p&gt; 
+&lt;p style=&quot;text-align:center&quot;&gt;&lt;img alt=&quot;&quot; height=&quot;685&quot; src=&quot;https://oscimg.oschina.net/oscnet//0239d9711b0fe92f6eca06620cb5a695.png&quot; width=&quot;784&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
+&lt;p&gt;接下來進行加密操作：&lt;/p&gt; 
+&lt;p&gt;1、右鍵該文件，選擇加密選項。&lt;/p&gt; 
+&lt;p&gt;2、在當前目錄隨即出現了一個新文件，名字後面加上了「encrypted」後綴，之前的文件也被刪除。&lt;/p&gt; 
+&lt;p&gt;3、打開該文件，可以看到裏面的內容已經被加密，無法正常閲讀。&lt;/p&gt; 
+&lt;p style=&quot;text-align:center&quot;&gt;&lt;img alt=&quot;&quot; height=&quot;641&quot; src=&quot;https://oscimg.oschina.net/oscnet//202eff296d78a8287d458e5a75478df9.png&quot; width=&quot;987&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
+&lt;p&gt;如果仔細觀察，還會發現文件圖標的左下角多了一個愛心圖標，表示這是一個加密文件。解密也是同樣的操作，它會把文件名恢復為原來的名字，左下角的加密圖標也會消失。&lt;/p&gt; 
+&lt;p&gt;&amp;nbsp;&lt;/p&gt; 
+&lt;h1&gt;&lt;strong&gt;Part 5&amp;nbsp; 單元測試&lt;/strong&gt;&lt;/h1&gt; 
+&lt;p&gt;功能是完成了，但為了保證代碼質量，單元測試也是不可缺少的一環。&lt;/p&gt; 
+&lt;p&gt;在 deepin-IDE 裏面也提供了這個功能，選中一段代碼，讓 AI 生成測試內容，看看效果如何：&lt;/p&gt; 
+&lt;p style=&quot;text-align:center&quot;&gt;&lt;img alt=&quot;&quot; height=&quot;577&quot; src=&quot;https://oscimg.oschina.net/oscnet//0ff926b78cb1bc5c5f8e1e9792688936.png&quot; width=&quot;1033&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
+&lt;p&gt;這個工程沒有使用任何測試框架，但 AI 還是把測試用例的大體結構搭建好了，和大多數 AI 輔助功能一樣，還是需要自己動手修改。不過粗略估計，該功能大致可以節省 50% 左右的工作量。&lt;/p&gt; 
+&lt;p&gt;&amp;nbsp;&lt;/p&gt; 
+&lt;h1&gt;&lt;strong&gt;Part 6&amp;nbsp; 準備工作&lt;/strong&gt;&lt;/h1&gt; 
+&lt;p&gt;為了完成開發閉環，接下來就需要把代碼提交到倉庫。&lt;/p&gt; 
+&lt;p&gt;在常規的提交方式下，我們會根據經驗總結修改的內容，形成提交信息。&lt;/p&gt; 
+&lt;p&gt;在 deepin-IDE 裏面，可以直接根據修改內容生成提交信息，甚至把總結的依據也羅列出來。右鍵點擊 CodeGeeX &amp;gt; 生成 git commits，如下圖所示：&lt;/p&gt; 
+&lt;p style=&quot;text-align:center&quot;&gt;&lt;img alt=&quot;&quot; height=&quot;276&quot; src=&quot;https://oscimg.oschina.net/oscnet//20fa44dd953cdc913af93b6cb397fabf.png&quot; width=&quot;355&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
+&lt;p&gt;隨後在智能問答界面，會輸出提交信息和提交依據：&lt;/p&gt; 
+&lt;p style=&quot;text-align:center&quot;&gt;&lt;img alt=&quot;&quot; height=&quot;288&quot; src=&quot;https://oscimg.oschina.net/oscnet//0140236048daff24cde2b37e355ff35e.png&quot; width=&quot;627&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
+&lt;p&gt;最後一句的總結可以説非常的準確，同時也節省了不少思考時間。&lt;/p&gt; 
+&lt;h1&gt;&lt;strong&gt;Part 7&amp;nbsp; 審查代碼&lt;/strong&gt;&lt;/h1&gt; 
+&lt;p&gt;當然，如果害怕提交的 PR 被其他人暴力 Review，自己可以在本地進行預先審查。&lt;/p&gt; 
+&lt;p&gt;具體可以通過 deepin-IDE 自帶的代碼審查功能，方法還是通過選中代碼和右鍵菜單觸發，得到如下結果：&lt;/p&gt; 
+&lt;p style=&quot;text-align:center&quot;&gt;&lt;img alt=&quot;&quot; height=&quot;288&quot; src=&quot;https://oscimg.oschina.net/oscnet//88bbe1f23d78eb57f31409abd0e2b925.png&quot; width=&quot;627&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
+&lt;p&gt;這裏我選取的是加密函數的代碼，總計有僅有 12 行，但 AI 功能給出的代碼審查建議竟然多達 10 條之多，我一度懷疑自己的編碼質量怎會降到如此程度，不過細細看來，AI 還是審查得過於嚴苛了。&lt;/p&gt; 
+&lt;p&gt;建議研發人員將其作為參考信息，提取有用部分進行自查即可。&lt;/p&gt; 
+&lt;p&gt;&amp;nbsp;&lt;/p&gt; 
+&lt;h1&gt;&lt;strong&gt;Part 8&amp;nbsp; 總結&lt;/strong&gt;&lt;/h1&gt; 
+&lt;p&gt;deepin-IDE 中的 AI 能力在持續不斷的完善。而在本次的使用過程中，也用到了 deepin-IDE 提供的插件模板功能，較為明顯的降低了從頭開始寫文管插件的難度，隨着後面各類系統工具的集成，deepin-IDE 在開發效率上的提升也會越來越明顯。&lt;/p&gt; 
+&lt;p&gt;&lt;strong&gt;最後，十分感謝社區用戶 Mozart 的投稿，也歡迎大家踴躍投稿，分享你的新發現和新玩法。&lt;/strong&gt;&lt;/p&gt; 
+&lt;p&gt;GitHub：&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fgithub.com%2Flinuxdeepin%2Fdeepin-unioncode&quot; target=&quot;_blank&quot;&gt;&lt;em&gt;https://github.com/linuxdeepin/deepin-unioncode&lt;/em&gt;&lt;/a&gt;&lt;/p&gt; 
+&lt;p&gt;&amp;nbsp;&lt;/p&gt; 
+&lt;h1&gt;&lt;strong&gt;相關閲讀：&lt;/strong&gt;&lt;/h1&gt; 
+&lt;p&gt;（1）&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fdistrowatch.com%2Ftable.php%3Fdistribution%3Ddeepin&quot; target=&quot;_blank&quot;&gt;支持 deepin（深度）社區&lt;/a&gt;&lt;/p&gt; 
+&lt;p&gt;（2）&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fwww.deepin.org%2Fzh%2Fcategory%2Ftechnology-sharing%2F&quot; target=&quot;_blank&quot;&gt;deepin 技術分享合集&lt;/a&gt;&lt;/p&gt;
+                                                                                &lt;/div&gt;
+                                                                            </description>
+            <link>https://www.oschina.net/news/326810</link>
+            <guid isPermaLink="false">https://www.oschina.net/news/326810</guid>
+            <pubDate>Thu, 26 Dec 2024 03:19:00 GMT</pubDate>
+            <author>來源: 投稿</author>
+        </item>
+        <item>
+            <title>code-gen v2.0.6 已經發布，代碼生成工具</title>
+            <description>&lt;div class=&quot;content&quot;&gt;
+                                                                    
+                                                        &lt;p&gt;code-gen v2.0.6 已經發布，代碼生成工具&lt;/p&gt; 
+&lt;p&gt;此版本更新內容包括：&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt;優化導入模板元數據解析 &lt;a href=&quot;https://gitee.com/durcframework/code-gen/pulls/36&quot; target=&quot;_blank&quot;&gt;pr&lt;/a&gt;&lt;/li&gt; 
+ &lt;li&gt;修復 postgresql-table 多模式相同表重複數據問題 &lt;a href=&quot;https://gitee.com/durcframework/code-gen/pulls/35/files&quot; target=&quot;_blank&quot;&gt;https://gitee.com/durcframework/code-gen/pulls/35/files&lt;/a&gt;&lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;p&gt;詳情查看：&lt;a href=&quot;https://gitee.com/durcframework/code-gen/releases/v2.0.6&quot;&gt;https://gitee.com/durcframework/code-gen/releases/v2.0.6&lt;/a&gt;&lt;/p&gt;
+                                                                                &lt;/div&gt;
+                                                                            </description>
+            <link>https://www.oschina.net/news/326808/code-gen-2-0-6-released</link>
+            <guid isPermaLink="false">https://www.oschina.net/news/326808/code-gen-2-0-6-released</guid>
+            <pubDate>Thu, 26 Dec 2024 03:08:00 GMT</pubDate>
+            <author>來源: 投稿</author>
+        </item>
+        <item>
+            <title>Apache Wicket 9.19.0 發佈，開源 Java Web 框架</title>
+            <description>&lt;div class=&quot;content&quot;&gt;
+                                                                    
+                                                        &lt;p&gt;&lt;span style=&quot;color:#000000&quot;&gt;Apache Wicket 是一個開源的面向 Java 組件的 Web 應用框架，為政府、商店、大學、城市、銀行、電子郵件提供商等成千上萬的 Web 應用和網站提供支持。Wicket 的開發中使用了語義版本，因此與 9.0.0 相比，9.12 版本沒有出現 API 中斷。&lt;/span&gt;&lt;/p&gt; 
+&lt;p style=&quot;color:#333333; margin-left:0; margin-right:0; text-align:left&quot;&gt;&lt;span style=&quot;color:#000000&quot;&gt;Apache Wicket 9.19.0&amp;nbsp;具體更新內容包括：&lt;/span&gt;&lt;/p&gt; 
+&lt;p style=&quot;color:#333333; margin-left:0; margin-right:0; text-align:left&quot;&gt;&lt;span style=&quot;color:#000000&quot;&gt;&lt;strong&gt;New and noteworthy&lt;/strong&gt;&lt;/span&gt;&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li style=&quot;text-align:left&quot;&gt;&lt;span style=&quot;color:#000000&quot;&gt;CVE-2024-53299 「攻擊者可故意觸發內存泄漏」&lt;/span&gt;&lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;p style=&quot;color:#333333; margin-left:0; margin-right:0; text-align:left&quot;&gt;&lt;span style=&quot;color:#000000&quot;&gt;&lt;strong style=&quot;color:#000000&quot;&gt;Bug&lt;/strong&gt;&lt;/span&gt;&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li style=&quot;text-align:left&quot;&gt;&lt;span style=&quot;color:#000000&quot;&gt;[WICKET-7024] - 當靜態資源 url 的生成被觸發時，會出現錯誤的靜態資源 url。&lt;/span&gt;&lt;/li&gt; 
+ &lt;li style=&quot;text-align:left&quot;&gt;&lt;span style=&quot;color:#000000&quot;&gt;[WICKET-7124] - quickstart archetype 構建失敗&lt;/span&gt;&lt;/li&gt; 
+ &lt;li style=&quot;text-align:left&quot;&gt;&lt;span style=&quot;color:#000000&quot;&gt;[WICKET-7132] - 從 AutoComplete&amp;nbsp;字段向後跳轉不能按預期運行&lt;/span&gt;&lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;p style=&quot;color:#333333; margin-left:0; margin-right:0; text-align:left&quot;&gt;&lt;span style=&quot;color:#000000&quot;&gt;&lt;strong style=&quot;color:#333333&quot;&gt;Improvement&lt;/strong&gt;&lt;/span&gt;&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li style=&quot;text-align:left&quot;&gt;&lt;span style=&quot;color:#000000&quot;&gt;[WICKET-7131] - 改進&amp;nbsp;auto-complete&amp;nbsp;組件的可訪問性和屏幕閲讀器支持&lt;/span&gt;&lt;/li&gt; 
+ &lt;li style=&quot;text-align:left&quot;&gt;&lt;span style=&quot;color:#000000&quot;&gt;[WICKET-7133] - 使用 Tab 鍵選擇項目時，能夠將焦點移回 autocomplete&amp;nbsp;字段&lt;/span&gt;&lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;p style=&quot;color:#333333; margin-left:0px; margin-right:0px; text-align:left&quot;&gt;&lt;span style=&quot;color:#000000&quot;&gt;更多詳情可查看：&lt;/span&gt;&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fwicket.apache.org%2Fnews%2F2024%2F12%2F26%2Fwicket-9.19.0-released.html&quot; target=&quot;_blank&quot;&gt;https://wicket.apache.org/news/2024/12/26/wicket-9.19.0-released.html&lt;/a&gt;&lt;/p&gt;
+                                                                                &lt;/div&gt;
+                                                                            </description>
+            <link>https://www.oschina.net/news/326806/apache-wicket-9-19-0-released</link>
+            <guid isPermaLink="false">https://www.oschina.net/news/326806/apache-wicket-9-19-0-released</guid>
+            <pubDate>Thu, 26 Dec 2024 03:00:00 GMT</pubDate>
+            <author>來源: OSCHINA</author>
+        </item>
+        <item>
+            <title>Yzncms v2.0.1 已經發布，內容管理系統</title>
+            <description>&lt;div class=&quot;content&quot;&gt;
+                                                                    
+                                                        &lt;p&gt;Yzncms v2.0.1 已經發布，內容管理系統&lt;/p&gt; 
+&lt;p&gt;此版本更新內容包括：&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt;【重構】剔除自帶模板標籤，改為 cms 內置&lt;/li&gt; 
+ &lt;li&gt;【重構】模型重構，內置模型錶轉移到 cms 插件&lt;/li&gt; 
+ &lt;li&gt;【優化】composer 依賴更新&lt;/li&gt; 
+ &lt;li&gt;【優化】兼容 php8.4&lt;/li&gt; 
+ &lt;li&gt;【修復】修復後台視圖模式&lt;/li&gt; 
+ &lt;li&gt;【修復】修復部分情況後台驗證碼失效問題&lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;p&gt;詳情查看：&lt;a href=&quot;https://gitee.com/ken678/YZNCMS/releases/v2.0.1&quot;&gt;https://gitee.com/ken678/YZNCMS/releases/v2.0.1&lt;/a&gt;&lt;/p&gt;
+                                                                                &lt;/div&gt;
+                                                                            </description>
+            <link>https://www.oschina.net/news/326799/yzncms-2-0-1-released</link>
+            <guid isPermaLink="false">https://www.oschina.net/news/326799/yzncms-2-0-1-released</guid>
+            <pubDate>Thu, 26 Dec 2024 02:42:00 GMT</pubDate>
+            <author>來源: 投稿</author>
+        </item>
+        <item>
+            <title>MaxKey 單點登錄認證系統 4.1.4，訪問地圖優化</title>
+            <description>&lt;div class=&quot;content&quot;&gt;
+                                                                    
+                                                        &lt;p&gt;&lt;img src=&quot;https://oscimg.oschina.net/oscnet//d5183f12e855a514f64aa7125d945e1d.png&quot; width=&quot;200px&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;strong&gt;業界領先的 IAM-IDaas 身份管理和認證產品&lt;/strong&gt;&lt;/p&gt; 
+&lt;h1&gt;概述&lt;/h1&gt; 
+&lt;p&gt;Dromara &lt;strong&gt;MaxKey&lt;/strong&gt;單點登錄認證系統是&lt;strong&gt;業界領先的 IAM-IDaas 身份管理和認證產品&lt;/strong&gt;，諧音為馬克思的鑰匙，寓意它能夠像一把萬能鑰匙 (最大鑰匙) 一樣，解鎖複雜的企業安全需求，提供簡潔而高效的解決方案。產品支持 OAuth 2.x/OpenID Connect、SAML 2.0、JWT、CAS、SCIM 等標準協議，提供&lt;strong&gt;安全、標準和開放&lt;/strong&gt;的用戶身份管理 (IDM)、身份認證 (AM)、單點登錄 (SSO)、RBAC 權限管理和資源管理等。&lt;/p&gt; 
+&lt;p&gt;MaxKey 注重企業級場景下的性能、安全和易用性，廣泛應用於醫療、金融、政府和製造等行業。&lt;/p&gt; 
+&lt;p&gt;MaxKey &lt;strong&gt;遵循 Apache License, Version 2.0 開源免費&lt;/strong&gt;，開源、安全、合規、自主可控。&lt;/p&gt; 
+&lt;p&gt;官方網站：&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fwww.maxkey.top%2F&quot; target=&quot;_blank&quot;&gt;&lt;strong&gt;官網 https://www.maxkey.top/&lt;/strong&gt;&lt;/a&gt;&lt;/p&gt; 
+&lt;p&gt;郵箱 email：&lt;strong&gt;&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=mailto%3Asupport%40maxsso.net&quot; target=&quot;_blank&quot;&gt;support@maxsso.net&lt;/a&gt;&lt;/strong&gt;&lt;/p&gt; 
+&lt;p&gt;代碼託管：&lt;a href=&quot;https://gitee.com/dromara/MaxKey&quot; target=&quot;_blank&quot;&gt;&lt;strong&gt;Gitee&lt;/strong&gt;&lt;/a&gt; | &lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fgithub.com%2Fdromara%2FMaxKey&quot; target=&quot;_blank&quot;&gt;&lt;strong&gt;GitHub&lt;/strong&gt;&lt;/a&gt; | &lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fgitcode.com%2Fdromara%2FMaxKey%2Foverview&quot; target=&quot;_blank&quot;&gt;&lt;strong&gt;GitCode&lt;/strong&gt;&lt;/a&gt;&lt;/p&gt; 
+&lt;h1&gt;產品特性&lt;/h1&gt; 
+&lt;p&gt;1.標準協議&lt;/p&gt; 
+&lt;table&gt; 
+ &lt;tbody&gt; 
+  &lt;tr&gt; 
+   &lt;th&gt;序號&lt;/th&gt; 
+   &lt;th&gt;協議&lt;/th&gt; 
+   &lt;th&gt;支持&lt;/th&gt; 
+  &lt;/tr&gt; 
+ &lt;/tbody&gt; 
+ &lt;tbody&gt; 
+  &lt;tr&gt; 
+   &lt;td&gt;1.1&lt;/td&gt; 
+   &lt;td&gt;OAuth 2.0/OpenID Connect&lt;/td&gt; 
+   &lt;td&gt;高&lt;/td&gt; 
+  &lt;/tr&gt; 
+  &lt;tr&gt; 
+   &lt;td&gt;1.2&lt;/td&gt; 
+   &lt;td&gt;SAML 2.0&lt;/td&gt; 
+   &lt;td&gt;高&lt;/td&gt; 
+  &lt;/tr&gt; 
+  &lt;tr&gt; 
+   &lt;td&gt;1.3&lt;/td&gt; 
+   &lt;td&gt;JWT&lt;/td&gt; 
+   &lt;td&gt;高&lt;/td&gt; 
+  &lt;/tr&gt; 
+  &lt;tr&gt; 
+   &lt;td&gt;1.4&lt;/td&gt; 
+   &lt;td&gt;CAS&lt;/td&gt; 
+   &lt;td&gt;高&lt;/td&gt; 
+  &lt;/tr&gt; 
+  &lt;tr&gt; 
+   &lt;td&gt;1.5&lt;/td&gt; 
+   &lt;td&gt;SCIM 2.0&lt;/td&gt; 
+   &lt;td&gt;高&lt;/td&gt; 
+  &lt;/tr&gt; 
+  &lt;tr&gt; 
+   &lt;td&gt;1.6&lt;/td&gt; 
+   &lt;td&gt;FormBased&lt;/td&gt; 
+   &lt;td&gt;中&lt;/td&gt; 
+  &lt;/tr&gt; 
+  &lt;tr&gt; 
+   &lt;td&gt;1.7&lt;/td&gt; 
+   &lt;td&gt;TokenBased(Post/Cookie)&lt;/td&gt; 
+   &lt;td&gt;中&lt;/td&gt; 
+  &lt;/tr&gt; 
+  &lt;tr&gt; 
+   &lt;td&gt;1.8&lt;/td&gt; 
+   &lt;td&gt;ExtendApi&lt;/td&gt; 
+   &lt;td&gt;低&lt;/td&gt; 
+  &lt;/tr&gt; 
+  &lt;tr&gt; 
+   &lt;td&gt;1.9&lt;/td&gt; 
+   &lt;td&gt;EXT&lt;/td&gt; 
+   &lt;td&gt;低&lt;/td&gt; 
+  &lt;/tr&gt; 
+ &lt;/tbody&gt; 
+&lt;/table&gt; 
+&lt;p&gt;2.登錄支持&lt;/p&gt; 
+&lt;table&gt; 
+ &lt;tbody&gt; 
+  &lt;tr&gt; 
+   &lt;th&gt;序號&lt;/th&gt; 
+   &lt;th&gt;登錄方式&lt;/th&gt; 
+  &lt;/tr&gt; 
+ &lt;/tbody&gt; 
+ &lt;tbody&gt; 
+  &lt;tr&gt; 
+   &lt;td&gt;2.1&lt;/td&gt; 
+   &lt;td&gt;動態驗證碼，字母/數字/算術&lt;/td&gt; 
+  &lt;/tr&gt; 
+  &lt;tr&gt; 
+   &lt;td&gt;2.2&lt;/td&gt; 
+   &lt;td&gt;雙因素認證&lt;/td&gt; 
+  &lt;/tr&gt; 
+  &lt;tr&gt; 
+   &lt;td&gt;2.3&lt;/td&gt; 
+   &lt;td&gt;短信認證，騰訊雲短信/阿里雲短信/網易雲信&lt;/td&gt; 
+  &lt;/tr&gt; 
+  &lt;tr&gt; 
+   &lt;td&gt;2.4&lt;/td&gt; 
+   &lt;td&gt;登錄易/Google/Microsoft Authenticator/FreeOTP/支持 TOTP 或者 HOTP&lt;/td&gt; 
+  &lt;/tr&gt; 
+  &lt;tr&gt; 
+   &lt;td&gt;2.5&lt;/td&gt; 
+   &lt;td&gt;Kerberos/SPNEGO/AD 域&lt;/td&gt; 
+  &lt;/tr&gt; 
+  &lt;tr&gt; 
+   &lt;td&gt;2.6&lt;/td&gt; 
+   &lt;td&gt;OpenLDAP/ActiveDirectory/標準 LDAP 服務器&lt;/td&gt; 
+  &lt;/tr&gt; 
+  &lt;tr&gt; 
+   &lt;td&gt;2.7&lt;/td&gt; 
+   &lt;td&gt;社交賬號，微信/QQ/微博/釘釘/Google/Facebook/其他&lt;/td&gt; 
+  &lt;/tr&gt; 
+  &lt;tr&gt; 
+   &lt;td&gt;2.8&lt;/td&gt; 
+   &lt;td&gt;掃碼登錄，企業微信/釘釘/飛書掃碼登錄&lt;/td&gt; 
+  &lt;/tr&gt; 
+ &lt;/tbody&gt; 
+&lt;/table&gt; 
+&lt;p&gt;3.提供標準的認證接口以便於其他應用集成 SSO，安全的移動接入，安全的 API、第三方認證和互聯網認證的整合。&lt;/p&gt; 
+&lt;p&gt;4.提供用戶生命週期管理，支持 SCIM 2 協議；開箱即用的連接器 (Connector) 實現身份供給同步。&lt;/p&gt; 
+&lt;p&gt;5.簡化微軟 Active Directory 域控、標準 LDAP 服務器機構和賬號管理，密碼自助服務重置密碼。&lt;/p&gt; 
+&lt;p&gt;6.IDaas 多租戶功能，支持集團下多企業獨立管理或企業下不同部門數據隔離的，降低運維成本。&lt;/p&gt; 
+&lt;p&gt;7.認證中心具有平台無關性、環境多樣性，支持 Web、手機、移動設備等, 如 Apple iOS，Andriod 等，將認證能力從 B/S 到移動應用全面覆蓋。&lt;/p&gt; 
+&lt;p&gt;8.配置化的密碼策略、訪問策略；支持 Ip2region 或 GeoLite2 地理庫精準 IP 定位 ，強大安全審計，對用戶全生命週期審計、訪問行為記錄追溯審計、安全合規審計、安全風險預警。&lt;/p&gt; 
+&lt;p&gt;9.基於 Java EE 平台，微服務架構，採用 Spring、MySQL、Tomcat、Redis、MQ 等開源技術，擴展性強。&lt;/p&gt; 
+&lt;p&gt;10.開源、安全、合規、自主可控，許可證 Apache 2.0 License &lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fwww.maxkey.top%2Fzh%2Fabout%2Flicenses.html%25E3%2580%2582&quot; target=&quot;_blank&quot;&gt;https://www.maxkey.top/zh/about/licenses.html。&lt;/a&gt;&lt;/p&gt; 
+&lt;h1&gt;界面&lt;/h1&gt; 
+&lt;p&gt;&lt;img src=&quot;https://oscimg.oschina.net/oscnet//eac0bf121e1cec8e8c2d66b06011945f.png&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
+&lt;h1&gt;下載&lt;/h1&gt; 
+&lt;p&gt;當前版本網盤下載&lt;/p&gt; 
+&lt;table&gt; 
+ &lt;tbody&gt; 
+  &lt;tr&gt; 
+   &lt;th&gt;版本&lt;/th&gt; 
+   &lt;th style=&quot;text-align:left&quot;&gt;日期&lt;/th&gt; 
+   &lt;th style=&quot;text-align:left&quot;&gt;下載地址&lt;/th&gt; 
+  &lt;/tr&gt; 
+ &lt;/tbody&gt; 
+ &lt;tbody&gt; 
+  &lt;tr&gt; 
+   &lt;td&gt;v 4.1.4&lt;/td&gt; 
+   &lt;td style=&quot;text-align:left&quot;&gt;2024/12/27&lt;/td&gt; 
+   &lt;td style=&quot;text-align:left&quot;&gt;&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fmaxkey.top%2Fzh%2Fabout%2Fdownload.html&quot; target=&quot;_blank&quot;&gt;下載&lt;/a&gt;&lt;/td&gt; 
+  &lt;/tr&gt; 
+ &lt;/tbody&gt; 
+&lt;/table&gt; 
+&lt;h1&gt;版本説明&lt;/h1&gt; 
+&lt;p&gt;MaxKey v 4.1.4 GA 2024/12/27&lt;/p&gt; 
+&lt;pre&gt;&lt;code&gt;
+    *(MAXKEY-240801) 部署在線演示系統
+    *(MAXKEY-240802) mysql 數據庫連接參數 serverTimezone=GMT+8
+    *(MAXKEY-240803) map 地圖優化
+    *(MAXKEY-240804) 國際化翻譯
+    *(MAXKEY-240805) 登錄日誌增加參數 category 區分認證 1 和管理端 5
+    *(MAXKEY-240806) 認證端到管理端的單點登錄改為 CAS
+    *(MAXKEY-240807) 增加 Dromara 標識
+    *(MAXKEY-240808) 儀表盤優化和更新
+    *(MAXKEY-240809) 儀表盤優化-增加國內地圖顯示
+    *(MAXKEY-240810) 會話管理優化
+    *(MAXKEY-240811) CAS 適配器名稱修正
+    *(MAXKEY-240812) #IB8ZT6 認證平台無法修改密碼
+    *(MAXKEY-240813) 登錄日誌默認 InstId
+    *(MAXKEY-240814) InstitutionsService 優化和整合
+    *(MAXKEY-240815) DefaultTokenServices RefreshToken 優化
+    *(MAXKEY-240816) 整合 LoginHistoryRepository 到 HistoryLoginService
+    *(MAXKEY-240817) 認證代碼整合優化
+    *(MAXKEY-240818) 登錄 LoginRepository 整合優化 LoginServiceImpl  
+    *(MAXKEY-240819) 在線文檔升級和優化
+    *(MAXKEY-240820) 依賴項引用、更新和升級
+            springVersion                   6.2.1
+            springBootVersion               3.4.1
+            springSecurityVersion           6.4.2
+            springretryVersion              2.0.11
+            log4jVersion                    2.24.3
+            jacksonVersion                  2.18.2
+            springcloudVersion              4.2.0
+            springcloudalibabaVersion       2023.0.1.2
+&lt;/code&gt;&lt;/pre&gt;
+                                                                                &lt;/div&gt;
+                                                                            </description>
+            <link>https://www.oschina.net/news/326795/maxkey-4-1-4-released</link>
+            <guid isPermaLink="false">https://www.oschina.net/news/326795/maxkey-4-1-4-released</guid>
+            <pubDate>Thu, 26 Dec 2024 02:27:00 GMT</pubDate>
+            <author>來源: 投稿</author>
+        </item>
         <item>
             <title>RxSqlUtils（base R2dbc）</title>
             <description>&lt;div class=&quot;content&quot;&gt;
@@ -922,559 +1271,6 @@ public class SysUserVo {
             <link>https://www.oschina.net/news/326636/wecom-sdk-1-3-0-released</link>
             <guid isPermaLink="false">https://www.oschina.net/news/326636/wecom-sdk-1-3-0-released</guid>
             <pubDate>Wed, 25 Dec 2024 02:16:00 GMT</pubDate>
-            <author>來源: 投稿</author>
-        </item>
-        <item>
-            <title>🔥低代碼工作流引擎 FlowLong 1.1.0 發佈</title>
-            <description>&lt;div class=&quot;content&quot;&gt;
-                                                                    
-                                                        &lt;p style=&quot;color:#333333; margin-left:0; margin-right:0; text-align:left&quot;&gt;&lt;img height=&quot;141&quot; src=&quot;https://oscimg.oschina.net/oscnet/up-8f140b87336199abaadd80c20df88f4a1a2.png&quot; width=&quot;474&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
-&lt;ul&gt; 
- &lt;li&gt; &lt;p style=&quot;margin-left:0; margin-right:0&quot;&gt;開源地址：&lt;span style=&quot;color:#ff2941&quot;&gt;https://gitee.com/aizuda/flowlong&lt;/span&gt;&lt;/p&gt; &lt;/li&gt; 
- &lt;li&gt; &lt;p style=&quot;margin-left:0; margin-right:0&quot;&gt;&lt;span style=&quot;color:#ff2941&quot;&gt;&lt;span style=&quot;background-color:#ffffff; color:#3f3f3f&quot;&gt;開源地址：&lt;/span&gt;&lt;span style=&quot;background-color:#ffffff; color:#ff2941&quot;&gt;https://github.com/aizuda/flowlong&lt;/span&gt;&lt;/span&gt;&lt;/p&gt; &lt;/li&gt; 
- &lt;li&gt; &lt;p style=&quot;margin-left:0; margin-right:0&quot;&gt;官網文檔：http://doc.flowlong.com&lt;/p&gt; &lt;/li&gt; 
-&lt;/ul&gt; 
-&lt;blockquote&gt; 
- &lt;p style=&quot;color:#505050; margin-left:0; margin-right:0&quot;&gt;支持全流程操作監聽，僅 8 張表實現整個流程引擎（更符合中國人的思維模式設計），截至當前近 300 家企業自用登記接入使用。&lt;/p&gt; 
-&lt;/blockquote&gt; 
-&lt;p style=&quot;color:#333333; margin-left:0; margin-right:0; text-align:left&quot;&gt;&lt;img height=&quot;1479&quot; src=&quot;https://oscimg.oschina.net/oscnet/up-3065e9342c931aa77f2cc98cd4e2261c08c.png&quot; width=&quot;1761&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
-&lt;h1&gt;Flowlong 1.1.0 主要亮點&lt;/h1&gt; 
-&lt;ul&gt; 
- &lt;li&gt; &lt;p style=&quot;margin-left:0; margin-right:0&quot;&gt;feat: 完善協議申明文檔説明&lt;/p&gt; &lt;/li&gt; 
- &lt;li&gt;fix: 修復抄送後連續創建任務 bug&lt;/li&gt; 
- &lt;li&gt;opt: 修改枚舉 TaskType 命名解決 swagger set 類型識別異常&lt;/li&gt; 
- &lt;li&gt;opt: 優化或籤任務參與者歸檔無法區分處理人 weight 標記為 1&lt;/li&gt; 
- &lt;li&gt;opt: 其它代碼優化&lt;/li&gt; 
-&lt;/ul&gt; 
-&lt;p style=&quot;color:#333333; margin-left:0; margin-right:0; text-align:left&quot;&gt;&lt;img height=&quot;1359&quot; src=&quot;https://oscimg.oschina.net/oscnet/up-43c04bc5fd87315fd12b5c1530a2269d65b.png&quot; width=&quot;3119&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
-&lt;p style=&quot;color:#333333; margin-left:0; margin-right:0; text-align:left&quot;&gt;&lt;img height=&quot;1639&quot; src=&quot;https://oscimg.oschina.net/oscnet/up-883f09feb283c023c9eb75a4b8ccfe65236.png&quot; width=&quot;3095&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt;
-                                                                                &lt;/div&gt;
-                                                                            </description>
-            <link>https://www.oschina.net/news/326634/flowlong-1-1-0-released</link>
-            <guid isPermaLink="false">https://www.oschina.net/news/326634/flowlong-1-1-0-released</guid>
-            <pubDate>Wed, 25 Dec 2024 02:13:00 GMT</pubDate>
-            <author>來源: 投稿</author>
-        </item>
-        <item>
-            <title>真正智慧的 ORM 框架 sqltoy-orm 5.6.35 發版</title>
-            <description>&lt;div class=&quot;content&quot;&gt;
-                                                                    
-                                                        &lt;p style=&quot;color:#333333; margin-left:0; margin-right:0; text-align:left&quot;&gt;&lt;strong&gt;開源地址：&lt;/strong&gt;&lt;/p&gt; 
-&lt;ul&gt; 
- &lt;li&gt;github:&amp;nbsp;&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fgithub.com%2Fchenrenfei%2Fsagacity-sqltoy&quot; target=&quot;_blank&quot;&gt;https://github.com/sagframe/sagacity-sqltoy&lt;/a&gt;&lt;/li&gt; 
- &lt;li&gt;gitee:&amp;nbsp;&lt;a href=&quot;https://gitee.com/sagacity/sagacity-sqltoy&quot;&gt;https://gitee.com/sagacity/sagacity-sqltoy&lt;/a&gt;&lt;/li&gt; 
- &lt;li&gt;idea 插件 (可直接在 idea 中檢索安裝):&amp;nbsp;&lt;span style=&quot;background-color:#ffffff; color:#40485b&quot;&gt;https://github.com/imyuyu/sqltoy-idea-plugin&lt;/span&gt;&lt;/li&gt; 
- &lt;li&gt;sqltoy 腳手架項目：https://gitee.com/momoljw/sss-rbac-admin&lt;/li&gt; 
- &lt;li&gt;sqltoy lambda 項目:&amp;nbsp;https://gitee.com/gzghde/sqltoy-plus&lt;/li&gt; 
-&lt;/ul&gt; 
-&lt;p style=&quot;color:#333333; margin-left:0; margin-right:0; text-align:left&quot;&gt;&lt;strong&gt;更新內容&amp;nbsp;&lt;/strong&gt;&lt;/p&gt; 
-&lt;p style=&quot;color:#333333; margin-left:0; margin-right:0; text-align:left&quot;&gt;&lt;span style=&quot;background-color:#ffffff; color:#40485b&quot;&gt;1、修復數據庫 Blob 類型字段值長度為 0 時場景處理缺陷&lt;/span&gt;&lt;br&gt; &lt;span style=&quot;background-color:#ffffff; color:#40485b&quot;&gt;2、升級 solon 依賴為 3.0.5 版本、springboot3.4.1&lt;/span&gt;&lt;/p&gt; 
-&lt;ul&gt; 
- &lt;li&gt;&lt;strong&gt;sqltoy 的對比 mybatis (plus) 的核心點：查詢語句編寫、可閲讀性、可維護性&lt;/strong&gt;&lt;/li&gt; 
-&lt;/ul&gt; 
-&lt;p style=&quot;color:#333333; margin-left:0; margin-right:0; text-align:left&quot;&gt;&lt;img alt=&quot;&quot; height=&quot;923&quot; src=&quot;https://oscimg.oschina.net/oscnet/up-05295a7a1813978134a5e49a7cff0f0e1ab.png&quot; width=&quot;1873&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
-&lt;p&gt;&amp;nbsp;&lt;/p&gt; 
-&lt;ul&gt; 
- &lt;li&gt;&lt;strong&gt;對象化 crud 是基礎，但 sqltoy 有針對性的改進：update、updateSaveFetch、updateFetch 等&lt;/strong&gt;&lt;/li&gt; 
-&lt;/ul&gt; 
-&lt;p style=&quot;color:#333333; margin-left:0; margin-right:0; text-align:start&quot;&gt;&lt;img alt=&quot;&quot; height=&quot;845&quot; src=&quot;https://oscimg.oschina.net/oscnet/up-6b8e8204061eec3d2096a50e9899548351e.png&quot; width=&quot;1745&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
-&lt;ul&gt; 
- &lt;li&gt;&lt;strong&gt;sqltoy 的緩存翻譯，大幅減少表關聯簡化 sql，讓你的查詢性能成幾何級提升&lt;/strong&gt;&lt;/li&gt; 
-&lt;/ul&gt; 
-&lt;p style=&quot;color:#333333; margin-left:0; margin-right:0; text-align:left&quot;&gt;&lt;img alt=&quot;闡述 sqltoy 為什麼秒殺 mybatis(plus)&quot; src=&quot;https://oscimg.oschina.net/oscnet/85287e14aa3e428fbabe297472596455.jpg&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
-&lt;ul&gt; 
- &lt;li&gt;&lt;strong&gt;極致的分頁，同樣幫助你實現查詢的性能大幅提升&lt;/strong&gt;&lt;/li&gt; 
-&lt;/ul&gt; 
-&lt;ol&gt; 
- &lt;li&gt;快速分頁:@fast () 實現先取單頁數據然後再關聯查詢，極大提升速度&lt;/li&gt; 
- &lt;li&gt;分頁優化器:page-optimize 讓分頁查詢由兩次變成 1.3~1.5 次 (用緩存實現相同查詢條件的總記錄數量在一定週期內無需重複查詢&lt;/li&gt; 
- &lt;li&gt;sqltoy 的分頁取總記錄的過程不是簡單的 select count (1) from (原始 sql)；而是智能判斷是否變成:select count (1) from &#39;from 後語句 &#39;， 並自動剔除最外層的 order by&lt;/li&gt; 
- &lt;li&gt;sqltoy 支持並行查詢：parallel=&quot;true&quot;，同時查詢總記錄數和單頁數據，大幅提升性能&lt;/li&gt; 
-&lt;/ol&gt; 
-&lt;div&gt;
- &lt;img alt=&quot;闡述 sqltoy 為什麼秒殺 mybatis(plus)&quot; src=&quot;https://oscimg.oschina.net/oscnet/3d5f7094da154671985dd390f56f6302.jpg&quot; referrerpolicy=&quot;no-referrer&quot;&gt;
-&lt;/div&gt; 
-&lt;div&gt;
- &amp;nbsp;
-&lt;/div&gt; 
-&lt;ul&gt; 
- &lt;li&gt;&lt;strong&gt;便利的跨數據庫統計計算：數據旋轉&lt;/strong&gt;&lt;/li&gt; 
-&lt;/ul&gt; 
-&lt;div&gt;
- &lt;img alt=&quot;闡述 sqltoy 為什麼秒殺 mybatis(plus)&quot; src=&quot;https://oscimg.oschina.net/oscnet/949bc75b5c53441c98284dae2bed11fe.jpg&quot; referrerpolicy=&quot;no-referrer&quot;&gt;
-&lt;/div&gt; 
-&lt;ul&gt; 
- &lt;li&gt;&lt;strong&gt;便利的跨數據庫統計計算：無限極分組統計 (含彙總求平均)&lt;/strong&gt;&lt;/li&gt; 
-&lt;/ul&gt; 
-&lt;div&gt;
- &lt;img alt=&quot;闡述 sqltoy 為什麼秒殺 mybatis(plus)&quot; src=&quot;https://oscimg.oschina.net/oscnet/f5edc52adbbe4a1ca327d9a9b0c5d64c.jpg&quot; referrerpolicy=&quot;no-referrer&quot;&gt;
-&lt;/div&gt; 
-&lt;ul&gt; 
- &lt;li&gt;&lt;strong&gt;便利的跨數據庫統計計算：同比環比&lt;/strong&gt;&lt;/li&gt; 
-&lt;/ul&gt; 
-&lt;div&gt;
- &lt;img alt=&quot;闡述 sqltoy 為什麼秒殺 mybatis(plus)&quot; src=&quot;https://oscimg.oschina.net/oscnet/b9d435e2852644c9a4c9e062cc3d46d7.jpg&quot; referrerpolicy=&quot;no-referrer&quot;&gt;
-&lt;/div&gt; 
-&lt;div&gt;
- 5、樹形表排序彙總
-&lt;/div&gt; 
-&lt;div&gt; 
- &lt;p style=&quot;margin-left:0; margin-right:0&quot;&gt;&lt;img height=&quot;274&quot; src=&quot;https://oscimg.oschina.net/oscnet/up-1773cce82b98a943d42caaa62f60d80f3d0.png&quot; width=&quot;1002&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
- &lt;p style=&quot;margin-left:0; margin-right:0&quot;&gt;&lt;img height=&quot;403&quot; src=&quot;https://oscimg.oschina.net/oscnet/up-8717f1c442767b08f2406019ae9b63721cb.png&quot; width=&quot;409&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
- &lt;p style=&quot;margin-left:0; margin-right:0&quot;&gt;6、擴展集成&lt;/p&gt; 
- &lt;p style=&quot;margin-left:0; margin-right:0&quot;&gt;&lt;img height=&quot;961&quot; src=&quot;https://oscimg.oschina.net/oscnet/up-6603ed15ec936dea45c4f6fb7318f4a062b.png&quot; width=&quot;1965&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
-&lt;/div&gt;
-                                                                                &lt;/div&gt;
-                                                                            </description>
-            <link>https://www.oschina.net/news/326626/sqltoy-orm-5-6-35-released</link>
-            <guid isPermaLink="false">https://www.oschina.net/news/326626/sqltoy-orm-5-6-35-released</guid>
-            <pubDate>Wed, 25 Dec 2024 01:33:00 GMT</pubDate>
-            <author>來源: 投稿</author>
-        </item>
-        <item>
-            <title>🔥 支持自定義用戶資料的表單：開源無代碼/低代碼平台 NocoBase</title>
-            <description>&lt;div class=&quot;content&quot;&gt;
-                                                                    
-                                                        &lt;p style=&quot;color:#333333; margin-left:0; margin-right:0; text-align:left&quot;&gt;&lt;span style=&quot;background-color:#ffffff; color:#333333&quot;&gt;NocoBase 是一個極易擴展的開源無代碼開發平台。完全掌控，無限擴展，助力你的開發團隊快速響應變化，顯著降低成本，不必投入幾年時間和數百萬資金研發，只需要花幾分鐘部署 NocoBase。&lt;/span&gt;&lt;/p&gt; 
-&lt;p style=&quot;color:#333333; margin-left:0; margin-right:0; text-align:left&quot;&gt;&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fwww.nocobase.com%2Fcn%2F&quot; target=&quot;_blank&quot;&gt;NocoBase 中文官網&lt;/a&gt;&lt;/p&gt; 
-&lt;p style=&quot;color:#333333; margin-left:0; margin-right:0; text-align:left&quot;&gt;&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fdocs-cn.nocobase.com%2Fwelcome%2Fintroduction&quot; target=&quot;_blank&quot;&gt;官方文檔&lt;/a&gt;&lt;/p&gt; 
-&lt;p style=&quot;color:#333333; margin-left:0; margin-right:0; text-align:left&quot;&gt;&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fdemo-cn.nocobase.com%2Fnew&quot; target=&quot;_blank&quot;&gt;在線 Demo&lt;/a&gt;&lt;/p&gt; 
-&lt;hr&gt; 
-&lt;p&gt;彙總一週產品更新日誌，最新發布可以&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fwww.nocobase.com%2Fcn%2Fblog%2Ftags%2Frelease-notes&quot; target=&quot;_blank&quot;&gt;前往我們的博客查看&lt;/a&gt;。&lt;/p&gt; 
-&lt;p&gt;&lt;strong&gt;NocoBase 目前更新包括的版本更新包括三個分支：&lt;code&gt;main&lt;/code&gt; ，&lt;code&gt;next&lt;/code&gt;和 &lt;code&gt;develop&lt;/code&gt;。&lt;/strong&gt;&lt;/p&gt; 
-&lt;p&gt;&lt;img alt=&quot;version.png&quot; src=&quot;https://oscimg.oschina.net/oscnet//9c28a95f92b2bd580fdfc071c3e60287.png&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
-&lt;p&gt;&lt;code&gt;main&lt;/code&gt; ：截止目前最穩定的版本，推薦安裝此版本。&lt;/p&gt; 
-&lt;p&gt;&lt;code&gt;next&lt;/code&gt;：包含即將發佈的新功能，經過初步測試的版本，可能存在部分已知或未知問題。主要面向測試用戶,用於收集反饋和進一步優化功能。適合願意提前體驗新功能並提供反饋的測試用戶。&lt;/p&gt; 
-&lt;p&gt;&lt;code&gt;develop&lt;/code&gt;：開發中的版本，包含最新的功能代碼，可能尚未完成或存在較多不穩定因素，主要用於內部開發和快速迭代。適合對產品功能前沿發展感興趣的技術用戶，但可能存在較多問題或不完整功能，不建議在生產環境中使用。&lt;/p&gt; 
-&lt;h2&gt;main&lt;/h2&gt; 
-&lt;p&gt;&lt;img alt=&quot;main.png&quot; src=&quot;https://oscimg.oschina.net/oscnet//1ed847ec236849f164e38a5f970690a2.png&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
-&lt;h3&gt;&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fwww.nocobase.com%2Fcn%2Fblog%2Fv1.4.11&quot; target=&quot;_blank&quot;&gt;v1.4.11&lt;/a&gt;&lt;/h3&gt; 
-&lt;p&gt;&lt;em&gt;發佈時間：2024-12-18&lt;/em&gt;&lt;/p&gt; 
-&lt;h4&gt;🚀 優化&lt;/h4&gt; 
-&lt;ul&gt; 
- &lt;li&gt;&lt;strong&gt;[client]&lt;/strong&gt; 使更多的組件支持「省略超出長度的內容」 配置項 (&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fgithub.com%2Fnocobase%2Fnocobase%2Fpull%2F5888&quot; target=&quot;_blank&quot;&gt;#5888&lt;/a&gt;) by @zhangzhonghe&lt;/li&gt; 
- &lt;li&gt;&lt;strong&gt;[database]&lt;/strong&gt; 關係 repository 支持 firstOrCreate &amp;amp; updateOrCreate (&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fgithub.com%2Fnocobase%2Fnocobase%2Fpull%2F5894&quot; target=&quot;_blank&quot;&gt;#5894&lt;/a&gt;) by @chareice&lt;/li&gt; 
-&lt;/ul&gt; 
-&lt;h4&gt;🐛 修復&lt;/h4&gt; 
-&lt;ul&gt; 
- &lt;li&gt; &lt;p&gt;&lt;strong&gt;[client]&lt;/strong&gt;&lt;/p&gt; 
-  &lt;ul&gt; 
-   &lt;li&gt;修復，外部數據源區塊的複製操作請求模版沒有 x-data-source 參數 (&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fgithub.com%2Fnocobase%2Fnocobase%2Fpull%2F5882&quot; target=&quot;_blank&quot;&gt;#5882&lt;/a&gt;) by @katherinehhh&lt;/li&gt; 
-   &lt;li&gt;修復，插件中的表格出現橫向滾動條 (&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fgithub.com%2Fnocobase%2Fnocobase%2Fpull%2F5899&quot; target=&quot;_blank&quot;&gt;#5899&lt;/a&gt;) by @katherinehhh&lt;/li&gt; 
-   &lt;li&gt;修復關係字段的下拉選項中，有時會出現多餘的 「N/A」 選項的問題 (&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fgithub.com%2Fnocobase%2Fnocobase%2Fpull%2F5878&quot; target=&quot;_blank&quot;&gt;#5878&lt;/a&gt;) by @zhangzhonghe&lt;/li&gt; 
-   &lt;li&gt;修復 PG 視圖創建錯誤，解決跨 schema 選擇問題 (&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fgithub.com%2Fnocobase%2Fnocobase%2Fpull%2F5881&quot; target=&quot;_blank&quot;&gt;#5881&lt;/a&gt;) by @katherinehhh&lt;/li&gt; 
-   &lt;li&gt;修復：表單區塊分組在水平佈局下樣式異常 (&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fgithub.com%2Fnocobase%2Fnocobase%2Fpull%2F5884&quot; target=&quot;_blank&quot;&gt;#5884&lt;/a&gt;) by @katherinehhh&lt;/li&gt; 
-  &lt;/ul&gt; &lt;/li&gt; 
- &lt;li&gt; &lt;p&gt;&lt;strong&gt;[用戶]&lt;/strong&gt;&lt;/p&gt; 
-  &lt;ul&gt; 
-   &lt;li&gt;修復用戶管理中添加或修改用戶後表單沒有被重置的問題 。 (&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fgithub.com%2Fnocobase%2Fnocobase%2Fpull%2F5875&quot; target=&quot;_blank&quot;&gt;#5875&lt;/a&gt;) by @2013xile&lt;/li&gt; 
-   &lt;li&gt;修復用戶管理頁面翻頁或修改分頁數量後，編輯用戶資料並提交，分頁設置會被重置的問題。 (&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fgithub.com%2Fnocobase%2Fnocobase%2Fpull%2F5893&quot; target=&quot;_blank&quot;&gt;#5893&lt;/a&gt;) by @2013xile&lt;/li&gt; 
-  &lt;/ul&gt; &lt;/li&gt; 
- &lt;li&gt; &lt;p&gt;&lt;strong&gt;[數據源管理]&lt;/strong&gt; 修復外部數據源 Collection 的篩選問題 (&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fgithub.com%2Fnocobase%2Fnocobase%2Fpull%2F5890&quot; target=&quot;_blank&quot;&gt;#5890&lt;/a&gt;) by @chareice&lt;/p&gt; &lt;/li&gt; 
- &lt;li&gt; &lt;p&gt;&lt;strong&gt;[公開表單]&lt;/strong&gt; 修復全局切換主題導致公開表單預覽頁主題被影響的問題 (&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fgithub.com%2Fnocobase%2Fnocobase%2Fpull%2F5883&quot; target=&quot;_blank&quot;&gt;#5883&lt;/a&gt;) by @katherinehhh&lt;/p&gt; &lt;/li&gt; 
-&lt;/ul&gt; 
-&lt;h3&gt;&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fwww.nocobase.com%2Fcn%2Fblog%2Fv1.4.13&quot; target=&quot;_blank&quot;&gt;v1.4.13&lt;/a&gt;&lt;/h3&gt; 
-&lt;p&gt;&lt;em&gt;發佈時間：2024-12-19&lt;/em&gt;&lt;/p&gt; 
-&lt;h4&gt;🚀 優化&lt;/h4&gt; 
-&lt;ul&gt; 
- &lt;li&gt;&lt;strong&gt;[數據表: SQL]&lt;/strong&gt; 禁止在 SQL 中使用危險關鍵字和函數。 (&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fgithub.com%2Fnocobase%2Fnocobase%2Fpull%2F5913&quot; target=&quot;_blank&quot;&gt;#5913&lt;/a&gt;) by @2013xile&lt;/li&gt; 
- &lt;li&gt;&lt;strong&gt;[主題編輯器]&lt;/strong&gt; 優化用戶資料編輯和密碼修改的 API 校驗邏輯 (&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fgithub.com%2Fnocobase%2Fnocobase%2Fpull%2F5912&quot; target=&quot;_blank&quot;&gt;#5912&lt;/a&gt;) by @2013xile&lt;/li&gt; 
-&lt;/ul&gt; 
-&lt;h4&gt;🐛 修復&lt;/h4&gt; 
-&lt;ul&gt; 
- &lt;li&gt;&lt;strong&gt;[數據源：主數據庫]&lt;/strong&gt; 修復外鍵加載問題 (&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fgithub.com%2Fnocobase%2Fnocobase%2Fpull%2F5903&quot; target=&quot;_blank&quot;&gt;#5903&lt;/a&gt;) by @chareice&lt;/li&gt; 
- &lt;li&gt;&lt;strong&gt;[數據表: SQL]&lt;/strong&gt; 修復 SQL 數據表更新後字段消失的問題。 (&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fgithub.com%2Fnocobase%2Fnocobase%2Fpull%2F5909&quot; target=&quot;_blank&quot;&gt;#5909&lt;/a&gt;) by @chareice&lt;/li&gt; 
- &lt;li&gt;&lt;strong&gt;[備份管理器]&lt;/strong&gt; 修復 Windows 平台備份還原失敗的問題 by @gchust&lt;/li&gt; 
-&lt;/ul&gt; 
-&lt;h3&gt;&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fwww.nocobase.com%2Fcn%2Fblog%2Fv1.4.14&quot; target=&quot;_blank&quot;&gt;v1.4.14&lt;/a&gt;&lt;/h3&gt; 
-&lt;p&gt;&lt;em&gt;發佈時間：2024-12-21&lt;/em&gt;&lt;/p&gt; 
-&lt;h4&gt;🐛 修復&lt;/h4&gt; 
-&lt;ul&gt; 
- &lt;li&gt;&lt;strong&gt;[數據可視化]&lt;/strong&gt; 修復在圖表查詢中使用嵌套的多對多關係進行過濾時的報錯。 (&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fgithub.com%2Fnocobase%2Fnocobase%2Fpull%2F5917&quot; target=&quot;_blank&quot;&gt;#5917&lt;/a&gt;) by @2013xile&lt;/li&gt; 
- &lt;li&gt;&lt;strong&gt;[工作流：聚合查詢節點]&lt;/strong&gt; 修復由於事務造成的統計節點結果錯誤問題 (&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fgithub.com%2Fnocobase%2Fnocobase%2Fpull%2F5916&quot; target=&quot;_blank&quot;&gt;#5916&lt;/a&gt;) by @mytharcher&lt;/li&gt; 
-&lt;/ul&gt; 
-&lt;h3&gt;&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fwww.nocobase.com%2Fcn%2Fblog%2Fv1.4.15&quot; target=&quot;_blank&quot;&gt;v1.4.15&lt;/a&gt;&lt;/h3&gt; 
-&lt;p&gt;&lt;em&gt;發佈時間：2024-12-25&lt;/em&gt;&lt;/p&gt; 
-&lt;h4&gt;🐛 修復&lt;/h4&gt; 
-&lt;ul&gt; 
- &lt;li&gt; &lt;p&gt;&lt;strong&gt;[server]&lt;/strong&gt; 激活插件時未自動建表 (&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fgithub.com%2Fnocobase%2Fnocobase%2Fpull%2F5939&quot; target=&quot;_blank&quot;&gt;#5939&lt;/a&gt;) by @chenos&lt;/p&gt; &lt;/li&gt; 
- &lt;li&gt; &lt;p&gt;&lt;strong&gt;[client]&lt;/strong&gt; 修復，聯動規則中屬性字段搜索無法匹配正確數據 (&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fgithub.com%2Fnocobase%2Fnocobase%2Fpull%2F5925&quot; target=&quot;_blank&quot;&gt;#5925&lt;/a&gt;) by @katherinehhh&lt;/p&gt; &lt;/li&gt; 
- &lt;li&gt; &lt;p&gt;&lt;strong&gt;[工作流]&lt;/strong&gt;&lt;/p&gt; 
-  &lt;ul&gt; 
-   &lt;li&gt;修復定時任務使用無時區字段存在錯誤的問題 (&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fgithub.com%2Fnocobase%2Fnocobase%2Fpull%2F5938&quot; target=&quot;_blank&quot;&gt;#5938&lt;/a&gt;) by @mytharcher&lt;/li&gt; 
-   &lt;li&gt;修復日期範圍變量翻譯 (&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fgithub.com%2Fnocobase%2Fnocobase%2Fpull%2F5919&quot; target=&quot;_blank&quot;&gt;#5919&lt;/a&gt;) by @mytharcher&lt;/li&gt; 
-  &lt;/ul&gt; &lt;/li&gt; 
-&lt;/ul&gt; 
-&lt;h2&gt;next&lt;/h2&gt; 
-&lt;p&gt;&lt;img alt=&quot;next.png&quot; src=&quot;https://oscimg.oschina.net/oscnet//5e077ee7d2bb64c2bfa5cd77bba804ef.png&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
-&lt;h3&gt;&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fwww.nocobase.com%2Fcn%2Fblog%2Fv1.5.0-beta.13&quot; target=&quot;_blank&quot;&gt;v1.5.0-beta.13&lt;/a&gt;&lt;/h3&gt; 
-&lt;p&gt;&lt;em&gt;發佈時間：2024-12-21&lt;/em&gt;&lt;/p&gt; 
-&lt;h4&gt;🚀 優化&lt;/h4&gt; 
-&lt;ul&gt; 
- &lt;li&gt;&lt;strong&gt;[數據可視化]&lt;/strong&gt; 圖表查詢增加 offset 參數 (&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fgithub.com%2Fnocobase%2Fnocobase%2Fpull%2F5911&quot; target=&quot;_blank&quot;&gt;#5911&lt;/a&gt;) by @Albert-mah&lt;/li&gt; 
-&lt;/ul&gt; 
-&lt;h3&gt;&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fwww.nocobase.com%2Fcn%2Fblog%2Fv1.5.0-beta.14&quot; target=&quot;_blank&quot;&gt;v1.5.0-beta.14&lt;/a&gt;&lt;/h3&gt; 
-&lt;p&gt;&lt;em&gt;發佈時間：2024-12-21&lt;/em&gt;&lt;/p&gt; 
-&lt;h4&gt;🐛 修復&lt;/h4&gt; 
-&lt;ul&gt; 
- &lt;li&gt;&lt;strong&gt;[數據可視化]&lt;/strong&gt; 修復在圖表查詢中使用嵌套的多對多關係進行過濾時的報錯。 (&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fgithub.com%2Fnocobase%2Fnocobase%2Fpull%2F5917&quot; target=&quot;_blank&quot;&gt;#5917&lt;/a&gt;) by @2013xile&lt;/li&gt; 
- &lt;li&gt;&lt;strong&gt;[工作流：聚合查詢節點]&lt;/strong&gt; 修復由於事務造成的統計節點結果錯誤問題 (&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fgithub.com%2Fnocobase%2Fnocobase%2Fpull%2F5916&quot; target=&quot;_blank&quot;&gt;#5916&lt;/a&gt;) by @mytharcher&lt;/li&gt; 
-&lt;/ul&gt; 
-&lt;h3&gt;&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fwww.nocobase.com%2Fcn%2Fblog%2Fv1.5.0-beta.15&quot; target=&quot;_blank&quot;&gt;v1.5.0-beta.15&lt;/a&gt;&lt;/h3&gt; 
-&lt;p&gt;&lt;em&gt;發佈時間：2024-12-23&lt;/em&gt;&lt;/p&gt; 
-&lt;h4&gt;🎉 新特性&lt;/h4&gt; 
-&lt;ul&gt; 
- &lt;li&gt;&lt;strong&gt;[client]&lt;/strong&gt; 日期字段組件添加日期限定範圍 (&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fgithub.com%2Fnocobase%2Fnocobase%2Fpull%2F5852&quot; target=&quot;_blank&quot;&gt;#5852&lt;/a&gt;) by @Cyx649312038&lt;/li&gt; 
-&lt;/ul&gt; 
-&lt;h3&gt;&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fwww.nocobase.com%2Fcn%2Fblog%2Fv1.5.0-beta.16&quot; target=&quot;_blank&quot;&gt;v1.5.0-beta.16&lt;/a&gt;&lt;/h3&gt; 
-&lt;p&gt;&lt;em&gt;發佈時間：2024-12-24&lt;/em&gt;&lt;/p&gt; 
-&lt;h4&gt;🐛 修復&lt;/h4&gt; 
-&lt;ul&gt; 
- &lt;li&gt;&lt;strong&gt;[build]&lt;/strong&gt; 修復設置環境變量 &lt;code&gt;APP_PUBLIC_PATH&lt;/code&gt; 後無法加載的問題 (&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fgithub.com%2Fnocobase%2Fnocobase%2Fpull%2F5924&quot; target=&quot;_blank&quot;&gt;#5924&lt;/a&gt;) by @gchust&lt;/li&gt; 
-&lt;/ul&gt; 
-&lt;h2&gt;develop&lt;/h2&gt; 
-&lt;p&gt;&lt;img alt=&quot;develop.png&quot; src=&quot;https://oscimg.oschina.net/oscnet//f09968cbee76b392f3dd01b71b138b72.png&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
-&lt;h3&gt;&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fwww.nocobase.com%2Fcn%2Fblog%2Fv1.6.0-alpha.6&quot; target=&quot;_blank&quot;&gt;v1.6.0-alpha.6&lt;/a&gt;&lt;/h3&gt; 
-&lt;p&gt;&lt;em&gt;發佈時間：2024-12-19&lt;/em&gt;&lt;/p&gt; 
-&lt;h4&gt;🎉 新特性&lt;/h4&gt; 
-&lt;ul&gt; 
- &lt;li&gt;&lt;strong&gt;[client]&lt;/strong&gt; 支持在對多關係字段的子表單中選擇已有數據 (&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fgithub.com%2Fnocobase%2Fnocobase%2Fpull%2F5849&quot; target=&quot;_blank&quot;&gt;#5849&lt;/a&gt;) by @katherinehhh&lt;/li&gt; 
-&lt;/ul&gt; 
-&lt;h3&gt;&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fwww.nocobase.com%2Fcn%2Fblog%2Fv1.6.0-alpha.7&quot; target=&quot;_blank&quot;&gt;v1.6.0-alpha.7&lt;/a&gt;&lt;/h3&gt; 
-&lt;p&gt;&lt;em&gt;發佈時間：2024-12-25&lt;/em&gt;&lt;/p&gt; 
-&lt;h4&gt;🎉 新特性&lt;/h4&gt; 
-&lt;ul&gt; 
- &lt;li&gt;&lt;strong&gt;[用戶]&lt;/strong&gt; 支持配置用戶個人資料的表單，以及用戶管理中創建和編輯的表單。 (&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fgithub.com%2Fnocobase%2Fnocobase%2Fpull%2F5698&quot; target=&quot;_blank&quot;&gt;#5698&lt;/a&gt;) by @2013xile&lt;/li&gt; 
-&lt;/ul&gt;
-                                                                                &lt;/div&gt;
-                                                                            </description>
-            <link>https://www.oschina.net/news/326622/nocobase-updated</link>
-            <guid isPermaLink="false">https://www.oschina.net/news/326622/nocobase-updated</guid>
-            <pubDate>Wed, 25 Dec 2024 00:46:00 GMT</pubDate>
-            <author>來源: 投稿</author>
-        </item>
-        <item>
-            <title>iDempiere 企業級 ERP/CRM/SCM 12 Kudos 發佈</title>
-            <description>&lt;div class=&quot;content&quot;&gt;
-                                                                    
-                                                        &lt;p style=&quot;color:#333333; margin-left:0; margin-right:0; text-align:left&quot;&gt;&lt;strong&gt;&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fwww.idempiere.org%2F&quot; target=&quot;_blank&quot;&gt;iDempiere&lt;/a&gt;. Community Powered Enterprise&lt;/strong&gt;&lt;/p&gt; 
-&lt;p style=&quot;color:#333333; margin-left:0; margin-right:0; text-align:left&quot;&gt;&lt;span&gt;&lt;span&gt;iDempiere 12&lt;span&gt;&amp;nbsp;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;Kudos&lt;span&gt;&amp;nbsp;&lt;/span&gt;&lt;span&gt;&lt;span&gt;於 2024 年 12 月 25 日發佈。&lt;/span&gt;&lt;/span&gt;&lt;/p&gt; 
-&lt;p style=&quot;color:#333333; margin-left:0; margin-right:0; text-align:left&quot;&gt;&lt;span&gt;&lt;span&gt;官方發佈了 v12 的上線通知&lt;/span&gt;&lt;/span&gt;，通知原文：https://groups.google.com/g/idempiere/c/OLXLGcUT9qU&lt;/p&gt; 
-&lt;p style=&quot;color:#333333; margin-left:0; margin-right:0; text-align:left&quot;&gt;下載地址：https://sourceforge.net/projects/idempiere/files/v12/&lt;/p&gt; 
-&lt;ol&gt; 
- &lt;li&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;strong&gt;系統基盤的注意點&lt;/strong&gt;&lt;br&gt; 從筆者的認知角度，沒有大型的基盤更新。&lt;br&gt; 需要留意的是 JDK 版本依然是 17，請務必注意 Oracle JDK 17 已經於 24 年 7 月 end-of-life，請儘快切換至 OpenJDK，或者購買 Oracle&amp;nbsp;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;Premier Support.&lt;br&gt; &amp;nbsp;&lt;/li&gt; 
- &lt;li&gt; &lt;p style=&quot;margin-left:0; margin-right:0&quot;&gt;&lt;strong&gt;ChangeLog&lt;/strong&gt;&lt;br&gt; https://wiki.idempiere.org/en/ChangeLog_Release_11&lt;br&gt; &amp;nbsp;&lt;/p&gt; &lt;/li&gt; 
- &lt;li&gt;&lt;strong&gt;重要功能更新清單&lt;/strong&gt;&lt;br&gt; https://wiki.idempiere.org/en/Category:New_Features_w12&lt;/li&gt; 
-&lt;/ol&gt; 
-&lt;p style=&quot;color:#333333; margin-left:0; margin-right:0; text-align:left&quot;&gt;&lt;span&gt;&lt;span&gt;&lt;strong&gt;&lt;span&gt;軟件發佈履歷&lt;/span&gt;&lt;/strong&gt;&lt;/span&gt;&lt;/span&gt;&lt;/p&gt; 
-&lt;ul&gt; 
- &lt;li&gt;2023 年 12 月 25 日發佈了 11 Synergy&lt;/li&gt; 
- &lt;li&gt;2022 年 12 月 26 日發佈了 10 Peace&lt;/li&gt; 
- &lt;li&gt;2021 年 12 月 27 日發佈了 9 Horizon&lt;/li&gt; 
- &lt;li&gt;2020 年 12&amp;nbsp;月&amp;nbsp;23&amp;nbsp;日發佈了&amp;nbsp;8.2 Phong&lt;/li&gt; 
- &lt;li&gt;2019 年 11 月 22 日發佈了 7.1&lt;/li&gt; 
- &lt;li&gt;2019 年 01 月 05 日發佈了 6.2&lt;/li&gt; 
- &lt;li&gt;2018 年 11 月 04 日發佈了 6.1&lt;/li&gt; 
- &lt;li&gt;2017 年 10 月 31 日發佈了 5.1&lt;/li&gt; 
- &lt;li&gt;2016 年 10 月 31 日發佈了 4.1&lt;/li&gt; 
- &lt;li&gt;2015 年 10 月 31 日發佈了 3.1&lt;/li&gt; 
- &lt;li&gt;2014 年 10 月 31 日發佈了 2.1&lt;/li&gt; 
- &lt;li&gt;2013 年 10 月 31 日發佈了 2.0&lt;/li&gt; 
- &lt;li&gt;2013 年 06 月 27 日發佈了 1.0c&lt;/li&gt; 
- &lt;li&gt;2013 年 04 月 24 日發佈了 1.0b&lt;/li&gt; 
- &lt;li&gt;2012 年 10 月 31 日發佈了 1.0a&lt;/li&gt; 
-&lt;/ul&gt;
-                                                                                &lt;/div&gt;
-                                                                            </description>
-            <link>https://www.oschina.net/news/326609/idempiere-12-kudos</link>
-            <guid isPermaLink="false">https://www.oschina.net/news/326609/idempiere-12-kudos</guid>
-            <pubDate>Tue, 24 Dec 2024 15:20:00 GMT</pubDate>
-            <author>來源: 投稿</author>
-        </item>
-        <item>
-            <title>JTopCMS V4 更新：新增瀚高數據庫與萬裏數據庫支持</title>
-            <description>&lt;div class=&quot;content&quot;&gt;
-                                                                    
-                                                        &lt;p style=&quot;color:#333333; margin-left:0; margin-right:0; text-align:left&quot;&gt;&lt;span style=&quot;background-color:#ffffff; color:#333333&quot;&gt;介紹 ：&amp;nbsp; JTopCMS V4 信創支持更新！&lt;/span&gt;新增瀚高數據庫（HighgoDB）與萬裏數據庫（GreatDB）支持。目前已支持環境如下：&lt;/p&gt; 
-&lt;p style=&quot;color:#000000; margin-left:0; margin-right:0&quot;&gt;附表一、中央處理器（CPU）&lt;/p&gt; 
-&lt;table border=&quot;1&quot; cellpadding=&quot;0&quot; cellspacing=&quot;0&quot;&gt; 
- &lt;tbody&gt; 
-  &lt;tr&gt; 
-   &lt;td style=&quot;border-bottom-color:#afafaf; border-bottom-style:solid; border-image:initial; border-left-color:initial; border-left-style:initial; border-right-color:#afafaf; border-right-style:solid; border-top-color:initial; border-top-style:initial; border-width:0px 1px 1px 0px; text-align:center; width:30px&quot;&gt;序號&lt;/td&gt; 
-   &lt;td style=&quot;border-bottom-color:#afafaf; border-bottom-style:solid; border-image:initial; border-left-color:initial; border-left-style:initial; border-right-color:#afafaf; border-right-style:solid; border-top-color:initial; border-top-style:initial; border-width:0px 1px 1px 0px; text-align:center&quot;&gt;產品名稱&lt;/td&gt; 
-   &lt;td style=&quot;border-bottom-color:#afafaf; border-bottom-style:solid; border-image:initial; border-left-color:initial; border-left-style:initial; border-right-color:#afafaf; border-right-style:solid; border-top-color:initial; border-top-style:initial; border-width:0px 1px 1px 0px; text-align:center&quot;&gt;送測單位&lt;/td&gt; 
-   &lt;td style=&quot;border-bottom-color:#afafaf; border-bottom-style:solid; border-image:initial; border-left-color:initial; border-left-style:initial; border-right-color:#afafaf; border-right-style:solid; border-top-color:initial; border-top-style:initial; border-width:0px 1px 1px 0px; text-align:center&quot;&gt;安全可靠等級&lt;/td&gt; 
-  &lt;/tr&gt; 
-  &lt;tr&gt; 
-   &lt;td style=&quot;border-bottom-color:#afafaf; border-bottom-style:solid; border-image:initial; border-left-color:initial; border-left-style:initial; border-right-color:#afafaf; border-right-style:solid; border-top-color:initial; border-top-style:initial; border-width:0px 1px 1px 0px; text-align:center&quot;&gt;1&lt;/td&gt; 
-   &lt;td style=&quot;border-bottom-color:#afafaf; border-bottom-style:solid; border-image:initial; border-left-color:initial; border-left-style:initial; border-right-color:#afafaf; border-right-style:solid; border-top-color:initial; border-top-style:initial; border-width:0px 1px 1px 0px; text-align:left&quot;&gt;鯤鵬 920&lt;/td&gt; 
-   &lt;td style=&quot;border-bottom-color:#afafaf; border-bottom-style:solid; border-image:initial; border-left-color:initial; border-left-style:initial; border-right-color:#afafaf; border-right-style:solid; border-top-color:initial; border-top-style:initial; border-width:0px 1px 1px 0px; text-align:left&quot;&gt;深圳市海思半導體有限公司&lt;/td&gt; 
-   &lt;td style=&quot;border-bottom-color:#afafaf; border-bottom-style:solid; border-image:initial; border-left-color:initial; border-left-style:initial; border-right-color:#afafaf; border-right-style:solid; border-top-color:initial; border-top-style:initial; border-width:0px 1px 1px 0px; text-align:left&quot;&gt;I 級&lt;/td&gt; 
-  &lt;/tr&gt; 
-  &lt;tr&gt; 
-   &lt;td style=&quot;border-bottom-color:#afafaf; border-bottom-style:solid; border-image:initial; border-left-color:initial; border-left-style:initial; border-right-color:#afafaf; border-right-style:solid; border-top-color:initial; border-top-style:initial; border-width:0px 1px 1px 0px; text-align:center&quot;&gt;2&lt;/td&gt; 
-   &lt;td style=&quot;border-bottom-color:#afafaf; border-bottom-style:solid; border-image:initial; border-left-color:initial; border-left-style:initial; border-right-color:#afafaf; border-right-style:solid; border-top-color:initial; border-top-style:initial; border-width:0px 1px 1px 0px; text-align:left&quot;&gt;龍芯 3C5000L&lt;/td&gt; 
-   &lt;td style=&quot;border-bottom-color:#afafaf; border-bottom-style:solid; border-image:initial; border-left-color:initial; border-left-style:initial; border-right-color:#afafaf; border-right-style:solid; border-top-color:initial; border-top-style:initial; border-width:0px 1px 1px 0px; text-align:left&quot;&gt;龍芯中科技術股份有限公司&lt;/td&gt; 
-   &lt;td style=&quot;border-bottom-color:#afafaf; border-bottom-style:solid; border-image:initial; border-left-color:initial; border-left-style:initial; border-right-color:#afafaf; border-right-style:solid; border-top-color:initial; border-top-style:initial; border-width:0px 1px 1px 0px; text-align:left&quot;&gt;I 級&lt;/td&gt; 
-  &lt;/tr&gt; 
-  &lt;tr&gt; 
-   &lt;td style=&quot;border-bottom-color:#afafaf; border-bottom-style:solid; border-image:initial; border-left-color:initial; border-left-style:initial; border-right-color:#afafaf; border-right-style:solid; border-top-color:initial; border-top-style:initial; border-width:0px 1px 1px 0px; text-align:center&quot;&gt;3&lt;/td&gt; 
-   &lt;td style=&quot;border-bottom-color:#afafaf; border-bottom-style:solid; border-image:initial; border-left-color:initial; border-left-style:initial; border-right-color:#afafaf; border-right-style:solid; border-top-color:initial; border-top-style:initial; border-width:0px 1px 1px 0px; text-align:left&quot;&gt;申威 1621&lt;/td&gt; 
-   &lt;td style=&quot;border-bottom-color:#afafaf; border-bottom-style:solid; border-image:initial; border-left-color:initial; border-left-style:initial; border-right-color:#afafaf; border-right-style:solid; border-top-color:initial; border-top-style:initial; border-width:0px 1px 1px 0px; text-align:left&quot;&gt;無錫先進技術研究院&lt;/td&gt; 
-   &lt;td style=&quot;border-bottom-color:#afafaf; border-bottom-style:solid; border-image:initial; border-left-color:initial; border-left-style:initial; border-right-color:#afafaf; border-right-style:solid; border-top-color:initial; border-top-style:initial; border-width:0px 1px 1px 0px; text-align:left&quot;&gt;I 級&lt;/td&gt; 
-  &lt;/tr&gt; 
-  &lt;tr&gt; 
-   &lt;td style=&quot;border-bottom-color:#afafaf; border-bottom-style:solid; border-image:initial; border-left-color:initial; border-left-style:initial; border-right-color:#afafaf; border-right-style:solid; border-top-color:initial; border-top-style:initial; border-width:0px 1px 1px 0px; text-align:center&quot;&gt;4&lt;/td&gt; 
-   &lt;td style=&quot;border-bottom-color:#afafaf; border-bottom-style:solid; border-image:initial; border-left-color:initial; border-left-style:initial; border-right-color:#afafaf; border-right-style:solid; border-top-color:initial; border-top-style:initial; border-width:0px 1px 1px 0px; text-align:left&quot;&gt;龍芯 3A4000/3B4000&lt;/td&gt; 
-   &lt;td style=&quot;border-bottom-color:#afafaf; border-bottom-style:solid; border-image:initial; border-left-color:initial; border-left-style:initial; border-right-color:#afafaf; border-right-style:solid; border-top-color:initial; border-top-style:initial; border-width:0px 1px 1px 0px; text-align:left&quot;&gt;龍芯中科技術股份有限公司&lt;/td&gt; 
-   &lt;td style=&quot;border-bottom-color:#afafaf; border-bottom-style:solid; border-image:initial; border-left-color:initial; border-left-style:initial; border-right-color:#afafaf; border-right-style:solid; border-top-color:initial; border-top-style:initial; border-width:0px 1px 1px 0px; text-align:left&quot;&gt;I 級&lt;/td&gt; 
-  &lt;/tr&gt; 
-  &lt;tr&gt; 
-   &lt;td style=&quot;border-bottom-color:#afafaf; border-bottom-style:solid; border-image:initial; border-left-color:initial; border-left-style:initial; border-right-color:#afafaf; border-right-style:solid; border-top-color:initial; border-top-style:initial; border-width:0px 1px 1px 0px; text-align:center&quot;&gt;5&lt;/td&gt; 
-   &lt;td style=&quot;border-bottom-color:#afafaf; border-bottom-style:solid; border-image:initial; border-left-color:initial; border-left-style:initial; border-right-color:#afafaf; border-right-style:solid; border-top-color:initial; border-top-style:initial; border-width:0px 1px 1px 0px; text-align:left&quot;&gt;龍芯 3A5000/3B5000&lt;/td&gt; 
-   &lt;td style=&quot;border-bottom-color:#afafaf; border-bottom-style:solid; border-image:initial; border-left-color:initial; border-left-style:initial; border-right-color:#afafaf; border-right-style:solid; border-top-color:initial; border-top-style:initial; border-width:0px 1px 1px 0px; text-align:left&quot;&gt;龍芯中科技術股份有限公司&lt;/td&gt; 
-   &lt;td style=&quot;border-bottom-color:#afafaf; border-bottom-style:solid; border-image:initial; border-left-color:initial; border-left-style:initial; border-right-color:#afafaf; border-right-style:solid; border-top-color:initial; border-top-style:initial; border-width:0px 1px 1px 0px; text-align:left&quot;&gt;I 級&lt;/td&gt; 
-  &lt;/tr&gt; 
-  &lt;tr&gt; 
-   &lt;td style=&quot;border-bottom-color:#afafaf; border-bottom-style:solid; border-image:initial; border-left-color:initial; border-left-style:initial; border-right-color:#afafaf; border-right-style:solid; border-top-color:initial; border-top-style:initial; border-width:0px 1px 1px 0px; text-align:center&quot;&gt;6&lt;/td&gt; 
-   &lt;td style=&quot;border-bottom-color:#afafaf; border-bottom-style:solid; border-image:initial; border-left-color:initial; border-left-style:initial; border-right-color:#afafaf; border-right-style:solid; border-top-color:initial; border-top-style:initial; border-width:0px 1px 1px 0px; text-align:left&quot;&gt;申威 SW421&lt;/td&gt; 
-   &lt;td style=&quot;border-bottom-color:#afafaf; border-bottom-style:solid; border-image:initial; border-left-color:initial; border-left-style:initial; border-right-color:#afafaf; border-right-style:solid; border-top-color:initial; border-top-style:initial; border-width:0px 1px 1px 0px; text-align:left&quot;&gt;無錫先進技術研究院&lt;/td&gt; 
-   &lt;td style=&quot;border-bottom-color:#afafaf; border-bottom-style:solid; border-image:initial; border-left-color:initial; border-left-style:initial; border-right-color:#afafaf; border-right-style:solid; border-top-color:initial; border-top-style:initial; border-width:0px 1px 1px 0px; text-align:left&quot;&gt;I 級&lt;/td&gt; 
-  &lt;/tr&gt; 
-  &lt;tr&gt; 
-   &lt;td style=&quot;border-bottom-color:#afafaf; border-bottom-style:solid; border-image:initial; border-left-color:initial; border-left-style:initial; border-right-color:#afafaf; border-right-style:solid; border-top-color:initial; border-top-style:initial; border-width:0px 1px 1px 0px; text-align:center&quot;&gt;7&lt;/td&gt; 
-   &lt;td style=&quot;border-bottom-color:#afafaf; border-bottom-style:solid; border-image:initial; border-left-color:initial; border-left-style:initial; border-right-color:#afafaf; border-right-style:solid; border-top-color:initial; border-top-style:initial; border-width:0px 1px 1px 0px; text-align:left&quot;&gt;申威 3231&lt;/td&gt; 
-   &lt;td style=&quot;border-bottom-color:#afafaf; border-bottom-style:solid; border-image:initial; border-left-color:initial; border-left-style:initial; border-right-color:#afafaf; border-right-style:solid; border-top-color:initial; border-top-style:initial; border-width:0px 1px 1px 0px; text-align:left&quot;&gt;無錫先進技術研究院&lt;/td&gt; 
-   &lt;td style=&quot;border-bottom-color:#afafaf; border-bottom-style:solid; border-image:initial; border-left-color:initial; border-left-style:initial; border-right-color:#afafaf; border-right-style:solid; border-top-color:initial; border-top-style:initial; border-width:0px 1px 1px 0px; text-align:left&quot;&gt;I 級&lt;/td&gt; 
-  &lt;/tr&gt; 
-  &lt;tr&gt; 
-   &lt;td style=&quot;border-bottom-color:#afafaf; border-bottom-style:solid; border-image:initial; border-left-color:initial; border-left-style:initial; border-right-color:#afafaf; border-right-style:solid; border-top-color:initial; border-top-style:initial; border-width:0px 1px 1px 0px; text-align:center&quot;&gt;8&lt;/td&gt; 
-   &lt;td style=&quot;border-bottom-color:#afafaf; border-bottom-style:solid; border-image:initial; border-left-color:initial; border-left-style:initial; border-right-color:#afafaf; border-right-style:solid; border-top-color:initial; border-top-style:initial; border-width:0px 1px 1px 0px; text-align:left&quot;&gt;飛騰騰鋭 D2000&lt;/td&gt; 
-   &lt;td style=&quot;border-bottom-color:#afafaf; border-bottom-style:solid; border-image:initial; border-left-color:initial; border-left-style:initial; border-right-color:#afafaf; border-right-style:solid; border-top-color:initial; border-top-style:initial; border-width:0px 1px 1px 0px; text-align:left&quot;&gt;飛騰信息技術有限公司&lt;/td&gt; 
-   &lt;td style=&quot;border-bottom-color:#afafaf; border-bottom-style:solid; border-image:initial; border-left-color:initial; border-left-style:initial; border-right-color:#afafaf; border-right-style:solid; border-top-color:initial; border-top-style:initial; border-width:0px 1px 1px 0px; text-align:left&quot;&gt;I 級&lt;/td&gt; 
-  &lt;/tr&gt; 
-  &lt;tr&gt; 
-   &lt;td style=&quot;border-bottom-color:#afafaf; border-bottom-style:solid; border-image:initial; border-left-color:initial; border-left-style:initial; border-right-color:#afafaf; border-right-style:solid; border-top-color:initial; border-top-style:initial; border-width:0px 1px 1px 0px; text-align:center&quot;&gt;9&lt;/td&gt; 
-   &lt;td style=&quot;border-bottom-color:#afafaf; border-bottom-style:solid; border-image:initial; border-left-color:initial; border-left-style:initial; border-right-color:#afafaf; border-right-style:solid; border-top-color:initial; border-top-style:initial; border-width:0px 1px 1px 0px; text-align:left&quot;&gt;飛騰 FT-2000&lt;/td&gt; 
-   &lt;td style=&quot;border-bottom-color:#afafaf; border-bottom-style:solid; border-image:initial; border-left-color:initial; border-left-style:initial; border-right-color:#afafaf; border-right-style:solid; border-top-color:initial; border-top-style:initial; border-width:0px 1px 1px 0px; text-align:left&quot;&gt;飛騰信息技術有限公司&lt;/td&gt; 
-   &lt;td style=&quot;border-bottom-color:#afafaf; border-bottom-style:solid; border-image:initial; border-left-color:initial; border-left-style:initial; border-right-color:#afafaf; border-right-style:solid; border-top-color:initial; border-top-style:initial; border-width:0px 1px 1px 0px; text-align:left&quot;&gt;I 級&lt;/td&gt; 
-  &lt;/tr&gt; 
-  &lt;tr&gt; 
-   &lt;td style=&quot;border-bottom-color:#afafaf; border-bottom-style:solid; border-image:initial; border-left-color:initial; border-left-style:initial; border-right-color:#afafaf; border-right-style:solid; border-top-color:initial; border-top-style:initial; border-width:0px 1px 1px 0px; text-align:center&quot;&gt;10&lt;/td&gt; 
-   &lt;td style=&quot;border-bottom-color:#afafaf; border-bottom-style:solid; border-image:initial; border-left-color:initial; border-left-style:initial; border-right-color:#afafaf; border-right-style:solid; border-top-color:initial; border-top-style:initial; border-width:0px 1px 1px 0px; text-align:left&quot;&gt;飛騰 FT-2000+&lt;/td&gt; 
-   &lt;td style=&quot;border-bottom-color:#afafaf; border-bottom-style:solid; border-image:initial; border-left-color:initial; border-left-style:initial; border-right-color:#afafaf; border-right-style:solid; border-top-color:initial; border-top-style:initial; border-width:0px 1px 1px 0px; text-align:left&quot;&gt;飛騰信息技術有限公司&lt;/td&gt; 
-   &lt;td style=&quot;border-bottom-color:#afafaf; border-bottom-style:solid; border-image:initial; border-left-color:initial; border-left-style:initial; border-right-color:#afafaf; border-right-style:solid; border-top-color:initial; border-top-style:initial; border-width:0px 1px 1px 0px; text-align:left&quot;&gt;I 級&lt;/td&gt; 
-  &lt;/tr&gt; 
-  &lt;tr&gt; 
-   &lt;td style=&quot;border-bottom-color:#afafaf; border-bottom-style:solid; border-image:initial; border-left-color:initial; border-left-style:initial; border-right-color:#afafaf; border-right-style:solid; border-top-color:initial; border-top-style:initial; border-width:0px 1px 1px 0px; text-align:center&quot;&gt;11&lt;/td&gt; 
-   &lt;td style=&quot;border-bottom-color:#afafaf; border-bottom-style:solid; border-image:initial; border-left-color:initial; border-left-style:initial; border-right-color:#afafaf; border-right-style:solid; border-top-color:initial; border-top-style:initial; border-width:0px 1px 1px 0px; text-align:left&quot;&gt;盤古 M900&lt;/td&gt; 
-   &lt;td style=&quot;border-bottom-color:#afafaf; border-bottom-style:solid; border-image:initial; border-left-color:initial; border-left-style:initial; border-right-color:#afafaf; border-right-style:solid; border-top-color:initial; border-top-style:initial; border-width:0px 1px 1px 0px; text-align:left&quot;&gt;海思技術有限公司&lt;/td&gt; 
-   &lt;td style=&quot;border-bottom-color:#afafaf; border-bottom-style:solid; border-image:initial; border-left-color:initial; border-left-style:initial; border-right-color:#afafaf; border-right-style:solid; border-top-color:initial; border-top-style:initial; border-width:0px 1px 1px 0px; text-align:left&quot;&gt;I 級&lt;/td&gt; 
-  &lt;/tr&gt; 
-  &lt;tr&gt; 
-   &lt;td style=&quot;border-bottom-color:#afafaf; border-bottom-style:solid; border-image:initial; border-left-color:initial; border-left-style:initial; border-right-color:#afafaf; border-right-style:solid; border-top-color:initial; border-top-style:initial; border-width:0px 1px 1px 0px; text-align:center&quot;&gt;12&lt;/td&gt; 
-   &lt;td style=&quot;border-bottom-color:#afafaf; border-bottom-style:solid; border-image:initial; border-left-color:initial; border-left-style:initial; border-right-color:#afafaf; border-right-style:solid; border-top-color:initial; border-top-style:initial; border-width:0px 1px 1px 0px; text-align:left&quot;&gt;飛騰騰雲 S2500&lt;/td&gt; 
-   &lt;td style=&quot;border-bottom-color:#afafaf; border-bottom-style:solid; border-image:initial; border-left-color:initial; border-left-style:initial; border-right-color:#afafaf; border-right-style:solid; border-top-color:initial; border-top-style:initial; border-width:0px 1px 1px 0px; text-align:left&quot;&gt;飛騰信息技術有限公司&lt;/td&gt; 
-   &lt;td style=&quot;border-bottom-color:#afafaf; border-bottom-style:solid; border-image:initial; border-left-color:initial; border-left-style:initial; border-right-color:#afafaf; border-right-style:solid; border-top-color:initial; border-top-style:initial; border-width:0px 1px 1px 0px; text-align:left&quot;&gt;I 級&lt;/td&gt; 
-  &lt;/tr&gt; 
-  &lt;tr&gt; 
-   &lt;td style=&quot;border-bottom-color:#afafaf; border-bottom-style:solid; border-image:initial; border-left-color:initial; border-left-style:initial; border-right-color:#afafaf; border-right-style:solid; border-top-color:initial; border-top-style:initial; border-width:0px 1px 1px 0px; text-align:center&quot;&gt;13&lt;/td&gt; 
-   &lt;td style=&quot;border-bottom-color:#afafaf; border-bottom-style:solid; border-image:initial; border-left-color:initial; border-left-style:initial; border-right-color:#afafaf; border-right-style:solid; border-top-color:initial; border-top-style:initial; border-width:0px 1px 1px 0px; text-align:left&quot;&gt;麒麟 9006C&lt;/td&gt; 
-   &lt;td style=&quot;border-bottom-color:#afafaf; border-bottom-style:solid; border-image:initial; border-left-color:initial; border-left-style:initial; border-right-color:#afafaf; border-right-style:solid; border-top-color:initial; border-top-style:initial; border-width:0px 1px 1px 0px; text-align:left&quot;&gt;深圳市海思半導體有限公司&lt;/td&gt; 
-   &lt;td style=&quot;border-bottom-color:#afafaf; border-bottom-style:solid; border-image:initial; border-left-color:initial; border-left-style:initial; border-right-color:#afafaf; border-right-style:solid; border-top-color:initial; border-top-style:initial; border-width:0px 1px 1px 0px; text-align:left&quot;&gt;I 級&lt;/td&gt; 
-  &lt;/tr&gt; 
-  &lt;tr&gt; 
-   &lt;td style=&quot;border-bottom-color:#afafaf; border-bottom-style:solid; border-image:initial; border-left-color:initial; border-left-style:initial; border-right-color:#afafaf; border-right-style:solid; border-top-color:initial; border-top-style:initial; border-width:0px 1px 1px 0px; text-align:center&quot;&gt;14&lt;/td&gt; 
-   &lt;td style=&quot;border-bottom-color:#afafaf; border-bottom-style:solid; border-image:initial; border-left-color:initial; border-left-style:initial; border-right-color:#afafaf; border-right-style:solid; border-top-color:initial; border-top-style:initial; border-width:0px 1px 1px 0px; text-align:left&quot;&gt;海光 C86-3G&lt;/td&gt; 
-   &lt;td style=&quot;border-bottom-color:#afafaf; border-bottom-style:solid; border-image:initial; border-left-color:initial; border-left-style:initial; border-right-color:#afafaf; border-right-style:solid; border-top-color:initial; border-top-style:initial; border-width:0px 1px 1px 0px; text-align:left&quot;&gt;海光信息技術股份有限公司&lt;/td&gt; 
-   &lt;td style=&quot;border-bottom-color:#afafaf; border-bottom-style:solid; border-image:initial; border-left-color:initial; border-left-style:initial; border-right-color:#afafaf; border-right-style:solid; border-top-color:initial; border-top-style:initial; border-width:0px 1px 1px 0px; text-align:left&quot;&gt;I 級&lt;/td&gt; 
-  &lt;/tr&gt; 
-  &lt;tr&gt; 
-   &lt;td style=&quot;border-bottom-color:#afafaf; border-bottom-style:solid; border-image:initial; border-left-color:initial; border-left-style:initial; border-right-color:#afafaf; border-right-style:solid; border-top-color:initial; border-top-style:initial; border-width:0px 1px 1px 0px; text-align:center&quot;&gt;15&lt;/td&gt; 
-   &lt;td style=&quot;border-bottom-color:#afafaf; border-bottom-style:solid; border-image:initial; border-left-color:initial; border-left-style:initial; border-right-color:#afafaf; border-right-style:solid; border-top-color:initial; border-top-style:initial; border-width:0px 1px 1px 0px; text-align:left&quot;&gt;麒麟 990&lt;/td&gt; 
-   &lt;td style=&quot;border-bottom-color:#afafaf; border-bottom-style:solid; border-image:initial; border-left-color:initial; border-left-style:initial; border-right-color:#afafaf; border-right-style:solid; border-top-color:initial; border-top-style:initial; border-width:0px 1px 1px 0px; text-align:left&quot;&gt;深圳市海思半導體有限公司&lt;/td&gt; 
-   &lt;td style=&quot;border-bottom-color:#afafaf; border-bottom-style:solid; border-image:initial; border-left-color:initial; border-left-style:initial; border-right-color:#afafaf; border-right-style:solid; border-top-color:initial; border-top-style:initial; border-width:0px 1px 1px 0px; text-align:left&quot;&gt;I 級&lt;/td&gt; 
-  &lt;/tr&gt; 
-  &lt;tr&gt; 
-   &lt;td style=&quot;border-bottom-color:#afafaf; border-bottom-style:solid; border-image:initial; border-left-color:initial; border-left-style:initial; border-right-color:#afafaf; border-right-style:solid; border-top-color:initial; border-top-style:initial; border-width:0px 1px 1px 0px; text-align:center&quot;&gt;16&lt;/td&gt; 
-   &lt;td style=&quot;border-bottom-color:#afafaf; border-bottom-style:solid; border-image:initial; border-left-color:initial; border-left-style:initial; border-right-color:#afafaf; border-right-style:solid; border-top-color:initial; border-top-style:initial; border-width:0px 1px 1px 0px; text-align:left&quot;&gt;海光 2 號 C86 3230/3250/3280/5280/7250/7260/7280/7285&lt;/td&gt; 
-   &lt;td style=&quot;border-bottom-color:#afafaf; border-bottom-style:solid; border-image:initial; border-left-color:initial; border-left-style:initial; border-right-color:#afafaf; border-right-style:solid; border-top-color:initial; border-top-style:initial; border-width:0px 1px 1px 0px; text-align:left&quot;&gt;海光信息技術股份有限公司&lt;/td&gt; 
-   &lt;td style=&quot;border-bottom-color:#afafaf; border-bottom-style:solid; border-image:initial; border-left-color:initial; border-left-style:initial; border-right-color:#afafaf; border-right-style:solid; border-top-color:initial; border-top-style:initial; border-width:0px 1px 1px 0px; text-align:left&quot;&gt;I 級&lt;/td&gt; 
-  &lt;/tr&gt; 
-  &lt;tr&gt; 
-   &lt;td style=&quot;border-bottom-color:#afafaf; border-bottom-style:solid; border-image:initial; border-left-color:initial; border-left-style:initial; border-right-color:#afafaf; border-right-style:solid; border-top-color:initial; border-top-style:initial; border-width:0px 1px 1px 0px; text-align:center&quot;&gt;17&lt;/td&gt; 
-   &lt;td style=&quot;border-bottom-color:#afafaf; border-bottom-style:solid; border-image:initial; border-left-color:initial; border-left-style:initial; border-right-color:#afafaf; border-right-style:solid; border-top-color:initial; border-top-style:initial; border-width:0px 1px 1px 0px; text-align:left&quot;&gt;兆芯 ZX-E KX-U6780A/KH-37800D/KX-6640MA/KX-6640A&lt;/td&gt; 
-   &lt;td style=&quot;border-bottom-color:#afafaf; border-bottom-style:solid; border-image:initial; border-left-color:initial; border-left-style:initial; border-right-color:#afafaf; border-right-style:solid; border-top-color:initial; border-top-style:initial; border-width:0px 1px 1px 0px; text-align:left&quot;&gt;上海兆芯集成電路股份有限公司&lt;/td&gt; 
-   &lt;td style=&quot;border-bottom-color:#afafaf; border-bottom-style:solid; border-image:initial; border-left-color:initial; border-left-style:initial; border-right-color:#afafaf; border-right-style:solid; border-top-color:initial; border-top-style:initial; border-width:0px 1px 1px 0px; text-align:left&quot;&gt;I 級&lt;/td&gt; 
-  &lt;/tr&gt; 
-  &lt;tr&gt; 
-   &lt;td style=&quot;border-bottom-color:#afafaf; border-bottom-style:solid; border-image:initial; border-left-color:initial; border-left-style:initial; border-right-color:#afafaf; border-right-style:solid; border-top-color:initial; border-top-style:initial; border-width:0px 1px 1px 0px; text-align:center&quot;&gt;18&lt;/td&gt; 
-   &lt;td style=&quot;border-bottom-color:#afafaf; border-bottom-style:solid; border-image:initial; border-left-color:initial; border-left-style:initial; border-right-color:#afafaf; border-right-style:solid; border-top-color:initial; border-top-style:initial; border-width:0px 1px 1px 0px; text-align:left&quot;&gt;兆芯 ZX-D KX-U5580&lt;/td&gt; 
-   &lt;td style=&quot;border-bottom-color:#afafaf; border-bottom-style:solid; border-image:initial; border-left-color:initial; border-left-style:initial; border-right-color:#afafaf; border-right-style:solid; border-top-color:initial; border-top-style:initial; border-width:0px 1px 1px 0px; text-align:left&quot;&gt;上海兆芯集成電路股份有限公司&lt;/td&gt; 
-   &lt;td style=&quot;border-bottom-color:#afafaf; border-bottom-style:solid; border-image:initial; border-left-color:initial; border-left-style:initial; border-right-color:#afafaf; border-right-style:solid; border-top-color:initial; border-top-style:initial; border-width:0px 1px 1px 0px; text-align:left&quot;&gt;I 級&lt;/td&gt; 
-  &lt;/tr&gt; 
- &lt;/tbody&gt; 
-&lt;/table&gt; 
-&lt;p style=&quot;color:#000000; margin-left:0; margin-right:0&quot;&gt;&amp;nbsp;&lt;/p&gt; 
-&lt;p style=&quot;color:#000000; margin-left:0; margin-right:0&quot;&gt;附表二、操作系統&lt;/p&gt; 
-&lt;table border=&quot;1&quot; cellpadding=&quot;0&quot; cellspacing=&quot;0&quot;&gt; 
- &lt;tbody&gt; 
-  &lt;tr&gt; 
-   &lt;td style=&quot;border-bottom-color:#afafaf; border-bottom-style:solid; border-image:initial; border-left-color:initial; border-left-style:initial; border-right-color:#afafaf; border-right-style:solid; border-top-color:initial; border-top-style:initial; border-width:0px 1px 1px 0px; text-align:center; width:30px&quot;&gt;序號&lt;/td&gt; 
-   &lt;td style=&quot;border-bottom-color:#afafaf; border-bottom-style:solid; border-image:initial; border-left-color:initial; border-left-style:initial; border-right-color:#afafaf; border-right-style:solid; border-top-color:initial; border-top-style:initial; border-width:0px 1px 1px 0px; text-align:center&quot;&gt;產品名稱&lt;/td&gt; 
-   &lt;td style=&quot;border-bottom-color:#afafaf; border-bottom-style:solid; border-image:initial; border-left-color:initial; border-left-style:initial; border-right-color:#afafaf; border-right-style:solid; border-top-color:initial; border-top-style:initial; border-width:0px 1px 1px 0px; text-align:center&quot;&gt;送測單位&lt;/td&gt; 
-   &lt;td style=&quot;border-bottom-color:#afafaf; border-bottom-style:solid; border-image:initial; border-left-color:initial; border-left-style:initial; border-right-color:#afafaf; border-right-style:solid; border-top-color:initial; border-top-style:initial; border-width:0px 1px 1px 0px; text-align:center&quot;&gt;安全可靠等級&lt;/td&gt; 
-  &lt;/tr&gt; 
-  &lt;tr&gt; 
-   &lt;td style=&quot;border-bottom-color:#afafaf; border-bottom-style:solid; border-image:initial; border-left-color:initial; border-left-style:initial; border-right-color:#afafaf; border-right-style:solid; border-top-color:initial; border-top-style:initial; border-width:0px 1px 1px 0px; text-align:center&quot;&gt;1&lt;/td&gt; 
-   &lt;td style=&quot;border-bottom-color:#afafaf; border-bottom-style:solid; border-image:initial; border-left-color:initial; border-left-style:initial; border-right-color:#afafaf; border-right-style:solid; border-top-color:initial; border-top-style:initial; border-width:0px 1px 1px 0px; text-align:left&quot;&gt;銀河麒麟桌面操作系統 V10&amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp;&lt;br&gt; （內核版本 5.4）&lt;/td&gt; 
-   &lt;td style=&quot;border-bottom-color:#afafaf; border-bottom-style:solid; border-image:initial; border-left-color:initial; border-left-style:initial; border-right-color:#afafaf; border-right-style:solid; border-top-color:initial; border-top-style:initial; border-width:0px 1px 1px 0px; text-align:left&quot;&gt;麒麟軟件有限公司&lt;/td&gt; 
-   &lt;td style=&quot;border-bottom-color:#afafaf; border-bottom-style:solid; border-image:initial; border-left-color:initial; border-left-style:initial; border-right-color:#afafaf; border-right-style:solid; border-top-color:initial; border-top-style:initial; border-width:0px 1px 1px 0px; text-align:left&quot;&gt;I 級&lt;/td&gt; 
-  &lt;/tr&gt; 
-  &lt;tr&gt; 
-   &lt;td style=&quot;border-bottom-color:#afafaf; border-bottom-style:solid; border-image:initial; border-left-color:initial; border-left-style:initial; border-right-color:#afafaf; border-right-style:solid; border-top-color:initial; border-top-style:initial; border-width:0px 1px 1px 0px; text-align:center&quot;&gt;2&lt;/td&gt; 
-   &lt;td style=&quot;border-bottom-color:#afafaf; border-bottom-style:solid; border-image:initial; border-left-color:initial; border-left-style:initial; border-right-color:#afafaf; border-right-style:solid; border-top-color:initial; border-top-style:initial; border-width:0px 1px 1px 0px; text-align:left&quot;&gt;銀河麒麟高級服務器操作系統 V10&lt;br&gt; （內核版本 4.19）&lt;/td&gt; 
-   &lt;td style=&quot;border-bottom-color:#afafaf; border-bottom-style:solid; border-image:initial; border-left-color:initial; border-left-style:initial; border-right-color:#afafaf; border-right-style:solid; border-top-color:initial; border-top-style:initial; border-width:0px 1px 1px 0px; text-align:left&quot;&gt;麒麟軟件有限公司&lt;/td&gt; 
-   &lt;td style=&quot;border-bottom-color:#afafaf; border-bottom-style:solid; border-image:initial; border-left-color:initial; border-left-style:initial; border-right-color:#afafaf; border-right-style:solid; border-top-color:initial; border-top-style:initial; border-width:0px 1px 1px 0px; text-align:left&quot;&gt;I 級&lt;/td&gt; 
-  &lt;/tr&gt; 
-  &lt;tr&gt; 
-   &lt;td style=&quot;border-bottom-color:#afafaf; border-bottom-style:solid; border-image:initial; border-left-color:initial; border-left-style:initial; border-right-color:#afafaf; border-right-style:solid; border-top-color:initial; border-top-style:initial; border-width:0px 1px 1px 0px; text-align:center&quot;&gt;3&lt;/td&gt; 
-   &lt;td style=&quot;border-bottom-color:#afafaf; border-bottom-style:solid; border-image:initial; border-left-color:initial; border-left-style:initial; border-right-color:#afafaf; border-right-style:solid; border-top-color:initial; border-top-style:initial; border-width:0px 1px 1px 0px; text-align:left&quot;&gt;統信服務器操作系統 V20&lt;br&gt; （內核版本 4.19）&lt;/td&gt; 
-   &lt;td style=&quot;border-bottom-color:#afafaf; border-bottom-style:solid; border-image:initial; border-left-color:initial; border-left-style:initial; border-right-color:#afafaf; border-right-style:solid; border-top-color:initial; border-top-style:initial; border-width:0px 1px 1px 0px; text-align:left&quot;&gt;統信軟件技術有限公司&lt;/td&gt; 
-   &lt;td style=&quot;border-bottom-color:#afafaf; border-bottom-style:solid; border-image:initial; border-left-color:initial; border-left-style:initial; border-right-color:#afafaf; border-right-style:solid; border-top-color:initial; border-top-style:initial; border-width:0px 1px 1px 0px; text-align:left&quot;&gt;I 級&lt;/td&gt; 
-  &lt;/tr&gt; 
-  &lt;tr&gt; 
-   &lt;td style=&quot;border-bottom-color:#afafaf; border-bottom-style:solid; border-image:initial; border-left-color:initial; border-left-style:initial; border-right-color:#afafaf; border-right-style:solid; border-top-color:initial; border-top-style:initial; border-width:0px 1px 1px 0px; text-align:center&quot;&gt;4&lt;/td&gt; 
-   &lt;td style=&quot;border-bottom-color:#afafaf; border-bottom-style:solid; border-image:initial; border-left-color:initial; border-left-style:initial; border-right-color:#afafaf; border-right-style:solid; border-top-color:initial; border-top-style:initial; border-width:0px 1px 1px 0px; text-align:left&quot;&gt;方德高可信服務器操作系統 V4.0&lt;br&gt; （內核版本 4.19）&lt;/td&gt; 
-   &lt;td style=&quot;border-bottom-color:#afafaf; border-bottom-style:solid; border-image:initial; border-left-color:initial; border-left-style:initial; border-right-color:#afafaf; border-right-style:solid; border-top-color:initial; border-top-style:initial; border-width:0px 1px 1px 0px; text-align:left&quot;&gt;中科方德軟件有限公司&lt;/td&gt; 
-   &lt;td style=&quot;border-bottom-color:#afafaf; border-bottom-style:solid; border-image:initial; border-left-color:initial; border-left-style:initial; border-right-color:#afafaf; border-right-style:solid; border-top-color:initial; border-top-style:initial; border-width:0px 1px 1px 0px; text-align:left&quot;&gt;I 級&lt;/td&gt; 
-  &lt;/tr&gt; 
-  &lt;tr&gt; 
-   &lt;td style=&quot;border-bottom-color:#afafaf; border-bottom-style:solid; border-image:initial; border-left-color:initial; border-left-style:initial; border-right-color:#afafaf; border-right-style:solid; border-top-color:initial; border-top-style:initial; border-width:0px 1px 1px 0px; text-align:center&quot;&gt;5&lt;/td&gt; 
-   &lt;td style=&quot;border-bottom-color:#afafaf; border-bottom-style:solid; border-image:initial; border-left-color:initial; border-left-style:initial; border-right-color:#afafaf; border-right-style:solid; border-top-color:initial; border-top-style:initial; border-width:0px 1px 1px 0px; text-align:left&quot;&gt;方德桌面操作系統 V3.1&lt;br&gt; （內核版本 4.9）&lt;/td&gt; 
-   &lt;td style=&quot;border-bottom-color:#afafaf; border-bottom-style:solid; border-image:initial; border-left-color:initial; border-left-style:initial; border-right-color:#afafaf; border-right-style:solid; border-top-color:initial; border-top-style:initial; border-width:0px 1px 1px 0px; text-align:left&quot;&gt;中科方德軟件有限公司&lt;/td&gt; 
-   &lt;td style=&quot;border-bottom-color:#afafaf; border-bottom-style:solid; border-image:initial; border-left-color:initial; border-left-style:initial; border-right-color:#afafaf; border-right-style:solid; border-top-color:initial; border-top-style:initial; border-width:0px 1px 1px 0px; text-align:left&quot;&gt;I 級&lt;/td&gt; 
-  &lt;/tr&gt; 
-  &lt;tr&gt; 
-   &lt;td style=&quot;border-bottom-color:#afafaf; border-bottom-style:solid; border-image:initial; border-left-color:initial; border-left-style:initial; border-right-color:#afafaf; border-right-style:solid; border-top-color:initial; border-top-style:initial; border-width:0px 1px 1px 0px; text-align:center&quot;&gt;6&lt;/td&gt; 
-   &lt;td style=&quot;border-bottom-color:#afafaf; border-bottom-style:solid; border-image:initial; border-left-color:initial; border-left-style:initial; border-right-color:#afafaf; border-right-style:solid; border-top-color:initial; border-top-style:initial; border-width:0px 1px 1px 0px; text-align:left&quot;&gt;統信桌面操作系統 V20&lt;br&gt; （內核版本 4.19）&lt;/td&gt; 
-   &lt;td style=&quot;border-bottom-color:#afafaf; border-bottom-style:solid; border-image:initial; border-left-color:initial; border-left-style:initial; border-right-color:#afafaf; border-right-style:solid; border-top-color:initial; border-top-style:initial; border-width:0px 1px 1px 0px; text-align:left&quot;&gt;統信軟件技術有限公司&lt;/td&gt; 
-   &lt;td style=&quot;border-bottom-color:#afafaf; border-bottom-style:solid; border-image:initial; border-left-color:initial; border-left-style:initial; border-right-color:#afafaf; border-right-style:solid; border-top-color:initial; border-top-style:initial; border-width:0px 1px 1px 0px; text-align:left&quot;&gt;I 級&lt;/td&gt; 
-  &lt;/tr&gt; 
- &lt;/tbody&gt; 
-&lt;/table&gt; 
-&lt;p style=&quot;color:#000000; margin-left:0; margin-right:0&quot;&gt;&amp;nbsp;&lt;/p&gt; 
-&lt;p style=&quot;color:#000000; margin-left:0; margin-right:0&quot;&gt;附表三、中間件&lt;/p&gt; 
-&lt;table border=&quot;1&quot; cellpadding=&quot;0&quot; cellspacing=&quot;0&quot;&gt; 
- &lt;tbody&gt; 
-  &lt;tr&gt; 
-   &lt;td style=&quot;border-bottom-color:#afafaf; border-bottom-style:solid; border-image:initial; border-left-color:initial; border-left-style:initial; border-right-color:#afafaf; border-right-style:solid; border-top-color:initial; border-top-style:initial; border-width:0px 1px 1px 0px; text-align:center; width:30px&quot;&gt;序號&lt;/td&gt; 
-   &lt;td style=&quot;border-bottom-color:#afafaf; border-bottom-style:solid; border-image:initial; border-left-color:initial; border-left-style:initial; border-right-color:#afafaf; border-right-style:solid; border-top-color:initial; border-top-style:initial; border-width:0px 1px 1px 0px; text-align:center&quot;&gt;產品名稱&lt;/td&gt; 
-   &lt;td style=&quot;border-bottom-color:#afafaf; border-bottom-style:solid; border-image:initial; border-left-color:initial; border-left-style:initial; border-right-color:#afafaf; border-right-style:solid; border-top-color:initial; border-top-style:initial; border-width:0px 1px 1px 0px; text-align:center&quot;&gt;廠商&lt;/td&gt; 
-   &lt;td style=&quot;border-bottom-color:#afafaf; border-bottom-style:solid; border-image:initial; border-left-color:initial; border-left-style:initial; border-right-color:#afafaf; border-right-style:solid; border-top-color:initial; border-top-style:initial; border-width:0px 1px 1px 0px; text-align:center&quot;&gt;安全可靠等級&lt;/td&gt; 
-  &lt;/tr&gt; 
-  &lt;tr&gt; 
-   &lt;td style=&quot;border-bottom-color:#afafaf; border-bottom-style:solid; border-image:initial; border-left-color:initial; border-left-style:initial; border-right-color:#afafaf; border-right-style:solid; border-top-color:initial; border-top-style:initial; border-width:0px 1px 1px 0px; text-align:center&quot;&gt;1&lt;/td&gt; 
-   &lt;td style=&quot;border-bottom-color:#afafaf; border-bottom-style:solid; border-image:initial; border-left-color:initial; border-left-style:initial; border-right-color:#afafaf; border-right-style:solid; border-top-color:initial; border-top-style:initial; border-width:0px 1px 1px 0px; text-align:left&quot;&gt;東方通 TongWeb 中間件&amp;nbsp;&lt;/td&gt; 
-   &lt;td style=&quot;border-bottom-color:#afafaf; border-bottom-style:solid; border-image:initial; border-left-color:initial; border-left-style:initial; border-right-color:#afafaf; border-right-style:solid; border-top-color:initial; border-top-style:initial; border-width:0px 1px 1px 0px; text-align:left&quot;&gt;北京東方通科技&lt;/td&gt; 
-   &lt;td style=&quot;border-bottom-color:#afafaf; border-bottom-style:solid; border-image:initial; border-left-color:initial; border-left-style:initial; border-right-color:#afafaf; border-right-style:solid; border-top-color:initial; border-top-style:initial; border-width:0px 1px 1px 0px; text-align:left&quot;&gt;安全&lt;/td&gt; 
-  &lt;/tr&gt; 
-  &lt;tr&gt; 
-   &lt;td style=&quot;border-bottom-color:#afafaf; border-bottom-style:solid; border-image:initial; border-left-color:initial; border-left-style:initial; border-right-color:#afafaf; border-right-style:solid; border-top-color:initial; border-top-style:initial; border-width:0px 1px 1px 0px; text-align:center&quot;&gt;2&lt;/td&gt; 
-   &lt;td style=&quot;border-bottom-color:#afafaf; border-bottom-style:solid; border-image:initial; border-left-color:initial; border-left-style:initial; border-right-color:#afafaf; border-right-style:solid; border-top-color:initial; border-top-style:initial; border-width:0px 1px 1px 0px; text-align:left&quot;&gt;金蝶 apusic 中間件&amp;nbsp;&lt;/td&gt; 
-   &lt;td style=&quot;border-bottom-color:#afafaf; border-bottom-style:solid; border-image:initial; border-left-color:initial; border-left-style:initial; border-right-color:#afafaf; border-right-style:solid; border-top-color:initial; border-top-style:initial; border-width:0px 1px 1px 0px; text-align:left&quot;&gt;金蝶&lt;/td&gt; 
-   &lt;td style=&quot;border-bottom-color:#afafaf; border-bottom-style:solid; border-image:initial; border-left-color:initial; border-left-style:initial; border-right-color:#afafaf; border-right-style:solid; border-top-color:initial; border-top-style:initial; border-width:0px 1px 1px 0px; text-align:left&quot;&gt;安全&lt;/td&gt; 
-  &lt;/tr&gt; 
-  &lt;tr&gt; 
-   &lt;td style=&quot;border-bottom-color:#afafaf; border-bottom-style:solid; border-image:initial; border-left-color:initial; border-left-style:initial; border-right-color:#afafaf; border-right-style:solid; border-top-color:initial; border-top-style:initial; border-width:0px 1px 1px 0px; text-align:center&quot;&gt;5&lt;/td&gt; 
-   &lt;td style=&quot;border-bottom-color:#afafaf; border-bottom-style:solid; border-image:initial; border-left-color:initial; border-left-style:initial; border-right-color:#afafaf; border-right-style:solid; border-top-color:initial; border-top-style:initial; border-width:0px 1px 1px 0px; text-align:left&quot;&gt;寶蘭德 BES 中間件&amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp;&lt;/td&gt; 
-   &lt;td style=&quot;border-bottom-color:#afafaf; border-bottom-style:solid; border-image:initial; border-left-color:initial; border-left-style:initial; border-right-color:#afafaf; border-right-style:solid; border-top-color:initial; border-top-style:initial; border-width:0px 1px 1px 0px; text-align:left&quot;&gt;北京寶蘭德軟件股份有限公司&lt;/td&gt; 
-   &lt;td style=&quot;border-bottom-color:#afafaf; border-bottom-style:solid; border-image:initial; border-left-color:initial; border-left-style:initial; border-right-color:#afafaf; border-right-style:solid; border-top-color:initial; border-top-style:initial; border-width:0px 1px 1px 0px; text-align:left&quot;&gt;安全&lt;/td&gt; 
-  &lt;/tr&gt; 
- &lt;/tbody&gt; 
-&lt;/table&gt; 
-&lt;p&gt;&amp;nbsp;&lt;/p&gt; 
-&lt;p style=&quot;color:#333333; margin-left:0; margin-right:0; text-align:left&quot;&gt;&amp;nbsp;附表四、集中式數據庫&lt;/p&gt; 
-&lt;table border=&quot;1&quot; cellpadding=&quot;0&quot; cellspacing=&quot;0&quot;&gt; 
- &lt;tbody&gt; 
-  &lt;tr&gt; 
-   &lt;td style=&quot;border-bottom-color:#afafaf; border-bottom-style:solid; border-image:initial; border-left-color:initial; border-left-style:initial; border-right-color:#afafaf; border-right-style:solid; border-top-color:initial; border-top-style:initial; border-width:0px 1px 1px 0px; text-align:center; width:30px&quot;&gt;序號&lt;/td&gt; 
-   &lt;td style=&quot;border-bottom-color:#afafaf; border-bottom-style:solid; border-image:initial; border-left-color:initial; border-left-style:initial; border-right-color:#afafaf; border-right-style:solid; border-top-color:initial; border-top-style:initial; border-width:0px 1px 1px 0px; text-align:center&quot;&gt;產品名稱&lt;/td&gt; 
-   &lt;td style=&quot;border-bottom-color:#afafaf; border-bottom-style:solid; border-image:initial; border-left-color:initial; border-left-style:initial; border-right-color:#afafaf; border-right-style:solid; border-top-color:initial; border-top-style:initial; border-width:0px 1px 1px 0px; text-align:center&quot;&gt;廠商&lt;/td&gt; 
-   &lt;td style=&quot;border-bottom-color:#afafaf; border-bottom-style:solid; border-image:initial; border-left-color:initial; border-left-style:initial; border-right-color:#afafaf; border-right-style:solid; border-top-color:initial; border-top-style:initial; border-width:0px 1px 1px 0px; text-align:center&quot;&gt;安全可靠等級&lt;/td&gt; 
-  &lt;/tr&gt; 
-  &lt;tr&gt; 
-   &lt;td style=&quot;border-bottom-color:#afafaf; border-bottom-style:solid; border-image:initial; border-left-color:initial; border-left-style:initial; border-right-color:#afafaf; border-right-style:solid; border-top-color:initial; border-top-style:initial; border-width:0px 1px 1px 0px; text-align:center&quot;&gt;1&lt;/td&gt; 
-   &lt;td style=&quot;border-bottom-color:#afafaf; border-bottom-style:solid; border-image:initial; border-left-color:initial; border-left-style:initial; border-right-color:#afafaf; border-right-style:solid; border-top-color:initial; border-top-style:initial; border-width:0px 1px 1px 0px; text-align:left&quot;&gt;達夢數據庫管理系統 V8.4&amp;nbsp;&amp;nbsp;&lt;/td&gt; 
-   &lt;td style=&quot;border-bottom-color:#afafaf; border-bottom-style:solid; border-image:initial; border-left-color:initial; border-left-style:initial; border-right-color:#afafaf; border-right-style:solid; border-top-color:initial; border-top-style:initial; border-width:0px 1px 1px 0px; text-align:left&quot;&gt;武漢達夢數據庫股份有限公司&lt;/td&gt; 
-   &lt;td style=&quot;border-bottom-color:#afafaf; border-bottom-style:solid; border-image:initial; border-left-color:initial; border-left-style:initial; border-right-color:#afafaf; border-right-style:solid; border-top-color:initial; border-top-style:initial; border-width:0px 1px 1px 0px; text-align:left&quot;&gt;安全&lt;/td&gt; 
-  &lt;/tr&gt; 
-  &lt;tr&gt; 
-   &lt;td style=&quot;border-bottom-color:#afafaf; border-bottom-style:solid; border-image:initial; border-left-color:initial; border-left-style:initial; border-right-color:#afafaf; border-right-style:solid; border-top-color:initial; border-top-style:initial; border-width:0px 1px 1px 0px; text-align:center&quot;&gt;2&lt;/td&gt; 
-   &lt;td style=&quot;border-bottom-color:#afafaf; border-bottom-style:solid; border-image:initial; border-left-color:initial; border-left-style:initial; border-right-color:#afafaf; border-right-style:solid; border-top-color:initial; border-top-style:initial; border-width:0px 1px 1px 0px; text-align:left&quot;&gt;金倉數據庫管理系統 KingbaseES V8&amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp;&lt;/td&gt; 
-   &lt;td style=&quot;border-bottom-color:#afafaf; border-bottom-style:solid; border-image:initial; border-left-color:initial; border-left-style:initial; border-right-color:#afafaf; border-right-style:solid; border-top-color:initial; border-top-style:initial; border-width:0px 1px 1px 0px; text-align:left&quot;&gt;北京人大金倉信息技術股份有限公司&lt;/td&gt; 
-   &lt;td style=&quot;border-bottom-color:#afafaf; border-bottom-style:solid; border-image:initial; border-left-color:initial; border-left-style:initial; border-right-color:#afafaf; border-right-style:solid; border-top-color:initial; border-top-style:initial; border-width:0px 1px 1px 0px; text-align:left&quot;&gt;安全&lt;/td&gt; 
-  &lt;/tr&gt; 
-  &lt;tr&gt; 
-   &lt;td style=&quot;border-bottom-color:#afafaf; border-bottom-style:solid; border-image:initial; border-left-color:initial; border-left-style:initial; border-right-color:#afafaf; border-right-style:solid; border-top-color:initial; border-top-style:initial; border-width:0px 1px 1px 0px; text-align:center&quot;&gt;3&lt;/td&gt; 
-   &lt;td style=&quot;border-bottom-color:#afafaf; border-bottom-style:solid; border-image:initial; border-left-color:initial; border-left-style:initial; border-right-color:#afafaf; border-right-style:solid; border-top-color:initial; border-top-style:initial; border-width:0px 1px 1px 0px; text-align:left&quot;&gt;OceanBase&lt;/td&gt; 
-   &lt;td style=&quot;border-bottom-color:#afafaf; border-bottom-style:solid; border-image:initial; border-left-color:initial; border-left-style:initial; border-right-color:#afafaf; border-right-style:solid; border-top-color:initial; border-top-style:initial; border-width:0px 1px 1px 0px; text-align:left&quot;&gt;北京奧星貝斯科技有限公司&lt;/td&gt; 
-   &lt;td style=&quot;border-bottom-color:#afafaf; border-bottom-style:solid; border-image:initial; border-left-color:initial; border-left-style:initial; border-right-color:#afafaf; border-right-style:solid; border-top-color:initial; border-top-style:initial; border-width:0px 1px 1px 0px; text-align:left&quot;&gt;安全&lt;/td&gt; 
-  &lt;/tr&gt; 
-  &lt;tr&gt; 
-   &lt;td style=&quot;border-bottom-color:#afafaf; border-bottom-style:solid; border-image:initial; border-left-color:initial; border-left-style:initial; border-right-color:#afafaf; border-right-style:solid; border-top-color:initial; border-top-style:initial; border-width:0px 1px 1px 0px; text-align:center&quot;&gt;4&lt;/td&gt; 
-   &lt;td style=&quot;border-bottom-color:#afafaf; border-bottom-style:solid; border-image:initial; border-left-color:initial; border-left-style:initial; border-right-color:#afafaf; border-right-style:solid; border-top-color:initial; border-top-style:initial; border-width:0px 1px 1px 0px; text-align:left&quot;&gt;瀚高安全版數據庫系統 V4.5&lt;/td&gt; 
-   &lt;td style=&quot;border-bottom-color:#afafaf; border-bottom-style:solid; border-image:initial; border-left-color:initial; border-left-style:initial; border-right-color:#afafaf; border-right-style:solid; border-top-color:initial; border-top-style:initial; border-width:0px 1px 1px 0px; text-align:left&quot;&gt;瀚高基礎軟件股份有限公司&lt;/td&gt; 
-   &lt;td style=&quot;border-bottom-color:#afafaf; border-bottom-style:solid; border-image:initial; border-left-color:initial; border-left-style:initial; border-right-color:#afafaf; border-right-style:solid; border-top-color:initial; border-top-style:initial; border-width:0px 1px 1px 0px; text-align:left&quot;&gt;安全&lt;/td&gt; 
-  &lt;/tr&gt; 
-  &lt;tr&gt; 
-   &lt;td style=&quot;border-bottom-color:#afafaf; border-bottom-style:solid; border-image:initial; border-left-color:initial; border-left-style:initial; border-right-color:#afafaf; border-right-style:solid; border-top-color:initial; border-top-style:initial; border-width:0px 1px 1px 0px; text-align:center&quot;&gt;5&lt;/td&gt; 
-   &lt;td style=&quot;border-bottom-color:#afafaf; border-bottom-style:solid; border-image:initial; border-left-color:initial; border-left-style:initial; border-right-color:#afafaf; border-right-style:solid; border-top-color:initial; border-top-style:initial; border-width:0px 1px 1px 0px; text-align:left&quot;&gt;南大通用安全數據庫管理系統 GBase 8s V8.8&lt;/td&gt; 
-   &lt;td style=&quot;border-bottom-color:#afafaf; border-bottom-style:solid; border-image:initial; border-left-color:initial; border-left-style:initial; border-right-color:#afafaf; border-right-style:solid; border-top-color:initial; border-top-style:initial; border-width:0px 1px 1px 0px; text-align:left&quot;&gt;天津南大通用數據技術股份有限公司&lt;/td&gt; 
-   &lt;td style=&quot;border-bottom-color:#afafaf; border-bottom-style:solid; border-image:initial; border-left-color:initial; border-left-style:initial; border-right-color:#afafaf; border-right-style:solid; border-top-color:initial; border-top-style:initial; border-width:0px 1px 1px 0px; text-align:left&quot;&gt;安全&lt;/td&gt; 
-  &lt;/tr&gt; 
-  &lt;tr&gt; 
-   &lt;td style=&quot;border-bottom-color:#afafaf; border-bottom-style:solid; border-image:initial; border-left-color:initial; border-left-style:initial; border-right-color:#afafaf; border-right-style:solid; border-top-color:initial; border-top-style:initial; border-width:0px 1px 1px 0px; text-align:center&quot;&gt;6&lt;/td&gt; 
-   &lt;td style=&quot;border-bottom-color:#afafaf; border-bottom-style:solid; border-image:initial; border-left-color:initial; border-left-style:initial; border-right-color:#afafaf; border-right-style:solid; border-top-color:initial; border-top-style:initial; border-width:0px 1px 1px 0px; text-align:left&quot;&gt;OpenGauss&lt;/td&gt; 
-   &lt;td style=&quot;border-bottom-color:#afafaf; border-bottom-style:solid; border-image:initial; border-left-color:initial; border-left-style:initial; border-right-color:#afafaf; border-right-style:solid; border-top-color:initial; border-top-style:initial; border-width:0px 1px 1px 0px; text-align:left&quot;&gt;華為&lt;/td&gt; 
-   &lt;td style=&quot;border-bottom-color:#afafaf; border-bottom-style:solid; border-image:initial; border-left-color:initial; border-left-style:initial; border-right-color:#afafaf; border-right-style:solid; border-top-color:initial; border-top-style:initial; border-width:0px 1px 1px 0px; text-align:left&quot;&gt;安全&lt;/td&gt; 
-  &lt;/tr&gt; 
-  &lt;tr&gt; 
-   &lt;td style=&quot;border-bottom-color:#afafaf; border-bottom-style:solid; border-image:initial; border-left-color:initial; border-left-style:initial; border-right-color:#afafaf; border-right-style:solid; border-top-color:initial; border-top-style:initial; border-width:0px 1px 1px 0px; text-align:center&quot;&gt;7&lt;/td&gt; 
-   &lt;td style=&quot;border-bottom-color:#afafaf; border-bottom-style:solid; border-image:initial; border-left-color:initial; border-left-style:initial; border-right-color:#afafaf; border-right-style:solid; border-top-color:initial; border-top-style:initial; border-width:0px 1px 1px 0px; text-align:left&quot;&gt;海量數據庫 G100 管理系統 V2.2&lt;/td&gt; 
-   &lt;td style=&quot;border-bottom-color:#afafaf; border-bottom-style:solid; border-image:initial; border-left-color:initial; border-left-style:initial; border-right-color:#afafaf; border-right-style:solid; border-top-color:initial; border-top-style:initial; border-width:0px 1px 1px 0px; text-align:left&quot;&gt;北京海量數據技術股份有限公司&lt;/td&gt; 
-   &lt;td style=&quot;border-bottom-color:#afafaf; border-bottom-style:solid; border-image:initial; border-left-color:initial; border-left-style:initial; border-right-color:#afafaf; border-right-style:solid; border-top-color:initial; border-top-style:initial; border-width:0px 1px 1px 0px; text-align:left&quot;&gt;安全&lt;/td&gt; 
-  &lt;/tr&gt; 
-  &lt;tr&gt; 
-   &lt;td style=&quot;border-bottom-color:#afafaf; border-bottom-style:solid; border-image:initial; border-left-color:initial; border-left-style:initial; border-right-color:#afafaf; border-right-style:solid; border-top-color:initial; border-top-style:initial; border-width:0px 1px 1px 0px; text-align:center&quot;&gt;8&lt;/td&gt; 
-   &lt;td style=&quot;border-bottom-color:#afafaf; border-bottom-style:solid; border-image:initial; border-left-color:initial; border-left-style:initial; border-right-color:#afafaf; border-right-style:solid; border-top-color:initial; border-top-style:initial; border-width:0px 1px 1px 0px; text-align:left&quot;&gt;萬裏安全數據庫軟件 V1.0&lt;/td&gt; 
-   &lt;td style=&quot;border-bottom-color:#afafaf; border-bottom-style:solid; border-image:initial; border-left-color:initial; border-left-style:initial; border-right-color:#afafaf; border-right-style:solid; border-top-color:initial; border-top-style:initial; border-width:0px 1px 1px 0px; text-align:left&quot;&gt;北京萬裏開源軟件有限公司&lt;/td&gt; 
-   &lt;td style=&quot;border-bottom-color:#afafaf; border-bottom-style:solid; border-image:initial; border-left-color:initial; border-left-style:initial; border-right-color:#afafaf; border-right-style:solid; border-top-color:initial; border-top-style:initial; border-width:0px 1px 1px 0px; text-align:left&quot;&gt;安全&lt;/td&gt; 
-  &lt;/tr&gt; 
- &lt;/tbody&gt; 
-&lt;/table&gt; 
-&lt;p&gt;&amp;nbsp;&lt;/p&gt; 
-&lt;h1&gt;系統特色&lt;/h1&gt; 
-&lt;p style=&quot;color:#40485b; margin-left:0; margin-right:0; text-align:left&quot;&gt;1. 基於 JAVA 標準自主研發，支持主流國產信創環境，國產數據庫以及國產中間件。安全，穩定，經過多次政務與企事業單位項目長期檢驗，順利通過等保二，三級評測。&lt;/p&gt; 
-&lt;p style=&quot;color:#40485b; margin-left:0; margin-right:0; text-align:left&quot;&gt;2. 高效便捷的進行站點文檔採編，審核，頁面模板製作。具有性能優秀，穩定，安全，易擴展等特點，適合建設政府機構，教育部門以及企事業單位的站羣系統，支持集羣管理，系統支持集羣化部署，可任意增加和較少 CMS 服務節點，根據業務需要獨立部署服務節點，加強系統容錯性，併發能力及擴展能力。&lt;/p&gt; 
-&lt;p style=&quot;color:#40485b; margin-left:0; margin-right:0; text-align:left&quot;&gt;3. 站點支持靜態化發佈，內容靜態化發佈，不但支持生成 html，更可通過生成 shtml 方式，精確控制頁面局部靜態化，最大限度提高站點併發訪問性能以及可維護性。&lt;/p&gt; 
-&lt;p style=&quot;color:#40485b; margin-left:0; margin-right:0; text-align:left&quot;&gt;4. 內容模型自定義支持，支持自定義模型功能，內置完善的字段類型，所定義字段還可參與聯合查詢，高級搜索，使您的站點具備高度擴展能力，方便應對各種業務需要。&lt;/p&gt; 
-&lt;p style=&quot;color:#40485b; margin-left:0; margin-right:0; text-align:left&quot;&gt;5. 強大可擴展權限系統，支持等級化的按部門劃分的子站點管理，下級無法越權，明確權限職責。支持粗（菜單級）、細（業務數據）粒度權限控制，可按照組織、角色、用戶進行授權， 有效劃分權限範圍，收放自如，職責清晰。並支持二次開發功能整合&lt;/p&gt; 
-&lt;p style=&quot;color:#40485b; margin-left:0; margin-right:0; text-align:left&quot;&gt;6. 安全防護能力，系統能自動攔截並記錄分析各種非法訪問，及時通知站點管理員進行處理，對於惡意訪問者，以黑名單制度自動進行阻止，為您的站點安全保駕護航。&lt;/p&gt; 
-&lt;p style=&quot;color:#40485b; margin-left:0; margin-right:0; text-align:left&quot;&gt;7. 高級搜索支持，支持類似百度的高級搜索功能，支持大數據下的快速搜索，具有可配置性，結合自定義模型功能，可快速打造符合你需求的信息模型搜索。&lt;/p&gt; 
-&lt;p style=&quot;color:#40485b; margin-left:0; margin-right:0; text-align:left&quot;&gt;8. 網站羣架構支持，一套 CMS 產品可支持部署多個站點，由 JTopcms 統一管理，但各站點彼此數據和邏輯性完全獨立，且又可相互進行數據共享交流，為用戶提供最大價值&lt;/p&gt; 
-&lt;p style=&quot;color:#40485b; margin-left:0; margin-right:0; text-align:left&quot;&gt;9. 實施網站開發簡單 JTopcms 提供了完善的標籤體系，只需要使用者具備 html 和美工知識儲備，在 CMS 標籤的幫助下，即可高效的製作出可管理的動態站點。&lt;/p&gt; 
-&lt;p style=&quot;color:#40485b; margin-left:0; margin-right:0; text-align:left&quot;&gt;10. 靈活的數據組織方式，支持基本欄目和專題分類，TAG 標籤分類，更支持頁面區塊化碎片管理，自定義推薦位，數據組合方式靈活強大，滿足各種數據組織需求。&lt;/p&gt; 
-&lt;p style=&quot;color:#40485b; margin-left:0; margin-right:0; text-align:left&quot;&gt;11. 二次開發高效 JTopcms 基於 J2EE 核心模式自主研發，立項之初即考慮二次開發支持，擴展新模塊只需具備 Java web 開發基礎以及 SQL 能力， 就可快速上手，高效無侵入方式開發功能。&lt;/p&gt; 
-&lt;p style=&quot;color:#40485b; margin-left:0; margin-right:0; text-align:left&quot;&gt;12. 支持資源發佈點，支持自動將圖片，視頻，文件，以及靜態發佈 html 發佈到各資源服務器，動靜分離，靜態前端訪問和動態後端訪問獨立處理，提升性能和安全性。&lt;/p&gt; 
-&lt;h1&gt;聯繫方式&lt;/h1&gt; 
-&lt;p style=&quot;color:#40485b; margin-left:0; margin-right:0; text-align:left&quot;&gt;主頁：&lt;span&gt;&amp;nbsp;&lt;/span&gt;&lt;a href=&quot;https://gitee.com/link?target=http%3A%2F%2Fwww.jtopcms.com%2F&quot;&gt;http://www.jtopcms.com/&lt;/a&gt;&lt;/p&gt; 
-&lt;p style=&quot;color:#40485b; margin-left:0; margin-right:0; text-align:left&quot;&gt;郵箱:&lt;span&gt;&amp;nbsp;&lt;/span&gt;&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=mailto%3Aservice%40jtopcms.com&quot; target=&quot;_blank&quot;&gt;service@jtopcms.com&lt;/a&gt;&lt;/p&gt;
-                                                                                &lt;/div&gt;
-                                                                            </description>
-            <link>https://www.oschina.net/news/326569/jtopcms-v4-update</link>
-            <guid isPermaLink="false">https://www.oschina.net/news/326569/jtopcms-v4-update</guid>
-            <pubDate>Tue, 24 Dec 2024 09:04:00 GMT</pubDate>
             <author>來源: 投稿</author>
         </item>
     </channel>
