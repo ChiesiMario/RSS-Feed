@@ -9,8 +9,118 @@
         <generator>RSSHub</generator>
         <webMaster>contact@rsshub.app (RSSHub)</webMaster>
         <language>en</language>
-        <lastBuildDate>Thu, 26 Dec 2024 21:35:59 GMT</lastBuildDate>
+        <lastBuildDate>Fri, 27 Dec 2024 02:37:12 GMT</lastBuildDate>
         <ttl>5</ttl>
+        <item>
+            <title>RxSqlUtils（base R2dbc）</title>
+            <description>&lt;div class=&quot;content&quot;&gt;
+                                                                    
+                                                        &lt;h3&gt;一、前言&lt;/h3&gt; 
+&lt;p style=&quot;color:#24292e; text-align:start&quot;&gt;隨着 Solon 3.0 和 Solon-Rx 3.0 發佈，又迎來了的&lt;span&gt;&amp;nbsp;&lt;/span&gt;&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fsolon.noear.org%2Farticle%2F885&quot; target=&quot;_blank&quot;&gt;RxSqlUtils 擴展插件&lt;/a&gt;，用於「響應式」操作數據庫。RxSqlUtils 是基於 R2dbc 和 Reactor 接口的封裝。極簡風格，就像個工具類，故名：RxSqlUtils。&lt;/p&gt; 
+&lt;p style=&quot;color:#24292e; text-align:start&quot;&gt;尤其在 solon-web-rx 和&lt;span&gt;&amp;nbsp;&lt;/span&gt;&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fsolon.noear.org%2Farticle%2F804&quot; target=&quot;_blank&quot;&gt;Solon Cloud Gateway（基於純響應式構建）&lt;/a&gt;&lt;span&gt;&amp;nbsp;&lt;/span&gt;場景開發時，RxSqlUtils 會是最好的良配。&lt;/p&gt; 
+&lt;h3&gt;二、RxSqlUtils 使用&lt;/h3&gt; 
+&lt;h4&gt;1、引入依賴&lt;/h4&gt; 
+&lt;pre&gt;&lt;code class=&quot;language-xml&quot;&gt;&lt;span&gt;&amp;lt;&lt;span style=&quot;color:#e45649&quot;&gt;dependency&lt;/span&gt;&amp;gt;&lt;/span&gt;
+    &lt;span&gt;&amp;lt;&lt;span style=&quot;color:#e45649&quot;&gt;groupId&lt;/span&gt;&amp;gt;&lt;/span&gt;org.noear&lt;span&gt;&amp;lt;/&lt;span style=&quot;color:#e45649&quot;&gt;groupId&lt;/span&gt;&amp;gt;&lt;/span&gt;
+    &lt;span&gt;&amp;lt;&lt;span style=&quot;color:#e45649&quot;&gt;artifactId&lt;/span&gt;&amp;gt;&lt;/span&gt;solon-data-rx-sqlutils&lt;span&gt;&amp;lt;/&lt;span style=&quot;color:#e45649&quot;&gt;artifactId&lt;/span&gt;&amp;gt;&lt;/span&gt;
+&lt;span&gt;&amp;lt;/&lt;span style=&quot;color:#e45649&quot;&gt;dependency&lt;/span&gt;&amp;gt;&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt; 
+&lt;h4&gt;2、新建數據庫表（for MySql）&lt;/h4&gt; 
+&lt;pre&gt;&lt;code class=&quot;language-sql&quot;&gt;&lt;span style=&quot;color:#a626a4&quot;&gt;CREATE&lt;/span&gt; &lt;span style=&quot;color:#a626a4&quot;&gt;TABLE&lt;/span&gt; `&lt;span style=&quot;color:#a626a4&quot;&gt;user&lt;/span&gt;`  (
+  `id` &lt;span style=&quot;color:#986801&quot;&gt;bigint&lt;/span&gt;(&lt;span style=&quot;color:#986801&quot;&gt;20&lt;/span&gt;) UNSIGNED ZEROFILL &lt;span style=&quot;color:#a626a4&quot;&gt;NOT&lt;/span&gt; &lt;span style=&quot;color:#a626a4&quot;&gt;NULL&lt;/span&gt; AUTO_INCREMENT,
+  `name` &lt;span style=&quot;color:#986801&quot;&gt;varchar&lt;/span&gt;(&lt;span style=&quot;color:#986801&quot;&gt;255&lt;/span&gt;) &lt;span style=&quot;color:#986801&quot;&gt;CHARACTER&lt;/span&gt; &lt;span style=&quot;color:#a626a4&quot;&gt;SET&lt;/span&gt; utf8mb4 &lt;span style=&quot;color:#a626a4&quot;&gt;COLLATE&lt;/span&gt; utf8mb4_general_ci &lt;span style=&quot;color:#a626a4&quot;&gt;NULL&lt;/span&gt; &lt;span style=&quot;color:#a626a4&quot;&gt;DEFAULT&lt;/span&gt; &lt;span style=&quot;color:#a626a4&quot;&gt;NULL&lt;/span&gt;,
+  `title` &lt;span style=&quot;color:#986801&quot;&gt;varchar&lt;/span&gt;(&lt;span style=&quot;color:#986801&quot;&gt;255&lt;/span&gt;) &lt;span style=&quot;color:#986801&quot;&gt;CHARACTER&lt;/span&gt; &lt;span style=&quot;color:#a626a4&quot;&gt;SET&lt;/span&gt; utf8mb4 &lt;span style=&quot;color:#a626a4&quot;&gt;COLLATE&lt;/span&gt; utf8mb4_general_ci &lt;span style=&quot;color:#a626a4&quot;&gt;NULL&lt;/span&gt; &lt;span style=&quot;color:#a626a4&quot;&gt;DEFAULT&lt;/span&gt; &lt;span style=&quot;color:#a626a4&quot;&gt;NULL&lt;/span&gt;,
+  &lt;span style=&quot;color:#a626a4&quot;&gt;PRIMARY&lt;/span&gt; KEY (`id`) &lt;span style=&quot;color:#a626a4&quot;&gt;USING&lt;/span&gt; BTREE
+) ENGINE &lt;span&gt;=&lt;/span&gt; InnoDB AUTO_INCREMENT &lt;span&gt;=&lt;/span&gt; &lt;span style=&quot;color:#986801&quot;&gt;2&lt;/span&gt; &lt;span style=&quot;color:#986801&quot;&gt;CHARACTER&lt;/span&gt; &lt;span style=&quot;color:#a626a4&quot;&gt;SET&lt;/span&gt; &lt;span&gt;=&lt;/span&gt; utf8mb4 &lt;span style=&quot;color:#a626a4&quot;&gt;COLLATE&lt;/span&gt; &lt;span&gt;=&lt;/span&gt; utf8mb4_general_ci ROW_FORMAT &lt;span&gt;=&lt;/span&gt; &lt;span style=&quot;color:#a626a4&quot;&gt;DYNAMIC&lt;/span&gt;;
+&lt;/code&gt;&lt;/pre&gt; 
+&lt;h4&gt;3、定義實體類&lt;/h4&gt; 
+&lt;p style=&quot;color:#24292e; text-align:start&quot;&gt;使用了 lombok 的註解。&lt;/p&gt; 
+&lt;pre&gt;&lt;code class=&quot;language-java&quot;&gt;&lt;span style=&quot;color:#4078f2&quot;&gt;@Data&lt;/span&gt;
+&lt;span style=&quot;color:#a626a4&quot;&gt;public&lt;/span&gt; &lt;span style=&quot;color:#a626a4&quot;&gt;class&lt;/span&gt; &lt;span style=&quot;color:#c18401&quot;&gt;User&lt;/span&gt; {
+    &lt;span style=&quot;color:#a626a4&quot;&gt;private&lt;/span&gt; Long id;
+    &lt;span style=&quot;color:#a626a4&quot;&gt;private&lt;/span&gt; String name;
+    &lt;span style=&quot;color:#a626a4&quot;&gt;private&lt;/span&gt; String title;
+}
+&lt;/code&gt;&lt;/pre&gt; 
+&lt;h4&gt;4、添加數據源配置&lt;/h4&gt; 
+&lt;pre&gt;&lt;code class=&quot;language-yaml language-yml&quot;&gt;&lt;span style=&quot;color:#986801&quot;&gt;solon.dataSources:&lt;/span&gt;
+  &lt;span style=&quot;color:#50a14f&quot;&gt;user!:&lt;/span&gt; &lt;em&gt;# ‘!’結尾表示默認數據源&lt;/em&gt;
+    &lt;span style=&quot;color:#986801&quot;&gt;class:&lt;/span&gt; &lt;span style=&quot;color:#50a14f&quot;&gt;&quot;org.noear.solon.data.datasource.R2dbcConnectionFactory&quot;&lt;/span&gt;
+    &lt;span style=&quot;color:#986801&quot;&gt;r2dbcUrl:&lt;/span&gt; &lt;span style=&quot;color:#50a14f&quot;&gt;&quot;r2dbc:h2:mem:///test;DB_CLOSE_ON_EXIT=FALSE;MODE=MYSQL;DATABASE_TO_LOWER=TRUE;IGNORECASE=TRUE;CASE_INSENSITIVE_IDENTIFIERS=TRUE&quot;&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt; 
+&lt;h4&gt;5、注入 RxSqlUtils 並使用&lt;/h4&gt; 
+&lt;p style=&quot;color:#24292e; text-align:start&quot;&gt;注入（這樣就可以用了）&lt;/p&gt; 
+&lt;pre&gt;&lt;code class=&quot;language-java&quot;&gt;&lt;span style=&quot;color:#4078f2&quot;&gt;@Component&lt;/span&gt;
+&lt;span style=&quot;color:#a626a4&quot;&gt;public&lt;/span&gt; &lt;span style=&quot;color:#a626a4&quot;&gt;class&lt;/span&gt; &lt;span style=&quot;color:#c18401&quot;&gt;UserDao&lt;/span&gt; {
+    &lt;span style=&quot;color:#4078f2&quot;&gt;@Inject&lt;/span&gt;
+    &lt;span style=&quot;color:#a626a4&quot;&gt;private&lt;/span&gt; RxSqlUtils sqlUtils;
+}
+&lt;/code&gt;&lt;/pre&gt; 
+&lt;p style=&quot;color:#24292e; text-align:start&quot;&gt;查詢操作&lt;/p&gt; 
+&lt;pre&gt;&lt;code class=&quot;language-java&quot;&gt;&lt;span style=&quot;color:#a626a4&quot;&gt;public&lt;/span&gt; Flux&amp;lt;User&amp;gt; &lt;span style=&quot;color:#4078f2&quot;&gt;getAllUsers&lt;/span&gt;&lt;span&gt;()&lt;/span&gt; {
+    &lt;span style=&quot;color:#a626a4&quot;&gt;return&lt;/span&gt; sqlUtils.sql(&lt;span style=&quot;color:#50a14f&quot;&gt;&quot;select * from user&quot;&lt;/span&gt;)
+                   .queryRowList(User.class);
+}
+
+&lt;/code&gt;&lt;/pre&gt; 
+&lt;p style=&quot;color:#24292e; text-align:start&quot;&gt;新增操作&lt;/p&gt; 
+&lt;pre&gt;&lt;code class=&quot;language-java&quot;&gt;&lt;span style=&quot;color:#a626a4&quot;&gt;public&lt;/span&gt; Mono&amp;lt;Long&amp;gt; &lt;span style=&quot;color:#4078f2&quot;&gt;addUser&lt;/span&gt;&lt;span&gt;(User user)&lt;/span&gt; {
+    &lt;span style=&quot;color:#a626a4&quot;&gt;return&lt;/span&gt; sqlUtils.sql(&lt;span style=&quot;color:#50a14f&quot;&gt;&quot;INSERT INTO user (name , title) VALUES (?,?)&quot;&lt;/span&gt;, user.getName(), user.getTitle())
+                   .updateReturnKey(Long.class);
+}
+&lt;/code&gt;&lt;/pre&gt; 
+&lt;p style=&quot;color:#24292e; text-align:start&quot;&gt;更新操作&lt;/p&gt; 
+&lt;pre&gt;&lt;code class=&quot;language-java&quot;&gt;&lt;span style=&quot;color:#a626a4&quot;&gt;public&lt;/span&gt; Mono&amp;lt;Long&amp;gt; &lt;span style=&quot;color:#4078f2&quot;&gt;updateUser&lt;/span&gt;&lt;span&gt;(User user)&lt;/span&gt; {
+    &lt;span style=&quot;color:#a626a4&quot;&gt;return&lt;/span&gt; sqlUtils.sql(&lt;span style=&quot;color:#50a14f&quot;&gt;&quot;UPDATE user SET name=?, title=? WHERE id=?&quot;&lt;/span&gt;, user.getName(), user.getTitle(), user.getId())
+                   .update();
+}
+&lt;/code&gt;&lt;/pre&gt; 
+&lt;h3&gt;總結&lt;/h3&gt; 
+&lt;p style=&quot;color:#24292e; text-align:start&quot;&gt;使用 RxSqlUtils 可以完成數據庫的響應式操作，也有更好的透明性，使用簡單和直接。&lt;/p&gt;
+                                                                                &lt;/div&gt;
+                                                                            </description>
+            <link>https://www.oschina.net/news/326786</link>
+            <guid isPermaLink="false">https://www.oschina.net/news/326786</guid>
+            <pubDate>Thu, 26 Dec 2024 01:21:00 GMT</pubDate>
+            <author>來源: 投稿</author>
+        </item>
+        <item>
+            <title>橙單免費代碼生成工具 3.3.5，競品中的精品</title>
+            <description>&lt;div class=&quot;content&quot;&gt;
+                                                                    
+                                                        &lt;h3&gt;前言&lt;/h3&gt; 
+&lt;p&gt;橙單，一款可免費使用的線上代碼生成工具，完整覆蓋主流技術棧，業務代碼生成支持第三範式的所有關聯場景，80% 以上的前後端代碼一鍵生成，如果您還在手寫代碼，不妨瞭解一下橙單，最懂程序員的代碼生成工具。&lt;/p&gt; 
+&lt;h3&gt;我們的感謝&lt;/h3&gt; 
+&lt;p&gt;感謝開源中國為開發者們提供了專業的信息服務平台，橙單將會一如既往的堅守精品理念，始終保持 SonarQube 代碼掃描 0 警告的水準，把 0 Bug 作為我們的努力方向，時刻信守我們的承諾，橙單，時刻為您承擔。最後非常感謝 2024 年社區開發者對我們的關注和支持，2025 年我們一定會成為這個行業中最為有力的競爭者之一。&lt;/p&gt; 
+&lt;h3&gt;最新功能升級&lt;/h3&gt; 
+&lt;ul&gt; 
+ &lt;li&gt;在線表單，支持批量更新。&lt;/li&gt; 
+ &lt;li&gt;在線表單，支持頁面緩存。&lt;/li&gt; 
+ &lt;li&gt;基礎架構，數據權限支持自定義 SQL。&lt;/li&gt; 
+ &lt;li&gt;基礎架構，支持微信、企微、釘釘和飛書的第三方登錄。&lt;/li&gt; 
+ &lt;li&gt;工作流，發送消息支持郵件、微信、企微、釘釘和飛書。&lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;h3&gt;當前版本計劃&lt;/h3&gt; 
+&lt;ul&gt; 
+ &lt;li&gt;&lt;span style=&quot;color:#000000&quot;&gt;在線表單，新增支持多標籤狀態過濾頁面。&lt;/span&gt;&lt;/li&gt; 
+ &lt;li&gt;&lt;span style=&quot;color:#000000&quot;&gt;在線表單，完善前端事件腳本並與知名快開拉齊。&lt;/span&gt;&lt;/li&gt; 
+ &lt;li&gt;&lt;span style=&quot;color:#000000&quot;&gt;在線表單，表單關聯支持自定義 SQL。&lt;/span&gt;&lt;/li&gt; 
+ &lt;li&gt;&lt;span style=&quot;color:#000000&quot;&gt;在線表單，列表頁自定義的即席查詢。&lt;/span&gt;&lt;/li&gt; 
+ &lt;li&gt;&lt;span style=&quot;color:#000000&quot;&gt;在線表單，列表頁列表字段自定義顯隱。&lt;/span&gt;&lt;/li&gt; 
+ &lt;li&gt;&lt;span style=&quot;color:#000000&quot;&gt;在線表單，日期和時間字段的顯示格式定義。&lt;/span&gt;&lt;/li&gt; 
+ &lt;li&gt;&lt;span style=&quot;color:#000000&quot;&gt;移動端，完善前端事件腳本並與知名快開拉齊。&lt;/span&gt;&lt;/li&gt; 
+ &lt;li&gt;&lt;span style=&quot;color:#000000&quot;&gt;代碼生成，支持多對多業務字段的行內編輯。&lt;/span&gt;&lt;/li&gt; 
+ &lt;li&gt;&lt;span style=&quot;color:#000000&quot;&gt;代碼生成，支持多對多批量選擇後的數據帶入。&lt;/span&gt;&lt;/li&gt; 
+ &lt;li&gt;&lt;span style=&quot;color:#000000&quot;&gt;工作流，增強流程和業務表的數據同步。&lt;/span&gt;&lt;/li&gt; 
+ &lt;li&gt;&lt;span style=&quot;color:#000000&quot;&gt;工作流，增強流程變量的使用。&lt;/span&gt;&lt;/li&gt; 
+&lt;/ul&gt;
+                                                                                &lt;/div&gt;
+                                                                            </description>
+            <link>https://www.oschina.net/news/326780/orange-admin-3-3-5-released</link>
+            <guid isPermaLink="false">https://www.oschina.net/news/326780/orange-admin-3-3-5-released</guid>
+            <pubDate>Thu, 26 Dec 2024 00:56:00 GMT</pubDate>
+            <author>來源: 投稿</author>
+        </item>
         <item>
             <title>MeEdu 4.9.14 發佈，基於 Laravel 開發的在線點播系統</title>
             <description>&lt;div class=&quot;content&quot;&gt;
@@ -1366,130 +1476,6 @@ public class SysUserVo {
             <guid isPermaLink="false">https://www.oschina.net/news/326569/jtopcms-v4-update</guid>
             <pubDate>Tue, 24 Dec 2024 09:04:00 GMT</pubDate>
             <author>來源: 投稿</author>
-        </item>
-        <item>
-            <title>🔥 Solon v3.0.5 發佈！（Spring 可以退休了嗎？）</title>
-            <description>&lt;div class=&quot;content&quot;&gt;
-                                                                    
-                                                        &lt;h2&gt;Solon 框架！&lt;/h2&gt; 
-&lt;p style=&quot;color:#24292e; text-align:start&quot;&gt;新一代，面向全場景的 Java 應用開發框架。&lt;strong&gt;從零開始構建（非 java-ee 架構），有靈活的接口規範與開放生態&lt;/strong&gt;。&lt;/p&gt; 
-&lt;ul&gt; 
- &lt;li&gt;追求： 更快、更小、更簡單&lt;/li&gt; 
- &lt;li&gt;提倡： 剋制、高效、開放、生態&lt;/li&gt; 
-&lt;/ul&gt; 
-&lt;h2&gt;有什麼特點（相對傳統方案）？&lt;/h2&gt; 
-&lt;table cellspacing=&quot;0&quot; style=&quot;-webkit-text-stroke-width:0px; background-color:#ffffff; border-collapse:collapse; border-spacing:0px; box-sizing:border-box; color:#24292e; display:block; font-family:-apple-system,&amp;quot;system-ui&amp;quot;,&amp;quot;Segoe UI&amp;quot;,Helvetica,Arial,sans-serif,&amp;quot;Apple Color Emoji&amp;quot;,&amp;quot;Segoe UI Emoji&amp;quot;,&amp;quot;Segoe UI Symbol&amp;quot;; font-size:16px; font-style:normal; font-variant-caps:normal; font-variant-ligatures:normal; font-weight:400; letter-spacing:normal; margin-bottom:16px; margin-top:0px; orphans:2; overflow:auto; text-align:start; text-decoration-color:initial; text-decoration-style:initial; text-decoration-thickness:initial; text-transform:none; white-space:normal; widows:2; width:960px; word-spacing:0px&quot;&gt; 
- &lt;tbody&gt; 
-  &lt;tr&gt; 
-   &lt;th&gt;特點&lt;/th&gt; 
-   &lt;th&gt;描述&lt;/th&gt; 
-  &lt;/tr&gt; 
- &lt;/tbody&gt; 
- &lt;tbody&gt; 
-  &lt;tr&gt; 
-   &lt;td style=&quot;border-color:#dfe2e5; border-style:solid; border-width:1px&quot;&gt;更高的計算性價比&lt;/td&gt; 
-   &lt;td style=&quot;border-color:#dfe2e5; border-style:solid; border-width:1px&quot;&gt;併發高 300%；內存省 50%&lt;/td&gt; 
-  &lt;/tr&gt; 
-  &lt;tr&gt; 
-   &lt;td style=&quot;border-color:#dfe2e5; border-style:solid; border-width:1px&quot;&gt;更快的開發效率&lt;/td&gt; 
-   &lt;td style=&quot;border-color:#dfe2e5; border-style:solid; border-width:1px&quot;&gt;代碼少；入門快；啓動快 10 倍（調試快）&lt;/td&gt; 
-  &lt;/tr&gt; 
-  &lt;tr&gt; 
-   &lt;td style=&quot;border-color:#dfe2e5; border-style:solid; border-width:1px&quot;&gt;更好的生產與部署體驗&lt;/td&gt; 
-   &lt;td style=&quot;border-color:#dfe2e5; border-style:solid; border-width:1px&quot;&gt;打包小 90%&lt;/td&gt; 
-  &lt;/tr&gt; 
-  &lt;tr&gt; 
-   &lt;td style=&quot;border-color:#dfe2e5; border-style:solid; border-width:1px&quot;&gt;更大的兼容範圍&lt;/td&gt; 
-   &lt;td style=&quot;border-color:#dfe2e5; border-style:solid; border-width:1px&quot;&gt;非 java-ee 架構；同時支持 java8 ～ java23，graalvm native image&lt;/td&gt; 
-  &lt;/tr&gt; 
- &lt;/tbody&gt; 
-&lt;/table&gt; 
-&lt;h2&gt;入門探索視頻（用戶錄製）：&lt;/h2&gt; 
-&lt;p&gt;&lt;iframe frameborder=&quot;0&quot; height=&quot;400&quot; scrolling=&quot;no&quot; src=&quot;https://player.bilibili.com/player.html?isOutside=true&amp;amp;aid=1556159042&amp;amp;bvid=BV1B1421b78J&amp;amp;cid=1615010512&amp;amp;p=1&quot; style=&quot;box-sizing: border-box; color: rgb(51, 51, 51); font-family: -apple-system, BlinkMacSystemFont, &amp;quot;Apple Color Emoji&amp;quot;, &amp;quot;Segoe UI Emoji&amp;quot;, &amp;quot;Segoe UI Symbol&amp;quot;, &amp;quot;Segoe UI&amp;quot;, &amp;quot;PingFang SC&amp;quot;, &amp;quot;Hiragino Sans GB&amp;quot;, &amp;quot;Microsoft YaHei&amp;quot;, &amp;quot;Helvetica Neue&amp;quot;, Helvetica, Arial, sans-serif; font-size: 16px; font-style: normal; font-variant-ligatures: normal; font-variant-caps: normal; font-weight: 400; letter-spacing: normal; orphans: 2; text-align: left; text-indent: 0px; text-transform: none; widows: 2; word-spacing: 0px; -webkit-text-stroke-width: 0px; white-space: normal; text-decoration-thickness: initial; text-decoration-style: initial; text-decoration-color: initial; background-color: rgb(255, 255, 255);&quot; width=&quot;700&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/iframe&gt;&lt;/p&gt; 
-&lt;h2&gt;最近更新了什麼？&lt;/h2&gt; 
-&lt;ul&gt; 
- &lt;li&gt;新增 solon-data-rx-sqlutils 插件（基於 r2dbc 構建） 
-  &lt;ul&gt; 
-   &lt;li&gt;可配合 solon-web-rx 或者 solon-cloud-gateway 使用&lt;/li&gt; 
-  &lt;/ul&gt; &lt;/li&gt; 
- &lt;li&gt;添加 solon ClassUtil.scanClasses 方法&lt;/li&gt; 
- &lt;li&gt;添加 solon 非單例類使用生命週期時 warn 日誌提醒&lt;/li&gt; 
- &lt;li&gt;添加 solon-cloud-gateway ExContext:toContext 方法，可用於支持經典接口接入（比如，sa-token 籤權）&lt;/li&gt; 
- &lt;li&gt;添加 solon ContextHolder 替代 ContextUtil ，後者標為棄用&lt;/li&gt; 
- &lt;li&gt;添加 solon Context::isHeadersSent 方法，用於響應式轉經典式後識別數據發送情況&lt;/li&gt; 
- &lt;li&gt;添加 solon SolonApp::isMain 方法，用於在單元測試時識別是否可同步到 System 屬性集&lt;/li&gt; 
- &lt;li&gt;優化 solon ClassUtils.newInstance 異常類名顯示&lt;/li&gt; 
- &lt;li&gt;優化 solon InjectGather:isMethod 條件（僅方法，之前構造也算），讓&lt;code&gt;@Bean&lt;/code&gt;方法的檢測先於組件的構造器&lt;/li&gt; 
- &lt;li&gt;優化 solon-mvc Action 返回為 void，不作渲染處理&lt;/li&gt; 
- &lt;li&gt;優化 solon-data DsUtils 構建時支持 &quot;@type&quot; 屬性申明（統一未來的配置類型申明風格）&lt;/li&gt; 
- &lt;li&gt;優化 solon-data DataSources 的配置獲取時機&lt;/li&gt; 
- &lt;li&gt;優化 solon-data-sqlutils SqlUtilsFactory 接口設計&lt;/li&gt; 
- &lt;li&gt;優化 solon-scheduling Async 異常提示&lt;/li&gt; 
- &lt;li&gt;優化 solon-scheduling Retry 攔截優先級到最裏層&lt;/li&gt; 
- &lt;li&gt;優化 solon-scheduling-simple 調用異常提示&lt;/li&gt; 
- &lt;li&gt;修復 solon-mvc 以實體接收時&lt;span&gt;&amp;nbsp;&lt;/span&gt;&lt;code&gt;UploadedFile[]&lt;/code&gt;&lt;span&gt;&amp;nbsp;&lt;/span&gt;字段不能注入的問題&lt;/li&gt; 
- &lt;li&gt;修復 solon-boot-smarthttp 會把默認時區設為 GMT 的問題&lt;/li&gt; 
- &lt;li&gt;snakc3 升為 3.2.122&lt;/li&gt; 
- &lt;li&gt;redisx 升為 1.6.9&lt;/li&gt; 
- &lt;li&gt;socketd 升為 2.5.14&lt;/li&gt; 
- &lt;li&gt;folkmq 升為 1.7.10&lt;/li&gt; 
- &lt;li&gt;redisson 升為 3.39.0&lt;/li&gt; 
- &lt;li&gt;smarthttp 升為 2.5&lt;/li&gt; 
- &lt;li&gt;mybatis-flex 升為 1.10.3&lt;/li&gt; 
- &lt;li&gt;sqltoy 升為 5.6.34.jre8&lt;/li&gt; 
- &lt;li&gt;slf4j 升為 2.0.16&lt;/li&gt; 
- &lt;li&gt;log4j 升為 2.24.3&lt;/li&gt; 
- &lt;li&gt;jansi 升為 2.4.1&lt;/li&gt; 
- &lt;li&gt;fury 升為 0.9.0&lt;/li&gt; 
-&lt;/ul&gt; 
-&lt;h2&gt;項目架構圖&lt;/h2&gt; 
-&lt;p style=&quot;color:#24292e; text-align:start&quot;&gt;&lt;img src=&quot;https://oscimg.oschina.net/oscnet//c3096bc8101912629050bb8e221ccf96.png&quot; width=&quot;600&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
-&lt;h2&gt;項目倉庫地址？&lt;/h2&gt; 
-&lt;ul&gt; 
- &lt;li&gt;gitee：&lt;a href=&quot;https://gitee.com/opensolon/solon&quot;&gt;https://gitee.com/opensolon/solon&lt;/a&gt;&lt;/li&gt; 
- &lt;li&gt;gitcode:&lt;span&gt;&amp;nbsp;&lt;/span&gt;&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fgitcode.com%2Fopensolon%2Fsolon&quot; target=&quot;_blank&quot;&gt;https://gitcode.com/opensolon/solon&lt;/a&gt;&lt;/li&gt; 
- &lt;li&gt;github：&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fgithub.com%2Fopensolon%2Fsolon&quot; target=&quot;_blank&quot;&gt;https://github.com/opensolon/solon&lt;/a&gt;&lt;/li&gt; 
-&lt;/ul&gt; 
-&lt;h2&gt;官網？&lt;/h2&gt; 
-&lt;ul&gt; 
- &lt;li&gt;&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fsolon.noear.org%2F&quot; target=&quot;_blank&quot;&gt;https://solon.noear.org&lt;/a&gt;&lt;/li&gt; 
-&lt;/ul&gt;
-                                                                                &lt;/div&gt;
-                                                                            </description>
-            <link>https://www.oschina.net/news/326529/solon-3-0-5-released</link>
-            <guid isPermaLink="false">https://www.oschina.net/news/326529/solon-3-0-5-released</guid>
-            <pubDate>Tue, 24 Dec 2024 06:24:00 GMT</pubDate>
-            <author>來源: 投稿</author>
-        </item>
-        <item>
-            <title>gRPC 1.69.0 發佈，跨語言 RPC 框架</title>
-            <description>&lt;div class=&quot;content&quot;&gt;
-                                                                    
-                                                        &lt;p&gt;&lt;span style=&quot;color:#333333&quot;&gt;gRPC 是可以在任何環境中運行的現代開源高性能 RPC 框架。gRPC 1.69.0 現已發佈，包含了一些完善、改進和錯誤修復；具體更新內容如下：&lt;/span&gt;&lt;/p&gt; 
-&lt;p style=&quot;color:#333333; margin-left:0; margin-right:0; text-align:left&quot;&gt;&lt;strong&gt;Core&lt;/strong&gt;&lt;/p&gt; 
-&lt;ul&gt; 
- &lt;li&gt;[Alarm] 修復取消時 Alarm 重用的問題。(&amp;nbsp;&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fgithub.com%2Fgrpc%2Fgrpc%2Fpull%2F38114&quot; target=&quot;_blank&quot;&gt;#38114&lt;/a&gt;&amp;nbsp;)&lt;/li&gt; 
- &lt;li&gt;[xDS RBAC] 在 HeaderMatcher 中支持 string_match。（&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fgithub.com%2Fgrpc%2Fgrpc%2Fpull%2F38185&quot; target=&quot;_blank&quot;&gt;#38185&lt;/a&gt;）&lt;/li&gt; 
- &lt;li&gt;[pick_first] 修復新 PF impl 中的關閉錯誤。（&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fgithub.com%2Fgrpc%2Fgrpc%2Fpull%2F38144&quot; target=&quot;_blank&quot;&gt;#38144&lt;/a&gt;）&lt;/li&gt; 
- &lt;li&gt;[c-ares] 修復 GrpcPolledFdWindows 中的 inverted length check。（&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fgithub.com%2Fgrpc%2Fgrpc%2Fpull%2F38101&quot; target=&quot;_blank&quot;&gt;#38101&lt;/a&gt;）&lt;/li&gt; 
- &lt;li&gt;[RetryFilter] 將 SliceBuffer 從 RetryFilter 的緩存複製到批量負載。（&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fgithub.com%2Fgrpc%2Fgrpc%2Fpull%2F38069&quot; target=&quot;_blank&quot;&gt;#38069&lt;/a&gt;）&lt;/li&gt; 
- &lt;li&gt;[EventEngine] 在 Endpoint::Read contract 中添加更強的 wording。（&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fgithub.com%2Fgrpc%2Fgrpc%2Fpull%2F38036&quot; target=&quot;_blank&quot;&gt;#38036&lt;/a&gt;）&lt;/li&gt; 
- &lt;li&gt;[chttp2] 修復 channelz 地址。(&amp;nbsp;&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fgithub.com%2Fgrpc%2Fgrpc%2Fpull%2F38022&quot; target=&quot;_blank&quot;&gt;#38022&lt;/a&gt;&amp;nbsp;)&lt;/li&gt; 
- &lt;li&gt;[XdsClient] 為 XdsClient metrics scope 添加缺失的權限。（&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fgithub.com%2Fgrpc%2Fgrpc%2Fpull%2F38009&quot; target=&quot;_blank&quot;&gt;#38009&lt;/a&gt;）&lt;/li&gt; 
- &lt;li&gt;[EventEngine] API contract：Endpoint::Read 將提供 error 或 data，但不會同時提供兩者。（&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fgithub.com%2Fgrpc%2Fgrpc%2Fpull%2F38019&quot; target=&quot;_blank&quot;&gt;#38019&lt;/a&gt;）&lt;/li&gt; 
- &lt;li&gt;[Build] 放棄對 Bazel 6.x 的支持。（&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fgithub.com%2Fgrpc%2Fgrpc%2Fpull%2F37979&quot; target=&quot;_blank&quot;&gt;#37979&lt;/a&gt;）&lt;/li&gt; 
-&lt;/ul&gt; 
-&lt;p style=&quot;text-align:start&quot;&gt;&lt;strong&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span style=&quot;color:#1f2328&quot;&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span style=&quot;background-color:#ffffff&quot;&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;Python&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/strong&gt;&lt;/p&gt; 
-&lt;ul&gt; 
- &lt;li&gt;[Build] 為 gRPC Python 重寫 MACOSX_DEPLOYMENT_TARGET。（&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fgithub.com%2Fgrpc%2Fgrpc%2Fpull%2F37997&quot; target=&quot;_blank&quot;&gt;#37997&lt;/a&gt;）&lt;/li&gt; 
-&lt;/ul&gt; 
-&lt;p&gt;更新説明：&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fgithub.com%2Fgrpc%2Fgrpc%2Freleases%2Ftag%2Fv1.69.0&quot; target=&quot;_blank&quot;&gt;https://github.com/grpc/grpc/releases/tag/v1.69.0&lt;/a&gt;&lt;/p&gt;
-                                                                                &lt;/div&gt;
-                                                                            </description>
-            <link>https://www.oschina.net/news/326511/grpc-1-69-0-released</link>
-            <guid isPermaLink="false">https://www.oschina.net/news/326511/grpc-1-69-0-released</guid>
-            <pubDate>Tue, 24 Dec 2024 05:50:00 GMT</pubDate>
-            <author>來源: OSCHINA</author>
         </item>
     </channel>
 </rss>
