@@ -9,8 +9,126 @@
         <generator>RSSHub</generator>
         <webMaster>contact@rsshub.app (RSSHub)</webMaster>
         <language>en</language>
-        <lastBuildDate>Sun, 12 Jan 2025 07:38:55 GMT</lastBuildDate>
+        <lastBuildDate>Sun, 12 Jan 2025 12:39:48 GMT</lastBuildDate>
         <ttl>5</ttl>
+        <item>
+            <title>XXL-JOB v2.5.0 | 分佈式任務調度平台</title>
+            <description>&lt;div class=&quot;content&quot;&gt;
+                                                                    
+                                                        &lt;h3&gt;Release Notes&lt;/h3&gt; 
+&lt;ul&gt; 
+ &lt;li&gt;1、【優化】框架基礎守護線程異常處理邏輯優化，避免極端情況下因 Error 導致調度終止問題；&lt;/li&gt; 
+ &lt;li&gt;2、【優化】底層通訊超時時間支持自定義，緩解網絡抖動導致任務通訊超時問題；可參考 xxl-job-admin 和 samples 示例代碼自行配置；&lt;/li&gt; 
+ &lt;li&gt;3、【修復】調度中心快慢線程池優化拒絕策略，避免因默認 AbortPolicy 導致調度結果丟失問題；&lt;/li&gt; 
+ &lt;li&gt;4、【優化】調度中心快慢線程池隊列長度調整，優化激增調度時任務積壓問題；&lt;/li&gt; 
+ &lt;li&gt;5、【重構】調度線程任務信息更新邏輯優化，避免極端情況下已關閉任務被啓動問題；&lt;/li&gt; 
+ &lt;li&gt;6、【重構】執行器註冊邏輯重構，降低多調度中心地址時併發註冊問題；任務註冊表新增唯一索引，避免冗餘註冊信息存儲；&lt;/li&gt; 
+ &lt;li&gt;7、【優化】部分系統日誌優化，提升可讀性；&lt;/li&gt; 
+ &lt;li&gt;8、【優化】合併 PR-3616，代碼結構註釋優化；&lt;/li&gt; 
+ &lt;li&gt;9、【優化】合併 PR-3619，避免調度過程中任務停止邊界情況處理邏輯；&lt;/li&gt; 
+ &lt;li&gt;10、【優化】合併 PR-3605，避免子任務是任務本身導致死循環；&lt;/li&gt; 
+ &lt;li&gt;11、【修復】合併 PR-3585，修復全局密碼長度不一致問題；&lt;/li&gt; 
+ &lt;li&gt;12、【優化】合併 PR-3518，SQL 列別名反引號包裹，提升跨數據遷移兼容性；&lt;/li&gt; 
+ &lt;li&gt;13、【優化】合併 PR-3518、PR-3400，日誌表索引優化，提升大日誌量情況下日誌查詢及清理速度；&lt;/li&gt; 
+ &lt;li&gt;14、【升級】多個項目依賴升級至較新穩定版本，涉及 netty、slf4j、junit 等；&lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;blockquote&gt; 
+ &lt;p&gt;&lt;strong&gt;備註：&lt;/strong&gt;&lt;/p&gt; 
+ &lt;ul&gt; 
+  &lt;li&gt;a、本次升級數據模型及通訊協議向前兼容，v2.4.*代碼和系統可無縫升級（該版本優化了「xxl_job_log」表索引，建議低版本參考調整）；&lt;/li&gt; 
+  &lt;li&gt;b、版本 v2.5.x 為基於 jdk8 的最後的大版本，將會長期持續維護，問題及漏洞將會及時跟進修復。&lt;/li&gt; 
+  &lt;li&gt;c、下個大版本（v3.0）將會基於 jdk17 與 springboot3.x 構建；&lt;/li&gt; 
+ &lt;/ul&gt; 
+&lt;/blockquote&gt; 
+&lt;h3&gt;代碼接入示例&lt;/h3&gt; 
+&lt;p style=&quot;color:#404040; text-align:start&quot;&gt;XXL-JOB 支持多模式任務，下文以簡單的「Bean 模式任務」為例介紹，三步快速開發接入。&lt;/p&gt; 
+&lt;p&gt;步驟一：執行器，開發 Job 方法&lt;/p&gt; 
+&lt;div&gt; 
+ &lt;pre&gt;&lt;code class=&quot;language-java&quot;&gt;&lt;span style=&quot;color:#cccccc&quot;&gt;@XxlJob&lt;/span&gt;&lt;span style=&quot;color:#cccccc&quot;&gt;(&lt;/span&gt;&lt;span style=&quot;color:#7ec699&quot;&gt;&quot;demoJobHandler&quot;&lt;/span&gt;&lt;span style=&quot;color:#cccccc&quot;&gt;)&lt;/span&gt;
+ &lt;span style=&quot;color:#cc99cd&quot;&gt;public&lt;/span&gt; &lt;span style=&quot;color:#cc99cd&quot;&gt;void&lt;/span&gt; &lt;span style=&quot;color:#f08d49&quot;&gt;demoJobHandler&lt;/span&gt;&lt;span style=&quot;color:#cccccc&quot;&gt;(&lt;/span&gt;&lt;span style=&quot;color:#cccccc&quot;&gt;)&lt;/span&gt; &lt;span style=&quot;color:#cc99cd&quot;&gt;throws&lt;/span&gt; &lt;span style=&quot;color:#f8c555&quot;&gt;Exception&lt;/span&gt; &lt;span style=&quot;color:#cccccc&quot;&gt;{&lt;/span&gt;
+    &lt;span style=&quot;color:#f8c555&quot;&gt;XxlJobHelper&lt;/span&gt;&lt;span style=&quot;color:#cccccc&quot;&gt;.&lt;/span&gt;&lt;span style=&quot;color:#f08d49&quot;&gt;log&lt;/span&gt;&lt;span style=&quot;color:#cccccc&quot;&gt;(&lt;/span&gt;&lt;span style=&quot;color:#7ec699&quot;&gt;&quot;XXL-JOB, Hello World.&quot;&lt;/span&gt;&lt;span style=&quot;color:#cccccc&quot;&gt;)&lt;/span&gt;&lt;span style=&quot;color:#cccccc&quot;&gt;;&lt;/span&gt;
+&lt;span style=&quot;color:#cccccc&quot;&gt;}&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt; 
+&lt;/div&gt; 
+&lt;h4&gt;步驟二：調度中心，新建調度任務&lt;/h4&gt; 
+&lt;p&gt;&lt;img alt=&quot;&quot; height=&quot;678&quot; src=&quot;https://oscimg.oschina.net/oscnet/up-64d5508ffc0a0a593d88813ceab849111cc.webp&quot; width=&quot;800&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
+&lt;h4&gt;步驟三：任務執行，查看任務進度及日誌&lt;/h4&gt; 
+&lt;p&gt;&lt;img alt=&quot;&quot; height=&quot;261&quot; src=&quot;https://oscimg.oschina.net/oscnet/up-3124499c2f63b006d674f844731ad75f28a.webp&quot; width=&quot;900&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
+&lt;h3&gt;簡介&lt;/h3&gt; 
+&lt;p style=&quot;color:#404040; text-align:start&quot;&gt;XXL-JOB 是一個輕量級分佈式任務調度平台，其核心設計目標是開發迅速、學習簡單、輕量級、易擴展。現已開放源代碼並接入多家公司線上產品線，開箱即用。&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt;&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Flinks.jianshu.com%2Fgo%3Fto%3Dhttp%253A%252F%252Fwww.xuxueli.com%252Fxxl-job%252F&quot; target=&quot;_blank&quot;&gt;中文文檔&lt;/a&gt;&lt;/li&gt; 
+ &lt;li&gt;&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Flinks.jianshu.com%2Fgo%3Fto%3Dhttp%253A%252F%252Fwww.xuxueli.com%252Fpage%252Fcommunity.html&quot; target=&quot;_blank&quot;&gt;社區交流&lt;/a&gt;&lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;p&gt;&lt;img alt=&quot;&quot; height=&quot;421&quot; src=&quot;https://oscimg.oschina.net/oscnet/up-fae0b2918282cfe63b186ec8d7b4d5fbe9e.webp&quot; width=&quot;800&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
+&lt;h3&gt;特性&lt;/h3&gt; 
+&lt;ul&gt; 
+ &lt;li&gt;1、簡單：支持通過 Web 頁面對任務進行 CRUD 操作，操作簡單，一分鐘上手；&lt;/li&gt; 
+ &lt;li&gt;2、動態：支持動態修改任務狀態、啓動/停止任務，以及終止運行中任務，即時生效；&lt;/li&gt; 
+ &lt;li&gt;3、調度中心 HA（中心式）：調度採用中心式設計，「調度中心」自研調度組件並支持集羣部署，可保證調度中心 HA；&lt;/li&gt; 
+ &lt;li&gt;4、執行器 HA（分佈式）：任務分佈式執行，任務&quot;執行器&quot;支持集羣部署，可保證任務執行 HA；&lt;/li&gt; 
+ &lt;li&gt;5、註冊中心: 執行器會週期性自動註冊任務, 調度中心將會自動發現註冊的任務並觸發執行。同時，也支持手動錄入執行器地址；&lt;/li&gt; 
+ &lt;li&gt;6、彈性擴容縮容：一旦有新執行器機器上線或者下線，下次調度時將會重新分配任務；&lt;/li&gt; 
+ &lt;li&gt;7、路由策略：執行器集羣部署時提供豐富的路由策略，包括：第一個、最後一個、輪詢、隨機、一致性 HASH、最不經常使用、最近最久未使用、故障轉移、忙碌轉移等；&lt;/li&gt; 
+ &lt;li&gt;8、故障轉移：任務路由策略選擇&quot;故障轉移&quot;情況下，如果執行器集羣中某一台機器故障，將會自動 Failover 切換到一台正常的執行器發送調度請求。&lt;/li&gt; 
+ &lt;li&gt;9、阻塞處理策略：調度過於密集執行器來不及處理時的處理策略，策略包括：單機串行（默認）、丟棄後續調度、覆蓋之前調度；&lt;/li&gt; 
+ &lt;li&gt;10、任務超時控制：支持自定義任務超時時間，任務運行超時將會主動中斷任務；&lt;/li&gt; 
+ &lt;li&gt;11、任務失敗重試：支持自定義任務失敗重試次數，當任務失敗時將會按照預設的失敗重試次數主動進行重試；其中分片任務支持分片粒度的失敗重試；&lt;/li&gt; 
+ &lt;li&gt;12、任務失敗告警；默認提供郵件方式失敗告警，同時預留擴展接口，可方便的擴展短信、釘釘等告警方式；&lt;/li&gt; 
+ &lt;li&gt;13、分片廣播任務：執行器集羣部署時，任務路由策略選擇&quot;分片廣播&quot;情況下，一次任務調度將會廣播觸發集羣中所有執行器執行一次任務，可根據分片參數開發分片任務；&lt;/li&gt; 
+ &lt;li&gt;14、動態分片：分片廣播任務以執行器為維度進行分片，支持動態擴容執行器集羣從而動態增加分片數量，協同進行業務處理；在進行大數據量業務操作時可顯著提升任務處理能力和速度。&lt;/li&gt; 
+ &lt;li&gt;15、事件觸發：除了&quot;Cron 方式&quot;和&quot;任務依賴方式&quot;觸發任務執行之外，支持基於事件的觸發任務方式。調度中心提供觸發任務單次執行的 API 服務，可根據業務事件靈活觸發。&lt;/li&gt; 
+ &lt;li&gt;16、任務進度監控：支持實時監控任務進度；&lt;/li&gt; 
+ &lt;li&gt;17、Rolling 實時日誌：支持在線查看調度結果，並且支持以 Rolling 方式實時查看執行器輸出的完整的執行日誌；&lt;/li&gt; 
+ &lt;li&gt;18、GLUE：提供 Web IDE，支持在線開發任務邏輯代碼，動態發佈，實時編譯生效，省略部署上線的過程。支持 30 個版本的歷史版本回溯。&lt;/li&gt; 
+ &lt;li&gt;19、腳本任務：支持以 GLUE 模式開發和運行腳本任務，包括 Shell、Python、NodeJS、PHP、PowerShell 等類型腳本;&lt;/li&gt; 
+ &lt;li&gt;20、命令行任務：原生提供通用命令行任務 Handler（Bean 任務，&quot;CommandJobHandler&quot;）；業務方只需要提供命令行即可；&lt;/li&gt; 
+ &lt;li&gt;21、任務依賴：支持配置子任務依賴，當父任務執行結束且執行成功後將會主動觸發一次子任務的執行, 多個子任務用逗號分隔；&lt;/li&gt; 
+ &lt;li&gt;22、一致性：「調度中心」通過 DB 鎖保證集羣分佈式調度的一致性, 一次任務調度只會觸發一次執行；&lt;/li&gt; 
+ &lt;li&gt;23、自定義任務參數：支持在線配置調度任務入參，即時生效；&lt;/li&gt; 
+ &lt;li&gt;24、調度線程池：調度系統多線程觸發調度運行，確保調度精確執行，不被堵塞；&lt;/li&gt; 
+ &lt;li&gt;25、數據加密：調度中心和執行器之間的通訊進行數據加密，提升調度信息安全性；&lt;/li&gt; 
+ &lt;li&gt;26、郵件報警：任務失敗時支持郵件報警，支持配置多郵件地址羣發報警郵件；&lt;/li&gt; 
+ &lt;li&gt;27、推送 maven 中央倉庫: 將會把最新穩定版推送到 maven 中央倉庫, 方便用戶接入和使用;&lt;/li&gt; 
+ &lt;li&gt;28、運行報表：支持實時查看運行數據，如任務數量、調度次數、執行器數量等；以及調度報表，如調度日期分佈圖，調度成功分佈圖等；&lt;/li&gt; 
+ &lt;li&gt;29、全異步：任務調度流程全異步化設計實現，如異步調度、異步運行、異步回調等，有效對密集調度進行流量削峯，理論上支持任意時長任務的運行；&lt;/li&gt; 
+ &lt;li&gt;30、跨語言：調度中心與執行器提供語言無關的 RESTful API 服務，第三方任意語言可據此對接調度中心或者實現執行器。除此之外，還提供了 「多任務模式」和「httpJobHandler」等其他跨語言方案；&lt;/li&gt; 
+ &lt;li&gt;31、國際化：調度中心支持國際化設置，提供中文、英文兩種可選語言，默認為中文；&lt;/li&gt; 
+ &lt;li&gt;32、容器化：提供官方 docker 鏡像，並實時更新推送 dockerhub，進一步實現產品開箱即用；&lt;/li&gt; 
+ &lt;li&gt;33、線程池隔離：調度線程池進行隔離拆分，慢任務自動降級進入&quot;Slow&quot;線程池，避免耗盡調度線程，提高系統穩定性；&lt;/li&gt; 
+ &lt;li&gt;34、用戶管理：支持在線管理系統用戶，存在管理員、普通用戶兩種角色；&lt;/li&gt; 
+ &lt;li&gt;35、權限控制：執行器維度進行權限控制，管理員擁有全量權限，普通用戶需要分配執行器權限後才允許相關操作；&lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;p&gt;&amp;nbsp;&lt;/p&gt;
+                                                                                &lt;/div&gt;
+                                                                            </description>
+            <link>https://www.oschina.net/news/329376/xxl-job-2-5-0-released</link>
+            <guid isPermaLink="false">https://www.oschina.net/news/329376/xxl-job-2-5-0-released</guid>
+            <pubDate>Sun, 12 Jan 2025 12:15:44 GMT</pubDate>
+            <author>來源: 投稿</author>
+        </item>
+        <item>
+            <title>簡雲 Saas ERP 平台 1.7.0 版本發佈</title>
+            <description>&lt;div class=&quot;content&quot;&gt;
+                                                                    
+                                                        &lt;p style=&quot;color:#333333; margin-left:0; margin-right:0; text-align:left&quot;&gt;&lt;strong&gt;&lt;span style=&quot;background-color:#ffffff; color:#333333&quot;&gt;V 1.7.0 ERP 版本新增更新，內容&lt;/span&gt;&lt;/strong&gt;&lt;/p&gt; 
+&lt;p style=&quot;color:#333333; margin-left:0; margin-right:0; text-align:left&quot;&gt;新增 MES 工序及報工相關模塊:&lt;/p&gt; 
+&lt;p style=&quot;color:#333333; margin-left:0; margin-right:0; text-align:left&quot;&gt;1.&amp;nbsp; 任務工序&lt;/p&gt; 
+&lt;p style=&quot;color:#333333; margin-left:0; margin-right:0; text-align:left&quot;&gt;2.&amp;nbsp; 任務安排&lt;/p&gt; 
+&lt;p style=&quot;color:#333333; margin-left:0; margin-right:0; text-align:left&quot;&gt;3.&amp;nbsp;任務報工&lt;/p&gt; 
+&lt;p&gt;4.&amp;nbsp; 修復&amp;nbsp; bug&lt;/p&gt; 
+&lt;p style=&quot;color:#333333; margin-left:0; margin-right:0; text-align:left&quot;&gt;簡雲 ERP 在線試用地址:&amp;nbsp;&amp;nbsp;&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=http%3A%2F%2F47.114.158.164%3A8080%2Fyhy%2F%23%2Fdashboard&quot; target=&quot;_blank&quot;&gt;簡雲體驗地址&lt;/a&gt;&lt;/p&gt; 
+&lt;p style=&quot;color:#333333; margin-left:0; margin-right:0; text-align:left&quot;&gt;商業&amp;nbsp;金桔雲 ERP&lt;span&gt;&amp;nbsp;&lt;/span&gt;&lt;strong&gt;&lt;span style=&quot;background-color:#ffffff; color:#333333&quot;&gt;&amp;nbsp;&lt;/span&gt;體驗地址:&amp;nbsp;&amp;nbsp;&lt;/strong&gt;&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=http%3A%2F%2F47.114.158.164%3A8080%2Forange-erp%2F%23%2Fdashboard&quot; target=&quot;_blank&quot;&gt;金桔雲體驗地址&lt;/a&gt;&lt;/p&gt; 
+&lt;p&gt;&amp;nbsp;&lt;/p&gt; 
+&lt;p&gt;&lt;img height=&quot;861&quot; src=&quot;https://oscimg.oschina.net/oscnet/up-b5fa23a825b3e50342bbe8d02bd12eb8262.png&quot; width=&quot;1860&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;img height=&quot;438&quot; src=&quot;https://oscimg.oschina.net/oscnet/up-223b718774b63ae2f03e762782e449d9121.png&quot; width=&quot;1275&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt;
+                                                                                &lt;/div&gt;
+                                                                            </description>
+            <link>https://www.oschina.net/news/329339</link>
+            <guid isPermaLink="false">https://www.oschina.net/news/329339</guid>
+            <pubDate>Tue, 07 Jan 2025 07:51:00 GMT</pubDate>
+            <author>來源: 投稿</author>
+        </item>
         <item>
             <title>Syncthing v1.29.1 發佈，連續文件同步工具</title>
             <description>&lt;div class=&quot;content&quot;&gt;
@@ -1261,74 +1379,6 @@ warning: ignoring clap@4.5.23 (which requires rustc 1.74) to maintain demo&#39;s
             <link>https://www.oschina.net/news/329102/rust-1-84-0-released</link>
             <guid isPermaLink="false">https://www.oschina.net/news/329102/rust-1-84-0-released</guid>
             <pubDate>Sun, 05 Jan 2025 03:18:00 GMT</pubDate>
-            <author>來源: OSCHINA</author>
-        </item>
-        <item>
-            <title>Rainbond v6.1 發佈，24 年最後的版本，生產可用，體驗全面升級！</title>
-            <description>&lt;div class=&quot;content&quot;&gt;
-                                                                    
-                                                        &lt;p&gt;在 2024 年的尾聲，我們發佈了 Rainbond v6.1，為這一年畫上了圓滿的句號。作為 Rainbond 在 2024 年發佈的最後一個版本，v6.1 標誌着 Rainbond v6 版本正式邁入生產可用階段。這不僅意味着平台已經具備全面的生產可用性，還在穩定性、性能優化以及用戶體驗方面實現了質的飛躍。&lt;/p&gt; 
-&lt;p&gt;v6.1 的核心亮點是圍繞用戶體驗進行的全新團隊空間視圖設計。通過更清晰的界面、更流暢的操作流程，用戶可以更加高效地進行團隊管理、應用創建和資源配置，充分體現以用戶為中心的設計理念。&lt;/p&gt; 
-&lt;h3&gt;團隊 Dashboard 頁面&lt;/h3&gt; 
-&lt;p&gt;我們重新設計了團隊 Dashboard 頁面，移除了非必要的側邊欄和相關引導內容，優化佈局，以應用為核心進行展示，為用戶提供更加簡潔、高效的操作體驗。&lt;/p&gt; 
-&lt;p&gt;&lt;img alt=&quot;&quot; src=&quot;https://oscimg.oschina.net/oscnet//1eabcb0fc0b3f4d23ab96dde69a00e1a.png&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
-&lt;h3&gt;新的個人中心&lt;/h3&gt; 
-&lt;p&gt;我們將之前全局共享的鏡像倉庫和 Git 倉庫調整為基於用戶個體的獨立配置，確保每位用戶配置的資源僅限其個人使用，提升了資源管理的靈活性和私密性。&lt;/p&gt; 
-&lt;p&gt;&lt;img alt=&quot;&quot; src=&quot;https://oscimg.oschina.net/oscnet//d40fac5501fc8528ced54cfc5ac43122.png&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
-&lt;p&gt;&lt;img alt=&quot;&quot; src=&quot;https://oscimg.oschina.net/oscnet//cc9986aba0d31384ceced11f8a8f97f9.png&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
-&lt;h3&gt;全新的鏡像倉庫&lt;/h3&gt; 
-&lt;p&gt;全新的鏡像倉庫對接功能，支持與 Docker Registry 和 Harbor 鏡像倉庫的無縫集成。對接完成後，用戶可以直接在 Rainbond 平台上搜索鏡像及其標籤（Tag），並快速創建組件，極大提升了鏡像管理和組件構建的效率。&lt;/p&gt; 
-&lt;p&gt;&lt;img alt=&quot;&quot; src=&quot;https://oscimg.oschina.net/oscnet//43c658dcd207f5d78ca4f974c5ac45b8.png&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
-&lt;p&gt;&lt;img alt=&quot;&quot; src=&quot;https://oscimg.oschina.net/oscnet//dcda10dd44b302f7bd6fd99e1576c4ed.png&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
-&lt;h3&gt;文件管理&lt;/h3&gt; 
-&lt;p&gt;新增文件管理功能，支持上傳與下載文件，同時支持新建和上傳文件夾，全面提升文件操作的靈活性和便捷性。&lt;/p&gt; 
-&lt;p&gt;&lt;img alt=&quot;&quot; src=&quot;https://oscimg.oschina.net/oscnet//6a7709144fceae7366ff115809eed546.png&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
-&lt;h2&gt;詳細變更&lt;/h2&gt; 
-&lt;ul&gt; 
- &lt;li&gt;新增文件管理功能&lt;/li&gt; 
- &lt;li&gt;網關支持添加域名多路徑&lt;/li&gt; 
- &lt;li&gt;支持 Cert Manager 自動簽發證書&lt;/li&gt; 
- &lt;li&gt;重新設計團隊 Dashboard 頁面，支持卡片視圖、列表視圖切換&lt;/li&gt; 
- &lt;li&gt;新增 Docker 鏡像倉庫對接功能&lt;/li&gt; 
- &lt;li&gt;調整 Git、鏡像倉庫認證信息綁定到用戶粒度&lt;/li&gt; 
- &lt;li&gt;修復快速安裝綁定到 ipv6 地址&lt;/li&gt; 
- &lt;li&gt;修復網關目標服務添加失敗&lt;/li&gt; 
- &lt;li&gt;修復普通用戶創建組件無權限&lt;/li&gt; 
- &lt;li&gt;修復在組件內刪除端口沒有刪除網關管理的路由&lt;/li&gt; 
- &lt;li&gt;修復控制枱遷移後默認集羣無法刪除&lt;/li&gt; 
-&lt;/ul&gt;
-                                                                                &lt;/div&gt;
-                                                                            </description>
-            <link>https://www.oschina.net/news/329093/rainbond-6-1-released</link>
-            <guid isPermaLink="false">https://www.oschina.net/news/329093/rainbond-6-1-released</guid>
-            <pubDate>Sun, 05 Jan 2025 02:55:00 GMT</pubDate>
-            <author>來源: 投稿</author>
-        </item>
-        <item>
-            <title>Protocol Buffers 29.3 發佈</title>
-            <description>&lt;div class=&quot;content&quot;&gt;
-                                                                    
-                                                        &lt;p&gt;&lt;span style=&quot;color:#000000&quot;&gt;Protocol Buffers 29.3 已經發布。Protocol Buffers（protobuf）是&amp;nbsp;Google 開源的語言無關、平台無關的可擴展機制，用於序列化結構化數據。&lt;/span&gt;&lt;/p&gt; 
-&lt;p style=&quot;color:#333333; margin-left:0; margin-right:0; text-align:left&quot;&gt;&lt;span style=&quot;color:#000000&quot;&gt;具體更新內容包括：&lt;/span&gt;&lt;/p&gt; 
-&lt;p style=&quot;margin-left:0px; margin-right:0px; text-align:start&quot;&gt;&lt;strong&gt;&lt;span style=&quot;color:#1f2328&quot;&gt;Announcements&lt;/span&gt;&lt;/strong&gt;&lt;/p&gt; 
-&lt;ul style=&quot;list-style-type:disc; margin-left:0; margin-right:0&quot;&gt; 
- &lt;li&gt;&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fprotobuf.dev%2Fnews%2F&quot; target=&quot;_blank&quot;&gt;Protobuf News&lt;/a&gt;&lt;span style=&quot;color:#1f2328&quot;&gt;&amp;nbsp;&lt;/span&gt;&lt;span style=&quot;color:#333333&quot;&gt;可能包括針對即將發生的更改的附加公告或預先公告。&lt;/span&gt;&lt;/li&gt; 
-&lt;/ul&gt; 
-&lt;p style=&quot;color:#333333; margin-left:0; margin-right:0; text-align:start&quot;&gt;&lt;strong&gt;&lt;span style=&quot;color:#1f2328&quot;&gt;C++&lt;/span&gt;&lt;/strong&gt;&lt;/p&gt; 
-&lt;ul&gt; 
- &lt;li&gt;&lt;span style=&quot;color:#1f2328&quot;&gt;修復 java 和 go features&amp;nbsp;的 cmake 安裝位置&lt;/span&gt; (&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fgithub.com%2Fprotocolbuffers%2Fprotobuf%2Fpull%2F19773&quot; target=&quot;_blank&quot;&gt;#19773&lt;/a&gt;) (&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fgithub.com%2Fprotocolbuffers%2Fprotobuf%2Fcommit%2F1dc5842ebe7956e79d5dfee6d3589df02faa77fd&quot; target=&quot;_blank&quot;&gt;1dc5842&lt;/a&gt;)&lt;/li&gt; 
-&lt;/ul&gt; 
-&lt;p style=&quot;margin-left:0px; margin-right:0px; text-align:start&quot;&gt;&lt;strong&gt;Other&lt;/strong&gt;&lt;/p&gt; 
-&lt;ul&gt; 
- &lt;li&gt;為 protobuf repo 添加 .bazeliskrc，以告知 bazelisk 默認使用 7.1.2。(&amp;nbsp;&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fgithub.com%2Fprotocolbuffers%2Fprotobuf%2Fpull%2F19884&quot; target=&quot;_blank&quot;&gt;#19884&lt;/a&gt;&amp;nbsp;) (&amp;nbsp;&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fgithub.com%2Fprotocolbuffers%2Fprotobuf%2Fcommit%2F9a5d2c329c159e07f7da8ba5dfe0acc98dfb81a9&quot; target=&quot;_blank&quot;&gt;9a5d2c3&lt;/a&gt;&amp;nbsp;)&lt;/li&gt; 
- &lt;li&gt;將 artifact actions 更新至 v4 (&amp;nbsp;&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fgithub.com%2Fprotocolbuffers%2Fprotobuf%2Fpull%2F19703&quot; target=&quot;_blank&quot;&gt;#19703&lt;/a&gt;&amp;nbsp;) (&amp;nbsp;&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fgithub.com%2Fprotocolbuffers%2Fprotobuf%2Fcommit%2F8e7e6b026f0ef00fd0f3d3cbeb41a02f8621c785&quot; target=&quot;_blank&quot;&gt;8e7e6b0&lt;/a&gt;&amp;nbsp;)&lt;/li&gt; 
-&lt;/ul&gt; 
-&lt;p&gt;更新説明：&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fgithub.com%2Fprotocolbuffers%2Fprotobuf%2Freleases%2Ftag%2Fv29.3&quot; target=&quot;_blank&quot;&gt;https://github.com/protocolbuffers/protobuf/releases/tag/v29.3&lt;/a&gt;&lt;/p&gt;
-                                                                                &lt;/div&gt;
-                                                                            </description>
-            <link>https://www.oschina.net/news/329090/protobuf-29-3-released</link>
-            <guid isPermaLink="false">https://www.oschina.net/news/329090/protobuf-29-3-released</guid>
-            <pubDate>Sun, 05 Jan 2025 02:47:00 GMT</pubDate>
             <author>來源: OSCHINA</author>
         </item>
     </channel>
