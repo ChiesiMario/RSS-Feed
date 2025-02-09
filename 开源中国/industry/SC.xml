@@ -9,8 +9,157 @@
         <generator>RSSHub</generator>
         <webMaster>contact@rsshub.app (RSSHub)</webMaster>
         <language>en</language>
-        <lastBuildDate>Sun, 09 Feb 2025 12:36:42 GMT</lastBuildDate>
+        <lastBuildDate>Sun, 09 Feb 2025 16:37:13 GMT</lastBuildDate>
         <ttl>5</ttl>
+        <item>
+            <title>高性能 java 库 wast - JSONPath 性能测试</title>
+            <description>&lt;div class=&quot;content&quot;&gt;
+                                                                    
+                                                        &lt;p style=&quot;margin-left:0px; margin-right:0px; text-align:left&quot;&gt;&lt;span style=&quot;color:#40485b&quot;&gt;关于 JSONPath，很早之前本人实现了一个按需解析模型 JSONNode，路径规则参考 xpath（不支持递归搜索），后来才知道有个 JSONPath 规范，路径规则懒得改了，几个月前做 JSON 优化，狠心优化了一个版本，大部分常用的 JSONPath 功能都已支持包括递归，性能也大幅度提升（主要依赖于 JSON 优化带来的提升)。&lt;/span&gt;&lt;/p&gt; 
+&lt;p style=&quot;margin-left:0px; margin-right:0px; text-align:left&quot;&gt;早前和 fastjson2 对比的测试地址:&amp;nbsp;&amp;nbsp;&lt;a href=&quot;https://gitee.com/xiaoch0209/wast-jmh-test/blob/main/README.md#json%E7%AF%87&quot;&gt;xiaoch0209/wast-jmh-test&lt;/a&gt;&lt;/p&gt; 
+&lt;p&gt;本次测试加入了另一个高性能 JSONPath 库 snack3 参与测试&lt;/p&gt; 
+&lt;p style=&quot;margin-left:0px; margin-right:0px; text-align:left&quot;&gt;&lt;span&gt;测试环境: window11 + i9 + 32g&amp;nbsp; JDK8&amp;nbsp; 单线程&lt;/span&gt;&lt;/p&gt; 
+&lt;p style=&quot;margin-left:0px; margin-right:0px; text-align:left&quot;&gt;&lt;span&gt;版本&lt;/span&gt;&lt;/p&gt; 
+&lt;pre&gt;&lt;code class=&quot;language-xml&quot;&gt;        &amp;lt;dependency&amp;gt;
+            &amp;lt;groupId&amp;gt;io.github.wycst&amp;lt;/groupId&amp;gt;
+            &amp;lt;artifactId&amp;gt;wast&amp;lt;/artifactId&amp;gt;
+            &amp;lt;version&amp;gt;0.0.21&amp;lt;/version&amp;gt;
+        &amp;lt;/dependency&amp;gt;
+        &amp;lt;dependency&amp;gt;
+            &amp;lt;groupId&amp;gt;com.alibaba.fastjson2&amp;lt;/groupId&amp;gt;
+            &amp;lt;artifactId&amp;gt;fastjson2&amp;lt;/artifactId&amp;gt;
+            &amp;lt;version&amp;gt;2.0.53&amp;lt;/version&amp;gt;
+        &amp;lt;/dependency&amp;gt;
+        &amp;lt;dependency&amp;gt;
+            &amp;lt;groupId&amp;gt;org.noear&amp;lt;/groupId&amp;gt;
+            &amp;lt;artifactId&amp;gt;snack3&amp;lt;/artifactId&amp;gt;
+            &amp;lt;version&amp;gt;3.2.122&amp;lt;/version&amp;gt;
+        &amp;lt;/dependency&amp;gt;&lt;/code&gt;&lt;/pre&gt; 
+&lt;p&gt;完整测试代码：&amp;nbsp;&lt;a href=&quot;https://gitee.com/xiaoch0209/wast-jmh-test/blob/main/src/main/java/com/jmh/test/json/path/JSONPath2Test.java&quot;&gt;src/main/java/com/jmh/test/json/path/JSONPath2Test.java · xiaoch0209/wast-jmh-test&lt;/a&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;span style=&quot;background-color:#ffffff; color:#333333&quot;&gt;测试结果（每毫秒运行次数）&lt;/span&gt;&lt;/p&gt; 
+&lt;pre&gt;&lt;code class=&quot;language-bash&quot;&gt;Benchmark                                Mode  Cnt     Score    Error   Units
+JSONPath2Test.fastjsonReaderAuthors     thrpt    5  1051.292 ± 19.083  ops/ms
+JSONPath2Test.fastjsonReaderPrices      thrpt    5  1089.031 ± 21.456  ops/ms
+JSONPath2Test.fastjsonReaderTop2Author  thrpt    5  1287.563 ± 19.824  ops/ms
+JSONPath2Test.snack3Authors             thrpt    5   460.155 ±  4.650  ops/ms
+JSONPath2Test.snack3Prices              thrpt    5   462.212 ±  7.238  ops/ms
+JSONPath2Test.snack3Top2Authors         thrpt    5   445.641 ±  2.799  ops/ms
+JSONPath2Test.wastAuthors               thrpt    5  &lt;strong&gt;2744.988&lt;/strong&gt; ± 24.966  ops/ms
+JSONPath2Test.wastPrices                thrpt    5  &lt;strong&gt;2521.418&lt;/strong&gt; ± 16.674  ops/ms
+JSONPath2Test.wastTop2Authors           thrpt    5  &lt;strong&gt;5635.949&lt;/strong&gt; ± 83.514  ops/ms&lt;/code&gt;&lt;/pre&gt; 
+&lt;p&gt;&lt;span&gt;&lt;strong&gt;wast &lt;/strong&gt;&amp;gt;&amp;gt; fastjson &amp;gt;&amp;gt;&amp;nbsp;&lt;/span&gt;snack3&lt;/p&gt; 
+&lt;p&gt;当前场景下 wast 性能均远高于其他 2 个库（不过在毫秒这个级别下运行速度都已经很快了）&lt;/p&gt; 
+&lt;p&gt;另外 wast 对 JSONPath 条件查找使用内置的表达式引擎支持，条件使用中括号包起来，语法比 JSONPath 更简单直观（个人感觉）&lt;/p&gt; 
+&lt;p&gt;JSONPath 多条件语法:&amp;nbsp; &amp;nbsp; &amp;nbsp;&amp;nbsp;&lt;span style=&quot;background-color:rgba(245, 246, 249, 0.4); color:#383a42&quot;&gt;$..person[?(@.age &amp;gt; 18 &amp;amp;&amp;amp; @.name == &#39;John&#39;)]&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;JSONNode 多条件语法:&amp;nbsp; &amp;nbsp; //person[age&amp;gt;18&amp;amp;&amp;amp;name==&#39;John&#39;]&lt;/p&gt; 
+&lt;p&gt;以下摘自 wiki 部分案例代码&lt;/p&gt; 
+&lt;pre&gt;&lt;code&gt;// 5.获取作者 J. R. R. Tolkien 的书
+List&amp;lt;JSONNode&amp;gt; filterBooks = JSONNode.collect(source, &quot;/store/book/*[author==&#39;J. R. R. Tolkien&#39;]&quot;);
+System.out.println(JSON.toJsonString(filterBooks));
+
+// 6.获取作者 J. R. R. Tolkien 的书的价格
+double price = JSONNode.first(source, &quot;/store/book/*[author==&#39;J. R. R. Tolkien&#39;]/price&quot;, double.class);
+System.out.println(price);
+
+// 7.获取作者 Herman Melville 的同时价格小于 10(多条件过滤),过滤表达式参考 Expression 语法
+Book book = JSONNode.first(source, &quot;/store/book/*[author==&#39;Herman Melville&#39;&amp;amp;&amp;amp;price&amp;lt;10]&quot;, Book.class);
+System.out.println(JSON.toJsonString(book));
+Book book2 = JSONNode.firstIfEmpty(source, &quot;/store/book/*[author==&#39;Herman Melville&#39;&amp;amp;&amp;amp;price&amp;gt;=10]&quot;, Book.class, null);
+System.out.println(book2); // NULL
+
+// 8.获取价格最高的一本书的书名（注意仅限于在某一个集合下），注意引入了 parent 内置的变量
+String bookName = JSONNode.first(source, &quot;/store/book/*[price==parent.max(&#39;price&#39;)]/title&quot;, String.class);
+System.out.println(bookName);
+
+// 9.获取存在 isbn 属性的书名
+System.out.println(JSONNode.collect(source, &quot;/store/book/*[isbn]/title&quot;));
+// 10.获取所有的 book 节点
+System.out.println(JSONNode.collect(source, &quot;//book/*&quot;));&lt;/code&gt;&lt;/pre&gt; 
+&lt;p&gt;更多使用案例:&amp;nbsp; &amp;nbsp;&lt;a href=&quot;https://gitee.com/xiaoch0209/wast/wikis/4.JSONNode&quot;&gt;wiki JSONNode&amp;nbsp;&lt;/a&gt;&lt;/p&gt; 
+&lt;p style=&quot;color:#333333; margin-left:0; margin-right:0; text-align:left&quot;&gt;wast 源码地址&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt;gitee：&amp;nbsp;&lt;a href=&quot;https://gitee.com/xiaoch0209/wast&quot;&gt;https://gitee.com/xiaoch0209/wast&lt;/a&gt;&amp;nbsp; &amp;nbsp;&amp;nbsp;&lt;/li&gt; 
+ &lt;li&gt;github：&amp;nbsp;&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fgithub.com%2Fwycst%2Fwast&quot; target=&quot;_blank&quot;&gt;https://github.com/wycst/wast&lt;/a&gt;&lt;/li&gt; 
+&lt;/ul&gt;
+                                                                                &lt;/div&gt;
+                                                                            </description>
+            <link>https://www.oschina.net/news/332569</link>
+            <guid isPermaLink="false">https://www.oschina.net/news/332569</guid>
+            <pubDate>Fri, 07 Feb 2025 15:45:00 GMT</pubDate>
+            <author>来源: 投稿</author>
+        </item>
+        <item>
+            <title>龙芯处理器成功运行 DeepSeek 大模型</title>
+            <description>&lt;div class=&quot;content&quot;&gt;
+                                                                    
+                                                        &lt;p&gt;龙芯中科官方宣布，搭载龙芯 3 号 CPU 的设备成功启动运行 DeepSeek R1-7B 模型，实现本地化部署，性能卓越，成本优异。&lt;/p&gt; 
+&lt;p&gt;&lt;img alt=&quot;&quot; src=&quot;https://oscimg.oschina.net/oscnet/up-6ebbfd1593817ad504458b37676f8c19376.png&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
+&lt;p&gt;据介绍，&lt;strong&gt;龙芯&lt;/strong&gt;日前&lt;strong&gt;联合太初元碁等产业伙伴，仅用 2 小时即在太初 T100 加速卡上完成 DeepSeek-R1 系列模型的适配工作&lt;/strong&gt;，快速上线包含 DeepSeek-R1-Distill-Qwen-7B 在内的多款大模型服务。&lt;/p&gt; 
+&lt;p&gt;目前，&lt;strong&gt;龙芯正积极携手太初元碁、寒武纪、天数智芯、算能科技、openEuler 等合作伙伴，全力打造 DeepSeek 系列模型的多形态推理平台&lt;/strong&gt;&lt;/p&gt; 
+&lt;p&gt;龙芯表示，&lt;strong&gt;采用龙芯 3A6000 处理器的诚迈信创电脑和望龙电脑已实现本地部署 DeepSeek&lt;/strong&gt;，部署后无需依赖云端服务器，避免了因网络波动或服务器过载导致的服务中断。&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt;&lt;strong&gt;DeepSeek 成功部署于诚迈信创电脑&lt;/strong&gt;&lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;p&gt;&lt;img height=&quot;608&quot; src=&quot;https://static.oschina.net/uploads/space/2025/0207/185408_1vro_2720166.png&quot; width=&quot;1080&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt;&lt;strong&gt;龙芯 3C6000 / D 双路服务器成功启动 DeepSeek&lt;/strong&gt;&lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;p&gt;&lt;img height=&quot;577&quot; src=&quot;https://static.oschina.net/uploads/space/2025/0207/185329_AK6q_2720166.png&quot; width=&quot;1025&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt;&lt;strong&gt;龙芯 3C5000 服务器 + OpenCloudOS Stream23 成功启动 DeepSeek&lt;/strong&gt;&lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;p&gt;&lt;img height=&quot;291&quot; src=&quot;https://static.oschina.net/uploads/space/2025/0207/185345_0ubB_2720166.png&quot; width=&quot;1268&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;em&gt;详情：&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fmp.weixin.qq.com%2Fs%2FRvTu9R9jGeuWhKYfU1q62g&quot; target=&quot;_blank&quot;&gt;https://mp.weixin.qq.com/s/RvTu9R9jGeuWhKYfU1q62g&lt;/a&gt;&lt;/em&gt;&lt;/p&gt;
+                                                                                &lt;/div&gt;
+                                                                            </description>
+            <link>https://www.oschina.net/news/332544</link>
+            <guid isPermaLink="false">https://www.oschina.net/news/332544</guid>
+            <pubDate>Fri, 07 Feb 2025 11:08:00 GMT</pubDate>
+            <author>来源: OSCHINA</author>
+        </item>
+        <item>
+            <title>GitHub Copilot 重磅新功能：Next Edit Suggestions &amp; Copilot Vision</title>
+            <description>&lt;div class=&quot;content&quot;&gt;
+                                                                    
+                                                        &lt;p&gt;GitHub&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fgithub.blog%2Fnews-insights%2Fproduct-news%2Fgithub-copilot-the-agent-awakens%2F&quot; target=&quot;_blank&quot;&gt; 宣布&lt;/a&gt;了一系列针对 Copilot 的更新，并且对其 AI 辅助编程助手更加&quot;agentic&quot;的未来进行了展望。&lt;/p&gt; 
+&lt;p&gt;其中引人注目的更新之一是一个名为&lt;strong&gt; Copilot Vision &lt;/strong&gt;的功能，它允许用户将截图、照片或图表附加到聊天中，Copilot 会生成界面和代码。&lt;/p&gt; 
+&lt;p&gt;例如，营销团队中的某个人可以截取一个网页的截图，并展示他们想要对该页面进行的修改。现在，用户不再需要通过文本提示来请求这些修改，而是可以直接上传图片并要求 Copilot 根据文件中的指示进行修改。&lt;/p&gt; 
+&lt;p&gt;值得注意的是，这项功能自十月起就已经作为 VS Code 的扩展可用（&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fmarketplace.visualstudio.com%2Fitems%3FitemName%3Dms-vscode.vscode-copilot-vision&quot; target=&quot;_blank&quot;&gt;链接&lt;/a&gt;），微软在该应用的描述中确认，最终会因 GitHub Copilot Chat 内置原生功能的推出而弃用。此前，用户还需要有自己的 API 密钥。&lt;/p&gt; 
+&lt;p&gt;&lt;img alt=&quot;&quot; src=&quot;https://oscimg.oschina.net/oscnet/up-f873702944a3ecebd69241ef39223aea797.webp&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
+&lt;p&gt;GitHub 还推出了一个名为&lt;strong&gt;「Next Edit Suggestions」&lt;/strong&gt;的新功能，作为 Copilot 更广泛代码补全功能的一部分。&lt;/p&gt; 
+&lt;p&gt;在此之前，GitHub Copilot 在 VS Code 编辑器中的工作是从光标位置开始的，但现在它将查看其他最近的编辑，以预测你可能想要执行的操作。它基本上是利用更丰富的上下文线索来自动识别和建议下一个编辑应该是什么。&lt;/p&gt; 
+&lt;p&gt;&lt;strong&gt;如果开发者想接受这些建议，他们可以按 Tab 键，或者按 Esc 键来拒绝&lt;/strong&gt;。&lt;/p&gt; 
+&lt;p&gt;&lt;img alt=&quot;&quot; src=&quot;https://oscimg.oschina.net/oscnet/up-773902b447fb581aad807a6bffdf4cd693b.webp&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;em&gt;GitHub Copilot Next Edit Suggestions&lt;/em&gt;&lt;/p&gt; 
+&lt;h2&gt;GitHub 的 agentic 展望&lt;/h2&gt; 
+&lt;p&gt;GitHub 也在去年 11 月推出了&amp;nbsp;&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fcode.visualstudio.com%2Fblogs%2F2024%2F11%2F12%2Fintroducing-copilot-edits&quot; target=&quot;_blank&quot;&gt;Copilot Edits&lt;/a&gt;，这是一种使用自然语言提示进行多文件编辑的新方法。这个功能现在已进入全面可用阶段，&lt;strong&gt;同时还包括一个新功能「agent modes」&lt;/strong&gt;，该模式能够识别所有与开发者试图进行的更改相关的文件——而不是依赖他们手动选择应应用更改的文件。&lt;/p&gt; 
+&lt;p&gt;「Copilot[现在]在理解你原始请求的意图方面做了更多的工作，然后尝试解决那个问题」，GitHub 首席执行官托马斯·多姆克对 TechCrunch 说。&lt;/p&gt; 
+&lt;p&gt;长期目标是将这种「代理模式」应用于 Copilot 的其它方面，以实现更广泛的自动化，涵盖更多相互关联的任务。这就是为什么 GitHub 还暗示了一个名为「Project Padawan」的新项目，这基本上是一个 SWE（软件工程）&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Ftechcrunch.com%2F2024%2F12%2F15%2Fwhat-exactly-is-an-ai-agent%2F&quot; target=&quot;_blank&quot;&gt;代理&lt;/a&gt;，可以在开发者的指导下独立处理整个任务，开发者将问题分配给 Copilot。&lt;/p&gt; 
+&lt;p&gt;多姆克没有给出这个功能何时可以投入使用的任何指示，只是提到它将与合作伙伴和社区合作来改进它。&lt;/p&gt; 
+&lt;p&gt;「我们正在寻找也在构建代理的合作伙伴，以便将其集成到该流程中，并且希望客户与我们合作，并给我们反馈——因为我们知道在这个阶段它不会是完美的」，多姆克说道。&lt;/p&gt;
+                                                                                &lt;/div&gt;
+                                                                            </description>
+            <link>https://www.oschina.net/news/332512</link>
+            <guid isPermaLink="false">https://www.oschina.net/news/332512</guid>
+            <pubDate>Fri, 07 Feb 2025 08:17:00 GMT</pubDate>
+            <author>来源: OSCHINA</author>
+        </item>
+        <item>
+            <title>缺乏维护人员，GNU Gold Linker 或将被彻底弃用</title>
+            <description>&lt;div class=&quot;content&quot;&gt;
+                                                                    
+                                                        &lt;p&gt;&lt;span style=&quot;color:#000000&quot;&gt;GNU Binutils 2.44 已于日前发布。值得一提的是，公告内容&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Flists.gnu.org%2Farchive%2Fhtml%2Finfo-gnu%2F2025-02%2Fmsg00001.html&quot; target=&quot;_blank&quot;&gt;指出&lt;/a&gt;：与以往不同的是，本次发布的 binutils-2.44.tar 包不包含 gold linker 的源代码。因为 GNU Gold linker 已被弃用，除非有志愿者愿意继续开发和维护，否则最终将被移除。&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;span style=&quot;color:#000000&quot;&gt;目前，相关源代码可在 binutils-with-gold-2.44.tar tar 包中找到。今后，奇数版本的 binutils（2.45、2.47 等）将只包含 binutils.2.xx.tar 包，而偶数版本将同时包含 binutils-2.xx.tar 和 binutils-with-gold-2.xx.tar 包，直到其被完全删除。&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;img height=&quot;277&quot; src=&quot;https://oscimg.oschina.net/oscnet/up-c724e0ef3d76f0d81e756f0bb5c23b9f33b.png&quot; width=&quot;300&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;span style=&quot;color:#000000&quot;&gt;GNU Gold 由谷歌于二十多年前推出，旨在提高链接性能，使其比 GNU 链接器更快。事实证明，GNU Gold 确实达到了预期目的，并证明了更快地链接 ELF 对象是可能的。但随着谷歌更依赖于性能更优的 LLVM 工具链，GNU Gold 缺乏投资且开发活动逐渐停滞。&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;span style=&quot;color:#000000&quot;&gt;科技网站 &lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fwww.phoronix.com%2Fnews%2FGNU-Gold-Linker-Deprecated&quot; target=&quot;_blank&quot;&gt;Phoronix&lt;/a&gt; 指出，随着越来越多的企业组织转而使用 LLVM 工具链，以及那些希望获得更快 ELF 链接性能的人可能会转而使用 Mold 链接器，而不是投入资源来发展 GNU Gold。除非出现奇迹，否则&amp;nbsp;GNU Gold linker 将来可能会被彻底放弃。&lt;/span&gt;&lt;/p&gt;
+                                                                                &lt;/div&gt;
+                                                                            </description>
+            <link>https://www.oschina.net/news/332498/gnu-gold-linker-deprecated</link>
+            <guid isPermaLink="false">https://www.oschina.net/news/332498/gnu-gold-linker-deprecated</guid>
+            <pubDate>Fri, 07 Feb 2025 07:14:00 GMT</pubDate>
+            <author>来源: OSCHINA</author>
+        </item>
         <item>
             <title>2024 年 AI 编程工具的进化</title>
             <description>&lt;div class=&quot;content&quot;&gt;
@@ -77,7 +226,7 @@
                                                                             </description>
             <link>https://my.oschina.net/u/3859945/blog/17529672</link>
             <guid isPermaLink="false">https://my.oschina.net/u/3859945/blog/17529672</guid>
-            <pubDate>Fri, 07 Feb 2025 10:50:00 GMT</pubDate>
+            <pubDate>Thu, 06 Feb 2025 10:50:00 GMT</pubDate>
             <author>原创</author>
         </item>
         <item>
@@ -142,7 +291,7 @@
                                                                             </description>
             <link>https://my.oschina.net/u/3859945/blog/17529581</link>
             <guid isPermaLink="false">https://my.oschina.net/u/3859945/blog/17529581</guid>
-            <pubDate>Fri, 07 Feb 2025 10:49:00 GMT</pubDate>
+            <pubDate>Thu, 06 Feb 2025 10:49:00 GMT</pubDate>
             <author>原创</author>
         </item>
         <item>
@@ -228,7 +377,7 @@
                                                                             </description>
             <link>https://my.oschina.net/u/3859945/blog/17529520</link>
             <guid isPermaLink="false">https://my.oschina.net/u/3859945/blog/17529520</guid>
-            <pubDate>Fri, 07 Feb 2025 10:48:00 GMT</pubDate>
+            <pubDate>Thu, 06 Feb 2025 10:48:00 GMT</pubDate>
             <author>原创</author>
         </item>
         <item>
@@ -282,7 +431,7 @@
                                                                             </description>
             <link>https://my.oschina.net/u/3859945/blog/17529447</link>
             <guid isPermaLink="false">https://my.oschina.net/u/3859945/blog/17529447</guid>
-            <pubDate>Fri, 07 Feb 2025 10:46:00 GMT</pubDate>
+            <pubDate>Thu, 06 Feb 2025 10:46:00 GMT</pubDate>
             <author>原创</author>
         </item>
         <item>
@@ -299,7 +448,7 @@
                                                                             </description>
             <link>https://www.oschina.net/news/332691</link>
             <guid isPermaLink="false">https://www.oschina.net/news/332691</guid>
-            <pubDate>Fri, 07 Feb 2025 08:28:00 GMT</pubDate>
+            <pubDate>Thu, 06 Feb 2025 08:28:00 GMT</pubDate>
             <author>来源: OSCHINA</author>
         </item>
         <item>
@@ -315,7 +464,7 @@
                                                                             </description>
             <link>https://www.oschina.net/news/332678</link>
             <guid isPermaLink="false">https://www.oschina.net/news/332678</guid>
-            <pubDate>Fri, 07 Feb 2025 07:24:00 GMT</pubDate>
+            <pubDate>Thu, 06 Feb 2025 07:24:00 GMT</pubDate>
             <author>来源: OSCHINA</author>
         </item>
         <item>
@@ -332,7 +481,7 @@
                                                                             </description>
             <link>https://www.oschina.net/news/332670</link>
             <guid isPermaLink="false">https://www.oschina.net/news/332670</guid>
-            <pubDate>Fri, 07 Feb 2025 06:49:00 GMT</pubDate>
+            <pubDate>Thu, 06 Feb 2025 06:49:00 GMT</pubDate>
             <author>来源: OSCHINA</author>
         </item>
         <item>
@@ -363,7 +512,7 @@
                                                                             </description>
             <link>https://www.oschina.net/news/332640</link>
             <guid isPermaLink="false">https://www.oschina.net/news/332640</guid>
-            <pubDate>Fri, 07 Feb 2025 03:55:00 GMT</pubDate>
+            <pubDate>Thu, 06 Feb 2025 03:55:00 GMT</pubDate>
             <author>来源: 投稿</author>
         </item>
         <item>
@@ -385,7 +534,7 @@
                                                                             </description>
             <link>https://www.oschina.net/news/332626</link>
             <guid isPermaLink="false">https://www.oschina.net/news/332626</guid>
-            <pubDate>Fri, 07 Feb 2025 03:23:00 GMT</pubDate>
+            <pubDate>Thu, 06 Feb 2025 03:23:00 GMT</pubDate>
             <author>来源: OSCHINA</author>
         </item>
         <item>
@@ -404,7 +553,7 @@
                                                                             </description>
             <link>https://www.oschina.net/news/332621</link>
             <guid isPermaLink="false">https://www.oschina.net/news/332621</guid>
-            <pubDate>Fri, 07 Feb 2025 03:10:00 GMT</pubDate>
+            <pubDate>Thu, 06 Feb 2025 03:10:00 GMT</pubDate>
             <author>来源: OSCHINA</author>
         </item>
         <item>
@@ -425,7 +574,7 @@
                                                                             </description>
             <link>https://www.oschina.net/news/332620</link>
             <guid isPermaLink="false">https://www.oschina.net/news/332620</guid>
-            <pubDate>Fri, 07 Feb 2025 03:02:00 GMT</pubDate>
+            <pubDate>Thu, 06 Feb 2025 03:02:00 GMT</pubDate>
             <author>来源: OSCHINA</author>
         </item>
         <item>
@@ -442,7 +591,7 @@
                                                                             </description>
             <link>https://www.oschina.net/news/332619</link>
             <guid isPermaLink="false">https://www.oschina.net/news/332619</guid>
-            <pubDate>Fri, 07 Feb 2025 02:55:00 GMT</pubDate>
+            <pubDate>Thu, 06 Feb 2025 02:55:00 GMT</pubDate>
             <author>来源: OSCHINA</author>
         </item>
         <item>
@@ -457,7 +606,7 @@
                                                                             </description>
             <link>https://www.oschina.net/news/332618</link>
             <guid isPermaLink="false">https://www.oschina.net/news/332618</guid>
-            <pubDate>Fri, 07 Feb 2025 02:53:00 GMT</pubDate>
+            <pubDate>Thu, 06 Feb 2025 02:53:00 GMT</pubDate>
             <author>来源: OSCHINA</author>
         </item>
         <item>
@@ -475,7 +624,7 @@
                                                                             </description>
             <link>https://www.oschina.net/news/332615</link>
             <guid isPermaLink="false">https://www.oschina.net/news/332615</guid>
-            <pubDate>Fri, 07 Feb 2025 02:48:00 GMT</pubDate>
+            <pubDate>Thu, 06 Feb 2025 02:48:00 GMT</pubDate>
             <author>来源: OSCHINA</author>
         </item>
         <item>
@@ -491,7 +640,7 @@
                                                                             </description>
             <link>https://www.oschina.net/news/332606</link>
             <guid isPermaLink="false">https://www.oschina.net/news/332606</guid>
-            <pubDate>Fri, 07 Feb 2025 02:01:00 GMT</pubDate>
+            <pubDate>Thu, 06 Feb 2025 02:01:00 GMT</pubDate>
             <author>来源: OSCHINA</author>
         </item>
         <item>
@@ -559,157 +708,8 @@
                                                                             </description>
             <link>https://www.oschina.net/news/332599</link>
             <guid isPermaLink="false">https://www.oschina.net/news/332599</guid>
-            <pubDate>Fri, 07 Feb 2025 01:23:00 GMT</pubDate>
+            <pubDate>Thu, 06 Feb 2025 01:23:00 GMT</pubDate>
             <author>来源: 投稿</author>
-        </item>
-        <item>
-            <title>高性能 java 库 wast - JSONPath 性能测试</title>
-            <description>&lt;div class=&quot;content&quot;&gt;
-                                                                    
-                                                        &lt;p style=&quot;margin-left:0px; margin-right:0px; text-align:left&quot;&gt;&lt;span style=&quot;color:#40485b&quot;&gt;关于 JSONPath，很早之前本人实现了一个按需解析模型 JSONNode，路径规则参考 xpath（不支持递归搜索），后来才知道有个 JSONPath 规范，路径规则懒得改了，几个月前做 JSON 优化，狠心优化了一个版本，大部分常用的 JSONPath 功能都已支持包括递归，性能也大幅度提升（主要依赖于 JSON 优化带来的提升)。&lt;/span&gt;&lt;/p&gt; 
-&lt;p style=&quot;margin-left:0px; margin-right:0px; text-align:left&quot;&gt;早前和 fastjson2 对比的测试地址:&amp;nbsp;&amp;nbsp;&lt;a href=&quot;https://gitee.com/xiaoch0209/wast-jmh-test/blob/main/README.md#json%E7%AF%87&quot;&gt;xiaoch0209/wast-jmh-test&lt;/a&gt;&lt;/p&gt; 
-&lt;p&gt;本次测试加入了另一个高性能 JSONPath 库 snack3 参与测试&lt;/p&gt; 
-&lt;p style=&quot;margin-left:0px; margin-right:0px; text-align:left&quot;&gt;&lt;span&gt;测试环境: window11 + i9 + 32g&amp;nbsp; JDK8&amp;nbsp; 单线程&lt;/span&gt;&lt;/p&gt; 
-&lt;p style=&quot;margin-left:0px; margin-right:0px; text-align:left&quot;&gt;&lt;span&gt;版本&lt;/span&gt;&lt;/p&gt; 
-&lt;pre&gt;&lt;code class=&quot;language-xml&quot;&gt;        &amp;lt;dependency&amp;gt;
-            &amp;lt;groupId&amp;gt;io.github.wycst&amp;lt;/groupId&amp;gt;
-            &amp;lt;artifactId&amp;gt;wast&amp;lt;/artifactId&amp;gt;
-            &amp;lt;version&amp;gt;0.0.21&amp;lt;/version&amp;gt;
-        &amp;lt;/dependency&amp;gt;
-        &amp;lt;dependency&amp;gt;
-            &amp;lt;groupId&amp;gt;com.alibaba.fastjson2&amp;lt;/groupId&amp;gt;
-            &amp;lt;artifactId&amp;gt;fastjson2&amp;lt;/artifactId&amp;gt;
-            &amp;lt;version&amp;gt;2.0.53&amp;lt;/version&amp;gt;
-        &amp;lt;/dependency&amp;gt;
-        &amp;lt;dependency&amp;gt;
-            &amp;lt;groupId&amp;gt;org.noear&amp;lt;/groupId&amp;gt;
-            &amp;lt;artifactId&amp;gt;snack3&amp;lt;/artifactId&amp;gt;
-            &amp;lt;version&amp;gt;3.2.122&amp;lt;/version&amp;gt;
-        &amp;lt;/dependency&amp;gt;&lt;/code&gt;&lt;/pre&gt; 
-&lt;p&gt;完整测试代码：&amp;nbsp;&lt;a href=&quot;https://gitee.com/xiaoch0209/wast-jmh-test/blob/main/src/main/java/com/jmh/test/json/path/JSONPath2Test.java&quot;&gt;src/main/java/com/jmh/test/json/path/JSONPath2Test.java · xiaoch0209/wast-jmh-test&lt;/a&gt;&lt;/p&gt; 
-&lt;p&gt;&lt;span style=&quot;background-color:#ffffff; color:#333333&quot;&gt;测试结果（每毫秒运行次数）&lt;/span&gt;&lt;/p&gt; 
-&lt;pre&gt;&lt;code class=&quot;language-bash&quot;&gt;Benchmark                                Mode  Cnt     Score    Error   Units
-JSONPath2Test.fastjsonReaderAuthors     thrpt    5  1051.292 ± 19.083  ops/ms
-JSONPath2Test.fastjsonReaderPrices      thrpt    5  1089.031 ± 21.456  ops/ms
-JSONPath2Test.fastjsonReaderTop2Author  thrpt    5  1287.563 ± 19.824  ops/ms
-JSONPath2Test.snack3Authors             thrpt    5   460.155 ±  4.650  ops/ms
-JSONPath2Test.snack3Prices              thrpt    5   462.212 ±  7.238  ops/ms
-JSONPath2Test.snack3Top2Authors         thrpt    5   445.641 ±  2.799  ops/ms
-JSONPath2Test.wastAuthors               thrpt    5  &lt;strong&gt;2744.988&lt;/strong&gt; ± 24.966  ops/ms
-JSONPath2Test.wastPrices                thrpt    5  &lt;strong&gt;2521.418&lt;/strong&gt; ± 16.674  ops/ms
-JSONPath2Test.wastTop2Authors           thrpt    5  &lt;strong&gt;5635.949&lt;/strong&gt; ± 83.514  ops/ms&lt;/code&gt;&lt;/pre&gt; 
-&lt;p&gt;&lt;span&gt;&lt;strong&gt;wast &lt;/strong&gt;&amp;gt;&amp;gt; fastjson &amp;gt;&amp;gt;&amp;nbsp;&lt;/span&gt;snack3&lt;/p&gt; 
-&lt;p&gt;当前场景下 wast 性能均远高于其他 2 个库（不过在毫秒这个级别下运行速度都已经很快了）&lt;/p&gt; 
-&lt;p&gt;另外 wast 对 JSONPath 条件查找使用内置的表达式引擎支持，条件使用中括号包起来，语法比 JSONPath 更简单直观（个人感觉）&lt;/p&gt; 
-&lt;p&gt;JSONPath 多条件语法:&amp;nbsp; &amp;nbsp; &amp;nbsp;&amp;nbsp;&lt;span style=&quot;background-color:rgba(245, 246, 249, 0.4); color:#383a42&quot;&gt;$..person[?(@.age &amp;gt; 18 &amp;amp;&amp;amp; @.name == &#39;John&#39;)]&lt;/span&gt;&lt;/p&gt; 
-&lt;p&gt;JSONNode 多条件语法:&amp;nbsp; &amp;nbsp; //person[age&amp;gt;18&amp;amp;&amp;amp;name==&#39;John&#39;]&lt;/p&gt; 
-&lt;p&gt;以下摘自 wiki 部分案例代码&lt;/p&gt; 
-&lt;pre&gt;&lt;code&gt;// 5.获取作者 J. R. R. Tolkien 的书
-List&amp;lt;JSONNode&amp;gt; filterBooks = JSONNode.collect(source, &quot;/store/book/*[author==&#39;J. R. R. Tolkien&#39;]&quot;);
-System.out.println(JSON.toJsonString(filterBooks));
-
-// 6.获取作者 J. R. R. Tolkien 的书的价格
-double price = JSONNode.first(source, &quot;/store/book/*[author==&#39;J. R. R. Tolkien&#39;]/price&quot;, double.class);
-System.out.println(price);
-
-// 7.获取作者 Herman Melville 的同时价格小于 10(多条件过滤),过滤表达式参考 Expression 语法
-Book book = JSONNode.first(source, &quot;/store/book/*[author==&#39;Herman Melville&#39;&amp;amp;&amp;amp;price&amp;lt;10]&quot;, Book.class);
-System.out.println(JSON.toJsonString(book));
-Book book2 = JSONNode.firstIfEmpty(source, &quot;/store/book/*[author==&#39;Herman Melville&#39;&amp;amp;&amp;amp;price&amp;gt;=10]&quot;, Book.class, null);
-System.out.println(book2); // NULL
-
-// 8.获取价格最高的一本书的书名（注意仅限于在某一个集合下），注意引入了 parent 内置的变量
-String bookName = JSONNode.first(source, &quot;/store/book/*[price==parent.max(&#39;price&#39;)]/title&quot;, String.class);
-System.out.println(bookName);
-
-// 9.获取存在 isbn 属性的书名
-System.out.println(JSONNode.collect(source, &quot;/store/book/*[isbn]/title&quot;));
-// 10.获取所有的 book 节点
-System.out.println(JSONNode.collect(source, &quot;//book/*&quot;));&lt;/code&gt;&lt;/pre&gt; 
-&lt;p&gt;更多使用案例:&amp;nbsp; &amp;nbsp;&lt;a href=&quot;https://gitee.com/xiaoch0209/wast/wikis/4.JSONNode&quot;&gt;wiki JSONNode&amp;nbsp;&lt;/a&gt;&lt;/p&gt; 
-&lt;p style=&quot;color:#333333; margin-left:0; margin-right:0; text-align:left&quot;&gt;wast 源码地址&lt;/p&gt; 
-&lt;ul&gt; 
- &lt;li&gt;gitee：&amp;nbsp;&lt;a href=&quot;https://gitee.com/xiaoch0209/wast&quot;&gt;https://gitee.com/xiaoch0209/wast&lt;/a&gt;&amp;nbsp; &amp;nbsp;&amp;nbsp;&lt;/li&gt; 
- &lt;li&gt;github：&amp;nbsp;&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fgithub.com%2Fwycst%2Fwast&quot; target=&quot;_blank&quot;&gt;https://github.com/wycst/wast&lt;/a&gt;&lt;/li&gt; 
-&lt;/ul&gt;
-                                                                                &lt;/div&gt;
-                                                                            </description>
-            <link>https://www.oschina.net/news/332569</link>
-            <guid isPermaLink="false">https://www.oschina.net/news/332569</guid>
-            <pubDate>Thu, 06 Feb 2025 15:45:00 GMT</pubDate>
-            <author>来源: 投稿</author>
-        </item>
-        <item>
-            <title>龙芯处理器成功运行 DeepSeek 大模型</title>
-            <description>&lt;div class=&quot;content&quot;&gt;
-                                                                    
-                                                        &lt;p&gt;龙芯中科官方宣布，搭载龙芯 3 号 CPU 的设备成功启动运行 DeepSeek R1-7B 模型，实现本地化部署，性能卓越，成本优异。&lt;/p&gt; 
-&lt;p&gt;&lt;img alt=&quot;&quot; src=&quot;https://oscimg.oschina.net/oscnet/up-6ebbfd1593817ad504458b37676f8c19376.png&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
-&lt;p&gt;据介绍，&lt;strong&gt;龙芯&lt;/strong&gt;日前&lt;strong&gt;联合太初元碁等产业伙伴，仅用 2 小时即在太初 T100 加速卡上完成 DeepSeek-R1 系列模型的适配工作&lt;/strong&gt;，快速上线包含 DeepSeek-R1-Distill-Qwen-7B 在内的多款大模型服务。&lt;/p&gt; 
-&lt;p&gt;目前，&lt;strong&gt;龙芯正积极携手太初元碁、寒武纪、天数智芯、算能科技、openEuler 等合作伙伴，全力打造 DeepSeek 系列模型的多形态推理平台&lt;/strong&gt;&lt;/p&gt; 
-&lt;p&gt;龙芯表示，&lt;strong&gt;采用龙芯 3A6000 处理器的诚迈信创电脑和望龙电脑已实现本地部署 DeepSeek&lt;/strong&gt;，部署后无需依赖云端服务器，避免了因网络波动或服务器过载导致的服务中断。&lt;/p&gt; 
-&lt;ul&gt; 
- &lt;li&gt;&lt;strong&gt;DeepSeek 成功部署于诚迈信创电脑&lt;/strong&gt;&lt;/li&gt; 
-&lt;/ul&gt; 
-&lt;p&gt;&lt;img height=&quot;608&quot; src=&quot;https://static.oschina.net/uploads/space/2025/0207/185408_1vro_2720166.png&quot; width=&quot;1080&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
-&lt;ul&gt; 
- &lt;li&gt;&lt;strong&gt;龙芯 3C6000 / D 双路服务器成功启动 DeepSeek&lt;/strong&gt;&lt;/li&gt; 
-&lt;/ul&gt; 
-&lt;p&gt;&lt;img height=&quot;577&quot; src=&quot;https://static.oschina.net/uploads/space/2025/0207/185329_AK6q_2720166.png&quot; width=&quot;1025&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
-&lt;ul&gt; 
- &lt;li&gt;&lt;strong&gt;龙芯 3C5000 服务器 + OpenCloudOS Stream23 成功启动 DeepSeek&lt;/strong&gt;&lt;/li&gt; 
-&lt;/ul&gt; 
-&lt;p&gt;&lt;img height=&quot;291&quot; src=&quot;https://static.oschina.net/uploads/space/2025/0207/185345_0ubB_2720166.png&quot; width=&quot;1268&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
-&lt;p&gt;&lt;em&gt;详情：&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fmp.weixin.qq.com%2Fs%2FRvTu9R9jGeuWhKYfU1q62g&quot; target=&quot;_blank&quot;&gt;https://mp.weixin.qq.com/s/RvTu9R9jGeuWhKYfU1q62g&lt;/a&gt;&lt;/em&gt;&lt;/p&gt;
-                                                                                &lt;/div&gt;
-                                                                            </description>
-            <link>https://www.oschina.net/news/332544</link>
-            <guid isPermaLink="false">https://www.oschina.net/news/332544</guid>
-            <pubDate>Thu, 06 Feb 2025 11:08:00 GMT</pubDate>
-            <author>来源: OSCHINA</author>
-        </item>
-        <item>
-            <title>GitHub Copilot 重磅新功能：Next Edit Suggestions &amp; Copilot Vision</title>
-            <description>&lt;div class=&quot;content&quot;&gt;
-                                                                    
-                                                        &lt;p&gt;GitHub&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fgithub.blog%2Fnews-insights%2Fproduct-news%2Fgithub-copilot-the-agent-awakens%2F&quot; target=&quot;_blank&quot;&gt; 宣布&lt;/a&gt;了一系列针对 Copilot 的更新，并且对其 AI 辅助编程助手更加&quot;agentic&quot;的未来进行了展望。&lt;/p&gt; 
-&lt;p&gt;其中引人注目的更新之一是一个名为&lt;strong&gt; Copilot Vision &lt;/strong&gt;的功能，它允许用户将截图、照片或图表附加到聊天中，Copilot 会生成界面和代码。&lt;/p&gt; 
-&lt;p&gt;例如，营销团队中的某个人可以截取一个网页的截图，并展示他们想要对该页面进行的修改。现在，用户不再需要通过文本提示来请求这些修改，而是可以直接上传图片并要求 Copilot 根据文件中的指示进行修改。&lt;/p&gt; 
-&lt;p&gt;值得注意的是，这项功能自十月起就已经作为 VS Code 的扩展可用（&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fmarketplace.visualstudio.com%2Fitems%3FitemName%3Dms-vscode.vscode-copilot-vision&quot; target=&quot;_blank&quot;&gt;链接&lt;/a&gt;），微软在该应用的描述中确认，最终会因 GitHub Copilot Chat 内置原生功能的推出而弃用。此前，用户还需要有自己的 API 密钥。&lt;/p&gt; 
-&lt;p&gt;&lt;img alt=&quot;&quot; src=&quot;https://oscimg.oschina.net/oscnet/up-f873702944a3ecebd69241ef39223aea797.webp&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
-&lt;p&gt;GitHub 还推出了一个名为&lt;strong&gt;「Next Edit Suggestions」&lt;/strong&gt;的新功能，作为 Copilot 更广泛代码补全功能的一部分。&lt;/p&gt; 
-&lt;p&gt;在此之前，GitHub Copilot 在 VS Code 编辑器中的工作是从光标位置开始的，但现在它将查看其他最近的编辑，以预测你可能想要执行的操作。它基本上是利用更丰富的上下文线索来自动识别和建议下一个编辑应该是什么。&lt;/p&gt; 
-&lt;p&gt;&lt;strong&gt;如果开发者想接受这些建议，他们可以按 Tab 键，或者按 Esc 键来拒绝&lt;/strong&gt;。&lt;/p&gt; 
-&lt;p&gt;&lt;img alt=&quot;&quot; src=&quot;https://oscimg.oschina.net/oscnet/up-773902b447fb581aad807a6bffdf4cd693b.webp&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
-&lt;p&gt;&lt;em&gt;GitHub Copilot Next Edit Suggestions&lt;/em&gt;&lt;/p&gt; 
-&lt;h2&gt;GitHub 的 agentic 展望&lt;/h2&gt; 
-&lt;p&gt;GitHub 也在去年 11 月推出了&amp;nbsp;&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fcode.visualstudio.com%2Fblogs%2F2024%2F11%2F12%2Fintroducing-copilot-edits&quot; target=&quot;_blank&quot;&gt;Copilot Edits&lt;/a&gt;，这是一种使用自然语言提示进行多文件编辑的新方法。这个功能现在已进入全面可用阶段，&lt;strong&gt;同时还包括一个新功能「agent modes」&lt;/strong&gt;，该模式能够识别所有与开发者试图进行的更改相关的文件——而不是依赖他们手动选择应应用更改的文件。&lt;/p&gt; 
-&lt;p&gt;「Copilot[现在]在理解你原始请求的意图方面做了更多的工作，然后尝试解决那个问题」，GitHub 首席执行官托马斯·多姆克对 TechCrunch 说。&lt;/p&gt; 
-&lt;p&gt;长期目标是将这种「代理模式」应用于 Copilot 的其它方面，以实现更广泛的自动化，涵盖更多相互关联的任务。这就是为什么 GitHub 还暗示了一个名为「Project Padawan」的新项目，这基本上是一个 SWE（软件工程）&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Ftechcrunch.com%2F2024%2F12%2F15%2Fwhat-exactly-is-an-ai-agent%2F&quot; target=&quot;_blank&quot;&gt;代理&lt;/a&gt;，可以在开发者的指导下独立处理整个任务，开发者将问题分配给 Copilot。&lt;/p&gt; 
-&lt;p&gt;多姆克没有给出这个功能何时可以投入使用的任何指示，只是提到它将与合作伙伴和社区合作来改进它。&lt;/p&gt; 
-&lt;p&gt;「我们正在寻找也在构建代理的合作伙伴，以便将其集成到该流程中，并且希望客户与我们合作，并给我们反馈——因为我们知道在这个阶段它不会是完美的」，多姆克说道。&lt;/p&gt;
-                                                                                &lt;/div&gt;
-                                                                            </description>
-            <link>https://www.oschina.net/news/332512</link>
-            <guid isPermaLink="false">https://www.oschina.net/news/332512</guid>
-            <pubDate>Thu, 06 Feb 2025 08:17:00 GMT</pubDate>
-            <author>来源: OSCHINA</author>
-        </item>
-        <item>
-            <title>缺乏维护人员，GNU Gold Linker 或将被彻底弃用</title>
-            <description>&lt;div class=&quot;content&quot;&gt;
-                                                                    
-                                                        &lt;p&gt;&lt;span style=&quot;color:#000000&quot;&gt;GNU Binutils 2.44 已于日前发布。值得一提的是，公告内容&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Flists.gnu.org%2Farchive%2Fhtml%2Finfo-gnu%2F2025-02%2Fmsg00001.html&quot; target=&quot;_blank&quot;&gt;指出&lt;/a&gt;：与以往不同的是，本次发布的 binutils-2.44.tar 包不包含 gold linker 的源代码。因为 GNU Gold linker 已被弃用，除非有志愿者愿意继续开发和维护，否则最终将被移除。&lt;/span&gt;&lt;/p&gt; 
-&lt;p&gt;&lt;span style=&quot;color:#000000&quot;&gt;目前，相关源代码可在 binutils-with-gold-2.44.tar tar 包中找到。今后，奇数版本的 binutils（2.45、2.47 等）将只包含 binutils.2.xx.tar 包，而偶数版本将同时包含 binutils-2.xx.tar 和 binutils-with-gold-2.xx.tar 包，直到其被完全删除。&lt;/span&gt;&lt;/p&gt; 
-&lt;p&gt;&lt;img height=&quot;277&quot; src=&quot;https://oscimg.oschina.net/oscnet/up-c724e0ef3d76f0d81e756f0bb5c23b9f33b.png&quot; width=&quot;300&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
-&lt;p&gt;&lt;span style=&quot;color:#000000&quot;&gt;GNU Gold 由谷歌于二十多年前推出，旨在提高链接性能，使其比 GNU 链接器更快。事实证明，GNU Gold 确实达到了预期目的，并证明了更快地链接 ELF 对象是可能的。但随着谷歌更依赖于性能更优的 LLVM 工具链，GNU Gold 缺乏投资且开发活动逐渐停滞。&lt;/span&gt;&lt;/p&gt; 
-&lt;p&gt;&lt;span style=&quot;color:#000000&quot;&gt;科技网站 &lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fwww.phoronix.com%2Fnews%2FGNU-Gold-Linker-Deprecated&quot; target=&quot;_blank&quot;&gt;Phoronix&lt;/a&gt; 指出，随着越来越多的企业组织转而使用 LLVM 工具链，以及那些希望获得更快 ELF 链接性能的人可能会转而使用 Mold 链接器，而不是投入资源来发展 GNU Gold。除非出现奇迹，否则&amp;nbsp;GNU Gold linker 将来可能会被彻底放弃。&lt;/span&gt;&lt;/p&gt;
-                                                                                &lt;/div&gt;
-                                                                            </description>
-            <link>https://www.oschina.net/news/332498/gnu-gold-linker-deprecated</link>
-            <guid isPermaLink="false">https://www.oschina.net/news/332498/gnu-gold-linker-deprecated</guid>
-            <pubDate>Thu, 06 Feb 2025 07:14:00 GMT</pubDate>
-            <author>来源: OSCHINA</author>
         </item>
     </channel>
 </rss>
