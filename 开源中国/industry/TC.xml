@@ -9,8 +9,288 @@
         <generator>RSSHub</generator>
         <webMaster>contact@rsshub.app (RSSHub)</webMaster>
         <language>en</language>
-        <lastBuildDate>Mon, 10 Feb 2025 07:38:15 GMT</lastBuildDate>
+        <lastBuildDate>Mon, 10 Feb 2025 12:36:04 GMT</lastBuildDate>
         <ttl>5</ttl>
+        <item>
+            <title>Linux 內核新補丁調整 AC 電源插拔行為，向 Windows 看齊以提升硬件兼容性</title>
+            <description>&lt;div class=&quot;content&quot;&gt;
+                                                                    
+                                                        &lt;blockquote&gt; 
+ &lt;p&gt;AMD 工程師主導優化，解決便攜設備休眠喚醒痛點。&lt;/p&gt; 
+&lt;/blockquote&gt; 
+&lt;p&gt;近日，AMD 工程師 Mario Limonciello 向 Linux 內核&lt;u&gt;&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Flore.kernel.org%2Flinux-pm%2F20250208162210.3929473-1-superm1%40kernel.org%2F&quot; target=&quot;_blank&quot;&gt;提交了一系列補丁&lt;/a&gt;&lt;/u&gt;，旨在調整系統在&lt;strong&gt;s2idle（掛起到空閒）&lt;/strong&gt;狀態下的 AC 電源插拔行為，使其更貼近 Windows 11 的邏輯。&lt;/p&gt; 
+&lt;p&gt;這一改動主要針對筆記本電腦、手持遊戲設備（如 Steam Deck 同類產品）在休眠時因電源狀態切換導致的兼容性問題，尤其是此前曝光的 Legion Go S（搭載 AMD Ryzen Z2 芯片）的固件級故障。&lt;/p&gt; 
+&lt;p&gt;&lt;strong&gt;為何需要「模仿」Windows？&lt;/strong&gt;&lt;/p&gt; 
+&lt;p&gt;當前，Linux 與 Windows 在 s2idle 狀態下的電源行為存在關鍵差異：&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt;&lt;strong&gt;Windows&lt;/strong&gt;：插入或拔出 AC 電源時，系統會完全喚醒，若後續無用戶操作則重新進入睡眠。&lt;/li&gt; 
+ &lt;li&gt;&lt;strong&gt;Linux&lt;/strong&gt;：AC 事件僅觸發短暫喚醒後立即重回休眠，可能導致硬件固件因快速狀態切換出現異常（例如某些設備無法正確處理快速進入/退出低功耗模式）。&lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;p&gt;Limonciello 指出，由於 OEM 廠商通常基於 Windows 進行硬件驗證，Linux 的差異行為易暴露底層固件缺陷。新補丁通過記錄休眠前的電池狀態，並在 AC 事件後對比狀態變化，決定是否徹底喚醒系統，從而減少「兼容性陷阱」。&lt;/p&gt; 
+&lt;p&gt;&lt;strong&gt;技術細節：喚醒機制與能耗監控&lt;/strong&gt;&lt;/p&gt; 
+&lt;ol&gt; 
+ &lt;li&gt; &lt;p&gt;&lt;strong&gt;喚醒邏輯重構&lt;/strong&gt;&lt;br&gt; 補丁在 ACPI 電池驅動中新增&lt;code&gt;suspend_state&lt;/code&gt;字段，休眠時保存當前電源狀態（如是否充電）。若喚醒後檢測到狀態變化（如從充電變為放電），則觸發系統完全喚醒，而非立即休眠。&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;&lt;strong&gt;能耗統計透明化&lt;/strong&gt;&lt;br&gt; 新增&lt;code&gt;/sys/power/suspend_stats/last_sleep_energy&lt;/code&gt;文件，以&lt;strong&gt;毫安時（mAh）&lt;/strong&gt;為單位記錄上次休眠週期的電池消耗量，方便用戶空間工具分析功耗問題。&lt;/p&gt; &lt;/li&gt; 
+&lt;/ol&gt; 
+&lt;p&gt;&lt;strong&gt;爭議與用戶控制&lt;/strong&gt;&lt;/p&gt; 
+&lt;p&gt;儘管新行為默認啓用，但開發者社區對其適用場景存在分歧。例如，若筆記本合蓋時連接電源，是否應強制喚醒？Limonciello 認為，這與用戶外接擴展塢的場景需求一致，但用戶仍可通過禁用 ACPI 電池設備的&lt;code&gt;power/wakeup&lt;/code&gt;屬性恢復舊邏輯。&lt;/p&gt; 
+&lt;p&gt;&lt;strong&gt;影響與未來展望&lt;/strong&gt;&lt;/p&gt; 
+&lt;p&gt;此次調整尤其利好搭載 AMD 芯片的設備，但惠及所有支持 s2idle 的 x86/ARM 平台。隨着 Linux 在掌機市場的滲透（如 Steam OS 設備），此類優化將顯著提升用戶體驗。此外，補丁的「Windows 兼容性驅動」思路或成為未來硬件支持的新範式，減少廠商因生態差異對 Linux 的適配成本。&lt;/p&gt; 
+&lt;p&gt;&lt;strong&gt;結語&lt;/strong&gt;&lt;br&gt; Linux 在電源管理領域的「向 Windows 學習」，並非妥協，而是以用戶體驗為優先的務實選擇。這一補丁不僅修復了長期存在的兼容性痛點，也為開源生態與 OEM 廠商的協作提供了新思路。未來，類似「求同存異」的優化或成常態，進一步模糊兩大操作系統在硬件支持上的體驗邊界。&lt;/p&gt;
+                                                                                &lt;/div&gt;
+                                                                            </description>
+            <link>https://www.oschina.net/news/333017/linux-patches-ac-plug-s2idle</link>
+            <guid isPermaLink="false">https://www.oschina.net/news/333017/linux-patches-ac-plug-s2idle</guid>
+            <pubDate>Sat, 08 Feb 2025 11:24:00 GMT</pubDate>
+            <author>來源: OSCHINA</author>
+        </item>
+        <item>
+            <title>圖解系列｜DeepSeek-R1 的出眾推理能力從何而來？</title>
+            <description>&lt;div class=&quot;content&quot;&gt;
+                                                                                                                    
+                                                                                                                                                    &lt;blockquote&gt; 
+ &lt;p&gt;&lt;strong&gt;編者按：&lt;/strong&gt; DeepSeek-R1 到底有什麼特別之處？它為什麼能在推理任務上取得如此出色的表現？這背後的訓練方法又蘊含着怎樣的創新？&lt;/p&gt; 
+ &lt;p&gt;當我們需要模型處理數學題、編程任務，或是進行邏輯分析時，高質量的推理能力顯得尤為重要。然而，傳統的訓練方法往往需要耗費大量人力物力，這對許多研究團隊和企業來説都是不小的負擔。&lt;/p&gt; 
+ &lt;p&gt;今天這篇深度解析 DeepSeek-R1 訓練方法的文章，將展示一個令人耳目一新的解決方案：如何通過創新的強化學習方法，在少量高質量人工標註數據的情況下，打造出一個推理能力出眾的 AI 模型。文章詳細介紹了 DeepSeek 團隊如何通過&quot;自動驗證機制&quot;來訓練模型，這種方法不僅大大降低了對人工標註數據的依賴，還能持續提升模型的推理質量。&lt;/p&gt; 
+&lt;/blockquote&gt; 
+&lt;p&gt;&lt;strong&gt;作者 | Jay Alammar&lt;/strong&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;strong&gt;編譯 | 嶽揚&lt;/strong&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;img src=&quot;https://oscimg.oschina.net/oscnet/up-6fa463c0670c30f6fa2098b0a2cfb8cedbd.png&quot; alt=&quot;&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
+&lt;p&gt;DeepSeek-R1 代表了人工智能發展的又一重要里程碑。對於機器學習領域的研究人員與開發者羣體而言，這次發佈之所以備受關注，主要有以下兩點：&lt;/p&gt; 
+&lt;ol&gt; 
+ &lt;li&gt;首先，這是一款開源權重的模型，並且提供了更小的、經過蒸餾的版本；&lt;/li&gt; 
+ &lt;li&gt;其次，它公佈並深入探討了訓練方法，該方法能夠復現類似於 OpenAI O1 的推理模型。&lt;/li&gt; 
+&lt;/ol&gt; 
+&lt;p&gt;本文將帶您瞭解這一模型的構建過程。&lt;/p&gt; 
+&lt;p&gt;&lt;strong&gt;目錄&lt;/strong&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;strong&gt;01 回顧：大語言模型（LLMs）的訓練方法&lt;/strong&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;strong&gt;02 DeepSeek-R1 的訓練步驟&lt;/strong&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;strong&gt;2.1- 長推理鏈的 SFT 數據&lt;/strong&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;strong&gt;2.2- 一個過渡性的、擅長推理的高質量大語言模型（但在非推理任務上表現稍遜）&lt;/strong&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;strong&gt;2.3- 利用大規模強化學習（RL）構建推理模型&lt;/strong&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;strong&gt;2.3.1- 以推理為導向的大規模強化學習（R1-Zero）&lt;/strong&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;strong&gt;2.3.2- 利用過渡性推理模型生成 SFT 推理數據&lt;/strong&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;strong&gt;2.3.3- 常規強化學習訓練階段&lt;/strong&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;strong&gt;03 模型架構&lt;/strong&gt;&lt;/p&gt; 
+&lt;h1&gt;&lt;strong&gt;01 回顧：大語言模型（LLMs）的訓練方法&lt;/strong&gt;&lt;/h1&gt; 
+&lt;p&gt;與大多數現有的大語言模型一樣，DeepSeek-R1 也是逐個生成 token，但其獨特之處在於擅長解決數學和推理問題。這是因為它能夠通過生成一系列思考 tokens 來詳細闡述其思考過程，從而更加深入地處理問題。&lt;/p&gt; 
+&lt;p&gt;&lt;img src=&quot;https://oscimg.oschina.net/oscnet/up-5b41809ec9dc436f27455aa39b8ef58c830.png&quot; alt=&quot;&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
+&lt;p&gt;下圖摘自書籍《Hands-On Large Language Models》的第 12 章，展示了創建高質量大語言模型的三個主要步驟：&lt;/p&gt; 
+&lt;p&gt;&lt;img src=&quot;https://oscimg.oschina.net/oscnet/up-5960076009014b645e62ad11df7e601f3dd.png&quot; alt=&quot;&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
+&lt;p&gt;1）&lt;strong&gt;語言建模階段&lt;/strong&gt;，我們利用海量的網絡數據訓練模型預測下一個詞彙，從而得到一個基礎模型。&lt;/p&gt; 
+&lt;p&gt;2）&lt;strong&gt;監督式微調階段&lt;/strong&gt;，這一步驟讓模型在執行指令和回答問題時更加得心應手，進而得到一個指令調優的模型或稱為監督式微調/SFT 模型。&lt;/p&gt; 
+&lt;p&gt;3）最後是&lt;strong&gt;偏好調優階段&lt;/strong&gt;，這一步驟進一步優化模型的行為，使其更符合人類偏好，最終形成的是你在各種平台和應用中使用的偏好調優後的 LLM。&lt;/p&gt; 
+&lt;h1&gt;&lt;strong&gt;02 DeepSeek-R1 的訓練步驟&lt;/strong&gt;&lt;/h1&gt; 
+&lt;p&gt;DeepSeek-R1 遵循了這一通用框架。其第一步的具體內容源自於之前關於 DeepSeek-V3 模型的研究論文[1]。R1 使用的是該論文中的基礎模型（並非最終的 DeepSeek-V3 模型），並且同樣經歷了 SFT（監督式微調）和偏好調優階段，但它的獨特之處在於這些階段的具體操作方法。&lt;/p&gt; 
+&lt;p&gt;在 R1 的構建過程中，有三個關鍵點值得特別關注。&lt;/p&gt; 
+&lt;h2&gt;&lt;strong&gt;2.1 長推理鏈的 SFT 數據&lt;/strong&gt;&lt;/h2&gt; 
+&lt;p&gt;&lt;img src=&quot;https://oscimg.oschina.net/oscnet/up-71048a70e57a4dd98c33f2c0fb43d5a0d16.png&quot; alt=&quot;&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;strong&gt;這些長思維鏈推理的實例數量龐大（總共達到 60 萬個）。如此大規模的實例獲取難度極高，且若要依靠人工標註，成本也將極為昂貴。&lt;/strong&gt; 因此，這些實例的創建過程是我們需要強調的第二個獨特之處。&lt;/p&gt; 
+&lt;h2&gt;&lt;strong&gt;2.2 一個過渡性的、擅長推理的高質量 LLM（但在非推理任務上表現稍遜）&lt;/strong&gt;&lt;/h2&gt; 
+&lt;p&gt;這些數據是由 R1 的前身，一個專注於推理但尚未命名的姊妹模型所生成的。這個姊妹模型受到了另一個模型 R1-Zero 的啓發（我們將在稍後討論）。它之所以意義重大，並不是因為它是一個非常好用的 LLM，而在於在它的創建過程中，幾乎無需依賴標註數據，僅通過大規模的強化學習，就能培育出一個擅長處理推理問題的模型。&lt;/p&gt; 
+&lt;p&gt;接着，這個未命名的推理專家模型的輸出結果，可以用來訓練一個更為多能的模型，它不僅能夠處理推理任務，還能應對其他類型的任務，滿足用戶對大語言模型（LLM）的普遍期待。&lt;/p&gt; 
+&lt;p&gt;&lt;img src=&quot;https://oscimg.oschina.net/oscnet/up-4851fe74d4b6fa9ff29c1036a1790de83f4.png&quot; alt=&quot;&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
+&lt;h2&gt;&lt;strong&gt;2.3 利用大規模強化學習（RL）構建推理模型&lt;/strong&gt;&lt;/h2&gt; 
+&lt;p&gt;此處分為兩個步驟：&lt;/p&gt; 
+&lt;h3&gt;&lt;strong&gt;2.3.1- 以推理為導向的大規模強化學習（R1-Zero）&lt;/strong&gt;&lt;/h3&gt; 
+&lt;p&gt;在此過程中，我們利用強化學習（RL）來構建一個臨時的推理模型。隨後，這個模型被用於生成用於監督式微調（SFT）的推理示例。然而，能夠創建這個模型的關鍵，在於之前的一項實驗，該實驗成功打造了一個名為 DeepSeek-R1-Zero 的早期模型。&lt;/p&gt; 
+&lt;p&gt;&lt;img src=&quot;https://oscimg.oschina.net/oscnet/up-fbae4d4fb50b77fa5484a9d220719bbe4d6.png&quot; alt=&quot;&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
+&lt;p&gt;R1-Zero 的獨特之處在於，它能夠在沒有經過標註的 SFT 訓練集的情況下，依然在推理任務上表現卓越。它的訓練過程直接從預訓練的基礎模型出發，通過強化學習訓練（跳過了 SFT 階段）。它的表現非常出色，能夠與 O1 模型相媲美。&lt;/p&gt; 
+&lt;p&gt;&lt;img src=&quot;https://oscimg.oschina.net/oscnet/up-fd68b8120aaa63d61a0ca7bb0b7333d62ab.png&quot; alt=&quot;&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
+&lt;p&gt;這一成就重要重大，因為數據一直是機器學習模型能力的助推器。那麼，這個模型是如何打破這一傳統的呢？這主要歸功於以下兩點：&lt;/p&gt; 
+&lt;p&gt;&lt;strong&gt;1- 現代基礎模型在質量和能力上已經達到了一個臨界點（這個基礎模型是在高達 14.8 萬億的高質量 tokens 上訓練而成的）。&lt;/strong&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;strong&gt;2- 與通用聊天或寫作請求不同，推理問題可以實現自動驗證或標註。&lt;/strong&gt; 可以通過以下這個示例來説明這一點。&lt;/p&gt; 
+&lt;p&gt;&lt;strong&gt;示例：推理問題的自動驗證&lt;/strong&gt;&lt;/p&gt; 
+&lt;p&gt;以下是一個可能出現在 RL 訓練步驟中的提示詞/問題：&lt;/p&gt; 
+&lt;blockquote&gt; 
+ &lt;p&gt;編寫一段 Python 代碼，獲取一個數字列表，返回排序後的列表，並在列表開頭添加數字 42。&lt;/p&gt; 
+&lt;/blockquote&gt; 
+&lt;p&gt;這樣的問題非常適合自動驗證。假設我們將這個問題拋給正在訓練的模型，它會生成：&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt;使用軟件語法檢查器可以驗證生成的代碼是否為有效的 Python 代碼。&lt;/li&gt; 
+ &lt;li&gt;我們可以運行這段 Python 代碼，以檢查其是否能夠成功執行。&lt;/li&gt; 
+ &lt;li&gt;其他現代代碼生成 LLM 可以創建單元測試來驗證代碼的行為是否符合預期（它們自身無需具備推理能力）。&lt;/li&gt; 
+ &lt;li&gt;我們甚至可以進一步，通過測量代碼的執行時間，讓訓練過程偏好那些性能更優的解決方案，即使其他解決方案也是正確的 Python 程序。&lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;p&gt;在訓練步驟中，我們可以向模型提出這樣的問題，並生成多種可能的解決方案。&lt;/p&gt; 
+&lt;p&gt;&lt;img src=&quot;https://oscimg.oschina.net/oscnet/up-f83bf0627d5f3ff8f1fda69f2a0769899e6.png&quot; alt=&quot;&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
+&lt;p&gt;我們可以不依賴人工幹預，自動進行檢查，發現第一個輸出根本不是代碼。第二個輸出是代碼，但並非 Python 代碼。第三個輸出看似是一個解決方案，卻未能通過單元測試，而第四個輸出則是正確的解決方案。&lt;/p&gt; 
+&lt;p&gt;&lt;img src=&quot;https://oscimg.oschina.net/oscnet/up-a1c61910f7a45c46610b945fcd73cf50a89.png&quot; alt=&quot;&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
+&lt;p&gt;這些反饋都是可以直接用來優化模型的信號。這一過程當然是在大量示例（以小批量形式）和連續的訓練步驟中完成的。&lt;/p&gt; 
+&lt;p&gt;&lt;img src=&quot;https://oscimg.oschina.net/oscnet/up-c2e60359299a142483ec274c460a0c90dc6.png&quot; alt=&quot;&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
+&lt;p&gt;這些獎勵信號和模型更新是模型在強化學習訓練過程中不斷進步的關鍵，如下圖所示。&lt;/p&gt; 
+&lt;p&gt;&lt;img src=&quot;https://oscimg.oschina.net/oscnet/up-ce02ceb2d7a3049768b4b796755b83f0f9f.png&quot; alt=&quot;&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
+&lt;p&gt;與此能力提升相伴的是，模型生成了更長的響應，即使用了更多的思考 tokens 來處理問題。&lt;/p&gt; 
+&lt;p&gt;&lt;img src=&quot;https://oscimg.oschina.net/oscnet/up-4c90ef53271c751b695ad334dddfbb87f40.png&quot; alt=&quot;&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
+&lt;p&gt;儘管這個過程很有價值，但 R1-Zero 模型在推理問題上的高分表現背後，仍存在一些問題，使其實際可用性未達理想狀態。&lt;/p&gt; 
+&lt;blockquote&gt; 
+ &lt;p&gt;雖然 DeepSeek-R1-Zero 展現出了卓越的推理能力，並自主發展出了出人意料的強大推理行為，但它也遭遇了一些挑戰，比如文本可讀性不佳和語言混雜等問題。&lt;/p&gt; 
+&lt;/blockquote&gt; 
+&lt;p&gt;R1 模型的設計目標是提高可用性。因此，它（DeepSeek-R1-Zero）不僅僅完全依賴於強化學習過程，而是如前文所述，在以下兩個方面發揮作用：&lt;/p&gt; 
+&lt;p&gt;&lt;strong&gt;1- 創建一個過渡性的推理模型，用以生成監督式微調（SFT）的數據點。&lt;/strong&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;strong&gt;2- 訓練 R1 模型，以在推理和非推理問題上取得進步（利用其他類型的驗證器）。&lt;/strong&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;img src=&quot;https://oscimg.oschina.net/oscnet/up-694a728dfc22ac72182045659f53b114a1b.png&quot; alt=&quot;&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
+&lt;h3&gt;&lt;strong&gt;2.3.2- 利用過渡性推理模型生成 SFT 推理數據&lt;/strong&gt;&lt;/h3&gt; 
+&lt;p&gt;為了提升過渡性推理模型的實際效用，我們對其進行了監督式微調（SFT）訓練，這一步驟在數千個推理問題示例上進行（部分示例由 R1-Zero 生成並篩選）。在論文中，這些示例被稱為&quot;冷啓動數據&quot;。&lt;/p&gt; 
+&lt;blockquote&gt; 
+ &lt;p&gt;2.3.1. 冷啓動階段&lt;/p&gt; 
+ &lt;p&gt;與 DeepSeek-R1-Zero 不同，為了防止基礎模型在強化學習訓練初期出現不穩定的冷啓動問題，對於 DeepSeek-R1，我們構建並收集了少量長思維鏈（CoT）數據對模型進行微調，將其作為初始的強化學習策略模型。為收集這類數據，我們探索了多種方法：使用帶有長 CoT 示例的小樣本提示技術、直接提示模型生成帶有反思和驗證的詳細答案、收集 DeepSeek-R1-Zero 生成的易讀格式輸出，並通過人工標註員對結果進行後處理細化。&lt;/p&gt; 
+&lt;/blockquote&gt; 
+&lt;p&gt;&lt;strong&gt;但或許你會問，既然我們已經有了這些數據，為什麼還需要依賴強化學習過程呢？答案在於數據的規模。我們可以獲取的可能只有 5,000 個示例的數據集，而訓練 R1 則需要 600,000 個示例。&lt;/strong&gt; 這個過渡性模型幫助我們縮小了這一差距，並使我們能夠合成生成那些極為重要的數據。&lt;/p&gt; 
+&lt;p&gt;對於監督式微調（SFT）這一概念，可能你還不太熟悉，它是一種訓練過程，通過向模型展示形式為提示詞和正確補全的訓練示例來進行。下面這個圖展示了書籍《Hands-On Large Language Models》第 12 章中的一些 SFT 訓練示例：&lt;/p&gt; 
+&lt;p&gt;&lt;img src=&quot;https://oscimg.oschina.net/oscnet/up-e00bd1bb414511cf4a13d9225c9ed6bb7ba.png&quot; alt=&quot;&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
+&lt;h3&gt;&lt;strong&gt;2.3.3- 常規強化學習訓練階段&lt;/strong&gt;&lt;/h3&gt; 
+&lt;p&gt;這樣，R1 模型不僅在推理任務上表現卓越，還能有效地應對其他非推理類任務。這一過程與我們之前提到的強化學習過程相似，但因為它涵蓋了非推理領域的應用，所以它還引入了一個實用性獎勵模型和安全性獎勵模型（與 Llama 模型有相似之處），用於處理這些應用領域的提示詞。&lt;/p&gt; 
+&lt;p&gt;&lt;img src=&quot;https://oscimg.oschina.net/oscnet/up-cd6bf829caa63d1804a38dcdf71e88e2293.png&quot; alt=&quot;&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
+&lt;h1&gt;&lt;strong&gt;03 模型架構&lt;/strong&gt;&lt;/h1&gt; 
+&lt;p&gt;與 GPT2[2] 和 GPT3[3] 等同源的早期模型一樣，DeepSeek-R1 也是由 Transformer[4] 解碼器塊堆疊而成，總共包含了 61 個這樣的塊。其中，前三個塊是密集層，而後續的則是採用了混合專家層（MoE）。&lt;/p&gt; 
+&lt;p&gt;&lt;img src=&quot;https://oscimg.oschina.net/oscnet/up-817d8e03a6a9f616d918a3f53eb7e8bdede.png&quot; alt=&quot;&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
+&lt;p&gt;關於模型的維度大小和其他超參數配置，具體信息如下：&lt;/p&gt; 
+&lt;p&gt;&lt;img src=&quot;https://oscimg.oschina.net/oscnet/up-0acee698853f2545eaf2350f4bae0ca92ea.png&quot; alt=&quot;&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
+&lt;p&gt;有關模型架構的更多詳細信息，可以在他們之前發表的兩篇論文中找到：&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt;DeepSeek-V3 Technical Report[1]&lt;/li&gt; 
+ &lt;li&gt;DeepSeekMoE: Towards Ultimate Expert Specialization in Mixture-of-Experts Language Models[5]&lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;h1&gt;&lt;strong&gt;04 Conclusion&lt;/strong&gt;&lt;/h1&gt; 
+&lt;p&gt;通過上述內容，相信你現在應該對 DeepSeek-R1 模型有了基本的理解。&lt;/p&gt; 
+&lt;p&gt;如果你覺得需要更多基礎知識來理解這篇文章，我建議你獲取一本《Hands-On Large Language Models》[6]或者在線在 O&#39;Reilly[7] 上閲讀，並在 Github[8] 上查看相關內容。&lt;/p&gt; 
+&lt;p&gt;&lt;em&gt;Thanks for reading!&lt;/em&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;em&gt;Hope you have enjoyed and learned new things from this blog!&lt;/em&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;em&gt;&lt;strong&gt;About the author&lt;/strong&gt;&lt;/em&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;em&gt;&lt;strong&gt;Jay Alammar&lt;/strong&gt;&lt;/em&gt;&lt;/p&gt; 
+&lt;p&gt;Machine learning R&amp;amp;D. Builder. Writer. Visualizing artificial intelligence &amp;amp; machine learning one concept at a time. @CohereAI.&lt;/p&gt; 
+&lt;p&gt;&lt;strong&gt;END&lt;/strong&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;strong&gt;本期互動內容 🍻&lt;/strong&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;strong&gt;❓你覺得 AI 模型最難掌握的是哪種推理能力？歡迎在評論區分享你的觀點👇&lt;/strong&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;strong&gt;🔗文中鏈接🔗&lt;/strong&gt;&lt;/p&gt; 
+&lt;p&gt;[1]&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Farxiv.org%2Fpdf%2F2412.19437v1&quot; target=&quot;_blank&quot;&gt;https://arxiv.org/pdf/2412.19437v1&lt;/a&gt;&lt;/p&gt; 
+&lt;p&gt;[2]&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fjalammar.github.io%2Fillustrated-gpt2%2F&quot; target=&quot;_blank&quot;&gt;https://jalammar.github.io/illustrated-gpt2/&lt;/a&gt;&lt;/p&gt; 
+&lt;p&gt;[3]&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fjalammar.github.io%2Fhow-gpt3-works-visualizations-animations%2F&quot; target=&quot;_blank&quot;&gt;https://jalammar.github.io/how-gpt3-works-visualizations-animations/&lt;/a&gt;&lt;/p&gt; 
+&lt;p&gt;[4]&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fjalammar.github.io%2Fillustrated-transformer%2F&quot; target=&quot;_blank&quot;&gt;https://jalammar.github.io/illustrated-transformer/&lt;/a&gt;&lt;/p&gt; 
+&lt;p&gt;[5]&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Farxiv.org%2Fpdf%2F2401.06066&quot; target=&quot;_blank&quot;&gt;https://arxiv.org/pdf/2401.06066&lt;/a&gt;&lt;/p&gt; 
+&lt;p&gt;[6]&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fwww.llm-book.com%2F&quot; target=&quot;_blank&quot;&gt;https://www.llm-book.com/&lt;/a&gt;&lt;/p&gt; 
+&lt;p&gt;[7]&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Flearning.oreilly.com%2Flibrary%2Fview%2Fhands-on-large-language%2F9781098150952%2F&quot; target=&quot;_blank&quot;&gt;https://learning.oreilly.com/library/view/hands-on-large-language/9781098150952/&lt;/a&gt;&lt;/p&gt; 
+&lt;p&gt;[8]&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fgithub.com%2FhandsOnLLM%2FHands-On-Large-Language-Models&quot; target=&quot;_blank&quot;&gt;https://github.com/handsOnLLM/Hands-On-Large-Language-Models&lt;/a&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;strong&gt;原文鏈接：&lt;/strong&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fnewsletter.languagemodels.co%2Fp%2Fthe-illustrated-deepseek-r1&quot; target=&quot;_blank&quot;&gt;https://newsletter.languagemodels.co/p/the-illustrated-deepseek-r1&lt;/a&gt;&lt;/p&gt;
+                                                                                    &lt;/div&gt;
+                                                                            </description>
+            <link>https://my.oschina.net/IDP/blog/17553692</link>
+            <guid isPermaLink="false">https://my.oschina.net/IDP/blog/17553692</guid>
+            <pubDate>Sat, 08 Feb 2025 10:19:00 GMT</pubDate>
+            <author>原創</author>
+        </item>
+        <item>
+            <title>豆包開源視頻生成模型 VideoWorld</title>
+            <description>&lt;div class=&quot;content&quot;&gt;
+                                                                    
+                                                        &lt;p&gt;&lt;u&gt;&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fmp.weixin.qq.com%2Fs%2FmXaktIsD3w5BgCJQb6R7xQ&quot; target=&quot;_blank&quot;&gt;據豆包大模型團隊官方公眾號消息&lt;/a&gt;&lt;/u&gt;，在北京交通大學和中國科學技術大學的聯合研究下，由豆包大模型團隊提出的 「VideoWorld」 視頻生成實驗模型近日正式開源。&lt;/p&gt; 
+&lt;p&gt;據介紹，不同於 Sora 、DALL-E 、Midjourney 等主流多模態模型，&lt;strong&gt;VideoWorld 在業界首次實現無需依賴語言模型，即可認知世界&lt;/strong&gt;。&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt; &lt;p&gt;論文鏈接：&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Farxiv.org%2Fabs%2F2501.09781&quot; target=&quot;_blank&quot;&gt;https://arxiv.org/abs/2501.09781&lt;/a&gt;&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;代碼鏈接：&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fgithub.com%2Fbytedance%2FVideoWorld&quot; target=&quot;_blank&quot;&gt;https://github.com/bytedance/VideoWorld&lt;/a&gt;&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;項目主頁：&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fmaverickren.github.io%2FVideoWorld.github.io&quot; target=&quot;_blank&quot;&gt;https://maverickren.github.io/VideoWorld.github.io&lt;/a&gt;&lt;/p&gt; &lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;p&gt;「VideoWorld」 通過分析和處理大量視頻數據，實現了複雜的推理、規劃和決策能力。研究團隊的實驗顯示，模型在僅有 300M 參數的情況下，便取得了顯著的效果。與現有依賴語言或標籤數據的模型不同，VideoWorld 能夠獨立進行知識學習，尤其在摺紙、打領結等複雜任務中，能夠提供更加直觀的學習方式。&lt;/p&gt; 
+&lt;p&gt;&lt;img alt=&quot;&quot; src=&quot;https://oscimg.oschina.net/oscnet/up-fc6aac365dbf1a8e0403b8bb24da8452019.png&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
+&lt;p&gt;為了驗證該模型的有效性，研究團隊搭建了圍棋對戰和機器人模擬操控兩種實驗環境。圍棋作為一項高度策略性遊戲，可以有效評估模型的規則學習和推理能力，而機器人任務則考察模型在控制和規劃方面的表現。在訓練階段，模型通過觀看大量視頻演示數據，逐步建立起對未來畫面的預測能力。&lt;/p&gt;
+                                                                                &lt;/div&gt;
+                                                                            </description>
+            <link>https://www.oschina.net/news/332996</link>
+            <guid isPermaLink="false">https://www.oschina.net/news/332996</guid>
+            <pubDate>Sat, 08 Feb 2025 10:00:00 GMT</pubDate>
+            <author>來源: OSCHINA</author>
+        </item>
+        <item>
+            <title>DeepSeek 服務站點大全</title>
+            <description>&lt;div class=&quot;content&quot;&gt;
+                                                                    
+                                                        &lt;p&gt;中國信息通信研究院去年 7 月 11 日發佈國內首個算力互聯公共服務平台，並聯合產業界開展算力互聯網共識共創行動。&lt;/p&gt; 
+&lt;p&gt;該算力互聯公共服務平台是推進和管理全國算力互聯互通和算力互聯網體系的綜合服務平台，包括算力標識管理、算力互聯網業務查詢、算力統一大市場、政策和研究、標準體系、開源項目和運行監測等功能。&lt;/p&gt; 
+&lt;p&gt;中國信通院今日宣佈，為便利國內 AI 開發者「找調用算力」需求，算力互聯公共服務平台宣佈增設全球雲服務商 DeepSeek 服務能力彙總功能頁面（截至 2 月 5 日已彙集 22 家服務商）。&lt;/p&gt; 
+&lt;p&gt;&lt;em&gt;地址：&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fstateioc.cn%2Farticle-details%2FVjX&quot; target=&quot;_blank&quot;&gt;https://stateioc.cn/article-details/VjX&lt;/a&gt;&lt;/em&gt;&lt;/p&gt; 
+&lt;hr&gt; 
+&lt;p&gt;最後歡迎各位使用 Gitee AI —— Gitee AI 的 Serverless API 為您提供開箱即用的企業級的大模型 API 服務。&lt;/p&gt; 
+&lt;p&gt;&lt;u&gt;&lt;em&gt;&lt;a href=&quot;https://ai.gitee.com/serverless-api&quot; target=&quot;_blank&quot;&gt;https://ai.gitee.com/serverless-api&lt;/a&gt;&lt;/em&gt;&lt;/u&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;img src=&quot;https://static.oschina.net/uploads/space/2025/0210/174609_Xr4I_2720166.png&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt;
+                                                                                &lt;/div&gt;
+                                                                            </description>
+            <link>https://www.oschina.net/news/332995</link>
+            <guid isPermaLink="false">https://www.oschina.net/news/332995</guid>
+            <pubDate>Sat, 08 Feb 2025 09:46:00 GMT</pubDate>
+            <author>來源: OSCHINA</author>
+        </item>
+        <item>
+            <title>ai.com 域名現已跳轉至 DeepSeek</title>
+            <description>&lt;div class=&quot;content&quot;&gt;
+                                                                    
+                                                        &lt;p&gt;現在在瀏覽器輸入&amp;nbsp;&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fai.com%2F&quot; target=&quot;_blank&quot;&gt;ai.com&lt;/a&gt;，將直接重定向至 DeepSeek 官網 (&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fchat.deepseek.com%2F&quot; target=&quot;_blank&quot;&gt;https://chat.deepseek.com/&lt;/a&gt;)。&lt;/p&gt; 
+&lt;p&gt;ai.com 域名的定位被視作前沿 AI 的象徵，此前這一域名曾長期跳轉至 ChatGPT、谷歌 Gemini 以及馬斯克的 xAI 官網。根據 Whois 數據，ai.com 域名註冊於 1993 年，有效期直至 2031 年 5 月，註冊聯繫人來自馬來西亞首都吉隆坡。&lt;/p&gt; 
+&lt;p&gt;&lt;img height=&quot;219&quot; src=&quot;https://oscimg.oschina.net/oscnet/up-8ceffc7eb4acfec05d9bcabc263bf478854.png&quot; width=&quot;500&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt;
+                                                                                &lt;/div&gt;
+                                                                            </description>
+            <link>https://www.oschina.net/news/332978</link>
+            <guid isPermaLink="false">https://www.oschina.net/news/332978</guid>
+            <pubDate>Sat, 08 Feb 2025 08:30:00 GMT</pubDate>
+            <author>來源: OSCHINA</author>
+        </item>
+        <item>
+            <title>消息稱軟銀投資 400 億美元，取代微軟成為 OpenAI 最大金主</title>
+            <description>&lt;div class=&quot;content&quot;&gt;
+                                                                    
+                                                        &lt;p&gt;&lt;span style=&quot;color:#000000&quot;&gt;消息人士向 &lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fwww.cnbc.com%2F2025%2F02%2F07%2Fsoftbank-set-to-invest-40-billion-in-openai-at-260-billion-valuation-sources-say.html&quot; target=&quot;_blank&quot;&gt;CNBC &lt;/a&gt;透露，軟銀即將完成對 OpenAI 的 400 億美元初始投資，投資前估值為 2600 億美元。&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;span style=&quot;color:#000000&quot;&gt;Faber 報道稱軟銀將在未來 12 到 24 個月內支付這筆資金，這意味着 OpenAI 的投資後估值將達到 3000 億美元，第一筆款項最快將於今年春季到賬。軟銀最多可以籌集其中的 100 億美元。&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;img height=&quot;295&quot; src=&quot;https://oscimg.oschina.net/oscnet/up-34a9ea12a4cc3504f16154eda1fdbbc331a.png&quot; width=&quot;500&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;span style=&quot;color:#000000&quot;&gt;部分資金預計將用於 OpenAI 對 Stargate 的承諾。Stargate 是軟銀、OpenAI 和甲骨文公司的合資企業，由美國現任總統唐納德-特朗普於今年 1 月宣佈成立。該計劃要求向美國的人工智能基礎設施投資數十億美元。&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;span style=&quot;color:#000000&quot;&gt;這一輪融資也意味着軟銀將超越微軟，成為 OpenAI 公司的最大投資者。去年 10 月，私人投資者對 OpenAI 的估值為 1570 億美元。&lt;/span&gt;&lt;/p&gt;
+                                                                                &lt;/div&gt;
+                                                                            </description>
+            <link>https://www.oschina.net/news/332971/softbank-40-billion-openai</link>
+            <guid isPermaLink="false">https://www.oschina.net/news/332971/softbank-40-billion-openai</guid>
+            <pubDate>Sat, 08 Feb 2025 08:15:00 GMT</pubDate>
+            <author>來源: OSCHINA</author>
+        </item>
+        <item>
+            <title>Yandex 開發並開源 Perforator，每年可為企業節省數十億美元的服務器基礎設施成本</title>
+            <description>&lt;div class=&quot;content&quot;&gt;
+                                                                    
+                                                        &lt;ul&gt; 
+ &lt;li&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;Yandex &lt;/span&gt;&lt;span&gt;推出&lt;/span&gt; &lt;span&gt;Perforator&lt;/span&gt;&lt;span&gt;，這是一款可以識別和評估公司整個代碼庫中效率低下的代碼的工具。&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/li&gt; 
+ &lt;li&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;Perforator &lt;/span&gt;&lt;span&gt;幫助開發人員識別最佔資源的代碼部分，並提供詳細的統計數據，以便後續優化。&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/li&gt; 
+ &lt;li&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;該解決方案可以幫助企業每年減少 &lt;/span&gt;&lt;span&gt;20% &lt;/span&gt;&lt;span&gt;的 &lt;/span&gt;&lt;span&gt;CPU &lt;/span&gt;&lt;span&gt;資源使用量。&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/li&gt; 
+ &lt;li&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;通過利，用&lt;/span&gt;&lt;span&gt;Perforator&lt;/span&gt;&lt;span&gt;，企業可以根據公司規模節省數百萬甚至數十億美元的開支，並將資源用於進一步的創新和增長。&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/li&gt; 
+ &lt;li&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;Perforator &lt;/span&gt;&lt;span&gt;可通過&lt;/span&gt; &lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fgithub.com%2Fyandex%2Fperforator&quot; target=&quot;_blank&quot;&gt;&lt;span&gt;&lt;span style=&quot;color:#1155cc&quot;&gt;GitHub&lt;/span&gt;&lt;/span&gt;&lt;/a&gt; &lt;span&gt;免費訪問。&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;p style=&quot;margin-left:0; margin-right:0; text-align:justify&quot;&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;（上海，&lt;/span&gt;&lt;span&gt;2025&lt;/span&gt;&lt;span&gt;年&lt;/span&gt;&lt;span&gt;2&lt;/span&gt;&lt;span&gt;月&lt;/span&gt;&lt;span&gt;10&lt;/span&gt;&lt;span&gt;日）全球領先的科技公司 &lt;/span&gt;&lt;span&gt;Yandex &lt;/span&gt;&lt;span&gt;開發並開源了&lt;/span&gt;&lt;span&gt; Perforator&lt;/span&gt;&lt;span&gt;，這是一款用於對服務器和應用程序進行持續實時監控和分析的創新工具。&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/p&gt; 
+&lt;p style=&quot;margin-left:0; margin-right:0; text-align:justify&quot;&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;Perforator &lt;/span&gt;&lt;span&gt;幫助開發人員識別最佔資源的代碼部分，並提供詳細的統計數據，以便進行後續優化。通過識別代碼中的低效部分並支持基於配置文件的優化，&lt;/span&gt;&lt;span&gt;Perforator &lt;/span&gt;&lt;span&gt;提供了準確的數據，使企業能夠手動優化其應用程序，根據公司規模，降低基礎設施成本最多可達 &lt;/span&gt;&lt;span&gt;20%&lt;/span&gt;&lt;span&gt;。這每年可能節省數百萬甚至數十億美元。&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/p&gt; 
+&lt;p style=&quot;margin-left:0; margin-right:0; text-align:justify&quot;&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;「Perforator &lt;/span&gt;&lt;span&gt;幫助企業在不犧牲性能的情況下最大化服務器的使用效率，&lt;/span&gt;&lt;span&gt;」 Yandex &lt;/span&gt;&lt;span&gt;的高級開發人員、&lt;/span&gt;&lt;span&gt;Perforator &lt;/span&gt;&lt;span&gt;團隊負責人&lt;/span&gt;&lt;span&gt; Sergey Skvortsov &lt;/span&gt;&lt;span&gt;表示。&lt;/span&gt;&lt;span&gt;「&lt;/span&gt;&lt;span&gt;企業使用&lt;/span&gt;&lt;span&gt; Perforator &lt;/span&gt;&lt;span&gt;可以優化代碼，減少服務器負載，最終降低能源和設備成本。&lt;/span&gt;&lt;span&gt;」&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/p&gt; 
+&lt;p style=&quot;margin-left:0; margin-right:0; text-align:justify&quot;&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;strong&gt;&lt;span&gt;為什麼使用 &lt;/span&gt;&lt;/strong&gt;&lt;strong&gt;&lt;span&gt;Perforator&lt;/span&gt;&lt;/strong&gt;&lt;strong&gt;&lt;span&gt;？&lt;/span&gt;&lt;/strong&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/p&gt; 
+&lt;p style=&quot;margin-left:0; margin-right:0; text-align:justify&quot;&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;資源優化對於大型數據中心、大型科技公司以及資源有限的小型企業和初創公司至關重要。公司可以利用 &lt;/span&gt;&lt;span&gt;Perforator &lt;/span&gt;&lt;span&gt;優化現有的基礎設施，而無需投資額外的設備，也不犧牲性能。該工具已經在 &lt;/span&gt;&lt;span&gt;Yandex &lt;/span&gt;&lt;span&gt;的許多服務中使用了超過一年，現在可以供全球的公司、開發人員和研究人員使用。&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/p&gt; 
+&lt;p style=&quot;margin-left:0; margin-right:0; text-align:justify&quot;&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;公司可以將 &lt;/span&gt;&lt;span&gt;Perforator &lt;/span&gt;&lt;span&gt;部署在自己的服務器上，減少對外部雲服務提供商的依賴，同時保持對數據的完全控制。這使得 &lt;/span&gt;&lt;span&gt;Perforator &lt;/span&gt;&lt;span&gt;非常適合那些對數據安全要求嚴格且在封閉基礎設施中運營的組織。&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/p&gt; 
+&lt;p style=&quot;margin-left:0; margin-right:0; text-align:justify&quot;&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;「Perforator &lt;/span&gt;&lt;span&gt;可以為各種規模的公司帶來益處，從擁有&lt;/span&gt;&lt;span&gt; 10 &lt;/span&gt;&lt;span&gt;至&lt;/span&gt;&lt;span&gt; 100 &lt;/span&gt;&lt;span&gt;台服務器的小型企業，每年節省數百萬美元，到擁有數千台服務器甚至更多的大型企業，每年節省數億美元甚至數十億美元，&lt;/span&gt;&lt;span&gt;」 Sergey Skvortsov &lt;/span&gt;&lt;span&gt;指出。&lt;/span&gt;&lt;span&gt;「&lt;/span&gt;&lt;span&gt;無論公司規模如何，&lt;/span&gt;&lt;span&gt;Perforator &lt;/span&gt;&lt;span&gt;都能幫助您減少基礎設施成本，為進一步的創新和增長釋放更多資源。&lt;/span&gt;&lt;span&gt;」&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/p&gt; 
+&lt;p style=&quot;margin-left:0; margin-right:0; text-align:justify&quot;&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;strong&gt;&lt;span&gt;Perforator &lt;/span&gt;&lt;/strong&gt;&lt;strong&gt;&lt;span&gt;如何工作&lt;/span&gt;&lt;/strong&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/p&gt; 
+&lt;p style=&quot;margin-left:0; margin-right:0; text-align:justify&quot;&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;Perforator &lt;/span&gt;&lt;span&gt;提供了關於服務器資源使用的詳細洞察，並分析代碼對性能的影響，突出了哪些應用程序消耗了最多的系統資源。&lt;/span&gt;&lt;span&gt;Perforator &lt;/span&gt;&lt;span&gt;使用&lt;/span&gt;&lt;span&gt; eBPF &lt;/span&gt;&lt;span&gt;技術在&lt;/span&gt;&lt;span&gt; Linux &lt;/span&gt;&lt;span&gt;內核中運行小程序，既安全又不會拖慢系統速度。&lt;/span&gt;&lt;span&gt;eBPF &lt;/span&gt;&lt;span&gt;能夠在不更改源代碼的情況下，改善監控、安全性和性能優化。&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/p&gt; 
+&lt;p style=&quot;margin-left:0; margin-right:0; text-align:justify&quot;&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;Perforator &lt;/span&gt;&lt;span&gt;支持&lt;/span&gt;&lt;span&gt; C&lt;/span&gt;&lt;span&gt;、&lt;/span&gt;&lt;span&gt;C++&lt;/span&gt;&lt;span&gt;、&lt;/span&gt;&lt;span&gt;Go&lt;/span&gt;&lt;span&gt;、&lt;/span&gt;&lt;span&gt;Rust&lt;/span&gt;&lt;span&gt;、&lt;/span&gt;&lt;span&gt;Python &lt;/span&gt;&lt;span&gt;和 &lt;/span&gt;&lt;span&gt;Java &lt;/span&gt;&lt;span&gt;等原生編程語言。該解決方案通過火焰圖提供深入的分析和數據可視化，使問題診斷變得易於管理。&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/p&gt; 
+&lt;p style=&quot;margin-left:0; margin-right:0; text-align:justify&quot;&gt;&lt;img alt=&quot;&quot; height=&quot;287&quot; src=&quot;https://oscimg.oschina.net/oscnet/up-f866d0af24a5577182b973257c103fef72e.png&quot; width=&quot;602&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
+&lt;p style=&quot;margin-left:0; margin-right:0&quot;&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;em&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;Perforator &lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/em&gt;&lt;em&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;生成的火焰圖示例&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/em&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/p&gt; 
+&lt;p style=&quot;margin-left:0; margin-right:0; text-align:justify&quot;&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;「Perforator &lt;/span&gt;&lt;span&gt;在&lt;/span&gt;&lt;span&gt; Yandex &lt;/span&gt;&lt;span&gt;的高需求環境中經過了超過一年的實戰測試，提供了廣泛的功能，使其成為一款可靠且多功能的服務器性能監控和優化解決方案，&lt;/span&gt;&lt;span&gt;」 Sergey Skvortsov&lt;/span&gt;&lt;span&gt;補充道。&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/p&gt; 
+&lt;p style=&quot;margin-left:0; margin-right:0; text-align:justify&quot;&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;Perforator &lt;/span&gt;&lt;span&gt;的一個關鍵優勢是支持基於配置文件的優化（&lt;/span&gt;&lt;span&gt;PGO&lt;/span&gt;&lt;span&gt;），它能夠自動將&lt;/span&gt;&lt;span&gt; C++ &lt;/span&gt;&lt;span&gt;程序的速度提高多達 &lt;/span&gt;&lt;span&gt;10%&lt;/span&gt;&lt;span&gt;。此外，&lt;/span&gt;&lt;span&gt;Perforator &lt;/span&gt;&lt;span&gt;設計可以在個別計算機上無縫運行，使其不僅適合大型企業，還能為初創公司和科技愛好者提供便利。更重要的是，&lt;/span&gt;&lt;span&gt;Perforator &lt;/span&gt;&lt;span&gt;為大企業提供了包括&lt;/span&gt;&lt;span&gt; A/B &lt;/span&gt;&lt;span&gt;測試功能在內的重要特性，幫助做出更明智的決策。&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/p&gt; 
+&lt;p style=&quot;margin-left:0; margin-right:0; text-align:justify&quot;&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;strong&gt;&lt;span&gt;為開發人員和企業提供的開源解決方案&lt;/span&gt;&lt;/strong&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/p&gt; 
+&lt;p style=&quot;margin-left:0; margin-right:0; text-align:justify&quot;&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;將&lt;/span&gt;&lt;span&gt; Perforator &lt;/span&gt;&lt;span&gt;開源的決定體現了&lt;/span&gt;&lt;span&gt; Yandex &lt;/span&gt;&lt;span&gt;致力於促進社區合作開發系統技術的承諾。&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/p&gt; 
+&lt;p style=&quot;margin-left:0; margin-right:0; text-align:justify&quot;&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;「我們相信，開源諸如此類基礎系統的技術能夠推動全球技術創新」， &lt;/span&gt;&lt;span&gt;Sergey Skvortsov&lt;/span&gt; &lt;span&gt;補充道。&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/p&gt; 
+&lt;p style=&quot;margin-left:0; margin-right:0; text-align:justify&quot;&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;「&lt;/span&gt;&lt;span&gt;我們的目標是讓我們的技術造福全球，併為開發人員和企業提供價值。此外，技術的開放性使我們能夠與社區共同做出有關配置文件分析基礎設施開發的決策。&lt;/span&gt;&lt;span&gt;」&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/p&gt; 
+&lt;p style=&quot;margin-left:0; margin-right:0; text-align:justify&quot;&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;strong&gt;&lt;span&gt;接下來會發生什麼？&lt;/span&gt;&lt;/strong&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/p&gt; 
+&lt;p style=&quot;margin-left:0; margin-right:0; text-align:justify&quot;&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;Perforator &lt;/span&gt;&lt;span&gt;將在近期增加更多功能，包括與&lt;/span&gt;&lt;span&gt; Python &lt;/span&gt;&lt;span&gt;和&lt;/span&gt;&lt;span&gt; Java &lt;/span&gt;&lt;span&gt;的更好集成以及對事件的更精確分析。&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/p&gt; 
+&lt;p style=&quot;margin-left:0; margin-right:0; text-align:justify&quot;&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;Perforator &lt;/span&gt;&lt;span&gt;的源代碼現已在&lt;/span&gt; &lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fgithub.com%2Fyandex%2Fperforator&quot; target=&quot;_blank&quot;&gt;&lt;span&gt;&lt;span style=&quot;color:#1155cc&quot;&gt;GitHub&lt;/span&gt;&lt;/span&gt;&lt;/a&gt; &lt;span&gt;上公開，和其他&lt;/span&gt;&lt;span&gt; Yandex &lt;/span&gt;&lt;span&gt;開源解決方案一起提供，如&lt;/span&gt;&lt;span&gt;YaFSDP&lt;/span&gt;&lt;span&gt;，這是一個旨在加速大語言模型訓練的工具。&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/p&gt; 
+&lt;p style=&quot;margin-left:0; margin-right:0; text-align:justify&quot;&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;Perforator &lt;/span&gt;&lt;span&gt;是&lt;/span&gt;&lt;span&gt; Yandex &lt;/span&gt;&lt;span&gt;開源工具系列中的最新成員。您可以在&lt;/span&gt;&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fopensource.yandex%2Fen%2F&quot; target=&quot;_blank&quot;&gt;&lt;span&gt;此頁面&lt;/span&gt;&lt;/a&gt;&lt;span&gt;查看該公司所有的開源項目，包括&lt;/span&gt;&lt;span&gt; YaFSDP&lt;/span&gt;&lt;span&gt;、&lt;/span&gt;&lt;span&gt;AQLM&lt;/span&gt;&lt;span&gt;、&lt;/span&gt;&lt;span&gt;Ytsaurus &lt;/span&gt;&lt;span&gt;等。&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/p&gt;
+                                                                                &lt;/div&gt;
+                                                                            </description>
+            <link>https://www.oschina.net/news/332970</link>
+            <guid isPermaLink="false">https://www.oschina.net/news/332970</guid>
+            <pubDate>Sat, 08 Feb 2025 08:14:00 GMT</pubDate>
+            <author>來源: 投稿</author>
+        </item>
         <item>
             <title>GitHub Copilot：Agent 覺醒</title>
             <description>&lt;div class=&quot;content&quot;&gt;
@@ -766,149 +1046,6 @@ public Flux&amp;lt;ChatCompletionResponse&amp;gt; chat(String prompt) {
             <link>https://www.oschina.net/news/332691</link>
             <guid isPermaLink="false">https://www.oschina.net/news/332691</guid>
             <pubDate>Thu, 06 Feb 2025 08:28:00 GMT</pubDate>
-            <author>來源: OSCHINA</author>
-        </item>
-        <item>
-            <title>騰訊公佈大語言模型訓練專利：可提高模型的準確性</title>
-            <description>&lt;div class=&quot;content&quot;&gt;
-                                                                    
-                                                        &lt;p&gt;天眼查 App 顯示，&lt;span style=&quot;color:#404040&quot;&gt;騰訊科技（深圳）有限公司申請的「大語言模型的訓練方法、裝置、計算機設備及存儲介質」專利正式公佈&lt;/span&gt;。&lt;/p&gt; 
-&lt;p&gt;&lt;img height=&quot;369&quot; src=&quot;https://oscimg.oschina.net/oscnet/up-de58c898b8d14d333b3161ad2bb6a3c2725.png&quot; width=&quot;500&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
-&lt;p&gt;&lt;img height=&quot;352&quot; src=&quot;https://oscimg.oschina.net/oscnet/up-fd7e61f61598becbf11c41d6c356470a3ee.png&quot; width=&quot;500&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
-&lt;p&gt;摘要顯示，在該方法中，通過在大語言模型的訓練過程中引入第一摘要文本和第二摘要文本，為模型訓練提供了更多可學習信息，同時由於第一摘要文本和第二摘要文本包含的信息量不同，且第一摘要文本中包含正確語句和錯誤語句，通過對同一樣本文本的兩個不同摘要文本進行對比學習，並區分學習第一摘要文本中的正確語句和錯誤語句，避免了由於摘要文本單一而導致的模型過擬合和生成不準確等問題，不僅提高了模型的泛化性能，還提高了模型的準確性。&lt;/p&gt; 
-&lt;p&gt;有媒體分析稱，騰訊的專利通過多樣化摘要文本及對比機制，為模型提供了更貼近真實應用的學習環境，尤其對智能客服、內容生成等需高精度輸出的領域具有直接意義。此外，該技術或能加速大模型落地進程。例如，在短文本對話場景中，騰訊曾推出基於混合注意力機制的對話模型專利，若結合新訓練方法，有望進一步提升回覆的相關性與豐富性。&lt;/p&gt;
-                                                                                &lt;/div&gt;
-                                                                            </description>
-            <link>https://www.oschina.net/news/332678</link>
-            <guid isPermaLink="false">https://www.oschina.net/news/332678</guid>
-            <pubDate>Thu, 06 Feb 2025 07:24:00 GMT</pubDate>
-            <author>來源: OSCHINA</author>
-        </item>
-        <item>
-            <title>馬斯克團隊被曝用 AI 技術調查美聯邦部門開支</title>
-            <description>&lt;div class=&quot;content&quot;&gt;
-                                                                    
-                                                        &lt;p&gt;&lt;u&gt;&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fnews.cnr.cn%2Fsq%2F20250207%2Ft20250207_527064716.shtml&quot; target=&quot;_blank&quot;&gt;據央視新聞報道&lt;/a&gt;&lt;/u&gt;，美國《華盛頓郵報》援引兩名知情人士的消息報道，埃隆·馬斯克領導的政府效率部團隊已在使用人工智能（AI）軟件，對美國教育部敏感數據進行梳理，以調查該部門開支情況。&lt;/p&gt; 
-&lt;p&gt;這些數據包括可辨別管理撥款人員身份的信息以及教育部內部敏感財務數據。&lt;/p&gt; 
-&lt;p&gt;政府效率部團隊正用微軟 Azure 雲服務平台提供的人工智能軟件審核教育部撥發的每一筆錢，包括合同、撥款和差旅費。Azure 提供多家公司研發的 AI 軟件，暫不確定政府效率部使用哪一款軟件。&lt;/p&gt; 
-&lt;p&gt;值得注意的是，該局副局長泰德・卡斯滕森拒絕接受馬斯克團隊為聯邦僱員提供的「買斷計劃」延遲辭職方案，選擇直接辭職。&lt;/p&gt; 
-&lt;p&gt;特朗普政府於 1 月 28 日啓動該計劃，承諾向自願離職的聯邦僱員提供相當於 8 個月薪資的補償（薪酬與福利持續至 9 月 30 日），並要求參與者在 2 月 6 日前提交申請。&lt;/p&gt; 
-&lt;p&gt;截至 2 月 6 日，已有超 6 萬名聯邦僱員接受補償方案，約佔 230 萬文職僱員的 3%，遠低於馬斯克設定的 10% 減員目標。&lt;/p&gt;
-                                                                                &lt;/div&gt;
-                                                                            </description>
-            <link>https://www.oschina.net/news/332670</link>
-            <guid isPermaLink="false">https://www.oschina.net/news/332670</guid>
-            <pubDate>Thu, 06 Feb 2025 06:49:00 GMT</pubDate>
-            <author>來源: OSCHINA</author>
-        </item>
-        <item>
-            <title>天際資本 7 週年特別直播預告：AI 開源如何重塑產業格局</title>
-            <description>&lt;div class=&quot;content&quot;&gt;
-                                                                    
-                                                        &lt;p&gt;明天上午 10 點，天際資本將開啓 7 週年特別直播。&lt;/p&gt; 
-&lt;h3&gt;&lt;span style=&quot;color:#e67e22&quot;&gt;&lt;strong&gt;重磅嘉賓&lt;/strong&gt;&lt;/span&gt;&lt;/h3&gt; 
-&lt;ul&gt; 
- &lt;li&gt;HuggingFace 硅谷代表&lt;/li&gt; 
- &lt;li&gt;開源中國董事長馬越&lt;/li&gt; 
- &lt;li&gt;主持人：天際創始合夥人張倩&lt;/li&gt; 
-&lt;/ul&gt; 
-&lt;h3&gt;&lt;span style=&quot;color:#e67e22&quot;&gt;&lt;strong&gt;核心議題&lt;/strong&gt;&lt;/span&gt;&lt;/h3&gt; 
-&lt;ul&gt; 
- &lt;li&gt;&lt;strong&gt;開源浪潮下的 AI 技術突破&lt;/strong&gt;&lt;/li&gt; 
- &lt;li&gt;&lt;strong&gt;DeepSeek 案例：開源模式如何加速 AI 創新&lt;/strong&gt;&lt;/li&gt; 
- &lt;li&gt;&lt;strong&gt;全球 AI 開源生態的機遇與挑戰&lt;/strong&gt;&lt;/li&gt; 
- &lt;li&gt;&lt;strong&gt;開源對 AI 商業化的影響&lt;/strong&gt;&lt;/li&gt; 
-&lt;/ul&gt; 
-&lt;p&gt;&lt;strong&gt;↓ 歡迎掃碼預約 ↓&lt;/strong&gt;&lt;/p&gt; 
-&lt;p&gt;&lt;img src=&quot;https://oscimg.oschina.net/oscnet/up-76a0d140010bc9e7b03b9e7bca46b4bff70.png&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
-&lt;hr&gt; 
-&lt;p&gt;天際科技投資（FutureX Capital）由前華夏基金私募股權創始團隊於 2018 年初主導創立。公司專注於投資中國成長期高新科技企業，重點聚焦顛覆式創新的卓越企業，重視價值創造，聚焦產業賦能，深度參與到企業發展的全週期。全球創新技術含金量最高的公司和快速爆發下游應用是天際科技投資最關注的目標企業，並善於將這些先進技術公司推向產業平台，協助其進一步發揮潛力。代表性投資包括：金山雲，字節跳動，美團，蔚來汽車，PingCAP，統信，思特威，芯盟科技，開源中國等。&lt;/p&gt; 
-&lt;p&gt;天際科技投資秉承開源理念，不斷吸引廣泛的產業資源、金融資源和專家網絡，與頂級企業家進行多方位的交流與合作，匯聚頂級認知，形成前瞻性洞見和跨行業合力，通過不斷提升認知，持續發掘改善世界的投資機會。&lt;/p&gt; 
-&lt;p&gt;&lt;img src=&quot;https://static.oschina.net/uploads/space/2025/0208/114937_NvN2_2720166.png&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt;
-                                                                                &lt;/div&gt;
-                                                                            </description>
-            <link>https://www.oschina.net/news/332640</link>
-            <guid isPermaLink="false">https://www.oschina.net/news/332640</guid>
-            <pubDate>Thu, 06 Feb 2025 03:55:00 GMT</pubDate>
-            <author>來源: 投稿</author>
-        </item>
-        <item>
-            <title>微軟 CEO 官宣：GitHub Copilot 將 All-in 智能體</title>
-            <description>&lt;div class=&quot;content&quot;&gt;
-                                                                    
-                                                        &lt;p&gt;微軟 CEO Satya Nadella 昨日在 X 平台&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fx.com%2Fsatyanadella%2Fstatus%2F1887587703665139765&quot; target=&quot;_blank&quot;&gt;發文&lt;/a&gt;，宣佈 GitHub Copilot 全面接入智能體，並且微軟的&lt;strong&gt;自主 SWE 智能體&lt;/strong&gt;也首次亮相。&lt;/p&gt; 
-&lt;p&gt;&lt;img alt=&quot;&quot; src=&quot;https://oscimg.oschina.net/oscnet/up-aabd79e36c90f76989d42fc10f7943a5048.png&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
-&lt;p&gt;GitHub 現任 CEO Thomas Dohmke &lt;u&gt;&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fx.com%2Fashtom%2Fstatus%2F1887548091404046359&quot; target=&quot;_blank&quot;&gt;發文&lt;/a&gt;&lt;/u&gt;介紹了 GitHub Copilot 的主要功能。他表示，GitHub Copilot 的新代理模式能夠迭代自己的代碼，識別錯誤並自動修復。 &amp;nbsp;&lt;/p&gt; 
-&lt;p&gt;&lt;img src=&quot;https://static.oschina.net/uploads/space/2025/0208/111539_rMV7_2720166.png&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
-&lt;p&gt;此外，GitHub Copilot 還帶來了 Copilot Edits 功能，用戶可以使用該功能一次性處理工作空間中的多個文件，並給出代碼的更改意見。同時，這些處理都可以在編輯器中直接完成，方便用戶對代碼進行快速審查。 &amp;nbsp;&lt;/p&gt; 
-&lt;p&gt;而微軟的自主 SWE 智能體就像一個 AI 工程師，在用戶下達指令後，它就能自主去完成任務。&lt;/p&gt; 
-&lt;hr&gt; 
-&lt;p&gt;閲讀更多&lt;/p&gt; 
-&lt;ul&gt; 
- &lt;li&gt;&lt;a href=&quot;https://www.oschina.net/news/332512&quot; target=&quot;news&quot;&gt;GitHub Copilot 重磅新功能：Next Edit Suggestions &amp;amp; Copilot Vision&lt;/a&gt;&lt;/li&gt; 
-&lt;/ul&gt;
-                                                                                &lt;/div&gt;
-                                                                            </description>
-            <link>https://www.oschina.net/news/332626</link>
-            <guid isPermaLink="false">https://www.oschina.net/news/332626</guid>
-            <pubDate>Thu, 06 Feb 2025 03:23:00 GMT</pubDate>
-            <author>來源: OSCHINA</author>
-        </item>
-        <item>
-            <title>Omdia：預計中國生成式 AI 軟件市場五年增超 4 倍</title>
-            <description>&lt;div class=&quot;content&quot;&gt;
-                                                                    
-                                                        &lt;p&gt;Omdia&lt;u&gt;&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fmp.weixin.qq.com%2Fs%2Fpvdy7D9KxBTbSYQOA8df4w&quot; target=&quot;_blank&quot;&gt;發佈報告稱&lt;/a&gt;&lt;/u&gt;，2024 年中國的生成式人工智能（GenAI）軟件收入已達到 18 億美元。&lt;/p&gt; 
-&lt;p&gt;鑑於該技術仍處於起步階段，預計未來五年的市場規模將增長超 4 倍，到 2029 年達到 98 億美元。這一收入還不包括其他關鍵 GenAI 技術，如人工智能訓練和推理芯片和服務器、人工智能數據中心建設和場地購置成本，以及 GenAI 開發平台收入。&lt;/p&gt; 
-&lt;p&gt;報告指出，GenAI 廠商無法單靠消費者市場來生存。像 OpenAI 這樣的 GenAI 市場領導者都無法單憑面向消費者的對話式人工智能來維持營收。中國 GenAI 解決方案供應商正將企業應用作為更具商業可行性的前進道路。&lt;strong&gt;其中，面向企業市場的智能體成為新賽道&lt;/strong&gt;。&lt;/p&gt; 
-&lt;p&gt;阿里巴巴、百度、華為和騰訊等主要廠商正在為企業提供智能體開發平台、現成模板和針對特定應用的智能體，同時大幅降低大模型推理的價格。&lt;/p&gt; 
-&lt;p&gt;進入到 2025 年，Omdia 預計這些廠商將進一步開發智能體相關的能力，包括多模態大模型、多智能體協作和協調框架、支援其他數據類型的檢索增強生成（RAG），以及支援邊緣側和端側應用的更小、更高效的行業模型和小模型。其中的佼佼者正是 DeepSeek。&lt;strong&gt;企業能利用他們的強化學習和蒸餾技術將大模型部署在在資源受限的的運行環境中&lt;/strong&gt;。&lt;/p&gt; 
-&lt;p&gt;同時，中國企業也需要在嚴重的資源限制和嚴格的法規環境下部署 GenAI，因此他們對 GenAI 投資回報率（ROI）的審查也將越來越嚴格。&lt;/p&gt; 
-&lt;p&gt;眼看 GenAI 六小虎的發展，預計 2025 年新大模型的開發門檻將大大提高。並非所有廠商都能從萬卡過渡到十萬卡、從單個大規模數據中心到多個數據中心互聯。因此，今年有可能將出現頻密的市場整合和玩家退圈。&lt;/p&gt; 
-&lt;p&gt;&lt;strong&gt;Omdia 預計數個大模型廠商將轉型為 GenAI 平台或 GenAI 應用廠商，並將重心放在海外市場&lt;/strong&gt;。&lt;/p&gt;
-                                                                                &lt;/div&gt;
-                                                                            </description>
-            <link>https://www.oschina.net/news/332621</link>
-            <guid isPermaLink="false">https://www.oschina.net/news/332621</guid>
-            <pubDate>Thu, 06 Feb 2025 03:10:00 GMT</pubDate>
-            <author>來源: OSCHINA</author>
-        </item>
-        <item>
-            <title>谷歌安卓系統「假開源、真壟斷」？</title>
-            <description>&lt;div class=&quot;content&quot;&gt;
-                                                                    
-                                                        &lt;p&gt;近期，中國國家市場監督管理總局發佈公告稱，&lt;a href=&quot;https://www.oschina.net/news/332270/china-to-launch-antitrust-probe-into-google&quot;&gt;谷歌涉嫌違反《中華人民共和國反壟斷法》&lt;/a&gt;，已依法展開調查。隨後《人民日報》刊發題目為「&lt;u&gt;&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fwww.peopleapp.com%2Fcolumn%2F30048179136-500006078037&quot; target=&quot;_blank&quot;&gt;依法對跨國公司壟斷行為監管有利於維護國際市場公平競爭，促進產業創新發展&lt;/a&gt;&lt;/u&gt;」的評論文章。&lt;/p&gt; 
-&lt;p&gt;&lt;img src=&quot;https://static.oschina.net/uploads/space/2025/0208/110130_bZk9_2720166.png&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
-&lt;p&gt;文章稱，當前，全球移動操作系統基本被谷歌公司安卓系統和蘋果公司 iOS 系統「兩分天下」，其中，iOS 系統為閉源操作系統，僅供蘋果公司自用；安卓系統為開源操作系統，谷歌公司採取免費授權許可模式許可手機等移動設備廠商使用。&lt;/p&gt; 
-&lt;p&gt;2012 年以來，谷歌安卓操作系統一直是全球第一大移動操作系統，佔據絕對優勢。全球約 70% 的智能手機由中國手機廠商生產製造，但多數依賴谷歌公司的安卓操作系統。&lt;/p&gt; 
-&lt;p&gt;文章指出，一直以來，谷歌公司的安卓操作系統被業內詬病為「假開源、真壟斷」。谷歌公司利用安卓移動操作系統的市場支配地位，在技術上和商業上，對中國手機廠商施加諸多限制和約束，特別是通過與軟硬件廠商、海外通信運營商等簽訂一系列協議，設置反分裂義務，嚴格限制開發安卓分支操作系統，要求預裝全套谷歌應用程序等。&lt;/p&gt; 
-&lt;p&gt;文章強調，這些限制措施與谷歌公司開發的應用商店、搜索引擎等產品服務相配合，構建起移動互聯網時代的強大商業生態，不僅強化了谷歌公司在移動操作系統市場的壟斷地位，而且排除、限制了移動操作系統等相關市場的競爭，阻礙了行業創新發展。近年來，移動智能手機市場結構逐漸固化，塞班、黑莓、Windows Phone、阿里 YunOS 等移動操作系統逐漸退出歷史舞台，海爾、天語、朵唯這些曾經暢銷一時的國產手機品牌逐漸消失在大眾的視野。行業內普遍認為，智能手機產業頭部化明顯，產品代際差異越來越小，創新動力明顯減弱。&lt;/p&gt; 
-&lt;p&gt;值得注意的是，歐盟、韓國、印度等國家和地區反壟斷執法機構均對谷歌公司移動操作系統市場的壟斷行為開展過調查，2018 年、2021 年、2022 年，歐盟委員會、韓國公平交易委員會和印度競爭委員會先後作出處罰。但從公開的執法文書看，這些國家和地區的反壟斷調查並未涉及中國市場。&lt;/p&gt; 
-&lt;p&gt;最後文章中還着重強調，操作系統是移動互聯網生態的基石，進入人工智能時代，移動互聯網的商業生態正在加速演變、重構，我國移動通信產業具有強大的生產能力和超大規模市場優勢，政務服務、教育醫療、銀行金融、交通運輸、生活保障等領域應用場景廣泛，發展新的移動操作系統並構建更加具有活力的商業生態，具有充分條件和較好基礎。&lt;/p&gt; 
-&lt;p&gt;「積極借鑑歐盟等域外反壟斷執法機構的經驗，加強對跨國壟斷行為監管執法，推動谷歌公司取消不合理的限制和做法，有利於推動構建更加公平合理的國際市場競爭秩序，保障我國企業更好參與國際市場競爭合作，為產業創新發展和全球經濟注入新的發展動力。」&lt;/p&gt; 
-&lt;p&gt;值得一提的是，來自知情人士的消息，中國反壟斷監管機構正準備對蘋果的政策和應用商店費用進行調查。據報道，國家市場監管總局正在為對蘋果公司的政策及其 iOS 蘋果商店嚮應用開發者收取佣金的調查做準備。因「蘋果稅」在中國市場的抽成目前是最高檔位，對標準企業和小型企業分別收取 30% 和 15% 的佣金。&lt;/p&gt;
-                                                                                &lt;/div&gt;
-                                                                            </description>
-            <link>https://www.oschina.net/news/332620</link>
-            <guid isPermaLink="false">https://www.oschina.net/news/332620</guid>
-            <pubDate>Thu, 06 Feb 2025 03:02:00 GMT</pubDate>
-            <author>來源: OSCHINA</author>
-        </item>
-        <item>
-            <title>DeepSeek 的 GitHub star 數超過 OpenAI</title>
-            <description>&lt;div class=&quot;content&quot;&gt;
-                                                                    
-                                                        &lt;p&gt;2 月 7 日消息，DeepSeek 項目在 GitHub 上的 Star 量超過了 OpenAI。&lt;/p&gt; 
-&lt;p&gt;截至本週五下午兩點，DeepSeek 旗下熱度最高的項目 DeepSeek-V3 大模型 Star 量已達 7.77 萬，超越了同平台中 OpenAI 最熱門項目。&lt;/p&gt; 
-&lt;p&gt;DeepSeek-V3 模型於 2024 年 12 月 26 日發佈，官方表示，DeepSeek-V3 為自研 MoE 模型，671B 參數，激活 37B，在 14.8T token 上進行了預訓練。該模型的多項評測成績超越了 Qwen2.5-72B 和 Llama-3.1-405B 等其他開源模型，並在性能上和世界頂尖的閉源模型 GPT-4o 以及 Claude-3.5-Sonnet 不分伯仲。 &amp;nbsp;&lt;/p&gt; 
-&lt;p&gt;此外，官方表示，通過算法和工程上的創新，DeepSeek-V3 的生成吐字速度從 20 TPS 大幅提高至 60 TPS，相比 V2.5 模型實現了 3 倍的提升，為用戶帶來更加迅速流暢的使用體驗。&lt;/p&gt; 
-&lt;p&gt;&lt;img alt=&quot;&quot; src=&quot;https://oscimg.oschina.net/oscnet/up-4ac71fcc0d1ddb1a846e0a7a8e012906ed2.png&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
-&lt;p&gt;除此之外，同屬開源大模型的 Llama 系列最高星數達到了 5.75 萬，阿里雲的 Qwen2.5 有 1.49 萬 Star，零一萬物的 Yi 有 7800Star。&lt;/p&gt;
-                                                                                &lt;/div&gt;
-                                                                            </description>
-            <link>https://www.oschina.net/news/332619</link>
-            <guid isPermaLink="false">https://www.oschina.net/news/332619</guid>
-            <pubDate>Thu, 06 Feb 2025 02:55:00 GMT</pubDate>
             <author>來源: OSCHINA</author>
         </item>
     </channel>
