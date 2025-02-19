@@ -9,8 +9,240 @@
         <generator>RSSHub</generator>
         <webMaster>contact@rsshub.app (RSSHub)</webMaster>
         <language>en</language>
-        <lastBuildDate>Wed, 19 Feb 2025 07:36:12 GMT</lastBuildDate>
+        <lastBuildDate>Wed, 19 Feb 2025 12:36:37 GMT</lastBuildDate>
         <ttl>5</ttl>
+        <item>
+            <title>Svelte 5 不是 JavaScript</title>
+            <description>&lt;div class=&quot;content&quot;&gt;
+                                                                    
+                                                        &lt;blockquote&gt; 
+ &lt;p&gt;本文翻譯自：&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fhodlbod.npub.pro%2Fpost%2F1739830562159%2F&quot; target=&quot;_blank&quot;&gt;https://hodlbod.npub.pro/post/1739830562159/&lt;/a&gt;&lt;/p&gt; 
+&lt;/blockquote&gt; 
+&lt;p&gt;在過去幾周裏，我一直忙於處理將一個 Web 應用程序升級到 Svelte 5 所帶來的後果。拋開對框架更新換代和遷移煩惱的抱怨，我在遷移過程中遇到了一些有趣的問題。到目前為止，我沒有看到很多人報告過相同的問題，所以我覺得自己闡述這些問題可能會有所幫助。&lt;/p&gt; 
+&lt;p&gt;我會盡量不在這篇帖子中抱怨太多，因為我很感激多年來享受的 Svelte 3/4。但我想我不會再選擇 Svelte 來開發任何新的項目了。我希望我在這裏的一些反思對其他人也會有所幫助。&lt;/p&gt; 
+&lt;p&gt;如果您對我在這裏提到的問題的復現感興趣，可以在以下鏈接找到。&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt; &lt;p&gt;&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fgithub.com%2Fsveltejs%2Fsvelte%2Fissues%2F15327&quot; target=&quot;_blank&quot;&gt;無法將狀態保存到 indexeddb&lt;/a&gt;&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fgithub.com%2Fsveltejs%2Fsvelte%2Fissues%2F15327&quot; target=&quot;_blank&quot;&gt;組件卸載導致閉包中的變量未定義&lt;/a&gt;&lt;/p&gt; &lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;h2&gt;對速度的需求&lt;/h2&gt; 
+&lt;p&gt;首先，讓我簡要地認可一下 Svelte 團隊所努力的方向。看起來版本 5 的大部分重大變化都是圍繞&lt;strong&gt;「深層響應性」(deep reactivity)&lt;/strong&gt;構建的，這允許更細粒度的響應性，從而帶來更好的性能。這當然很好，Svelte 團隊在性能與開發體驗（DX）的協調方面一直表現出色。&lt;/p&gt; 
+&lt;p&gt;在 Svelte 的早期版本中，實現這一目標的主要方式是通過 Svelte 編譯器。涉及許多輔助技術來提高性能，但擁有一個框架編譯步驟給了 Svelte 團隊很大的靈活性，可以在幕後重新排列事物，而無需讓開發者學習新概念。這就是 Svelte 最初如此獨特的原因。&lt;/p&gt; 
+&lt;p&gt;同時，這也導致了一個比以往更加晦澀難懂的系統框架，使得開發者調試更復雜的問題變得更加困難。更糟糕的是，編譯器存在缺陷，導致了一些只能通過「盲猜」重構問題組件才能修復的錯誤。我個人至少遇到過五六次這樣的情況，這也是我最終轉向 Svelte 5 的原因。&lt;/p&gt; 
+&lt;p&gt;儘管如此，我始終認為這是為了速度和生產力而可以接受的權衡。當然，有時我不得不刪除我的項目，並將其遷移到一個新的倉庫，但這個框架確實是一個使用起來的樂趣。&lt;/p&gt; 
+&lt;p&gt;Svelte 5 更是加大了這種權衡的力度——這是有意義的，因為這正是該框架與眾不同的地方。這次的不同之處在於，抽象/性能的權衡並沒有停留在編譯器領域，而是以兩種重要的方式侵入了運行時：&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt; &lt;p&gt;使用 proxies 來支持 deep reactivit&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;隱式組件生命週期狀態。&lt;/p&gt; &lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;p&gt;這兩個改動不僅提升了性能，還讓開發者的 API 看起來更加整潔。為什麼不喜歡呢？&lt;/p&gt; 
+&lt;p&gt;不幸的是，這兩個特性都是&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fwww.joelonsoftware.com%2F2002%2F11%2F11%2Fthe-law-of-leaky-abstractions%2F&quot; target=&quot;_blank&quot;&gt;抽象泄漏&lt;/a&gt;的典型例子，最終是開發變得更加複雜，而不是更簡單。&lt;/p&gt; 
+&lt;h2&gt;Proxies 不是 Objects&lt;/h2&gt; 
+&lt;p&gt;使用 proxies 似乎讓 Svelte 團隊能夠在不要求開發者做額外工作的前提下，從框架中榨取更多性能。&lt;/p&gt; 
+&lt;p&gt;在 React 等框架中，通過多個組件層級傳遞狀態而不引發不必要的重新渲染，是一項臭名昭著的困難任務。 Svelte 的編譯器避免了與虛擬 DOM 比較解決方案相關的一些陷阱，但顯然仍有足夠的性能提升，足以證明引入 proxies 的合理性。&lt;/p&gt; 
+&lt;p&gt;Svelte 團隊似乎也 &lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fsvelte.dev%2Fblog%2Frunes&quot; target=&quot;_blank&quot;&gt;認為&lt;/a&gt; 他們的引入代表了開發者體驗的改進：&lt;/p&gt; 
+&lt;blockquote&gt; 
+ &lt;p&gt;我們……可以最大化兼顧效率和人體工學。&lt;/p&gt; 
+&lt;/blockquote&gt; 
+&lt;p&gt;問題是：Svelte 5 &lt;em&gt;看起來&lt;/em&gt; 更簡單，但實際上引入了 &lt;em&gt;更多&lt;/em&gt; 的抽象。&lt;/p&gt; 
+&lt;p&gt;使用 proxies 來監控數組方法很有吸引力，因為它允許開發者忘記確保狀態是響應性的所有古怪啓發式方法，只需向數組中 &lt;code&gt;push&lt;/code&gt; 即可。我無法計算我在 Svelte 4 中寫了多少次 &lt;code&gt;value = value&lt;/code&gt; 來觸發響應性。 在 Svelte 4 中，開發者必須瞭解 Svelte 編譯器的工作原理。編譯器作為一個有缺陷的抽象，迫使用户知道賦值是用來表示響應性的方式。在 Svelte 5 中，開發者可以「忘記」編譯器！&lt;/p&gt; 
+&lt;p&gt;但實際上，他們不能。所有新抽象的引入實際上只是引入了更多複雜的啓發式方法，開發者必須將它們記在心裏，以便讓編譯器按照他們的意願工作。&lt;/p&gt; 
+&lt;p&gt;事實上，這就是為什麼在使用 Svelte 多年後，我發現自己在越來越多地使用 Svelte stores，而響應性聲明則越來越少。原因在於 Svelte stores 就是 JavaScript。在 store 上調用&lt;code&gt;update&lt;/code&gt;很簡單，而且能夠用&lt;code&gt;$&lt;/code&gt;來引用它們只是個額外的便利——無需記住，如果編譯器出錯，它就會提醒我。&lt;/p&gt; 
+&lt;p&gt;proxies 引入了與響應性聲明類似的問題，那就是它們看起來像一件事，但在邊緣上卻表現得像另一件事。 當我開始使用 Svelte 5 時，一切運行得都很順利——直到我嘗試將 proxies 保存到 indexeddb（&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fgithub.com%2Fsveltejs%2Fsvelte%2Fissues%2F15327&quot; target=&quot;_blank&quot;&gt;GitHub 上的 issue&lt;/a&gt;），那時我遇到了 &lt;code&gt;DataCloneError&lt;/code&gt;。更糟糕的是，沒有通過 &lt;code&gt;try/catch&lt;/code&gt; 結構化克隆來可靠地判斷某個對象是否是 &lt;code&gt;Proxy&lt;/code&gt;，這是一個性能密集型操作。&lt;/p&gt; 
+&lt;p&gt;這迫使開發者記住哪些是 proxies，哪些不是，每次將 proxies 傳遞給一個不期望或不知道它們的上下文時，都要調用 &lt;code&gt;$state.snapshot&lt;/code&gt;。這抵消了他們最初給予我們的所有美好抽象。&lt;/p&gt; 
+&lt;h2&gt;組件不是函數&lt;/h2&gt; 
+&lt;p&gt;虛擬 DOM 在 2013 年之所以能夠流行起來，是因為它能夠將應用程序建模為一系列組合函數，每個函數接收數據並輸出 HTML。Svelte 保留了這種範式，使用編譯器來規避虛擬 DOM 的低效和生命週期方法的複雜性。&lt;/p&gt; 
+&lt;p&gt;在 Svelte 5 中，組件生命週期又回來了，採用了 react-hooks 風格。 在 React 中，hooks 是一種抽象，它允許開發者避免編寫與組件生命週期方法相關的所有狀態代碼。現代 React 教程普遍推薦使用 hooks，這些 hooks 依賴於框架在不可見的方式下同步狀態與渲染樹。&lt;/p&gt; 
+&lt;p&gt;雖然這確實會導致代碼更簡潔，但也要求開發者謹慎行事，以避免破壞圍繞 hooks 的假設。只需嘗試在&lt;code&gt;setTimeout&lt;/code&gt;中訪問狀態，你就會明白我的意思。&lt;/p&gt; 
+&lt;p&gt;Svelte 4 有幾個類似的陷阱——例如，與組件的 DOM 元素交互的異步代碼必須跟蹤組件是否已卸載。這和你在依賴生命週期方法的舊 React 組件中看到的那種模式非常相似。&lt;/p&gt; 
+&lt;p&gt;在我看來，Svelte 5 通過添加與組件生命週期相關的隱式狀態來協調狀態變化和效果，似乎是走上了 React 16 的道路。 例如，以下是 &lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fsvelte.dev%2Fdocs%2Fsvelte%2F%24effect&quot; target=&quot;_blank&quot;&gt;$effect&lt;/a&gt; 文檔的摘錄：&lt;/p&gt; 
+&lt;blockquote&gt; 
+ &lt;p&gt;您可以將 $effect 放置在任何位置，而不僅僅是組件的最頂層，只要它在組件初始化期間（或父級效果激活時）被調用。然後它將與組件（或父級效果）的生命週期相關聯，因此當組件卸載（或父級效果被銷燬）時，它將自動銷燬。&lt;/p&gt; 
+&lt;/blockquote&gt; 
+&lt;p&gt;這非常複雜！為了有效地使用 $effect...（抱歉），開發者必須理解狀態變化是如何被追蹤的。組件生命週期 &lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fsvelte.dev%2Fdocs%2Fsvelte%2Flifecycle-hooks&quot; target=&quot;_blank&quot;&gt;文檔&lt;/a&gt; 聲稱：&lt;/p&gt; 
+&lt;blockquote&gt; 
+ &lt;p&gt;在 Svelte 5 中，組件的生命週期只包含兩個部分：其創建和其銷燬。介於兩者之間的一切——當某些狀態更新時——與組件整體無關；只有需要響應狀態變化的那些部分才會收到通知。這是因為底層最小的變化單位實際上不是組件，而是組件在初始化時設置的（渲染）效果。因此，並沒有「更新前」/「更新後」鈎子這樣的東西。&lt;/p&gt; 
+&lt;/blockquote&gt; 
+&lt;p&gt;然而，它接着介紹了與 &lt;code&gt;$effect.pre&lt;/code&gt; 結合的「tick」概念。本節解釋説，「&lt;code&gt;tick&lt;/code&gt; 返回一個 promise，它在任何掛起的州變化被應用後解決，或者在下一個微任務中如果沒有掛起的變化時解決。」&lt;/p&gt; 
+&lt;p&gt;我確信有一些心理模型可以證明這一點，但我不認為當必須緊接着關於狀態變化的補充説明時，聲稱組件的生命週期僅由掛載/卸載組成真的很有幫助。 這個地方真正讓我感到困擾，也是這篇博客帖子的動機所在，那就是當狀態與組件的生命週期耦合在一起時，即使這個狀態被傳遞給一個對 Svelte 一無所知的函數。&lt;/p&gt; 
+&lt;p&gt;在我的應用程序中，我通過在存儲中保存我想要渲染的組件及其屬性來管理模態對話框，並在應用程序的&lt;code&gt;layout.svelte&lt;/code&gt;中渲染它。這個存儲也與瀏覽器歷史同步，以便使用後退按鈕關閉它們。有時，向這些模態之一傳遞一個回調是有用的，將調用者特定的功能綁定到子組件上：&lt;/p&gt; 
+&lt;pre&gt;&lt;code class=&quot;language-plaintext&quot;&gt;const {value} = $props()
+const callback = () =&amp;gt; console.log(value)
+const openModal = () =&amp;gt; pushModal(MyModal, {callback})
+&lt;/code&gt;&lt;/pre&gt; 
+&lt;p&gt;&lt;img height=&quot;1&quot; src=&quot;https://static.oschina.net/uploads/space/2025/0219/174804_lFSI_2720166.gif&quot; width=&quot;1&quot; referrerpolicy=&quot;no-referrer&quot;&gt;這是 JavaScript 中的一個基本模式。傳遞迴調只是你做的事情之一。&lt;/p&gt; 
+&lt;p&gt;不幸的是，如果上述代碼位於模態對話框本身中，調用組件會在回調被調用之前被卸載。在 Svelte 4 中，這運行得很好，但在 Svelte 5 中，當組件卸載時，&lt;code&gt;value&lt;/code&gt;會被更新為&lt;code&gt;    &lt;/code&gt;。&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fgithub.com%2Fsveltejs%2Fsvelte%2Fissues%2F15325&quot; target=&quot;_blank&quot;&gt;這裏有一個最小化複製的例子&lt;/a&gt;。&lt;/p&gt; 
+&lt;p&gt;這只是一個例子，但對我來説，很明顯，任何被生命週期比其組件長的回調函數封閉的屬性，在我想要使用它時都會是&lt;code&gt;    &lt;/code&gt;——沒有任何重新賦值存在於詞法作用域中。&lt;/p&gt; 
+&lt;p&gt;這根本不是 JavaScript 的工作方式。我認為 Svelte 之所以這樣做，&lt;strong&gt;是因為它試圖重新發明垃圾回收&lt;/strong&gt;。因為&lt;code&gt;value&lt;/code&gt;是組件的屬性，它顯然需要在組件生命週期的末尾被清理。我確信這背後有很好的工程原因，但這確實令人驚訝。&lt;/p&gt; 
+&lt;h2&gt;結論&lt;/h2&gt; 
+&lt;p&gt;簡單的事情很美好，但正如 Rich Hickey 所説，&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fwww.infoq.com%2Fpresentations%2FSimple-Made-Easy%2F&quot; target=&quot;_blank&quot;&gt;簡單的事情並不總是簡單的&lt;/a&gt;。而且像 Joel Spolsky 一樣，我不喜歡感到意外。Svelte 一直充滿了魔法，但在我看來，隨着最新版本的發佈，重複咒語的認知成本終於超過了它賦予的力量。&lt;/p&gt; 
+&lt;p&gt;在這篇文章中，我的目的並不是貶低 Svelte 團隊。我知道很多人喜歡 Svelte 5（以及 react hooks）。我試圖表達的觀點是，在為用户做事和賦予用户自主權之間有一個權衡。&lt;strong&gt;好的軟件是建立在理解之上，而不是聰明之上&lt;/strong&gt;。&lt;/p&gt; 
+&lt;p&gt;我也認為，隨着 AI 輔助編碼越來越受歡迎，記住這一點非常重要。不要選擇讓你與工作疏遠的工具。選擇那些利用你已經積累的智慧，並幫助你深化對這門學科理解的工具。 感謝 Rich Harris 及其團隊多年來愉快的開發經歷。我希望（如果你看到這段話的話），其中的不準確之處不至於影響作為用户反饋的價值。&lt;/p&gt;
+                                                                                &lt;/div&gt;
+                                                                            </description>
+            <link>https://www.oschina.net/news/334755</link>
+            <guid isPermaLink="false">https://www.oschina.net/news/334755</guid>
+            <pubDate>Sat, 08 Feb 2025 10:00:00 GMT</pubDate>
+            <author>來源: OSCHINA</author>
+        </item>
+        <item>
+            <title>工人日報：越來越多科創企業選擇開源影響幾何</title>
+            <description>&lt;div class=&quot;content&quot;&gt;
+                                                                    
+                                                        &lt;blockquote&gt; 
+ &lt;p&gt;&lt;span style=&quot;color:#000000&quot;&gt;《工人日報》（2025 年 02 月 18 日 07 版）記者，楊冉冉&lt;/span&gt;&lt;/p&gt; 
+&lt;/blockquote&gt; 
+&lt;p&gt;&lt;span style=&quot;color:#000000&quot;&gt;2025 年伊始，中國本土科創企業的代表 DeepSeek，成為一匹 AI 創新黑馬，其推出的開源通用人工智能模型 DeepSeek-V3 和 R1 系列，以低成本、高性能震動全球科技界。&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;span style=&quot;color:#000000&quot;&gt;同樣引發高度關注的還有宇樹科技，16 個身着花襖、手持彩絹的宇樹 H1 人形機器人站上春晚舞台，以一場靈動歡快的「扭秧歌」表演驚豔世界。&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;span style=&quot;color:#000000&quot;&gt;值得關注的是，這兩家科創企業得到全球科技巨頭認可的背後，有一個關鍵核心要素——那就是都選擇了開源。DeepSeek 將 R1 訓練技術全部公開，通過開源為全球開發者提供了一個創新與應用的開放平台。宇樹科技則在 2024 年宣佈開源強化學習代碼庫，吸引全球超萬名開發者參與創新。&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;span style=&quot;color:#000000&quot;&gt;什麼是開源？開源可以看作源代碼可開放共享的開發模式，具有大眾協同、開放共享、持續創新的特性。其源起於軟件領域，並發展延伸到開源硬件、開源設計，還有由貢獻者、用户和愛好者組成的開源社區。在智能化轉型的浪潮下，開源在雲計算、大數據、區塊鏈、人工智能、生物工程、腦科學、智能駕駛、機器人、工業軟件等新賽道不斷深化。&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;span style=&quot;color:#000000&quot;&gt;公開數據顯示，目前，全球 97% 的軟件開發者和 99% 的企業使用開源軟件，70% 以上的新立項軟件項目採用開源模式。&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;span style=&quot;color:#000000&quot;&gt;為什麼越來越多的企業參與到開源的研發模式中，核心原因還是開源能夠降低總體生產成本、提升產品創新速度、構建合作伙伴生態，推動產業發展。&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;span style=&quot;color:#000000&quot;&gt;開源可以降低創新門檻，讓更多貢獻者「站在巨人的肩膀上」，參與前沿領域的創新；還能集合產業智慧，產業鏈上下游都可以進入，構建良性生態系統；同時可以促進人才聚集，不斷產生創新的思維火花。&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;span style=&quot;color:#000000&quot;&gt;以 DeepSeek 為例，目前華為雲、阿里雲等雲廠商、國產芯片企業以及智能硬件、汽車、金融等上下游產業鏈企業都在積極接入 DeepSeek 模型，希望藉助其能力來升級自身服務。業界評價，「通過開源，DeepSeek 推動了全球技術的協同創新，加速了 AI 技術的普及。」&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;span style=&quot;color:#000000&quot;&gt;除了技術層面的選擇，科創企業選擇開源更是為了適應市場競爭環境。在智能手機市場，相比蘋果，安卓就是憑藉開源戰略實現了市場份額的領先。&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;span style=&quot;color:#000000&quot;&gt;總之，開源作為信息技術發展的重要協作方式和生態構建的形式，已經成為科技創新的重要引擎。這一輪中國科創企業嶄露頭角，正是開源的受益者。&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;span style=&quot;color:#000000&quot;&gt;目前，我國已成為全球開源生態的重要貢獻力量，參與國際開源社區協作的開發者數量排名全球第二。企業「擁抱」開源趨勢明顯，本土發起的開源項目不斷湧現、使用開源技術的企業佔比近 90%。&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;span style=&quot;color:#000000&quot;&gt;不能忽視的是，開源與閉源之間向來是共存的。閉源體系在商業化閉環、服務質量和數據安全可控性上展現出獨特的優勢。開源體系也一直面臨商業模式的質疑。有業內人士評估：「如果 DeepSeek 能持續保持開源第一的地位，其經濟價值可能突破十萬億元人民幣，並通過金融槓桿進一步放大。」DeepSeek 讓人們看到了開源商業模式的價值和影響力，看到撬動產業格局的可能性。&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;span style=&quot;color:#000000&quot;&gt;開源，正為企業帶來翻天覆地的變革，也是加快發展新質生產力的有效措施，如何深入挖掘開源的巨大潛力，實現技術革新與商業利益的雙重豐收，開闢從科技創新向新質生產力轉化的共贏局面，科創企業還有很長的路要走。&lt;/span&gt;&lt;/p&gt;
+                                                                                &lt;/div&gt;
+                                                                            </description>
+            <link>https://www.oschina.net/news/334754</link>
+            <guid isPermaLink="false">https://www.oschina.net/news/334754</guid>
+            <pubDate>Sat, 08 Feb 2025 09:58:00 GMT</pubDate>
+            <author>來源: OSCHINA</author>
+        </item>
+        <item>
+            <title>阿里 AI To C 業務開放數百個招聘崗位</title>
+            <description>&lt;div class=&quot;content&quot;&gt;
+                                                                    
+                                                        &lt;p&gt;&lt;span style=&quot;color:#000000&quot;&gt;《科創板日報》記者多方獲悉，阿里 AI To C 業務近期開啓大規模人員招聘，開放招聘崗位達到數百個，集中在 AI 大模型相關的產品、技術研發崗位。&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;span style=&quot;color:#000000&quot;&gt;據悉，此次招聘崗位數量數百個，其中 AI 技術、產品研發崗位佔比達到 90%，主要分佈在 AI 產品和 AI 技術研發方向，將重點投入到文本、多模態大模型、AI Agent 等前沿技術與應用的相關工作中。&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;span style=&quot;color:#000000&quot;&gt;2 月初，全球頂尖人工智能科學家、前 Salesforce 集團副總裁許主洪出任阿里集團副總裁，負責 AI To C 業務的多模態基礎模型及 Agents 相關基礎研究與應用解決方案。據內部人士透露，許主洪目前正在籌備規模超百人的頂級 AI 大模型研究團隊，推動前沿科研成果向實際應用解決方案的轉化。&lt;/span&gt;&lt;/p&gt;
+                                                                                &lt;/div&gt;
+                                                                            </description>
+            <link>https://www.oschina.net/news/334751</link>
+            <guid isPermaLink="false">https://www.oschina.net/news/334751</guid>
+            <pubDate>Sat, 08 Feb 2025 09:19:00 GMT</pubDate>
+            <author>來源: OSCHINA</author>
+        </item>
+        <item>
+            <title>xbatis 一款非常好用 ORM 框架，它是如何多表 join 查詢的？</title>
+            <description>&lt;div class=&quot;content&quot;&gt;
+                                                                    
+                                                        &lt;div&gt; 
+ &lt;div&gt; 
+  &lt;h1&gt;聯表查詢&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fxbatis.cn%2Fzh-CN%2Ffunction%2Fbase%2Fjoin-query.html%23%25E8%2581%2594%25E8%25A1%25A8%25E6%259F%25A5%25E8%25AF%25A2&quot; target=&quot;_blank&quot;&gt;&lt;/a&gt;&lt;/h1&gt; 
+  &lt;h2&gt;內聯查詢&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fxbatis.cn%2Fzh-CN%2Ffunction%2Fbase%2Fjoin-query.html%23%25E5%2586%2585%25E8%2581%2594%25E6%259F%25A5%25E8%25AF%25A2&quot; target=&quot;_blank&quot;&gt;&lt;/a&gt;&lt;/h2&gt; 
+  &lt;div&gt;
+   &lt;span style=&quot;color:var(--vp-code-lang-color)&quot;&gt;java&lt;/span&gt; 
+   &lt;pre&gt;&lt;code&gt;&lt;span style=&quot;color:var(--shiki-light, inherit)&quot;&gt;&lt;span style=&quot;color:var(--shiki-light, inherit)&quot;&gt;public&lt;/span&gt;&lt;span style=&quot;color:var(--shiki-light, inherit)&quot;&gt; class&lt;/span&gt;&lt;span style=&quot;color:var(--shiki-light, inherit)&quot;&gt; Demo&lt;/span&gt;&lt;span style=&quot;color:var(--shiki-light, inherit)&quot;&gt; {&lt;/span&gt;&lt;/span&gt;
+&lt;span style=&quot;color:var(--shiki-light, inherit)&quot;&gt;&lt;span style=&quot;color:var(--shiki-light, inherit)&quot;&gt;    @&lt;/span&gt;&lt;span style=&quot;color:var(--shiki-light, inherit)&quot;&gt;Autowired&lt;/span&gt;&lt;/span&gt;
+&lt;span style=&quot;color:var(--shiki-light, inherit)&quot;&gt;&lt;span style=&quot;color:var(--shiki-light, inherit)&quot;&gt;    private&lt;/span&gt;&lt;span style=&quot;color:var(--shiki-light, inherit)&quot;&gt; SysUserMapper sysUserMapper;&lt;/span&gt;&lt;/span&gt;
+
+&lt;span style=&quot;color:var(--shiki-light, inherit)&quot;&gt;&lt;span style=&quot;color:var(--shiki-light, inherit)&quot;&gt;    public&lt;/span&gt;&lt;span style=&quot;color:var(--shiki-light, inherit)&quot;&gt; void&lt;/span&gt;&lt;span style=&quot;color:var(--shiki-light, inherit)&quot;&gt; page&lt;/span&gt;&lt;span style=&quot;color:var(--shiki-light, inherit)&quot;&gt;() {&lt;/span&gt;&lt;/span&gt;
+&lt;span style=&quot;color:var(--shiki-light, inherit)&quot;&gt;&lt;span style=&quot;color:var(--shiki-light, inherit)&quot;&gt;        Pager&amp;lt;&lt;/span&gt;&lt;span style=&quot;color:var(--shiki-light, inherit)&quot;&gt;SysUser&lt;/span&gt;&lt;span style=&quot;color:var(--shiki-light, inherit)&quot;&gt;&amp;gt; pager&lt;/span&gt;&lt;span style=&quot;color:var(--shiki-light, inherit)&quot;&gt;=&lt;/span&gt;&lt;span style=&quot;color:var(--shiki-light, inherit)&quot;&gt; QueryChain.&lt;/span&gt;&lt;span style=&quot;color:var(--shiki-light, inherit)&quot;&gt;of&lt;/span&gt;&lt;span style=&quot;color:var(--shiki-light, inherit)&quot;&gt;(sysUserMapper)&lt;/span&gt;&lt;/span&gt;
+&lt;span style=&quot;color:var(--shiki-light, inherit)&quot;&gt;&lt;span style=&quot;color:var(--shiki-light, inherit)&quot;&gt;                .&lt;/span&gt;&lt;span style=&quot;color:var(--shiki-light, inherit)&quot;&gt;join&lt;/span&gt;&lt;span style=&quot;color:var(--shiki-light, inherit)&quot;&gt;(SysUser&lt;/span&gt;&lt;span style=&quot;color:var(--shiki-light, inherit)&quot;&gt;::&lt;/span&gt;&lt;span style=&quot;color:var(--shiki-light, inherit)&quot;&gt;getRoleId, SysRole&lt;/span&gt;&lt;span style=&quot;color:var(--shiki-light, inherit)&quot;&gt;::&lt;/span&gt;&lt;span style=&quot;color:var(--shiki-light, inherit)&quot;&gt;getId)&lt;/span&gt;&lt;/span&gt;
+&lt;span style=&quot;color:var(--shiki-light, inherit)&quot;&gt;&lt;span style=&quot;color:var(--shiki-light, inherit)&quot;&gt;                .&lt;/span&gt;&lt;span style=&quot;color:var(--shiki-light, inherit)&quot;&gt;like&lt;/span&gt;&lt;span style=&quot;color:var(--shiki-light, inherit)&quot;&gt;(SysUser&lt;/span&gt;&lt;span style=&quot;color:var(--shiki-light, inherit)&quot;&gt;::&lt;/span&gt;&lt;span style=&quot;color:var(--shiki-light, inherit)&quot;&gt;getUserName,&lt;/span&gt;&lt;span style=&quot;color:var(--shiki-light, inherit)&quot;&gt;&quot;abc&quot;&lt;/span&gt;&lt;span style=&quot;color:var(--shiki-light, inherit)&quot;&gt;)&lt;/span&gt;&lt;/span&gt;
+&lt;span style=&quot;color:var(--shiki-light, inherit)&quot;&gt;&lt;span style=&quot;color:var(--shiki-light, inherit)&quot;&gt;                .&lt;/span&gt;&lt;span style=&quot;color:var(--shiki-light, inherit)&quot;&gt;paging&lt;/span&gt;&lt;span style=&quot;color:var(--shiki-light, inherit)&quot;&gt;(Pager.&lt;/span&gt;&lt;span style=&quot;color:var(--shiki-light, inherit)&quot;&gt;of&lt;/span&gt;&lt;span style=&quot;color:var(--shiki-light, inherit)&quot;&gt;(&lt;/span&gt;&lt;span style=&quot;color:var(--shiki-light, inherit)&quot;&gt;1&lt;/span&gt;&lt;span style=&quot;color:var(--shiki-light, inherit)&quot;&gt;));&lt;/span&gt;&lt;/span&gt;
+&lt;span style=&quot;color:var(--shiki-light, inherit)&quot;&gt;&lt;span style=&quot;color:var(--shiki-light, inherit)&quot;&gt;    }&lt;/span&gt;&lt;/span&gt;
+&lt;span style=&quot;color:var(--shiki-light, inherit)&quot;&gt;&lt;span style=&quot;color:var(--shiki-light, inherit)&quot;&gt;}&lt;/span&gt;&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt; 
+  &lt;/div&gt; 
+  &lt;h2&gt;左聯查詢&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fxbatis.cn%2Fzh-CN%2Ffunction%2Fbase%2Fjoin-query.html%23%25E5%25B7%25A6%25E8%2581%2594%25E6%259F%25A5%25E8%25AF%25A2&quot; target=&quot;_blank&quot;&gt;&lt;/a&gt;&lt;/h2&gt; 
+  &lt;blockquote&gt; 
+   &lt;p style=&quot;margin-left:0; margin-right:0&quot;&gt;左聯查詢，適合 1 對 1 情況，如果不是，則分頁時需要關閉框架優化：Pager.of(1).setOptimize(false)&lt;/p&gt; 
+  &lt;/blockquote&gt; 
+  &lt;div&gt;
+   &lt;span style=&quot;color:var(--vp-code-lang-color)&quot;&gt;java&lt;/span&gt; 
+   &lt;pre&gt;&lt;code&gt;&lt;span style=&quot;color:var(--shiki-light, inherit)&quot;&gt;&lt;span style=&quot;color:var(--shiki-light, inherit)&quot;&gt;public&lt;/span&gt;&lt;span style=&quot;color:var(--shiki-light, inherit)&quot;&gt; class&lt;/span&gt;&lt;span style=&quot;color:var(--shiki-light, inherit)&quot;&gt; Demo&lt;/span&gt;&lt;span style=&quot;color:var(--shiki-light, inherit)&quot;&gt; {&lt;/span&gt;&lt;/span&gt;
+&lt;span style=&quot;color:var(--shiki-light, inherit)&quot;&gt;&lt;span style=&quot;color:var(--shiki-light, inherit)&quot;&gt;    @&lt;/span&gt;&lt;span style=&quot;color:var(--shiki-light, inherit)&quot;&gt;Autowired&lt;/span&gt;&lt;/span&gt;
+&lt;span style=&quot;color:var(--shiki-light, inherit)&quot;&gt;&lt;span style=&quot;color:var(--shiki-light, inherit)&quot;&gt;    private&lt;/span&gt;&lt;span style=&quot;color:var(--shiki-light, inherit)&quot;&gt; SysUserMapper sysUserMapper;&lt;/span&gt;&lt;/span&gt;
+
+&lt;span style=&quot;color:var(--shiki-light, inherit)&quot;&gt;&lt;span style=&quot;color:var(--shiki-light, inherit)&quot;&gt;    public&lt;/span&gt;&lt;span style=&quot;color:var(--shiki-light, inherit)&quot;&gt; void&lt;/span&gt;&lt;span style=&quot;color:var(--shiki-light, inherit)&quot;&gt; page&lt;/span&gt;&lt;span style=&quot;color:var(--shiki-light, inherit)&quot;&gt;() {&lt;/span&gt;&lt;/span&gt;
+&lt;span style=&quot;color:var(--shiki-light, inherit)&quot;&gt;&lt;span style=&quot;color:var(--shiki-light, inherit)&quot;&gt;        Pager&amp;lt;&lt;/span&gt;&lt;span style=&quot;color:var(--shiki-light, inherit)&quot;&gt;SysUser&lt;/span&gt;&lt;span style=&quot;color:var(--shiki-light, inherit)&quot;&gt;&amp;gt; pager&lt;/span&gt;&lt;span style=&quot;color:var(--shiki-light, inherit)&quot;&gt;=&lt;/span&gt;&lt;span style=&quot;color:var(--shiki-light, inherit)&quot;&gt; QueryChain.&lt;/span&gt;&lt;span style=&quot;color:var(--shiki-light, inherit)&quot;&gt;of&lt;/span&gt;&lt;span style=&quot;color:var(--shiki-light, inherit)&quot;&gt;(sysUserMapper)&lt;/span&gt;&lt;/span&gt;
+&lt;span style=&quot;color:var(--shiki-light, inherit)&quot;&gt;&lt;span style=&quot;color:var(--shiki-light, inherit)&quot;&gt;                .&lt;/span&gt;&lt;span style=&quot;color:var(--shiki-light, inherit)&quot;&gt;leftJoin&lt;/span&gt;&lt;span style=&quot;color:var(--shiki-light, inherit)&quot;&gt;(SSysUser&lt;/span&gt;&lt;span style=&quot;color:var(--shiki-light, inherit)&quot;&gt;::&lt;/span&gt;&lt;span style=&quot;color:var(--shiki-light, inherit)&quot;&gt;getRoleId, SysRole&lt;/span&gt;&lt;span style=&quot;color:var(--shiki-light, inherit)&quot;&gt;::&lt;/span&gt;&lt;span style=&quot;color:var(--shiki-light, inherit)&quot;&gt;getId)&lt;/span&gt;&lt;/span&gt;
+&lt;span style=&quot;color:var(--shiki-light, inherit)&quot;&gt;&lt;span style=&quot;color:var(--shiki-light, inherit)&quot;&gt;                .&lt;/span&gt;&lt;span style=&quot;color:var(--shiki-light, inherit)&quot;&gt;like&lt;/span&gt;&lt;span style=&quot;color:var(--shiki-light, inherit)&quot;&gt;(SysUser&lt;/span&gt;&lt;span style=&quot;color:var(--shiki-light, inherit)&quot;&gt;::&lt;/span&gt;&lt;span style=&quot;color:var(--shiki-light, inherit)&quot;&gt;getUserName,&lt;/span&gt;&lt;span style=&quot;color:var(--shiki-light, inherit)&quot;&gt;&quot;abc&quot;&lt;/span&gt;&lt;span style=&quot;color:var(--shiki-light, inherit)&quot;&gt;)&lt;/span&gt;&lt;/span&gt;
+&lt;span style=&quot;color:var(--shiki-light, inherit)&quot;&gt;&lt;span style=&quot;color:var(--shiki-light, inherit)&quot;&gt;                .&lt;/span&gt;&lt;span style=&quot;color:var(--shiki-light, inherit)&quot;&gt;paging&lt;/span&gt;&lt;span style=&quot;color:var(--shiki-light, inherit)&quot;&gt;(Pager.&lt;/span&gt;&lt;span style=&quot;color:var(--shiki-light, inherit)&quot;&gt;of&lt;/span&gt;&lt;span style=&quot;color:var(--shiki-light, inherit)&quot;&gt;(&lt;/span&gt;&lt;span style=&quot;color:var(--shiki-light, inherit)&quot;&gt;1&lt;/span&gt;&lt;span style=&quot;color:var(--shiki-light, inherit)&quot;&gt;));&lt;/span&gt;&lt;/span&gt;
+&lt;span style=&quot;color:var(--shiki-light, inherit)&quot;&gt;&lt;span style=&quot;color:var(--shiki-light, inherit)&quot;&gt;    }&lt;/span&gt;&lt;/span&gt;
+&lt;span style=&quot;color:var(--shiki-light, inherit)&quot;&gt;&lt;span style=&quot;color:var(--shiki-light, inherit)&quot;&gt;}&lt;/span&gt;&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt; 
+  &lt;/div&gt; 
+  &lt;h2&gt;右聯查詢&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fxbatis.cn%2Fzh-CN%2Ffunction%2Fbase%2Fjoin-query.html%23%25E5%258F%25B3%25E8%2581%2594%25E6%259F%25A5%25E8%25AF%25A2&quot; target=&quot;_blank&quot;&gt;&lt;/a&gt;&lt;/h2&gt; 
+  &lt;div&gt;
+   &lt;span style=&quot;color:var(--vp-code-lang-color)&quot;&gt;java&lt;/span&gt; 
+   &lt;pre&gt;&lt;code&gt;&lt;span style=&quot;color:var(--shiki-light, inherit)&quot;&gt;&lt;span style=&quot;color:var(--shiki-light, inherit)&quot;&gt;public&lt;/span&gt;&lt;span style=&quot;color:var(--shiki-light, inherit)&quot;&gt; class&lt;/span&gt;&lt;span style=&quot;color:var(--shiki-light, inherit)&quot;&gt; Demo&lt;/span&gt;&lt;span style=&quot;color:var(--shiki-light, inherit)&quot;&gt; {&lt;/span&gt;&lt;/span&gt;
+&lt;span style=&quot;color:var(--shiki-light, inherit)&quot;&gt;&lt;span style=&quot;color:var(--shiki-light, inherit)&quot;&gt;    @&lt;/span&gt;&lt;span style=&quot;color:var(--shiki-light, inherit)&quot;&gt;Autowired&lt;/span&gt;&lt;/span&gt;
+&lt;span style=&quot;color:var(--shiki-light, inherit)&quot;&gt;&lt;span style=&quot;color:var(--shiki-light, inherit)&quot;&gt;    private&lt;/span&gt;&lt;span style=&quot;color:var(--shiki-light, inherit)&quot;&gt; SysUserMapper sysUserMapper;&lt;/span&gt;&lt;/span&gt;
+
+&lt;span style=&quot;color:var(--shiki-light, inherit)&quot;&gt;&lt;span style=&quot;color:var(--shiki-light, inherit)&quot;&gt;    public&lt;/span&gt;&lt;span style=&quot;color:var(--shiki-light, inherit)&quot;&gt; void&lt;/span&gt;&lt;span style=&quot;color:var(--shiki-light, inherit)&quot;&gt; page&lt;/span&gt;&lt;span style=&quot;color:var(--shiki-light, inherit)&quot;&gt;() {&lt;/span&gt;&lt;/span&gt;
+&lt;span style=&quot;color:var(--shiki-light, inherit)&quot;&gt;&lt;span style=&quot;color:var(--shiki-light, inherit)&quot;&gt;        Pager&amp;lt;&lt;/span&gt;&lt;span style=&quot;color:var(--shiki-light, inherit)&quot;&gt;SysUser&lt;/span&gt;&lt;span style=&quot;color:var(--shiki-light, inherit)&quot;&gt;&amp;gt; pager&lt;/span&gt;&lt;span style=&quot;color:var(--shiki-light, inherit)&quot;&gt;=&lt;/span&gt;&lt;span style=&quot;color:var(--shiki-light, inherit)&quot;&gt; QueryChain.&lt;/span&gt;&lt;span style=&quot;color:var(--shiki-light, inherit)&quot;&gt;of&lt;/span&gt;&lt;span style=&quot;color:var(--shiki-light, inherit)&quot;&gt;(sysUserMapper)&lt;/span&gt;&lt;/span&gt;
+&lt;span style=&quot;color:var(--shiki-light, inherit)&quot;&gt;&lt;span style=&quot;color:var(--shiki-light, inherit)&quot;&gt;                .&lt;/span&gt;&lt;span style=&quot;color:var(--shiki-light, inherit)&quot;&gt;join&lt;/span&gt;&lt;span style=&quot;color:var(--shiki-light, inherit)&quot;&gt;(JoinMode.RIGHT, SysUser&lt;/span&gt;&lt;span style=&quot;color:var(--shiki-light, inherit)&quot;&gt;::&lt;/span&gt;&lt;span style=&quot;color:var(--shiki-light, inherit)&quot;&gt;getRoleId, SysRole&lt;/span&gt;&lt;span style=&quot;color:var(--shiki-light, inherit)&quot;&gt;::&lt;/span&gt;&lt;span style=&quot;color:var(--shiki-light, inherit)&quot;&gt;getId)&lt;/span&gt;&lt;/span&gt;
+&lt;span style=&quot;color:var(--shiki-light, inherit)&quot;&gt;&lt;span style=&quot;color:var(--shiki-light, inherit)&quot;&gt;                .&lt;/span&gt;&lt;span style=&quot;color:var(--shiki-light, inherit)&quot;&gt;like&lt;/span&gt;&lt;span style=&quot;color:var(--shiki-light, inherit)&quot;&gt;(SysUser&lt;/span&gt;&lt;span style=&quot;color:var(--shiki-light, inherit)&quot;&gt;::&lt;/span&gt;&lt;span style=&quot;color:var(--shiki-light, inherit)&quot;&gt;getUserName,&lt;/span&gt;&lt;span style=&quot;color:var(--shiki-light, inherit)&quot;&gt;&quot;abc&quot;&lt;/span&gt;&lt;span style=&quot;color:var(--shiki-light, inherit)&quot;&gt;)&lt;/span&gt;&lt;/span&gt;
+&lt;span style=&quot;color:var(--shiki-light, inherit)&quot;&gt;&lt;span style=&quot;color:var(--shiki-light, inherit)&quot;&gt;                .&lt;/span&gt;&lt;span style=&quot;color:var(--shiki-light, inherit)&quot;&gt;paging&lt;/span&gt;&lt;span style=&quot;color:var(--shiki-light, inherit)&quot;&gt;(Pager.&lt;/span&gt;&lt;span style=&quot;color:var(--shiki-light, inherit)&quot;&gt;of&lt;/span&gt;&lt;span style=&quot;color:var(--shiki-light, inherit)&quot;&gt;(&lt;/span&gt;&lt;span style=&quot;color:var(--shiki-light, inherit)&quot;&gt;1&lt;/span&gt;&lt;span style=&quot;color:var(--shiki-light, inherit)&quot;&gt;));&lt;/span&gt;&lt;/span&gt;
+&lt;span style=&quot;color:var(--shiki-light, inherit)&quot;&gt;&lt;span style=&quot;color:var(--shiki-light, inherit)&quot;&gt;    }&lt;/span&gt;&lt;/span&gt;
+&lt;span style=&quot;color:var(--shiki-light, inherit)&quot;&gt;&lt;span style=&quot;color:var(--shiki-light, inherit)&quot;&gt;}&lt;/span&gt;&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt; 
+  &lt;/div&gt; 
+  &lt;h2&gt;全連接查詢&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fxbatis.cn%2Fzh-CN%2Ffunction%2Fbase%2Fjoin-query.html%23%25E5%2585%25A8%25E8%25BF%259E%25E6%258E%25A5%25E6%259F%25A5%25E8%25AF%25A2&quot; target=&quot;_blank&quot;&gt;&lt;/a&gt;&lt;/h2&gt; 
+  &lt;div&gt;
+   &lt;span style=&quot;color:var(--vp-code-lang-color)&quot;&gt;java&lt;/span&gt; 
+   &lt;pre&gt;&lt;code&gt;&lt;span style=&quot;color:var(--shiki-light, inherit)&quot;&gt;&lt;span style=&quot;color:var(--shiki-light, inherit)&quot;&gt;public&lt;/span&gt;&lt;span style=&quot;color:var(--shiki-light, inherit)&quot;&gt; class&lt;/span&gt;&lt;span style=&quot;color:var(--shiki-light, inherit)&quot;&gt; Demo&lt;/span&gt;&lt;span style=&quot;color:var(--shiki-light, inherit)&quot;&gt; {&lt;/span&gt;&lt;/span&gt;
+&lt;span style=&quot;color:var(--shiki-light, inherit)&quot;&gt;&lt;span style=&quot;color:var(--shiki-light, inherit)&quot;&gt;    @&lt;/span&gt;&lt;span style=&quot;color:var(--shiki-light, inherit)&quot;&gt;Autowired&lt;/span&gt;&lt;/span&gt;
+&lt;span style=&quot;color:var(--shiki-light, inherit)&quot;&gt;&lt;span style=&quot;color:var(--shiki-light, inherit)&quot;&gt;    private&lt;/span&gt;&lt;span style=&quot;color:var(--shiki-light, inherit)&quot;&gt; SysUserMapper sysUserMapper;&lt;/span&gt;&lt;/span&gt;
+
+&lt;span style=&quot;color:var(--shiki-light, inherit)&quot;&gt;&lt;span style=&quot;color:var(--shiki-light, inherit)&quot;&gt;    public&lt;/span&gt;&lt;span style=&quot;color:var(--shiki-light, inherit)&quot;&gt; void&lt;/span&gt;&lt;span style=&quot;color:var(--shiki-light, inherit)&quot;&gt; page&lt;/span&gt;&lt;span style=&quot;color:var(--shiki-light, inherit)&quot;&gt;() {&lt;/span&gt;&lt;/span&gt;
+&lt;span style=&quot;color:var(--shiki-light, inherit)&quot;&gt;&lt;span style=&quot;color:var(--shiki-light, inherit)&quot;&gt;        Pager&amp;lt;&lt;/span&gt;&lt;span style=&quot;color:var(--shiki-light, inherit)&quot;&gt;SysUser&lt;/span&gt;&lt;span style=&quot;color:var(--shiki-light, inherit)&quot;&gt;&amp;gt; pager&lt;/span&gt;&lt;span style=&quot;color:var(--shiki-light, inherit)&quot;&gt;=&lt;/span&gt;&lt;span style=&quot;color:var(--shiki-light, inherit)&quot;&gt; QueryChain.&lt;/span&gt;&lt;span style=&quot;color:var(--shiki-light, inherit)&quot;&gt;of&lt;/span&gt;&lt;span style=&quot;color:var(--shiki-light, inherit)&quot;&gt;(sysUserMapper)&lt;/span&gt;&lt;/span&gt;
+&lt;span style=&quot;color:var(--shiki-light, inherit)&quot;&gt;&lt;span style=&quot;color:var(--shiki-light, inherit)&quot;&gt;                .&lt;/span&gt;&lt;span style=&quot;color:var(--shiki-light, inherit)&quot;&gt;join&lt;/span&gt;&lt;span style=&quot;color:var(--shiki-light, inherit)&quot;&gt;(JoinMode.FULL, SysUser&lt;/span&gt;&lt;span style=&quot;color:var(--shiki-light, inherit)&quot;&gt;::&lt;/span&gt;&lt;span style=&quot;color:var(--shiki-light, inherit)&quot;&gt;getRoleId, SysRole&lt;/span&gt;&lt;span style=&quot;color:var(--shiki-light, inherit)&quot;&gt;::&lt;/span&gt;&lt;span style=&quot;color:var(--shiki-light, inherit)&quot;&gt;getId)&lt;/span&gt;&lt;/span&gt;
+&lt;span style=&quot;color:var(--shiki-light, inherit)&quot;&gt;&lt;span style=&quot;color:var(--shiki-light, inherit)&quot;&gt;                .&lt;/span&gt;&lt;span style=&quot;color:var(--shiki-light, inherit)&quot;&gt;like&lt;/span&gt;&lt;span style=&quot;color:var(--shiki-light, inherit)&quot;&gt;(SysUser&lt;/span&gt;&lt;span style=&quot;color:var(--shiki-light, inherit)&quot;&gt;::&lt;/span&gt;&lt;span style=&quot;color:var(--shiki-light, inherit)&quot;&gt;getUserName,&lt;/span&gt;&lt;span style=&quot;color:var(--shiki-light, inherit)&quot;&gt;&quot;abc&quot;&lt;/span&gt;&lt;span style=&quot;color:var(--shiki-light, inherit)&quot;&gt;)&lt;/span&gt;&lt;/span&gt;
+&lt;span style=&quot;color:var(--shiki-light, inherit)&quot;&gt;&lt;span style=&quot;color:var(--shiki-light, inherit)&quot;&gt;                .&lt;/span&gt;&lt;span style=&quot;color:var(--shiki-light, inherit)&quot;&gt;paging&lt;/span&gt;&lt;span style=&quot;color:var(--shiki-light, inherit)&quot;&gt;(Pager.&lt;/span&gt;&lt;span style=&quot;color:var(--shiki-light, inherit)&quot;&gt;of&lt;/span&gt;&lt;span style=&quot;color:var(--shiki-light, inherit)&quot;&gt;(&lt;/span&gt;&lt;span style=&quot;color:var(--shiki-light, inherit)&quot;&gt;1&lt;/span&gt;&lt;span style=&quot;color:var(--shiki-light, inherit)&quot;&gt;));&lt;/span&gt;&lt;/span&gt;
+&lt;span style=&quot;color:var(--shiki-light, inherit)&quot;&gt;&lt;span style=&quot;color:var(--shiki-light, inherit)&quot;&gt;    }&lt;/span&gt;&lt;/span&gt;
+&lt;span style=&quot;color:var(--shiki-light, inherit)&quot;&gt;&lt;span style=&quot;color:var(--shiki-light, inherit)&quot;&gt;}&lt;/span&gt;&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt; 
+  &lt;/div&gt; 
+ &lt;/div&gt; 
+&lt;/div&gt;
+                                                                                &lt;/div&gt;
+                                                                            </description>
+            <link>https://www.oschina.net/news/334750</link>
+            <guid isPermaLink="false">https://www.oschina.net/news/334750</guid>
+            <pubDate>Sat, 08 Feb 2025 09:12:00 GMT</pubDate>
+            <author>來源: 投稿</author>
+        </item>
+        <item>
+            <title>螞蟻下場自研具身智能機器人</title>
+            <description>&lt;div class=&quot;content&quot;&gt;
+                                                                    
+                                                        &lt;p&gt;&lt;span style=&quot;color:#000000&quot;&gt;近日有招聘平台信息顯示，螞蟻集團開放招聘具身智能人形機器人系統和應用等崗位。&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;span style=&quot;color:#000000&quot;&gt;《科創板日報》記者從知情人士處獲悉，相關招聘主體為上海螞蟻靈波科技有限公司，該公司於 2024 年底註冊成立，註冊資本 1 億元。「螞蟻確實在做具身智能。」上述人士表示。&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;img height=&quot;611&quot; src=&quot;https://oscimg.oschina.net/oscnet/up-af588e63ca4b7228c8a7f06a89489f1b1eb.png&quot; width=&quot;300&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt;
+                                                                                &lt;/div&gt;
+                                                                            </description>
+            <link>https://www.oschina.net/news/334747</link>
+            <guid isPermaLink="false">https://www.oschina.net/news/334747</guid>
+            <pubDate>Sat, 08 Feb 2025 08:52:00 GMT</pubDate>
+            <author>來源: OSCHINA</author>
+        </item>
+        <item>
+            <title>雲風宣佈最新開源項目 Soluna：基於 Lua 的 2D 遊戲框架</title>
+            <description>&lt;div class=&quot;content&quot;&gt;
+                                                                    
+                                                        &lt;p&gt;知名遊戲開發者雲風&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fx.com%2Fcloudwu%2Fstatus%2F1891688746216484976&quot; target=&quot;_blank&quot;&gt;宣佈&lt;/a&gt;創建新的開源項目 Soluna，這是一個基於 Lua 的遊戲框架，支持使用多線程製作 2D 遊戲。&lt;/p&gt; 
+&lt;p&gt;&lt;img alt=&quot;&quot; src=&quot;https://oscimg.oschina.net/oscnet/up-1b8941a90590dd71f627b51d8eb00c0405d.png&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
+&lt;p&gt;雲風介紹了&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fgithub.com%2Fcloudwu%2Fsoluna%2Fdiscussions%2F1&quot; target=&quot;_blank&quot;&gt;創建 Soluna 的動機&lt;/a&gt;：&lt;/p&gt; 
+&lt;blockquote&gt; 
+ &lt;p&gt;我的遊戲項目不希望牽扯太多圖形技術（分散精力），主要是實踐 gameplay 方面的想法。策略向遊戲目前用 2d 就夠了，之前的 ANT 以 3d 為主，如果用來做 2d 遊戲，多了許多不必要的複雜性。&lt;/p&gt; 
+ &lt;p&gt;另外，新項目不需要主打手機平台，不必圍繞手機設備開發，所以 ANT 核心之一的 vfs 可以極大簡化。直接使用本地文件系統能加快工作流。2d 遊戲的美術資產製作簡單（僅僅圖片和非常有限數量的 shader ），也不需要複雜的資源編譯過程。&lt;/p&gt; 
+ &lt;p&gt;&lt;span style=&quot;color:#e67e22&quot;&gt;&lt;strong&gt;我已經半年沒有寫複雜的程序，而寫程序對我是一件非常有樂趣的事，開一個新坑會更有意思&lt;/strong&gt;&lt;/span&gt;。&lt;/p&gt; 
+&lt;/blockquote&gt; 
+&lt;p&gt;相關閲讀&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt;&lt;a href=&quot;https://www.oschina.net/news/291324&quot; target=&quot;news&quot;&gt;雲風從阿里離職，未來計劃製作 Windows 平台的獨立遊戲&lt;/a&gt;&lt;/li&gt; 
+ &lt;li&gt;&lt;a href=&quot;https://www.oschina.net/news/276078/cloudwu-ant-engine-open-source&quot; target=&quot;news&quot;&gt;雲風宣佈開源基於 Lua 的自研遊戲引擎 Ant Engine&lt;/a&gt;&lt;/li&gt; 
+&lt;/ul&gt;
+                                                                                &lt;/div&gt;
+                                                                            </description>
+            <link>https://www.oschina.net/news/334730</link>
+            <guid isPermaLink="false">https://www.oschina.net/news/334730</guid>
+            <pubDate>Sat, 08 Feb 2025 07:40:00 GMT</pubDate>
+            <author>來源: OSCHINA</author>
+        </item>
         <item>
             <title>百度 Q4 業績會實錄：DeepSeek 讓我們明白要將最優秀的模型開源</title>
             <description>&lt;div class=&quot;content&quot;&gt;
@@ -57,7 +289,7 @@
                                                                             </description>
             <link>https://www.oschina.net/news/334727</link>
             <guid isPermaLink="false">https://www.oschina.net/news/334727</guid>
-            <pubDate>Wed, 19 Feb 2025 07:17:09 GMT</pubDate>
+            <pubDate>Sat, 08 Feb 2025 07:16:00 GMT</pubDate>
             <author>來源: OSCHINA</author>
         </item>
         <item>
@@ -73,7 +305,7 @@
                                                                             </description>
             <link>https://www.oschina.net/news/334724</link>
             <guid isPermaLink="false">https://www.oschina.net/news/334724</guid>
-            <pubDate>Wed, 19 Feb 2025 07:15:09 GMT</pubDate>
+            <pubDate>Sat, 08 Feb 2025 07:14:00 GMT</pubDate>
             <author>來源: OSCHINA</author>
         </item>
         <item>
@@ -92,7 +324,7 @@
                                                                             </description>
             <link>https://www.oschina.net/news/334718</link>
             <guid isPermaLink="false">https://www.oschina.net/news/334718</guid>
-            <pubDate>Wed, 19 Feb 2025 06:54:09 GMT</pubDate>
+            <pubDate>Sat, 08 Feb 2025 06:53:00 GMT</pubDate>
             <author>來源: OSCHINA</author>
         </item>
         <item>
@@ -464,543 +696,6 @@
             <link>https://www.oschina.net/news/334648</link>
             <guid isPermaLink="false">https://www.oschina.net/news/334648</guid>
             <pubDate>Sat, 08 Feb 2025 01:11:00 GMT</pubDate>
-            <author>來源: 投稿</author>
-        </item>
-        <item>
-            <title>百度 2024 年總營收 1331 億元，對 AI 投資充滿信心</title>
-            <description>&lt;div class=&quot;content&quot;&gt;
-                                                                    
-                                                        &lt;p&gt;百度剛剛發佈了 2024 年 Q4 及全年財報：全年總營收 1331 億元，歸屬百度核心淨利潤達 234 億元，同比增長 21%。&lt;/p&gt; 
-&lt;p&gt;百度聯合創始人兼 CEO 李彥宏表示：&lt;/p&gt; 
-&lt;blockquote&gt; 
- &lt;p&gt;2024 年是百度從以互聯網為中心向以 AI 為先轉型的關鍵一年。我們的全棧 AI 能力得到了市場的廣泛認可，從而推動了人工智能雲的發展勢頭。在移動生態系統方面，我們堅定不移地推進 AI 轉型，使搜索更接近原生 AI 能力，從而提供更好的用户體驗。&lt;/p&gt; 
- &lt;p&gt;Apollo Go 經過多年的投入也充分驗證了其商業模式，為全球擴張和可擴展的輕資產戰略鋪平了道路。隨着我們的戰略遠見逐漸得到驗證，我們預計我們的 AI 投資將在 2025 年取得更顯著的成果。&lt;/p&gt; 
- &lt;p&gt;&lt;img height=&quot;1440&quot; src=&quot;https://static.oschina.net/uploads/space/2025/0218/184432_hRLQ_2720166.png&quot; width=&quot;1080&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
-&lt;/blockquote&gt; 
-&lt;p&gt;受 AI 驅動，百度智能雲呈高速增長，四季度收入同比增長達 26%。近期，百度智能雲成功點亮崑崙芯三代萬卡集羣，未來還將進一步點亮三萬卡集羣。&lt;/p&gt; 
-&lt;p&gt;12 月，文心大模型日均調用量達 16.5 億次，一年增長 33 倍。&lt;/p&gt; 
-&lt;p&gt;&lt;img height=&quot;1440&quot; src=&quot;https://static.oschina.net/uploads/space/2025/0218/184634_17th_2720166.png&quot; width=&quot;1080&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt;
-                                                                                &lt;/div&gt;
-                                                                            </description>
-            <link>https://www.oschina.net/news/334611</link>
-            <guid isPermaLink="false">https://www.oschina.net/news/334611</guid>
-            <pubDate>Fri, 07 Feb 2025 10:47:00 GMT</pubDate>
-            <author>來源: OSCHINA</author>
-        </item>
-        <item>
-            <title>開源策略是大模型最好的競爭策略</title>
-            <description>&lt;div class=&quot;content&quot;&gt;
-                                                                    
-                                                        &lt;p&gt;最近，開源中國 OSCHINA、Gitee 與 Gitee AI&lt;a href=&quot;https://www.oschina.net/news/330623/china-open-source-2024-annual-report&quot;&gt;聯合發佈了《2024 中國開源開發者報告》&lt;/a&gt;。&lt;/p&gt; 
-&lt;blockquote&gt; 
- &lt;p&gt;報告地址：&lt;a href=&quot;https://talk.gitee.com/report/china-open-source-2024-annual-report.pdf?fr=news0120&quot; target=&quot;_blank&quot;&gt;2024 中國開源開發者報告.pdf&lt;/a&gt;&lt;/p&gt; 
-&lt;/blockquote&gt; 
-&lt;p&gt;報告聚焦 AI 大模型領域，對過去一年的技術演進動態、技術趨勢、以及開源開發者生態數據進行多方位的總結和梳理。&lt;/p&gt; 
-&lt;p&gt;在第二章《TOP 101-2024 大模型觀點》中，資深開發者社區運營專家&lt;strong&gt;顧鈞&lt;/strong&gt;直言，開源策略是大模型最好的競爭策略，並分享了諸多思考：&lt;/p&gt; 
-&lt;ul&gt; 
- &lt;li&gt;大模型是一項較新技術，賽道的主要玩家在技術和商業化上有差距但未到無法翻盤程度，該賽道涵蓋模型訓練與服務，市場化程度高，商業化場景覆蓋 2B 與 2C。&lt;/li&gt; 
- &lt;li&gt;大模型賽道在海外是 「一超多強」，國內是 「多頭並舉」，元素豐富，為分析開源策略重要性提供素材。&lt;/li&gt; 
- &lt;li&gt;大模型競爭賽點包括技術先進性、C 端用户基數、依賴軟件的生態系統大小等，但技術先進性目前更多用於公關宣傳，大模型商業化還處於摸索階段。&lt;/li&gt; 
- &lt;li&gt;C 端用户沒有忠誠度且難以產生獨特粘性，大模型廠商維繫 C 端流量成本可能很高，且大模型賽道內卷，普通用户使用隨意性強、準確性要求不高。&lt;/li&gt; 
- &lt;li&gt;大模型生態系統大小是評價其能否勝出的關鍵指標，構建開發者生態有提供 API 雲服務和 「開源」 兩種方法，閉源大模型多采用前者，開源模型採用後者。&lt;/li&gt; 
- &lt;li&gt;拋開成本和易用性空談技術先進性是常見錯誤，大模型領域開源更有優勢，因為大模型賽道核心制約條件是成本太高，開源可省去拓展開發者生態的大模型運行成本。&lt;/li&gt; 
- &lt;li&gt;閉源大模型廠商維持雲資源、工程師資源支撐開發者調試需求，投入產出可能算不過來，且大模型對開發者粘性有限。&lt;/li&gt; 
- &lt;li&gt;大模型 API 雲服務接口簡單且高度一致，開發者構建應用時與具體大模型難形成強綁定，主動權在開發者。&lt;/li&gt; 
- &lt;li&gt;開源策略目標是以最小代價消耗閉源對手資源與心氣，是 &lt;strong&gt;「先為不可勝，以待敵之可勝」&lt;/strong&gt; 的策略。&lt;/li&gt; 
-&lt;/ul&gt; 
-&lt;p&gt;&lt;img height=&quot;1920&quot; src=&quot;https://static.oschina.net/uploads/space/2025/0218/175851_PK73_2720166.png&quot; width=&quot;1080&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
-&lt;p&gt;完整全文：&lt;a href=&quot;https://my.oschina.net/u/3859945/blog/17503844&quot; target=&quot;_blank&quot;&gt;https://my.oschina.net/u/3859945/blog/17503844&lt;/a&gt;&lt;/p&gt;
-                                                                                &lt;/div&gt;
-                                                                            </description>
-            <link>https://www.oschina.net/news/334605</link>
-            <guid isPermaLink="false">https://www.oschina.net/news/334605</guid>
-            <pubDate>Fri, 07 Feb 2025 10:04:00 GMT</pubDate>
-            <author>來源: OSCHINA</author>
-        </item>
-        <item>
-            <title>KubeSphere 產品生命週期管理政策公告正式發佈</title>
-            <description>&lt;div class=&quot;content&quot;&gt;
-                                                                                                                    
-                                                                                                                                                    &lt;p&gt;親愛的 KubeSphere 用户：&lt;/p&gt; 
-&lt;p&gt;在雲原生技術飛速發展的今天，KubeSphere 始終以技術創新和用户價值為核心，持續優化產品與服務。為更好地服務全球用户、保障業務連續性，基於多年的技術積累與用户反饋，我們正式對外公開發布 &lt;strong&gt;《KubeSphere 產品生命週期管理政策》&lt;/strong&gt;。通過清晰的支持策略與版本管理，助力用户高效規劃升級，規避潛在風險，實現業務可持續發展。&lt;/p&gt; 
-&lt;h2&gt;KubeSphere 產品生命週期管理政策公告&lt;/h2&gt; 
-&lt;p&gt;&lt;strong&gt;文件版本&lt;/strong&gt;: v1.0 &lt;strong&gt;更新時間&lt;/strong&gt;: 2025.02.14&lt;/p&gt; 
-&lt;h2&gt;概述&lt;/h2&gt; 
-&lt;p&gt;在快速變化的市場環境中，青雲科技針對 KubeSphere 雲原生產品與服務推出了產品生命週期管理政策。該政策旨在及時調整和終止不再符合市場需求的產品，以確保我們的產品始終滿足客户期望。通過清晰的產品終止方案，我們將為客户提供必要的支持與指導，降低業務風險，提升客户信任與滿意度。我們致力於推動技術創新，實現持續的業務發展，為客户創造更大的價值。&lt;/p&gt; 
-&lt;h2&gt;適用範圍&lt;/h2&gt; 
-&lt;p&gt;本文中描述的 KubeSphere 產品生命週期終止政策適用於以下 KubeSphere 雲原生產品與服務：&lt;/p&gt; 
-&lt;ul&gt; 
- &lt;li&gt;KubeSphere 開源版。涉及 v1、v2、v3 及 v4 版本。&lt;/li&gt; 
- &lt;li&gt;KubeSphere 企業版（包含更名前的青雲 QKCP）。涉及 v1、v2、v3 及 v4 版本。&lt;/li&gt; 
- &lt;li&gt;青雲容器平台（可信版）。涉及所有產品版本。&lt;/li&gt; 
-&lt;/ul&gt; 
-&lt;h2&gt;KubeSphere 產品版本定義&lt;/h2&gt; 
-&lt;p&gt;在 KubeSphere 產品版本控制中，軟件版本號通常用來表示其代表的發佈階段與更新內容。其中，版本號格式包括主版本號 (Major Version)、次版本號 (Minor Version)、補丁版本號 (Patch Version) 和熱修復版本號 (HotFix)。以下是這些術語的詳細説明：&lt;/p&gt; 
-&lt;p&gt;&lt;strong&gt;1. 主版本 (Major Version)&lt;/strong&gt;&lt;/p&gt; 
-&lt;ul&gt; 
- &lt;li&gt;主版本號的設置通常表示軟件有重大更新或變化，這可能包括全新的產品架構、功能模塊、操作體驗或與舊版本不再兼容的變更。&lt;/li&gt; 
- &lt;li&gt;主版本號的設置通常意味着版本號的其他部分（如：次版本號、補丁版本號）重置為零。例如，產品版本從 v3.4.1 升級到 v4.0.0。&lt;/li&gt; 
-&lt;/ul&gt; 
-&lt;p&gt;&lt;strong&gt;2. 次版本 (Minor Version)&lt;/strong&gt;&lt;/p&gt; 
-&lt;ul&gt; 
- &lt;li&gt;次版本號的設置表示軟件有一般的更新或改進，這可能包括新增功能模塊、性能改善、安全性強化或兼容性增強等。&lt;/li&gt; 
- &lt;li&gt;次版本號的設置通常意味着補丁版本號重置為零，但主版本號保持不變。例如，產品版本從 v4.1.2 升級到 v4.2.0。&lt;/li&gt; 
-&lt;/ul&gt; 
-&lt;p&gt;&lt;strong&gt;3. 補丁版本 (Patch Version)&lt;/strong&gt;&lt;/p&gt; 
-&lt;ul&gt; 
- &lt;li&gt;補丁版本號的設置表示軟件有較小的修復或優化，這通常用於修復錯誤、改進穩定性、或優化產品體驗等。&lt;/li&gt; 
- &lt;li&gt;補丁版本不會開啓新的產品生命週期。例如，KSE v4.1.3 將共享 KSE v4.1 的生命週期。&lt;/li&gt; 
- &lt;li&gt;補丁版本號的設置不會影響主版本號和次版本號。例如，產品版本從 v4.1.2 升級到 v4.1.3。&lt;/li&gt; 
-&lt;/ul&gt; 
-&lt;p&gt;&lt;strong&gt;4. 熱修復 (HotFix)&lt;/strong&gt;&lt;/p&gt; 
-&lt;ul&gt; 
- &lt;li&gt;熱修復是指對軟件進行的緊急修復，其通常用於解決如無法繼續的阻塞或嚴重的安全隱患導致客户業務停滯或沒有臨時方案的問題。&lt;/li&gt; 
- &lt;li&gt;熱修復僅就對應發現的嚴重問題進行修復和針對性測試，不會像上述三類正式產品版本一樣進行全量的測試驗證，是解決緊急問題的臨時性處置措施。最佳方案依然是升級至後續正式產品版本。&lt;/li&gt; 
- &lt;li&gt;熱修復通常不改變產品版本號的主要部分，僅在現有版本上立即應用。例如，如果產品版本 v3.5.0 存在嚴重錯誤，可能會發佈一個熱修復版本 3.5.0-hotfix-version-number。&lt;/li&gt; 
- &lt;li&gt;熱修復可能會在下一個補丁版本或次版本中被正式包含。&lt;/li&gt; 
-&lt;/ul&gt; 
-&lt;h2&gt;KubeSphere 服務與支持等級定義&lt;/h2&gt; 
-&lt;p&gt;在 KubeSphere 雲原生產品與服務中，通常會涉及到以下多種類型的服務與支持。根據等級的劃定，可分為：FS（Full Support，全面服務與支持）與 ES（Extended Support，延長服務與支持）。下方表格中」Y」表示」YES」，即支持；」N」表示」NO」，即不支持。表格中的數字標識表示有進一步的文字説明，詳見下方對應標號的內容。&lt;/p&gt; 
-&lt;p&gt;&amp;lt;center&amp;gt;&amp;lt;span style=&quot;color: #00A971;&quot;&amp;gt;KubeSphere 服務與支持等級表&amp;lt;/span&amp;gt;&amp;lt;/center&amp;gt;&lt;/p&gt; 
-&lt;table&gt; 
- &lt;thead&gt; 
-  &lt;tr&gt; 
-   &lt;th&gt;服務與支持類型&lt;/th&gt; 
-   &lt;th&gt;FS&lt;/th&gt; 
-   &lt;th&gt;ES&lt;/th&gt; 
-  &lt;/tr&gt; 
- &lt;/thead&gt; 
- &lt;tbody&gt; 
-  &lt;tr&gt; 
-   &lt;td&gt;服務與支持時長 (Duration: Months)&lt;/td&gt; 
-   &lt;td&gt;12-36&lt;/td&gt; 
-   &lt;td&gt;06-24&lt;/td&gt; 
-  &lt;/tr&gt; 
-  &lt;tr&gt; 
-   &lt;td&gt;問題分析 (Root-Cause Analysis)&amp;lt;sup&amp;gt;(1)&amp;lt;/sup&amp;gt;&lt;/td&gt; 
-   &lt;td&gt;Y&lt;/td&gt; 
-   &lt;td&gt;Y&lt;/td&gt; 
-  &lt;/tr&gt; 
-  &lt;tr&gt; 
-   &lt;td&gt;產品新特性 (Features)&lt;/td&gt; 
-   &lt;td&gt;Y&lt;/td&gt; 
-   &lt;td&gt;N&lt;/td&gt; 
-  &lt;/tr&gt; 
-  &lt;tr&gt; 
-   &lt;td&gt;產品版本升級 (Upgrade)&amp;lt;sup&amp;gt;(2), (3)&amp;lt;/sup&amp;gt;&lt;/td&gt; 
-   &lt;td&gt;Y&lt;/td&gt; 
-   &lt;td&gt;Y&amp;lt;sup&amp;gt;(2)&amp;lt;/sup&amp;gt;&lt;/td&gt; 
-  &lt;/tr&gt; 
-  &lt;tr&gt; 
-   &lt;td&gt;功能與體驗優化 (Enhancements)&lt;/td&gt; 
-   &lt;td&gt;Y&lt;/td&gt; 
-   &lt;td&gt;N&lt;/td&gt; 
-  &lt;/tr&gt; 
-  &lt;tr&gt; 
-   &lt;td&gt;普通缺陷修復 (General BugFix)&lt;/td&gt; 
-   &lt;td&gt;Y&lt;/td&gt; 
-   &lt;td&gt;N&lt;/td&gt; 
-  &lt;/tr&gt; 
-  &lt;tr&gt; 
-   &lt;td&gt;嚴重缺陷修復 (Critical BugFix)&amp;lt;sup&amp;gt;(4)&amp;lt;/sup&amp;gt;&lt;/td&gt; 
-   &lt;td&gt;Y&lt;/td&gt; 
-   &lt;td&gt;Y&lt;/td&gt; 
-  &lt;/tr&gt; 
-  &lt;tr&gt; 
-   &lt;td&gt;嚴重安全漏洞修復 (Critical Security Fix)&amp;lt;sup&amp;gt;(5)&amp;lt;/sup&amp;gt;&lt;/td&gt; 
-   &lt;td&gt;Y&lt;/td&gt; 
-   &lt;td&gt;Y&lt;/td&gt; 
-  &lt;/tr&gt; 
-  &lt;tr&gt; 
-   &lt;td&gt;兼容性支持 (Compatibility Support)&amp;lt;sup&amp;gt;(6)&amp;lt;/sup&amp;gt;&lt;/td&gt; 
-   &lt;td&gt;N&amp;lt;sup&amp;gt;(7)&amp;lt;/sup&amp;gt;&lt;/td&gt; 
-   &lt;td&gt;N&lt;/td&gt; 
-  &lt;/tr&gt; 
-  &lt;tr&gt; 
-   &lt;td&gt;遷移協助 (Migration Support)&lt;/td&gt; 
-   &lt;td&gt;N&lt;/td&gt; 
-   &lt;td&gt;N&lt;/td&gt; 
-  &lt;/tr&gt; 
- &lt;/tbody&gt; 
-&lt;/table&gt; 
-&lt;ul&gt; 
- &lt;li&gt;(1) 「問題分析」是指對非產品自身、從外部引入的第三方軟硬件帶來的問題進行分析與支持。如客户自己開發的業務系統、自採購硬件設備、自行部署的第三方軟件等，青雲科技僅承諾協助性分析與支持，不承諾能定位或解決此類非青雲科技提供的產品的問題。&lt;/li&gt; 
- &lt;li&gt;(2) 產品版本升級主要包括提供主版本、次版本、補丁版本或熱修復的升級。ES 等級下，僅針對「嚴重缺陷修復」與「嚴重安全漏洞修復」提供」熱修復「升級。&lt;/li&gt; 
- &lt;li&gt;(3) 一般情況下，產品不支持跳過任意主和次版本進行升級，需按版本號順序依次遞進升級。若遇不確定情況，請聯繫青雲科技客服人員或售後服務團隊，諮詢並評估專屬的產品升級方案。&lt;/li&gt; 
- &lt;li&gt;(4) 「嚴重缺陷」是指客户、產品經理、測試經理、產品技術負責人、技術支持工程師及項目經理等多方共同認定下，明確影響到客户業務連續性、穩定性、可靠性等的問題。&lt;/li&gt; 
- &lt;li&gt;(5) 「嚴重安全漏洞」是指 CVSS 大於等於 7 的安全漏洞問題。&lt;/li&gt; 
- &lt;li&gt;(6) 兼容性支持主要包括兼容 Kubernetes 新版本、新的 CPU 架構、新的 OS 類型或架構、OS 的新版本等。&lt;/li&gt; 
- &lt;li&gt;(7) 兼容性支持取決於軟件主版本、次版本發佈時的適配兼容情況，在後續的產品生命週期中不再改變。FS 不再新增兼容適配。&lt;/li&gt; 
- &lt;li&gt;(8) FS、ES 僅針對青雲科技的商業產品。ES 可視為 FS 的延續，不一定每個版本都可以額外訂閲 ES。ES 在經過青雲科技確認並同意的前提下最多允許訂閲兩次即兩年，之後不再提供續訂。若有需要，請聯繫青雲科技客服人員或售後服務團隊諮詢詳情。&lt;/li&gt; 
- &lt;li&gt;(9) FS、ES 默認通過如維保工單支持平台、遠程桌面、電話、微信、企業微信等遠程方式提供服務與支持。現場或駐場類型的服務與支持不在 FS、ES 範圍內，若有需要，請聯繫青雲科技客服人員或售後服務團隊諮詢詳情。&lt;/li&gt; 
- &lt;li&gt;(10) 青雲科技 KubeSphere 雲原生產品與服務的具體服務與支持範圍，可參考青雲科技售後服務團隊出具的 SLA 聲明。&lt;/li&gt; 
-&lt;/ul&gt; 
-&lt;h2&gt;KubeSphere 產品生命週期説明&lt;/h2&gt; 
-&lt;h3&gt;1. Standard 類型產品版本説明&lt;/h3&gt; 
-&lt;p&gt;&amp;lt;center&amp;gt;&amp;lt;span style=&quot;color: #00A971;&quot;&amp;gt;KubeSphere Standard 類型產品版本説明表&amp;lt;/span&amp;gt;&amp;lt;/center&amp;gt;&lt;/p&gt; 
-&lt;table&gt; 
- &lt;thead&gt; 
-  &lt;tr&gt; 
-   &lt;th&gt;里程碑階段&lt;/th&gt; 
-   &lt;th&gt;GA&lt;/th&gt; 
-   &lt;th&gt;EoFS&lt;/th&gt; 
-   &lt;th&gt;EoES&lt;/th&gt; 
-   &lt;th&gt;EoL&lt;/th&gt; 
-  &lt;/tr&gt; 
- &lt;/thead&gt; 
- &lt;tbody&gt; 
-  &lt;tr&gt; 
-   &lt;td&gt;&lt;strong&gt;中英文名稱&lt;/strong&gt;&lt;/td&gt; 
-   &lt;td&gt;General Availability, 一般可獲得性，即批量銷售日。&lt;/td&gt; 
-   &lt;td&gt;End of Full Support，停止全面服務與支持。&lt;/td&gt; 
-   &lt;td&gt;End of Extended Support，停止延長服務與支持。&lt;/td&gt; 
-   &lt;td&gt;End of Life，生命週期完全終止。&lt;/td&gt; 
-  &lt;/tr&gt; 
-  &lt;tr&gt; 
-   &lt;td&gt;&lt;strong&gt;定義&lt;/strong&gt;&lt;/td&gt; 
-   &lt;td&gt;GA 是產品生命週期開啓的日期。該日期表明該產品版本正式開始售賣，並可按需、批量交付到客户生產環境使用。&lt;/td&gt; 
-   &lt;td&gt;EoFS 是產品停止全面服務與支持的日期。產品停止提供補丁版本，僅針對「嚴重缺陷」與「嚴重安全漏洞」提供「熱修復」。同時，該日期表明產品（主版本、次版本）已不再銷售。&lt;/td&gt; 
-   &lt;td&gt;EoES 是產品停止延長服務與支持的日期。產品不再修復嚴重缺陷與嚴重安全漏洞。&lt;/td&gt; 
-   &lt;td&gt;EoL 是產品生命週期完全終止的日期。完全停止此產品（版本）的一切活動，包括商業售賣、版本升級（含熱修復）、各種等級的服務與支持等。青雲科技將不再為此產品（版本）上產生的任何問題負責。&lt;/td&gt; 
-  &lt;/tr&gt; 
-  &lt;tr&gt; 
-   &lt;td&gt;&lt;strong&gt;服務與支持等級&lt;/strong&gt;&lt;/td&gt; 
-   &lt;td&gt;FS（產品 GA 之後，根據客户的產品授權與維保訂閲情況提供）&lt;/td&gt; 
-   &lt;td&gt;ES（產品 EoFS 之後，產品不再提供標準的 FS。客户額外訂閲 ES 的情況後提供延長服務與支持）&lt;/td&gt; 
-   &lt;td&gt;——&lt;/td&gt; 
-   &lt;td&gt;——&lt;/td&gt; 
-  &lt;/tr&gt; 
-  &lt;tr&gt; 
-   &lt;td&gt;&lt;strong&gt;客户影響&lt;/strong&gt;&lt;/td&gt; 
-   &lt;td&gt;——&lt;/td&gt; 
-   &lt;td&gt;(1) 不建議客户使用已經 EoFS 的版本進行新建或擴容；&amp;lt;br&amp;gt;(2) 客户無法得到新的產品補丁版本；&amp;lt;br&amp;gt;(3) 推薦客户儘快升級使用全新 GA 的版本；&amp;lt;br&amp;gt;(4) 客户可在訂閲 ES 後享受對應等級服務與支持。&lt;/td&gt; 
-   &lt;td&gt;(1) 客户無法得到新的產品熱修復；&amp;lt;br&amp;gt;(2) 若繼續使用，客户必須進行版本升級；&amp;lt;br&amp;gt;(3) 對應產品（版本）官方文檔很快將無法查看；&amp;lt;br&amp;gt;(4) 對應產品（版本）安裝、升級等程序（鏡像 Chart 等）很快將無法使用。&lt;/td&gt; 
-   &lt;td&gt;(1) 客户無法查看對應產品（版本）官方文檔；&amp;lt;br&amp;gt;(2) 客户無法使用安裝、升級等程序（鏡像 Chart 等）；&amp;lt;br&amp;gt;(3) 客户無法獲得針對該產品（版本）的任何服務；&amp;lt;br&amp;gt;(4) 客户需自行維護或遷移業務環境，客户需考慮購買新的產品（版本）。&lt;/td&gt; 
-  &lt;/tr&gt; 
- &lt;/tbody&gt; 
-&lt;/table&gt; 
-&lt;h3&gt;2. Preview 類型產品及擴展組件版本説明&lt;/h3&gt; 
-&lt;p&gt;KubeSphere 雲原生產品與服務中，Preview 類型產品版本及擴展組件版本非售賣，不支持商用，僅供實驗室、開發測試等非正式生產環境體驗使用，不提供 SLA 與 EOS 商業保障。通常情況下，Preview 類型產品版本及擴展組件版本生命週期為 6 個月。&lt;/p&gt; 
-&lt;h2&gt;KubeSphere 產品生命週期時間表&lt;/h2&gt; 
-&lt;h3&gt;1. KubeSphere 企業版（包含更名前的青雲 QKCP、青雲容器平台（可信版））&lt;/h3&gt; 
-&lt;p&gt;&amp;lt;center&amp;gt;&amp;lt;span style=&quot;color: #00A971;&quot;&amp;gt;KubeSphere 企業版產品生命週期時間表&amp;lt;/span&amp;gt;&amp;lt;/center&amp;gt;&lt;/p&gt; 
-&lt;table&gt; 
- &lt;thead&gt; 
-  &lt;tr&gt; 
-   &lt;th&gt;版本號&lt;/th&gt; 
-   &lt;th&gt;版本類型&lt;/th&gt; 
-   &lt;th&gt;GA&lt;/th&gt; 
-   &lt;th&gt;EoFS&lt;/th&gt; 
-   &lt;th&gt;EoES&lt;/th&gt; 
-   &lt;th&gt;EoL&lt;/th&gt; 
-  &lt;/tr&gt; 
- &lt;/thead&gt; 
- &lt;tbody&gt; 
-  &lt;tr&gt; 
-   &lt;td&gt;KSE v4.2&lt;/td&gt; 
-   &lt;td&gt;Standard&lt;/td&gt; 
-   &lt;td&gt;——&lt;/td&gt; 
-   &lt;td&gt;——&lt;/td&gt; 
-   &lt;td&gt;——&lt;/td&gt; 
-   &lt;td&gt;——&lt;/td&gt; 
-  &lt;/tr&gt; 
-  &lt;tr&gt; 
-   &lt;td&gt;KSE v4.1&lt;/td&gt; 
-   &lt;td&gt;Standard&lt;/td&gt; 
-   &lt;td&gt;2024 年 04 月 16 日&lt;/td&gt; 
-   &lt;td&gt;2027 年 04 月 16 日&lt;/td&gt; 
-   &lt;td&gt;2028 年 10 月 16 日&lt;/td&gt; 
-   &lt;td&gt;2028 年 12 月 16 日&lt;/td&gt; 
-  &lt;/tr&gt; 
-  &lt;tr&gt; 
-   &lt;td&gt;KSE v4.0&lt;/td&gt; 
-   &lt;td&gt;Preview&lt;/td&gt; 
-   &lt;td&gt;2023 年 08 月 16 日&lt;/td&gt; 
-   &lt;td&gt;——&lt;/td&gt; 
-   &lt;td&gt;——&lt;/td&gt; 
-   &lt;td&gt;2024 年 06 月 28 日&lt;/td&gt; 
-  &lt;/tr&gt; 
-  &lt;tr&gt; 
-   &lt;td&gt;KSE v3.5&lt;/td&gt; 
-   &lt;td&gt;Standard&lt;/td&gt; 
-   &lt;td&gt;2023 年 10 月 13 日&lt;/td&gt; 
-   &lt;td&gt;2025 年 07 月 13 日&lt;/td&gt; 
-   &lt;td&gt;2026 年 01 月 13 日&lt;/td&gt; 
-   &lt;td&gt;2026 年 03 月 13 日&lt;/td&gt; 
-  &lt;/tr&gt; 
-  &lt;tr&gt; 
-   &lt;td&gt;KSE v3.4&lt;/td&gt; 
-   &lt;td&gt;Standard&lt;/td&gt; 
-   &lt;td&gt;2023 年 04 月 25 日&lt;/td&gt; 
-   &lt;td&gt;2025 年 05 月 25 日&lt;/td&gt; 
-   &lt;td&gt;2025 年 11 月 25 日&lt;/td&gt; 
-   &lt;td&gt;2025 年 12 月 25 日&lt;/td&gt; 
-  &lt;/tr&gt; 
-  &lt;tr&gt; 
-   &lt;td&gt;KSE v3.3&lt;/td&gt; 
-   &lt;td&gt;Standard&lt;/td&gt; 
-   &lt;td&gt;——&lt;/td&gt; 
-   &lt;td&gt;2025 年 03 月 31 日&lt;/td&gt; 
-   &lt;td&gt;2025 年 09 月 30 日&lt;/td&gt; 
-   &lt;td&gt;2025 年 10 月 31 日&lt;/td&gt; 
-  &lt;/tr&gt; 
-  &lt;tr&gt; 
-   &lt;td&gt;KSE v3.2 及之前版本&lt;/td&gt; 
-   &lt;td&gt;Standard&lt;/td&gt; 
-   &lt;td&gt;——&lt;/td&gt; 
-   &lt;td&gt;——&lt;/td&gt; 
-   &lt;td&gt;——&lt;/td&gt; 
-   &lt;td&gt;2025 年 03 月 31 日&lt;/td&gt; 
-  &lt;/tr&gt; 
- &lt;/tbody&gt; 
-&lt;/table&gt; 
-&lt;ul&gt; 
- &lt;li&gt;青雲容器平台（可信版）請參考 KubeSphere 企業版與青雲 QKCP 對應版本號的產品生命週期情況。&lt;/li&gt; 
- &lt;li&gt;KubeSphere 企業版 v4.2 之後，各擴展組件可能出現獨立發版、迭代的情況，但其產品生命週期不單獨設立，仍與 KubeSphere 企業版產品生命週期一致。&lt;/li&gt; 
-&lt;/ul&gt; 
-&lt;h3&gt;2. KubeSphere 開源版&lt;/h3&gt; 
-&lt;p&gt;&amp;lt;center&amp;gt;&amp;lt;span style=&quot;color: #00A971;&quot;&amp;gt;KubeSphere 開源版產品生命週期時間表&amp;lt;/span&amp;gt;&amp;lt;/center&amp;gt;&lt;/p&gt; 
-&lt;table&gt; 
- &lt;thead&gt; 
-  &lt;tr&gt; 
-   &lt;th&gt;版本號&lt;/th&gt; 
-   &lt;th&gt;版本類型&lt;/th&gt; 
-   &lt;th&gt;GA&lt;/th&gt; 
-   &lt;th&gt;EoL&lt;/th&gt; 
-  &lt;/tr&gt; 
- &lt;/thead&gt; 
- &lt;tbody&gt; 
-  &lt;tr&gt; 
-   &lt;td&gt;KubeSphere v4.2&lt;/td&gt; 
-   &lt;td&gt;Standard&lt;/td&gt; 
-   &lt;td&gt;——&lt;/td&gt; 
-   &lt;td&gt;——&lt;/td&gt; 
-  &lt;/tr&gt; 
-  &lt;tr&gt; 
-   &lt;td&gt;KubeSphere v4.1&lt;/td&gt; 
-   &lt;td&gt;Standard&lt;/td&gt; 
-   &lt;td&gt;2024 年 09 月 12 日&lt;/td&gt; 
-   &lt;td&gt;2027 年 09 月 12 日&lt;/td&gt; 
-  &lt;/tr&gt; 
-  &lt;tr&gt; 
-   &lt;td&gt;KubeSphere v3.4&lt;/td&gt; 
-   &lt;td&gt;Standard&lt;/td&gt; 
-   &lt;td&gt;——&lt;/td&gt; 
-   &lt;td&gt;2025 年 12 月 25 日&lt;/td&gt; 
-  &lt;/tr&gt; 
-  &lt;tr&gt; 
-   &lt;td&gt;KubeSphere v3.3 及之前版本&lt;/td&gt; 
-   &lt;td&gt;Standard&lt;/td&gt; 
-   &lt;td&gt;——&lt;/td&gt; 
-   &lt;td&gt;2025 年 10 月 31 日&lt;/td&gt; 
-  &lt;/tr&gt; 
- &lt;/tbody&gt; 
-&lt;/table&gt; 
-&lt;h2&gt;補充説明&lt;/h2&gt; 
-&lt;ul&gt; 
- &lt;li&gt;在 KubeSphere 企業版/開源版 v4 版本中，可能存在一些來自第三方合作伙伴的生態擴展組件。針對這些擴展組件，其產品生命週期管理策略請查看產品的相關説明文檔或聯繫對應產品提供商。&lt;/li&gt; 
- &lt;li&gt;因產品軟著與軟件採購退税等政策性原因，青雲科技銷售目錄與合同中所列舉的產品版本可能與實際交付部署的產品版本不一致。若出現該情況，一切都以客户首次採購、實際交付部署並頒發許可證授權的產品版本為準。&lt;/li&gt; 
- &lt;li&gt;在 KubeSphere 雲原生產品與服務的銷售中，當出現採購產品永久授權與多年 FS/ES 的場景時，其適用的版本可能不是採購當時的產品版本。此時以當前實際交付部署並頒發許可證授權的產品版本為準。&lt;/li&gt; 
- &lt;li&gt;上方「KubeSphere 產品生命週期時間表」中展示的時間，為各里程碑階段承諾服務與支持的最短時間。我們可能會基於產品版本質量、安裝部署人數、新產品（版本）研發情況等進行動態調整 EoFS/EoES/EoL 的時間。若有調整，我們將另行公告，歡迎關注。&lt;/li&gt; 
-&lt;/ul&gt; 
-&lt;h3&gt;注意事項&lt;/h3&gt; 
-&lt;ul&gt; 
- &lt;li&gt;第三方擴展組件：生命週期策略請以提供商文檔為準。&lt;/li&gt; 
- &lt;li&gt;版本交付一致性：實際授權版本以首次交付並頒發許可證的版本為準。&lt;/li&gt; 
- &lt;li&gt;動態調整説明：如遇產品迭代或用户需求變化，生命週期時間可能調整，請持續關注官方公告。&lt;/li&gt; 
-&lt;/ul&gt; 
-&lt;h3&gt;完整聲明全文&lt;/h3&gt; 
-&lt;p&gt;中英雙語全文請參見 KubeSphere 官網：&lt;/p&gt; 
-&lt;ul&gt; 
- &lt;li&gt; &lt;p&gt;&lt;strong&gt;全球站：&lt;/strong&gt;&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fkubesphere.io%2Fnews%2Fkubesphere-product-lifecycle-policy%2F&quot; target=&quot;_blank&quot;&gt;KubeSphere Product Lifecycle Policy&lt;/a&gt;&lt;/p&gt; &lt;/li&gt; 
- &lt;li&gt; &lt;p&gt;&lt;strong&gt;中文站：&lt;/strong&gt;&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fkubesphere.io%2Fzh%2Fnews%2Fkubesphere-product-lifecycle-policy%2F&quot; target=&quot;_blank&quot;&gt;KubeSphere 產品生命週期管理政策公告&lt;/a&gt;&lt;/p&gt; &lt;/li&gt; 
-&lt;/ul&gt; 
-&lt;h3&gt;關於 KubeSphere&lt;/h3&gt; 
-&lt;p&gt;KubeSphere （&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fkubesphere.io%EF%BC%89%E6%98%AF%E5%9C%A8&quot; target=&quot;_blank&quot;&gt;https://kubesphere.io）是在&lt;/a&gt; Kubernetes 之上構建的開源容器平台，提供全棧的 IT 自動化運維的能力，簡化企業的 DevOps 工作流。&lt;/p&gt; 
-&lt;p&gt;KubeSphere 已被 Aqara 智能家居、本來生活、東方通信、微宏科技、東軟、華雲、新浪、三一重工、華夏銀行、四川航空、國藥集團、微眾銀行、紫金保險、去哪兒網、中通、中國人民銀行、中國銀行、中國人保壽險、中國太平保險、中國移動、中國聯通、中國電信、天翼雲、中移金科、Radore、ZaloPay 等海內外數萬家企業採用。KubeSphere 提供了開發者友好的嚮導式操作界面和豐富的企業級功能，包括 Kubernetes 多雲與多集羣管理、DevOps (CI/CD)、應用生命週期管理、邊緣計算、微服務治理 (Service Mesh)、多租户管理、可觀測性、存儲與網絡管理、GPU support 等功能，幫助企業快速構建一個強大和功能豐富的容器雲平台。&lt;/p&gt; 
-&lt;p&gt;&amp;gt; 本文由博客一文多發平台 &lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fopenwrite.cn%3Ffrom%3Darticle_bottom&quot; target=&quot;_blank&quot;&gt;OpenWrite&lt;/a&gt; 發佈！&lt;/p&gt;
-                                                                                    &lt;/div&gt;
-                                                                            </description>
-            <link>https://my.oschina.net/u/4197945/blog/17646180</link>
-            <guid isPermaLink="false">https://my.oschina.net/u/4197945/blog/17646180</guid>
-            <pubDate>Fri, 07 Feb 2025 09:37:00 GMT</pubDate>
-            <author>原創</author>
-        </item>
-        <item>
-            <title>阿里巴巴在上海成立智信普惠科技公司</title>
-            <description>&lt;div class=&quot;content&quot;&gt;
-                                                                    
-                                                        &lt;p&gt;&lt;span style=&quot;color:#000000&quot;&gt;天眼查 App 顯示，上海智信普惠科技有限公司於 2025 年 2 月 17 日成立，位於上海市，是一家以從事軟件和信息技術服務業為主的企業。&lt;/span&gt;&lt;/p&gt; 
-&lt;p&gt;&lt;span style=&quot;color:#000000&quot;&gt;法定代表人為餘志乾，企業註冊資本 1000 萬人民幣。經營範圍含計算機軟硬件及輔助設備零售、網絡技術服務、信息技術諮詢服務、數字內容製作服務、數據處理服務、人工智能通用應用系統、人工智能應用軟件開發、互聯網信息服務等。&lt;/span&gt;&lt;/p&gt; 
-&lt;p&gt;&lt;span style=&quot;color:#000000&quot;&gt;股東信息顯示，該公司由阿里巴巴旗下廣州大魚快樂信息技術有限公司全資持股。&lt;/span&gt;&lt;/p&gt; 
-&lt;p&gt;&lt;img height=&quot;189&quot; src=&quot;https://oscimg.oschina.net/oscnet/up-50d477f860fc194e7c26bfc25727db08669.png&quot; width=&quot;700&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt;
-                                                                                &lt;/div&gt;
-                                                                            </description>
-            <link>https://www.oschina.net/news/334598</link>
-            <guid isPermaLink="false">https://www.oschina.net/news/334598</guid>
-            <pubDate>Fri, 07 Feb 2025 09:33:00 GMT</pubDate>
-            <author>來源: OSCHINA</author>
-        </item>
-        <item>
-            <title>Stanford 團隊展現 RWKV 多智能體優勢，UVa 團隊突破 RWKV 端側性能</title>
-            <description>&lt;div class=&quot;content&quot;&gt;
-                                                                    
-                                                        &lt;p&gt;近日 RWKV 生態新增來自海外名校的兩項工作：Stanford（斯坦福大學）團隊的 RWKV 多智能體研究，和 UVa（弗吉尼亞大學） 團隊的 RWKV 端側優化研究。&lt;/p&gt; 
-&lt;h2&gt;RWKV 多智能體強化學習&lt;/h2&gt; 
-&lt;ul&gt; 
- &lt;li&gt;開源項目地址：&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fsocialdeductionllm.github.io%2F&quot; target=&quot;_blank&quot;&gt;https://socialdeductionllm.github.io/&lt;/a&gt;&lt;/li&gt; 
- &lt;li&gt;論文：&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Farxiv.org%2Fabs%2F2502.06060&quot; target=&quot;_blank&quot;&gt;https://arxiv.org/abs/2502.06060&lt;/a&gt;&lt;/li&gt; 
-&lt;/ul&gt; 
-&lt;p&gt;四名斯坦福大學研究人員共同發佈了《Training Language Models for Social Deduction with Multi-Agent Reinforcement Learning》論文，研究&lt;strong&gt;使用多智能體強化學習&lt;/strong&gt;（multi-agent reinforcement learning）訓練 RWKV 模型，使其能&lt;strong&gt;通過自然語言交流&lt;/strong&gt;完成**《Among Us》遊戲**的推理過程並贏下游戲。&lt;/p&gt; 
-&lt;p&gt;論文已被 AAMAS 2025 主會（口頭報告）接收，論文作者在 RWKV Discord 頻道分享了這一消息，並分享了「&lt;strong&gt;為什麼使用 RWKV-4-World 模型&lt;/strong&gt;」。&lt;/p&gt; 
-&lt;ul&gt; 
- &lt;li&gt;&lt;strong&gt;為何選擇 RWKV 而非 Transformer？&lt;/strong&gt; 因為 RWKV 的顯存佔用恆定、理論上支持無限上下文長度。Among Us 遊戲單局軌跡可達數萬 token，Transformer 模型顯存佔用過高，而 RWKV 的循環結構通過 T-BPTT 實現無限上下文訓練，單 GPU 即可完成訓練（論文的實驗基於一張 48G 顯存的 A40 顯卡）&lt;/li&gt; 
- &lt;li&gt;&lt;strong&gt;為何使用 RWKV-4，而非性能更好的 RWKV-5/6/7 模型？&lt;/strong&gt; 研究在 2023 年夏季啓動，當時 RWKV-4 是唯一可用版本。團隊通過修改 RWKV-4 的 CUDA 內核優化計算效率，沒有時間適配 RWKV 新架構。未來計劃適配 RWKV-7，進一步提升模型性能。&lt;/li&gt; 
-&lt;/ul&gt; 
-&lt;p&gt;&lt;img alt=&quot;&quot; src=&quot;https://oscimg.oschina.net/oscnet/up-02983c1404f33542f90159bef9c5fdf2346.webp&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
-&lt;p&gt;接下來我們一起看看該工作的創新點，以及 RWKV 模型在論文中表現出來的強大性能：&lt;/p&gt; 
-&lt;h3&gt;遊戲規則&lt;/h3&gt; 
-&lt;blockquote&gt; 
- &lt;p&gt;《Among Us》是類似於狼人殺/鴨鵝殺的社交推理遊戲。&lt;/p&gt; 
- &lt;p&gt;遊戲規則：在一輛宇宙飛船上有&lt;strong&gt;船員&lt;/strong&gt;（Crewmates）和&lt;strong&gt;內鬼&lt;/strong&gt;（Impostors）兩種角色。內鬼的目標是暗中破壞飛船設施、殺死船員，並&lt;strong&gt;在討論時偽裝成普通船員&lt;/strong&gt;以避免被發現，船員的目標則是&lt;strong&gt;通過討論進行邏輯推理，然後投票淘汰內鬼&lt;/strong&gt;。&lt;/p&gt; 
-&lt;/blockquote&gt; 
-&lt;p&gt;&lt;img alt=&quot;&quot; src=&quot;https://oscimg.oschina.net/oscnet/up-0b88f3704e3b60ed6f4133f07c8ad866e18.png&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
-&lt;p&gt;下圖是論文中智能體在《Among Us》遊戲的循環示意圖，遊戲開始時同時向所有智能體發送觀察結果，然後在每個時間步從一組有效的行動中收集標記化的行動歷史。&lt;/p&gt; 
-&lt;p&gt;&lt;img alt=&quot;&quot; src=&quot;https://oscimg.oschina.net/oscnet/up-c38fda38f6c099df315a41dec73b26848b5.png&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
-&lt;h3&gt;無需人工數據，純 Self-Play&lt;/h3&gt; 
-&lt;p&gt;這項工作創新的地方在於&lt;strong&gt;完全不依賴人工標註數據&lt;/strong&gt;，而是通過&lt;strong&gt;純自我對抗學習（Self-Play）&lt;/strong&gt; 如環境反饋（投票結果、任務進度）和智能體（Agent）間交互來訓練 AI 的語言交流能力。AI 智能體通過多輪博弈，逐步學習如何在討論中提取關鍵信息，並形成自己的投票策略。&lt;/p&gt; 
-&lt;p&gt;完整的訓練框架引入了 &lt;strong&gt;RL + 聽説雙重訓練機制&lt;/strong&gt;。先通過強化學習（RL），使得 AI 在沒有人工數據示例的情況下學會如何行動。&lt;/p&gt; 
-&lt;blockquote&gt; 
- &lt;p&gt;以下是用於優化 AI 長期遊戲勝率的&lt;strong&gt;強化學習損失函數&lt;/strong&gt;，同時使用 &lt;strong&gt;KL 約束&lt;/strong&gt; 限制 AI 不能偏離自然語言分佈。&lt;/p&gt; 
-&lt;/blockquote&gt; 
-&lt;p&gt;&lt;img alt=&quot;&quot; src=&quot;https://oscimg.oschina.net/oscnet/up-1bb307c78419f8a009bcef196d0887c397e.png&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
-&lt;p&gt;此外，研究團隊引入了一種新的&lt;strong&gt;聽/説雙重獎勵機制&lt;/strong&gt;：&lt;/p&gt; 
-&lt;ul&gt; 
- &lt;li&gt;&lt;strong&gt;聽力獎勵（Listening Reward）&lt;/strong&gt;：聽力的損失函數：&lt;img alt=&quot;&quot; src=&quot;https://oscimg.oschina.net/oscnet/up-7fc4544ddeccf7c24fb8efec492c74509f0.png&quot; referrerpolicy=&quot;no-referrer&quot;&gt; ，用於訓練 AI 通過討論預測環境信息，從而預測誰是內鬼。&lt;/li&gt; 
-&lt;/ul&gt; 
-&lt;p&gt;融合聽力獎勵後，強化學習的損失函數如下：&lt;/p&gt; 
-&lt;p&gt;&lt;img alt=&quot;&quot; src=&quot;https://oscimg.oschina.net/oscnet/up-576c520ddcf32c888d2379a877c54178f71.png&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
-&lt;ul&gt; 
- &lt;li&gt;&lt;strong&gt;表達獎勵（Speaking Reward）&lt;/strong&gt;：獎勵 AI 生成&lt;strong&gt;能影響隊友決策&lt;/strong&gt;的消息，好的發言會獲得更高的獎勵&lt;/li&gt; 
-&lt;/ul&gt; 
-&lt;p&gt;&lt;img alt=&quot;&quot; src=&quot;https://oscimg.oschina.net/oscnet/up-c2a008d036b28c097870a2f5bda300801f6.png&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
-&lt;p&gt;融合了 RL + 聽説雙重獎勵後，用於訓練智能體的強化學習損失函數如下：&lt;/p&gt; 
-&lt;p&gt;&lt;img alt=&quot;&quot; src=&quot;https://oscimg.oschina.net/oscnet/up-5d895b7a72f4c08f0ea1364b96b6d292b4a.png&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
-&lt;p&gt;但&lt;strong&gt;RL 算法非常善於 Hack 規則的漏洞&lt;/strong&gt;。如果不加幹預，智能體可能會&lt;strong&gt;抓住 Among Us 遊戲規則的漏洞來「作弊」並進入失效模式（Failure Modes）&lt;/strong&gt;，比如船員們使用非自然語言來「對暗號」（非自然語言交流），或者在討論階段集體沉默等內鬼説話（作弊合作）等。&lt;/p&gt; 
-&lt;h3&gt;失效模式與解決方案&lt;/h3&gt; 
-&lt;p&gt;為了避免模型偏離自然語言的軌道或偏離任務目標，作者團隊採取了一些巧妙的解決方案：&lt;/p&gt; 
-&lt;ul&gt; 
- &lt;li&gt;&lt;strong&gt;KL 約束&lt;/strong&gt;：為了避免模型在討論過程中「跑偏」，團隊在訓練中加入了 KL 約束，強制模型始終保持使用自然語言進行交流&lt;/li&gt; 
- &lt;li&gt;&lt;strong&gt;凍結部分智能體&lt;/strong&gt;：為了防止模型在訓練過程中學會不自然的策略（比如大家都不發言，只等內鬼發言），研究團隊選擇凍結部分智能體，讓它不參與策略調整，從而避免了「集體擺爛」的現象&lt;/li&gt; 
- &lt;li&gt;&lt;strong&gt;世界建模損失（World Modeling Loss）&lt;/strong&gt;：為了確保模型在每次討論時都能記住重要的上下文信息，論文引入了世界建模損失：&lt;/li&gt; 
-&lt;/ul&gt; 
-&lt;p&gt;&lt;img alt=&quot;&quot; src=&quot;https://oscimg.oschina.net/oscnet/up-6ab0ff0c1f9563ddec1fc4028d4f477870f.png&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
-&lt;p&gt;世界建模損失用於幫助智能體&lt;strong&gt;學習更長期、更合理的策略&lt;/strong&gt;，避免出現像&lt;strong&gt;等待策略&lt;/strong&gt;（Waiting Strategy，智能體一直待在起始房間不動，然後投票淘汰移動過的玩家）等退化現象。這些策略雖然在短期內有效，但嚴重破壞了遊戲的真實性和挑戰性。&lt;/p&gt; 
-&lt;p&gt;最終，&lt;strong&gt;完整的損失函數&lt;/strong&gt;結合了&lt;strong&gt;強化學習（RL）、聽力（Listening）、表達（Speaking）、世界建模（WM）&lt;/strong&gt;：&lt;/p&gt; 
-&lt;p&gt;&lt;img alt=&quot;&quot; src=&quot;https://oscimg.oschina.net/oscnet/up-a294cb582f4032308a32934f5867d528edc.png&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
-&lt;p&gt;通過新穎的「聽説獎勵」 結合 KL 約束和世界建模損失等優化，斯坦福團隊的研究突破了 RL 傳統上的侷限，訓練出來的 $\text {RWKV}_{RL + L + S}$ 模型在社交推理任務中展現出了&lt;strong&gt;更接近人類的行為模式&lt;/strong&gt;，為多智能體協作和複雜場景下的語言模型訓練提供了新範式。&lt;/p&gt; 
-&lt;h3&gt;RWKV 模型：勝率碾壓 + 類人行為湧現&lt;/h3&gt; 
-&lt;p&gt;論文選擇 RWKV-4-World 模型作為語言模型基座，實驗結果驗證了其強大性能：&lt;/p&gt; 
-&lt;p&gt;&lt;strong&gt;1. 勝率碾壓&lt;/strong&gt;&lt;/p&gt; 
-&lt;p&gt;完整訓練框架（RL + 聽説）的 &lt;img alt=&quot;&quot; src=&quot;https://oscimg.oschina.net/oscnet/up-b4c7cc6029197805d2a1990e222c0876327.png&quot; referrerpolicy=&quot;no-referrer&quot;&gt; 模型（RWKV-4-World-1.5B）， &lt;strong&gt;Among US 遊戲勝率是傳統強化學習模型的 2 倍&lt;/strong&gt;，&lt;strong&gt;且優於 4 倍參數量的 RWKV 基底模型（RWKV-4-World-7B）&lt;/strong&gt;。&lt;/p&gt; 
-&lt;p&gt;&lt;img alt=&quot;&quot; src=&quot;https://oscimg.oschina.net/oscnet/up-65d89373722bae0d1baa0845b81a2c8516e.png&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
-&lt;blockquote&gt; 
- &lt;p&gt;上圖：不同算法訓練的模型在基礎環境（2 × 2 網格，每名隊員 4 項任務，共 5 名玩家）中的勝率，經過完整框架訓練的 RWKV 模型（橙色）勝率大幅領先傳統 RL 模型（淺灰色）。&lt;/p&gt; 
-&lt;/blockquote&gt; 
-&lt;p&gt;在未訓練過的環境配置中（如不同地圖佈局、任務數量），RWKV 模型仍能保持高勝率，展現了強大的泛化能力。&lt;/p&gt; 
-&lt;p&gt;&lt;img alt=&quot;&quot; src=&quot;https://oscimg.oschina.net/oscnet/up-37b7ac0067fd82298bcbd9f8e9653fcfd9d.png&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
-&lt;blockquote&gt; 
- &lt;p&gt;上圖：使用不同算法訓練的 AI 船員，在不同環境配置下的獲勝率，環境修改包括更改遊戲地圖形狀、任務數量和玩家數量。&lt;/p&gt; 
-&lt;/blockquote&gt; 
-&lt;p&gt;&lt;strong&gt;2. 類人行為湧現&lt;/strong&gt;&lt;/p&gt; 
-&lt;p&gt;AI 學會指控嫌疑人（如「Player Green 在屍體房間離開」），會提供證據支持自己的觀點。甚至會編造謊言，試圖誤導隊友（類似人類玩家策略）。&lt;/p&gt; 
-&lt;p&gt;&lt;strong&gt;3. 強適應能力&lt;/strong&gt;&lt;/p&gt; 
-&lt;p&gt;值得一提的是，遊戲裏的內鬼也是特別強化（反指控、轉移焦點等）過的，其損失函數：&lt;/p&gt; 
-&lt;p&gt;&lt;img alt=&quot;&quot; src=&quot;https://oscimg.oschina.net/oscnet/up-53e0a4041e0bdd1e07d38ec3634d7acb668.png&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
-&lt;p&gt;然而，面對自適應訓練的內鬼，RWKV 船員仍能保持 50% 以上勝率，展現了強大的抗幹擾能力。&lt;/p&gt; 
-&lt;p&gt;實驗數據驗證了 RWKV 在&lt;strong&gt;多智能體社交推理&lt;/strong&gt;中的卓越性能，更揭示了 RWKV 在&lt;strong&gt;輕量化部署與長序列決策場景&lt;/strong&gt;的獨特優勢。&lt;/p&gt; 
-&lt;h3&gt;未來工作&lt;/h3&gt; 
-&lt;p&gt;論文作者表示後續將開展更多 RWKV 相關研究，包括：&lt;/p&gt; 
-&lt;ul&gt; 
- &lt;li&gt;訓練 RWKV 模型去&lt;strong&gt;塑造其他 LLM 智能體的行為和邏輯&lt;/strong&gt;&lt;/li&gt; 
- &lt;li&gt;訓練 RWKV &lt;strong&gt;向人類解釋多智能體的團隊決策邏輯&lt;/strong&gt;&lt;/li&gt; 
- &lt;li&gt;&lt;strong&gt;高效的世界建模&lt;/strong&gt;&lt;/li&gt; 
- &lt;li&gt;利用 RWKV 長序列處理能力&lt;strong&gt;分析市場數據&lt;/strong&gt;，實現金融時序預測&lt;/li&gt; 
- &lt;li&gt;&lt;strong&gt;RWKV 4/5/6/7 的純 Jax 實現&lt;/strong&gt;，實現更高效訓練和推理&lt;/li&gt; 
-&lt;/ul&gt; 
-&lt;p&gt;此外，作者認為 &lt;strong&gt;RWKV 的 &lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Frwkv.cn%2FRWKV-Fine-Tuning%2FState-Tuning&quot; target=&quot;_blank&quot;&gt;state tuning&lt;/a&gt; 在多智能體的研究上擁有極大的優勢。&lt;/strong&gt; 通過切換 state 來改變智能體的「基因」，遠比切換模型、切換 LoRA 等方式更方便、更無縫。&lt;/p&gt; 
-&lt;h2&gt;RWKV 端側部署優化&lt;/h2&gt; 
-&lt;p&gt;UVa（弗吉尼亞大學） 團隊提出了 &lt;strong&gt;RWKV-Lite&lt;/strong&gt;，一套從模型架構優化到後訓練壓縮的&lt;strong&gt;高效 RWKV 模型壓縮技術&lt;/strong&gt;。&lt;/p&gt; 
-&lt;p&gt;在保持&lt;strong&gt;模型準確率&lt;/strong&gt;基本不變的情況下，RWKV-Lite 將內存佔用降低了 &lt;strong&gt;3.4 – 5 倍&lt;/strong&gt;；若結合量化，整體內存需求甚至可降低 &lt;strong&gt;10&lt;/strong&gt; 倍。與此同時，該方法帶來的計算開銷微乎其微，非常適合邊緣部署。&lt;/p&gt; 
-&lt;p&gt;該論文已被機器學習頂會 ICML 2024 收錄。論文地址：&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Farxiv.org%2Fhtml%2F2412.10856v3&quot; target=&quot;_blank&quot;&gt;https://arxiv.org/html/2412.10856v3&lt;/a&gt;&lt;/p&gt; 
-&lt;p&gt;&lt;img alt=&quot;&quot; src=&quot;https://oscimg.oschina.net/oscnet/up-f08360bb6b5f456bbe5d984a3838d621393.png&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
-&lt;p&gt;RWKV-Lite 的壓縮方向大致有以下三點：&lt;/p&gt; 
-&lt;ol&gt; 
- &lt;li&gt;&lt;strong&gt;低秩近似（Low-Rank Approximation）&lt;/strong&gt;&lt;/li&gt; 
-&lt;/ol&gt; 
-&lt;p&gt;針對 RWKV 塊中的投影權重矩陣（如 &lt;code&gt;channel-mix&lt;/code&gt; 和 &lt;code&gt;time-mix&lt;/code&gt; 層），通過 &lt;strong&gt;奇異值分解（SVD）&lt;/strong&gt; 將大型矩陣拆分為兩個低秩矩陣，減少參數量的同時保留關鍵信息。&lt;/p&gt; 
-&lt;p&gt;實驗顯示，低秩壓縮可實現 4 倍參數壓縮，且可以通過持續訓練（Continual Training）恢復精度損失。&lt;/p&gt; 
-&lt;ol&gt; 
- &lt;li&gt;&lt;strong&gt;稀疏性利用（Sparsity Exploitation）&lt;/strong&gt;&lt;/li&gt; 
-&lt;/ol&gt; 
-&lt;p&gt;發現 RWKV 的 FFN 層存在顯著稀疏性（67%-83% 的神經元激活率為零），提出混合預測器（MLP + 1-bit 量化）動態加載關鍵神經元權重，減少推理時內存佔用。&lt;/p&gt; 
-&lt;ol&gt; 
- &lt;li&gt;&lt;strong&gt;嵌入緩存與分層分類頭&lt;/strong&gt;&lt;/li&gt; 
-&lt;/ol&gt; 
-&lt;ul&gt; 
- &lt;li&gt;嵌入緩存：通過緩存高頻詞嵌入，減少對大型嵌入層的依賴&lt;/li&gt; 
- &lt;li&gt;分層分類頭：將詞彙表聚類，僅加載與當前預測相關的詞權重&lt;/li&gt; 
-&lt;/ul&gt; 
-&lt;blockquote&gt; 
- &lt;p&gt;下圖是論文演示在一個可穿戴設備上運行壓縮後的 RWKV 模型（帶可視化屏幕），開發板型號為 Orange Pi Zero 2W，板載 CPU 1.5GHz 4x Cortex-A53，內存 4GB 。&lt;/p&gt; 
-&lt;/blockquote&gt; 
-&lt;p&gt;&lt;img alt=&quot;&quot; src=&quot;https://oscimg.oschina.net/oscnet/up-2fa17ed229ff21b66bd05d7600daba391fc.png&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
-&lt;h2&gt;歡迎開展 RWKV 學術研究&lt;/h2&gt; 
-&lt;p&gt;我們歡迎大家基於最新最強的 RWKV-7 架構開展學術研究！&lt;/p&gt; 
-&lt;p&gt;最新發布的 RWKV-7 2.9B 模型在各類評測中表現出色，其英文和多語言能力顯著超越所有同尺寸模型（英文評測 71.1%，多語言評測 62.3%），超越了包括 Llama 3.2 3B（英文評測 68.7%，多語言評測 57.3%）、Qwen2.5 3B（英文評測 68.6%，多語言評測 57.0%）等知名優秀開源模型。&lt;/p&gt; 
-&lt;p&gt;此外，我們為 RWKV 學術研究&lt;strong&gt;提供全面的支持和激勵&lt;/strong&gt;，包括：&lt;/p&gt; 
-&lt;ul&gt; 
- &lt;li&gt;力所能及的&lt;strong&gt;技術支持&lt;/strong&gt;和&lt;strong&gt;算力支持&lt;/strong&gt;，具體支持請在公眾號內發消息聯繫我們溝通&lt;/li&gt; 
- &lt;li&gt;對 RWKV 學術研究提供&lt;strong&gt;生態獎金&lt;/strong&gt;，詳情查看：&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fmp.weixin.qq.com%2Fs%2FUeKemVw9HnTU6FBL1iM0bg&quot; target=&quot;_blank&quot;&gt;RWKV 2025 生態內容徵集大賽 &lt;/a&gt;&lt;/li&gt; 
-&lt;/ul&gt; 
-&lt;blockquote&gt; 
- &lt;p&gt;&lt;strong&gt;微軟已經將 RWKV 全面引入 Windows 10/11 系統&lt;/strong&gt;，足以證明 RWKV 的端側優勢。&lt;/p&gt; 
-&lt;/blockquote&gt; 
-&lt;p&gt;&lt;img alt=&quot;&quot; src=&quot;https://oscimg.oschina.net/oscnet/up-a4517caf796e82678e9381efeae1b07dd15.png&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt;
-                                                                                &lt;/div&gt;
-                                                                            </description>
-            <link>https://www.oschina.net/news/334597</link>
-            <guid isPermaLink="false">https://www.oschina.net/news/334597</guid>
-            <pubDate>Fri, 07 Feb 2025 09:31:00 GMT</pubDate>
-            <author>來源: 投稿</author>
-        </item>
-        <item>
-            <title>2025 年 xbatis 誕生了，它是一款超級好用的基於 mybatis 的 ORM 框架，沒有之一！！！</title>
-            <description>&lt;div class=&quot;content&quot;&gt;
-                                                                    
-                                                        &lt;div&gt; 
- &lt;h1&gt;官網：&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fxbatis.cn&quot; target=&quot;_blank&quot;&gt;https://xbatis.cn&lt;/a&gt;&lt;/h1&gt; 
- &lt;h1&gt;xbatis 是什麼&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fxbatis.cn%2Fzh-CN%2Fintro%2FwhatIs.html%23xbatis-%25E6%2598%25AF%25E4%25BB%2580%25E4%25B9%2588&quot; target=&quot;_blank&quot;&gt;&lt;/a&gt;&lt;/h1&gt; 
- &lt;p style=&quot;margin-left:0; margin-right:0&quot;&gt;xbatis 是一款基於 mybatis 的 ORM 框架，ORM 程度非常高，幾乎不需要再寫 SQL;&lt;br&gt; &lt;br&gt; 同時內置多種&lt;strong&gt;數據庫函數&lt;/strong&gt;,具有良好的不同數據庫遷移能力,注意它可以&lt;strong&gt;同時支持多種數據庫！！！&lt;/strong&gt;，一款真正意義上的 ORM 框架&lt;br&gt; &lt;br&gt; xbatis 具有良好程序設計，非常穩定（經過 testcase 驗證）；優雅的 API、簡而易懂的方法操作，讓你寫代碼和寫 SQL 幾乎一樣，學習成本幾乎為零。&lt;br&gt; &lt;br&gt; 功能強大，支持&lt;span&gt;&amp;nbsp;&lt;/span&gt;&lt;strong&gt;多表/子查詢,自動分頁，優雅的 XML 自動分頁&lt;/strong&gt;等眾多功能！！&lt;/p&gt; 
- &lt;h1&gt;特徵&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fxbatis.cn%2Fzh-CN%2Fintro%2FwhatIs.html%23%25E7%2589%25B9%25E5%25BE%2581&quot; target=&quot;_blank&quot;&gt;&lt;/a&gt;&lt;/h1&gt; 
- &lt;h2&gt;1、很輕量,非常輕量&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fxbatis.cn%2Fzh-CN%2Fintro%2FwhatIs.html%23_1%25E3%2580%2581%25E5%25BE%2588%25E8%25BD%25BB%25E9%2587%258F-%25E9%259D%259E%25E5%25B8%25B8%25E8%25BD%25BB%25E9%2587%258F&quot; target=&quot;_blank&quot;&gt;&lt;/a&gt;&lt;/h2&gt; 
- &lt;p style=&quot;margin-left:0; margin-right:0&quot;&gt;輕量級封裝 mybatis。 其他框架都比較深度修改了 mybatis 源碼。&lt;/p&gt; 
- &lt;h2&gt;2、高性能&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fxbatis.cn%2Fzh-CN%2Fintro%2FwhatIs.html%23_2%25E3%2580%2581%25E9%25AB%2598%25E6%2580%25A7%25E8%2583%25BD&quot; target=&quot;_blank&quot;&gt;&lt;/a&gt;&lt;/h2&gt; 
- &lt;p style=&quot;margin-left:0; margin-right:0&quot;&gt;對比其他 mybatis 框架，性能不差，接近最優。&lt;/p&gt; 
- &lt;h2&gt;3、靈活方便&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fxbatis.cn%2Fzh-CN%2Fintro%2FwhatIs.html%23_3%25E3%2580%2581%25E7%2581%25B5%25E6%25B4%25BB%25E6%2596%25B9%25E4%25BE%25BF&quot; target=&quot;_blank&quot;&gt;&lt;/a&gt;&lt;/h2&gt; 
- &lt;p style=&quot;margin-left:0; margin-right:0&quot;&gt;高度實現 ORM，查詢 API 零學習成本。&lt;/p&gt; 
- &lt;h2&gt;4、高可用&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fxbatis.cn%2Fzh-CN%2Fintro%2FwhatIs.html%23_4%25E3%2580%2581%25E9%25AB%2598%25E5%258F%25AF%25E7%2594%25A8&quot; target=&quot;_blank&quot;&gt;&lt;/a&gt;&lt;/h2&gt; 
- &lt;p style=&quot;margin-left:0; margin-right:0&quot;&gt;可應付 90% 的 SQL 需求。&lt;/p&gt; 
- &lt;h2&gt;5、可靠，安全&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fxbatis.cn%2Fzh-CN%2Fintro%2FwhatIs.html%23_5%25E3%2580%2581%25E5%258F%25AF%25E9%259D%25A0-%25E5%25AE%2589%25E5%2585%25A8&quot; target=&quot;_blank&quot;&gt;&lt;/a&gt;&lt;/h2&gt; 
- &lt;p style=&quot;margin-left:0; margin-right:0&quot;&gt;沒有過於複雜的設計，但是 API 卻很豐富，足夠使用！&lt;br&gt; 其他框架或多或少設計的過於複雜，反而容易出現各種問題。&lt;/p&gt; 
- &lt;h2&gt;6、優秀的分頁和 SQL 優化能力&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fxbatis.cn%2Fzh-CN%2Fintro%2FwhatIs.html%23_6%25E3%2580%2581%25E4%25BC%2598%25E7%25A7%2580%25E7%259A%2584%25E5%2588%2586%25E9%25A1%25B5%25E5%2592%258Csql%25E4%25BC%2598%25E5%258C%2596%25E8%2583%25BD%25E5%258A%259B&quot; target=&quot;_blank&quot;&gt;&lt;/a&gt;&lt;/h2&gt; 
- &lt;p style=&quot;margin-left:0; margin-right:0&quot;&gt;自動過濾多餘的 left join 、count 查詢，自動去除 order by ，無效的 left join&lt;br&gt; 以及 select 部分替換成 select count(&lt;em&gt;) 或 select 1 後，在 select count(&lt;/em&gt;)&lt;br&gt; &lt;br&gt; 內置分頁功能，超級牛逼！&lt;/p&gt; 
-&lt;/div&gt;
-                                                                                &lt;/div&gt;
-                                                                            </description>
-            <link>https://www.oschina.net/news/334593</link>
-            <guid isPermaLink="false">https://www.oschina.net/news/334593</guid>
-            <pubDate>Fri, 07 Feb 2025 09:14:00 GMT</pubDate>
             <author>來源: 投稿</author>
         </item>
     </channel>
