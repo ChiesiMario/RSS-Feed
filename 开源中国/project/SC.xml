@@ -9,8 +9,492 @@
         <generator>RSSHub</generator>
         <webMaster>contact@rsshub.app (RSSHub)</webMaster>
         <language>en</language>
-        <lastBuildDate>Wed, 05 Mar 2025 21:50:43 GMT</lastBuildDate>
+        <lastBuildDate>Thu, 06 Mar 2025 02:44:01 GMT</lastBuildDate>
         <ttl>5</ttl>
+        <item>
+            <title>夜莺监控巨大革新：抽象出通知规则，增强告警通知的灵活性</title>
+            <description>&lt;div class=&quot;content&quot;&gt;
+                                                                    
+                                                        &lt;p style=&quot;color:#333333; text-align:left&quot;&gt;以防读者不了解夜莺，开头先做个介绍：&lt;/p&gt; 
+&lt;blockquote&gt; 
+ &lt;p style=&quot;color:#333333&quot;&gt;夜莺监控，英文名字 Nightingale，是一款侧重告警的监控类开源项目。类似 Grafana 的数据源集成方式，夜莺也是对接多种既有的数据源，不过 Grafana 侧重在可视化，夜莺是侧重在告警引擎。比如把 Prometheus、VictoriaMetrics、ElasticSearch 等作为数据源接入夜莺，即可在夜莺里配置告警规则做指标、日志的告警。当然了，夜莺也不止做告警，还提供了 ad-hoc 查询、指标视图、仪表盘等可视化能力，不过在可视化方面没有 Grafana 道行深。配合 Categraf 采集器，夜莺可以做到一站式监控。其项目地址是：&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fgithub.com%2Fccfos%2Fnightingale&quot; target=&quot;_blank&quot;&gt;https://github.com/ccfos/nightingale&lt;/a&gt;&lt;/p&gt; 
+&lt;/blockquote&gt; 
+&lt;p style=&quot;color:#333333; text-align:left&quot;&gt;近期夜莺发版 v8.0.0-beta7，这个版本最重要的变化是抽象出通知规则，增强告警通知的灵活性。为啥做这个改动？主要是解决如下需求/问题：&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt;告警规则中启用抑制之后，通知媒介仍然只能写死的问题。之前版本的告警规则中如果启用了抑制规则，通常意味着，不同的阈值想要使用不同的级别，进而使用不同的通知媒介发送告警，比如 Critical 级别的告警使用电话、短信，Info 级别的告警使用 Email。但是之前版本的告警规则中，通知媒介是写死的，无法做到不同的级别不同的媒介。&lt;/li&gt; 
+ &lt;li&gt;接入电话、短信等通知方式不方便。这次我们提供了通用的 HTTP、脚本发送方式，HTTP 的参数、Header、Body 都可以自定义，这样一来，可以更方便接入不同通知媒介了。&lt;/li&gt; 
+ &lt;li&gt;之前的通知方式和告警规则强耦合，不方便改动。新版本抽象了「通知规则」的概念，告警规则直接关联的是通知规则，通知规则中可以定义灵活的发送方式。每个小研发团队通常只需要定义一个通知规则，然后所有的告警规则都关联这个通知规则即可。后面改动通知规则也是非常方便的，改一个地方即可影响所有告警规则。&lt;/li&gt; 
+ &lt;li&gt;之前版本消息模板比较死板，每个类型的通知媒介只能固定使用一个消息模板。新版本支持消息模板自定义，而且每个通知媒介可以关联不同的消息模板，比如 DBA 团队和，大数据，团队都要使用钉钉机器人发告警，但是希望使用不同的消息模板，现在就可以做到了。&lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;p style=&quot;color:#333333; text-align:left&quot;&gt;新版本的告警事件发送逻辑，整体流程变成如下这个样子：&lt;/p&gt; 
+&lt;p style=&quot;color:#333333; text-align:left&quot;&gt;&lt;img height=&quot;858&quot; src=&quot;https://oscimg.oschina.net/oscnet/up-9faf6077ec797e425363ca09e1ea9a260df.png&quot; width=&quot;1624&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
+&lt;p style=&quot;color:#333333; text-align:left&quot;&gt;之前的版本，是在告警规则里直接配置通知媒介+告警接收人，耦合严重。新版本是在告警规则里关联通知规则，具体如何发送是在通知规则里定义的，这样一来，告警规则和通知规则解耦，多个告警规则可以关联一个通知规则，如果想要改动通知方式，只需要改动通知规则即可。&lt;/p&gt; 
+&lt;p style=&quot;color:#333333; text-align:left&quot;&gt;通知规则可以支持不同的通知媒介，而且可以定义不同的媒介适用的范围，比如电话这个通知媒介，只适用于 Critical 的告警，而 Email 则适用于 Critical、Warning、Info 所有告警。下面是一个通知规则配置样例：&lt;/p&gt; 
+&lt;p style=&quot;color:#333333; text-align:left&quot;&gt;&lt;img height=&quot;1584&quot; src=&quot;https://oscimg.oschina.net/oscnet/up-1672fbeaa99a7e27060a0264e6646794f3c.png&quot; width=&quot;1638&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
+&lt;p style=&quot;color:#333333; text-align:left&quot;&gt;对于通知媒介，我们会内置一些，方便大家开箱即用：&lt;/p&gt; 
+&lt;p style=&quot;color:#333333; text-align:left&quot;&gt;&lt;img height=&quot;698&quot; src=&quot;https://oscimg.oschina.net/oscnet/up-bf5e4d93b333c33cd0da6085b21e12ab792.png&quot; width=&quot;1630&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
+&lt;p style=&quot;color:#333333; text-align:left&quot;&gt;打开通知媒介的配置，其中有个「变量配置」不太好理解。我说个场景：比如 DBA 团队和 BigData 团队都想使用企微这个通知媒介发告警，但是他们想使用不同的企微机器人，即 Webhook 地址基本相同，但是 URL 参数中的 Key 不同（不同的 Key 代表不同的机器人）。此时应该怎么做？&lt;/p&gt; 
+&lt;p style=&quot;color:#333333; text-align:left&quot;&gt;在夜莺的设计里，不希望创建两个不同的通知媒介。还是希望只有企微一个通知媒介，但是这个通知媒介支持传参，DBA 同学在配置告警通知规则的时候，选择企微这个通知媒介的同时，要填写自己的机器人的 Key，BigData 同学也是一样，也是配置企微通知媒介 + BigData 的企微机器人 Key。这样一来，一个通知媒介就可以支持多个机器人了。&lt;/p&gt; 
+&lt;p style=&quot;color:#333333; text-align:left&quot;&gt;如何让通知媒介支持参数呢？就是在媒介的变量配置中进行创建。内置的企微通知媒介就是创建了两个参数，一个 Key（表示企微机器人 Key），一个 Bot Name（机器人名称，自定义的，纯粹是为了方便记忆，类似备注的效果）。进而，在企微媒介的 HTTP 配置中，就可以引用这个参数，比如：&lt;/p&gt; 
+&lt;p style=&quot;color:#333333; text-align:left&quot;&gt;&lt;img height=&quot;2262&quot; src=&quot;https://oscimg.oschina.net/oscnet/up-45c3c02a72d63edbe325efe9ecaedd04a4c.png&quot; width=&quot;1630&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
+&lt;p style=&quot;color:#333333; text-align:left&quot;&gt;这个场景相对简单，媒介通知的时候，获取用户填写的 Key 即可。还有更复杂的场景。比如发短信，此时媒介参数如何定义？如果直接定义成 Phone，然后让用户在通知规则中手写手机号，那就有点费劲了。而且用户的联系方式如果发生变化，除了要到个人中心修改自己的手机号，还要到通知规则里改，太过麻烦。而手机号已经在个人的联系方式中了，那直接把二者贯通即可。&lt;/p&gt; 
+&lt;p style=&quot;color:#333333; text-align:left&quot;&gt;对于这类场景，可以概括为：媒介需要的参数来自用户的 Profile 信息。这个时候，就需要在媒介的变量配置中，引用用户的 Profile 信息。比如：&lt;/p&gt; 
+&lt;p style=&quot;color:#333333; text-align:left&quot;&gt;&lt;img height=&quot;502&quot; src=&quot;https://oscimg.oschina.net/oscnet/up-1ba05643de9acaa17d7831abd6f79d4246e.png&quot; width=&quot;1620&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
+&lt;p style=&quot;color:#333333; text-align:left&quot;&gt;媒介变量这里，联系方式选择 Phone，然后就会有一系列的魔法，魔法效果是：&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt;通知规则那里，系统根据媒介里的 Phone 联系方式，知道用户想发通知给某些人，通知规则那里就可以选择联系人或团队了，而不是手写手机号。&lt;/li&gt; 
+ &lt;li&gt;在 HTTP 的 request body 或 query string 中，可以引用一个魔法变量：&lt;code&gt;{{ $sendto }}&lt;/code&gt;，表示被通知对象的手机号。这样一来，通知媒介就可以根据这个变量，把告警通知发给正确的人了。&lt;code&gt;{{ $sendto }}&lt;/code&gt;&lt;span&gt;&amp;nbsp;&lt;/span&gt;这个设计是从 Zabbix 学的，如果你用过 Zabbix，应该会很熟悉。&lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;p style=&quot;color:#333333; text-align:left&quot;&gt;这个设计是最近版本中的一个巨大革新，希望能够帮助大家更方便地配置告警通知。整个逻辑很灵活，但确实稍微有点绕，恳请大家如果用好了，多写写文章分享一下你的使用心得 🙏 把社区做大做强，形成正向循环。&lt;/p&gt;
+                                                                                &lt;/div&gt;
+                                                                            </description>
+            <link>https://www.oschina.net/news/337192/nightingale-v8-beta7-released</link>
+            <guid isPermaLink="false">https://www.oschina.net/news/337192/nightingale-v8-beta7-released</guid>
+            <pubDate>Thu, 06 Mar 2025 02:31:57 GMT</pubDate>
+            <author>来源: 投稿</author>
+        </item>
+        <item>
+            <title>go-carbon v2.5.4 发布，轻量级、语义化、对开发者友好的 golang 时间处理库</title>
+            <description>&lt;div class=&quot;content&quot;&gt;
+                                                                    
+                                                        &lt;p style=&quot;color:#333333; margin-left:0; margin-right:0; text-align:left&quot;&gt;carbon 是一个轻量级、语义化、对开发者友好的 Golang 时间处理库，提供了对时间穿越、时间差值、时间极值、时间判断、星座、星座、农历、儒略日 / 简化儒略日、波斯历 / 伊朗历的支持。&lt;/p&gt; 
+&lt;p style=&quot;color:#333333; margin-left:0; margin-right:0; text-align:left&quot;&gt;carbon 目前已捐赠给&lt;span&gt;&amp;nbsp;&lt;/span&gt;&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fdromara.org%2F&quot; target=&quot;_blank&quot;&gt;dromara&lt;/a&gt;&lt;span&gt;&amp;nbsp;&lt;/span&gt;开源组织和被&lt;span&gt;&amp;nbsp;&lt;/span&gt;&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fgithub.com%2Fyinggaozhen%2Fawesome-go-cn%23%25E6%2597%25A5%25E6%259C%259F%25E5%2592%258C%25E6%2597%25B6%25E9%2597%25B4&quot; target=&quot;_blank&quot;&gt;awesome-go&lt;/a&gt;&lt;span&gt;&lt;span&gt;&amp;nbsp;&lt;/span&gt;&lt;/span&gt;&lt;span&gt;收录，并获得&lt;span&gt;&amp;nbsp;&lt;/span&gt;&lt;a href=&quot;https://gitee.com/&quot; target=&quot;_blank&quot;&gt;gitee&lt;/a&gt;&lt;span&gt;&amp;nbsp;&lt;/span&gt;2024 年最有价值项目（&lt;a href=&quot;https://gitee.com/gvp/&quot; target=&quot;_blank&quot;&gt;GVP&lt;/a&gt;）和&lt;span&gt;&amp;nbsp;&lt;/span&gt;&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fgitcode.com%2F&quot; target=&quot;_blank&quot;&gt;gitcode&lt;/a&gt;&lt;span&gt;&amp;nbsp;&lt;/span&gt;2024 年度&lt;span&gt;&amp;nbsp;&lt;/span&gt;&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fgitcode.com%2Fg-star&quot; target=&quot;_blank&quot;&gt;G-Star&lt;/a&gt;&lt;span&gt;&amp;nbsp;&lt;/span&gt;项目，&lt;/span&gt;如果您觉得不错，请给个 star 吧&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt;&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fgithub.com%2Fgolang-module%2Fcarbon&quot; target=&quot;_blank&quot;&gt;github.com/golang-module/carbon&lt;/a&gt;&lt;/li&gt; 
+ &lt;li&gt;&lt;a href=&quot;https://gitee.com/golang-module/carbon&quot; target=&quot;_blank&quot;&gt;gitee.com/golang-module/carbon&lt;/a&gt;&lt;/li&gt; 
+ &lt;li&gt;&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fgitcode.com%2Fgolang-module%2Fcarbon&quot; target=&quot;_blank&quot;&gt;gitcode.com/golang-module/carbon&lt;/a&gt;&lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;p style=&quot;color:#333333; margin-left:0; margin-right:0; text-align:left&quot;&gt;&lt;strong&gt;更新日志&lt;/strong&gt;&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt;添加挪威语翻译支持，&lt;span style=&quot;background-color:#ffffff; color:#1f2328&quot;&gt;由&lt;span&gt;&amp;nbsp;&lt;/span&gt;&lt;/span&gt;&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fgithub.com%2Fbendikrb&quot; target=&quot;_blank&quot;&gt;bendikrb&lt;/a&gt;&lt;span style=&quot;background-color:#ffffff; color:#1f2328&quot;&gt;&lt;span&gt;&amp;nbsp;&lt;/span&gt;翻译&lt;/span&gt;&lt;/li&gt; 
+ &lt;li&gt;将常量从&lt;span&gt;&amp;nbsp;&lt;/span&gt;&lt;code&gt;carbon.go&lt;/code&gt;&lt;span&gt;&amp;nbsp;&lt;/span&gt;文件迁移到&lt;span&gt;&amp;nbsp;&lt;/span&gt;&lt;code&gt;constant.go&lt;/code&gt;&lt;span&gt;&amp;nbsp;&lt;/span&gt;文件&lt;/li&gt; 
+ &lt;li&gt;&lt;code&gt;NewCarbon&lt;/code&gt;&lt;span&gt;&amp;nbsp;&lt;/span&gt;方法新增可选参数&lt;span&gt;&amp;nbsp;&lt;/span&gt;&lt;code&gt;time.Time&lt;/code&gt;&lt;/li&gt; 
+&lt;/ul&gt;
+                                                                                &lt;/div&gt;
+                                                                            </description>
+            <link>https://www.oschina.net/news/337185/go-carbon-2-5-4-released</link>
+            <guid isPermaLink="false">https://www.oschina.net/news/337185/go-carbon-2-5-4-released</guid>
+            <pubDate>Thu, 06 Mar 2025 01:50:57 GMT</pubDate>
+            <author>来源: 投稿</author>
+        </item>
+        <item>
+            <title>LinkAndroid v0.6.0 新版本检测支持，部分已知问题修复</title>
+            <description>&lt;div class=&quot;content&quot;&gt;
+                                                                    
+                                                        &lt;p style=&quot;color:#3f3f3f; margin-left:8px; margin-right:8px&quot;&gt;在日常工作与生活中，频繁在安卓手机与电脑间切换操作是不是让你感到头疼不已？&lt;br&gt; 文件传输繁琐、应用管理不便、投屏体验不佳…… 这些困扰，&lt;code&gt;LinkAndroid&lt;/code&gt;&lt;span&gt;&amp;nbsp;&lt;/span&gt;帮你统统解决！作为一款强大的连接工具，&lt;code&gt;LinkAndroid&lt;/code&gt;&lt;span&gt;&amp;nbsp;&lt;/span&gt;致力于轻松连接安卓与电脑，为大家带来投屏、文件管理、应用管理、截屏、录屏、安装应用等一站式便捷体验，全面提升工作效率。&lt;br&gt; 现在，我们激动地宣布，&lt;code&gt;LinkAndroid v0.6.0&lt;/code&gt;&lt;span&gt;&amp;nbsp;&lt;/span&gt;新版正式发布啦，一起来看看都有哪些惊喜更新吧！&lt;/p&gt; 
+&lt;p style=&quot;color:#34495e; margin-left:0.5em; margin-right:0.5em&quot;&gt;&lt;img alt=&quot;5234_qi5f_9006.png&quot; src=&quot;https://oscimg.oschina.net/oscnet//1a64f946a7f9d402bec8659758513249.png&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
+&lt;p style=&quot;color:#34495e; margin-left:0.5em; margin-right:0.5em&quot;&gt;&lt;code&gt;LinkAndroid&lt;/code&gt;是一个全能手机连接助手，方便快捷的连接&lt;span&gt;&amp;nbsp;&lt;/span&gt;&lt;code&gt;Android&lt;/code&gt;&lt;span&gt;&amp;nbsp;&lt;/span&gt;和电脑，连接手机后可投屏、&lt;code&gt;GIF/MP4&lt;/code&gt;录屏、截屏、文件管理、手机操作等功能。&lt;/p&gt; 
+&lt;p style=&quot;color:#34495e; margin-left:0.5em; margin-right:0.5em&quot;&gt;&lt;img alt=&quot;&quot; src=&quot;https://oscimg.oschina.net/oscnet//1336075ff221ae8a96c5584d5a3610ee.png&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
+&lt;p&gt;&amp;nbsp;&lt;/p&gt; 
+&lt;h1&gt;功能特性&lt;/h1&gt; 
+&lt;p style=&quot;color:#3f3f3f; margin-left:8px; margin-right:8px&quot;&gt;支持多手机连接，方便快捷控制多个手机&lt;br&gt; 支持投屏，基于&lt;span&gt;&amp;nbsp;&lt;/span&gt;&lt;code&gt;scrcpy&lt;/code&gt;，支持手机操作&lt;br&gt; 支持截屏，截屏后会自动打开截屏美化工具&lt;br&gt; 支持&lt;code&gt;GIF/MP4&lt;/code&gt;录屏，支持录制手机屏幕为&lt;code&gt;GIF&lt;/code&gt;或&lt;code&gt;MP4&lt;/code&gt;&lt;br&gt; 支持应用管理，支持安装、卸载、启动应用&lt;br&gt; 支持文件管理，支持文件上传、下载、删除&lt;br&gt; 支持命令行，支持&lt;span&gt;&amp;nbsp;&lt;/span&gt;&lt;code&gt;adb、screen&lt;/code&gt;&lt;span&gt;&amp;nbsp;&lt;/span&gt;命令行和手机&lt;span&gt;&amp;nbsp;&lt;/span&gt;&lt;code&gt;shell&lt;/code&gt;&lt;span&gt;&amp;nbsp;&lt;/span&gt;命令行&lt;br&gt; 支持国际化，支持简体中文、英语&lt;/p&gt; 
+&lt;h1&gt;版本更新 v0.6.0&lt;/h1&gt; 
+&lt;h3&gt;新版本检测支持，部分已知问题修复&lt;/h3&gt; 
+&lt;p style=&quot;color:#3f3f3f; margin-left:8px; margin-right:8px&quot;&gt;新增：启动新版本检测，支持新版本检测开关&lt;br&gt; 新增：用户接口请求支持异常捕获配置 catchException&lt;br&gt; 优化：文件追加方法缓存优化&lt;br&gt; 优化：弹窗父窗口逻辑优化&lt;br&gt; 修复：设备名称不可修改问题&lt;br&gt; 修复：文件重命名跨设备异常问题&lt;/p&gt; 
+&lt;h1&gt;功能特性&lt;/h1&gt; 
+&lt;h3&gt;高清投屏&lt;/h3&gt; 
+&lt;p style=&quot;color:#34495e; margin-left:0.5em; margin-right:0.5em&quot;&gt;支持键盘直接输入，支持多设备同时投屏，基于&lt;span&gt;&amp;nbsp;&lt;/span&gt;&lt;code&gt;scrcpy&lt;/code&gt;&lt;span&gt;&amp;nbsp;&lt;/span&gt;开源投屏软件&lt;/p&gt; 
+&lt;p style=&quot;color:#34495e; margin-left:0.5em; margin-right:0.5em&quot;&gt;&lt;img alt=&quot;&quot; src=&quot;https://oscimg.oschina.net/oscnet//48e1bc4275f502a3223841c6eddae9ef.png&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
+&lt;p&gt;&amp;nbsp;&lt;/p&gt; 
+&lt;h3&gt;截图美化&lt;/h3&gt; 
+&lt;p style=&quot;color:#34495e; margin-left:0.5em; margin-right:0.5em&quot;&gt;一键截取当前手机屏幕，默认进入截图编辑美化界面，基于&lt;span&gt;&amp;nbsp;&lt;/span&gt;&lt;code&gt;image-beautifier&lt;/code&gt;&lt;span&gt;&amp;nbsp;&lt;/span&gt;开源软件&lt;/p&gt; 
+&lt;p style=&quot;color:#34495e; margin-left:0.5em; margin-right:0.5em&quot;&gt;&lt;img alt=&quot;&quot; src=&quot;https://oscimg.oschina.net/oscnet//2bd2758413b8c9ab65bba961dcabcae1.png&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
+&lt;p&gt;&amp;nbsp;&lt;/p&gt; 
+&lt;h3&gt;屏幕录制&lt;/h3&gt; 
+&lt;p style=&quot;color:#34495e; margin-left:0.5em; margin-right:0.5em&quot;&gt;支持&lt;span&gt;&amp;nbsp;&lt;/span&gt;&lt;code&gt;GIF、MP4&lt;/code&gt;&lt;span&gt;&amp;nbsp;&lt;/span&gt;格式屏幕录制，&lt;code&gt;MP4&lt;/code&gt;&lt;span&gt;&amp;nbsp;&lt;/span&gt;录制视频导出自动压缩，更多录制参数自定义设置&lt;/p&gt; 
+&lt;p style=&quot;color:#34495e; margin-left:0.5em; margin-right:0.5em&quot;&gt;&lt;img alt=&quot;&quot; src=&quot;https://oscimg.oschina.net/oscnet//6d28a95d1699eaf7e0c5f6672167a3f5.png&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
+&lt;p&gt;&amp;nbsp;&lt;/p&gt; 
+&lt;h3&gt;高级命令&lt;/h3&gt; 
+&lt;p style=&quot;color:#34495e; margin-left:0.5em; margin-right:0.5em&quot;&gt;支持&lt;span&gt;&amp;nbsp;&lt;/span&gt;&lt;code&gt;adb scrcpy&lt;/code&gt;&lt;span&gt;&amp;nbsp;&lt;/span&gt;常见命令运行，一键点击进入手机，shell 交互方式更友好&lt;/p&gt; 
+&lt;p style=&quot;color:#34495e; margin-left:0.5em; margin-right:0.5em&quot;&gt;&lt;img alt=&quot;&quot; src=&quot;https://oscimg.oschina.net/oscnet//dd6bdb7d309fcfa7b8836ec437142be4.png&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
+&lt;p&gt;&amp;nbsp;&lt;/p&gt; 
+&lt;h3&gt;应用管理&lt;/h3&gt; 
+&lt;p style=&quot;color:#34495e; margin-left:0.5em; margin-right:0.5em&quot;&gt;支持软件列表查看和搜索，快速安装&lt;span&gt;&amp;nbsp;&lt;/span&gt;&lt;code&gt;APK&lt;/code&gt;&lt;span&gt;&amp;nbsp;&lt;/span&gt;软件，常见软件包自动识别名称&lt;/p&gt; 
+&lt;p style=&quot;color:#34495e; margin-left:0.5em; margin-right:0.5em&quot;&gt;&lt;img alt=&quot;&quot; src=&quot;https://oscimg.oschina.net/oscnet//70a7bc8fd99036b1c3a67641069ff16c.png&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
+&lt;p&gt;&amp;nbsp;&lt;/p&gt; 
+&lt;p style=&quot;color:#3f3f3f; margin-left:8px; margin-right:8px&quot;&gt;&lt;code&gt;LinkAndroid&lt;/code&gt;&lt;span&gt;&amp;nbsp;&lt;/span&gt;&lt;code&gt;v0.6.0&lt;/code&gt;&lt;span&gt;&amp;nbsp;&lt;/span&gt;从功能新增、细节优化到问题修复，全方位提升使用体验。还没下载的朋友，可前往官网下载。&lt;br&gt; 正在使用的用户，记得及时更新，享受新功能。若使用中有疑问或建议，欢迎随时反馈，我们会持续优化，让 LinkAndroid 成为你得力的助手！&lt;/p&gt; 
+&lt;h3&gt;系统演示与文档&lt;/h3&gt; 
+&lt;ul&gt; 
+ &lt;li&gt; &lt;p&gt;开源官网： https://linkandroid.com&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;Github 仓库：https://github.com/modstart-lib/linkandroid&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;Gitee 仓库：https://gitee.com/modstart-lib/linkandroid&lt;/p&gt; &lt;/li&gt; 
+&lt;/ul&gt;
+                                                                                &lt;/div&gt;
+                                                                            </description>
+            <link>https://www.oschina.net/news/337184/linkandroid-0-6-0-released</link>
+            <guid isPermaLink="false">https://www.oschina.net/news/337184/linkandroid-0-6-0-released</guid>
+            <pubDate>Fri, 28 Feb 2025 01:41:00 GMT</pubDate>
+            <author>来源: 投稿</author>
+        </item>
+        <item>
+            <title>DuckDB v1.2.1 错误修复版本</title>
+            <description>&lt;div class=&quot;content&quot;&gt;
+                                                                    
+                                                        &lt;p style=&quot;color:#111111; margin-left:0px; margin-right:0px; text-align:start&quot;&gt;这是针对我们发布 1.2.0 版本后发现的各种问题的错误修复版本。没有新的主要功能，只有错误修复。该版本可以读取由 DuckDB v0.9.* 及之后所有版本创建的数据库文件。&lt;/p&gt; 
+&lt;h2&gt;更新内容&lt;/h2&gt; 
+&lt;ul&gt; 
+ &lt;li&gt;[开发] MultiFileReader 修复 CreateFilterMap 中的内部错误，由 @Tishj 在 #16114 中完成&lt;/li&gt; 
+ &lt;li&gt;[错误修复] 避免在失败提交的 catch 块中抛出异常，由 @Vegetable26 在 #15903 中完成&lt;/li&gt; 
+ &lt;li&gt;问题 #16098：ValidEnd 并行向量化，由 @hawkfish 在 #16140 中完成&lt;/li&gt; 
+ &lt;li&gt;添加扩展选项不应删除已设置的值并提升未识别的选项，由 @bleskes 在 #15919 中完成&lt;/li&gt; 
+ &lt;li&gt;Parquet 写入器：重新实现字符串的 GetRowSize，由 @Mytherin 在 #16178 中完成&lt;/li&gt; 
+ &lt;li&gt;修复 #16157：从字典向量读取 hive 分区时正确获取第一行，由 @Mytherin 在 #16180 中完成&lt;/li&gt; 
+ &lt;li&gt;修复 #16122：在子绑定器中绑定默认值，以避免修改当前绑定器的目录搜索路径，由 @Mytherin 在 #16181 中完成&lt;/li&gt; 
+ &lt;li&gt;修复 #16134：当目录/模式/表具有相同名称时，我们倾向于建议表名，由 @Mytherin 在 #16189 中完成&lt;/li&gt; 
+ &lt;li&gt;确保 MergeCollectionTask 有一个写入器，由 @ywelsch 在 #16207 中完成&lt;/li&gt; 
+ &lt;li&gt;移植 #16115，由 @NiclasHaderer 在 #16227 中完成&lt;/li&gt; 
+ &lt;li&gt;删除待处理查询的复制构造函数，由 @NiclasHaderer 在 #16242 中完成&lt;/li&gt; 
+ &lt;li&gt;正确报告 C 扩展中 get_database 导致的错误，由 @mlafeldt 在 #16253 中完成&lt;/li&gt; 
+ &lt;li&gt;启用并行时对伯努利采样使用随机种子，由 @Tmonster 在 #16223 中完成&lt;/li&gt; 
+ &lt;li&gt;Parquet 阅读器：避免在 ColumnReader 中缓存压缩缓冲区，由 @Mytherin 在 #16263 中完成&lt;/li&gt; 
+ &lt;li&gt;修复 #16260：在 getvariable 中正确处理参数，由 @Mytherin 在 #16264 中完成&lt;/li&gt; 
+ &lt;li&gt;避免在 RowGroup::CheckZonemap 中多次调用 SetFilterAlwaysTrue，由 @Mytherin 在 #16269 中完成&lt;/li&gt; 
+ &lt;li&gt;[修复] 从普通叶子扫描到嵌套叶子，由 @taniabogatsch 在 #16270 中完成&lt;/li&gt; 
+ &lt;li&gt;修复 #16231：在 ARRAY(SUBQUERY) 中通过别名而不是索引引用 order by 条件，由 @Mytherin 在 #16272 中完成&lt;/li&gt; 
+ &lt;li&gt;修复 #16257，由 @lnkuiper 在 #16275 中完成&lt;/li&gt; 
+ &lt;li&gt;CSV 阅读器的 AFL 测试，由 @pdet 在 #16280 中完成&lt;/li&gt; 
+ &lt;li&gt;问题 #16250：窗口范围性能，由 @hawkfish 在 #16276 中完成&lt;/li&gt; 
+ &lt;li&gt;修复 #16278：晚期物化不应在非常大的限制上触发，并且在 preserve_insertion_order = false 时不应在没有偏移的限制上触发，由 @Mytherin 在 #16282 中完成&lt;/li&gt; 
+ &lt;li&gt;溢出字符串分配：避免向上舍入为每个溢出字符串分配的内存 - 当读取&quot;小&quot;溢出字符串时，直接将它们放入向量中，由 @Mytherin 在 #16283 中完成&lt;/li&gt; 
+ &lt;li&gt;使用有序映射以保持表达式顺序，由 @Damon07 在 #16111 中完成&lt;/li&gt; 
+ &lt;li&gt;[开发] register_filesystem 存根，使用 fsspec.AbstractFileSystem，而不是 str，由 @Tishj 在 #16266 中完成&lt;/li&gt; 
+ &lt;li&gt;[Python 开发] 修复 isin 的空参数崩溃 | 修复 isnotin 的转换，由 @Tishj 在 #16271 中完成&lt;/li&gt; 
+ &lt;li&gt;修复与所有候选项在细化中被消除时相关的挂起问题，由 @pdet 在 #16288 中完成&lt;/li&gt; 
+ &lt;li&gt;[修复] 在 CREATE INDEX (IF NOT EXISTS) 上提前退出，由 @taniabogatsch 在 #16093 中完成&lt;/li&gt; 
+ &lt;li&gt;[Python] 修复 Expression API 中的反向二元表达式，由 @Tishj 在 #16300 中完成&lt;/li&gt; 
+ &lt;li&gt;错误修复，由 @lnkuiper 在 #16244 中完成&lt;/li&gt; 
+ &lt;li&gt;[修复] MinGW 捆绑静态库，由 @taniabogatsch 在 #16292 中完成&lt;/li&gt; 
+ &lt;li&gt;修复堆缓冲区溢出采样，由 @Tmonster 在 #16279 中完成&lt;/li&gt; 
+ &lt;li&gt;在 C API 中公开 STRING_LITERAL，由 @taniabogatsch 在 #16293 中完成&lt;/li&gt; 
+ &lt;li&gt;允许在锁下访问分析器查询树，由 @ywelsch 在 #16314 中完成&lt;/li&gt; 
+ &lt;li&gt;更新扩展，由 @Maxxen 在 #16313 中完成&lt;/li&gt; 
+ &lt;li&gt;内联虚拟列表 lambda 绑定函数，由 @Maxxen 在 #16327 中完成&lt;/li&gt; 
+ &lt;li&gt;更新 shell.cpp 以修复 #16333，由 @teaguesterling 在 #16335 中完成&lt;/li&gt; 
+ &lt;li&gt;将验证 nullstring 的建议添加为转换错误消息的一部分，由 @pdet 在 #16336 中完成&lt;/li&gt; 
+ &lt;li&gt;考虑 DELTA_BINARY_PACKED 的 NULL 值，由 @lnkuiper 在 #16317 中完成&lt;/li&gt; 
+ &lt;li&gt;PhysicalTableScan：适应以允许异步行为，由 @carlopi 在 #16310 中完成&lt;/li&gt; 
+ &lt;li&gt;允许从分离的目录查询附加的目录，由 @jeewonhh 在 #16289 中完成&lt;/li&gt; 
+ &lt;li&gt;减少 RadixPartitionedHashTable 中的最小预期内存使用量，由 @lnkuiper 在 #16332 中完成&lt;/li&gt; 
+ &lt;li&gt;将 ebb4dcc 移植到 v1.2-，添加缺失的 include，由 @carlopi 在 #16369 中完成&lt;/li&gt; 
+ &lt;li&gt;不匹配 ABI 上的异常加载：使用 ‘%d’ 打印 ABI 类型，由 @carlopi 在 #16367 中完成&lt;/li&gt; 
+ &lt;li&gt;聚合：对于没有 id 的字典 - 使用正确的阈值来退出字典的使用，由 @Mytherin 在 #16364 中完成&lt;/li&gt; 
+ &lt;li&gt;将 excel 升级到与核心存储库分发的相同版本，由 @carlopi 在 #16375 中完成&lt;/li&gt; 
+ &lt;li&gt;接受设置了 escape 的有效方言进入细化阶段，由 @pdet 在 #16387 中完成&lt;/li&gt; 
+ &lt;li&gt;在 (X, Y) IN (SELECT X, Y) 中为不同类型的值推送正确的转换，由 @Mytherin 在 #16392 中完成&lt;/li&gt; 
+ &lt;li&gt;为 ui 扩展添加自动加载和自动安装支持，由 @carlopi 在 #16393 中完成&lt;/li&gt; 
+ &lt;li&gt;向 Python.yml 添加 twine_upload 选项以触发上传，由 @carlopi 在 #16410 中完成&lt;/li&gt; 
+ &lt;li&gt;只有在至少保持 50% 一致性的情况下，才选择使用 null_padding 生成更多列的选项，由 @pdet 在 #16404 中完成&lt;/li&gt; 
+ &lt;li&gt;在 DuckTableEntry::Copy 中使用检查点绑定，以避免重新验证默认值（并可能在 WAL 重放期间导致问题），由 @Mytherin 在 #16398 中完成&lt;/li&gt; 
+ &lt;li&gt;将 duckdb.h 中的 DUCKDB_API 重命名为 DUCKDB_C_API，由 @Mytherin 在 #16397 中完成&lt;/li&gt; 
+ &lt;li&gt;问题 #16407：Try_Strptime 无效时区，由 @hawkfish 在 #16416 中完成&lt;/li&gt; 
+ &lt;li&gt;内部 #4303：窗口化 DISTINCT 泄漏，由 @hawkfish 在 #16417 中完成&lt;/li&gt; 
+ &lt;li&gt;内部 #4258：MODE 假脱机稳定性，由 @hawkfish 在 #16415 中完成&lt;/li&gt; 
+ &lt;li&gt;当提供 twine_upload 时，也修复分支的 PyPi 上传，由 @carlopi 在 #16421 中完成&lt;/li&gt; 
+ &lt;li&gt;[修复] 对 FK 约束检查抛出约束违反，由 @taniabogatsch 在 #16399 中完成&lt;/li&gt; 
+ &lt;li&gt;为 v1.2.1 添加存储和序列化版本，由 @Flogex 在 #16403 中完成&lt;/li&gt; 
+ &lt;li&gt;更新不稳定的 return_files.test，由 @jeewonhh 在 #16432 中完成&lt;/li&gt; 
+ &lt;li&gt;向 duckdb_api 添加 python 版本，由 @guenp 在 #15599 中完成&lt;/li&gt; 
+ &lt;li&gt;不接受列参数列表中的空值，由 @pdet 在 #16425 中完成&lt;/li&gt; 
+ &lt;li&gt;提供种子时使用系统样本的种子，由 @Tmonster 在 #16408 中完成&lt;/li&gt; 
+ &lt;li&gt;将 delta 升级到工作提交，由 @carlopi 在 #16442 中完成&lt;/li&gt; 
+ &lt;li&gt;使用 azure 添加 windows 代码签名，由 @hannes 在 #16444 中完成&lt;/li&gt; 
+ &lt;li&gt;CSV 小代码改进 + 初始化布尔变量，由 @pdet 在 #16454 中完成&lt;/li&gt; 
+ &lt;li&gt;[Python 开发] 使 pandas 在几个地方不是必需的，检查它是否已安装在其他地方，由 @Tishj 在 #16414 中完成&lt;/li&gt; 
+ &lt;li&gt;修复向 C API 实例缓存传递空路径，由 @jraymakers 在 #16474 中完成&lt;/li&gt; 
+ &lt;li&gt;添加方法以检索当前任务调度器繁忙程度，由 @NiclasHaderer 在 #16465 中完成&lt;/li&gt; 
+ &lt;li&gt;修复读取管道 JSON，由 @lnkuiper 在 #16480 中完成&lt;/li&gt; 
+ &lt;li&gt;[Python 开发] pyproject.toml 不应再使用 oldest-supported-numpy，由 @Tishj 在 #16486 中完成&lt;/li&gt; 
+ &lt;li&gt;[测试] 复制中的多个 FORMAT，只有最后一个有效，由 @carlopi 在 #16493 中完成&lt;/li&gt; 
+ &lt;li&gt;更新 postgres_scanner 和 fts 扩展，由 @lnkuiper 在 #16492 中完成&lt;/li&gt; 
+ &lt;li&gt;更新 sqlsmith 扩展标签，由 @Tmonster 在 #16488 中完成&lt;/li&gt; 
+ &lt;li&gt;[错误修复]：交换连接子节点，而不是左右集，由 @Tmonster 在 #16487 中完成&lt;/li&gt; 
+ &lt;li&gt;[测试] 添加 allow_unsigned_extensions 要求，由 @carlopi 在 #16499 中完成&lt;/li&gt; 
+ &lt;li&gt;在任务启动/停止时提供回调，由 @ywelsch 在 #16451 中完成&lt;/li&gt; 
+ &lt;li&gt;代码质量：ubuntu-20 到 ubuntu-22，将 black 锁定到 24 版本并欺骗 clang_format 检测，由 @carlopi 在 #16513 中完成&lt;/li&gt; 
+ &lt;li&gt;从 ubuntu-20:04 移至 ubuntu-22:04，第 I 部分，由 @carlopi 在 #16510 中完成&lt;/li&gt; 
+ &lt;li&gt;[琐事] 也在 PR 上构建 Linux 版本 AND ubuntu-20 到 22，由 @carlopi 在 #16506 中完成&lt;/li&gt; 
+ &lt;li&gt;从 ubuntu-20:04 移至 ubuntu-22:04，第 II 部分，由 @carlopi 在 #16514 中完成&lt;/li&gt; 
+ &lt;li&gt;为 v1.2 更新 spatial 和 excel，由 @Maxxen 在 #16504 中完成&lt;/li&gt; 
+ &lt;li&gt;升级到 ubuntu 22 后的 CI 修复，由 @Mytherin 在 #16516 中完成&lt;/li&gt; 
+ &lt;li&gt;LinuxRelease.yml：传递覆盖 git 描述，由 @carlopi 在 #16521 中完成&lt;/li&gt; 
+ &lt;li&gt;再次更新 spatial，由 @Maxxen 在 #16518 中完成&lt;/li&gt; 
+&lt;/ul&gt;
+                                                                                &lt;/div&gt;
+                                                                            </description>
+            <link>https://www.oschina.net/news/337182/duckdb-1-2-1-released</link>
+            <guid isPermaLink="false">https://www.oschina.net/news/337182/duckdb-1-2-1-released</guid>
+            <pubDate>Fri, 28 Feb 2025 01:37:00 GMT</pubDate>
+            <author>来源: 投稿</author>
+        </item>
+        <item>
+            <title>🔥 支持为按钮配置权限：开源无代码 / 低代码平台 NocoBase</title>
+            <description>&lt;div class=&quot;content&quot;&gt;
+                                                                    
+                                                        &lt;p style=&quot;color:#333333; margin-left:0; margin-right:0; text-align:left&quot;&gt;&lt;span style=&quot;background-color:#ffffff; color:#333333&quot;&gt;NocoBase 是一个极易扩展的开源无代码开发平台。完全掌控，无限扩展，助力你的开发团队快速响应变化，显著降低成本，不必投入几年时间和数百万资金研发，只需要花几分钟部署 NocoBase。&lt;/span&gt;&lt;/p&gt; 
+&lt;p style=&quot;color:#333333; margin-left:0; margin-right:0; text-align:left&quot;&gt;&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fwww.nocobase.com%2Fcn%2F&quot; target=&quot;_blank&quot;&gt;NocoBase 中文官网&lt;/a&gt;&lt;/p&gt; 
+&lt;p style=&quot;color:#333333; margin-left:0; margin-right:0; text-align:left&quot;&gt;&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fdocs-cn.nocobase.com%2Fwelcome%2Fintroduction&quot; target=&quot;_blank&quot;&gt;官方文档&lt;/a&gt;&lt;/p&gt; 
+&lt;p style=&quot;color:#333333; margin-left:0; margin-right:0; text-align:left&quot;&gt;&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fdemo-cn.nocobase.com%2Fnew&quot; target=&quot;_blank&quot;&gt;在线 Demo&lt;/a&gt;&lt;/p&gt; 
+&lt;hr&gt; 
+&lt;p&gt;汇总一周产品更新日志，最新发布可以&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fwww.nocobase.com%2Fcn%2Fblog%2Ftags%2Frelease-notes&quot; target=&quot;_blank&quot;&gt;前往我们的博客查看&lt;/a&gt;。&lt;/p&gt; 
+&lt;p&gt;&lt;strong&gt;NocoBase 目前更新包括的版本更新包括三个分支：&lt;code&gt;main&lt;/code&gt; ，&lt;code&gt;next&lt;/code&gt;和 &lt;code&gt;develop&lt;/code&gt;。&lt;/strong&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;img alt=&quot;version.png&quot; src=&quot;https://oscimg.oschina.net/oscnet//da352dbd8ef2964afaa4f55334ef5d2d.png&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;code&gt;main&lt;/code&gt; ：截止目前最稳定的版本，推荐安装此版本。&lt;/p&gt; 
+&lt;p&gt;&lt;code&gt;next&lt;/code&gt;：包含即将发布的新功能，经过初步测试的版本，可能存在部分已知或未知问题。主要面向测试用户,用于收集反馈和进一步优化功能。适合愿意提前体验新功能并提供反馈的测试用户。&lt;/p&gt; 
+&lt;p&gt;&lt;code&gt;develop&lt;/code&gt;：开发中的版本，包含最新的功能代码，可能尚未完成或存在较多不稳定因素，主要用于内部开发和快速迭代。适合对产品功能前沿发展感兴趣的技术用户，但可能存在较多问题或不完整功能，不建议在生产环境中使用。&lt;/p&gt; 
+&lt;h2&gt;main&lt;/h2&gt; 
+&lt;p&gt;&lt;img alt=&quot;main.png&quot; src=&quot;https://oscimg.oschina.net/oscnet//a4114f1ea27521c84c2485e9c2189f10.png&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
+&lt;h3&gt;&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fwww.nocobase.com%2Fcn%2Fblog%2Fv1.5.17&quot; target=&quot;_blank&quot;&gt;v1.5.17&lt;/a&gt;&lt;/h3&gt; 
+&lt;p&gt;&lt;em&gt;发布时间：2025-02-27&lt;/em&gt;&lt;/p&gt; 
+&lt;h4&gt;🐛 修复&lt;/h4&gt; 
+&lt;ul&gt; 
+ &lt;li&gt; &lt;p&gt;&lt;strong&gt;[client]&lt;/strong&gt;&lt;/p&gt; 
+  &lt;ul&gt; 
+   &lt;li&gt;无评论表时点击创建评论区块报错 (&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fgithub.com%2Fnocobase%2Fnocobase%2Fpull%2F6309&quot; target=&quot;_blank&quot;&gt;#6309&lt;/a&gt;) by @katherinehhh&lt;/li&gt; 
+   &lt;li&gt;点击树区块节点时报错 (&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fgithub.com%2Fnocobase%2Fnocobase%2Fpull%2F6314&quot; target=&quot;_blank&quot;&gt;#6314&lt;/a&gt;) by @zhangzhonghe&lt;/li&gt; 
+   &lt;li&gt;点击左侧菜单后，子页面被异常关闭 (&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fgithub.com%2Fnocobase%2Fnocobase%2Fpull%2F6305&quot; target=&quot;_blank&quot;&gt;#6305&lt;/a&gt;) by @zhangzhonghe&lt;/li&gt; 
+   &lt;li&gt;当表达式的值为空时，不清空字段的值 (&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fgithub.com%2Fnocobase%2Fnocobase%2Fpull%2F6300&quot; target=&quot;_blank&quot;&gt;#6300&lt;/a&gt;) by @zhangzhonghe&lt;/li&gt; 
+  &lt;/ul&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;&lt;strong&gt;[数据表字段：自动编码]&lt;/strong&gt; 修复自动编号字段在只读模式下未禁用 (&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fgithub.com%2Fnocobase%2Fnocobase%2Fpull%2F6274&quot; target=&quot;_blank&quot;&gt;#6274&lt;/a&gt;) by @mytharcher&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;&lt;strong&gt;[文件管理器]&lt;/strong&gt; 修复继承表的迁移问题 (&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fgithub.com%2Fnocobase%2Fnocobase%2Fpull%2F6310&quot; target=&quot;_blank&quot;&gt;#6310&lt;/a&gt;) by @mytharcher&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;&lt;strong&gt;[权限控制]&lt;/strong&gt; 配置数据表权限，使用多对多字段作为数据范围筛选条件，响应的数据记录不正确 (&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fgithub.com%2Fnocobase%2Fnocobase%2Fpull%2F6304&quot; target=&quot;_blank&quot;&gt;#6304&lt;/a&gt;) by @2013xile&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;&lt;strong&gt;[区块：看板]&lt;/strong&gt; 弹窗中看板区块使用弹窗记录变量过滤数据不正确 (&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fgithub.com%2Fnocobase%2Fnocobase%2Fpull%2F6290&quot; target=&quot;_blank&quot;&gt;#6290&lt;/a&gt;) by @katherinehhh&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;&lt;strong&gt;[区块：树]&lt;/strong&gt; 点击树区块节点时报错 by @zhangzhonghe&lt;/p&gt; &lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;h3&gt;&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fwww.nocobase.com%2Fcn%2Fblog%2Fv1.5.18&quot; target=&quot;_blank&quot;&gt;v1.5.18&lt;/a&gt;&lt;/h3&gt; 
+&lt;p&gt;&lt;em&gt;发布时间：2025-02-27&lt;/em&gt;&lt;/p&gt; 
+&lt;h4&gt;🐛 修复&lt;/h4&gt; 
+&lt;ul&gt; 
+ &lt;li&gt;&lt;strong&gt;[区块：操作面板]&lt;/strong&gt; 设置操作面板的高度无效 (&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fgithub.com%2Fnocobase%2Fnocobase%2Fpull%2F6321&quot; target=&quot;_blank&quot;&gt;#6321&lt;/a&gt;) by @zhangzhonghe&lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;h3&gt;&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fwww.nocobase.com%2Fcn%2Fblog%2Fv1.5.19&quot; target=&quot;_blank&quot;&gt;v1.5.19&lt;/a&gt;&lt;/h3&gt; 
+&lt;p&gt;&lt;em&gt;发布时间：2025-03-01&lt;/em&gt;&lt;/p&gt; 
+&lt;h4&gt;🐛 修复&lt;/h4&gt; 
+&lt;ul&gt; 
+ &lt;li&gt;&lt;strong&gt;[client]&lt;/strong&gt; 关系字段阅读模式下 hover 时出现新增按钮 (&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fgithub.com%2Fnocobase%2Fnocobase%2Fpull%2F6322&quot; target=&quot;_blank&quot;&gt;#6322&lt;/a&gt;) by @katherinehhh&lt;/li&gt; 
+ &lt;li&gt;&lt;strong&gt;[操作：导出记录 Pro]&lt;/strong&gt; 导出附件按钮 setting 多了添加区块 by @katherinehhh&lt;/li&gt; 
+ &lt;li&gt;&lt;strong&gt;[操作：导入记录 Pro]&lt;/strong&gt; 关系区块导入按钮的识别重复记录依据字段下拉无内容 by @katherinehhh&lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;h3&gt;&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fwww.nocobase.com%2Fcn%2Fblog%2Fv1.5.20&quot; target=&quot;_blank&quot;&gt;v1.5.20&lt;/a&gt;&lt;/h3&gt; 
+&lt;p&gt;&lt;em&gt;发布时间：2025-03-03&lt;/em&gt;&lt;/p&gt; 
+&lt;h4&gt;🐛 修复&lt;/h4&gt; 
+&lt;ul&gt; 
+ &lt;li&gt;&lt;strong&gt;[client]&lt;/strong&gt; 已经自定义 favicon 的页面，在页面加载时会闪一下 NocoBase 的 favicon (&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fgithub.com%2Fnocobase%2Fnocobase%2Fpull%2F6337&quot; target=&quot;_blank&quot;&gt;#6337&lt;/a&gt;) by @zhangzhonghe&lt;/li&gt; 
+ &lt;li&gt;&lt;strong&gt;[区块：地图]&lt;/strong&gt; 地图字段不显示配置项 (&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fgithub.com%2Fnocobase%2Fnocobase%2Fpull%2F6336&quot; target=&quot;_blank&quot;&gt;#6336&lt;/a&gt;) by @zhangzhonghe&lt;/li&gt; 
+ &lt;li&gt;&lt;strong&gt;[自定义品牌]&lt;/strong&gt; 已经自定义 favicon 的页面，在页面加载时会闪一下 NocoBase 的 favicon by @zhangzhonghe&lt;/li&gt; 
+ &lt;li&gt;&lt;strong&gt;[模板打印]&lt;/strong&gt; 模板打印插件和备份管理器插件都开启时，无法上传本地备份还原应用 by @gchust&lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;h2&gt;next&lt;/h2&gt; 
+&lt;p&gt;&lt;img alt=&quot;next.png&quot; src=&quot;https://oscimg.oschina.net/oscnet//c041b3d6f9d77a2dc280d654a84da45f.png&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
+&lt;h3&gt;&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fwww.nocobase.com%2Fcn%2Fblog%2Fv1.6.0-beta.15&quot; target=&quot;_blank&quot;&gt;v1.6.0-beta.15&lt;/a&gt;&lt;/h3&gt; 
+&lt;p&gt;&lt;em&gt;发布时间：2025-02-27&lt;/em&gt;&lt;/p&gt; 
+&lt;h4&gt;🐛 修复&lt;/h4&gt; 
+&lt;ul&gt; 
+ &lt;li&gt; &lt;p&gt;&lt;strong&gt;[client]&lt;/strong&gt;&lt;/p&gt; 
+  &lt;ul&gt; 
+   &lt;li&gt;无评论表时点击创建评论区块报错 (&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fgithub.com%2Fnocobase%2Fnocobase%2Fpull%2F6309&quot; target=&quot;_blank&quot;&gt;#6309&lt;/a&gt;) by @katherinehhh&lt;/li&gt; 
+   &lt;li&gt;拖动菜单之后，位置不对 (&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fgithub.com%2Fnocobase%2Fnocobase%2Fpull%2F6315&quot; target=&quot;_blank&quot;&gt;#6315&lt;/a&gt;) by @zhangzhonghe&lt;/li&gt; 
+  &lt;/ul&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;&lt;strong&gt;[工作流：自定义操作事件]&lt;/strong&gt; 修复编译错误 by @mytharcher&lt;/p&gt; &lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;h3&gt;&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fwww.nocobase.com%2Fcn%2Fblog%2Fv1.6.0-beta.16&quot; target=&quot;_blank&quot;&gt;v1.6.0-beta.16&lt;/a&gt;&lt;/h3&gt; 
+&lt;p&gt;&lt;em&gt;发布时间：2025-03-04&lt;/em&gt;&lt;/p&gt; 
+&lt;h4&gt;🎉 新特性&lt;/h4&gt; 
+&lt;ul&gt; 
+ &lt;li&gt;&lt;strong&gt;[client]&lt;/strong&gt; 时间字段支持格式化 (&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fgithub.com%2Fnocobase%2Fnocobase%2Fpull%2F6329&quot; target=&quot;_blank&quot;&gt;#6329&lt;/a&gt;) by @katherinehhh&lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;h4&gt;🚀 优化&lt;/h4&gt; 
+&lt;ul&gt; 
+ &lt;li&gt;&lt;strong&gt;[server]&lt;/strong&gt; 更新 koa 至 2.15.4；更新 @koa/cors 至 5.0.0 (&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fgithub.com%2Fnocobase%2Fnocobase%2Fpull%2F6334&quot; target=&quot;_blank&quot;&gt;#6334&lt;/a&gt;) by @2013xile&lt;/li&gt; 
+ &lt;li&gt;&lt;strong&gt;[工作流]&lt;/strong&gt; 后置节点结果加载以提升执行记录画布性能 (&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fgithub.com%2Fnocobase%2Fnocobase%2Fpull%2F6344&quot; target=&quot;_blank&quot;&gt;#6344&lt;/a&gt;) by @mytharcher&lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;h4&gt;🐛 修复&lt;/h4&gt; 
+&lt;ul&gt; 
+ &lt;li&gt; &lt;p&gt;&lt;strong&gt;[auth]&lt;/strong&gt; 在 WebSocket 授权过程中避免刷新令牌。 (&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fgithub.com%2Fnocobase%2Fnocobase%2Fpull%2F6342&quot; target=&quot;_blank&quot;&gt;#6342&lt;/a&gt;) by @sheldon66&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;&lt;strong&gt;[client]&lt;/strong&gt;&lt;/p&gt; 
+  &lt;ul&gt; 
+   &lt;li&gt;已经自定义 favicon 的页面，在页面加载时会闪一下 NocoBase 的 favicon (&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fgithub.com%2Fnocobase%2Fnocobase%2Fpull%2F6337&quot; target=&quot;_blank&quot;&gt;#6337&lt;/a&gt;) by @zhangzhonghe&lt;/li&gt; 
+   &lt;li&gt;关系字段阅读模式下 hover 时出现新增按钮 (&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fgithub.com%2Fnocobase%2Fnocobase%2Fpull%2F6322&quot; target=&quot;_blank&quot;&gt;#6322&lt;/a&gt;) by @katherinehhh&lt;/li&gt; 
+  &lt;/ul&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;&lt;strong&gt;[devtools]&lt;/strong&gt; 确保仅在 req.ip 不为      时，设置 X-Forwarded-For 头部。 (&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fgithub.com%2Fnocobase%2Fnocobase%2Fpull%2F6320&quot; target=&quot;_blank&quot;&gt;#6320&lt;/a&gt;) by @sheldon66&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;&lt;strong&gt;[区块：地图]&lt;/strong&gt; 地图字段不显示配置项 (&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fgithub.com%2Fnocobase%2Fnocobase%2Fpull%2F6336&quot; target=&quot;_blank&quot;&gt;#6336&lt;/a&gt;) by @zhangzhonghe&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;&lt;strong&gt;[移动端]&lt;/strong&gt; 页面报错：Cannot read properties of null (reading &#39;match&#39;) (&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fgithub.com%2Fnocobase%2Fnocobase%2Fpull%2F6335&quot; target=&quot;_blank&quot;&gt;#6335&lt;/a&gt;) by @zhangzhonghe&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;&lt;strong&gt;[用户]&lt;/strong&gt; 用户权限管理表格在首次加载页面时，有一个报错的 UI 一闪而过 (&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fgithub.com%2Fnocobase%2Fnocobase%2Fpull%2F6324&quot; target=&quot;_blank&quot;&gt;#6324&lt;/a&gt;) by @zhangzhonghe&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;&lt;strong&gt;[区块：操作面板]&lt;/strong&gt; 设置操作面板的高度无效 (&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fgithub.com%2Fnocobase%2Fnocobase%2Fpull%2F6321&quot; target=&quot;_blank&quot;&gt;#6321&lt;/a&gt;) by @zhangzhonghe&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;&lt;strong&gt;[操作：导入记录 Pro]&lt;/strong&gt; 关系区块导入按钮的识别重复记录依据字段下拉无内容 by @katherinehhh&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;&lt;strong&gt;[操作：导出记录 Pro]&lt;/strong&gt; 导出附件按钮 setting 多了添加区块 by @katherinehhh&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;&lt;strong&gt;[工作流：自定义操作事件]&lt;/strong&gt; 修复自定义操作事件已绑定工作流的旧按钮的迁移脚本 by @mytharcher&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;&lt;strong&gt;[自定义品牌]&lt;/strong&gt; 已经自定义 favicon 的页面，在页面加载时会闪一下 NocoBase 的 favicon by @zhangzhonghe&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;&lt;strong&gt;[模板打印]&lt;/strong&gt; 模板打印插件和备份管理器插件都开启时，无法上传本地备份还原应用 by @gchust&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;&lt;strong&gt;[工作流：审批]&lt;/strong&gt;&lt;/p&gt; 
+  &lt;ul&gt; 
+   &lt;li&gt;修复 &lt;code&gt;.toJSON()&lt;/code&gt; 导致的错误 by @mytharcher&lt;/li&gt; 
+   &lt;li&gt;修复由于版本号设置导致迁移脚本未执行 by @mytharcher&lt;/li&gt; 
+   &lt;li&gt;修复旧区块的迁移脚本 by @mytharcher&lt;/li&gt; 
+  &lt;/ul&gt; &lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;h2&gt;develop&lt;/h2&gt; 
+&lt;p&gt;&lt;img alt=&quot;develop.png&quot; src=&quot;https://oscimg.oschina.net/oscnet//a73740a08e3f96097dcb4e61e470f47e.png&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
+&lt;h3&gt;&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fwww.nocobase.com%2Fcn%2Fblog%2Fv1.6.0-alpha.29&quot; target=&quot;_blank&quot;&gt;v1.6.0-alpha.29&lt;/a&gt;&lt;/h3&gt; 
+&lt;p&gt;&lt;em&gt;发布时间：2025-02-27&lt;/em&gt;&lt;/p&gt; 
+&lt;h4&gt;🎉 新特性&lt;/h4&gt; 
+&lt;ul&gt; 
+ &lt;li&gt;&lt;strong&gt;[client]&lt;/strong&gt; 支持为按钮配置权限 (&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fgithub.com%2Fnocobase%2Fnocobase%2Fpull%2F6254&quot; target=&quot;_blank&quot;&gt;#6254&lt;/a&gt;) by @katherinehhh&lt;/li&gt; 
+ &lt;li&gt;&lt;strong&gt;[区块：模板]&lt;/strong&gt; 新增 &lt;code&gt;区块：模板&lt;/code&gt; 插件，为区块提供基于继承机制的模板的功能。 (&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fgithub.com%2Fnocobase%2Fnocobase%2Fpull%2F5920&quot; target=&quot;_blank&quot;&gt;#5920&lt;/a&gt;) by @gchust&lt;/li&gt; 
+ &lt;li&gt;&lt;strong&gt;[工作流：自定义操作事件]&lt;/strong&gt; 触发工作流按钮支持权限控制 by @katherinehhh&lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;h4&gt;🚀 优化&lt;/h4&gt; 
+&lt;ul&gt; 
+ &lt;li&gt; &lt;p&gt;&lt;strong&gt;[client]&lt;/strong&gt;&lt;/p&gt; 
+  &lt;ul&gt; 
+   &lt;li&gt;升级 react types 定义 (&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fgithub.com%2Fnocobase%2Fnocobase%2Fpull%2F6278&quot; target=&quot;_blank&quot;&gt;#6278&lt;/a&gt;) by @gchust&lt;/li&gt; 
+   &lt;li&gt;用户个人中心扩展改进 (&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fgithub.com%2Fnocobase%2Fnocobase%2Fpull%2F6213&quot; target=&quot;_blank&quot;&gt;#6213&lt;/a&gt;) by @katherinehhh&lt;/li&gt; 
+  &lt;/ul&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;&lt;strong&gt;[文件管理器]&lt;/strong&gt;&lt;/p&gt; 
+  &lt;ul&gt; 
+   &lt;li&gt;URL 字段长度增加为 1024 (&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fgithub.com%2Fnocobase%2Fnocobase%2Fpull%2F6275&quot; target=&quot;_blank&quot;&gt;#6275&lt;/a&gt;) by @mytharcher&lt;/li&gt; 
+   &lt;li&gt;后端添加生成 preview 地址代码 (&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fgithub.com%2Fnocobase%2Fnocobase%2Fpull%2F6281&quot; target=&quot;_blank&quot;&gt;#6281&lt;/a&gt;) by @jiannx&lt;/li&gt; 
+   &lt;li&gt;文件上传时生成的文件名由随机改成文件名加随机后缀。 (&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fgithub.com%2Fnocobase%2Fnocobase%2Fpull%2F6217&quot; target=&quot;_blank&quot;&gt;#6217&lt;/a&gt;) by @chenos&lt;/li&gt; 
+   &lt;li&gt;后端添加生成 preview 地址代码 (&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fgithub.com%2Fnocobase%2Fnocobase%2Fpull%2F6223&quot; target=&quot;_blank&quot;&gt;#6223&lt;/a&gt;) by @jiannx&lt;/li&gt; 
+   &lt;li&gt;调整存储引擎类型的 API 并增加插件的接口 (&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fgithub.com%2Fnocobase%2Fnocobase%2Fpull%2F6246&quot; target=&quot;_blank&quot;&gt;#6246&lt;/a&gt;) by @mytharcher&lt;/li&gt; 
+   &lt;li&gt;调整存储引擎类型的 API 并增加插件的接口 (&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fgithub.com%2Fnocobase%2Fnocobase%2Fpull%2F6246&quot; target=&quot;_blank&quot;&gt;#6246&lt;/a&gt;) by @mytharcher&lt;/li&gt; 
+  &lt;/ul&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;&lt;strong&gt;[区块：操作面板]&lt;/strong&gt; 优化移动端样式 (&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fgithub.com%2Fnocobase%2Fnocobase%2Fpull%2F6270&quot; target=&quot;_blank&quot;&gt;#6270&lt;/a&gt;) by @zhangzhonghe&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;&lt;strong&gt;[工作流]&lt;/strong&gt; 在工作流画布的节点上隐藏节点 ID (&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fgithub.com%2Fnocobase%2Fnocobase%2Fpull%2F6251&quot; target=&quot;_blank&quot;&gt;#6251&lt;/a&gt;) by @mytharcher&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;&lt;strong&gt;[文件存储：S3 (Pro)]&lt;/strong&gt;&lt;/p&gt; 
+  &lt;ul&gt; 
+   &lt;li&gt;基于主仓库的变更调整存储引擎的 API by @mytharcher&lt;/li&gt; 
+   &lt;li&gt;支持 thumbnailRule 选项配置 by @jiannx&lt;/li&gt; 
+  &lt;/ul&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;&lt;strong&gt;[备份管理器]&lt;/strong&gt; 允许还原备份到缺少部分插件的应用 by @gchust&lt;/p&gt; &lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;h4&gt;🐛 修复&lt;/h4&gt; 
+&lt;ul&gt; 
+ &lt;li&gt; &lt;p&gt;&lt;strong&gt;[devtools]&lt;/strong&gt; 确保仅在 req.ip 不为      时，设置 X-Forwarded-For 头部。 (&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fgithub.com%2Fnocobase%2Fnocobase%2Fpull%2F6320&quot; target=&quot;_blank&quot;&gt;#6320&lt;/a&gt;) by @sheldon66&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;&lt;strong&gt;[client]&lt;/strong&gt;&lt;/p&gt; 
+  &lt;ul&gt; 
+   &lt;li&gt;拖动菜单之后，位置不对 (&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fgithub.com%2Fnocobase%2Fnocobase%2Fpull%2F6315&quot; target=&quot;_blank&quot;&gt;#6315&lt;/a&gt;) by @zhangzhonghe&lt;/li&gt; 
+   &lt;li&gt;无评论表时点击创建评论区块报错 (&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fgithub.com%2Fnocobase%2Fnocobase%2Fpull%2F6309&quot; target=&quot;_blank&quot;&gt;#6309&lt;/a&gt;) by @katherinehhh&lt;/li&gt; 
+   &lt;li&gt;点击树区块节点时报错 (&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fgithub.com%2Fnocobase%2Fnocobase%2Fpull%2F6314&quot; target=&quot;_blank&quot;&gt;#6314&lt;/a&gt;) by @zhangzhonghe&lt;/li&gt; 
+   &lt;li&gt;点击左侧菜单后，子页面被异常关闭 (&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fgithub.com%2Fnocobase%2Fnocobase%2Fpull%2F6305&quot; target=&quot;_blank&quot;&gt;#6305&lt;/a&gt;) by @zhangzhonghe&lt;/li&gt; 
+   &lt;li&gt;当表达式的值为空时，不清空字段的值 (&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fgithub.com%2Fnocobase%2Fnocobase%2Fpull%2F6300&quot; target=&quot;_blank&quot;&gt;#6300&lt;/a&gt;) by @zhangzhonghe&lt;/li&gt; 
+   &lt;li&gt;富文本字段组件无法删除清空所有内容 (&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fgithub.com%2Fnocobase%2Fnocobase%2Fpull%2F6287&quot; target=&quot;_blank&quot;&gt;#6287&lt;/a&gt;) by @katherinehhh&lt;/li&gt; 
+   &lt;li&gt;无法将页面移动到分组中 (&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fgithub.com%2Fnocobase%2Fnocobase%2Fpull%2F6289&quot; target=&quot;_blank&quot;&gt;#6289&lt;/a&gt;) by @zhangzhonghe&lt;/li&gt; 
+   &lt;li&gt;跳过 CurrentUserProvider 中的认证错误。 (&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fgithub.com%2Fnocobase%2Fnocobase%2Fpull%2F6252&quot; target=&quot;_blank&quot;&gt;#6252&lt;/a&gt;) by @sheldon66&lt;/li&gt; 
+   &lt;li&gt;修复逐个上传文件后之前的文件消失的问题 (&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fgithub.com%2Fnocobase%2Fnocobase%2Fpull%2F6260&quot; target=&quot;_blank&quot;&gt;#6260&lt;/a&gt;) by @mytharcher&lt;/li&gt; 
+   &lt;li&gt;修复邮件通道配置表单中输入标签的字符编码错误。 (&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fgithub.com%2Fnocobase%2Fnocobase%2Fpull%2F6221&quot; target=&quot;_blank&quot;&gt;#6221&lt;/a&gt;) by @sheldon66&lt;/li&gt; 
+   &lt;li&gt;修复上传多个文件后文件丢失的问题 (&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fgithub.com%2Fnocobase%2Fnocobase%2Fpull%2F6247&quot; target=&quot;_blank&quot;&gt;#6247&lt;/a&gt;) by @mytharcher&lt;/li&gt; 
+   &lt;li&gt;筛选表单字段的 Picker 与格式设置不匹配 (&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fgithub.com%2Fnocobase%2Fnocobase%2Fpull%2F6234&quot; target=&quot;_blank&quot;&gt;#6234&lt;/a&gt;) by @katherinehhh&lt;/li&gt; 
+   &lt;li&gt;在禁用状态下正确展示 &lt;code&gt;&amp;lt;Variable.TextArea /&amp;gt;&lt;/code&gt; 组件 (&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fgithub.com%2Fnocobase%2Fnocobase%2Fpull%2F6197&quot; target=&quot;_blank&quot;&gt;#6197&lt;/a&gt;) by @mytharcher&lt;/li&gt; 
+  &lt;/ul&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;&lt;strong&gt;[create-nocobase-app]&lt;/strong&gt; &lt;code&gt;create-nocobase-app&lt;/code&gt; 后 &lt;code&gt;yarn dev&lt;/code&gt; 网页端报错 (&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fgithub.com%2Fnocobase%2Fnocobase%2Fpull%2F6299&quot; target=&quot;_blank&quot;&gt;#6299&lt;/a&gt;) by @gchust&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;&lt;strong&gt;[auth]&lt;/strong&gt; 当令牌是 API 密钥时跳过用户身份验证检查。 (&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fgithub.com%2Fnocobase%2Fnocobase%2Fpull%2F6291&quot; target=&quot;_blank&quot;&gt;#6291&lt;/a&gt;) by @sheldon66&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;&lt;strong&gt;[cli]&lt;/strong&gt; 优化 nocobase upgrade 命令行 (&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fgithub.com%2Fnocobase%2Fnocobase%2Fpull%2F6280&quot; target=&quot;_blank&quot;&gt;#6280&lt;/a&gt;) by @chenos&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;&lt;strong&gt;[文件管理器]&lt;/strong&gt;&lt;/p&gt; 
+  &lt;ul&gt; 
+   &lt;li&gt;修复继承表的迁移问题 (&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fgithub.com%2Fnocobase%2Fnocobase%2Fpull%2F6310&quot; target=&quot;_blank&quot;&gt;#6310&lt;/a&gt;) by @mytharcher&lt;/li&gt; 
+   &lt;li&gt;修复迁移脚本并补充测试用例 (&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fgithub.com%2Fnocobase%2Fnocobase%2Fpull%2F6288&quot; target=&quot;_blank&quot;&gt;#6288&lt;/a&gt;) by @mytharcher&lt;/li&gt; 
+   &lt;li&gt;修复迁移脚本并补充测试用例 (&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fgithub.com%2Fnocobase%2Fnocobase%2Fpull%2F6288&quot; target=&quot;_blank&quot;&gt;#6288&lt;/a&gt;) by @mytharcher&lt;/li&gt; 
+   &lt;li&gt;修复文件表 &lt;code&gt;path&lt;/code&gt; 列的类型 (&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fgithub.com%2Fnocobase%2Fnocobase%2Fpull%2F6294&quot; target=&quot;_blank&quot;&gt;#6294&lt;/a&gt;) by @mytharcher&lt;/li&gt; 
+   &lt;li&gt;升级 AWS SDK 版本以修复 MinIO 上传问题 (&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fgithub.com%2Fnocobase%2Fnocobase%2Fpull%2F6253&quot; target=&quot;_blank&quot;&gt;#6253&lt;/a&gt;) by @mytharcher&lt;/li&gt; 
+  &lt;/ul&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;&lt;strong&gt;[区块：模板]&lt;/strong&gt; 访问公开表单会重定向到登录界面 (&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fgithub.com%2Fnocobase%2Fnocobase%2Fpull%2F6258&quot; target=&quot;_blank&quot;&gt;#6258&lt;/a&gt;) by @gchust&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;&lt;strong&gt;[权限控制]&lt;/strong&gt; 配置数据表权限，使用多对多字段作为数据范围筛选条件，响应的数据记录不正确 (&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fgithub.com%2Fnocobase%2Fnocobase%2Fpull%2F6304&quot; target=&quot;_blank&quot;&gt;#6304&lt;/a&gt;) by @2013xile&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;&lt;strong&gt;[区块：看板]&lt;/strong&gt; 弹窗中看板区块使用弹窗记录变量过滤数据不正确 (&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fgithub.com%2Fnocobase%2Fnocobase%2Fpull%2F6290&quot; target=&quot;_blank&quot;&gt;#6290&lt;/a&gt;) by @katherinehhh&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;&lt;strong&gt;[数据表字段：自动编码]&lt;/strong&gt; 修复自动编号字段在只读模式下未禁用 (&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fgithub.com%2Fnocobase%2Fnocobase%2Fpull%2F6274&quot; target=&quot;_blank&quot;&gt;#6274&lt;/a&gt;) by @mytharcher&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;&lt;strong&gt;[工作流：测试工具包]&lt;/strong&gt; 修复新功能相关的 E2E 测试用例 (&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fgithub.com%2Fnocobase%2Fnocobase%2Fpull%2F6296&quot; target=&quot;_blank&quot;&gt;#6296&lt;/a&gt;) by @mytharcher&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;&lt;strong&gt;[公开表单]&lt;/strong&gt; 公开表单里跳过 Auth 检查 (&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fgithub.com%2Fnocobase%2Fnocobase%2Fpull%2F6284&quot; target=&quot;_blank&quot;&gt;#6284&lt;/a&gt;) by @chenos&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;&lt;strong&gt;[用户认证]&lt;/strong&gt; 移除 AdminProvider 不必要的 NavigateIfNotSignIn 组件。 (&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fgithub.com%2Fnocobase%2Fnocobase%2Fpull%2F6268&quot; target=&quot;_blank&quot;&gt;#6268&lt;/a&gt;) by @sheldon66&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;&lt;strong&gt;[工作流]&lt;/strong&gt;&lt;/p&gt; 
+  &lt;ul&gt; 
+   &lt;li&gt;修复工作流画布的样式细节 (&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fgithub.com%2Fnocobase%2Fnocobase%2Fpull%2F6240&quot; target=&quot;_blank&quot;&gt;#6240&lt;/a&gt;) by @mytharcher&lt;/li&gt; 
+   &lt;li&gt;支持修改密码时触发用户表的工作流 (&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fgithub.com%2Fnocobase%2Fnocobase%2Fpull%2F6248&quot; target=&quot;_blank&quot;&gt;#6248&lt;/a&gt;) by @mytharcher&lt;/li&gt; 
+  &lt;/ul&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;&lt;strong&gt;[工作流：自定义操作事件]&lt;/strong&gt;&lt;/p&gt; 
+  &lt;ul&gt; 
+   &lt;li&gt;修复编译错误 by @mytharcher&lt;/li&gt; 
+   &lt;li&gt;修复 E2E 测试用例 by @mytharcher&lt;/li&gt; 
+   &lt;li&gt;修复触发工作流初始化器 by @mytharcher&lt;/li&gt; 
+   &lt;li&gt;修复编译错误 by @mytharcher&lt;/li&gt; 
+  &lt;/ul&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;&lt;strong&gt;[工作流：操作前事件]&lt;/strong&gt; 修复响应消息节点的错误消息不显示的问题 by @mytharcher&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;&lt;strong&gt;[工作流：JavaScript 节点]&lt;/strong&gt; 支持导入 NocoBase 的模块 by @mytharcher&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;&lt;strong&gt;[邮件管理]&lt;/strong&gt; 公开邮件消息表和邮件接口导致的弹出表单数据丢失 by @jiannx&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;&lt;strong&gt;[文件存储：S3 (Pro)]&lt;/strong&gt;&lt;/p&gt; 
+  &lt;ul&gt; 
+   &lt;li&gt;升级 AWS SDK 版本以修复 MinIO 上传问题 by @mytharcher&lt;/li&gt; 
+   &lt;li&gt;设置强制路径式（访问）的默认值为，虚拟主机式 by @jiannx&lt;/li&gt; 
+  &lt;/ul&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;&lt;strong&gt;[区块：分步表单]&lt;/strong&gt; 分步排序异常 by @jiannx&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;&lt;strong&gt;[区块：树]&lt;/strong&gt; 点击树区块节点时报错 by @zhangzhonghe&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;&lt;strong&gt;[备份管理器]&lt;/strong&gt; 在&quot;从本地备份还原&quot;操作弹窗中，点击删除图标不会清空文件列表 by @gchust&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;&lt;strong&gt;[工作流：审批]&lt;/strong&gt;&lt;/p&gt; 
+  &lt;ul&gt; 
+   &lt;li&gt;修复由于版本号设置导致迁移脚本未执行 by @mytharcher&lt;/li&gt; 
+   &lt;li&gt;修复新功能相关的 E2E 测试用例 by @mytharcher&lt;/li&gt; 
+  &lt;/ul&gt; &lt;/li&gt; 
+&lt;/ul&gt;
+                                                                                &lt;/div&gt;
+                                                                            </description>
+            <link>https://www.oschina.net/news/337177/nocobase-updated</link>
+            <guid isPermaLink="false">https://www.oschina.net/news/337177/nocobase-updated</guid>
+            <pubDate>Fri, 28 Feb 2025 00:50:00 GMT</pubDate>
+            <author>来源: 投稿</author>
+        </item>
+        <item>
+            <title>AI 集成的迷你 k8s 面板 k8m 更新，Helm 参数 AI 划词解释、参数对比，让你看的清看的明白</title>
+            <description>&lt;div class=&quot;content&quot;&gt;
+                                                                    
+                                                        &lt;p&gt;&lt;strong&gt;k8m&lt;/strong&gt;&lt;span style=&quot;background-color:#ffffff; color:#333333&quot;&gt;&amp;nbsp;&lt;/span&gt;&lt;span style=&quot;background-color:#ffffff; color:#333333&quot;&gt;是一款 AI 驱动的 Mini Kubernetes AI Dashboard 轻量级控制枱工具，专为简化集群管理设计。它基于 AMIS 构建，并通过&lt;/span&gt;&lt;span style=&quot;background-color:#ffffff; color:#333333&quot;&gt;&amp;nbsp;&lt;/span&gt;&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fgithub.com%2Fweibaohui%2Fkom&quot; target=&quot;_blank&quot;&gt;&lt;code&gt;kom&lt;/code&gt;&lt;/a&gt;&lt;span style=&quot;background-color:#ffffff; color:#333333&quot;&gt;&amp;nbsp;&lt;/span&gt;&lt;span style=&quot;background-color:#ffffff; color:#333333&quot;&gt;作为 Kubernetes API 客户端，&lt;/span&gt;&lt;strong&gt;k8m&lt;/strong&gt;&lt;span style=&quot;background-color:#ffffff; color:#333333&quot;&gt;&amp;nbsp;&lt;/span&gt;&lt;span style=&quot;background-color:#ffffff; color:#333333&quot;&gt;内置了 Qwen2.5-Coder-7B 模型交互能力，同时支持接入您自己的私有化大模型。是开发运维人员不错的 k8s 管理好帮手。&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;a href=&quot;https://gitee.com/weibaohui/k8m&quot;&gt;https://gitee.com/weibaohui/k8m&lt;/a&gt;&lt;/p&gt; 
+&lt;p&gt;快速体验：&lt;/p&gt; 
+&lt;pre&gt;&lt;code class=&quot;language-bash&quot;&gt;kubectl apply -f&amp;nbsp;https://gitee.com/weibaohui/k8m/raw/main/deploy/k8m.yaml
+
+&lt;/code&gt;&lt;/pre&gt; 
+&lt;ol&gt; 
+ &lt;li&gt;日志查看支持颜色，如果输出 console 的时候带有颜色，那么在 pod 日志查看时就可以显示。 &lt;img alt=&quot;输入图片说明&quot; src=&quot;https://oscimg.oschina.net/oscnet//ec2e8d19249880bbd332a12fbb0d4acc.png&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/li&gt; 
+ &lt;li&gt;Helm 功能上线 2.1 新增 helm 仓库 &lt;img alt=&quot;输入图片说明&quot; src=&quot;https://oscimg.oschina.net/oscnet//952978b107b2603d16c59b9c80950cbd.png&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/li&gt; 
+ &lt;li&gt;&amp;nbsp;安装 helm chart 应用，应用列表 &lt;img alt=&quot;输入图片说明&quot; src=&quot;https://oscimg.oschina.net/oscnet//8f88926b236f781da5ba302285bf1f2c.png&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/li&gt; 
+ &lt;li&gt;查看应用&lt;/li&gt; 
+ &lt;li&gt;&lt;img alt=&quot;输入图片说明&quot; src=&quot;https://oscimg.oschina.net/oscnet//bfd446e80e4ca3050d8a857674fb9a71.png&quot; referrerpolicy=&quot;no-referrer&quot;&gt; &lt;img alt=&quot;输入图片说明&quot; src=&quot;https://oscimg.oschina.net/oscnet//e729c1ea7d4271b436a6be740f164674.png&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/li&gt; 
+ &lt;li&gt;&lt;span style=&quot;color:#e74c3c&quot;&gt;&lt;strong&gt;支持对参数内容选中划词 AI 解释&lt;/strong&gt;&lt;/span&gt; &lt;img alt=&quot;输入图片说明&quot; src=&quot;https://oscimg.oschina.net/oscnet//4f348c57899fd66c91e28e2522bdfb6f.png&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/li&gt; 
+ &lt;li&gt;查看已部署 release&lt;/li&gt; 
+ &lt;li&gt;&lt;img alt=&quot;输入图片说明&quot; src=&quot;https://oscimg.oschina.net/oscnet//c72888c0c1ca2e0ddde9e326cd6061d7.png&quot; referrerpolicy=&quot;no-referrer&quot;&gt; &lt;img alt=&quot;输入图片说明&quot; src=&quot;https://oscimg.oschina.net/oscnet//81c7ee4d14d15ec7492f248462495245.png&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/li&gt; 
+ &lt;li&gt;&amp;nbsp;&lt;span style=&quot;color:#e74c3c&quot;&gt;查看安装参数对比&lt;/span&gt;&lt;/li&gt; 
+ &lt;li&gt;&lt;img alt=&quot;输入图片说明&quot; src=&quot;https://oscimg.oschina.net/oscnet//41aa0138b106033d2a78e2da629ab2b0.png&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/li&gt; 
+ &lt;li&gt;更新、升级、降级部署版本 &lt;img alt=&quot;输入图片说明&quot; src=&quot;https://oscimg.oschina.net/oscnet//a614b7e376dd007a92ba3688d01219e7.png&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/li&gt; 
+ &lt;li&gt;&amp;nbsp;查看已部署 release 变更历史 &lt;img alt=&quot;输入图片说明&quot; src=&quot;https://oscimg.oschina.net/oscnet//28cf9e1b06af172b175ef2b8aaa9b5e2.png&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/li&gt; 
+&lt;/ol&gt; 
+&lt;h2&gt;更新内容&lt;/h2&gt; 
+&lt;ul&gt; 
+ &lt;li&gt;默认选择第一个 pod&lt;/li&gt; 
+ &lt;li&gt;feat(ui): 增加日志查看组件支持 ANSI 转换&lt;/li&gt; 
+ &lt;li&gt;feat(ui): 增加 Helm 发布变更历史详情功能&lt;/li&gt; 
+ &lt;li&gt;refactor(helm): 优化错误信息格式&lt;/li&gt; 
+ &lt;li&gt;fix(helm): 优化 chart 获取流程&lt;/li&gt; 
+ &lt;li&gt;feat(ui): 在 Helm 页面添加关闭按钮&lt;/li&gt; 
+ &lt;li&gt;feat(ui): 在 Helm 更新释放对话框中添加关闭按钮&lt;/li&gt; 
+ &lt;li&gt;refactor(ui): 更新 Helm 发布组件&lt;/li&gt; 
+ &lt;li&gt;refactor(helm): 允许同版本更新参数&lt;/li&gt; 
+ &lt;li&gt;refactor(controller/helm): 升级 release 时增加命名空间参数&lt;/li&gt; 
+ &lt;li&gt;fix(helm): 设置 REST 客户端的内容类型和接受内容类型为 JSON&lt;/li&gt; 
+ &lt;li&gt;refactor(ui): 优化 Helm 更新发布组件&lt;/li&gt; 
+ &lt;li&gt;refactor(ui): 优化 Helm 更新发布组件的代码格式和参数加载功能&lt;/li&gt; 
+ &lt;li&gt;feat(helm): 添加更新参数功能并调整版本显示&lt;/li&gt; 
+ &lt;li&gt;feat(ui): 添加 Helm 更新发布组件&lt;/li&gt; 
+ &lt;li&gt;feat(ui): 添加更新 Helm 发布版本的功能&lt;/li&gt; 
+ &lt;li&gt;refactor(controller/helm): 优化升级发布功能并移除冗余错误处理&lt;/li&gt; 
+ &lt;li&gt;feat(helm): 添加仓库名称到安装描述&lt;/li&gt; 
+ &lt;li&gt;feat(controller): 对 helm 列表进行排序&lt;/li&gt; 
+ &lt;li&gt;feat(helm): 升级 release 时支持自定义 values&lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;p&gt;&lt;strong&gt;完整的更新日志&lt;/strong&gt;: &lt;a href=&quot;https://gitee.com/weibaohui/k8m/compare/v0.0.52...v0.0.53&quot;&gt;https://gitee.com/weibaohui/k8m/compare/v0.0.52...v0.0.53&lt;/a&gt;&lt;/p&gt;
+                                                                                &lt;/div&gt;
+                                                                            </description>
+            <link>https://www.oschina.net/news/337158/k8m-updated</link>
+            <guid isPermaLink="false">https://www.oschina.net/news/337158/k8m-updated</guid>
+            <pubDate>Thu, 27 Feb 2025 14:59:00 GMT</pubDate>
+            <author>来源: 投稿</author>
+        </item>
         <item>
             <title>Torna v1.31.3 已经发布，企业接口文档解决方案</title>
             <description>&lt;div class=&quot;content&quot;&gt;
@@ -622,229 +1106,6 @@
             <link>https://www.oschina.net/news/336832/dapr-1-15-released</link>
             <guid isPermaLink="false">https://www.oschina.net/news/336832/dapr-1-15-released</guid>
             <pubDate>Wed, 26 Feb 2025 06:18:00 GMT</pubDate>
-            <author>来源: OSCHINA</author>
-        </item>
-        <item>
-            <title>🔥无代码国产流程引擎 FlowLong 1.1.3 发布</title>
-            <description>&lt;div class=&quot;content&quot;&gt;
-                                                                    
-                                                        &lt;p style=&quot;color:#333333; margin-left:0; margin-right:0; text-align:left&quot;&gt;&lt;img height=&quot;141&quot; src=&quot;https://oscimg.oschina.net/oscnet/up-8f140b87336199abaadd80c20df88f4a1a2.png&quot; width=&quot;474&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
-&lt;ul&gt; 
- &lt;li&gt; &lt;p style=&quot;margin-left:0; margin-right:0&quot;&gt;开源地址：&lt;span style=&quot;color:#ff2941&quot;&gt;https://gitee.com/aizuda/flowlong&lt;/span&gt;&lt;/p&gt; &lt;/li&gt; 
- &lt;li&gt; &lt;p style=&quot;margin-left:0; margin-right:0&quot;&gt;&lt;span style=&quot;color:#ff2941&quot;&gt;&lt;span style=&quot;background-color:#ffffff; color:#3f3f3f&quot;&gt;开源地址：&lt;/span&gt;&lt;span style=&quot;background-color:#ffffff; color:#ff2941&quot;&gt;https://github.com/aizuda/flowlong&lt;/span&gt;&lt;/span&gt;&lt;/p&gt; &lt;/li&gt; 
- &lt;li&gt; &lt;p style=&quot;margin-left:0; margin-right:0&quot;&gt;官网文档：https://flowlong.aizuda.com&lt;/p&gt; &lt;/li&gt; 
-&lt;/ul&gt; 
-&lt;blockquote&gt; 
- &lt;p style=&quot;color:#505050; margin-left:0; margin-right:0&quot;&gt;支持全流程操作监听，仅 8 张表实现整个流程引擎（更符合中国人的思维模式设计），截至当前近 300 家企业自用登记接入使用。300 多家企业包括，国家计算中心，电信，等国企已上车，你还在等什么呢？&lt;/p&gt; 
-&lt;/blockquote&gt; 
-&lt;p style=&quot;color:#333333; margin-left:0; margin-right:0; text-align:center&quot;&gt;&lt;span style=&quot;color:#ff2941&quot;&gt;开源登记使用名单如下，企业版用户暂不公开&lt;/span&gt;&lt;/p&gt; 
-&lt;p style=&quot;color:#333333; margin-left:0; margin-right:0; text-align:center&quot;&gt;&lt;span style=&quot;color:#ff2941&quot;&gt;https://gitee.com/aizuda/flowlong/issues/IB5K4V&lt;/span&gt;&lt;/p&gt; 
-&lt;h1&gt;Flowlong 1.1.3 主要亮点&lt;/h1&gt; 
-&lt;ul&gt; 
- &lt;li&gt;feat: 新增开启流程实例监听属性&lt;/li&gt; 
- &lt;li&gt;feat: 新增任务监听传递参与者参数&lt;/li&gt; 
- &lt;li&gt;opt: 优化本地锁防止多次实例化&lt;/li&gt; 
- &lt;li&gt;opt: 优化 FlwTaskActor 中的是否为代理人方法&lt;/li&gt; 
- &lt;li&gt;opt: 优化统一参数命名&lt;img height=&quot;1479&quot; src=&quot;https://oscimg.oschina.net/oscnet/up-3065e9342c931aa77f2cc98cd4e2261c08c.png&quot; width=&quot;1761&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/li&gt; 
-&lt;/ul&gt; 
-&lt;p style=&quot;color:#333333; margin-left:0; margin-right:0; text-align:left&quot;&gt;&lt;img height=&quot;1359&quot; src=&quot;https://oscimg.oschina.net/oscnet/up-43c04bc5fd87315fd12b5c1530a2269d65b.png&quot; width=&quot;3119&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
-&lt;p style=&quot;color:#333333; margin-left:0; margin-right:0; text-align:left&quot;&gt;&lt;img height=&quot;1639&quot; src=&quot;https://oscimg.oschina.net/oscnet/up-883f09feb283c023c9eb75a4b8ccfe65236.png&quot; width=&quot;3095&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt;
-                                                                                &lt;/div&gt;
-                                                                            </description>
-            <link>https://www.oschina.net/news/336813/flowlong-1-1-3-released</link>
-            <guid isPermaLink="false">https://www.oschina.net/news/336813/flowlong-1-1-3-released</guid>
-            <pubDate>Wed, 26 Feb 2025 05:21:00 GMT</pubDate>
-            <author>来源: 投稿</author>
-        </item>
-        <item>
-            <title>Dante Cloud 3.4.3.1 发布，国内首个支持阻塞式和响应式融合的微服务</title>
-            <description>&lt;div class=&quot;content&quot;&gt;
-                                                                    
-                                                        &lt;h2&gt;[一] 项目简介&lt;/h2&gt; 
-&lt;p&gt;&lt;strong&gt;Dante Cloud&lt;/strong&gt; 国内首个支持阻塞式和响应式服务并行的微服务平台。是采用&lt;strong&gt;领域驱动模型 (DDD)&lt;strong&gt;设计思想，以「&lt;strong&gt;高质量代码、低安全漏洞&lt;/strong&gt;」为核心，基于 Spring 生态全域开源技术，高度&lt;/strong&gt;模块化和组件化设计&lt;/strong&gt;，支持&lt;strong&gt;智能电视、IoT 等物联网设备&lt;/strong&gt;认证，满足&lt;strong&gt;国家三级等保要求&lt;/strong&gt;，支持&lt;strong&gt;接口国密数字信封加解密&lt;/strong&gt;等一系列安全体系的多租户微服务解决方案。可以「&lt;strong&gt;一套代码实现微服务和单体两种架构&lt;/strong&gt;」的企业级应用系统。&lt;/p&gt; 
-&lt;h2&gt;[二] 项目理念&lt;/h2&gt; 
-&lt;p&gt;&lt;strong&gt;Dante Cloud&lt;/strong&gt; 一直秉承着「简洁、高效、包容、务实」的理念，使用微服务领域及周边相关的各类新兴技术或主流技术进行建设，不断地深耕细作、去粗取精、用心打造。目标是构建一款&lt;code&gt;代码质量高、维护投入低、安全防护强&lt;/code&gt;的，可以帮助用户快速跨越架构技术选型、技术研究探索阶段，降低传统项目中因安全漏洞、技术负债、低质代码等潜在隐患所产生的高维护投入，期望像项目名字寓意一样，在行业变革的时期承上启下，助力企业信息化建设和变革的产品。&lt;/p&gt; 
-&lt;blockquote&gt; 
- &lt;p&gt;&lt;strong&gt;Dante Cloud&lt;/strong&gt; 核心关注点是：&lt;strong&gt;「高质量的系统代码」&lt;/strong&gt;、&lt;strong&gt;「合理的系统架构」&lt;/strong&gt;、&lt;strong&gt;「低耦合的模块划分」&lt;/strong&gt;、&lt;strong&gt;「高安全性系统实现」&lt;/strong&gt;、&lt;strong&gt;「灵活的功能扩展能力」&lt;/strong&gt;，&lt;strong&gt;「优质的微服务实现」&lt;/strong&gt;，而不是追求 &lt;strong&gt;业务功能&lt;/strong&gt; 的 &lt;strong&gt;丰富&lt;/strong&gt; 性。&lt;/p&gt; 
-&lt;/blockquote&gt; 
-&lt;h2&gt;[三] 特性介绍&lt;/h2&gt; 
-&lt;p&gt;&lt;code&gt;Passkey&lt;/code&gt;（通行密钥）是一种新型的 &lt;strong&gt;无密码登录&lt;/strong&gt; 技术，旨在提高在线账户的安全性并简化登录流程。它利用非对称加密技术，通过公钥和私钥对用户身份进行验证，避免了传统密码的使用。&lt;/p&gt; 
-&lt;p&gt;&lt;code&gt;Passkey&lt;/code&gt; 的使用非常方便，用户无需记忆复杂的密码，只需通过设备上的生物识别技术（如指纹或面部识别）即可完成登录。此外，&lt;code&gt;Passkey&lt;/code&gt; 可以在多个设备上生成和使用，提高了用户的便利性。&lt;/p&gt; 
-&lt;p&gt;&lt;code&gt;Passkey&lt;/code&gt; 的安全性依赖于端上密钥的保护，由于非对称加密是目前加密强度最高的加密技术，理论上任何人都无法破解，可以说安全性是 100%。即使数据库被盗，黑客也无法获取用户的私钥，因为私钥从未离开用户的设备。&lt;/p&gt; 
-&lt;p&gt;在 Dante Cloud 最新版本中，也集成支持了 &lt;code&gt;Passkey&lt;/code&gt; 登录，并且将其与 OAuth2 协议进行了融合，支持使用 &lt;code&gt;Passkey&lt;/code&gt; 通行密钥进行登录并返回 Access Token。&lt;/p&gt; 
-&lt;p&gt;&lt;strong&gt;效果演示&lt;/strong&gt;&lt;/p&gt; 
-&lt;p&gt;&lt;strong&gt;&lt;img alt=&quot;&quot; height=&quot;300&quot; src=&quot;https://oscimg.oschina.net/oscnet/up-d2f0483b9185521e66b282c21558cb1fcfc.gif&quot; width=&quot;500&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/strong&gt;&lt;/p&gt; 
-&lt;h2&gt;[四] 更新内容&lt;/h2&gt; 
-&lt;ul&gt; 
- &lt;li&gt;&lt;strong&gt;主要更新&lt;/strong&gt; 
-  &lt;ul&gt; 
-   &lt;li&gt;[升级] Spring Boot Admin 版本升级至 3.4.4&lt;/li&gt; 
-   &lt;li&gt;[升级] Spring Boot 版本升级至 3.4.3&lt;/li&gt; 
-   &lt;li&gt;[升级] Spring Authorization Server 版本升级至 1.4.2&lt;/li&gt; 
-   &lt;li&gt;[优化] 优化客户端动态注册以及客户端激活全过程代码和逻辑&lt;/li&gt; 
-   &lt;li&gt;[新增] 新增 Passkey 通行密钥「无密码」登录方式。&lt;/li&gt; 
-   &lt;li&gt;[新增] 新增与 OAuth2 融合的自定义 Passkey 授权模式。&lt;/li&gt; 
-  &lt;/ul&gt; &lt;/li&gt; 
- &lt;li&gt;&lt;strong&gt;其它更新&lt;/strong&gt; 
-  &lt;ul&gt; 
-   &lt;li&gt;[新增] 新增客户端动态注册不允许重复注册控制&lt;/li&gt; 
-   &lt;li&gt;[新增] 新增认证授权资源管理存储，支持多种数据源切换。&lt;/li&gt; 
-   &lt;li&gt;[修复] lettuce 依赖版本回滚至与 Spring Boot 一致，以解决退出系统产生异常问题。&lt;/li&gt; 
-   &lt;li&gt;[修复] 修复客户端动态注册生成的密码被双重加密导致密码校验错误。&lt;/li&gt; 
-   &lt;li&gt;[修复] 解决 spring-security-oauth2-jose 与 spring-security-oauth2-authorization-server 依赖的 nimbus-jose-jwt 版本不一致问题&lt;/li&gt; 
-   &lt;li&gt;[修复] 修复客户端动态注册如果使用相同的 clientName 会导致系统查询出错问题。&lt;/li&gt; 
-   &lt;li&gt;[修复] 修复 OAuth2 确认页面无法支持多种环境，在物联网环境无法显示页面抛错问题。&lt;/li&gt; 
-   &lt;li&gt;[修复] 修复由于 spring-cloud-tencent-dependencies 中 &amp;lt;springdoc.version&amp;gt; 的干扰，会引入低版本 springdoc 导致系统无法启动问题。&lt;/li&gt; 
-   &lt;li&gt;[修复] 修复设备认证页面 Logo 无法显示问题&lt;/li&gt; 
-   &lt;li&gt;[修复] 修复设备认证成功后没有跳转到指定页面问题。&lt;/li&gt; 
-   &lt;li&gt;[修复] 修复自主封装支持 Postgresql 的 Nacos 镜像查询历史版本错误 fix: #IBLY9R&lt;/li&gt; 
-   &lt;li&gt;[修复] 修复基于 Camunda 的 BPMN 工作流服务调用接口出现 java.lang.ClassNotFoundException: javax.ws.rs.core.FeatureContext 错误问题。 fix: #IBNBYE&lt;/li&gt; 
-   &lt;li&gt;[优化] 优化动态控制认证开启和关闭生成的默认授权模式配置合理性&lt;/li&gt; 
-   &lt;li&gt;[优化] 去除大量代码中的 PasswordEncoder 注入，统一改用静态工具类调用方式。&lt;/li&gt; 
-   &lt;li&gt;[优化] 规范化自定义社会化授权模式参数绑定错误 Exception 定义和使用方式。&lt;/li&gt; 
-   &lt;li&gt;[优化] 优化不同产品以及不同环境使用的 Redis 数据库，避免产生不必要的冲突。&lt;/li&gt; 
-   &lt;li&gt;[优化] 前端去除无用的依赖组件&lt;/li&gt; 
-   &lt;li&gt;[优化] 前端集成 Vue DevTools，提升前端调试 Vue 应用便捷性。&lt;/li&gt; 
-   &lt;li&gt;[优化] 统一部分第三方依赖组件版本，规避系统中存在同一组件的多个不同版本依赖问题。&lt;/li&gt; 
-   &lt;li&gt;[优化] 优化前端模块打包配置，解决部分外部模块被打入导致生成代码过大问题。&lt;/li&gt; 
-   &lt;li&gt;[优化] 优化动态控制认证开启和关闭生成的默认配置信息合理性&lt;/li&gt; 
-   &lt;li&gt;[重构] 重构应用实体转换为 OAuth2 Client 实体相关代码，明确转换信息，采用统一抽象类实现规避转换代码混乱重复问题。&lt;/li&gt; 
-   &lt;li&gt;[升级] minio docker 镜像版本升级至 RELEASE.2025-02-28T09-55-16Z&lt;/li&gt; 
-   &lt;li&gt;[升级] zipkin 镜像版本升级至 3.5.0&lt;/li&gt; 
-   &lt;li&gt;[升级] grafana 镜像版本升级至 11.5.2&lt;/li&gt; 
-   &lt;li&gt;[升级] loki 镜像版本升级至 3.4.2&lt;/li&gt; 
-   &lt;li&gt;[升级] promtail 镜像版本升级至 3.4.2&lt;/li&gt; 
-   &lt;li&gt;[升级] tempo 镜像版本升级至 2.7.1&lt;/li&gt; 
-   &lt;li&gt;[升级] node-red 镜像版本升级至 4.0.9-22&lt;/li&gt; 
-   &lt;li&gt;[升级] clickhouse 镜像版本升级至 24.12.5&lt;/li&gt; 
-  &lt;/ul&gt; &lt;/li&gt; 
- &lt;li&gt;&lt;strong&gt;依赖更新&lt;/strong&gt; 
-  &lt;ul&gt; 
-   &lt;li&gt;[升级] fastjson2 版本升级至 2.0.56&lt;/li&gt; 
-   &lt;li&gt;[升级] redisson 版本升级至 3.45.0&lt;/li&gt; 
-   &lt;li&gt;[升级] software.amazon.awssdk 版本升级至 2.30.31&lt;/li&gt; 
-   &lt;li&gt;[升级] software.amazon.awssdk.crt 版本升级至 0.35.0&lt;/li&gt; 
-   &lt;li&gt;[升级] hutool 版本升级至 6.0.0-M20&lt;/li&gt; 
-   &lt;li&gt;[升级] hypersistence-utils-hibernate-63 版本升级至 3.9.2&lt;/li&gt; 
-   &lt;li&gt;[升级] json-schema-validator 版本升级至 1.5.6&lt;/li&gt; 
-   &lt;li&gt;[升级] springdoc 版本升级至 2.8.5&lt;/li&gt; 
-   &lt;li&gt;[升级] sqlite-jdbc 版本升级至 3.49.1.0&lt;/li&gt; 
-   &lt;li&gt;[升级] sweetalert2 版升级至 11.17.2&lt;/li&gt; 
-   &lt;li&gt;[升级] hutool 5.X 版本升级至 5.8.36&lt;/li&gt; 
-  &lt;/ul&gt; &lt;/li&gt; 
-&lt;/ul&gt; 
-&lt;hr&gt; 
-&lt;p&gt;&lt;strong&gt;如果本项目对你有所帮助，欢迎 Star 一波来支持我们！&lt;/strong&gt;&lt;/p&gt; 
-&lt;ul&gt; 
- &lt;li&gt;&lt;strong&gt;Gitee&lt;/strong&gt;：&lt;a href=&quot;https://gitee.com/dromara/dante-cloud&quot;&gt;https://gitee.com/dromara/dante-cloud&lt;/a&gt;&lt;/li&gt; 
- &lt;li&gt;&lt;strong&gt;Github&lt;/strong&gt;：&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fgithub.com%2Fdromara%2Fdante-cloud&quot; target=&quot;_blank&quot;&gt;https://github.com/dromara/dante-cloud&lt;/a&gt;&lt;/li&gt; 
-&lt;/ul&gt;
-                                                                                &lt;/div&gt;
-                                                                            </description>
-            <link>https://www.oschina.net/news/336807/dante-cloud-3-4-3-1-released</link>
-            <guid isPermaLink="false">https://www.oschina.net/news/336807/dante-cloud-3-4-3-1-released</guid>
-            <pubDate>Wed, 26 Feb 2025 04:33:00 GMT</pubDate>
-            <author>来源: 投稿</author>
-        </item>
-        <item>
-            <title>Manjaro Linux 25.0 即将发布：更新桌面环境、默认文件系统为 Btrfs</title>
-            <description>&lt;div class=&quot;content&quot;&gt;
-                                                                    
-                                                        &lt;p&gt;Manjaro Linux 首席开发者 Philip Müller 提供了关于即将发布的 Manjaro 25.0 的最新状态更新。&lt;/p&gt; 
-&lt;p&gt;Manjaro 25.0 的开发工作正在继续，这款基于 Arch Linux 的操作系统即将推出。在 Manjaro 25.0 中，他们计划提供包含最新 KDE Plasma 6.3、GNOME 48 和 Xfce 4.20 桌面环境的桌面版本。&lt;/p&gt; 
-&lt;p&gt;&lt;img alt=&quot;&quot; src=&quot;https://oscimg.oschina.net/oscnet/up-e76c888aba1f5cea3a62db2e0012bd826a2.png&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
-&lt;p&gt;根据目前 Manjaro 25.0 开发的进度，以及 GNOME 48.0 将于 3 月发布稳定版，目前开发团队正在考虑在 3 月中旬发布 Manjaro 25.0 的稳定 ISO 版本。&lt;/p&gt; 
-&lt;p&gt;除了更新桌面环境和从 Arch Linux 更新的大量其他软件包之外，Manjaro 25.0 将从 EXT4 文件系统切换到 Btrfs 作为其默认文件系统。虽然用户可以在安装过程中更改文件系统选择，但现在他们最舒适的选择是将 Btrfs 作为默认文件系统。&lt;/p&gt; 
-&lt;p&gt;除了默认切换到 Btrfs 之外，Manjaro 还为该发行版添加了自动快照和引导加载程序条目处理功能。&lt;/p&gt; 
-&lt;p&gt;更多关于 Manjaro 25.0 开发版的信息，请访问 &lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fforum.manjaro.org%2Ft%2Fmanjaro-25-0-zetar-release-review%2F174444&quot; target=&quot;_blank&quot;&gt;Manjaro 论坛&lt;/a&gt;。&lt;/p&gt;
-                                                                                &lt;/div&gt;
-                                                                            </description>
-            <link>https://www.oschina.net/news/336792/manjaro-25-0-zetar-linux-development</link>
-            <guid isPermaLink="false">https://www.oschina.net/news/336792/manjaro-25-0-zetar-linux-development</guid>
-            <pubDate>Wed, 26 Feb 2025 03:16:00 GMT</pubDate>
-            <author>来源: OSCHINA</author>
-        </item>
-        <item>
-            <title>Rust 1.85.0 &amp; Rust 2024 发布</title>
-            <description>&lt;div class=&quot;content&quot;&gt;
-                                                                    
-                                                        &lt;p&gt;Rust 团队正式发布了 Rust 1.85.0 ，并宣布&amp;nbsp;&lt;strong&gt;Rust 2024 版（Rust 2024 Edition）&lt;/strong&gt;已进入稳定版状态。&lt;/p&gt; 
-&lt;p&gt;Rust 1.85.0 稳定版主要更新内容：&lt;/p&gt; 
-&lt;ul&gt; 
- &lt;li&gt; &lt;p&gt;&lt;strong&gt;Rust 2024 版&lt;/strong&gt;：Rust 2024 版正式稳定发布，它带来多项语言、标准库、Cargo、Rustdoc 和 Rustfmt 的更新，如改变 RPIT 生命周期捕获规则、调整临时变量作用域、增加&lt;code&gt;Future&lt;/code&gt;和&lt;code&gt;IntoFuture&lt;/code&gt;到标准库 prelude 等。用户可参考版本指南进行迁移，部分更改可使用&lt;code&gt;cargo fix&lt;/code&gt;自动完成。&lt;/p&gt; &lt;/li&gt; 
- &lt;li&gt; &lt;p&gt;&lt;strong&gt;异步闭包&lt;/strong&gt;：Rust 现在支持异步闭包&lt;code&gt;async || {}&lt;/code&gt;&amp;nbsp;，调用时返回&lt;code&gt;futures&lt;/code&gt;&amp;nbsp;，标准库 prelude 中新增&lt;code&gt;AsyncFn&lt;/code&gt;、&lt;code&gt;AsyncFnMut&lt;/code&gt;和&lt;code&gt;AsyncFnOnce&lt;/code&gt;三个类似的 trait，解决了之前无法让内部异步块借用闭包捕获值和用&lt;code&gt;Fn&lt;/code&gt;&amp;nbsp;traits 正确表达高阶函数签名返回&lt;code&gt;Future&lt;/code&gt;的问题。&lt;/p&gt; &lt;/li&gt; 
- &lt;li&gt; &lt;p&gt;&lt;strong&gt;隐藏 trait 实现诊断信息&lt;/strong&gt;：新增&lt;code&gt;#[diagnostic::do_not_recommend]&lt;/code&gt;属性，可让编译器在诊断消息中不显示注解的 trait 实现，避免给库作者提供无用或误导性的建议。&lt;/p&gt; &lt;/li&gt; 
- &lt;li&gt; &lt;p&gt;&lt;strong&gt;元组的&lt;code&gt;FromIterator&lt;/code&gt;和&lt;code&gt;Extend&lt;/code&gt;&lt;/strong&gt;：现在这些特性扩展到了更多长度的元组，从单元素&lt;code&gt;(T,)&lt;/code&gt;到 12 个元素&lt;code&gt;(T1, T2, .., T11, T12)&lt;/code&gt;&amp;nbsp;，可使用&lt;code&gt;collect()&lt;/code&gt;同时将迭代器数据分散到多个集合中。&lt;/p&gt; &lt;/li&gt; 
- &lt;li&gt; &lt;p&gt;&lt;strong&gt;&lt;code&gt;std::env::home_dir()&lt;/code&gt;更新&lt;/strong&gt;：该函数多年来一直被弃用，因其在某些 Windows 配置下表现异常。现在更新其行为作为 bug 修复，后续版本将移除弃用状态。&lt;/p&gt; &lt;/li&gt; 
- &lt;li&gt; &lt;p&gt;&lt;strong&gt;稳定的 API&lt;/strong&gt;：多个 API 达到稳定状态，部分 API 在常量上下文中也稳定可用。&lt;/p&gt; &lt;/li&gt; 
-&lt;/ul&gt; 
-&lt;p&gt;详情查看：&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fblog.rust-lang.org%2F2025%2F02%2F20%2FRust-1.85.0.html&quot; target=&quot;_blank&quot;&gt;https://blog.rust-lang.org/2025/02/20/Rust-1.85.0.html&lt;/a&gt;&lt;/p&gt;
-                                                                                &lt;/div&gt;
-                                                                            </description>
-            <link>https://www.oschina.net/news/336790/rust-1-85-released</link>
-            <guid isPermaLink="false">https://www.oschina.net/news/336790/rust-1-85-released</guid>
-            <pubDate>Wed, 26 Feb 2025 03:10:00 GMT</pubDate>
-            <author>来源: OSCHINA</author>
-        </item>
-        <item>
-            <title>CrateDB 5.10.2 发布，分布式 SQL 数据库</title>
-            <description>&lt;div class=&quot;content&quot;&gt;
-                                                                    
-                                                        &lt;p&gt;CrateDB 是一个分布式的 SQL 数据库，使得实时存储和分析大量的机器数据变得简单。CrateDB 提供了通常与 NoSQL 数据库相关的可扩展性和灵活性，最小的 CrateDB 集群可以轻松地每秒摄取数万条记录。这些数据可以在整个集群中实时地、临时地、并行地进行查询。&lt;/p&gt; 
-&lt;p&gt;CrateDB 5.10.2&amp;nbsp;现已正式发布，该版本更新内容如下：&lt;/p&gt; 
-&lt;ul&gt; 
- &lt;li&gt;如果集群状态被视为不可用以匹配字段的行为方式，则从 HTTP&amp;nbsp;&lt;span style=&quot;color:#000000&quot;&gt;root endpoint&amp;nbsp;&lt;/span&gt;&lt;code&gt;(/)&lt;/code&gt;返回的 JSON 有效负载中的字段现在显示 503 而不是 200，以匹配&lt;code&gt;ok&lt;/code&gt;字段的行为方式。&lt;/li&gt; 
- &lt;li&gt;修复了当 filtered column 作为视图的一部分时 filter 未推送到源的问题。这可能会导致不必要的全表扫描。&lt;/li&gt; 
- &lt;li&gt;修复了&lt;code&gt;5.6.5&lt;/code&gt;引入的回归问题，当&lt;code&gt;DELETE&lt;/code&gt;条件包含非确定性函数（例如&lt;code&gt;NOW()&lt;/code&gt;）时，该回归会导致留下空分区，例如：&lt;/li&gt; 
-&lt;/ul&gt; 
-&lt;pre&gt;&lt;code&gt;DELETE FROM t WHERE day &amp;lt; now() - INTERVAL &#39;3 days&#39;;&lt;/code&gt;&lt;/pre&gt; 
-&lt;p&gt;其中「day」是&lt;code&gt;TIMESTAMP&lt;/code&gt;类型，也是&lt;code&gt;PARTITIONED&amp;nbsp;BY&lt;/code&gt;列。&lt;/p&gt; 
-&lt;ul&gt; 
- &lt;li&gt;修复了通过 PostgreSQL wire protocol 绑定到不存在的预处理语句时导致的&lt;code&gt;NullPointerException&lt;/code&gt;问题。&lt;/li&gt; 
- &lt;li&gt;修复了如果&lt;code&gt;WHERE&lt;/code&gt;子句将 non-boolean column 与 boolean literal 进行比较时导致&lt;code&gt;SELECT&lt;/code&gt;查询失败的问题，例如：&lt;/li&gt; 
-&lt;/ul&gt; 
-&lt;pre&gt;&lt;code&gt;SELECT int_col FROM t where int_col = true;&lt;/code&gt;&lt;/pre&gt; 
-&lt;ul&gt; 
- &lt;li&gt;修复了如果表的 boolean column 上有一个&lt;code&gt;PRIMARY&amp;nbsp;KEY&lt;/code&gt;，并且该列在逻辑表达式中被引用为独立操作数时，则带有&lt;code&gt;WHERE&lt;/code&gt;子句的&lt;code&gt;SELECT&lt;/code&gt;查询会返回不正确的结果。例如：&lt;/li&gt; 
-&lt;/ul&gt; 
-&lt;pre&gt;&lt;code&gt;SELECT * FROM tbl WHERE boolean_pk_col OR boolean_pk_col = false&lt;/code&gt;&lt;/pre&gt; 
-&lt;ul&gt; 
- &lt;li&gt;&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fcratedb.com%2Fdocs%2Fcrate%2Freference%2Fen%2Flatest%2Fappendices%2Frelease-notes%2F5.10.0.html%23version-5-10-0&quot; target=&quot;_blank&quot;&gt;修复了版本 5.10.0&lt;/a&gt;&amp;nbsp;中引入的性能回归问题，该问题导致&lt;code&gt;CREATE&amp;nbsp;SNAPSHOT&lt;/code&gt;占用更多内存。这可能会导致语句在内存压力下以&lt;code&gt;OutOfMemoryError&lt;/code&gt;失败。&lt;/li&gt; 
- &lt;li&gt;修复了当升级到 &amp;gt;= 5.8 且表包含使用&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fcratedb.com%2Fdocs%2Fcrate%2Freference%2Fen%2Flatest%2Fgeneral%2Fuser-defined-functions.html%23user-defined-functions&quot; target=&quot;_blank&quot;&gt;用户定义函数&lt;/a&gt;&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fcratedb.com%2Fdocs%2Fcrate%2Freference%2Fen%2Flatest%2Fgeneral%2Fddl%2Fgenerated-columns.html%23ddl-generated-columns&quot; target=&quot;_blank&quot;&gt;生成的列&lt;/a&gt;时导致节点无法启动的问题。&lt;/li&gt; 
-&lt;/ul&gt; 
-&lt;p&gt;更新说明：&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fcratedb.com%2Fdocs%2Fcrate%2Freference%2Fen%2Flatest%2Fappendices%2Frelease-notes%2F5.10.2.html&quot; target=&quot;_blank&quot;&gt;https://cratedb.com/docs/crate/reference/en/latest/appendices/release-notes/5.10.2.html&lt;/a&gt;&lt;/p&gt;
-                                                                                &lt;/div&gt;
-                                                                            </description>
-            <link>https://www.oschina.net/news/336788/cratedb-5-10-2-released</link>
-            <guid isPermaLink="false">https://www.oschina.net/news/336788/cratedb-5-10-2-released</guid>
-            <pubDate>Wed, 26 Feb 2025 03:02:00 GMT</pubDate>
-            <author>来源: OSCHINA</author>
-        </item>
-        <item>
-            <title>开源游戏引擎 Godot 4.4 发布</title>
-            <description>&lt;div class=&quot;content&quot;&gt;
-                                                                    
-                                                        &lt;p&gt;Godot 是开源跨平台的 2D/3D 游戏引擎，其最新稳定版 Godot 4.4 已发布。&lt;/p&gt; 
-&lt;p&gt;&lt;img alt=&quot;&quot; src=&quot;https://oscimg.oschina.net/oscnet/up-30572b539939d5f84731ae8fab8d2d19bc8.png&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
-&lt;p&gt;主要改进包括：&lt;/p&gt; 
-&lt;ul&gt; 
- &lt;li&gt; &lt;p&gt;Jolt Physics 之前一直是 Godot 游戏引擎的一个扩展，但自 Godot 4.4 开始，Jolt Physics 的代码已直接集成到引擎&lt;/p&gt; &lt;/li&gt; 
- &lt;li&gt; &lt;p&gt;改进游戏内交互式编辑和其他 Godot 编辑器支持&lt;/p&gt; &lt;/li&gt; 
- &lt;li&gt; &lt;p&gt;优化 Android 编辑器对 XR 设备的支持&lt;/p&gt; &lt;/li&gt; 
- &lt;li&gt; &lt;p&gt;支持 Ubershader，以减少卡顿。&lt;/p&gt; &lt;/li&gt; 
- &lt;li&gt; &lt;p&gt;支持 3D 物理插值&lt;/p&gt; &lt;/li&gt; 
- &lt;li&gt; &lt;p&gt;支持 AgX 色调映射&lt;/p&gt; &lt;/li&gt; 
- &lt;li&gt; &lt;p&gt;各种性能优化和其他细节改进&lt;/p&gt; &lt;/li&gt; 
- &lt;li&gt; &lt;p&gt;在 Linux 系统上现在支持设备摄像头&lt;/p&gt; &lt;/li&gt; 
- &lt;li&gt; &lt;p&gt;为了支持 .NET 脚本，Godot 已经更新以支持 .NET 8.0&lt;/p&gt; &lt;/li&gt; 
- &lt;li&gt; &lt;p&gt;使用 Betsy 纹理压缩器加快导入速度。&lt;/p&gt; &lt;/li&gt; 
-&lt;/ul&gt; 
-&lt;p&gt;有关 Godot 4.4 引擎的更多详细信息，请访问 &lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fgodotengine.org%2Freleases%2F4.4%2F&quot; target=&quot;_blank&quot;&gt;GodotEngine.org&lt;/a&gt;。&lt;/p&gt;
-                                                                                &lt;/div&gt;
-                                                                            </description>
-            <link>https://www.oschina.net/news/336787/godot-4-4-released</link>
-            <guid isPermaLink="false">https://www.oschina.net/news/336787/godot-4-4-released</guid>
-            <pubDate>Wed, 26 Feb 2025 02:57:00 GMT</pubDate>
             <author>来源: OSCHINA</author>
         </item>
     </channel>
