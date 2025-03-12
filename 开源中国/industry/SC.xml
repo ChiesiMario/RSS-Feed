@@ -9,21 +9,1525 @@
         <generator>RSSHub</generator>
         <webMaster>contact@rsshub.app (RSSHub)</webMaster>
         <language>en</language>
-        <lastBuildDate>Wed, 12 Mar 2025 02:36:31 GMT</lastBuildDate>
+        <lastBuildDate>Wed, 12 Mar 2025 07:36:48 GMT</lastBuildDate>
         <ttl>5</ttl>
+        <item>
+            <title>为什么说 JSON 不一定是 LLM 结构化输出的最佳选择？</title>
+            <description>&lt;div class=&quot;content&quot;&gt;
+                                                                                                                    
+                                                                                                                                                    &lt;blockquote&gt; 
+ &lt;p&gt;&lt;strong&gt;编者按：&lt;/strong&gt; 在使用大语言模型时，如何在保证输出质量的同时降低成本？在众多数据输出格式中，究竟应该如何选择？&lt;/p&gt; 
+ &lt;p&gt;我们今天为大家带来的文章中，作者通过实际测试给出建议：在某些场景下，相比广泛使用的 JSON 格式，不妨考虑一下其他数据格式，做一些测试，挑选出既能控制成本又能保证稳定性和速度的最佳选项。&lt;/p&gt; 
+ &lt;p&gt;文章通过对比 TSV、CSV、Columnar JSON、YAML、TOML 和 JSON 六种格式，从 token 使用量、响应时间和实用性三个维度进行了深入分析。作者指出，没有一种格式能在所有场景下都表现最佳。文章详细分析了每种格式的优劣势，并提供了一个实用的投资回报率计算方法，帮助读者评估是否值得将现有系统从 JSON 转换为其他格式。&lt;/p&gt; 
+&lt;/blockquote&gt; 
+&lt;p&gt;&lt;strong&gt;作者 | David Gilbertson&lt;/strong&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;strong&gt;编译 | 岳扬&lt;/strong&gt;&lt;/p&gt; 
+&lt;p&gt;当要求大语言模型（LLM）输出结构化数据时，所采用的格式会对结果产生比较大的影响。本文对比了六种不同的格式，评估考察了它们的处理速度、tokens 消耗以及各自的限制。&lt;/p&gt; 
+&lt;h1&gt;&lt;strong&gt;01 简要说明&lt;/strong&gt;&lt;/h1&gt; 
+&lt;p&gt;JSON 虽然是多数人的首选，但它对 tokens 的消耗极大。处理相同数据时，它可能需要其他格式两倍的 tokens。&lt;/p&gt; 
+&lt;p&gt;需要注意的是，没有一种格式能在所有情况下都表现最佳，以下是一个决策指南：&lt;/p&gt; 
+&lt;p&gt;&lt;img src=&quot;https://oscimg.oschina.net/oscnet/up-7ec39896fc3d3679ce7a11780ae2500f61e.png&quot; alt=&quot;&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
+&lt;p&gt;（如果你好奇为何没有提及 XML，那是因为我有个个人目标：50 年不碰 XML ------ 只剩下 4 年就能达成了！）&lt;/p&gt; 
+&lt;p&gt;我将在下文中详细解释这些格式选择，并探讨每种格式的局限性。但在此之前，先让我们对比一下它们的 token 使用情况和速度。&lt;/p&gt; 
+&lt;h1&gt;&lt;strong&gt;02 token 使用情况&lt;/strong&gt;&lt;/h1&gt; 
+&lt;p&gt;探究 JSON 之外的其他选项，主要目的是为了减少所需的 tokens 数量，这样做可以降低运营成本并缩短响应时间。&lt;/p&gt; 
+&lt;p&gt;为了对这些格式进行有效比较，我们将基于它们表示特定数据集所需的 token 数量来进行评估。&lt;/p&gt; 
+&lt;h2&gt;&lt;strong&gt;2.1 比较框架&lt;/strong&gt;&lt;/h2&gt; 
+&lt;p&gt;本次比较我将使用一段文本作为输入，该文本包含了关于欧盟每个国家的一段信息。&lt;/p&gt; 
+&lt;p&gt;&lt;img src=&quot;https://oscimg.oschina.net/oscnet/up-8e50ab87cb9683306d67a1d3a1c4b5339a0.png&quot; alt=&quot;&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
+&lt;p&gt;我将要求 LLM 将这段普通文本转换成结构化数据，其中每个国家都是一条记录，每条记录包含国家名称、领导人姓名、领导人出生日期、领导人性别、人口数量和领土面积等键/值对。&lt;/p&gt; 
+&lt;p&gt;我将针对每种结构化输出格式执行这一操作，并检查六种格式的输出结果是否相同。&lt;/p&gt; 
+&lt;p&gt;感兴趣的朋友，可以在这个 gist[1] 中查看完整的代码。对于不太感兴趣的朋友，这里展示了我如何为每种格式定义 name、可选的 hint 以及 parser（这里将所有数据解析成 Pandas DataFrame）：&lt;/p&gt; 
+&lt;p&gt;&lt;img src=&quot;https://oscimg.oschina.net/oscnet/up-c0a13f96703898de6c7ca324a996d388a64.png&quot; alt=&quot;&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
+&lt;p&gt;LLM（本次测试使用的是 gpt-4o-mini）能够以不同格式准确返回相同的数据。当然，如果数据更复杂，或者使用的 LLM 不够强大，结果可能就不会这么精确了。&lt;/p&gt; 
+&lt;h2&gt;&lt;strong&gt;2.2 比较结果&lt;/strong&gt;&lt;/h2&gt; 
+&lt;p&gt;下表展示了使用不同格式表示数据所需的 tokens 数量。&lt;/p&gt; 
+&lt;p&gt;&lt;img src=&quot;https://oscimg.oschina.net/oscnet/up-22079d7588db10f57fdd85fd544a99231d5.png&quot; alt=&quot;&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
+&lt;p&gt;JSON 所需的 tokens 数量是 TSV 的两倍。这个差异不容小觑。设想一下，如果你在某个 API 的价格页面上看到，选择 JSON 格式的数据需要支付 1 美元，而 TSV 格式只需 0.5 美元，YAML 格式则是 0.8 美元。&lt;/p&gt; 
+&lt;p&gt;当然，这些结果仅针对我们的示例数据。展示本图表的目的并非要让你认为 JSON 在所有情况下都会大量消耗 tokens，而是让你相信值得用其他格式测试自己的数据。&lt;/p&gt; 
+&lt;p&gt;接下来，我们来看看这些格式的响应时间。&lt;/p&gt; 
+&lt;p&gt;尽管 JSON &quot;只&quot;需要两倍于 TSV 的 tokens ，但其响应时间通常比 TSV 慢四倍。我原本以为 token 数量与响应时间之间的关系是近似线性的 ------ 接近 O(n)，因此如此夸张的响应时间出乎我的意料，我建议我们可以将这种现象的时间复杂度设为 O(my)。&lt;/p&gt; 
+&lt;p&gt;将数据结构化输出的响应时间还是蛮重要的，所以赶紧测试吧。&lt;/p&gt; 
+&lt;h1&gt;&lt;strong&gt;03 局限性与考虑因素&lt;/strong&gt;&lt;/h1&gt; 
+&lt;p&gt;如果这些格式都同样可靠和灵活，那么结论就会很简单：使用 TSV。但事实并非如此，所以让我们对每一种格式进行更深入的了解。&lt;/p&gt; 
+&lt;h2&gt;&lt;strong&gt;3.1 TSV&lt;/strong&gt;&lt;/h2&gt; 
+&lt;p&gt;在表示表格数据时，TSV 和 CSV 格式颇为相似，区别在于 TSV 使用制表符分隔每一行的数据，而 CSV 则采用逗号。如果数据中本身就包含逗号或制表符，那么这些值就需要用双引号括起来，这时两种格式的 tokens 使用差异才会显现。&lt;/p&gt; 
+&lt;p&gt;由于制表符在数据中出现的频率低于逗号，因此 TSV 在大多数情况下使用的分隔符数量会少于 CSV。&lt;/p&gt; 
+&lt;p&gt;在解析数据时，TSV 与 CSV 相比 JSON，在纯 Python 环境下解析起来略显复杂。虽然可以利用 Python 内置的 csv 模块进行解析，但使用 Pandas 库会更加便捷。在其他编程语言中，解析这两种格式要么需要编写更多代码，要么得依赖第三方库。&lt;/p&gt; 
+&lt;p&gt;如果数据中不含换行符，TSV 可以轻松地逐行解析。&lt;strong&gt;因此，若想从 LLM 流式传输响应数据并&lt;/strong&gt; 实时&lt;strong&gt;处理每一行数据，TSV（以及 CSV）都是不错的选择。虽然 TOML、YAML 和 JSON 也能实现类似功能，但处理起来会更加繁琐。&lt;/strong&gt; 另外，本文尚未测试的 NDJSON 也是一个值得考虑的选项。&lt;/p&gt; 
+&lt;h2&gt;&lt;strong&gt;3.2 CSV&lt;/strong&gt;&lt;/h2&gt; 
+&lt;p&gt;如前文所述，CSV 格式的挑战在于逗号在数据中较为常见，这可能会导致两种情况：要么是需要更多的 tokens 来处理这些逗号，要么是 LLM 在处理时未能正确进行转义，从而产生错误的数据。因此，如果你的数据可能包含逗号，最好避免使用 CSV，或者设计一个详尽的提示词，并实施有效的评估流程，以便准确衡量其可靠性。&lt;/p&gt; 
+&lt;p&gt;&lt;strong&gt;对于 TSV 和 CSV 两种格式，你需要用那些可能包含特殊字符（如逗号、制表符、换行符和双引号）的数据来测试你的系统配置。这样，你才能确保系统能够正确处理这些特殊情况。&lt;/strong&gt;&lt;/p&gt; 
+&lt;h2&gt;&lt;strong&gt;3.3 Columnar JSON&lt;/strong&gt;&lt;/h2&gt; 
+&lt;p&gt;Columnar JSON 并不是一个常见的技术术语；我之所以将它纳入这次比较，是因为我很好奇它的 tokens 使用效率如何。&lt;/p&gt; 
+&lt;p&gt;可能有些人还不清楚 Columnar JSON 是什么样的，下面就是前文提到的国家数据所对应的 Columnar JSON 格式：&lt;/p&gt; 
+&lt;p&gt;&lt;img src=&quot;https://oscimg.oschina.net/oscnet/up-9428ef8b78e0bdb835baea9f4cda42d717f.png&quot; alt=&quot;&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
+&lt;p&gt;在所有格式中，Columnar JSON 的直观性最差。但是，由于其结构特点，每个字段名只会出现一次，而不是每条记录都重复，这样就能节省 tokens。&lt;/p&gt; 
+&lt;p&gt;我注意到，有时 LLM 能够理解&quot;Columnar JSON&quot;的含义，但有时候需要一些额外的提示词，例如：&quot;应以列名作为键名，对应的列内容以列表的形式组织呈现&quot;。&lt;/p&gt; 
+&lt;p&gt;要解析 columnar JSON，你可以这样将其传递给 Pandas 处理：&lt;/p&gt; 
+&lt;p&gt;&lt;img src=&quot;https://oscimg.oschina.net/oscnet/up-8742900bd0a0c9bd237f20e2e53833ad8be.png&quot; alt=&quot;&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
+&lt;p&gt;与 CSV 和 TSV 不同，columnar JSON 支持嵌套的数据结构，因此它非常适合表示那些某些字段具有复杂结构的记录列表。&lt;/p&gt; 
+&lt;p&gt;这三种格式------TSV、CSV、columnar JSON------仅适用于表示表格数据，即以记录列表为核心的结构。它们都不适合用来表示像配置文件这样的单一 top-level object（译者注：指在结构化数据格式（如 JSON/YAML/TOML）中，最外层定义的单一根对象，通常作为整个数据结构的入口点。）。而接下来的三种格式（YAML、TOML、JSON）则更为灵活多变。&lt;/p&gt; 
+&lt;h2&gt;&lt;strong&gt;3.4 YAML&lt;/strong&gt;&lt;/h2&gt; 
+&lt;p&gt;YAML 能够返回一个 top-level list（译者注：指在结构化数据格式中，最外层直接定义为列表结构而非对象。），但我注意到，某些 LLM 更倾向于生成一个 top-level object。因此，在给出提示词时，我们需要明确指出，以确保 LLM 按照统一的格式返回数据。&lt;/p&gt; 
+&lt;p&gt;我还遇到了一个问题，即 LLM 在返回字符串值时，格式可能会不一致。在某些情况下，这可能无关紧要，但 YAML 有五种不同的方式来表示字符串，而其中只有一种能够正确解析转义序列（例如\t, \u03B1）。因此，如果你的数据中包含转义序列，那么最好明确要求 LLM 使用双引号来定义字符串。&lt;/p&gt; 
+&lt;p&gt;&lt;strong&gt;YAML 相较于 JSON，存在更多的&quot;陷阱&quot;和注意事项。建议你深入了解这些潜在的问题，而不是盲目地期待 LLM 能够自动正确地格式化 YAML。&lt;/strong&gt;&lt;/p&gt; 
+&lt;p&gt;为了解析 YAML，你需要安装一个第三方库。我个人使用的是 pyyaml，这是一个无依赖的库。&lt;/p&gt; 
+&lt;h2&gt;&lt;strong&gt;3.5 TOML&lt;/strong&gt;&lt;/h2&gt; 
+&lt;p&gt;TOML 是在此场景中唯一不支持 top-level list 的格式，因为它的设计初衷是作为一种配置文件格式。因此，若想用 TOML 来表示记录列表，就必须将这些记录包含在一个 top-level object 内，并告诉 LLM 你想在这个对象中调用什么键。&lt;/p&gt; 
+&lt;p&gt;TOML 在使用上通常会比 YAML 需要更多的 token，因为 TOML 要求所有的字符串值都必须用引号括起来。&lt;/p&gt; 
+&lt;p&gt;在解析方面，如果你的 Python 版本是 3.11 或以上，那么内置的 TOML 解析器[2]就可以直接使用。如果不是，那就需要安装 tomlkit 或类似的库来处理。&lt;/p&gt; 
+&lt;p&gt;TOML 的普及度不及 YAML，你可能会担心 LLM 在处理 TOML 格式时是否会遇到难题。但在我所使用的顶级 LLM 中，并没有发现明显的格式处理问题。我认为，TOML 相较于 YAML 的简洁性在一定程度上弥补了这一普及度差距。而且，YAML 有多种方式可以表达相同的数据，这可能会降低 LLM 的确定性，使得两种格式的可靠性相差无几。&lt;/p&gt; 
+&lt;p&gt;&lt;strong&gt;根据我的个人经验，TOML 和 YAML 都可能出现错误，但这些错误通常可以通过更精确的提示词来解决。&lt;/strong&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;strong&gt;关于 YAML 中的字符串和转义序列的问题，TOML 也同样存在。&lt;/strong&gt;&lt;/p&gt; 
+&lt;p&gt;总体而言，TOML 和 YAML 非常相似，TOML 需要更多的 token，不支持 top-level lists，但对于使用 Python 3.11 或以上版本的用户来说，不需要额外的解析库。&lt;/p&gt; 
+&lt;h2&gt;&lt;strong&gt;3.6 JSON&lt;/strong&gt;&lt;/h2&gt; 
+&lt;p&gt;&lt;strong&gt;关于 JSON，其实没什么特别需要强调的。它之所以能成为默认格式，是因为它用途广泛、易于解析，而且出错率低。只是它包含了大量的引号、逗号、冒号和换行符，这些都增加了 token 的数量，这一点稍显遗憾。&lt;/strong&gt;&lt;/p&gt; 
+&lt;p&gt;值得注意的是，如果你想要使用 LLM 服务商提供的&quot;结构化数据模式&quot;，或者使用像 Guardrails[3]、Outlines[4] 这样的结构化工具，JSON 往往是唯一的选择。但我认为这种情况会随着时间的推移而有所改变。随着越来越多的基于 LLM 的应用投入实际使用，开发者会开始关注如何减少 token 使用等优化措施，LLM 服务商也会通过支持更多结构化数据格式来满足这一需求。&lt;/p&gt; 
+&lt;p&gt;理想的情况是，LLM 服务商能够调整模型，使其能够可靠地处理多种格式的数据，并在结构化数据模式中提供这些格式作为可选项。&lt;/p&gt; 
+&lt;p&gt;这里有一个注意事项：对于有关 LLM 在输出特定格式时的可靠性方面的旧建议，我们应该保持谨慎。正如 OpenAI 在 2024 年 8 月的一篇博客文章中所提到的[5]，GPT-4 的早期版本在处理复杂的 JSON 测试时的正确率仅为 35%，而较新版本的 GPT-4 正确率则高达 85%。这在 GPT-4 系列中是一个巨大的飞跃。&lt;/p&gt; 
+&lt;p&gt;这一点对于使用某些特殊功能或软件包的人来说尤为重要，这些功能或软件包可能会基于一年或更久之前的假设或证据来强制输出结构化数据。你可能并不需要这些功能或软件包，它们可能会迫使你使用 JSON，而实际上你可以选择更经济、更快捷的格式。&lt;/p&gt; 
+&lt;h1&gt;&lt;strong&gt;04 实际应用&lt;/strong&gt;&lt;/h1&gt; 
+&lt;p&gt;在理论层面这些格式各有优势，但假设你已经有了一套使用 JSON 的结构化数据处理系统，并且运行得很顺畅。你知道 TSV 格式也能适用于你的数据，那么是否有必要进行格式转换呢？&lt;/p&gt; 
+&lt;p&gt;如果你关注的是速度------因为人们需要等待 LLM 生成 token，那么你需要评估等待时间的价值，这部分在这里不展开讨论。&lt;/p&gt; 
+&lt;p&gt;但如果你只是在后台运行一个进程，这个问题就简单多了。举例来说，我们可以设定以下假设条件：&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt;&lt;strong&gt;你的时间成本是每天 1000 美元&lt;/strong&gt;&lt;/li&gt; 
+ &lt;li&gt;&lt;strong&gt;将现有系统从 JSON 转换为 TSV 需要半天时间&lt;/strong&gt;&lt;/li&gt; 
+ &lt;li&gt;&lt;strong&gt;输出 token 的费用是每百万 0.60 美元&lt;/strong&gt;&lt;/li&gt; 
+ &lt;li&gt;&lt;strong&gt;使用 TSV 可以减少 50% 的 token 使用量&lt;/strong&gt;&lt;/li&gt; 
+ &lt;li&gt;&lt;strong&gt;你希望一年内收回投资&lt;/strong&gt;&lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;p&gt;我们可以用一个小 Python 脚本来计算这些数值：&lt;/p&gt; 
+&lt;p&gt;&lt;img src=&quot;https://oscimg.oschina.net/oscnet/up-f69e9075bdd7f5c7bebe4b594c36a14407d.png&quot; alt=&quot;&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;strong&gt;根据计算，如果你现在每天生成大约 4,566,210 个 JSON token，一年后就能实现收支平衡。&lt;/strong&gt;&lt;/p&gt; 
+&lt;p&gt;当然，你应该根据自己的实际情况来调整这些数值，但以下基准数据可供你参考。如果你每天只生成几千个结构化数据的 token（并且不介意速度），那么盲目调整数据格式的性价比极低。但如果你每天需要处理数千万个 token，那么探索其他格式绝对是一个划算的决定。&lt;/p&gt; 
+&lt;h1&gt;&lt;strong&gt;05 总结&lt;/strong&gt;&lt;/h1&gt; 
+&lt;p&gt;选择默认的 JSON 格式确实很有吸引力，因为它灵活、稳定且解析起来简单。但相对而言，它的处理速度较慢，成本也更高。因此，不妨考虑一下其他数据格式，做一些测试，挑选出既能控制成本又能保证稳定性和速度的最佳选项。&lt;/p&gt; 
+&lt;p&gt;&lt;em&gt;Thanks for reading!&lt;/em&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;em&gt;Hope you have enjoyed and learned new things from this blog!&lt;/em&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;strong&gt;About the author&lt;/strong&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;em&gt;&lt;strong&gt;David Gilbertson&lt;/strong&gt;&lt;/em&gt;&lt;/p&gt; 
+&lt;p&gt;I like machine learning stuff.&lt;/p&gt; 
+&lt;p&gt;&lt;strong&gt;END&lt;/strong&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;strong&gt;本期互动内容 🍻&lt;/strong&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;strong&gt;❓你在实际项目中最常用哪种数据格式？遇到过哪些意想不到的问题？欢迎分享经验👇&lt;/strong&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;strong&gt;🔗文中链接🔗&lt;/strong&gt;&lt;/p&gt; 
+&lt;p&gt;[1]&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fgist.github.com%2Fdavidgilbertson%2Ffcabb55478b4a4e1537a706f808b8b09&quot; target=&quot;_blank&quot;&gt;https://gist.github.com/davidgilbertson/fcabb55478b4a4e1537a706f808b8b09&lt;/a&gt;&lt;/p&gt; 
+&lt;p&gt;[2]&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fdocs.python.org%2F3%2Flibrary%2Ftomllib.html&quot; target=&quot;_blank&quot;&gt;https://docs.python.org/3/library/tomllib.html&lt;/a&gt;&lt;/p&gt; 
+&lt;p&gt;[3]&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fgithub.com%2Fguardrails-ai%2Fguardrails&quot; target=&quot;_blank&quot;&gt;https://github.com/guardrails-ai/guardrails&lt;/a&gt;&lt;/p&gt; 
+&lt;p&gt;[4]&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fgithub.com%2Fdottxt-ai%2Foutlines&quot; target=&quot;_blank&quot;&gt;https://github.com/dottxt-ai/outlines&lt;/a&gt;&lt;/p&gt; 
+&lt;p&gt;[5]&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fopenai.com%2Findex%2Fintroducing-structured-outputs-in-the-api%2F&quot; target=&quot;_blank&quot;&gt;https://openai.com/index/introducing-structured-outputs-in-the-api/&lt;/a&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;strong&gt;原文链接：&lt;/strong&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fdavid-gilbertson.medium.com%2Fllm-output-formats-why-json-costs-more-than-tsv-ebaf590bd541&quot; target=&quot;_blank&quot;&gt;https://david-gilbertson.medium.com/llm-output-formats-why-json-costs-more-than-tsv-ebaf590bd541&lt;/a&gt;&lt;/p&gt;
+                                                                                    &lt;/div&gt;
+                                                                            </description>
+            <link>https://my.oschina.net/IDP/blog/17883527</link>
+            <guid isPermaLink="false">https://my.oschina.net/IDP/blog/17883527</guid>
+            <pubDate>Wed, 12 Mar 2025 07:28:44 GMT</pubDate>
+            <author>原创</author>
+        </item>
+        <item>
+            <title>逆向分析 Github Copilot，探索代码补全能力的实现细节</title>
+            <description>&lt;div class=&quot;content&quot;&gt;
+                                                                    
+                                                        &lt;p&gt;GitHub Copilot 是一种基于机器学习的代码自动补全工具，它使用来自 GitHub 的大量代码作为训练数据，并结合 OpenAI 的语言模型来生成代码。Copilot 还能学习用户的编码习惯，根据上下文推断出正确的代码片段。&lt;/p&gt; 
+&lt;p&gt;为了探索其 VSCode 插件的实现，我们进行了以下逆向工程。&lt;/p&gt; 
+&lt;h2&gt;准备工作&lt;/h2&gt; 
+&lt;p&gt;由于 Copilot 没有开源，我们需要进行一些逆向的准备。首先，找到 VSCode 插件的安装目录，拿到经过压缩混淆的 extension.js。然后，通过分割 webpack_modules、识别模块依赖、优化压缩后的语法和 require 的模块 id 取名等步骤，对代码进行逆向处理。&lt;/p&gt; 
+&lt;h2&gt;入口分析&lt;/h2&gt; 
+&lt;p&gt;入口文件的模块 id 是 91238，经过手动优化操作，可以大致还原其原始样貌。在 VSCode 的 active 函数中，copilot 做了大量初始化工作，并将各个模块的示例注册到 context 中。&lt;/p&gt; 
+&lt;h2&gt;代码提示入口逻辑&lt;/h2&gt; 
+&lt;p&gt;代码提示逻辑在 registerGhostText 中注册，主要通过 InlineCompletionItemProvider 实现。其核心逻辑包括判断用户是否关闭了 InlineSuggestEnable、document 是否在处理白名单内、用户是否取消了输入等，若不满足条件则提前 return，不进行代码提示。然后调用 getGhostText 方法获取 texts，并通过 completionsFromGhostTextResults 拿到最终的 completions。&lt;/p&gt; 
+&lt;h2&gt;getGhostText 核心逻辑&lt;/h2&gt; 
+&lt;p&gt;getGhostText 是获取提示代码的核心方法，其逻辑包括：&lt;/p&gt; 
+&lt;ol&gt; 
+ &lt;li&gt; &lt;p&gt;提取 Prompt：通过 extractprompt.extractPrompt 获取 prompt 对象。&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;边界判断：判断是否包含在 .copilotignore 里的文件、上下文是否太小、用户是否已经取消等三种情况。&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;二级缓存：保存上一次的 prefix 和 suffix，若当前请求的 prefix 和 suffix 与之前的一样，则读取缓存内容。若未命中缓存，计算当前的 prompt 是否在缓存范围内，copilot 采取 LRU 缓存策略，默认缓存 100 条。&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;真正发起请求：设置 Debounce 时延，判断 contextualFilterScore 是否达到阈值，最后向后台发送 prompt 请求。&lt;/p&gt; &lt;/li&gt; 
+&lt;/ol&gt; 
+&lt;p&gt;&lt;img alt=&quot;&quot; src=&quot;https://oscimg.oschina.net/oscnet/up-578f48c2e81b288fb7d2d52e2fac1803777.png&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
+&lt;h2&gt;prompt 的组成&lt;/h2&gt; 
+&lt;p&gt;prompt 由多种类型组合而成，包括 BeforeCursor、AfterCursor、SimilarFile、ImportedFile、LanguageMarker、PathMarker 等。不同类型的优先级通过 Priorities 辅助类设置，如 highSnippetPriority &amp;gt; beforeCursorPriority &amp;gt; importedFilePriority &amp;gt; lowSnippetPriority &amp;gt; pathMarkderPriority &amp;gt; languageMarkerPriority。&lt;/p&gt; 
+&lt;p&gt;&lt;img alt=&quot;&quot; src=&quot;https://oscimg.oschina.net/oscnet/up-49d262082d2bb695078a8c544ed9f9b431b.png&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
+&lt;h2&gt;抓包实验&lt;/h2&gt; 
+&lt;p&gt;通过抓包实验，可以看到在 Copilot 发起的请求中，prompt 包含了 Path Marker 和 BeforeCursor 两个部分。如果代码相关性够高，还会生成对应的 snippet。&lt;/p&gt; 
+&lt;h2&gt;小结&lt;/h2&gt; 
+&lt;p&gt;从 Copilot 中可以学到以下核心思想：&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt;对于编辑器输入的边界判断，包括太少、太多、取消等等很多场景齐全的考虑&lt;/li&gt; 
+ &lt;li&gt;缓存思想，利用多级缓存策略保护后台，模型运算本身就是一件昂贵的事情&lt;/li&gt; 
+ &lt;li&gt;prompt 的设计，不仅仅包含了上下文代码，在文件解析、编辑器打开的相关代码上还做了很多&lt;/li&gt; 
+ &lt;li&gt;利用简单的 Jaccard 算法计算分词后的文本相似度，能够快速决策出当前上下文相关的 snippet&lt;/li&gt; 
+ &lt;li&gt;实验特性，在 Copilot 中，大量的参数、优先级、设置字段都是通过实验来控制的，有一套完整的监控上报体系，帮助 Copilot 去调整这些参数，以达到更好的效果&lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;p&gt;详情查看：&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fgithub.com%2Fmengjian-github%2Fcopilot-analysis&quot; target=&quot;_blank&quot;&gt;https://github.com/mengjian-github/copilot-analysis&lt;/a&gt;&lt;/p&gt;
+                                                                                &lt;/div&gt;
+                                                                            </description>
+            <link>https://www.oschina.net/news/338373</link>
+            <guid isPermaLink="false">https://www.oschina.net/news/338373</guid>
+            <pubDate>Wed, 12 Mar 2025 07:26:44 GMT</pubDate>
+            <author>来源: OSCHINA</author>
+        </item>
+        <item>
+            <title>Anthropic CEO：未来 3-6 个月内，90% 的代码将由 AI 编写</title>
+            <description>&lt;div class=&quot;content&quot;&gt;
+                                                                    
+                                                        &lt;p&gt;&lt;span style=&quot;color:#000000&quot;&gt;Anthropic 首席执行官达 Dario Amodei 在 U.S. Foreign Relations Committee (CFR) 上&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fwww.aibase.com%2Fnews%2F16219&quot; target=&quot;_blank&quot;&gt;表示&lt;/a&gt;，他认为在未来 3 到 6 个月内，90% 的代码将由 AI 编写；在 12 个月后，几乎所有的代码都可能由 AI 生成。&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;span style=&quot;color:#000000&quot;&gt;不过他也补充称，虽然这一趋势可能听起来令人担忧，但程序员在定义所需功能、应用程序设计和决策方面仍将发挥关键作用。&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;span style=&quot;color:#000000&quot;&gt;Amodei 表示，虽然人类程序员的参与仍将必不可少，但 AI 将逐渐承担许多人类的任务。他鼓励重新评估「有用」和「无用」的概念，并认为人类的生活仍将有意义，而 AI 将带来新的可能性。&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;img height=&quot;433&quot; src=&quot;https://oscimg.oschina.net/oscnet/up-c1d6e1707a9e7f798d77cff8849380c0e52.png&quot; width=&quot;500&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;span style=&quot;color:#000000&quot;&gt;在被 CFR 主席 Mike Froman 问及关于「DeepSeek」是否可以被视为「Sputnik moment」时。Amodei 则认为，DeepSeek 并没有什么不寻常之处，只是成本降低曲线上的又一个数据点。他强调，人人都能编程的未来正在迅速到来。&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;span style=&quot;color:#000000&quot;&gt;此外，OpenAI 首席执行官 Sam Altman 也在播客中分享了他对编程未来的看法。他认为，编程方法将在未来五到十年内发生重大变化，许多人已经使用自然语言进行编程，逐渐淘汰传统的编码方法。Altman 开玩笑称，目前很少有人通过写代码来编程，这意味着编程的定义和所需技能将发生巨大变化。&lt;/span&gt;&lt;/p&gt;
+                                                                                &lt;/div&gt;
+                                                                            </description>
+            <link>https://www.oschina.net/news/338372/anthropic-ceo-ai-will-be-writing-90-of-code-in-3-6-months</link>
+            <guid isPermaLink="false">https://www.oschina.net/news/338372/anthropic-ceo-ai-will-be-writing-90-of-code-in-3-6-months</guid>
+            <pubDate>Wed, 12 Mar 2025 07:09:44 GMT</pubDate>
+            <author>来源: OSCHINA</author>
+        </item>
+        <item>
+            <title>阿里巴巴董事局主席蔡崇信：AI 开源开放将让中小企业受益</title>
+            <description>&lt;div class=&quot;content&quot;&gt;
+                                                                    
+                                                        &lt;p&gt;3 月 12 日上午，在新加坡举办的一场论坛中，阿里巴巴集团董事长蔡崇信分享了对 AI 开源开放的看法。他说，开源的力量在于令中小企业和创业者低成本使用 AI，未来的应用繁荣将受益于今天的开源。&lt;/p&gt; 
+&lt;p&gt;&lt;strong&gt;「技术进步的意义不在于中国是否拥有比美国更好的 AI，而是在于开源能够普惠地帮助人们掌握 AI 的力量」，蔡崇信表示，AI 不是大企业的专属游戏，中小企业将受益于开源开放，未来应用繁荣将正是今天开源的结果。&lt;/strong&gt;&lt;/p&gt; 
+&lt;p&gt;在去年 11 月的 2024 年世界互联网大会乌镇峰会期间，阿里巴巴 CEO 吴泳铭在互联网企业家论坛上表示，阿里巴巴目前已经发布了超过 100 个开源模型，累计下载量超过 4000 万次。基于「通义千问」模型进行二次开发的衍生模型数量已突破 7.8 万个，活跃开发者超过 800 万。&lt;/p&gt; 
+&lt;p&gt;据其介绍，目前已有超过 30 万家企业接入通义大模型，利用 AI 技术重塑代码开发、药物研发、生产制造等多个行业。吴泳铭认为，行业「并不需要」众多的基础大模型，而是需要针对不同规模、不同领域的开源模型来满足市场需求。&lt;/p&gt; 
+&lt;p&gt;相关阅读&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt;&lt;a href=&quot;https://www.oschina.net/news/337397&quot; target=&quot;news&quot;&gt;阿里通义千问大模型登顶全球开源社区榜首&lt;/a&gt;&lt;/li&gt; 
+ &lt;li&gt;&lt;a href=&quot;https://www.oschina.net/news/333071&quot; target=&quot;news&quot;&gt;全球开源大模型前十均为阿里通义千问衍生模型&lt;/a&gt;&lt;/li&gt; 
+&lt;/ul&gt;
+                                                                                &lt;/div&gt;
+                                                                            </description>
+            <link>https://www.oschina.net/news/338371</link>
+            <guid isPermaLink="false">https://www.oschina.net/news/338371</guid>
+            <pubDate>Wed, 12 Mar 2025 07:08:44 GMT</pubDate>
+            <author>来源: OSCHINA</author>
+        </item>
+        <item>
+            <title>上海徐汇：最高奖励 3000 万元，加快培育科技领军企业</title>
+            <description>&lt;div class=&quot;content&quot;&gt;
+                                                                    
+                                                        &lt;p&gt;&lt;span style=&quot;color:#000000&quot;&gt;上海《徐汇区关于加快培育科技领军企业的实施意见》已发布。该，意见自 2025 年 2 月 24 日起试行，试行期二年。&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;span style=&quot;color:#000000&quot;&gt;《实施意见》明确了 10 个支持方向：&lt;/span&gt;&lt;/p&gt; 
+&lt;blockquote&gt; 
+ &lt;p&gt;&lt;span style=&quot;color:#000000&quot;&gt;1.支持高能级企业集聚发展。引导企业扩大投资、归集核心职能，招引一批主营业务突出、竞争优势明显的高能级企业。加快吸引和促进符合区域产业发展导向的高能级企业，经综合评估，可给予最高 1000 万元的一次性支持；对行业影响力大、专业能力强、竞争优势明显的企业，经综合评估，可给予不超过 3000 万元的奖励。&lt;/span&gt;&lt;/p&gt; 
+ &lt;p&gt;&lt;span style=&quot;color:#000000&quot;&gt;2.大力引进优质企业。发挥企业「标杆」导向作用，引进一批核心技术能力强、引领产业发展集聚、市场占有率高的高成长性企业。加快吸引和促进符合区域产业发展导向的高成长企业、潜力企业等，经综合评估，可给予最高 500 万元的一次性支持；对示范效应好、专业能力硬、发展潜力突出的企业，经综合评估，可给予不超过 1500 万元的奖励。&lt;/span&gt;&lt;/p&gt; 
+ &lt;p&gt;&lt;span style=&quot;color:#000000&quot;&gt;3.支持企业规模化发展。支持企业做大做强，不断集聚业务，提升规模能级和辐射能力，根据企业所属行业领域、经营水平及成长发展能力等综合因素，经综合评估，可给予不超过 3000 万元的奖励。&lt;/span&gt;&lt;/p&gt; 
+ &lt;p&gt;&lt;span style=&quot;color:#000000&quot;&gt;4.加快创新型企业梯队建设。引导企业提升创新能级和核心竞争实力，壮大创新型领军企业梯队和「蓄水池」。对新增高新技术企业资质的，经认定，可给予最高 30 万元奖励；对重新认定高新技术企业资质的，经认定，可给予最高 10 万元奖励。对新增上海科技小巨人（培育）企业等资质，经认定，可给予一定资金支持。&lt;/span&gt;&lt;/p&gt; 
+ &lt;p&gt;&lt;span style=&quot;color:#000000&quot;&gt;5.提升企业技术攻关能力。围绕战新产业和未来产业等领域，扎实推进「赛马制」等攻关新模式，鼓励企业加速研发创新，开展跨领域基础研究或者颠覆性技术攻关，经评审，可给予不超过项目总投入 30%、最高 300 万元的支持；鼓励企业推动科研成果转化落地、产业试点示范，经评审，可给予不超过项目总投入 30%、最高 1000 万元的支持；主动服务企业开展研发费用税前加计扣除、技术合同登记、技术先进型服务企业认定，并享受相应的支持政策。对技术合同成交额大幅提升的单位，经评审，可给予不超过 50 万元的奖励。&lt;/span&gt;&lt;/p&gt; 
+ &lt;p&gt;&lt;span style=&quot;color:#000000&quot;&gt;6.支持标杆应用场景建设。鼓励开展应用场景「揭榜挂帅」，支持企业建立针对应用场景的技术、产品和解决方案资源库。对形成行业或区域标杆引领、示范效应带动强的应用场景建设项目，经评审，可按不超过项目总投入的 30%,给予不超过 300 万元的支持。&lt;/span&gt;&lt;/p&gt; 
+ &lt;p&gt;&lt;span style=&quot;color:#000000&quot;&gt;7.支持创新合作发展。鼓励企业充分利用区域丰富的科技创新资源开展创新创业活动，降低科技创新成本，激发科技创新动能，提升科技创新能级。支持科技企业申请科技创新服务券，经认定，给予每年不超过 80 万元的支持。支持企业数字化转型，对符合区域产业发展方向的企业购买云计算等服务的，经综合评估，可给予每年不超过 200 万元的支持。&lt;/span&gt;&lt;/p&gt; 
+ &lt;p&gt;&lt;span style=&quot;color:#000000&quot;&gt;8.加强市区联动。支持企业申报国家、市级政策，对获得市级及以上资金扶持的项目，结合区域或行业特点，对具有行业示范作用、竞争优势显著的项目，经综合评估，可给予企业一定资金支持。&lt;/span&gt;&lt;/p&gt; 
+ &lt;p&gt;&lt;span style=&quot;color:#000000&quot;&gt;9.做实做细人才服务保障。对用人单位引进的国内外优秀人才，按照相关政策推荐申请「光启人才行动计划」，并提供人才落户、安居、医疗、出入境等方面便利化服务。&lt;/span&gt;&lt;/p&gt; 
+ &lt;p&gt;&lt;span style=&quot;color:#000000&quot;&gt;10.打造高能级品牌活动。鼓励企业发挥国际化、市场化、品牌化、专业化等资源优势，举办或者承办在行业领域内或者国内外具有较大影响力的创新或者产业活动，经评价，给予一定支持。&lt;/span&gt;&lt;/p&gt; 
+&lt;/blockquote&gt;
+                                                                                &lt;/div&gt;
+                                                                            </description>
+            <link>https://www.oschina.net/news/338370</link>
+            <guid isPermaLink="false">https://www.oschina.net/news/338370</guid>
+            <pubDate>Wed, 12 Mar 2025 06:55:44 GMT</pubDate>
+            <author>来源: OSCHINA</author>
+        </item>
+        <item>
+            <title>DeepSeek-R1 联网搜索能力测评：腾讯元宝综合实力领先</title>
+            <description>&lt;div class=&quot;content&quot;&gt;
+                                                                    
+                                                        &lt;p&gt;3 月 11 日，中文大模型测评基准 SuperCLUE &lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fmp.weixin.qq.com%2Fs%2Fs_ZjP3tjxkyTVEPK_GucZg&quot; target=&quot;_blank&quot;&gt;发布最新报告&lt;/a&gt;，测评了各平台接入 DeepSeek-R1 的联网搜索能力，测评内容包括基础检索能力如文化生活、经济生活、实时新闻等，以及分析推理能力如推理计算、分析排序、数据检索与分析等，&lt;/p&gt; 
+&lt;p&gt;测评结果显示，腾讯元宝在 10 家接入 DeepSeek-R1 的平台中联网搜索能力最强，在总分、基础检索能力和分析推理能力三项核心指标上均排名第一。&lt;/p&gt; 
+&lt;p&gt;&lt;img height=&quot;4468&quot; src=&quot;https://static.oschina.net/uploads/space/2025/0312/145142_W1Ch_2720166.png&quot; width=&quot;3488&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
+&lt;p&gt;据悉，本次测评模拟了用户的真实搜索需求，考察 AI 在查找实时新闻、文化生活、经济动态等信息时的准确度，以及在复杂问题上的推理计算、数据分析和排序能力。而据测试结果显示，元宝在基础检索能力、分析推理能力均超越多个平台。&lt;/p&gt;
+                                                                                &lt;/div&gt;
+                                                                            </description>
+            <link>https://www.oschina.net/news/338369</link>
+            <guid isPermaLink="false">https://www.oschina.net/news/338369</guid>
+            <pubDate>Wed, 12 Mar 2025 06:54:44 GMT</pubDate>
+            <author>来源: OSCHINA</author>
+        </item>
+        <item>
+            <title>豆包文生图技术报告发布，数据处理、预训练、RLHF 全流程公开</title>
+            <description>&lt;div class=&quot;content&quot;&gt;
+                                                                    
+                                                        &lt;p&gt;豆包大模型团队&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fmp.weixin.qq.com%2Fs%2F3E4s2c7TcWQ_g_6DdJPJkQ&quot; target=&quot;_blank&quot;&gt;发布&lt;/a&gt;文生图技术报告，首次公开 Seedream 2.0 图像生成模型技术细节，覆盖数据构建、预训练框架、 后训练 RLHF 全流程。报告针对 Seedream 2.0 原生中英双语理解、文字渲染、高美感、分辨率与画幅变换等特性的实现，进行了具体介绍。&lt;/p&gt; 
+&lt;p&gt;豆包大模型团队文生图模型 Seedream 2.0 于 2024 年 12 月初在豆包 APP 和即梦上线，相比 Ideogram 2.0、Midjourney V6.1、Flux 1.1 Pro 等主流模型，该模型更好解决了文本渲染能力欠佳、对中国文化理解不足等诸多实际问题，支持原生中英双语，美感、指令遵循等能力有整体提升。&lt;/p&gt; 
+&lt;p&gt;&lt;span style=&quot;color:rgba(0, 0, 0, 0.9)&quot;&gt;Seedream 2.0 采用了全新的预训练架构设计，其整体框图如下：&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;img height=&quot;274&quot; src=&quot;https://oscimg.oschina.net/oscnet/up-457ee588823b38a7eef1e2ee5c0e9e855d4.png&quot; width=&quot;500&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
+&lt;p&gt;根据介绍，团队为了较全面客观地评估模型，围绕图文匹配度、结构准确率、美感等基础维度，严格构建了 Bench-240 评测基准。通过测试发现 Seedream 2.0 面向英文提示词，其生成内容的结构合理性、文本理解准确性高于主流模型。&lt;/p&gt; 
+&lt;p&gt;&lt;img height=&quot;459&quot; src=&quot;https://oscimg.oschina.net/oscnet/up-1b1b01a3b00d4f19f14b66e8f4a52dca01a.png&quot; width=&quot;500&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;span style=&quot;color:#000000&quot;&gt;中文综合能力同样突出，&lt;/span&gt;&lt;span style=&quot;color:#000000&quot;&gt;其生成与渲染文字可用率达 78%，完美响应率为 63%，高于业界目前其他模型。&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;img height=&quot;465&quot; src=&quot;https://oscimg.oschina.net/oscnet/up-e549ec802bb4d76bbba44b30474aebe0c15.png&quot; width=&quot;500&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
+&lt;p&gt;公告称，此次技术报告的发布，旨在推动图像生成技术进一步发展，加强业内交流。展望未来，团队将持续探索更高效地 Scaling 模型参数及数据的创新技术，进一步提升模型的性能边界。&lt;/p&gt; 
+&lt;p&gt;&lt;strong&gt;完整报告详情可查看：&lt;/strong&gt;&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt;技术展示页：&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fteam.doubao.com%2Ftech%2Fseedream&quot; target=&quot;_blank&quot;&gt;https://team.doubao.com/tech/seedream&lt;/a&gt;&lt;/li&gt; 
+ &lt;li&gt;技术报告：&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Farxiv.org%2Fpdf%2F2503.07703&quot; target=&quot;_blank&quot;&gt;https://arxiv.org/pdf/2503.07703&lt;/a&gt;&lt;/li&gt; 
+&lt;/ul&gt;
+                                                                                &lt;/div&gt;
+                                                                            </description>
+            <link>https://www.oschina.net/news/338350</link>
+            <guid isPermaLink="false">https://www.oschina.net/news/338350</guid>
+            <pubDate>Thu, 06 Mar 2025 05:55:00 GMT</pubDate>
+            <author>来源: OSCHINA</author>
+        </item>
+        <item>
+            <title>字节跳动 EB 级日志系统设计与优化实践</title>
+            <description>&lt;div class=&quot;content&quot;&gt;
+                                                                                                                    
+                                                                                                                                                    &lt;div&gt; 
+ &lt;div&gt; 
+  &lt;img src=&quot;https://oscimg.oschina.net/oscnet//e27a1d3e532d1aab8b65d5203bac1eab.jpg&quot; referrerpolicy=&quot;no-referrer&quot;&gt; 
+ &lt;/div&gt; 
+ &lt;div&gt;
+   作者｜刘卯银，火山引擎日志系统架构师 
+ &lt;/div&gt; 
+ &lt;div&gt; 
+  &lt;img src=&quot;https://oscimg.oschina.net/oscnet//8942fd743308c45d84b2a600e94847fa.jpg&quot; referrerpolicy=&quot;no-referrer&quot;&gt; 
+ &lt;/div&gt; 
+ &lt;div&gt;
+   日志在可观测技术发展的早期是用做故障回顾的。 我们通过 metrics 发现指标异常，比如成功率下降，然后通过 trace 找到了有异常的某个服务，最后才通过日志找到具体的原因（接口返回异常）。 在现代日志系统里，这些都可以通过日志来一站式解决： trace 本身就是一种特殊格式的日志，metrics 可以通过日志来实时生成。 
+ &lt;/div&gt; 
+ &lt;div&gt;
+   日志主要有三个明显优势： 
+ &lt;/div&gt; 
+ &lt;ul&gt; 
+  &lt;li&gt; 
+   &lt;div&gt;
+     生成和采集非常容易，基本上各个编程语言都有日志框架； 
+   &lt;/div&gt; &lt;/li&gt; 
+  &lt;li&gt; 
+   &lt;div&gt;
+     采集是旁路的，不需要用户系统做任何改造。日志生成到文件，日志采集器去读文件后采集到日志系统； 
+   &lt;/div&gt; &lt;/li&gt; 
+  &lt;li&gt; 
+   &lt;div&gt;
+     保留了大量的细节。 
+   &lt;/div&gt; &lt;/li&gt; 
+ &lt;/ul&gt; 
+ &lt;div&gt;
+   日志的挑战也很明确：日志量大，流量容易突发，非结构化的数据难以利用。 
+ &lt;/div&gt; 
+ &lt;div&gt;
+   本文将主要探讨如何解决日志面临的挑战。 
+ &lt;/div&gt; 
+ &lt;div&gt; 
+  &lt;strong&gt;字节跳动日志系统介绍&lt;/strong&gt; 
+ &lt;/div&gt; 
+ &lt;div&gt; 
+  &lt;strong&gt;EB&lt;/strong&gt; 
+  &lt;strong&gt;&lt;span&gt;&amp;nbsp;&lt;/span&gt;级日志系统 TLS（Tinder&lt;span&gt;&amp;nbsp;&lt;/span&gt;&lt;/strong&gt; 
+  &lt;strong&gt;Log&lt;/strong&gt; 
+  &lt;strong&gt;&lt;span&gt;&amp;nbsp;&lt;/span&gt;Service）&lt;/strong&gt; 
+ &lt;/div&gt; 
+ &lt;div&gt; 
+  &lt;img src=&quot;https://oscimg.oschina.net/oscnet//c4921393194a0512d1f9e28b5aab33f7.jpg&quot; referrerpolicy=&quot;no-referrer&quot;&gt; 
+ &lt;/div&gt; 
+ &lt;div&gt;
+   字节跳动在集团内部和火山引擎（公有云）是一套统一的日志系统 TLS（Tinder Log Service），下面简称 TLS。集团内部包括抖音、头条、飞书、懂车帝在内的大部分用户的日志都是在 TLS 上。用户的日志包含了运营、运维、审计和 Trace 等类型的日志。TLS 对用户提供采集、存储、加工、查询分析、告警、消费、投递等功能。大家知道字节跳动的业务规模增长比较迅猛、最近的抖音电商也是快速增长，TLS 经受住了业务快速增长导致日志规模快速增长的考验。 
+ &lt;/div&gt; 
+ &lt;div&gt; 
+  &lt;strong&gt;TLS 的演进&lt;/strong&gt; 
+ &lt;/div&gt; 
+ &lt;div&gt; 
+  &lt;img src=&quot;https://oscimg.oschina.net/oscnet//1de7b567db5294791cb60ea117e65c64.jpg&quot; referrerpolicy=&quot;no-referrer&quot;&gt; 
+ &lt;/div&gt; 
+ &lt;div&gt;
+   早期字节跳动没有统一的日志系统，各业务系统存在日志需求，不得不各自自建，选用的方案五花八门，有基于 ELK 的，有基于 Clickhouse 的，也有基于对象存储+Hive 的。自建的日志系统存在稳定性不足、运维复杂、成本高、弹性不足等诸多痛点，于是我们构建了日志的 1.0 系统。因为主要是运维日志，我们调研了业内开源的一些方案，综合需求和进度要求，最终选择了类似 Loki 的方案。 
+ &lt;/div&gt; 
+ &lt;div&gt;
+   Loki 是 Grafana 旗下一款开源的日志低成本解决方案，没有全文索引，查询日志主要通过扫描。日志 1.0 的数据存储在 HDFS 上，采用扫描式查询，解决了自建系统的稳定性不足、运维复杂、成本高和弹性不足的问题。但是日志 1.0 有一个问题没有解决，那就是性能。因为没有索引，所以查询速度很慢，有同学调侃，查日志的时间，都可以去泡杯咖啡了。 
+ &lt;/div&gt; 
+ &lt;div&gt;
+   1.0 显然不能满足客户的需求，所以我们又马不停蹄的开发了日志 2.0，我们在 1.0 的基础上增加了自研的倒排索引，同时把底层存储更换为了字节内部自研的池化存储 bytestore，2.0 上线后查询性能得到了很大的提升，所以我们把 trace 的数据也接入进来了。 
+ &lt;/div&gt; 
+ &lt;div&gt;
+   随着业务系统的进一步演进，只有索引还是不够的，因为有很多用户希望能基于日志来做运营分析，需要实时的日志报表分析，日志告警等能力。因此我们又开发了日志 3.0（TLS），我们认为 TLS 是一个比较现代且全面的日志系统。日志 3.0 在 2.0 的基础上增加了列存、OLAP 分析引擎以及智能 AI 引擎，同时底层存储也引入了高性能的混合存储。为了满足业务系统多样性的需求，我们还加大了在生态兼容方面的投入，3.0 时代，日志规模也达到了 EB 级。 
+ &lt;/div&gt; 
+ &lt;div&gt; 
+  &lt;strong&gt;字节跳动日志系统 TLS 的设计优化实践&lt;/strong&gt; 
+ &lt;/div&gt; 
+ &lt;div&gt; 
+  &lt;strong&gt;现代日志系统的核心属性&lt;/strong&gt; 
+ &lt;/div&gt; 
+ &lt;div&gt; 
+  &lt;img src=&quot;https://oscimg.oschina.net/oscnet//a6dc3be41760eca4e05d1ac007090049.jpg&quot; referrerpolicy=&quot;no-referrer&quot;&gt; 
+ &lt;/div&gt; 
+ &lt;div&gt;
+   在我们看来，一个现代的日志系统具备以下几个方面的核心属性： 
+ &lt;/div&gt; 
+ &lt;ul&gt; 
+  &lt;li&gt; 
+   &lt;div&gt;
+     高性能：实时的日志系统必须具备查询分析百亿行日志秒级返回的能力。 
+   &lt;/div&gt; &lt;/li&gt; 
+  &lt;li&gt; 
+   &lt;div&gt;
+     弹性&amp;amp;高可用：日志的量不好预估、存在突发，必须要具备弹性能力；高可用是基本的稳定性诉求。 
+   &lt;/div&gt; &lt;/li&gt; 
+  &lt;li&gt; 
+   &lt;div&gt;
+     高效率：海量的数据只有在成本足够低的时候才能发挥出重要的价值，要让用户能用的起，所以要提升日志系统的效率，降本增效。 
+   &lt;/div&gt; &lt;/li&gt; 
+  &lt;li&gt; 
+   &lt;div&gt;
+     生态兼容：适应用户业务系统的多样性，让更多的用户能方便的接入，让更多的日志发挥出价值。 
+   &lt;/div&gt; &lt;/li&gt; 
+  &lt;li&gt; 
+   &lt;div&gt;
+     丰富的功能：日志加工、可视化仪表盘、日志告警满足用户的多样化需求，适应更多场景的日志。 
+   &lt;/div&gt; &lt;/li&gt; 
+  &lt;li&gt; 
+   &lt;div&gt;
+     智能化：智能化有两个方面，一是日志系统具备智能运维 AIOPS 的能力，包括日志聚类、智能文本分析、机器学习算子；另外一个是提供智能助手，帮助用户写 SQL，写正则，用自然语言生成图表等。 
+   &lt;/div&gt; &lt;/li&gt; 
+ &lt;/ul&gt; 
+ &lt;div&gt; 
+  &lt;strong&gt;为高性能而设计的数据组织方式&lt;/strong&gt; 
+ &lt;/div&gt; 
+ &lt;div&gt; 
+  &lt;img src=&quot;https://oscimg.oschina.net/oscnet//d89dae7feec9c09e8592344c89f02988.jpg&quot; referrerpolicy=&quot;no-referrer&quot;&gt; 
+ &lt;/div&gt; 
+ &lt;div&gt;
+   TLS 对外提供写入、消费、查询、分析四个数据面的重要接口，这几个接口的性能决定了 TLS 的性能。 
+ &lt;/div&gt; 
+ &lt;ul&gt; 
+  &lt;li&gt; 
+   &lt;div&gt;
+     日志原文：日志顺序写入，顺序读取，是消息队列相似的接口，所以我们也按消息队列的方式来组织数据。原文以 append 的方式写入到底层存储，顺序读取消费。我们按日志到达服务端的时间构建了时间的稀疏索引，用于获取消费位点。同时为了能够对流量进行控制，我们引入了 shard 的概念，每个 shard 是一个顺序的性能流，类似于 Kafka 的 partition，用户需要保序的时候可以指定 shard 写入，需要高性能的时候可以分散到多个 shard 做负载均衡。 
+   &lt;/div&gt; &lt;/li&gt; 
+  &lt;li&gt; 
+   &lt;div&gt;
+     索引：用户需要通过关键字查询日志原文，为了提升查询效率，我们构建了倒排索引。倒排索引存储了关键字和日志行号的对应关系，查询关键字的时候直接获取日志行号，不用做扫描查询。用户查询是指定时间窗口查询的，我们在索引里存放了日志的时间。为了减少查询时间窗口内的数据量，我们做了个优化，把时间相近的日志存放在一起，并以小时为切分单位来分组存放。查询某一个小时内的日志只需要处理对应小时的分组，其它小时的分组可以直接跳过。同时按小时分组存放还有一个好处，小时内的索引只需要存放小时内的时间，如果精确到秒用 0-3599（12 位） 就可以表示时间，大大缩小了时间字段的存储空间。因为数据量少了，一次 I/O 可以读更多的有效数据上来，也提升了时间过滤的效率。 
+   &lt;/div&gt; &lt;/li&gt; 
+  &lt;li&gt; 
+   &lt;div&gt;
+     列存：OLAP 引擎分析数据最高效的就是列式存储了，因为对某一个字段的聚合分析不需要读取别的字段。还是上面的那个道理，相对于行存，列存一次 I/O 可以读取更多的有效数据，自然就提升了性能。TLS 为了适应小流量的场景，列存的切分窗口设置为按天切分，如果按小时切分一些小流量的场景列存会切的太碎，I/O 太小读取效率不高。 
+   &lt;/div&gt; &lt;/li&gt; 
+  &lt;li&gt; 
+   &lt;div&gt;
+     存储：TLS 的这三种类型的数据都统一存放到了字节跳动内部的池化存储 bytestore，池化存储通过 EC 做数据冗余，保证数据的可靠性。 
+   &lt;/div&gt; &lt;/li&gt; 
+ &lt;/ul&gt; 
+ &lt;div&gt; 
+  &lt;strong&gt;系统架构&lt;/strong&gt; 
+ &lt;/div&gt; 
+ &lt;div&gt; 
+  &lt;img src=&quot;https://oscimg.oschina.net/oscnet//afa92f12dcf5cc56ada63c05b8d8ab7c.jpg&quot; referrerpolicy=&quot;no-referrer&quot;&gt; 
+ &lt;/div&gt; 
+ &lt;div&gt;
+   这是 TLS 的系统架构，分为存储集群、计算集群和管控集群。 重点介绍一下计算集群的组件： 
+ &lt;/div&gt; 
+ &lt;ul&gt; 
+  &lt;li&gt; 
+   &lt;div&gt;
+     API Gateway：用户操作的统一入口； 
+   &lt;/div&gt; &lt;/li&gt; 
+  &lt;li&gt; 
+   &lt;div&gt;
+     ShardServer：原文引擎，负责原文的写入、消费、索引查询到，行号后返回日志原文； 
+   &lt;/div&gt; &lt;/li&gt; 
+  &lt;li&gt; 
+   &lt;div&gt;
+     Query：OLAP 查询分析引擎，负责列存 SQL 分析和查询结果的聚合； 
+   &lt;/div&gt; &lt;/li&gt; 
+  &lt;li&gt; 
+   &lt;div&gt;
+     IndexServer：索引、列存的写入构建； 
+   &lt;/div&gt; &lt;/li&gt; 
+  &lt;li&gt; 
+   &lt;div&gt;
+     SearchServer：索引查询。 
+   &lt;/div&gt; &lt;/li&gt; 
+ &lt;/ul&gt; 
+ &lt;div&gt;
+   可以看到我们的系统架构遵循了三个原则： 
+ &lt;/div&gt; 
+ &lt;ul&gt; 
+  &lt;li&gt; 
+   &lt;div&gt;
+     存算分离：计算和存储可以分别扩展，这是为了弹性而做出的选择。 
+   &lt;/div&gt; &lt;/li&gt; 
+  &lt;li&gt; 
+   &lt;div&gt;
+     读写分离：也是为了适应弹性做出的选择。前面介绍过字节内部的日志系统是从扫描查询演进过来的，有非常重的读，计算节点会把 100G 的网卡读带宽打满。所以对我们来说，读写分离很重要，一方面是读写资源隔离，另一方面业务系统也在向索引查询切换，需要足够的弹性来支撑这种迁移。 
+   &lt;/div&gt; &lt;/li&gt; 
+  &lt;li&gt; 
+   &lt;div&gt;
+     数据面和管控面分离：数据面和管控面是完全分离的。数据面有完整的配置信息缓存，管控面故障时，数据面的业务不会中断。 
+   &lt;/div&gt; &lt;/li&gt; 
+ &lt;/ul&gt; 
+ &lt;div&gt; 
+  &lt;strong&gt;多级缓存和热点消除&lt;/strong&gt; 
+ &lt;/div&gt; 
+ &lt;div&gt; 
+  &lt;img src=&quot;https://oscimg.oschina.net/oscnet//a927c673fcd1414ef3c8a05655e75eed.jpg&quot; referrerpolicy=&quot;no-referrer&quot;&gt; 
+ &lt;/div&gt; 
+ &lt;div&gt;
+   增加缓存是提升性能最有效的手段，我们在系统的多个层级都设置了缓存。 
+ &lt;/div&gt; 
+ &lt;ul&gt; 
+  &lt;li&gt; 
+   &lt;div&gt;
+     ShardServer：近期写入的数据马上就会被消费，所以 shardserver 在数据落盘的同时在内存里保存了最近写入的数据，保证索引消费、实时消费、投递都能在缓存里命中。 
+   &lt;/div&gt; &lt;/li&gt; 
+  &lt;li&gt; 
+   &lt;div&gt;
+     IndexServer：缓存索引列存构建的元数据信息，包括索引、列存文件清单，索引的 meta 信息以及列存的 footer 信息，查询的时候从 IndexServer 实时获取才能查询到最新的数据。 
+   &lt;/div&gt; &lt;/li&gt; 
+  &lt;li&gt; 
+   &lt;div&gt;
+     Query：Query 上有元数据缓存，中间结果缓存，数据缓存。重点提一下中间结果缓存：因为查询分析命令大部分都是分析最近时间点的数据，所以直接缓存结果大多是无效的，我们需要的是一个中间结果的缓存，联合最新写入的数据和之前查询的中间结果缓存一起计算出当前查询的结果后返回，中间结果的缓存命中率是很高的。 
+   &lt;/div&gt; &lt;/li&gt; 
+  &lt;li&gt; 
+   &lt;div&gt;
+     SearchServer：Searchserver 的缓存和 query 类似，SearchServer 是索引查询的缓存，query 是 SQL 分析的缓存。 
+   &lt;/div&gt; &lt;/li&gt; 
+  &lt;li&gt; 
+   &lt;div&gt;
+     Bytestore：Bytestore 上会缓存热点数据，主要是对物理盘的缓存。 
+   &lt;/div&gt; &lt;/li&gt; 
+ &lt;/ul&gt; 
+ &lt;div&gt;
+   缓存可以提升系统的性能，但缓存要么是全局的，要么就要有亲和节点。我们的缓存是按节点亲和的，会碰到一个问题：日志的流量不太好预估，由于某些事件或者故障发生，日志的量会出现井喷。调度的亲和会造成节点的热点，产生瓶颈。我们的解决方式是在每个服务的入口都设置队列，当一个节点的队列达到水位，说明这个节点已经有请求积压了，处于繁忙状态，这时候会返回 busy，发送节点会根据节点的负载情况，重新选择一个负载低的节点进行重试，从而消除热点。 
+ &lt;/div&gt; 
+ &lt;div&gt; 
+  &lt;strong&gt;索引实时可见&lt;/strong&gt; 
+ &lt;/div&gt; 
+ &lt;div&gt; 
+  &lt;img src=&quot;https://oscimg.oschina.net/oscnet//04794f3416e8a9444744c2fb5e8289e7.jpg&quot; referrerpolicy=&quot;no-referrer&quot;&gt; 
+ &lt;/div&gt; 
+ &lt;div&gt;
+   索引的实时可见是实时业务系统的需求。我们的日志系统 TLS 已经应用到了实时业务场景，所以对从写入成功到可以查询的时间是有要求的，而索引和列存是一个批处理的数据结构，这决定了写入到查询不是立即可见的。用开源自建的小伙伴应该了解 ES 有一个 refresh_interval 参数来控制索引的可见时间，官方建议不能配置的太小，否则频繁刷盘会影响性能。 
+ &lt;/div&gt; 
+ &lt;div&gt;
+   能否兼顾性能和可见性？我们做了索引的内存可见，实测可以在 HDD 的场景把索引的可见性做到 3 秒以内。什么是内存可见呢？数据到了 IndexWriter 后，先放在内存的 buffer 中，如果数据量比较大，buffer 达到设定大小后就开始构建索引写盘，如果 3 秒还没达到设定大小，我们在内存里构建了索引的数据结构，查询的时候可以从内存里查，这就做到了索引的 3 秒可见。内存中的索引会有一定的淘汰策略，进行 merge 后刷盘。 
+ &lt;/div&gt; 
+ &lt;div&gt;
+   需要注意，ES 有一个 translog ，用途是在掉电的时候恢复数据，而我们不需要 translog，因为我们有日志原文，我们通过记录原文消费的 offset 来记录索引的构建进度。但如果处理的不好，内存构建的索引会有幻读的问题，比如在内存中构建了索引，用户也查询到了，突然这个节点故障，内存里的数据丢失，重新启动后提供服务，之前已经查到的数据又查不到了，只有等索引从记录的进度开始重新构建后才能查到，这就是幻读。我们是通过一致性的视图管理来解决幻读的，通过 commit point 记录了索引可见的进度，故障后重启时只有当 commit point 之前的索引都构建好了才会让用户再次查询到。 
+ &lt;/div&gt; 
+ &lt;div&gt; 
+  &lt;strong&gt;EB 级日志系统 TLS 的采集客户端&lt;/strong&gt; 
+ &lt;/div&gt; 
+ &lt;div&gt; 
+  &lt;img src=&quot;https://oscimg.oschina.net/oscnet//e5fe7270407f299ac067709dff0c7c27.jpg&quot; referrerpolicy=&quot;no-referrer&quot;&gt; 
+ &lt;/div&gt; 
+ &lt;div&gt;
+   系统的采集客户端叫 LogCollector ，采用的是多 pipeline 的设计，目的是进行资源隔离、故障隔离。比如某个 output 出现问题，不会影响到其它的 output。在 pipeline 设置有自适应的反压机制，输出端慢采集速度也会放慢。在资源上采用的是资源共享和自动调配机制，每个 pipeline 有独享的内存资源，还有一个全局的共享资源池以应对某些 pipeline 的流量突发。 
+ &lt;/div&gt; 
+ &lt;div&gt;
+   为了应对 AI 时代训练任务的需求，我们还开发了秒级生命周期的容器日志采集能力，通过实时监控 K8s 的事件，做到启动到退出生命周期只有几秒的容器日志能正常采集，不漏不丢。采集客户端的性能非常重要，因为采集客户端部署在用户侧，装机量大，效率提升对成本的收益非常明显。我们也持续在优化采集客户端的性能，这些优化包括： 
+ &lt;/div&gt; 
+ &lt;ul&gt; 
+  &lt;li&gt; 
+   &lt;div&gt;
+     批量处理：将日志读取一批后统一处理，降低了 Lock/Unlock 操作的次数，减少了日志状态等对象的内存分配频率。 
+   &lt;/div&gt; &lt;/li&gt; 
+  &lt;li&gt; 
+   &lt;div&gt;
+     并行处理：日志的结构化全部并发多线程执行，提升了 CPU 密集型任务的处理的速率。虽然我们采集客户端通常只配置 1C，但是因为有很多 I/O 操作，多线程是可以提高处理性能的。 
+   &lt;/div&gt; &lt;/li&gt; 
+  &lt;li&gt; 
+   &lt;div&gt;
+     零拷贝技术：日志读取到结构化处理到 OutPut，共用一份内存，避免无效的内存拷贝性能开销，省略非必要的编码/解码动作。 
+   &lt;/div&gt; &lt;/li&gt; 
+  &lt;li&gt; 
+   &lt;div&gt;
+     内存池：对通用数据结构进行池化管理，减少内存碎片。 
+   &lt;/div&gt; &lt;/li&gt; 
+  &lt;li&gt; 
+   &lt;div&gt;
+     其他（以 JSON 采集模式为例）：byte 级别直接操作 JSON 日志，省略内存分配，避免类型转换和反射，提高了 JSON 日志的处理速度。 
+   &lt;/div&gt; &lt;/li&gt; 
+ &lt;/ul&gt; 
+ &lt;div&gt; 
+  &lt;strong&gt;如何应对业务的快速增长&lt;/strong&gt; 
+ &lt;/div&gt; 
+ &lt;div&gt; 
+  &lt;img src=&quot;https://oscimg.oschina.net/oscnet//bf22d05d45ee15c9c3a67bba5d11c5be.jpg&quot; referrerpolicy=&quot;no-referrer&quot;&gt; 
+ &lt;/div&gt; 
+ &lt;div&gt;
+   应对业务的快速增长，我们的策略是多 AZ、多集群部署。TLS 对用户看到是统一的 EB 级大集群，实际内部是由多个小的集群组成的。这样设计有两个方面的考虑，一是故障域隔离，减少故障爆炸半径；二是能充分利用多个机房的资源，有这种灵活性才能拿到足够多的机器应对业务突发上量。 
+ &lt;/div&gt; 
+ &lt;ul&gt; 
+  &lt;li&gt; 
+   &lt;div&gt;
+     存算分离：前面提到过存算分离，这里再详细说说。我们的存储使用相对大一些的集群，方便资源共享，而计算使用相对小的集群，故障隔离，资源隔离。这样做除了计算集群和存储集群分别灵活扩展外，还有一个优势：计算集群支持离线升级。一个存储集群上有多个计算集群，因为是共享存储，在升级某个计算集群的时，可以把待升级的集群上的业务全部切到其他计算集群，切走后在没有业务流量的情况下升级计算集群，升级完再逐渐把流量灰度切回来。 
+   &lt;/div&gt; &lt;/li&gt; 
+  &lt;li&gt; 
+   &lt;div&gt;
+     Serverless：所有的服务都是云原生的，包括存储都是 on K8s，读写服务资源隔离，分别灵活扩展。 
+   &lt;/div&gt; &lt;/li&gt; 
+  &lt;li&gt; 
+   &lt;div&gt;
+     多集群管理：因为有多个小的集群，多集群管理就非常重要了，弹性是通过多集群管理来实现的，自动负载分配，自动负载均衡。 
+   &lt;/div&gt; &lt;/li&gt; 
+  &lt;li&gt; 
+   &lt;div&gt;
+     存储集群故障时切换：计算集群故障时对业务是没有影响的，快速切换集群后只需要根据水位处理扩容。存储集群故障时，是不是业务就中断了呢？我们在存储集群故障时做了一些降级处理的预案：因为日志写入不中断很重要，写入如果中断有些 SDK 上传的日志就丢了，所以我们在存储集群故障时将写入流量切换到新集群，切换后写数据不中断，新写入的数据在新集群上也可查询，只是历史数据需要等待故障集群恢复时才可查。有些用户对日志的稳定性要求更高，给我们提了 3AZ 高可用的需求，目前在规划中。 
+   &lt;/div&gt; &lt;/li&gt; 
+ &lt;/ul&gt; 
+ &lt;div&gt; 
+  &lt;strong&gt;租户隔离&lt;/strong&gt; 
+ &lt;/div&gt; 
+ &lt;div&gt; 
+  &lt;img src=&quot;https://oscimg.oschina.net/oscnet//40f2695e9e0560fc1a2bc8a329edf636.jpg&quot; referrerpolicy=&quot;no-referrer&quot;&gt; 
+ &lt;/div&gt; 
+ &lt;div&gt;
+   无论是公有云还是内部的系统，除非系统的建设是垂直隔离的孤岛，都绕不开租户隔离的问题。我们的处理策略是多点位的流控和资源控制，并且按照单请求/单 shard/单 topic/单租户设置多个分级，控制住扇入和扇出。 
+ &lt;/div&gt; 
+ &lt;ul&gt; 
+  &lt;li&gt; 
+   &lt;div&gt;
+     写入和消费链路：写入和消费是对用户明确了系统的规格的，shard 就是读写的性能单元。为了防止一些异常的场景，我们还设置了租户级别的流控： 
+   &lt;/div&gt; 
+   &lt;ul&gt; 
+    &lt;li&gt; 
+     &lt;div&gt;
+       按 shard/租户的写入带宽流控，写入 QPS 流控； 
+     &lt;/div&gt; &lt;/li&gt; 
+    &lt;li&gt; 
+     &lt;div&gt;
+       按 shard/租户的读取带宽流控，读取 QPS 流控。 
+     &lt;/div&gt; &lt;/li&gt; 
+   &lt;/ul&gt; &lt;/li&gt; 
+  &lt;li&gt; 
+   &lt;div&gt;
+     查询分析链路：查询分析链路对用户明确了单个 Topic 的并发控制 
+   &lt;/div&gt; 
+   &lt;ul&gt; 
+    &lt;li&gt; 
+     &lt;div&gt;
+       按 Topic /租户的并发数流控 
+     &lt;/div&gt; &lt;/li&gt; 
+   &lt;/ul&gt; &lt;/li&gt; 
+  &lt;li&gt; 
+   &lt;div&gt;
+     访问存储：访问存储的流控就是要控制扇出，当然存储自己也会有控制扇入的流控，这里是一个双重保障。 
+   &lt;/div&gt; 
+   &lt;ul&gt; 
+    &lt;li&gt; 
+     &lt;div&gt;
+       分析引擎单 shard 扫描数据量的流控； 
+     &lt;/div&gt; &lt;/li&gt; 
+    &lt;li&gt; 
+     &lt;div&gt;
+       单节点访问存储的带宽/QPS 流控。 
+     &lt;/div&gt; &lt;/li&gt; 
+   &lt;/ul&gt; &lt;/li&gt; 
+  &lt;li&gt; 
+   &lt;div&gt;
+     资源控制：资源控制有三个方面的控制，CPU、内存的使用量、读盘量： 
+   &lt;/div&gt; 
+   &lt;ul&gt; 
+    &lt;li&gt; 
+     &lt;div&gt;
+       分析引擎按请求/Topic/租户的三级资源流控 
+     &lt;/div&gt; &lt;/li&gt; 
+    &lt;li&gt; 
+     &lt;div&gt;
+       查询引擎按请求/Topic/租户的三级资源流控 
+     &lt;/div&gt; &lt;/li&gt; 
+    &lt;li&gt; 
+     &lt;div&gt;
+       访问存储按 shard 设置了单次请求扫描的数据量 
+     &lt;/div&gt; &lt;/li&gt; 
+   &lt;/ul&gt; &lt;/li&gt; 
+ &lt;/ul&gt; 
+ &lt;div&gt; 
+  &lt;strong&gt;高效混合存储&lt;/strong&gt; 
+ &lt;/div&gt; 
+ &lt;div&gt; 
+  &lt;img src=&quot;https://oscimg.oschina.net/oscnet//8740a5a87fd84b6419330f7c131c145a.jpg&quot; referrerpolicy=&quot;no-referrer&quot;&gt; 
+ &lt;/div&gt; 
+ &lt;div&gt;
+   开源自建的日志系统，通常使用全 SSD，因为 HDD 的 IOPS 能力有限，需要做大量的优化，否则 HDD 的 IOPS 性能会成为系统的瓶颈。但是对于日志的应用场景，HDD 比 SSD 更适合，因为日志的读写都是顺序 I/O，HDD 的带宽能力是足够的，且 HDD 没有寿命问题、单位容量成本比 SSD 低很多，所以我们需要一个高效率的混合存储，充分利用 SSD 的小 I/O 响应延迟以及 HDD 的低成本优势。 
+ &lt;/div&gt; 
+ &lt;div&gt;
+   通常的混合存储是转储模型，数据先以 3 副本的方式写入 SSD，然后后台 Dump 到 HDD。这种模型会有以下四个问题： 
+ &lt;/div&gt; 
+ &lt;ul&gt; 
+  &lt;li&gt; 
+   &lt;div&gt;
+     三副本导致 SSD 的寿命和成本问题。 
+   &lt;/div&gt; &lt;/li&gt; 
+  &lt;li&gt; 
+   &lt;div&gt;
+     小 I/O 性能差：SSD overlap 写入的问题，小于 4KB 写要对齐到 4KB，写前擦除等。 
+   &lt;/div&gt; &lt;/li&gt; 
+  &lt;li&gt; 
+   &lt;div&gt;
+     后台读对 SSD 的压力，dump 到 HDD 会有一次全量的数据读。 
+   &lt;/div&gt; &lt;/li&gt; 
+  &lt;li&gt; 
+   &lt;div&gt;
+     三副本导致的网络流量放大（图中箭头旁边的数字标识的是流量放大）。 
+   &lt;/div&gt; &lt;/li&gt; 
+ &lt;/ul&gt; 
+ &lt;div&gt;
+   我们的高效混合存储在架构上做了大的优化，实现了全流程的 EC 直写。首先我们设置了一个 WAL log 层，整个节点上的所有写请求汇聚成一条大的顺序流，聚合后 EC 满条带写入到 SSD，如果用户下发的本身就是大 I/O，就会 bypassSSD 直写 HDD。用户的数据在 Membuffer 里聚合，聚合到一定大小或者达到了强制刷盘的时间才下刷到 HDD。这么设计后，用户写入的数据先给用户返回成功后，在内存中充分聚合，充分聚合到满条带 EC 写 HDD。 
+ &lt;/div&gt; 
+ &lt;ul&gt; 
+  &lt;li&gt; 
+   &lt;div&gt;
+     写 SSD 由副本变成了 EC，大幅减少写入量和网络流量。 
+   &lt;/div&gt; &lt;/li&gt; 
+  &lt;li&gt; 
+   &lt;div&gt;
+     都是大块 IO 写 SSD、HDD。SSD 寿命、系统的吞吐量、访问延迟都有极大的改善。 
+   &lt;/div&gt; &lt;/li&gt; 
+ &lt;/ul&gt; 
+ &lt;div&gt; 
+  &lt;strong&gt;私有编解码协议&lt;/strong&gt; 
+ &lt;/div&gt; 
+ &lt;div&gt; 
+  &lt;img src=&quot;https://oscimg.oschina.net/oscnet//9c56e3ab4521d805fbad7fff87cf6dfc.jpg&quot; referrerpolicy=&quot;no-referrer&quot;&gt; 
+ &lt;/div&gt; 
+ &lt;div&gt;
+   我们发现日志里的 key 占比通常会超过 30% ，而每条日志的 key 几乎都是一样的，对于这种结构化的日志，如果对 key 进行一个编码，可以大幅缩减数据量。通常大家使用 ProtoBuffer 的标准编解码在盘上存储或在网络上发送数据，Protobuffer 没法对相同的 key 进行压缩。因此我们自研了一个私有编解码协议，把日志的 key 映射成数字编码，解码的时候把数字再转换为 key，把 key 到数字的映射存放在日志里，这样 key 只有一次存储，节省约 30% 的网络数据传输和存储空间。 
+ &lt;/div&gt; 
+ &lt;div&gt;
+   同时日志在流转及查询过程中，大部分场景不需要读数据，只需要读 header 里的元数据。但是在 PB 编码的情况下是需要对整个 PB 进行反序列化的，浪费大量的计算资源，增加了延迟。因此，在我们的私有化协议里，把 head 和 data 分别编码和压缩，读 head 的时候，只需要解压和序列化 header，大幅提升了流转过程中的解析速度。 
+ &lt;/div&gt; 
+ &lt;div&gt; 
+  &lt;strong&gt;弹性&amp;amp;高性能&amp;amp;高效率的总结&lt;/strong&gt; 
+ &lt;/div&gt; 
+ &lt;div&gt; 
+  &lt;img src=&quot;https://oscimg.oschina.net/oscnet//5d64d4c99bca66d81824a1c1f0cde2d7.jpg&quot; referrerpolicy=&quot;no-referrer&quot;&gt; 
+ &lt;/div&gt; 
+ &lt;div&gt; 
+  &lt;strong&gt;生态兼容实践-输入和输出生态建设&lt;/strong&gt; 
+ &lt;/div&gt; 
+ &lt;div&gt; 
+  &lt;img src=&quot;https://oscimg.oschina.net/oscnet//ed3fc149d567f7949b017a7ccd326150.jpg&quot; referrerpolicy=&quot;no-referrer&quot;&gt; 
+ &lt;/div&gt; 
+ &lt;div&gt;
+   我们认为最好的生态是支持标准协议的兼容的同时提供更高性能的私有接口，让用户有更多的兼容性选择。在 TLS 上也在践行这一套理念。 
+ &lt;/div&gt; 
+ &lt;div&gt;
+   标准协议兼容：写入和消费 TLS 支持标准的 Kafka 协议接口，OpenTelemetry 接口，S3 接口，在查询分析侧我们支持开源的 Grafana，支持 SQL92 标准的 SQL 命令，也提供了 ES 类似的 stringquery 接口。 
+ &lt;/div&gt; 
+ &lt;div&gt;
+   私有高性能接口：日志采集提供了高性能的采集客户端 LogCollector、多语言 SDK，日志消费提供了消费组和消费者的多语言 SDK，查询分析侧也提供了高性能的多语言 SDK。 
+ &lt;/div&gt; 
+ &lt;div&gt; 
+  &lt;strong&gt;生态兼容实践-Kafka 协议&lt;/strong&gt; 
+ &lt;/div&gt; 
+ &lt;div&gt; 
+  &lt;img src=&quot;https://oscimg.oschina.net/oscnet//2b8f3e272d4635df42cc17e0e5cb83d1.jpg&quot; referrerpolicy=&quot;no-referrer&quot;&gt; 
+ &lt;/div&gt; 
+ &lt;div&gt;
+   刚刚提到了开源的生态兼容，Kafka 协议是大数据生态的标准协议，使用范围广，因此我们选择了兼容 Kafka 协议。由于底层存储是共享存储，因此不需要 Kafka 的副本机制，我们将 Kafka 改造成了一个存算分离的架构，共享日志原文的存储，可兼容 TLS 的输入和输入生态，支持采集过来的日志用 Kafka 协议消费，也支持从 Kafka 协议导入的数据通过 SDK 进行消费。 
+ &lt;/div&gt; 
+ &lt;div&gt;
+   在 Kafka 业务层面，保留了 Kafka 的 broker 和 coordinator 的实现逻辑，分别支持水平扩展，保留了对 Kafka 协议的兼容，用户在使用的时候看到的是一个增强的 Serverless 的 Kafka。 
+ &lt;/div&gt; 
+ &lt;div&gt; 
+  &lt;strong&gt;数据加工（ETL）&lt;/strong&gt; 
+ &lt;/div&gt; 
+ &lt;div&gt; 
+  &lt;img src=&quot;https://oscimg.oschina.net/oscnet//c6c70061a30f5c0c306d3b8485cb90a8.jpg&quot; referrerpolicy=&quot;no-referrer&quot;&gt; 
+ &lt;/div&gt; 
+ &lt;div&gt;
+   数据加工是日志数据结构化的一个必备功能，TLS 为用户提供了简单易用，类 Python 的日志加工脚本语言，支持语法调试、执行预览，很容易上手。用户只需要简单的编写加工语句即可对日志数据进行加工。日志加工的工作流程是读取源 Topic 内的日志数据，根据用户配置的加工语句对日志进行过滤、富化、脱敏、分发的处理，然后输入出到目的 Topic。TLS 提供了丰富的日志加工函数，通过加工函数来便捷的加工日志。 
+ &lt;/div&gt; 
+ &lt;div&gt; 
+  &lt;strong&gt;日志智能化的实践—快速故障定位&lt;/strong&gt; 
+ &lt;/div&gt; 
+ &lt;div&gt; 
+  &lt;img src=&quot;https://oscimg.oschina.net/oscnet//3c81b69d6a108815d1707b3173d22ea7.jpg&quot; referrerpolicy=&quot;no-referrer&quot;&gt; 
+ &lt;/div&gt; 
+ &lt;div&gt;
+   日志系统的智能化目前在进行两个方向的建设：智能运维和 AI 日志助手。 
+ &lt;/div&gt; 
+ &lt;div&gt;
+   智能运维主要是通过机器学习的聚类算法进行日志聚类、文本分析、模板匹配；AI 助手主要是用自然语言去生成查询分析语句，写 SQL，配置正则表达式，生成图表等。 
+ &lt;/div&gt; 
+ &lt;div&gt;
+   这里重点介绍下日志智能化的应用。快速故障定位是火山引擎稳定性团队的诉求，期望能够借助日志实现【快速感知】【快速决策】【快速止损】【快速恢复】。我们的实现方式是：以存储产品为例，首先将各个业务模块的日志都接入到日志系统 TLS，在线上模拟常见的故障，根据日志聚类的结果，将出现的日志模板配置到对应的故障。下次出现类似的日志 pattern 时，TLS 就会判断出现了对应的故障，将结果以告警的形式推送，并直接明确故障类型，处理预案。线上出现故障后也可以提取模板，配置到故障库里，下次再出现类似的故障就会产生告警。同时 TLS 还支持故障的拓扑，在出现故障的时候明确出问题的节点。 
+ &lt;/div&gt; 
+ &lt;div&gt; 
+  &lt;strong&gt;内容回顾&lt;/strong&gt; 
+ &lt;/div&gt; 
+ &lt;div&gt; 
+  &lt;img src=&quot;https://oscimg.oschina.net/oscnet//7fde6e62c1aeda80fee1ffe37d99beb9.jpg&quot; referrerpolicy=&quot;no-referrer&quot;&gt; 
+ &lt;/div&gt; 
+ &lt;div&gt; 
+  &lt;strong&gt;用户案例&lt;/strong&gt; 
+ &lt;/div&gt; 
+ &lt;div&gt; 
+  &lt;strong&gt;内部案例：对象存储日志上云&lt;/strong&gt; 
+ &lt;/div&gt; 
+ &lt;div&gt; 
+  &lt;img src=&quot;https://oscimg.oschina.net/oscnet//a72c6c774c5eecc62c9dbbd8856f1083.jpg&quot; referrerpolicy=&quot;no-referrer&quot;&gt; 
+ &lt;/div&gt; 
+ &lt;div&gt;
+   字节跳动的对象存储建设的比日志系统早，早期对象存储有对日志的需求而集团没有日志系统，所以采用了自建。对象存储团队基于自己的业务需求，采用了 2 个采集 agent + 3 套日志查询系统来支撑业务。1 个 agent 采集实时日志，用 filebeat，另一个 agent 自己开发，采集滚动后的历史日志，上传到对象存储降低成本。对于热日志使用 ES 做实时查询，Hive 做离线分析。对于冷日志，开发了一套扫描查询引擎去询对象存储内的日志。 
+ &lt;/div&gt; 
+ &lt;div&gt;
+   对象存储自建的这套系统建设复杂，运维成本高，3 个查询入口查询起来不方便，成本非常高，也没有精力投入后续的优化。后来日志系统 TLS 建立起来后，对象存储果断切换到 TLS，一次采集，多种应用集成，低成本多功能，免运维。切换后对象存储的同学用起来非常满意，后面把历史冷日志也导入了 TLS，他们专心于自己的业务能力建设。 
+ &lt;/div&gt; 
+ &lt;div&gt; 
+  &lt;strong&gt;客户案例—某国际旅行社&lt;/strong&gt; 
+ &lt;/div&gt; 
+ &lt;div&gt; 
+  &lt;img src=&quot;https://oscimg.oschina.net/oscnet//f64a82deb3a93f255e50d75f65366264.jpg&quot; referrerpolicy=&quot;no-referrer&quot;&gt; 
+ &lt;/div&gt; 
+ &lt;div&gt;
+   该案例把火山引擎的日志系统 TLS 当作一个在线的 OLAP 数据库在使用。客户为在线机票服务商，通过自己的搜索服务在各航空公司网站获取机票报价信息，经过处理后，对线上的机票平台提供报价、订单等服务，并对验价异常、报价异常、订单异常等实时告警。我们为客户提供了日志加工、运营大盘、检索分析、日志告警等功能。因为是在线的系统，TLS 的可用性、可靠性就非常重要，任何问题都会直接对客户产生资损。目前客户在 TLS 上运行 2 年多，非常平稳。 
+ &lt;/div&gt; 
+ &lt;div&gt; 
+  &lt;strong&gt;下一步展望&lt;/strong&gt; 
+ &lt;/div&gt; 
+ &lt;div&gt; 
+  &lt;img src=&quot;https://oscimg.oschina.net/oscnet//4dc9f33845d62e01dbc4f91aea73d489.jpg&quot; referrerpolicy=&quot;no-referrer&quot;&gt; 
+ &lt;/div&gt; 
+ &lt;div&gt; 
+  &lt;strong&gt;关于作者&lt;/strong&gt; 
+ &lt;/div&gt; 
+ &lt;div&gt;
+   刘卯银，火山引擎日志系统架构师 ，现负责火山引擎日志系统的设计、研发和架构技术演进。从 0 到 1 构建了火山引擎云原生日志系统 TLS，并主导了日志系统架构的升级换代。 
+ &lt;/div&gt; 
+ &lt;div&gt;
+   &amp;nbsp; 
+ &lt;/div&gt; 
+ &lt;div&gt;
+   资料来源： 
+  &lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fdeveloper.volcengine.com%2Farticles%2F7389141787136229403&quot; rel=&quot;nofollow&quot; target=&quot;_blank&quot;&gt;字节跳动 EB 级日志系统设计与优化实践 - 文章 - 开发者社区 - 火山引擎&lt;/a&gt; 
+ &lt;/div&gt; 
+&lt;/div&gt;
+                                                                                    &lt;/div&gt;
+                                                                            </description>
+            <link>https://my.oschina.net/u/6800876/blog/17884414</link>
+            <guid isPermaLink="false">https://my.oschina.net/u/6800876/blog/17884414</guid>
+            <pubDate>Thu, 06 Mar 2025 05:46:00 GMT</pubDate>
+            <author>原创</author>
+        </item>
+        <item>
+            <title>基于 ANTLR4 的大数据 SQL 编辑器解析引擎实践</title>
+            <description>&lt;div class=&quot;content&quot;&gt;
+                                                                                                                    
+                                                                                                                                                    &lt;h1&gt;一、背景&lt;/h1&gt; 
+&lt;p&gt;随着得物离线业务的快速增长，为了脱离全托管服务的一些限制和享受技术发展带来的成本优化，公司提出了大数据 Galaxy 开源演进项目，将离线业务从全托管且封闭的环境迁移到一个开源且自主可控的生态系统中，而离线开发治理套件是 Galaxy 自研体系中一个核心的项目，在数据开发 IDE 中最核心的就是 SQL 编辑器，我们需要一个 SQL 解析引擎在 SQL 编辑提供适配得物自研 Spark 引擎的语法定义，实时语法解析，语法补全，语法校验等能力，结合业内 dataworks 和 dataphin 的实践，我们最终选用 ANTLR 作为 SQL 解析引擎底座。&lt;/p&gt; 
+&lt;h1&gt;二、ANTLR4 简介&lt;/h1&gt; 
+&lt;p&gt;ANTLR（一种语法解析引擎工具）是一个功能强大的解析器生成器，用于读取、处理、执行或翻译结构化文本或二进制文件。它广泛用于构建语言、工具和框架。ANTLR 可以根据语法规则文件生成一个可以构建和遍历解析树的解析器。&lt;/p&gt; 
+&lt;h2&gt;ANTLR4 特性&lt;/h2&gt; 
+&lt;p&gt;ANTLR4 是一个强大的工具，适合用于语言处理、编译器构建、代码分析等多种场景。它的易用性、灵活性和强大的特性使得它成为开发者的热门选择。&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt;强大的文法定义：ANTLR4 允许用户使用简单且易读的文法语法来定义语言的结构。这使得创建和维护语言解析器变得更加直观，同时在复杂文法构造上支持左递归文法、嵌套结构以及其他复杂的文法构造，使得能够解析更复杂的语言结构。&lt;/li&gt; 
+ &lt;li&gt;抽象语法树遍历：ANTLR4 可以生成抽象语法树，使得在解析源代码时能够更容易地进行分析和变换。AST 是编译器和解释器的核心组件。同时提供了简单的 API 来遍历生成的语法树，使得实现代码分析、转换等操作变得简单&lt;/li&gt; 
+ &lt;li&gt;自动语法错误处理：ANTLR4 提供了内置的错误处理机制，可以在解析过程中自动处理语法错误，并且可以自定义错误消息和处理逻辑&lt;/li&gt; 
+ &lt;li&gt;可扩展性：ANTLR4 允许用户扩展和自定义生成的解析器的行为。例如，您可以自定义解析器的方法、错误处理以及其他功能。&lt;/li&gt; 
+ &lt;li&gt;工具&amp;amp;社区生态：ANTLR4 提供了丰富的工具支持，包括命令行工具、集成开发环境插件和可视化工具，可以帮助您更轻松地开发和调试解析器。同时拥有活跃的社区，提供了大量的文档、示例和支持。这使得新用户能够快速上手，并得到必要的帮助。&lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;h2&gt;ANTLR4 的应用场景&lt;/h2&gt; 
+&lt;p&gt;&lt;strong&gt;Apache Spark&lt;/strong&gt; : 流行的大数据处理框架，使用 ANTLR 作为其 SQL 解析器的一部分，支持 SQL 查询。 &lt;strong&gt;Twitter&lt;/strong&gt; : Twitter 使用 ANTLR 来解析和分析用户的查询语言，这有助于他们的搜索和分析功能。 &lt;strong&gt;IBM&lt;/strong&gt;: IBM 使用 ANTLR 来支持一些其产品和工具中的 DSL（领域特定语言）解析需求，例如，在其企业集成解决方案中。&lt;/p&gt; 
+&lt;h2&gt;ANTLR4 入门&lt;/h2&gt; 
+&lt;h3&gt;ANTLR 元语言&lt;/h3&gt; 
+&lt;p&gt;为了实现一门计算机编程语言，我们需要构建一个程序来读取输入语句，对其中的词组和符号进行识别处理，即我们需要语法解释器或者翻译器来识别出一门特定语言的所有词组，子词组，语句。我们将语法分析过程拆分为两个独立的阶段则为词法分析和语法分析。&lt;/p&gt; 
+&lt;p&gt;&lt;img src=&quot;https://oscimg.oschina.net/oscnet//81dd91bd990fb8d2339b4576739630a6.jpeg&quot; alt=&quot;antlr4 入门.jpeg&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
+&lt;p&gt;ANTLR 语法遵循了一种专门用来描述其他语言的语法，我们称之为 ANTLR 元语言（ANTLR&#39;s meta-language）。ANTLR 元语句是一个强大的工具，可以用来定义编程语言的语法。通过定义词法和语法规则，可以基于 antlr 生成解析器和词法分析器。&lt;/p&gt; 
+&lt;p&gt;&lt;strong&gt;1、自顶向下&lt;/strong&gt; 在语言结构中，整体的辨识都是从最粗的粒度开始，一直进行到最详细的层次，并把它们编写成为语法规则，ANTLR4 就是采用自顶向下的，词法语法分离，上下文无关的语法框架来描述语言。&lt;/p&gt; 
+&lt;pre&gt;&lt;code class=&quot;language-java&quot;&gt;// MyGLexer.g4
+lexer grammar MyGLexer;
+
+SEMICOLON: &#39;;&#39;;
+LEFT_PAREN: &#39;(&#39;;
+RIGHT_PAREN: &#39;)&#39;;
+COMMA: &#39;,&#39;;
+DOT: &#39;.&#39;;
+LEFT_BRACKET: &#39;[&#39;;
+RIGHT_BRACKET: &#39;]&#39;;
+LEFT_BRACES: &#39;{&#39;;
+RIGHT_RACES: &#39;}&#39;;
+EQ: &#39;=&#39;;
+
+FUNCTOM: &#39;FUNCTION&#39;;
+LET: &#39;LET&#39;;
+CONST: &#39;CONST&#39;;
+VAR: &#39;VAR&#39;;
+IF: &#39;IF&#39;;
+ELSE: &#39;ELSE&#39;;
+WHILE: &#39;WHILE&#39;;
+FOR: &#39;FOR&#39;;
+RETURN: &#39;RETURN&#39;;
+&lt;/code&gt;&lt;/pre&gt; 
+&lt;pre&gt;&lt;code class=&quot;language-java&quot;&gt;// MyGParser.g4
+parser grammar MyGParser;
+
+options {
+  tokenVocab = MyGLexer;
+}
+
+// 入口规则
+program: statement* EOF;
+
+statement:
+  variableDeclaration
+  | functionDeclaration
+  | expressionStatement
+  | blockStatement
+  | ifStatement
+  | whileStatement
+  | forStatement
+  | returnStatement;
+  ......
+&lt;/code&gt;&lt;/pre&gt; 
+&lt;p&gt;&lt;strong&gt;2、语言模式&lt;/strong&gt;&lt;/p&gt; 
+&lt;p&gt;计算机语言常见 4 种语言模式：&lt;strong&gt;序列（sequence）、选择（choice）、词法符号依赖 （token dependency），以及嵌套结构（nested phrase）&lt;/strong&gt;。以下是 ANTLR 对 4 种模式的语法规则描述。&lt;/p&gt; 
+&lt;p&gt;&lt;img src=&quot;https://oscimg.oschina.net/oscnet//b8f12204531cd87309e362da4410dfa4.jpeg&quot; alt=&quot;语言模式.jpeg&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;strong&gt;3、语法歧义&lt;/strong&gt;&lt;/p&gt; 
+&lt;p&gt;在自顶向下的语法和手工编写的递归下降语法分析器中，处理表达式都是一件相当棘手的事情，这首先是因为大多数语法都存在歧义，其次是因为大多数语言的规范使用了一种特殊的递归方式，称为左递归。&lt;/p&gt; 
+&lt;pre&gt;&lt;code class=&quot;language-java&quot;&gt;expr : expr &#39;*&#39; expr
+     | expr &#39;+&#39; expr
+     | INT
+     ;
+
+&lt;/code&gt;&lt;/pre&gt; 
+&lt;p&gt;我们举个运算符优先级带来的&lt;strong&gt;语法歧义&lt;/strong&gt; 问题，同样的规则可以&lt;strong&gt;匹配多个输入字符流&lt;/strong&gt;。&lt;/p&gt; 
+&lt;p&gt;&lt;img src=&quot;https://oscimg.oschina.net/oscnet//a1b004a9b39b1d0f0b968702144345d4.jpeg&quot; alt=&quot;匹配多个输入字符流.jpeg&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
+&lt;p&gt;在其他语法工具中，通常通过指定额外的标记来指定运算符优先级。而在 ANTLR4 中通过&lt;strong&gt;备选分支的排序来指定优先级&lt;/strong&gt;，越靠前优先级越高。&lt;/p&gt; 
+&lt;h2&gt;代码自动生成&lt;/h2&gt; 
+&lt;p&gt;ANTLR 可以根据 lexer.g4 和 parser.g4 自动生成&lt;strong&gt;词法分析器，语法分析器，监听器，访问器&lt;/strong&gt;等。&lt;/p&gt; 
+&lt;pre&gt;&lt;code class=&quot;language-java&quot;&gt;antlr4ng -Dlanguage=TypeScript -visitor -listener -Xexact-output-dir -o ./src/lib ./src/grammar/*.g
+&lt;/code&gt;&lt;/pre&gt; 
+&lt;p&gt;&lt;img src=&quot;https://oscimg.oschina.net/oscnet//a9d8e1ae84707424b16af8af7b204466.jpeg&quot; alt=&quot;代码自动生成.jpeg&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
+&lt;h3&gt;语法解析与业务逻辑解耦&lt;/h3&gt; 
+&lt;p&gt;在 ANTLR4 中语法解析和业务逻辑的高度解耦是一个重要的设计理念，优点就是同一个 AST 结构能够在不同的业务逻辑实现之间实现复用。不同的业务逻辑（如执行、转换、优化等）可以对同一个 AST 进行不同的处理，而不需要关心解析过程。核心几个设计方案如下：&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt;&lt;strong&gt;访问者模式&lt;/strong&gt;：ANTLR4 通过访问者模式支持业务代码可访问特定&quot;词法&quot;或&quot;语法&quot;节点执行自定义的操作，通过这个方式完全解耦 AST（抽象语法树）生成和业务逻辑，词法分析器和解释器专注于 AST 生成，而业务可以通过访问器的扩展支持业务定制化诉求。&lt;/li&gt; 
+ &lt;li&gt;&lt;strong&gt;语法和语义的独立性&lt;/strong&gt;：ANTLR4 中可以独立进行语法解析和语义分析，可以在 AST 中进行语义检查和业务逻辑处理。这种分离使得开发者可以更灵活地处理输入的语法和语义。&lt;/li&gt; 
+ &lt;li&gt;&lt;strong&gt;AST 生成&lt;/strong&gt;：ANRL4 通过语法解析器生成结构化 AST（抽象语法树），不同业务逻辑可以不断复用同一个 AST。&lt;/li&gt; 
+ &lt;li&gt;&lt;strong&gt;上下文模式&lt;/strong&gt;：解析器在处理输入数据时，上下文会在解析树中传递信息。每当进入一个新的语法规则时，都会创建一个新的上下文实例上下文可以存储解析过程中需要的临时信息，例如变量的值、数据类型等。上下文信息主要结合访问器模式进行使用，同时也解决了在解析复杂语句如多层嵌套结构的层级调用问题。&lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;h1&gt;三、SparkSQL 介绍&lt;/h1&gt; 
+&lt;p&gt;Spark SQL 是 Apache Spark 的一个模块，专门用于处理结构化数据，Spark SQL 的特点包括：&lt;/p&gt; 
+&lt;ol&gt; 
+ &lt;li&gt;&lt;strong&gt;高效的查询执行&lt;/strong&gt;：通过 Catalyst 优化器和 Tungsten 执行引擎，Spark SQL 能够优化查询执行计划，提升查询性能。&lt;/li&gt; 
+ &lt;li&gt;&lt;strong&gt;与 Hive 的兼容性&lt;/strong&gt;：Spark SQL 支持 HiveQL 语法，使得用户可以轻松迁移现有的 Hive 查询。&lt;/li&gt; 
+ &lt;li&gt;&lt;strong&gt;支持多种数据源&lt;/strong&gt;：Spark SQL 可以从多种数据源读取数据，包括 HDFS、Parquet、ORC、JDBC 等。&lt;/li&gt; 
+&lt;/ol&gt; 
+&lt;h1&gt;四、技术实现&lt;/h1&gt; 
+&lt;h2&gt;语法设计&lt;/h2&gt; 
+&lt;p&gt;在 Aparch Spark 源码中就是使用 ANTLR4 来解析和处理 SQL 语句，以下为 Apach Spark 中基于 ANTLR 元语言定义的词法分析器和语法分析器，在语法定义上我们只需要基于这套&lt;strong&gt;标准的 SparkSQL 语法&lt;/strong&gt; 去&lt;strong&gt;适配得物自研引擎&lt;/strong&gt;的能力，做能力对齐。&lt;/p&gt; 
+&lt;pre&gt;&lt;code class=&quot;language-java&quot;&gt;Lexer.g4
+
+https://github.com/apache/spark/blob/master/sql/api/src/main/antlr4/org/apache/spark/sql/catalyst/parser/SqlBaseLexer.g4
+
+Parser.g4
+
+https://github.com/apache/spark/blob/master/sql/api/src/main/antlr4/org/apache/spark/sql/catalyst/parser/SqlBaseParser.g4
+&lt;/code&gt;&lt;/pre&gt; 
+&lt;h2&gt;语法补全&lt;/h2&gt; 
+&lt;p&gt;以下我们以字段补全场景为例解析从语法定义，语法解析，语法补全，上下文信息采集各个流程节点剖析最后完成的表字段信息精准推荐。在下列语法场景中，存在多层 Select 语法嵌套，同时表&lt;strong&gt;du_emr_test.empsalary tableB&lt;/strong&gt; 和表&lt;strong&gt;du_emr_test.hujh_type_tk AS tableB&lt;/strong&gt; 设置了同一别名, 如图在父子查询中都使用了同一个表别名（tableB），当用户在父子查询中分别输入**tableB.**时，这时候需要结合当前上下文语境，&lt;strong&gt;对 tableB 别名推荐不同表的字段&lt;/strong&gt;。&lt;/p&gt; 
+&lt;pre&gt;&lt;code class=&quot;language-java&quot;&gt;SELECT 
+    tableB.c1
+ FROM
+    (
+       SELECT
+            tableB.empno,
+            tableC.department
+        FROM
+                du_emr_test.empsalary as tableB
+        LEFT JOIN du_emr_test.employees AS tableC
+        WHERE tableC.department = tableB.depname
+
+    ) AS tableA
+LEFT JOIN du_emr_test.hujh_type_tk AS tableB
+WHERE tableB.c1 = tableA.dename
+&lt;/code&gt;&lt;/pre&gt; 
+&lt;p&gt;&lt;img src=&quot;https://oscimg.oschina.net/oscnet//11f9ab3c0b5c4f373c68b3d2bebf371a.jpeg&quot; alt=&quot;语法补全 1.jpeg&quot; referrerpolicy=&quot;no-referrer&quot;&gt; &lt;img src=&quot;https://oscimg.oschina.net/oscnet//b10816cc6c404da1008ce00d6203db1c.jpeg&quot; alt=&quot;语法补全 2.jpeg&quot; referrerpolicy=&quot;no-referrer&quot;&gt; &lt;img src=&quot;https://oscimg.oschina.net/oscnet//d3cc5f87e722c4d838e0726ff70049c4.jpeg&quot; alt=&quot;语法补全 3.jpeg&quot; referrerpolicy=&quot;no-referrer&quot;&gt; &lt;img src=&quot;https://oscimg.oschina.net/oscnet//f37945f4806eebe4f62eb1dc81145dfd.jpeg&quot; alt=&quot;语法补全 4.jpeg&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
+&lt;p&gt;在子查询中我们期望推荐 tableB 来自 du_emr_test.empsalary tableB 的字段信息，而在最外层中我们期望的是 du_emr_test.hujh_type_tk 的字段，如上图。&lt;/p&gt; 
+&lt;p&gt;基于以上场景我们核心要解决 2 个问题：&lt;/p&gt; 
+&lt;p&gt;&lt;strong&gt;问题 1：当前光标应该提示哪些推荐语法类型&lt;/strong&gt;&lt;/p&gt; 
+&lt;p&gt;目前，开源方案 ANTLR-C3 引擎就能完美解决我们问题，用户在编辑器实时输入时，获取当前光标位置，实时做语法解析，然后基于开源的 ANTLR-C3 引擎能力结合 ANTLR 生成的 AST 即可&lt;strong&gt;获取当前光标位置所需要的语法规则&lt;/strong&gt;。&lt;/p&gt; 
+&lt;p&gt;&lt;strong&gt;问题 2: 获取当前上下文信息以实现精准推荐&lt;/strong&gt;&lt;/p&gt; 
+&lt;p&gt;根据不同业务场景需要采集的上下文信息不同，基于字段推荐的场景，我们需要获取当前光标位置处可以推荐的表信息，表别名信息，结合编辑器能力实时获取表对应的字段信息进行字段推荐补全，而&lt;strong&gt;上下文信息的采集&lt;/strong&gt; ，我们可以通过&lt;strong&gt;ANTLR 生成的监听器&lt;/strong&gt;来实现。&lt;/p&gt; 
+&lt;h2&gt;语法定义&lt;/h2&gt; 
+&lt;p&gt;以下我们用 ANTLR 元语言实现一段简化版的 SQL 查询场景的语法规则 (QueryStatment)，方便我们理解。&lt;/p&gt; 
+&lt;pre&gt;&lt;code class=&quot;language-java&quot;&gt;lexer grammar SqlLexer;
+
+// 基础词法
+COMMA: &#39;,&#39;;
+LEFT_PAREN: &#39;(&#39;;
+RIGHT_PAREN: &#39;)&#39;;
+IDENTIFY: (LETTER | DIGIT | &#39;_&#39; | &#39;.&#39;)+;
+fragment DIGIT: [0-9];
+fragment LETTER: [A-Z];
+SEMICOLON: &#39;;&#39;;
+
+parser grammar SqlParser;
+
+program: statment* EOF;
+
+statment: queryStatment SEMICOLON?;
+// 查询语句
+queryStatment:
+  SELECT columnNames FROM (
+    tableName
+    | (LEFT_PAREN queryStatment LEFT_PAREN)
+  ) whereExpression? relationsExpresssion? SEMICOLON？;
+
+// 字段
+columnNames: columnName (COMMA columnName)*;
+
+tableName: IDENTIFY AS? tableAlis;
+
+tableAlis: IDENTIFY;
+
+columnName: IDENTIFY AS? columnAlis;
+
+columnAlis: IDENTIFY;
+
+whereExpression: WHERE booleanExpression;
+
+booleanExpression: (NOT | BANG) booleanExpression           # logicalBinary
+  | left = booleanExpression operator = AND right = booleanExpression # logicalBinary
+  | left = booleanExpression operator = OR right = booleanExpression  # logicalBinary;
+
+relationsExpresssion:
+  LEFT JOIN tableName whereExpression?
+  | RIGHT JOIN tableName whereExpression?;
+
+&lt;/code&gt;&lt;/pre&gt; 
+&lt;h2&gt;代码生成&lt;/h2&gt; 
+&lt;p&gt;&lt;img src=&quot;https://oscimg.oschina.net/oscnet//4617eef73838489e30b11c02a3a13b13.jpeg&quot; alt=&quot;代码生成 1.jpeg&quot; referrerpolicy=&quot;no-referrer&quot;&gt; &lt;img src=&quot;https://oscimg.oschina.net/oscnet//6269562f3adc14da67cc5732c0272632.jpeg&quot; alt=&quot;代码生成 2.jpeg&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
+&lt;p&gt;以下是部分生成代码：&lt;/p&gt; 
+&lt;p&gt;&lt;strong&gt;1、词法分析器&lt;/strong&gt;&lt;/p&gt; 
+&lt;pre&gt;&lt;code class=&quot;language-java&quot;&gt; // SqlLexer.ts
+    
+    public static readonly COMMA = 1;
+    public static readonly LEFT_PAREN = 2;
+    public static readonly RIGHT_PAREN = 3;
+    public static readonly IDENTIFY = 4;
+    public static readonly SEMICOLON = 5;
+
+    // 词法分析器可以使用的通道
+    public static readonly channelNames = [
+        &quot;DEFAULT_TOKEN_CHANNEL&quot;, &quot;HIDDEN&quot;
+    ];
+    // 包含了所有字面量记号的名称
+    public static readonly literalNames = [
+        null, &quot;&#39;,&#39;&quot;, &quot;&#39;(&#39;&quot;, &quot;&#39;)&#39;&quot;, null, &quot;&#39;;&#39;&quot;
+    ];
+    // 包含为每个记号分配的符号名，这些符号在生成解析器时用于标识记号
+    public static readonly symbolicNames = [
+        null, &quot;COMMA&quot;, &quot;LEFT_PAREN&quot;, &quot;RIGHT_PAREN&quot;, &quot;IDENTIFY&quot;, &quot;SEMICOLON&quot;
+    ];
+    
+    //  ANTLR 生成的类中的一个字段，列出了所有定义的规则
+    public static readonly ruleNames = [
+        &quot;COMMA&quot;, &quot;LEFT_PAREN&quot;, &quot;RIGHT_PAREN&quot;, &quot;IDENTIFY&quot;, &quot;DIGIT&quot;, &quot;LETTER&quot;, 
+        &quot;SEMICOLON&quot;,
+    ];
+
+&lt;/code&gt;&lt;/pre&gt; 
+&lt;p&gt;&lt;strong&gt;2、语法分析器&lt;/strong&gt;&lt;/p&gt; 
+&lt;p&gt;ANTLR 自动为每个规则生成了一个解析方法，以下是 tableName 的 ANTLR 中的解析器方法，具备了处理标识符、可选的别名和错误处理的能力。&lt;/p&gt; 
+&lt;pre&gt;&lt;code class=&quot;language-java&quot;&gt;// SQLParse.ts
+// ANTLR 自动生成了一个解析 SQL 表名的 ANTLR 中的解析器方法，具备了处理标识符、可选的别名和错误处理的能力
+public tableName(): TableNameContext {
+        let localContext = new TableNameContext(this.context, this.state);
+        this.enterRule(localContext, 8, SqlParser.RULE_tableName);
+        let _la: number;
+        try {
+            this.enterOuterAlt(localContext, 1);
+            {
+            this.state = 60;
+            this.match(SqlParser.IDENTIFY);
+            this.state = 62;
+            this.errorHandler.sync(this);
+            _la = this.tokenStream.LA(1);
+            if (_la === 8) {
+                {
+                this.state = 61;
+                this.match(SqlParser.AS);
+                }
+            }
+
+            this.state = 64;
+            this.tableAlis();
+            }
+        }
+        catch (re) {
+            if (re instanceof antlr.RecognitionException) {
+                this.errorHandler.reportError(this, re);
+                this.errorHandler.recover(this, re);
+            } else {
+                throw re;
+            }
+        }
+        finally {
+            this.exitRule();
+        }
+        return localContext;
+    }
+
+&lt;/code&gt;&lt;/pre&gt; 
+&lt;h3&gt;自动补全&lt;/h3&gt; 
+&lt;p&gt;ANTLR4 代码补全核心（antlr4-c3） 是一个开创性的工具，它为 ANTLR4 生成的解析器提供了一个通用的代码补全解决方案。无论你的项目是处理哪种编程语言或领域特定语言（DSL），只要是基于 ANTLR 就能够利用这个库实现精准的代码建议和自动补全，极大地增强开发体验。通过 antlr4-c3 能力我们通过手动配置需要收集的语法规则，获取在当前光标处需要推荐的语法规则类型。&lt;/p&gt; 
+&lt;p&gt;&lt;strong&gt;1、语法规则&lt;/strong&gt;&lt;/p&gt; 
+&lt;p&gt;通过 ANTLR4 工具我们可以自动生成 Sqllexer.ts 词法解析器，SqlParser.ts 语法解析器，SqlParserLister.ts 访问器，SqlParseVisitor.ts 监听器，在 SqlParser 语法解析器自动生成了我们在语法定义中的语法规则。&lt;/p&gt; 
+&lt;pre&gt;&lt;code class=&quot;language-java&quot;&gt;preferredRules = new Set([
+        SqlParser.RULE_tableName,
+        SqlParser.RULE_columnName,
+]);
+&lt;/code&gt;&lt;/pre&gt; 
+&lt;p&gt;&lt;strong&gt;2、代码补全&lt;/strong&gt;&lt;/p&gt; 
+&lt;p&gt;以下我们实现一套简化版的代码补全能力。&lt;/p&gt; 
+&lt;p&gt;当用户在编辑器实时输入时，调用 getSuggestionAtCaretPosition 获取当前语境中需要推荐的信息，包含语法规则，关键词，上下文信息，在结合业务层数据做自动补全，其中包含 5 个核心步骤：&lt;/p&gt; 
+&lt;ol&gt; 
+ &lt;li&gt;获取当前语法解析器实例。&lt;/li&gt; 
+ &lt;li&gt;获取当前光标位置对应的 Token。&lt;/li&gt; 
+ &lt;li&gt;生成 AST。&lt;/li&gt; 
+ &lt;li&gt;获取当前语境上下文信息。&lt;/li&gt; 
+ &lt;li&gt;通过 ANTLR-C3 获取当前位置候选语法规则。&lt;/li&gt; 
+&lt;/ol&gt; 
+&lt;pre&gt;&lt;code class=&quot;language-java&quot;&gt;public getSuggestionAtCaretPosition(
+        sqlContent: string,
+        caretPosition: CaretPosition
+        preferredRules: Set
+    ): Suggestions | null {
+        
+        // 1、 使用 SqlParse 解析器获取
+        const sqlParserIns = new SqlParse(sqlContent)
+        
+        // 2、获取当前光标处 token
+        const charStreams = CharStreams.fromString(sqlContent);
+        const lexer = new SqlLexer(charStreams);
+        const tokenStream = new CommonTokenStream(lexer)；
+        tokenStream.fill()
+        const allTokens = tokenStream.getTokens(); 
+        let caretTokenIndex = findCaretToken(caretPosition, allTokens); 
+
+        // 3、获取 AST 抽象语法树
+        const parseTree = sqlParserIns.program()
+        
+        // 4、通过监听器采集上下文表信息（下面上下文分析部分阐述细节）
+        const tableEntity = getTableEntitys()
+        
+         // 异常场景兼容存在多条 sql， 获取有效最小 SQL 范围给到 antlr4-c3 做推荐。
+        const statementCount = splitListener.statementsContext?.length;
+        const statementsContext = splitListener.statementsContext; 
+
+        // 5、antlr4-c3 接入获取推荐语法规则
+        let tokenIndexOffset: number = 0;
+        const core = new CodeCompletionCore(sqlParserIns);
+        // 推荐规则，来自 SQLparse 解析器的规则（元语言定义）
+        core.preferredRules = preferredRules; 
+        // 通过 AST 和当前光标 Token 获取推荐类型
+        const candidates = core.collectCandidates(caretTokenIndex, parseTree); 
+        
+        // ruleType -&amp;gt; preferredRules 
+        // const [rules, tokens] = candidate;
+        const rules = [];
+        const keywords = [
+                
+        for (let candidate of candidates.rules) {
+        const [ruleType] = candidate;
+        let synContextType;
+        switch (ruleType) {
+            case SqlParser.RULE_tableName: {
+                syntaxContextType = &#39;table&#39;;
+                break;
+            }
+            case SqlParser.RULE_columnName: {
+                syntaxContextType = &#39;column&#39;;
+                break;
+            }
+            default:
+                break;
+        }
+        if (synContextType) {
+            rules.push(syntaxContextType)
+        }
+    }
+
+    // 获取对应 keywords
+    for (let candidate of candidates.tokens) {
+        const displayName = sqlParserIns.vocabulary.getDisplayName(candidate[0]);
+        const keyword = displayName.startsWith(&quot;&#39;&quot;) &amp;amp;&amp;amp; displayName.endsWith(&quot;&#39;&quot;)
+                ? displayName.slice(1, -1)
+                : displayName
+        keywords.push(keyword);
+    }
+
+    return {
+        rules,
+        keywords,
+        tableEntity
+    };
+  }
+&lt;/code&gt;&lt;/pre&gt; 
+&lt;p&gt;在这里我们简化了流程，忽略了很多异常 case 的处理，自动补全的前提是在当前语法规则正确，而在多级子查询嵌套场景我们需要考虑到过滤异常 QueryStatment, 在当前光标出最小范围有效的 QueryStatment 做补全。这时候需要配合监听器去做上下文采集做容错性更高的自动补全。&lt;/p&gt; 
+&lt;h3&gt;上下文分析&lt;/h3&gt; 
+&lt;p&gt;&lt;img src=&quot;https://oscimg.oschina.net/oscnet//64f71c668caeed6cbd18460cb28c795d.jpeg&quot; alt=&quot;上下文分析.jpeg&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
+&lt;p&gt;如图：每个 table 都归属于一个 QueryStatment 表达式, 查询中又存在子层级查询的嵌套。我们需要通过上下文收集以下信息：&lt;/p&gt; 
+&lt;ol&gt; 
+ &lt;li&gt;每个查询语句的信息，包含 Position 位置信息，记录当前的查询开始行，结束行，开始列，结束列。&lt;/li&gt; 
+ &lt;li&gt;查询语句的关联关系，即记录当前查询语句父级查询语句对象。&lt;/li&gt; 
+ &lt;li&gt;表实体信息包含表名，表位置信息，表别名信息，当前表归属于那个查询语句。&lt;/li&gt; 
+&lt;/ol&gt; 
+&lt;p&gt;则我们需要监听 3 个语法规则包含&lt;strong&gt;QueryStatment, TableName,TableAlias&lt;/strong&gt; , 采集 QueryStatment 信息，Table 信息同时将 table 与&lt;strong&gt;当前归属的 QueryStatment 做关联&lt;/strong&gt; ， 还有&lt;strong&gt;与别名信息作配对关联&lt;/strong&gt; 。这就要求在不同监听器之间的信息需要做共享，上下文信息需要做传递和保留。ANTLR 常用的 3 种&lt;strong&gt;信息共享方案&lt;/strong&gt;包含：&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt;&lt;strong&gt;使用访问器方法来返回值，&lt;/strong&gt;&lt;/li&gt; 
+ &lt;li&gt;&lt;strong&gt;使用类成员在事件方法之间共享数据，&lt;/strong&gt;&lt;/li&gt; 
+ &lt;li&gt;&lt;strong&gt;在语法定义中使用树标记来存储信息。&lt;/strong&gt;&lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;p&gt;在这里我们使用第二种（在这里我们简化了 SQL 的语法定义，在实际场景中语法层级深度和复杂度远比当前高，这也使得方案 1 和 3 实际操作起来更麻烦，规则嵌套层级深使得方案一和方案三开发成本和维护成本更高）&lt;/p&gt; 
+&lt;p&gt;&lt;strong&gt;1、监听器（SqlParserLister）&lt;/strong&gt; 通过 ANTLR4 工具我们可以自动生成 SqlParserLister.ts 监听器进行自定义扩展。&lt;/p&gt; 
+&lt;pre&gt;&lt;code class=&quot;language-java&quot;&gt;// SqlParserListener.ts
+export class QueryStatmentContext extends antlr.ParserRuleContext {
+   public override enterRule(listener: SqlParserListener): void {
+        if(listener.enterQueryStatment) {
+             listener.enterQueryStatment(this);
+        }
+    }
+    public override exitRule(listener: SqlParserListener): void {
+        if(listener.exitQueryStatment) {
+             listener.exitQueryStatment(this);
+        }
+    }
+ }
+ 
+ export class TableNameContext extends antlr.ParserRuleContext {
+     public override enterRule(listener: SparkSqlParserListener): void {
+        if(listener.enterTableName) {
+             listener.enterTableName(this);
+        }
+    }
+    public override exitRule(listener: SparkSqlParserListener): void {
+        if(listener.exitTableName) {
+             listener.exitTableName(this);
+        }
+    }
+ }
+// ....
+
+export class TableAliasContext extends antlr.ParserRuleContext {
+    public KW_AS(): antlr.TerminalNode | null {
+        return this.getToken(SparkSqlParser.KW_AS, 0);
+    }
+    public override enterRule(listener: SparkSqlParserListener): void {
+        if(listener.enterTableAlias) {
+             listener.enterTableAlias(this);
+        }
+    }
+    public override exitRule(listener: SparkSqlParserListener): void {
+        if(listener.exitTableAlias) {
+             listener.exitTableAlias(this);
+        }
+    }
+}
+
+&lt;/code&gt;&lt;/pre&gt; 
+&lt;p&gt;&lt;strong&gt;2、自定义监听器扩展&lt;/strong&gt;&lt;/p&gt; 
+&lt;p&gt;通过 SqlParserListener 我们可以自定义采集上下文信息。在&lt;/p&gt; 
+&lt;ol&gt; 
+ &lt;li&gt;监听进入 QueryStatment 表达式采集当前表达式信息到_queryStmtsStack。&lt;/li&gt; 
+ &lt;li&gt;监听退出 TableNameToken 时采集当前 Table 信息，并关联当前 QueryStatment。&lt;/li&gt; 
+ &lt;li&gt;监听退出 TableAliasToken 时采集信息，并关联到 Table 实体。&lt;/li&gt; 
+ &lt;li&gt;监听退出 QueryStatment 表达式推出_queryStmtsStack&lt;/li&gt; 
+&lt;/ol&gt; 
+&lt;pre&gt;&lt;code class=&quot;language-java&quot;&gt;// tableEntityCollect
+ export class SqlEntityCollector implements SqlParserListener {
+     super() {
+         this._tableEntitiesSet = new Set();
+         this._queryStmtsStack = [];
+         this._tableAliasStack = [];
+         this._currentTable = &#39;&#39;;
+     }
+     
+     enterQueryStatment(ctx: QueryStatmentContext) {
+        this.pushQueryStmt(ctx);
+    }
+
+    exitQueryStatment(ctx: QueryStatmentContext) {
+        this.popQueryStmt(); 
+    }
+
+     exitTableName(ctx: TableNameContext) {
+        this.pushTableEntity(ctx);
+        this.setCurrentTable(ctx);
+     }
+     
+     exitTableAlias(ctx: TableAliasContext) {
+        this.pushTableEntity(ctx);
+     }
+     
+     pushQueryStmt() {}   // 采集 QueryStmt 信息
+     
+     popQueryStmt() {}    // 推出当前 QueryStmt，进入下个同级 Stmt
+     
+     pushTableEntity() {} // 采集当前表信息，关联当前 Stmt
+     
+     pushTableEntity() {} // 采集关联表
+     
+     enterProgram() {}    // 清空重置
+     
+     getTableEntity() {
+         return this.TableEntity(ctx)
+     }
+    
+ }
+
+&lt;/code&gt;&lt;/pre&gt; 
+&lt;p&gt;在这里我们简化了语法定义的规则便于讲解，但在实际中语法规则的整体嵌套层级是很深的，从以下的 SparkSql 语法定义中我们可以看到右侧聚合的表达式高达&lt;strong&gt;200+&lt;strong&gt;个，单个表达式的备选分支最多高达&lt;/strong&gt;140+&lt;/strong&gt; ，这也加大了上下文分析采集的复杂度，即我们无法简单的从 QueryStmt 当前&lt;strong&gt;QueryStatmentContext&lt;/strong&gt;中获取全量信息。&lt;/p&gt; 
+&lt;p&gt;&lt;img src=&quot;https://oscimg.oschina.net/oscnet//2d551f77d029061d92774ee9c5d183fd.jpeg&quot; alt=&quot;获取全量信息.jpeg&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;strong&gt;3、触发监听器采集上下文信息&lt;/strong&gt;&lt;/p&gt; 
+&lt;pre&gt;&lt;code class=&quot;language-java&quot;&gt;getTableEntitys() {
+    const collectListener = new SqlEntityCollector(sqlContent, caretTokenIndex);
+    const parse = new SqlParse(sqlContent);
+    const parseTree= sqlParserIns.program();
+    ParseTreeWalker.DEFAULT.walk(collectListener, parseTree); 
+    return collectListener.getTableEntity()
+}
+
+&lt;/code&gt;&lt;/pre&gt; 
+&lt;h2&gt;语法校验&lt;/h2&gt; 
+&lt;p&gt;ANRLR 在生成语法分析器中内置了自动错误报告和恢复策略，能够在遇到句法错误时自动产生错误消息，为每个句法错误产生一条错误消息。&lt;/p&gt; 
+&lt;h3&gt;词法错误&lt;/h3&gt; 
+&lt;p&gt;常见的词法错误包含字符遗漏，词法错误。举个例子，在 spark 标准语法定义中 tableName 规则不支持表变量场景（${variable}），如果要兼容这里词法，就需要在语法定义中变更 tableName 的语法规则定义。&lt;/p&gt; 
+&lt;p&gt;&lt;img src=&quot;https://oscimg.oschina.net/oscnet//fcde1482434ed1b4299df511146621f1.jpeg&quot; alt=&quot;语法错误.jpeg&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
+&lt;p&gt;以下是语法定义变更:&lt;/p&gt; 
+&lt;ol&gt; 
+ &lt;li&gt;新增词法规则$, {, }。&lt;/li&gt; 
+ &lt;li&gt;新增语法规则&lt;strong&gt;identifyVar&lt;/strong&gt;支持变量模式。&lt;/li&gt; 
+&lt;/ol&gt; 
+&lt;pre&gt;&lt;code class=&quot;language-java&quot;&gt;SqlLexer.g4
+// 新增词法
+LEFT_BRACE    : &#39;{&#39;;
+RIGHT_BRACE   : &#39;}&#39;;
+
+VARIABLE    : &#39;$&#39;;
+
+SqlParse.g4
+// before tableName: IDENTIFY AS? tableAlis; 
+tableName: identifyVar AS? tableAlis; 
+
+identifyVar
+    : IDENTIFY // odps_table_a
+    | IDENTIFY? VARIABLE LEFT_BRACE IDENTIFY RIGHT_BRACE IDENTIFY? // odps_table_a_${variable} odps_table_a_${prefix_variable}_abs
+
+&lt;/code&gt;&lt;/pre&gt; 
+&lt;h3&gt;自动恢复机制&lt;/h3&gt; 
+&lt;p&gt;语法分析器不应该在遇到非法的成员定义时结束，而是应尽最大可能匹配到一个合法的类定义，ANRTL4 自动错误恢复机制能在语法分析器在发现语法错误后还能继续进行尝试语法解析和自动恢复。&lt;/p&gt; 
+&lt;p&gt;&lt;strong&gt;1、异常捕获&lt;/strong&gt;&lt;/p&gt; 
+&lt;p&gt;ANRLT 自动生成的语法解析器中自动为每个规则包裹异常捕获能力，并在 catch 中尝试错误恢复。&lt;/p&gt; 
+&lt;p&gt;&lt;img src=&quot;https://oscimg.oschina.net/oscnet//4b5d4b7a277c9691e3724fea2d383372.jpeg&quot; alt=&quot;异常补货.jpeg&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;strong&gt;2、恢复策略&lt;/strong&gt;&lt;/p&gt; 
+&lt;p&gt;一般情况下，语法分析器在遇到无法匹配的错误时会尝试最简单的符号补全和移除来尝试解析，都不管用时，这时候就会用更高阶的策略来进行恢复。包括&lt;strong&gt;扫描后续词法符号来恢复，从不匹配的词法符号中恢复，从子规则的错误中恢复，捕获失败的语义判定。&lt;/strong&gt;&lt;/p&gt; 
+&lt;p&gt;虽然 ANTLR 提供了很多策略来进行错误恢复，但在实际业务场景中，需要结合考虑语法、语境的复杂度去权衡性能与更友好的错误提示之间的抉择。在复杂场景中 ANTLR 表现并不理想，在一些复杂语法和语境的情况下解析器在检测错误时难以做出合理的决策，例如：&lt;strong&gt;递归和嵌套结构&lt;/strong&gt; 中会使得错误恢复变得很复杂，导致解析器无法做出合理决策。还有在&lt;strong&gt;上下文敏感的语境&lt;/strong&gt;中，错误恢复机制基本无法提供有效恢复。&lt;/p&gt; 
+&lt;h2&gt;性能&lt;/h2&gt; 
+&lt;p&gt;在 ANTLR 4 中，语法复杂度、语法歧义、语法规则嵌套深度与预测算法的选择都会显著影响解析器的性能和准确性。Spark SQL 语法规则达 200+，备选分支最高达 140, 嵌套深度达 20+，同时又存在负责循环嵌套场景， 这也意味着在整个语法解析，语法错误的处理过程是很复杂的，当遇到复杂大 SQL 量和一片狼籍的语法错误 SQL，会导致语法解析过程变得缓慢引发性能问题。目前在性能优化上，有以下几个方向。&lt;/p&gt; 
+&lt;h3&gt;缓存优化&lt;/h3&gt; 
+&lt;p&gt;在 antlr4 中词法解析和语法解析能力和业务是&lt;strong&gt;完全解耦&lt;/strong&gt; 的，这也意味着底层基于同个 SQL 内容解析出来的 tokens 和 parserTree 都是可以在&lt;strong&gt;不同业务逻辑&lt;/strong&gt; 应用里&lt;strong&gt;复用&lt;/strong&gt;。我们可以通过缓存 tokens,parseTree 减少词法解析和语法解析的损耗。&lt;/p&gt; 
+&lt;h3&gt;语法优化&lt;/h3&gt; 
+&lt;p&gt;通过减少语法树的层级和优化表达式减少解析过程中&quot;&lt;strong&gt;二义性&lt;/strong&gt; &quot;的次数，可以加速语法解析的速度，优化 AST 生成性能。合理使用语法定义中用法，例如&lt;strong&gt;树标记&lt;/strong&gt; （用于上下文通信数据共享），在语法解析过程中会为每个标记生成上下文，这也意味着每个局部结果都会保留，会有更大的&lt;strong&gt;内存消耗&lt;/strong&gt;。&lt;/p&gt; 
+&lt;h3&gt;预测模型选择&lt;/h3&gt; 
+&lt;p&gt;在语法解析中不同预测模型的选择对解析性能有显著影响，针对不同的场景需要评估时效性与正确性之间的衡量。&lt;/p&gt; 
+&lt;p&gt;ANTLR4 预测模型：&lt;/p&gt; 
+&lt;p&gt;&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fwww.antlr.org%2Fapi%2FJava%2Forg%2Fantlr%2Fv4%2Fruntime%2Fatn%2FPredictionMode.html&quot; target=&quot;_blank&quot;&gt;https://www.antlr.org/api/Java/org/antlr/v4/runtime/atn/PredictionMode.html&lt;/a&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;img src=&quot;https://oscimg.oschina.net/oscnet//06898551ffe681816203521cc61b6f21.jpeg&quot; alt=&quot;预测模型.jpeg&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
+&lt;p&gt;我们可以选择性价比更高的 SLL 预测模型作为语法分析策略，结合定制化的错误监听器做错误纠正。&lt;/p&gt; 
+&lt;h2&gt;编辑器应用&lt;/h2&gt; 
+&lt;h3&gt;编辑器集成&lt;/h3&gt; 
+&lt;p&gt;与 MonacoEditor 集成流程可查看此文章 &lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fblog.shizhuang-inc.com%2Farticle%2FMTUzNzY%3FfromType%3Dpersonal_blog&quot; target=&quot;_blank&quot;&gt;https://blog.shizhuang-inc.com/article/MTUzNzY?fromType=personal_blog&lt;/a&gt;&lt;/p&gt; 
+&lt;h3&gt;辅助编程&lt;/h3&gt; 
+&lt;p&gt;&lt;strong&gt;1、信息项提示（表，函数，字段）&lt;/strong&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;img src=&quot;https://oscimg.oschina.net/oscnet//3895a1d1409dc14bcd930b7e9f2e9540.jpeg&quot; alt=&quot;信息项提示 1.jpeg&quot; referrerpolicy=&quot;no-referrer&quot;&gt; &lt;img src=&quot;https://oscimg.oschina.net/oscnet//796778887250140114df44a1625790db.jpeg&quot; alt=&quot;信息项提示 2.jpeg&quot; referrerpolicy=&quot;no-referrer&quot;&gt; &lt;img src=&quot;https://oscimg.oschina.net/oscnet//f7edd1df9978727023d30b6ff0ab3aac.jpeg&quot; alt=&quot;信息项提示 3.jpeg&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;strong&gt;2、自动补全（库，表，字段，语法）&lt;/strong&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;img src=&quot;https://oscimg.oschina.net/oscnet//c470b64063a4399028d9e922c22da0c7.jpeg&quot; alt=&quot;自动补全 1.jpeg&quot; referrerpolicy=&quot;no-referrer&quot;&gt; &lt;img src=&quot;https://oscimg.oschina.net/oscnet//8505dc99d92edbc6f97f5d2d1acd8d6b.jpeg&quot; alt=&quot;自动补全 2.jpeg&quot; referrerpolicy=&quot;no-referrer&quot;&gt; &lt;img src=&quot;https://oscimg.oschina.net/oscnet//705496e06b98dffebc37375cb7fa5fe4.jpeg&quot; alt=&quot;自动补全 3.jpeg&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
+&lt;h1&gt;五、大模型下的 SQL 编辑器应用&lt;/h1&gt; 
+&lt;p&gt;随着大模型的蓬勃发展，在数据产品中的应用也逐步得到了验证和落地，目前，Galaxy 还没有接入 Copilot, 内部暂时还没有基于 SQL 的 Copilot。业界较成熟的是阿里云的 Dataworks, DataWorks 于 2023 年推出了 Copilot 产品， 核心 2 个方向，一个方向是智能 SQL 编程助手，辅助 SQL 编程，支持 NL2SQL 及 SQL 代码补全；另一个方向是 AI Agent，提供 LUI（自然语言用户界面），以提升产品功能操作的便捷性和用户体验。&lt;/p&gt; 
+&lt;h2&gt;NL2SQL 应用场景&lt;/h2&gt; 
+&lt;p&gt;基于 SQL 的 Copilot 一般在以下几个应用场景比较深入和广泛的落地效果：&lt;strong&gt;简单数据查询，SQL 优化与转换，SQL 语法查询与讲解， 函数查询，功能咨询，注释生成，SQL 解释，SQL 一键纠错&lt;/strong&gt;。&lt;/p&gt; 
+&lt;h2&gt;NL2SQL 自动补全&lt;/h2&gt; 
+&lt;p&gt;代码补全是编程类 Copilot 的主要场景和能力，单市场上主流的编程类 Copilot 对 SQL 支持的好的并不多见。众所周知，SQL 代码补全比其他高级语言的代码补全更具挑战性，主要原因有以下几个方面：&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt;上下文和环境的依赖性：SQL 代码不是独立存在的，而是依赖于数据表的元数据信息以及表与表之间的关联关系。&lt;/li&gt; 
+ &lt;li&gt;SQL 语义多样性：实现同一种查询结果，可以有多种 SQL 写法，如何实现&quot;最佳&quot;写法存在挑战。&lt;/li&gt; 
+ &lt;li&gt;语法简洁但高度专业化：SQL 语法简洁但每一个关键字、函数或语法都有特定的含义，大模型要准确理解这些得通过针对性的训练学习。&lt;/li&gt; 
+ &lt;li&gt;执行计划和性能考量: 这跟数据库底层的执行计划有关，需要考虑如何书写才能使 SQL 的性能最优。&lt;/li&gt; 
+ &lt;li&gt;数据库特异性：市面上不同的数据库往往存在不同的 SQL 方言，存在差异，针对这种差异性我们要投入大量时间做 SQL 数据集准备、数据标注、模型微调。&lt;/li&gt; 
+ &lt;li&gt;高度业务相关性：SQL 语句通常与特定业务高度相关，比如一个指标存在特定的计算口径，这是与公司业务相关，通用的大模型也无法提前学习。&lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;p&gt;目前较成熟的代码补全核心场景主要在有规律的代码连续推荐场景（例如：字段、字段别名推荐，注释推荐、分区字段推荐、Group by 字段推荐，上下文自动联想推荐等）。&lt;/p&gt; 
+&lt;h1&gt;六、总结&lt;/h1&gt; 
+&lt;p&gt;通过 SQL 引擎能力建设我们在 Galaxy 数据研发 IDE 上支持了&lt;strong&gt;个性化词法规则定制能力&lt;/strong&gt; ，包含字段别名支持中文, 表变量等场景， 同时通过语法解析和监听器能力，支持实时识别&lt;strong&gt;各类的语法规则&lt;/strong&gt; ，&lt;strong&gt;包含表，函数，字段等做辅助编程提示&lt;/strong&gt; 和做精准化的&lt;strong&gt;库，表，字段代码补全和推荐&lt;/strong&gt;。&lt;/p&gt; 
+&lt;p&gt;后续我们仍面临很大的挑战，在非专业的数据开发背景、复杂的业务定制需求、语言定义的复杂性和嵌套深度等因素共同导致了解析器的开发难度。目前，在语法校验自动纠错提示上，虽然 ANTLR 的提供了自动错误恢复机制但整体表现并不理想，后续 2 个方向，第一，接入大模型的能力。第二，从基础语法定义上进行重构，减少语法歧义和层级优化。为了应对这些挑战，我们需要加强对 ANTLR 和 Spark SQL 语言，数据处理的理解，以便顺利使用和扩展解析器。&lt;/p&gt; 
+&lt;p&gt;参考资料&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt;ANTLR&lt;/li&gt; 
+ &lt;li&gt;ANTLR4-C3&lt;/li&gt; 
+ &lt;li&gt;DataWorks Copilot：大模型时代数据开发的新范式&lt;/li&gt; 
+ &lt;li&gt;ANTLR4 权威指南 - [美] 特恩斯·帕尔，著&lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;p&gt;文 / 吴所谓 (Ethan)&lt;/p&gt; 
+&lt;p&gt;关注得物技术，每周更新技术干货&lt;/p&gt; 
+&lt;p&gt;要是觉得文章对你有帮助的话，欢迎评论转发点赞～&lt;/p&gt; 
+&lt;p&gt;未经得物技术许可严禁转载，否则依法追究法律责任。&lt;/p&gt;
+                                                                                    &lt;/div&gt;
+                                                                            </description>
+            <link>https://my.oschina.net/u/5783135/blog/17836649</link>
+            <guid isPermaLink="false">https://my.oschina.net/u/5783135/blog/17836649</guid>
+            <pubDate>Thu, 06 Mar 2025 05:43:00 GMT</pubDate>
+            <author>原创</author>
+        </item>
+        <item>
+            <title>金投科技在 2024 四川省软件行业评选中蝉联三项大奖</title>
+            <description>&lt;div class=&quot;content&quot;&gt;
+                                                                    
+                                                        &lt;p style=&quot;color:#333333; margin-left:0; margin-right:0; text-align:start&quot;&gt;近日，2024 年四川省软件行业协会公示了年度评优结果名单，四川金投科技股份有限公司（以下简称「金投科技」）凭借卓越表现，脱颖而出，再度揽获「2024 四川省软件行业具有核心竞争力软件企业-规模型」「2024 四川省优秀软件产品」「2024 四川省软件行业优秀企业家」三项重要荣誉。&lt;/p&gt; 
+&lt;p style=&quot;color:#333333; margin-left:0; margin-right:0; text-align:center&quot;&gt;&lt;img src=&quot;https://oscimg.oschina.net/oscnet//e7b2f504c2843f5ac7f00841c2ec3db5.png&quot; width=&quot;600&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
+&lt;p style=&quot;color:#333333; margin-left:0; margin-right:0; text-align:start&quot;&gt;作为一家专注为银行、保险、政企单位等客户提供重要物资安全运营服务及解决方案的企业，金投科技自成立以来，持续深耕现代化科技服务领域，累计通过技术创新申请专利 40 余项，获软件著作权 130 余项。过去一年，金投科技通过不断提升技术实力、优化业务能级，实现企业竞争力的再次跨越，并由「2023 四川省软件行业具有核心竞争力软件企业-成长型」，成功进阶「2024 四川省软件行业具有核心竞争力软件企业-规模型」。&lt;/p&gt; 
+&lt;p style=&quot;color:#333333; margin-left:0; margin-right:0; text-align:center&quot;&gt;&lt;img src=&quot;https://oscimg.oschina.net/oscnet//eb578c4581f8f6fef0c4659dc21219e9.png&quot; width=&quot;600&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
+&lt;p style=&quot;color:#333333; margin-left:0; margin-right:0; text-align:start&quot;&gt;金投科技持续深入融合智能物联网技术，打造先进的技术架构，研发「授信押品实物库房管理系统 V1.0」，实现对库房的高效、精准管理，在保障数据安全与操作流程规范方面表现卓越，为金融行业信息安全管理提供了可靠的优质解决方案，在此次评选中荣获「2024 四川省优秀软件产品」。&lt;/p&gt; 
+&lt;p style=&quot;color:#333333; margin-left:0; margin-right:0; text-align:center&quot;&gt;&lt;img src=&quot;https://oscimg.oschina.net/oscnet//ffc21e054acf1fca70b05f2897219ac4.png&quot; width=&quot;600&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
+&lt;p style=&quot;color:#333333; margin-left:0; margin-right:0; text-align:start&quot;&gt;金投科技成立 17 余年来，董事长兼总经理夏予柱领导公司团队不断加大研发投入，推动技术创新，积极拓展市场，实现企业业绩的稳步快速增长，在行业内树立了良好的品牌形象。为表彰公司创始人为全省软件行业发展做出的重大积极贡献，四川省软件行业协会为夏予柱先生颁发「2024 四川省软件行业优秀企业家」荣誉。&lt;/p&gt; 
+&lt;p style=&quot;color:#333333; margin-left:0; margin-right:0; text-align:center&quot;&gt;&lt;img src=&quot;https://oscimg.oschina.net/oscnet//0c3a8d1f1b1909a1bdb79243f28747f8.png&quot; width=&quot;600&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
+&lt;p style=&quot;color:#333333; margin-left:0; margin-right:0; text-align:start&quot;&gt;金投科技已连续两年在四川省软件行业协会年度评选中斩获三大奖项，这是对公司综合实力的高度肯定，也是对团队不断开拓进取的期许。未来，金投科技将继续脚踏实地，深耕银行数字化转型，秉持一直以来的创新精神，在软件行业创造更多佳绩。&lt;/p&gt; 
+&lt;p&gt;&amp;nbsp;&lt;/p&gt;
+                                                                                &lt;/div&gt;
+                                                                            </description>
+            <link>https://www.oschina.net/news/338338</link>
+            <guid isPermaLink="false">https://www.oschina.net/news/338338</guid>
+            <pubDate>Thu, 06 Mar 2025 04:34:00 GMT</pubDate>
+            <author>来源: 投稿</author>
+        </item>
+        <item>
+            <title>李飞飞团队公布「具身智能」最新成果：行为机器人套件框架</title>
+            <description>&lt;div class=&quot;content&quot;&gt;
+                                                                    
+                                                        &lt;p&gt;斯坦福大学李飞飞团队近日&lt;u&gt;&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fx.com%2Fdrfeifei%2Fstatus%2F1899127976979226835&quot; target=&quot;_blank&quot;&gt;公布&lt;/a&gt;&lt;/u&gt;了「具身智能」领域最新研究成果 — &lt;strong&gt;行为机器人套件（Behavior Robot Suite, 简称 BRS）&lt;/strong&gt;框架，并公布了搭载该框架的「保姆型」人形机器人实操画面。&lt;/p&gt; 
+&lt;p&gt;&lt;img alt=&quot;&quot; src=&quot;https://oscimg.oschina.net/oscnet/up-0403f506fcd2b5568108c941353a2945556.png&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
+&lt;p&gt;公布视频显示，搭载了 BRS 框架的人形机器人能够完成倒垃圾、刷马桶、整理衣物等多样化家务任务，而 BRS 框架通过全身协调动作实现高效家务操作。&lt;/p&gt; 
+&lt;p&gt;据悉，演示的为双臂轮式机器人，配备 4 自由度（DoF）躯干，并且通过 JoyLo（全身遥操作界面）和 WB-VIMA（用于学习全身视觉运动策略的创新算法），解决了硬件和学习难题。&lt;/p&gt; 
+&lt;p&gt;值得关注的是，JoyLo 能通过对 Nintendo Switch 适配，实现机器人的全身控制。而 JoyLo 不仅能够提供丰富的同步操作，还能生成高质量的示范数据，为视觉 – 运动策略学习提供了很好的数据支持。&lt;/p&gt; 
+&lt;p&gt;团队还将 JoyLo 与两个主流的基于逆向运动学（Inverse kinematics，IK）的界面（VR 控制器和苹果 Vision Pro）进行对比。测试结果显示，使用 JoyLo 完成整体任务的平均成功率是 VR 控制器的 5 倍，而使用苹果 Vision Pro 的参与者则无一人能完成整体任务。&lt;/p&gt; 
+&lt;p&gt;而 WB-VIMA 是一种机器人模仿学习算法，专门用于建模机器人的全身动作，并充分利用其固有的运动学层级结构，从而达到更同步的全身运动。此外，WB-VIMA 通过自注意力机制，动态整合多模态感知信息，从而提升系统的鲁棒性和适应性。&lt;/p&gt; 
+&lt;p&gt;研究人员表示，BRS 未来将是实现机器人以更高自主性和可靠性执行日常家务的重要一步。&lt;/p&gt;
+                                                                                &lt;/div&gt;
+                                                                            </description>
+            <link>https://www.oschina.net/news/338332</link>
+            <guid isPermaLink="false">https://www.oschina.net/news/338332</guid>
+            <pubDate>Thu, 06 Mar 2025 03:50:00 GMT</pubDate>
+            <author>来源: OSCHINA</author>
+        </item>
+        <item>
+            <title>OpenAI 透露 CoT 思维链研究成果：CoT 监控可阻止大模型恶意行为</title>
+            <description>&lt;div class=&quot;content&quot;&gt;
+                                                                    
+                                                        &lt;p&gt;OpenAI 近日&lt;u&gt;&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fopenai.com%2Findex%2Fchain-of-thought-monitoring%2F&quot; target=&quot;_blank&quot;&gt;发布文章&lt;/a&gt;&lt;/u&gt;介绍在思维链（COT）推理模型方面的最新研究进度。这种模型可以帮助开发者监控他模型的思考过程，提早发现其错误行为。&lt;/p&gt; 
+&lt;p&gt;&lt;img alt=&quot;&quot; src=&quot;https://oscimg.oschina.net/oscnet/up-8d07e02a59419e7fab3bdb76b4d125a43c1.png&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
+&lt;p&gt;OpenAI 表示，思维链推理模型以人类可以理解的自然语言进行「思考」。而监控他们的「思考」行为能够让人们提早发现其不当行为，例如在编码任务中破坏测试、欺骗用户或在问题太难时放弃。&lt;/p&gt; 
+&lt;p&gt;OpenAI 表示，&lt;strong&gt;CoT 监控可能是人类监督未来「超级模型」的少数工具之一&lt;/strong&gt;。&lt;/p&gt; 
+&lt;p&gt;最新研究发现，直接优化 CoT 以遵守特定标准（例如不考虑奖励黑客）可能会在短期内提高性能；然而，它并不能消除所有不当行为，并可能导致模型隐藏其意图。&lt;/p&gt; 
+&lt;p&gt;&lt;img height=&quot;1082&quot; src=&quot;https://static.oschina.net/uploads/space/2025/0312/113553_c3Z4_2720166.png&quot; width=&quot;2160&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
+&lt;p&gt;OpenAI 希望未来的研究能够找到直接优化 CoT 而没有这个缺点的方法，但在此之前，建议不要直接对前沿推理模型的 CoT 施加强大的优化压力，而应该对 CoT 进行不受限制的监控。&lt;/p&gt;
+                                                                                &lt;/div&gt;
+                                                                            </description>
+            <link>https://www.oschina.net/news/338329/openai-chain-of-thought-monitoring</link>
+            <guid isPermaLink="false">https://www.oschina.net/news/338329/openai-chain-of-thought-monitoring</guid>
+            <pubDate>Thu, 06 Mar 2025 03:37:00 GMT</pubDate>
+            <author>来源: OSCHINA</author>
+        </item>
+        <item>
+            <title>京东算法岗全员喜提 30% 普调涨薪</title>
+            <description>&lt;div class=&quot;content&quot;&gt;
+                                                                    
+                                                        &lt;p&gt;近日，在小红书和脉脉上等平台上均有网友爆料，&lt;strong&gt;京东全体算法岗喜提 30% 普调涨薪（广告 / 搜推 / 算法交易部全覆盖）&lt;/strong&gt;，4 月 1 号开始生效。&lt;/p&gt; 
+&lt;p&gt;&lt;img src=&quot;https://static.oschina.net/uploads/space/2025/0312/112922_UUnj_2720166.png&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;strong&gt;据内部员工透露，Leader 本周已经口头通知，这次涨薪是全员覆盖，一个不落&lt;/strong&gt;。&lt;/p&gt; 
+&lt;p&gt;近三年来，京东已经连续六轮上调员工薪酬，不断优化薪资体系。据公开数据可知，2024 届京东算法岗薪资总包大概在 36.5k，按照超 75% 的涨幅算，2025 届算法岗薪资可能达到 64k。消息一出，瞬间登上脉脉热搜第一。&lt;/p&gt; 
+&lt;p&gt;&lt;img height=&quot;142&quot; src=&quot;https://static.oschina.net/uploads/space/2025/0312/112712_uv4g_2720166.png&quot; width=&quot;560&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;img height=&quot;1418&quot; src=&quot;https://static.oschina.net/uploads/space/2025/0312/112704_uPtg_2720166.png&quot; width=&quot;990&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
+&lt;p&gt;据京东发布的的财务数据来看，2024 年全年营收达到 11588 亿元，同比增长 6.8%，净利润大增 71.1%。第四季度营收 3470 亿元，净利润同比暴增 190.8%。&lt;/p&gt; 
+&lt;p&gt;&lt;em&gt;相关阅读：&lt;a href=&quot;https://www.oschina.net/news/335609&quot; target=&quot;news&quot;&gt;京东：外卖骑手五险一金全部由京东承担，包含个人需缴纳部分，外卖骑手现金收入不会减少&lt;/a&gt;&lt;/em&gt;&lt;/p&gt;
+                                                                                &lt;/div&gt;
+                                                                            </description>
+            <link>https://www.oschina.net/news/338325</link>
+            <guid isPermaLink="false">https://www.oschina.net/news/338325</guid>
+            <pubDate>Thu, 06 Mar 2025 03:30:00 GMT</pubDate>
+            <author>来源: OSCHINA</author>
+        </item>
+        <item>
+            <title>苹果智能（Apple Intelligence）中文版要来了</title>
+            <description>&lt;div class=&quot;content&quot;&gt;
+                                                                    
+                                                        &lt;p&gt;3 月 11 日，苹果向 iPhone 和 iPad 用户推送了 iOS / iPadOS 18.4 开发者预览版 Beta 3 更新（内部版本号：22E5222f），本次更新距离上次发布 Beta / RC 间隔 7 天。&lt;/p&gt; 
+&lt;p&gt;&lt;strong&gt;其中 Apple 智能（Apple Intelligence）新增支持法语、德语、意大利语、葡萄牙语（巴西）、西班牙语、日语、韩语和简体中文&lt;/strong&gt;，以及新加坡和印度的本地化英语。而这也意味着，国行版的苹果 AI 又能再进一步。&lt;/p&gt; 
+&lt;p&gt;据悉，简体中文版的 Apple Intelligence 预计在 4 月初正式上线，与 iOS 18.4 正式版一同推出。 &amp;nbsp;&lt;/p&gt; 
+&lt;p&gt;&lt;img src=&quot;https://oscimg.oschina.net/oscnet/up-cdd018ef12a613a98fbadee0fe4c431a02f.png&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
+&lt;p&gt;苹果方面曾表示，苹果智能在中国推出的时间要根据监管部门审批情况而定。也就是说，如果今年 4 月还未获得有关部门批准，用户仍无法体验到苹果智能的 AI 功能。&lt;/p&gt; 
+&lt;p&gt;据彭博社此前的报道，有知情人士透露，苹果公司计划在 2025 年中期之前，在国行版 iPhone 上引入 AI 功能。 在 2 月 13 日，在阿联酋迪拜举办的 World Governments Summit 2025 峰会上，阿里巴巴联合创始人、董事局主席蔡崇信&lt;u&gt;&lt;a href=&quot;https://www.oschina.net/news/333543&quot;&gt;确认&lt;/a&gt;&lt;/u&gt;了苹果与阿里巴巴共同中国 iPhone AI 功能一事。&lt;/p&gt; 
+&lt;p&gt;同时，据 The Information 报道，有两位知情人士透露，虽然苹果公司已经与阿里巴巴达成合作，将为国行版的 iPhone 用户提供 AI 功能，&lt;u&gt;&lt;a href=&quot;https://www.oschina.net/news/333667/apple-continues-to-work-with-baidu-on-a&quot;&gt;但苹果仍在继续与百度合作&lt;/a&gt;&lt;/u&gt;，共同为中国的 iPhone 用户开发人工智能功能。&lt;/p&gt; 
+&lt;p&gt;&lt;em&gt;相关阅读：&lt;a href=&quot;https://www.oschina.net/news/334825/iphone-16e&quot; target=&quot;news&quot;&gt;iPhone 16e 正式发布，苹果智能将在四月支持中文&lt;/a&gt;&lt;/em&gt;&lt;/p&gt;
+                                                                                &lt;/div&gt;
+                                                                            </description>
+            <link>https://www.oschina.net/news/338319</link>
+            <guid isPermaLink="false">https://www.oschina.net/news/338319</guid>
+            <pubDate>Thu, 06 Mar 2025 03:03:00 GMT</pubDate>
+            <author>来源: OSCHINA</author>
+        </item>
+        <item>
+            <title>微软将在 Copilot 植入广告位，增加商业化收入</title>
+            <description>&lt;div class=&quot;content&quot;&gt;
+                                                                    
+                                                        &lt;p&gt;&lt;u&gt;&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fwww.neowin.net%2Fnews%2Fmicrosoft-launches-new-ad-formats-exclusively-designed-for-copilot-users%2F&quot; target=&quot;_blank&quot;&gt;Neowin 报道称&lt;/a&gt;&lt;/u&gt;，微软将&lt;u&gt;&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fabout.ads.microsoft.com%2Fen%2Fblog%2Fpost%2Fmarch-2025%2Ftransforming-the-future-of-audience-engagement&quot; target=&quot;_blank&quot;&gt;推进&lt;/a&gt;&lt;/u&gt;旗下 AI 产品 Copilot 的商业化，前者将会在 Copilot 中添加两种全新的广告宣传位置。&lt;/p&gt; 
+&lt;p&gt;报道称，其中一种广告位将命名为「广告展示厅」。该种广告将会在用户具体搜索、询问特定商品的相关问题时，Copilot 会给出相对应的产品推荐、价格、购买链接等内容；而另一种广告位称为「动态过滤广告」，能够在用户搜索产品时，动态推送相关的产品广告，并结合用户的搜索内容进行推送范围缩小。&lt;/p&gt; 
+&lt;p&gt;&lt;img src=&quot;https://static.oschina.net/uploads/space/2025/0312/105509_BhLK_2720166.png&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
+&lt;p&gt;「广告展示厅」将会在 4 月进行开始推送，而「动态过滤广告」则会在本月内开始试行。&lt;/p&gt; 
+&lt;p&gt;报道指出，微软在 Copilot 中设计、投放广告，将能够利用 AI 助手这一类产品的流量，带来更多的盈利收入。但过多的广告推送，也可能引发用户对软件的厌恶。&lt;/p&gt;
+                                                                                &lt;/div&gt;
+                                                                            </description>
+            <link>https://www.oschina.net/news/338310/ms-launches-new-ad-formats-for-copilot-users</link>
+            <guid isPermaLink="false">https://www.oschina.net/news/338310/ms-launches-new-ad-formats-for-copilot-users</guid>
+            <pubDate>Thu, 06 Mar 2025 02:56:00 GMT</pubDate>
+            <author>来源: OSCHINA</author>
+        </item>
+        <item>
+            <title>OpenAI 发布 Agent 开发套件，让 AI 能自主操作计算机</title>
+            <description>&lt;div class=&quot;content&quot;&gt;
+                                                                    
+                                                        &lt;p&gt;3 月 12 日，OpenAI&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fopenai.com%2Findex%2Fnew-tools-for-building-agents%2F&quot;&gt;发布&lt;/a&gt;针对 AI Agent 打造的系列工具与 API，助力开发者更便捷地创建可自动执行任务的 AI Agent。&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt;&lt;strong&gt;全新的 Responses API&lt;/strong&gt;：深度融合对话式 API 的交互简洁性与助手 API 的工具调用能力，打造面向智能体开发的统一接口范式。该 API 支持动态任务解析与工具链自主调度，显著降低复杂业务流程的架构复杂度。&lt;/li&gt; 
+ &lt;li&gt;&lt;strong&gt;内置工具&lt;/strong&gt;：包括网络搜索、文件搜索和计算机使用等功能。&lt;/li&gt; 
+ &lt;li&gt;&lt;strong&gt;全新的&amp;nbsp;Agents SDK&lt;/strong&gt;：基于 Swarm 框架升级，用于协调单代理和多代理工作流。&lt;/li&gt; 
+ &lt;li&gt;&lt;strong&gt;集成的可观测性工具&lt;/strong&gt;：用于追踪和检查智能代理工作流的执行情况。&lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;p&gt;&lt;img alt=&quot;&quot; src=&quot;https://static.oschina.net/uploads/space/2025/0312/104151_8zaU_2720166.png&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
+&lt;p&gt;▲OpenAI 官方提供的 Agent 工作流跟踪面板&lt;/p&gt; 
+&lt;p&gt;具体来说，在 Responses API 结的加持下，开发者只需调用一次 API ，即可利用多种工具和多轮模型交互解决复杂任务。&lt;/p&gt; 
+&lt;p&gt;而在内置工具方面，Web 搜索工具支持 GPT-4o 和 GPT-4o-mini 模型获取网络最新信息并提供清晰的引用，在 SimpleQA 基准测试中，这两款模型的搜索预览版分别拿下了 90% 和 88% 的亮眼准确率；升级后的文件搜索工具更是给力，支持多种文件格式，还能优化查询、过滤元数据、自定义排序。&lt;/p&gt; 
+&lt;p&gt;计算机使用工具则由与 Operator 相同的 Computer-Using Agent (CUA) 模型提供支持，可捕获模型生成的鼠标和键盘操作，在 OSWorld、WebArena 和 WebVoyager 基准测试中分别取得 38.1%、58.1% 和 87% 的成绩。&lt;/p&gt; 
+&lt;p&gt;而 Agents SDK 提供易于配置的 LLM 与内置工具集成、Agent 间智能交接控制、可配置安全检查以及可视化追踪等功能，适用于客户支持自动化、多步研究、内容生成等多种应用场景。&lt;/p&gt; 
+&lt;p&gt;对于现有 API 的安排，OpenAI 表示会继续全力支持 Chat Completions API，为不需要内置工具的开发者提供新模型和功能。而基于 Assistants API 测试版的反馈，他们已经把关键改进整合到 Responses API 中，计划在功能对齐后，于 2026 年中期正式停用 Assistants API，同时会提供详细的迁移指南。&lt;/p&gt; 
+&lt;p&gt;价格方面，Web 搜索每千次查询分别为 GPT-4o 搜索 30 美元和 GPT-4o-mini 搜索 25 美元；文件搜索每千次查询 2.5 美元，文件存储 0.1 美元 / GB / 天（首 GB 免费）；计算机使用工具则按每输入百万 token/3 美元和每输出百万 token/12 美元计费。&lt;/p&gt; 
+&lt;p&gt;这些新工具简化了智能体的核心逻辑、编排和交互，极大地降低了开发者构建智能体的入门门槛。在未来几周和几个月内，OpenAI 计划陆续推出更多工具和功能，进一步简化并加速在 OpenAI 平台上构建智能体应用的流程。&lt;/p&gt;
+                                                                                &lt;/div&gt;
+                                                                            </description>
+            <link>https://www.oschina.net/news/338306/openai-new-tools-for-building-agents</link>
+            <guid isPermaLink="false">https://www.oschina.net/news/338306/openai-new-tools-for-building-agents</guid>
+            <pubDate>Thu, 06 Mar 2025 02:43:00 GMT</pubDate>
+            <author>来源: OSCHINA</author>
+        </item>
         <item>
             <title>TypeScript 编译器和工具链将移植到 Go：性能提升 10 倍</title>
             <description>&lt;div class=&quot;content&quot;&gt;
                                                                     
-                                                        &lt;p&gt;TypeScript、C#语言、Delphi 语言之父 Anders Hejlsberg 今日在 Microsoft 开发者博客&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fdevblogs.microsoft.com%2Ftypescript%2Ftypescript-native-port%2F&quot; target=&quot;_blank&quot;&gt;宣布重大消息&lt;/a&gt;，TypeScript 编译器以及工具链将移植到 Go 语言，性能提升高达 10 倍！&lt;/p&gt; 
+                                                        &lt;p&gt;TypeScript、C#、Delphi 语言之父 Anders Hejlsberg 今日在 Microsoft 开发者博客&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fdevblogs.microsoft.com%2Ftypescript%2Ftypescript-native-port%2F&quot; target=&quot;_blank&quot;&gt;宣布重大消息&lt;/a&gt;：TypeScript 编译器以及工具链将移植到 Go 语言，性能提升高达 10 倍！&lt;/p&gt; 
 &lt;p&gt;&lt;img src=&quot;https://static.oschina.net/uploads/space/2025/0312/102953_R1VQ_2720166.png&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
 &lt;p&gt;这一举动旨在解决 TypeScript 在大型代码库中性能瓶颈的问题，为开发者带来更流畅、更高效的开发体验。&lt;/p&gt; 
 &lt;p&gt;根据官方公布的数据，新的原生实现将带来以下惊人的改进：&lt;/p&gt; 
 &lt;ul&gt; 
- &lt;li&gt; &lt;p&gt;&lt;strong&gt;编辑器启动的项目加载速度提升 8 倍！&lt;/strong&gt;&lt;/p&gt; &lt;/li&gt; 
- &lt;li&gt; &lt;p&gt;&lt;strong&gt;大多数构建时间缩短 10 倍！&lt;/strong&gt;&lt;/p&gt; &lt;/li&gt; 
- &lt;li&gt; &lt;p&gt;&lt;strong&gt;内存使用量大幅减少！&lt;/strong&gt;&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;&lt;strong&gt;编辑器启动的项目加载速度提升 8 倍&lt;/strong&gt;&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;&lt;strong&gt;大多数构建时间缩短 10 倍&lt;/strong&gt;&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;&lt;strong&gt;内存使用量大幅减少&lt;/strong&gt;&lt;/p&gt; &lt;/li&gt; 
 &lt;/ul&gt; 
+&lt;p&gt;&lt;img src=&quot;https://static.oschina.net/uploads/space/2025/0312/103930_Vsns_2720166.png&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
 &lt;p&gt;Anders Hejlsberg 和 TypeScript 团队在 GitHub 仓库的讨论区解释了为何采用 Go，主要原因有以下几点：&lt;/p&gt; 
 &lt;ol&gt; 
  &lt;li&gt; &lt;p&gt;代码结构相似性：TypeScript 现有代码库采用函数式编程风格，很少使用类。而 Go 语言也以函数和数据结构为中心，与现有代码结构高度相似，这使得移植工作更加容易。&lt;/p&gt; &lt;/li&gt; 
@@ -37,7 +1541,7 @@
                                                                             </description>
             <link>https://www.oschina.net/news/338304/typescript-native-port</link>
             <guid isPermaLink="false">https://www.oschina.net/news/338304/typescript-native-port</guid>
-            <pubDate>Wed, 12 Mar 2025 02:34:27 GMT</pubDate>
+            <pubDate>Thu, 06 Mar 2025 02:33:00 GMT</pubDate>
             <author>来源: OSCHINA</author>
         </item>
         <item>
@@ -58,7 +1562,7 @@
                                                                             </description>
             <link>https://www.oschina.net/news/338302</link>
             <guid isPermaLink="false">https://www.oschina.net/news/338302</guid>
-            <pubDate>Wed, 12 Mar 2025 02:32:27 GMT</pubDate>
+            <pubDate>Thu, 06 Mar 2025 02:31:00 GMT</pubDate>
             <author>来源: OSCHINA</author>
         </item>
         <item>
@@ -75,7 +1579,7 @@
                                                                             </description>
             <link>https://www.oschina.net/news/338296</link>
             <guid isPermaLink="false">https://www.oschina.net/news/338296</guid>
-            <pubDate>Wed, 12 Mar 2025 02:16:27 GMT</pubDate>
+            <pubDate>Thu, 06 Mar 2025 02:15:00 GMT</pubDate>
             <author>来源: OSCHINA</author>
         </item>
         <item>
@@ -90,632 +1594,8 @@
                                                                             </description>
             <link>https://www.oschina.net/news/338293</link>
             <guid isPermaLink="false">https://www.oschina.net/news/338293</guid>
-            <pubDate>Wed, 12 Mar 2025 02:04:27 GMT</pubDate>
+            <pubDate>Thu, 06 Mar 2025 02:04:00 GMT</pubDate>
             <author>来源: OSCHINA</author>
-        </item>
-        <item>
-            <title>DevEco Studio 联合小艺接入 DeepSeek，步骤更简单开发鸿蒙更专业</title>
-            <description>&lt;div class=&quot;content&quot;&gt;
-                                                                    
-                                                        &lt;p style=&quot;color:#555555; margin-left:0; margin-right:0; text-align:left&quot;&gt;随着小艺接入了 DeepSeek，智能体的问答变得更加丝滑流畅，让人不禁想到鸿蒙原生应用开发如果接入这个智能体会产生什么样的效果？确实，当我们把负责开发原生鸿蒙应用的 DevEco Studio 联合小艺接入 DeepSeek 后，这 4 个亮点迫不及待要和大家分享：&lt;/p&gt; 
-&lt;p style=&quot;color:#555555; margin-left:0; margin-right:0; text-align:center&quot;&gt;&lt;img alt=&quot;111.jpg&quot; height=&quot;179&quot; src=&quot;https://oscimg.oschina.net/oscnet//0a2c5184bd5cec66f8a5e358d0d64d96.jpg&quot; width=&quot;600&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
-&lt;p style=&quot;color:#555555; margin-left:0; margin-right:0; text-align:left&quot;&gt;只需轻松两步，就可以在 DevEco Studio 中使用 DeepSeek！&lt;/p&gt; 
-&lt;p style=&quot;color:#555555; margin-left:0; margin-right:0; text-align:left&quot;&gt;&lt;strong&gt;第一步：环境准备&lt;/strong&gt;&lt;/p&gt; 
-&lt;p style=&quot;color:#555555; margin-left:0; margin-right:0; text-align:left&quot;&gt;&lt;strong&gt;&lt;span&gt;1、下载并安装 DevEco Studio&lt;/span&gt;&lt;/strong&gt;&lt;/p&gt; 
-&lt;p style=&quot;color:#555555; margin-left:0; margin-right:0; text-align:left&quot;&gt;如果尚未安装 DevEco Studio，请访问华为开发者官网下载并安装最新版本 DevEco Studio 5.0.3 Beta2，本次指导就以 5.0.3 Beta2 进行演示。根据指导安装完成后，打开 DevEco Studio，创建一个新的鸿蒙应用项目，选择适合的模板（如 Empty Ability）。&lt;/p&gt; 
-&lt;p style=&quot;color:#555555; margin-left:0; margin-right:0; text-align:center&quot;&gt;&lt;img alt=&quot;222.jpg&quot; height=&quot;395&quot; src=&quot;https://oscimg.oschina.net/oscnet//a5fb544214738530955257b8b3249982.jpg&quot; width=&quot;600&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
-&lt;p style=&quot;color:#555555; margin-left:0; margin-right:0; text-align:left&quot;&gt;&lt;strong&gt;&lt;span&gt;2、下载并安装 CodeGenie 工具&lt;/span&gt;&lt;/strong&gt;&lt;/p&gt; 
-&lt;p style=&quot;color:#555555; margin-left:0; margin-right:0; text-align:left&quot;&gt;如果你安装的是官网最新的 DevEco Studio 5.0.3 Beta2 可以直接跳过这一步，该版本已经内置了最新版本的 CodeGenie。&lt;/p&gt; 
-&lt;p style=&quot;color:#555555; margin-left:0; margin-right:0; text-align:left&quot;&gt;CodeGenie 是华为开发者官网推出的官方 DevEco Studio AI 辅助编程工具，提供智能知识问答、代码生成、元服务卡片生成的能力，新增支持对接小艺 DeepSeek，可以帮助开发者高效开发鸿蒙应用及元服务。&lt;/p&gt; 
-&lt;p style=&quot;color:#555555; margin-left:0; margin-right:0; text-align:left&quot;&gt;在 DevEco Studio 下载页向下翻，就可以看到 CodeGenie 的下载链接，点击链接进行下载：&lt;/p&gt; 
-&lt;p style=&quot;color:#555555; margin-left:0; margin-right:0; text-align:center&quot;&gt;&lt;img alt=&quot;333.jpg&quot; height=&quot;207&quot; src=&quot;https://oscimg.oschina.net/oscnet//610c7328b3615d26d8f89c6247683ffe.jpg&quot; width=&quot;600&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
-&lt;p style=&quot;color:#555555; margin-left:0; margin-right:0; text-align:left&quot;&gt;&lt;span&gt;CodeGenie 下载完成后，在右上方打开 DevEco Studio 中的插件市场，我们可以看到 DevEco Studio 已经为我们内置了一个 CodeGenie，但是该版本不是最新的，所以我们手动再安装这一步下载的最新的 CodeGenie。&lt;/span&gt;&lt;/p&gt; 
-&lt;p style=&quot;color:#555555; margin-left:0; margin-right:0; text-align:left&quot;&gt;&lt;span&gt;点击右上方的设置按钮，选择其中的 Install plugin from Disk...&lt;/span&gt;&lt;/p&gt; 
-&lt;p style=&quot;color:#555555; margin-left:0; margin-right:0; text-align:center&quot;&gt;&lt;img alt=&quot;444.jpg&quot; height=&quot;268&quot; src=&quot;https://oscimg.oschina.net/oscnet//fc25f14715c5290ac56666a09c606253.jpg&quot; width=&quot;600&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
-&lt;p style=&quot;color:#555555; margin-left:0; margin-right:0; text-align:center&quot;&gt;&lt;img alt=&quot;555.jpg&quot; height=&quot;398&quot; src=&quot;https://oscimg.oschina.net/oscnet//712e023ff09b4a0a4393dfdc4d855ea9.jpg&quot; width=&quot;600&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
-&lt;p style=&quot;color:#555555; margin-left:0; margin-right:0; text-align:left&quot;&gt;选择这一步下载的 CodeGenie 路径，点击 OK：&lt;/p&gt; 
-&lt;p style=&quot;color:#555555; margin-left:0; margin-right:0; text-align:center&quot;&gt;&lt;img alt=&quot;666.jpg&quot; height=&quot;411&quot; src=&quot;https://oscimg.oschina.net/oscnet//f04615f19acf657db03d1c12dbe7e68d.jpg&quot; width=&quot;600&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
-&lt;p style=&quot;color:#555555; margin-left:0; margin-right:0; text-align:left&quot;&gt;在列表顶部就会出现最新的 CodeGenie 工具，然后我们选择 Restart IDE 重启 DevEco Studio：&lt;/p&gt; 
-&lt;p style=&quot;color:#555555; margin-left:0; margin-right:0; text-align:center&quot;&gt;&lt;img alt=&quot;777.jpg&quot; height=&quot;392&quot; src=&quot;https://oscimg.oschina.net/oscnet//b28dd8f3476776fc62ab340a446b36fa.jpg&quot; width=&quot;600&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
-&lt;p style=&quot;color:#555555; margin-left:0; margin-right:0; text-align:left&quot;&gt;&lt;strong&gt;&lt;span&gt;第二步：登录华为账号&lt;/span&gt;&lt;/strong&gt;&lt;/p&gt; 
-&lt;p style=&quot;color:#555555; margin-left:0; margin-right:0; text-align:left&quot;&gt;&lt;strong&gt;&lt;span&gt;1&lt;/span&gt;&lt;span&gt;、登录华为账号&lt;/span&gt;&lt;/strong&gt;&lt;/p&gt; 
-&lt;p style=&quot;color:#555555; margin-left:0; margin-right:0; text-align:left&quot;&gt;点击 DevEco Studio 右侧栏中的 CodeGenie，可以看到弹出框中显示的登录按钮，点击登录按钮进行华为开发者账号的登录。&lt;/p&gt; 
-&lt;p style=&quot;color:#555555; margin-left:0; margin-right:0; text-align:center&quot;&gt;&lt;img alt=&quot;888.jpg&quot; height=&quot;406&quot; src=&quot;https://oscimg.oschina.net/oscnet//2141f8fbad4aff2afcc474092fcb3ac9.jpg&quot; width=&quot;600&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
-&lt;p style=&quot;color:#555555; margin-left:0; margin-right:0; text-align:left&quot;&gt;&lt;strong&gt;&lt;span&gt;2&lt;/span&gt;&lt;span&gt;、即刻开启智能原生鸿蒙开发之旅&lt;/span&gt;&lt;/strong&gt;&lt;/p&gt; 
-&lt;p style=&quot;color:#555555; margin-left:0; margin-right:0; text-align:left&quot;&gt;登录后再次打开 CodeGenie，在底部 Agents 中选择 DeepSeek-R1(Beta)，就可以直接开始使用 DeepSeek 的能力辅助开发原生鸿蒙应用了！&lt;/p&gt; 
-&lt;p style=&quot;color:#555555; margin-left:0; margin-right:0; text-align:center&quot;&gt;&lt;img alt=&quot;999.jpg&quot; height=&quot;392&quot; src=&quot;https://oscimg.oschina.net/oscnet//e3a11024f6c427d1a868b7d7bcb3d5df.jpg&quot; width=&quot;600&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
-&lt;p style=&quot;color:#555555; margin-left:0; margin-right:0; text-align:left&quot;&gt;我们来结合鸿蒙原生应用开发+应用流行趋势+鸿蒙特性来做一些复杂的示例，一起来看看他的表现吧！&lt;/p&gt; 
-&lt;p style=&quot;color:#555555; margin-left:0; margin-right:0; text-align:left&quot;&gt;1） 我先给他一个网站，让他帮我分析出这个网站中包含的流行的设计元素，并在应用首页中结合这些流行设计元素做一个个人 IP 的展示，让他先给出我整体设计说明&lt;/p&gt; 
-&lt;p style=&quot;color:#555555; margin-left:0; margin-right:0; text-align:center&quot;&gt;&lt;img alt=&quot;100.jpg&quot; height=&quot;404&quot; src=&quot;https://oscimg.oschina.net/oscnet//cba411bc060e254789dae8feb95878d9.jpg&quot; width=&quot;600&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
-&lt;p style=&quot;color:#555555; margin-left:0; margin-right:0; text-align:left&quot;&gt;刚将诉求发出，马上获得反馈，并且明确给出了对网站的设计元素分析和整体架构设计，甚至给出了性能优化方案和设计验收指标。简直是又快又清晰又准确。&lt;/p&gt; 
-&lt;p style=&quot;color:#555555; margin-left:0; margin-right:0; text-align:left&quot;&gt;2） 现在让他结合鸿蒙最佳实践，按照他的设计，生成这个首页所有的代码，并且希望快点看到效果&lt;/p&gt; 
-&lt;p style=&quot;color:#555555; margin-left:0; margin-right:0; text-align:center&quot;&gt;&lt;img alt=&quot;11.jpg&quot; height=&quot;405&quot; src=&quot;https://oscimg.oschina.net/oscnet//74044a3f8aeebd52ba6aac0eaba5c564.jpg&quot; width=&quot;600&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
-&lt;p style=&quot;color:#555555; margin-left:0; margin-right:0; text-align:left&quot;&gt;按照提供的代码，将整个工程进行代码和资源的填充和简单修改，马上一个富有设计元素，拥有点击动效的个人 IP 首页就可以马上运行了，整个过程不到半个小时，是不是很快！&lt;/p&gt; 
-&lt;p style=&quot;color:#555555; margin-left:0; margin-right:0; text-align:center&quot;&gt;&lt;img alt=&quot;12.jpg&quot; height=&quot;406&quot; src=&quot;https://oscimg.oschina.net/oscnet//12bcc374a63fa3fb6db7913a9795f213.jpg&quot; width=&quot;600&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
-&lt;p style=&quot;color:#555555; margin-left:0; margin-right:0; text-align:left&quot;&gt;无需等待，DeepSeek 的反馈即刻呈现，帮助开发者高效便捷的进行原生鸿蒙应用的开发！大家快去试试吧！&lt;/p&gt;
-                                                                                &lt;/div&gt;
-                                                                            </description>
-            <link>https://www.oschina.net/news/338286</link>
-            <guid isPermaLink="false">https://www.oschina.net/news/338286</guid>
-            <pubDate>Thu, 06 Mar 2025 01:23:00 GMT</pubDate>
-            <author>来源: 投稿</author>
-        </item>
-        <item>
-            <title>梁文锋拒绝用 DeepSeek 赚快钱，腾讯、阿里近期都曾与其接触</title>
-            <description>&lt;div class=&quot;content&quot;&gt;
-                                                                    
-                                                        &lt;p&gt;&lt;u&gt;&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fcn.wsj.com%2Farticles%2Finvestors-want-a-piece-of-deepseek-its-founder-says-not-now-724386a5%3Fmod%3Dcn_hp_lead_pos2&quot; target=&quot;_blank&quot;&gt;据《华尔街日报》报道&lt;/a&gt;&lt;/u&gt;，&lt;strong&gt;DeepSeek 创始人梁文锋已经拒绝了通过其大模型赚快钱的投资提议。他告诉潜在投资者，自己希望保持那种致力于科学项目研究的精神&lt;/strong&gt;。&lt;/p&gt; 
-&lt;p&gt;&lt;img height=&quot;702&quot; src=&quot;https://static.oschina.net/uploads/space/2025/0311/184106_oQoG_2720166.png&quot; width=&quot;1800&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
-&lt;p&gt;据知情人士透露，梁文锋告诉身边的人，他并不急于获得投资，因为担心外部投资者会干预 DeepSeek 的决策。最近几周，包括腾讯和阿里巴巴在内的中国科技公司高管曾与梁文锋会面，讨论潜在合作机会。&lt;/p&gt; 
-&lt;p&gt;知情人士称，自 2023 年底以来，DeepSeek 曾向多个风险投资基金进行推介，包括一些外国公司，但是这些公司拒绝投资，因为他们看不到明确的资金回报途径。&lt;/p&gt; 
-&lt;p&gt;尽管对 DeepSeek 缺乏明确创收计划表示担忧，但最近更多潜在投资者表达了对投资 DeepSeek 的兴趣。然而，梁文锋着眼于公司的长期战略，拒绝了他们的投资提议。DeepSeek 正在研究如何帮助科技巨头利用 AI 开发商业应用并分享其中的收益。&lt;/p&gt; 
-&lt;p&gt;目前，梁文锋似乎在坚持他在 2023 年一次罕见采访中表达的理念。他当时说：「我们不做应用，我们只做研究和探索。」记者问他为什么这样做，梁文锋回答说，原因是好奇心驱动。&lt;/p&gt; 
-&lt;p&gt;知情人士还透露，梁文锋不想对 DeepSeek 的核心 AI 模型收费。这些模型目前是免费的。该公司计划最早在 4 月发布其下一个推理模型，旨在解决复杂问题。&lt;/p&gt;
-                                                                                &lt;/div&gt;
-                                                                            </description>
-            <link>https://www.oschina.net/news/338220</link>
-            <guid isPermaLink="false">https://www.oschina.net/news/338220</guid>
-            <pubDate>Wed, 05 Mar 2025 10:41:00 GMT</pubDate>
-            <author>来源: OSCHINA</author>
-        </item>
-        <item>
-            <title>微信小程序「聊天工具」模式开始内测</title>
-            <description>&lt;div class=&quot;content&quot;&gt;
-                                                                    
-                                                        &lt;p&gt;微信团队今日发布公告称，为更好地支持开发者在微信群聊场景内服务用户&lt;strong&gt;，小程序「聊天工具」模式开始内测&lt;/strong&gt;。&lt;/p&gt; 
-&lt;blockquote&gt; 
- &lt;p&gt;&lt;strong&gt;功能介绍&lt;/strong&gt;&lt;/p&gt; 
- &lt;p&gt;聊天工具模式是为了帮助小程序更好与微信聊天结合而推出的模式，可用于实现群问卷、群拼单、群任务等功能。其与小程序普通模式相比开放更多与聊天紧密结合的能力：&lt;/p&gt; 
- &lt;ul&gt; 
-  &lt;li&gt;聊天成员相关能力：开发者可调用聊天成员选择器并获取成员相关 id，通过开放数据域渲染聊天成员的头像暱称&lt;/li&gt; 
-  &lt;li&gt;发送内容到聊天能力：开发者可发送文本、提醒、图片、表情、视频等内容类型到聊天中&lt;/li&gt; 
-  &lt;li&gt;动态消息能力：小程序卡片上的辅标题可以动态更新，在用户完成/参与了活动后下发系统消息&lt;/li&gt; 
- &lt;/ul&gt; 
- &lt;p&gt;同时，聊天工具模式需要使用独立分包基于 skyline 开发，该分包也可被普通模式打开。&lt;/p&gt; 
-&lt;/blockquote&gt; 
-&lt;p&gt;小程序「聊天工具」模式的能力介绍如下：&lt;/p&gt; 
-&lt;ul&gt; 
- &lt;li&gt;&lt;strong&gt;聊天成员相关能力&lt;/strong&gt;：开发者可调用聊天成员选择器并获取成员相关 id，通过开放数据域渲染聊天成员的头像暱称&lt;/li&gt; 
-&lt;/ul&gt; 
-&lt;p&gt;&lt;img alt=&quot;&quot; src=&quot;https://img.ithome.com/newsuploadfiles/2025/3/70dbe39d-824d-4504-9929-aca7c109a807.png?x-bce-process=image/format,f_avif&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;img alt=&quot;&quot; src=&quot;https://oscimg.oschina.net/oscnet/up-681fa9ded30fbe32ccdcc7d158863ac4818.png&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
-&lt;ul&gt; 
- &lt;li&gt;&lt;strong&gt;发送内容到聊天能力&lt;/strong&gt;：开发者可发送文本、提醒、图片、表情、视频等内容类型到聊天中，用户通过内容可进入小程序&lt;/li&gt; 
-&lt;/ul&gt; 
-&lt;p&gt;&lt;img alt=&quot;&quot; src=&quot;https://oscimg.oschina.net/oscnet/up-59fa2aecb7ab97672121ab713e31a28004e.png&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;img alt=&quot;&quot; src=&quot;https://img.ithome.com/newsuploadfiles/2025/3/b38d2ebf-68ab-4a08-ac94-60d09d79681d.png?x-bce-process=image/format,f_avif&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
-&lt;ul&gt; 
- &lt;li&gt;&lt;strong&gt;动态消息能力&lt;/strong&gt;：小程序卡片上的辅标题可以动态更新，在用户完成 / 参与了活动后下发系统消息&lt;/li&gt; 
-&lt;/ul&gt; 
-&lt;p&gt;&lt;img alt=&quot;&quot; src=&quot;https://oscimg.oschina.net/oscnet/up-03294ca6c0c39d56a7d7127e664c8534b88.png&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
-&lt;p&gt;&lt;em&gt;详情查看文档：&lt;img alt=&quot;&quot; src=&quot;https://img.ithome.com/newsuploadfiles/2025/3/3e6a2e0e-35a8-48c6-bb62-6be791f89764.png?x-bce-process=image/format,f_avif&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fdevelopers.weixin.qq.com%2Fminiprogram%2Fdev%2Fframework%2Fopen-ability%2FchatTool.html&quot; target=&quot;_blank&quot;&gt;https://developers.weixin.qq.com/miniprogram/dev/framework/open-ability/chatTool.html&lt;/a&gt;&lt;/em&gt;&lt;/p&gt;
-                                                                                &lt;/div&gt;
-                                                                            </description>
-            <link>https://www.oschina.net/news/338202</link>
-            <guid isPermaLink="false">https://www.oschina.net/news/338202</guid>
-            <pubDate>Wed, 05 Mar 2025 09:04:00 GMT</pubDate>
-            <author>来源: OSCHINA</author>
-        </item>
-        <item>
-            <title>AI 的「脸」该怎么管？</title>
-            <description>&lt;div class=&quot;content&quot;&gt;
-                                                                    
-                                                        &lt;p&gt;&lt;span style=&quot;color:#000000&quot;&gt;&lt;em&gt;人民网记者，赵竹青&lt;/em&gt;&lt;/span&gt;&lt;/p&gt; 
-&lt;p&gt;&lt;span style=&quot;color:#000000&quot;&gt;「靳东两会建议 AI 换脸立法」「雷军回应国庆 7 天被 AI 雷军骂了 8 天」……今年两会期间，AI 话题频频登上热搜，「AI 换脸」引发的风险问题更是受到代表委员的热议。 事实上，苦于被 AI 偷走面孔和声音的，远不止靳东与雷军。前有「假张文宏」深夜直播带货，后有「假刘晓庆」分享人生鸡汤，以及「假古天乐」代言游戏平台，深度伪造 (Deepfake) 技术自 2017 年问世以来，正以指数级速度渗透日常生活。随着技术持续进化、门槛不断降低，「AI 换脸」的不当滥用已成为违法侵权重灾区，并有愈演愈烈之势。&lt;/span&gt;&lt;/p&gt; 
-&lt;p&gt;&lt;span style=&quot;color:#000000&quot;&gt;面对新型侵权形态，现行法律体系正面临现实挑战。全国人大代表、小米集团创始人雷军坦言，现有法律体系仍将 AI 侵权嵌套在隐私权、肖像权、名誉权等传统框架中，而「被骂 8 天」「因 AI 谣言导致股价下跌」等损失，却因无法量化举证而难以维权。&lt;/span&gt;&lt;/p&gt; 
-&lt;p&gt;&lt;span style=&quot;color:#000000&quot;&gt;「这些损害涉及众多不特定个体，仅靠私益诉讼难以实现有效治理。」最高人民检察院公益诉讼检察厅厅长徐向春的观察一针见血。显然，面对新技术引发的新问题，仍沿用传统追责机制，就好比用渔网去拦截数据洪流，是力所不逮的。&lt;/span&gt;&lt;/p&gt; 
-&lt;p&gt;&lt;span style=&quot;color:#000000&quot;&gt;近年来，我国《互联网信息服务深度合成管理规定》《生成式人工智能服务管理暂行办法》等法律法规已颁布实施，《人工智能生成合成内容标识办法 (征求意见稿)》完成社会意见征集，对人工智能治理进行了有益探索。然而，鉴于技术的迅猛发展，治理的「工具箱」仍需不断扩容。&lt;/span&gt;&lt;/p&gt; 
-&lt;p&gt;&lt;span style=&quot;color:#000000&quot;&gt;如何管好 AI 这张「脸」？全国两会上，代表委员们围绕如何更好把握人工智能发展机遇、更好应对新技术带来的风险挑战，积极建言献策。 雷军建议，加快单行法立法进程，提升立法位阶；强化行业自律共治，压实平台企业等各方的责任和义务；加大普法宣传的广度力度，增强民众的警惕性和鉴别力。&lt;/span&gt;&lt;/p&gt; 
-&lt;p&gt;&lt;span style=&quot;color:#000000&quot;&gt;全国人大代表、TCL 创始人李东生建议，加快人工智能深度合成内容标识管理规章制度的出台，明确惩罚制度，同时还需加强国际合作，形成人工智能生成合成内容的有效监管。&lt;/span&gt;&lt;/p&gt; 
-&lt;p&gt;&lt;span style=&quot;color:#000000&quot;&gt;全国政协委员、中华全国律师协会监事长吕红兵认为，应当加快推进「小、快、灵」立法，尽早出台行政法规，规范相关领域发展。&lt;/span&gt;&lt;/p&gt; 
-&lt;p&gt;&lt;span style=&quot;color:#000000&quot;&gt;在全国人大代表、四川省律师协会会长李世亮看来，随着 DeepSeek 在全世界范围内引发轰动，「AI+」快速融入各行各业，AI 立法「条件已经成熟」。他期待 AI 全面系统性法案的出台，填补我国 AI 法律空白。&lt;/span&gt;&lt;/p&gt; 
-&lt;p&gt;&lt;span style=&quot;color:#000000&quot;&gt;记者注意到，8 日提请审议的全国人大常委会工作报告明确，今年将围绕人工智能、数字经济、大数据等新兴领域加强立法研究。这也意味着，我国 AI 治理正逐步从「补丁式规范」向「体系化建构」转型。&lt;/span&gt;&lt;/p&gt; 
-&lt;p&gt;&lt;span style=&quot;color:#000000&quot;&gt;技术狂飙的时代，规则不能只是追赶者。今年全国两会关于 AI 治理的讨论中，一个共识逐渐清晰：唯有构建起「法律划界、技术鉴伪、平台担责、全民共治」的多维防护网，才能让 AI 的「脸」既绽放科技之美，又不失人性之真与善。&lt;/span&gt;&lt;/p&gt;
-                                                                                &lt;/div&gt;
-                                                                            </description>
-            <link>https://www.oschina.net/news/338192</link>
-            <guid isPermaLink="false">https://www.oschina.net/news/338192</guid>
-            <pubDate>Wed, 05 Mar 2025 08:33:00 GMT</pubDate>
-            <author>来源: OSCHINA</author>
-        </item>
-        <item>
-            <title>百度上线 AI 陪伴产品「月匣」App</title>
-            <description>&lt;div class=&quot;content&quot;&gt;
-                                                                    
-                                                        &lt;p&gt;&lt;span style=&quot;color:#000000&quot;&gt;百度近期低调推出情感陪伴类 App「月匣」，主打高自由度 AI 对话与沉浸式剧本互动两大核心功能。&lt;/span&gt;&lt;/p&gt; 
-&lt;p&gt;&lt;span style=&quot;color:#000000&quot;&gt;&lt;img height=&quot;544&quot; src=&quot;https://oscimg.oschina.net/oscnet/up-2b1b8422cc0ee7f9d5a53332bf2f668b7d0.jpg&quot; width=&quot;300&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/span&gt;&lt;/p&gt; 
-&lt;p&gt;&lt;span style=&quot;color:#000000&quot;&gt;根据介绍，这款产品通过构建虚拟角色生态，试图在泛娱乐社交领域开辟新赛道。与以往百度推出的 AI 社交产品不同的是，百度的这款全新 AI 社交产品，不仅搭载自研的文心一言大模型，还整合了 DeepSeek、豆包、MiniMax abab 三大外部的大模型，构建起「四核驱动」的 AI 社交引擎。&lt;/span&gt;&lt;/p&gt;
-                                                                                &lt;/div&gt;
-                                                                            </description>
-            <link>https://www.oschina.net/news/338176</link>
-            <guid isPermaLink="false">https://www.oschina.net/news/338176</guid>
-            <pubDate>Wed, 05 Mar 2025 07:39:00 GMT</pubDate>
-            <author>来源: OSCHINA</author>
-        </item>
-        <item>
-            <title>TIOBE 3 月榜单：Fortran 和 Delphi 争夺前十</title>
-            <description>&lt;div class=&quot;content&quot;&gt;
-                                                                    
-                                                        &lt;p&gt;&lt;span style=&quot;color:#000000&quot;&gt;TIOBE 公布了 2025&amp;nbsp;年 3 月的&lt;/span&gt;&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fwww.tiobe.com%2Ftiobe-index%2F&quot; target=&quot;_blank&quot;&gt;编程语言排行榜&lt;/a&gt;&lt;span style=&quot;color:#000000&quot;&gt;。&lt;/span&gt;&lt;/p&gt; 
-&lt;p&gt;&lt;img height=&quot;66&quot; src=&quot;https://oscimg.oschina.net/oscnet/up-538dc8bd513430c8df55d4d61c23929ab13.png&quot; width=&quot;700&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
-&lt;p&gt;&lt;span style=&quot;color:#000000&quot;&gt;本月榜单中，一些古老的语言正在悄然上升。其中，Fortran 和 Delphi 正在争夺前十名的位置，COBOL 和本月新加入的 Ada 则稍稍靠后，但也均成功挤入了 Top 20。&lt;/span&gt;&lt;/p&gt; 
-&lt;p&gt;&lt;span style=&quot;color:#000000&quot;&gt;TIOBE CEO&amp;nbsp;Paul Jansen 认为，这一趋势与维持世界运转的许多重要遗留系统有关。&lt;/span&gt;&lt;/p&gt; 
-&lt;blockquote&gt; 
- &lt;p&gt;&lt;span style=&quot;color:#000000&quot;&gt;它们中的大多数都是借助这些「dinosaur languages」开发出来的。现在，这些系统的最后一批核心开发人员即将退休，公司为了避免任何风险，选择保留现有系统，甚至对其进行扩展，而不是用基于更现代语言的更新系统来取代它们。&lt;/span&gt;&lt;/p&gt; 
- &lt;p&gt;&lt;span style=&quot;color:#000000&quot;&gt;请注意，我们把这些语言称为「dinosaurs」，但它们已经随着时间的推移而不断发展，而且已经相当先进。它们都有新的语言定义。譬如 Fortran 2023、Delphi 12（2024 年发布）、Ada 2023 和 COBOL 2023。我们可能会对这些语言进入 TIOBE 指数前 20 名感到惊讶，但它们绝对是有作用的，值得称赞。&lt;/span&gt;&lt;/p&gt; 
-&lt;/blockquote&gt; 
-&lt;p&gt;&lt;span style=&quot;color:#000000&quot;&gt;&lt;strong style=&quot;color:#333333&quot;&gt;TIOBE 3 月 TOP 20 编程语言&lt;/strong&gt;&lt;/span&gt;&lt;/p&gt; 
-&lt;p&gt;&lt;img height=&quot;400&quot; src=&quot;https://oscimg.oschina.net/oscnet/up-204e07ccd60ab4b3c568070f91028f34963.png&quot; width=&quot;500&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
-&lt;p&gt;&lt;span style=&quot;color:#000000&quot;&gt;&lt;strong style=&quot;color:#333333&quot;&gt;TOP 10 编程语言 TIOBE 指数走势（2002-2024）&lt;/strong&gt;&lt;/span&gt;&lt;/p&gt; 
-&lt;p&gt;&lt;img height=&quot;221&quot; src=&quot;https://oscimg.oschina.net/oscnet/up-33bfc79079a90aaf3dd4ea7c65b16937581.png&quot; width=&quot;700&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
-&lt;p&gt;&lt;span style=&quot;color:#000000&quot;&gt;&lt;strong style=&quot;color:#333333&quot;&gt;第 21-50 名编程语言排行&lt;/strong&gt;&lt;/span&gt;&lt;/p&gt; 
-&lt;p&gt;&lt;img height=&quot;413&quot; src=&quot;https://oscimg.oschina.net/oscnet/up-270d625073c800a18b1102408d7f43cbb57.png&quot; width=&quot;500&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
-&lt;p style=&quot;color:#333333; margin-left:0; margin-right:0; text-align:left&quot;&gt;&lt;span style=&quot;color:#000000&quot;&gt;第 51-100 名如下，由于它们之间的数值差异较小，仅以文本形式列出（按字母排序）：&lt;/span&gt;&lt;/p&gt; 
-&lt;blockquote&gt; 
- &lt;p&gt;&lt;span style=&quot;color:#000000&quot;&gt;ActionScript, Algol, Alice, Apex, APL, CFML, CHILL, Clipper, CLIPS, Clojure, Curl, Eiffel, Elm, Erlang, F#, Forth, Groovy, Hack, Icon, Inform, Io, J, JScript, LabVIEW, Ladder Logic, Logo, Maple, Modula-2, Mojo, MQL5, NATURAL, Nim, OCaml, Occam, OpenCL, OpenEdge ABL, PL/I, Q, Raku, Ring, S, Scheme, Simulink, Smalltalk, SPARK, Tcl, Vala/Genie, VHDL, Wolfram, Xojo&lt;/span&gt;&lt;/p&gt; 
-&lt;/blockquote&gt; 
-&lt;p style=&quot;color:#333333; margin-left:0; margin-right:0; text-align:left&quot;&gt;&lt;span style=&quot;color:#000000&quot;&gt;TIOBE 编程社区指数（The TIOBE Programming Community index）是一个衡量编程语言受欢迎程度的指标，该指数每月更新一次。评判的依据来自世界范围内的工程师、课程和第三方供应商，包括流行的搜索引擎，如 Google、必应、雅虎、维基百科、亚马逊、YouTube 和百度都被用于指数计算。值得注意的是，TIOBE 指数并不代表编程语言的好坏或编写代码的多少。&lt;/span&gt;&lt;/p&gt; 
-&lt;p style=&quot;color:#333333; margin-left:0; margin-right:0; text-align:left&quot;&gt;&lt;span style=&quot;color:#000000&quot;&gt;该指数可以用来检查你的编程技能是否还能跟上时代的步伐，或者在开始建立一个新的软件系统时，基于指数对采用何种编程语言做出决策。&lt;/span&gt;&lt;/p&gt; 
-&lt;p style=&quot;color:#333333; margin-left:0; margin-right:0; text-align:left&quot;&gt;&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fwww.tiobe.com%2Ftiobe-index%2Fprogramminglanguages_definition%2F&quot; target=&quot;_blank&quot;&gt;TIOBE 指数&lt;/a&gt;&lt;span style=&quot;color:#000000&quot;&gt;的定义方式，以及详细榜单信息&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fwww.tiobe.com%2Ftiobe-index%2F&quot; target=&quot;_blank&quot;&gt;均可查看官网&lt;/a&gt;。&lt;/span&gt;&lt;/p&gt;
-                                                                                &lt;/div&gt;
-                                                                            </description>
-            <link>https://www.oschina.net/news/338172/tiobe-index-202503</link>
-            <guid isPermaLink="false">https://www.oschina.net/news/338172/tiobe-index-202503</guid>
-            <pubDate>Wed, 05 Mar 2025 07:30:00 GMT</pubDate>
-            <author>来源: OSCHINA</author>
-        </item>
-        <item>
-            <title>最新消息：DeepSeek-R2 AI 模型将于 3 月 17 日发布</title>
-            <description>&lt;div class=&quot;content&quot;&gt;
-                                                                    
-                                                        &lt;p&gt;&lt;span style=&quot;color:#d35400&quot;&gt;&lt;strong&gt;3 月 11 日晚更新&lt;/strong&gt;&lt;/span&gt;&lt;/p&gt; 
-&lt;p&gt;针对 DeepSeek 将在 3 月 17 日发布下一代 R2 模型的传闻，DeepSeek 官方企业咨询账号在用户群中回应称，「辟谣：R2 发布为假消息」。&lt;/p&gt; 
-&lt;p&gt;&lt;img height=&quot;1124&quot; src=&quot;https://static.oschina.net/uploads/space/2025/0311/231933_8Rg2_2720166.png&quot; width=&quot;1280&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
-&lt;hr&gt; 
-&lt;p&gt;据智通财经援引消息人士透露，&lt;strong&gt;DeepSeek 下一代 AI 模型 DeepSeek-R2 或提前于下周一 (3 月 17 日) 正式发布&lt;/strong&gt;。&lt;/p&gt; 
-&lt;blockquote&gt; 
- &lt;p&gt;&lt;img height=&quot;948&quot; src=&quot;https://static.oschina.net/uploads/space/2025/0311/153001_YozB_2720166.png&quot; width=&quot;1220&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
-&lt;/blockquote&gt; 
-&lt;p&gt;DeepSeek-R2 在多个关键领域实现突破，包括更出色的编程能力、多语言推理能力，以及以更低的成本提供更高的准确性。专业人士认为，这些特性若得以兑现，可能使其在全球 AI 竞赛中占据显著优势。这对于资产价格而言，可能又是一次重估机会。&lt;/p&gt; 
-&lt;p&gt;据悉，截至目前，DeepSeek 官方尚未正式公布 R2 的具体日期及技术细节等。早前市场预期 DeepSeek-R2 模型于 5 月发布。&lt;/p&gt; 
-&lt;p&gt;&lt;em&gt;相关阅读：&lt;a href=&quot;https://www.oschina.net/news/335778/deepseek-rushes-launch-new-ai-model&quot; target=&quot;news&quot;&gt;DeepSeek R2 将提前推出&lt;/a&gt;&lt;/em&gt;&lt;/p&gt;
-                                                                                &lt;/div&gt;
-                                                                            </description>
-            <link>https://www.oschina.net/news/338171</link>
-            <guid isPermaLink="false">https://www.oschina.net/news/338171</guid>
-            <pubDate>Wed, 05 Mar 2025 07:25:00 GMT</pubDate>
-            <author>来源: OSCHINA</author>
-        </item>
-        <item>
-            <title>基于 Megatron 的多模态大模型训练加速技术解析</title>
-            <description>&lt;div class=&quot;content&quot;&gt;
-                                                                                                                    
-                                                                                                                                                    &lt;p&gt;作者：胡凯文，李鹏，黄俊&lt;/p&gt; 
-&lt;p&gt;&amp;nbsp;&lt;/p&gt; 
-&lt;p&gt;单位：阿里云智能集团人工智能平台 PAI 算法团队&lt;/p&gt; 
-&lt;span id=&quot;OSC_h1_1&quot;&gt;&lt;/span&gt; 
-&lt;h1&gt;引言&lt;/h1&gt; 
-&lt;p&gt;多模态大模型是近期业界关注的热点，OpenAI 的 GPT4O 以及谷歌 Gemini 等多模态大模型的出现让人机交互变得更加简单和自然。这种模型在多种下游任务上表现优异，比如图文检索、视觉问答等。通过结合语言理解和视觉感知能力，它能为用户提供更加丰富和自然的人机交互体验。Pai-Megatron-Patch 是一款由阿里云人工智能平台 PAI 研发的围绕英伟达 Megatron 的大模型训练配套工具，旨在帮助开发者快速上手大模型，打通大模型相关的高效分布式训练、有监督指令微调、下游任务评估等大模型开发链路。在 Megatron 的基础之上，Pai-Megatron-Patch 及时追踪社区最新需求，搭建了包括 LLaMA3、Qwen2 等在内的多种热门大语言模型，并在此基础上持续拓展新特性，如支持 Optimizer Offloading 功能的 Distributed Optimizer， 可与 Transformer Engine、MoE 以及流水并行等模块协同使用，以适应更多场景需求。Pai-Megatron-Patch 的整体技术栈如下图所示：&lt;/p&gt; 
-&lt;p&gt;&amp;nbsp;&lt;/p&gt; 
-&lt;p&gt;&lt;img src=&quot;https://oscimg.oschina.net/oscnet//0965cecdadad37ae040df3b73c232297.png&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
-&lt;p&gt;&amp;nbsp;&lt;/p&gt; 
-&lt;p&gt;本文以 Qwen2-VL 为例，从易用性和训练性能优化两个方面介绍基于 Megatron 构建的 Pai-Megatron-Patch 多模态大模型训练的关键技术。在易用性方面，最新的 Pai-Megatron-Patch 实现了基于 Mcore 的多模态编码器和 LLM 解码器，同时实现了支持高精度低损耗的 Huggingface 和 MCore 多模态模型权重互转转换以及并行加载，极大简化了不同框架间迁移的学习成本和技术障碍。在性能方面，实现了支持高性能的文本/图像/视频数据统一加载，实现了高性能的流水并行切分，另外通过引入 CPU 卸载技术以及 Sequence Packing 技术，进一步支持多模态长序列训练的显存优化，有效缓解了 GPU 的显存压力，提升了大模型训练的效率与稳定性。这些改进共同作用，为用户提供更加流畅且高效的多模态大模型开发体验。&lt;/p&gt; 
-&lt;span id=&quot;OSC_h1_2&quot;&gt;&lt;/span&gt; 
-&lt;h1&gt;支持模型并行的权重转换&lt;/h1&gt; 
-&lt;p&gt;作为开源主流高效大模型训练工具，用户在尝试使用 Megatron 训练开源模型时首先遇到的障碍是 Huggingface 与 Megatron 模型权重格式的差异。下面将以 Qwen2-VL 为例，详解从 Huggingface 到 Megatron 的模型权重转换技术。如下图所示，Qwen2-VL[2] 主要由多模态编码器和 LLM 解码器两个模块组成。Qwen2-VL 采用了专门设计的多模态编码器架构，可以同时接受文本/图像/视频作为输入，并将它们转换成统一形式的表示向量后送入 LLM 解码器。这种设计使得模型能够在同一个空间内有效地捕捉到跨模态的信息关联。与 LLaVA 等多模态模型不同，Qwen2-VL 的视觉输入不需要缩放到固定分辨率大小，而是根据图像/视频数据的原始分辨率，动态生成不同长度的视觉表示向量，这一特性被称为动态分辨率。&lt;/p&gt; 
-&lt;p&gt;&amp;nbsp;&lt;/p&gt; 
-&lt;p&gt;&lt;img src=&quot;https://oscimg.oschina.net/oscnet//1eb93737ae6dbd05ddba2e152c5a393b.png&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
-&lt;p&gt;&amp;nbsp;&lt;/p&gt; 
-&lt;p&gt;通过将 Huggingface 模型转换到 Megatron 格式，用户可在已经充分训练好的 Qwen2-VL 基础大模型或者微调大模型上进行二次训练。所谓支持模型并行的权重转换，其核心原理是在转换时将大型模型权重分割成多个部分，并分配给不同的 GPU 进行并行加载。通过这种方式可以显著减少单个设备上的显存占用量，加快训练速度。然而，在实际应用中这一技术面临着若干挑战。在开发过程中，我们遇到的最常见问题之一是在完成权重转换后重新加载进行训练时，step 0 loss 比预期高。造成这种情况的原因主要有两个方面：一方面是模型实现风格不一致，结构映射关系十分复杂；另一方面是模型权重并行切分算法实现容易出错。因此，针对上述两种原因，Pai-Megatron-Patch 分别进行了优化。&lt;/p&gt; 
-&lt;p&gt;&amp;nbsp;&lt;/p&gt; 
-&lt;p&gt;在 Pai-Megatron-Patch 的模型转换中，针对模型结构映射关系十分复杂的问题，建模分析并构建映射表能有效对比 Huggingface 模型与 Megatron 实现的联系。下表总结了两者分别在各个算子类型上的命名对应关系。在支持模型并行的权重转换实现过程中，我们首先将 Huggingface 模型的 ckpt 赋值给 Megatron 模型，然后再在 Megatron 模型上进行 TP/PP 切分。这种先转换再切分的好处是可以提升代码的可维护性，减少转换出错的概率。&lt;/p&gt; 
-&lt;p&gt;&amp;nbsp;&lt;/p&gt; 
-&lt;p&gt;&lt;img src=&quot;https://oscimg.oschina.net/oscnet//ef715495d37cfd035b51f1b0d64e4bbb.png&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
-&lt;p&gt;&amp;nbsp;&lt;/p&gt; 
-&lt;p&gt;除了模块层面的实现差异，在算子层，由于 3D 并行的存在，Megatron 与 Huggingface 的权重及计算方式也存在很大区别，需要根据实际情况进行转换。针对模型权重并行切分算法实现容易出错的问题，逐算子精细化切分保证了自底向上的准确转换。&lt;/p&gt; 
-&lt;p&gt;&amp;nbsp;&lt;/p&gt; 
-&lt;p&gt;&lt;img src=&quot;https://oscimg.oschina.net/oscnet//0a7d46cfbd1f0e2bdb39037f639960a9.png&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
-&lt;p&gt;&amp;nbsp;&lt;/p&gt; 
-&lt;p&gt;上图表示了一个 Huggingface 实现的 GQA 权重转换到 Megatron 的正确/错误流程，其中每个块表示一个 head 的权重，边框和内部的颜色分别代表这个 head 对应的类型及被理解成的类型。在 transformers 库中，Huggingface 采用 q_proj, k_proj, v_proj 这三个算子来计算 QKV status, 随后再调用&lt;code&gt;repeat_kv()&lt;/code&gt;函数将同一个 Query Group 内的 KV status 数量与 Query 对齐，进而调用 attention 函数。在 Megatron 中，由于张量并行的存在，Attention Module 采用了 ColumnLinear(linear_qkv) 对 QKV 统一计算，为了降低节点间通信量，这个并行 Linear 将 Query Group 均匀切分到各个 Node 上，使每个节点内就能计算一部分 attention 结果，不需要对 QKV status 进行同步。在这个 case 下，如果直接拼接 QKV 的权重张量（如图上半部分）再进行 TP 切分，可以明显看到大部分 head 位置出现问题，因此，我们需要将 QKV 权重进行一定转换，按 Query Group 的顺序进行拼接（如图下半部分）后再切分才能保证 Attention 的正确性。具体地说，在进行 TP=2 切分时，Pai-Megatron-Patch 先将 query，key 和 value 这三个 tensor 分别 reshape 成一个 4D 的 tensor，reshape 后的 shape 是&amp;lt;num_query_groups, -1, head_dim, hidden_dim&amp;gt;。接着沿着第二个维度拼接在一起，然后沿着 num_query_groups 维度进行算子拆分。才能确保并行加载 ckpt 后的起步 loss 值误差偏移在合理范围内。&lt;/p&gt; 
-&lt;p&gt;&amp;nbsp;&lt;/p&gt; 
-&lt;p&gt;&lt;img src=&quot;https://oscimg.oschina.net/oscnet//13b6f29e544514a59b0fa5f932487c7e.png&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
-&lt;span id=&quot;OSC_h1_3&quot;&gt;&lt;/span&gt; 
-&lt;h1&gt;用户友好的多模态数据加载&lt;/h1&gt; 
-&lt;p&gt;相对于 LLM 预训练，在数据加载方面，由于引入了多个类型的数据，多模态模型的 DataLoader 尤其复杂。为了支持 LLaVA 等模型，英伟达的 Megatron 进一步推出了 Energon 来实现多模态数据的加载逻辑。尽管如此，由于目前多模态输入并无统一的格式，在目前的 Megatron 中，对于多模态数据的支持仍比较有限，具体表现在 (1) 仅支持部分格式简单的数据加载，例如每个样本至多包含一张图像或一个视频，应用场景有限;(2) 现有 TaskEncoder 输出格式固定，灵活性不大，难以高效支持模型训练。在实际开发中，Qwen2-VL 同时遇到了上述两类障碍:与已有的 LLaVA 相比，Qwen2-VL 基于 ChatML 格式设计输入，应当支持单个样本中多张图片视频、多轮对话等复杂功能，但这类数据无法使用当前 energon 的代码进行读取;此外，现有 TaskEncoder 仅支持将图片缩放到固定大小，再传入模型训练，因此难以支持 Qwen2-VL 独有的动态分辨率特性。&lt;/p&gt; 
-&lt;p&gt;&amp;nbsp;&lt;/p&gt; 
-&lt;p&gt;为了解决上述功能性问题，我们首先对内置的 DataLoader 代码做了大量扩展，使其能基于输入的原始多模态数据构造用于动态分辨率训练的图像切片序列以及位置信息，同时支持可自定义 prompt、多轮、包含任意数量图像或视频的对话样本的数据处理。在此基础上，我们设计了一套自动化脚本，能基于用户给定的 sharegpt 格式数据集路径自动转换成 energon 可读取的 webdataset 数据集，绕过当前 energon 数据集准备的交互流程，加快数据转换效率，同时降低用户学习成本。此外，对于数量不定的图像，为了能在 energon 侧自动解码，webdataset 支持将其以 numpy array 的形式保存，然而，由于 jpg 到 ndarray 间的数据格式差异，在实际测试中，我们发现这将造成最终数据集文件体积出现几倍到几十倍的增加。为了解决这个问题，我们在运行时向 webdataset 的编解码模块增加钩子函数，使其支持图像文件列表的自动编解码，实现在按原始二进制数据保存的同时能被 energon 自动转换为图像张量的需求。通过上述优化，在 Pai-Megatron-Patch 中，经过转换的 sharegpt 格式数据相对于其原始总大小几乎没有变化。&lt;/p&gt; 
-&lt;p&gt;&amp;nbsp;&lt;/p&gt; 
-&lt;p&gt;&lt;img src=&quot;https://oscimg.oschina.net/oscnet//6d2c8ff40024e1e3d09c02ef056fc475.png&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
-&lt;span id=&quot;OSC_h1_4&quot;&gt;&lt;/span&gt; 
-&lt;h1&gt;视觉特征处理流程优化&lt;/h1&gt; 
-&lt;p&gt;与 LLM 相比，多模态模型先对视觉数据进行编码，再与文本特征拼接后送入 LLM 进行推理。与基于静态分辨率的多模态大模型不同，复杂的多模态数据格式以及动态分辨率共同使得 Qwen2-VL 的这一过程更加复杂，不仅显著影响训练效率，也与能否应用 TP Comm Overlap 等技术相关。&lt;/p&gt; 
-&lt;p&gt;&amp;nbsp;&lt;/p&gt; 
-&lt;p&gt;与静态分辨率使用固定数量视觉 token 不同，动态分辨率技术允许模型依据输入图像大小，将其编码成不定数量的视觉特征。这一改进使模型对于高分辨率图像的细节捕捉能力获得显著提升，同时也优化了低分辨率图像的推理性能。下图是 Qwen2-VL 的训练数据的简单示例，针对不同长度的视觉 token，最终它们会被嵌入到文本序列中，与同一个 batch 的数据拼合后送入到 LLM 解码器。在这个过程中主要存在两个难点:(1) 如何对同一批次内的多个视觉输入高效获得特征表示;(2) 如何拼合数据以支持原生性能优化开关。&lt;/p&gt; 
-&lt;p&gt;&amp;nbsp;&lt;/p&gt; 
-&lt;p&gt;&lt;img src=&quot;https://oscimg.oschina.net/oscnet//739d529e86745f50251962405174bef3.png&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
-&lt;p&gt;&amp;nbsp;&lt;/p&gt; 
-&lt;p&gt;由于视觉输入的分辨率具有很大不确定性，为了将同一 batch 内的不同长度视觉数据转换成推理所需的特征表示，常见的做法是将每个视觉数据填充到相同长度后统一送入视觉模型。尽管这一方式实现简洁，但填充的 token 不仅造成了显存的浪费，同时也影响了视觉编码器的吞吐，当同一批次数据中同时包含高分辨率视频及低分辨率图像，由于视觉 token 数量的显著差异，将造成极为显著的性能浪费。对此，Pai-Megatron-Patch 借鉴了 Sequence Packing 的做法，将同一批次内的所有视觉输入打包后调用 varlen attention，来避免填充操作带来的显存/性能损耗。&lt;/p&gt; 
-&lt;p&gt;&amp;nbsp;&lt;/p&gt; 
-&lt;p&gt;&lt;img src=&quot;https://oscimg.oschina.net/oscnet//939334d510ecedf2be878901ae2b15b7.png&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
-&lt;p&gt;&amp;nbsp;&lt;/p&gt; 
-&lt;p&gt;在生成视觉特征表示后，基于预先构造好的掩膜张量，视觉编码器的输出会被依次填入文本表示的对应位置，替换掉默认的占位符。在不使用任何性能优化技术的情况下，这一实现并不会带来什么问题。然而，当开启序列并行后，LanguageEmbedding 模块的输出会自动 reduce scatter 到各个 TP rank，导致基于原始输入构造的完整掩膜张量无法使用。为了解决这一问题，同时避免冗余通信，Pai-Megatron-Patch 针对性修改了 MCore 中实现的 LanguageEmbedding 模块，在输入序列拆分前增加利用掩膜张量替换文本表示的操作 ，不干扰序列并行特性的正常运行。&lt;strong&gt;在实现序列并行机制的基础上，通过进一步应用 TP Communication Overlap 特性，对于 Qwen2-VL-70B 我们在 4 机 32 卡 a100 上观察到了 6% 性能提升。（详见实验部分）&lt;/strong&gt;&lt;/p&gt; 
-&lt;span id=&quot;OSC_h1_5&quot;&gt;&lt;/span&gt; 
-&lt;h1&gt;基于优化器卸载的多模态长序列显存优化&lt;/h1&gt; 
-&lt;p&gt;相对于大语言模型训练微调，由于视频、音频等模态存在，多模态大模型的输入序列长度将远远大于纯的语言模型。因此，在通常情况下，为了完成这类模型的训练微调，往往需要更多的计算资源。而当获取更多资源这条路径不可行时，在资源受限的情况下拉起任务成为这一场景下的首要挑战。在之前 Pai-Megatron-Patch 实现的优化器卸载特性基础上，最近，PAI 团队与英伟达 Megatron 团队深度合作，共建了一套原生基于 Megatron 的权重卸载优化器。在此基础上，通过与多种正交的卸载技术结合，Pai-Megatron-Patch 将四机 32 卡 A100 上的 Qwen2-VL 的最长上下文从 4K 提升至 32K。在本章节中，我们将以 BF16 训练为例，详细描述最新版权重卸载优化器的原理、实现及我们引入的最新性能优化特性--Optimizer Overlapping。&lt;/p&gt; 
-&lt;p&gt;&amp;nbsp;&lt;/p&gt; 
-&lt;p&gt;如下图，与激活重计算或激活卸载等显存优化技术不同，优化器卸载的目的在于将参数更新这一计算负载较低但显存占用相对高的步骤全部或部分放置到 CPU 上进行，以达到降低显存占用的目的。对于一个参数量为 M 的模型，Adam 会默认分配大小为 12M 字节的显存以保存全精度的参数 (4M) 及优化器状态 (8M)，当使用优化器卸载时，优化器则会将这 12M 大小的张量全部分配到内存上，同时额外分配 4M 的内存用于拷贝 GPU 上的全精度梯度数据。因此，当打开 Megatron 的分布式优化器时，以 4 机 32 卡训练 70B 为例，每张卡的显存能进一步减少约 26GB。&lt;/p&gt; 
-&lt;p&gt;&amp;nbsp;&lt;/p&gt; 
-&lt;p&gt;&lt;img src=&quot;https://oscimg.oschina.net/oscnet//d9895494e5ede2ef2bfd1f6e0b119cdc.png&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
-&lt;p&gt;&amp;nbsp;&lt;/p&gt; 
-&lt;p&gt;如下图所示，在最新的原生优化器卸载特性实现中，我们设计了一个混合设备优化器类 (Hybrid Device Optimizer, HDO) 来支持静态优化器卸载功能。与先前的深度修改 DistributedOptimizer，难以快速迁移到其他训练代码不同，通过在顶层沿用 PyTorch 优化器的 API，HDO 能无缝替换 TorchAdam，同时仍保留一定的优化器卸载能力。我们希望这一设计能使用户在更多场景下体验到优化器卸载带来的资源需求下降*注。整个 HDO 大致分为两部分，包括针对单个参数张量更新的底层优化器集合，以及用于管理优化器参数映射关系、优化器保存/读取、以及更新过程中子优化器间同步的 HDO 类。&lt;/p&gt; 
-&lt;p&gt;&amp;nbsp;&lt;/p&gt; 
-&lt;p&gt;&lt;img src=&quot;https://oscimg.oschina.net/oscnet//f44b34f0fc6d5d9c7efc682cbcd49061.png&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
-&lt;p&gt;&amp;nbsp;&lt;/p&gt; 
-&lt;p&gt;由于在先前版本的 Megatron-Core 中，优化器内全精度参数创建部分由 DistributedOptimizer 默认分配到 GPU 上，并不能进行卸载，导致最初 HDO 的实际显存优化仅有 8M 而非旧版深度定制 DO 的 12M。为了解决这一问题，我们修改了 DO 的参数创建逻辑，当识别到用户启用优化器卸载特性时，DO 自动将全精度参数创建这一步骤交由 HDO 进行，避免了冗余显存分配。&lt;/p&gt; 
-&lt;p&gt;&amp;nbsp;&lt;/p&gt; 
-&lt;p&gt;注: 由于参数已经被外部创建，为了不对这些参数进行修改，这一场景下仅能将 8M 的 Adam/AdamW 优化器状态分配及参数更新移动到 CPU 上进行，对于 SGD 优化器，由于无额外的固定显存分配，HDO 没有卸载效果。&lt;/p&gt; 
-&lt;p&gt;&amp;nbsp;&lt;/p&gt; 
-&lt;ul&gt; 
- &lt;li&gt; &lt;p&gt;优化器初始化&lt;/p&gt; &lt;/li&gt; 
-&lt;/ul&gt; 
-&lt;p&gt;&amp;nbsp;&lt;/p&gt; 
-&lt;p&gt;与支持单一设备张量的优化器不同，为了实现位于不同设备上的多个张量的参数更新及性能优化，HDO 被实现为多个子优化器的集合，每个子优化器负责单一设备上的数个张量的参数更新，而 HDO 用于实现主优化器与子优化器间的优化状态同步、Device/Host 间的参数/梯度传递以及由此引发的 CUDA 同步问题。在优化器初始化阶段，相对于普通的 Adam，HDO 额外要求用户指定 CPU/CUDA 上的子优化器类型以及相应的卸载比例，随后基于这一比例对 param_groups 进行拆分，再重新构造对应设备上的子优化器。在训练阶段，由于 lr_scheduler 等外部因素可能会对优化器参数产生影响，在子优化器参数更新前，HDO 会将所有状态同步到子优化器，如果子优化器在 CPU 上更新，也会将 GPU 梯度复制到 CPU 上。由于子优化器也可能修改参数组的状态，在更新结束后，每个子优化器也会将这些状态同步到主优化器，从而保证与非优化器卸载训练的收敛一致性。&lt;/p&gt; 
-&lt;p&gt;&amp;nbsp;&lt;/p&gt; 
-&lt;ul&gt; 
- &lt;li&gt; &lt;p&gt;优化器保存/读取，及 卸载比例变换&lt;/p&gt; &lt;/li&gt; 
-&lt;/ul&gt; 
-&lt;p&gt;&amp;nbsp;&lt;/p&gt; 
-&lt;p&gt;相对于 Pai-Megatron-Patch 内的优化器卸载模块，HDO 支持完整的优化器保存/读取特性，同时也支持加载优化器时切换优化器卸载比例，具有更大的灵活性。如前文所述，HDO 内部由多个子优化器负责实际参数更新，在每个参数更新阶段开始前/结束后分别进行 HDO 及子优化器间参数的同步。在保存优化器状态时，由于 HDO 内数据与子优化器一致，HDO 的 state_dict 即包含恢复优化器所需的全部信息。在加载权重时，由于子优化器需要基于 fp32 参数进行更新，我们引入了 pre_load_state_dict_hook 以及 post_load_state_dict_hook，将 HDO 的 state 中的半精度参数数据临时用保存的 fp32 替换后同步到子优化器，再替换回来，随后调用&lt;code&gt;_move_new_state_to_right_device&lt;/code&gt;，将每个子优化器的状态移动到其对应的设备。通过在运行时更新子优化器的对应设备，我们能将在一个卸载比例下保存的模型在另一个优化器卸载配置上拉起训练。&lt;/p&gt; 
-&lt;p&gt;&amp;nbsp;&lt;/p&gt; 
-&lt;ul&gt; 
- &lt;li&gt; &lt;p&gt;Naive Optimizer Overlapping 技术&lt;/p&gt; &lt;/li&gt; 
-&lt;/ul&gt; 
-&lt;p&gt;&amp;nbsp;&lt;/p&gt; 
-&lt;p&gt;与 CUDA 上的参数更新相比，基于 CPU 的参数更新性能成为优化器卸载技术是否可用的关键因素。通常，优化器卸载的时间包含三个部分：将 CUDA 梯度同步到 CPU(D2H)、在 CPU 上进行参数更新 (C)、将更新后的 CPU 参数同步到 CUDA(H2D)。为了尽可能提升性能，我们提出了一项 Naive optimizer Overlapping 技术，通过 PyTorch 的 CUDA Stream 机制，实现通信与计算重叠，将 CPU-CUDA 间数据拷贝的时间尽可能掩盖在 CPU 计算下。在 Naive optimizer Overlapping 中，我们的一个主要改进是将 CPU 子优化器进一步打散，使一个 CPU 参数对应一个 CPU 优化器，同时令所有拷贝非阻塞化。这一改进允许 HDO 在单个梯度张量同步完成后立即调用 CPU 参数更新，无需等待所有梯度完成拷贝，也允许 CPU 参数更新完成后立刻非阻塞拷贝到 GPU，从而实现重叠。为了保证多个 CUDA Stream 以及 CPU 之间正确的数据同步关系，同时尽可能避免影响性能，我们仅在关键位置引入 CUDAEvent，来避免额外流同步带来的开销。下图表示了一个理想的优化器重叠场景，其中每个参数张量的更新时间与两次数据传输接近。当流水线热身结束后（time step 2），可以看到 HDO 在两个 CUDA Stream 上进行双向的数据拷贝同时，CPU 也在同时进行参数更新。这一方式最大化掩盖了冗长的数据传输时间，&lt;strong&gt;在我们测试的 LLaMA2-70B 训练中，我们观察到该优化能减少约 1s 的端到端时间。&lt;/strong&gt;&lt;/p&gt; 
-&lt;p&gt;&amp;nbsp;&lt;/p&gt; 
-&lt;p&gt;&lt;img src=&quot;https://oscimg.oschina.net/oscnet//5ca7cdd30c2c3af2cf816eeb23f0e253.png&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
-&lt;span id=&quot;OSC_h1_6&quot;&gt;&lt;/span&gt; 
-&lt;h1&gt;多模态流水并行性能优化&lt;/h1&gt; 
-&lt;p&gt;多模态大模型训练微调作为英伟达 Megatron 的新特性，目前仍在持续开发中。在 3D 并行方面，目前以 LLaVA 为代表的多模态模型的类型均为 ModelType.encoder_and_decoder，它对 encoder（视觉编码器）与 decoder（LLM 解码器）分别引入了一套 TP/PP 参数，同时支持特殊的 Encoder PP 配置：当 Encoder PP&amp;gt;0 时，Megatron 会将 Encoder 放在独立的 GPU 上，允许两部分模型使用不同的 TP/PP 参数初始化；当 Encoder PP=0 时，Megatron 将 Encoder 部分按照 Decoder 的 TP 切分后，与 Decoder 的第一个 PP Stage 合并，放置在同一组 GPU 上。其中，前种切分方式一般适用于编码器/解码器结构类似、参数量接近的情况；后者则适用于视觉编码器参数量较少，计算量不大的场景。考虑到 Qwen2-VL 的视觉编码器大小以及用户体验，我们最初采用了编码器与解码器部分合并的切分方式，来保持和其他 LLM 相似的切分参数配置，减少学习成本。但在实际测试中，通过与基模型 Qwen2 对比，我们观察到这一合并显著降低了 Qwen2-VL 的训练吞吐。这主要由两方面因素导致：(1) 由于模型结构不一致，视觉编码器与 LLM 解码器的前向速度有差异，导致 micro batch 内哥 GPU 间存在负载不均衡;(2) 由于视觉编码器支持动态分辨率特性，对于每个 micro batch，实际前向的 token 数并不一致，使得每个 mciro batch 计算量略有差异，出现各 GPU 间存在负载不均衡的情况。&lt;/p&gt; 
-&lt;p&gt;&amp;nbsp;&lt;/p&gt; 
-&lt;p&gt;为了解决上述负载不均衡的问题，进一步提升训练吞吐，在原生 Megatron 的基础上，我们从两个方向对现有框架进行改进尝试：(1) 基于非均匀切分策略间的负载均衡;(2) 拓展模型实现以支持虚拟流水线并行特性。&lt;/p&gt; 
-&lt;p&gt;&amp;nbsp;&lt;/p&gt; 
-&lt;ul&gt; 
- &lt;li&gt; &lt;p&gt;基于非均匀切分策略间的负载均衡：在模型总参数量较小或 PP 较大的并行配置下，pp rank 0 包含的视觉编码器带来的额外计算量相对于原有的 LLM 解码器的计算量比例有显著提升。由于在流水线中，最慢的步骤决定了整体的性能，应用 megatron 内的非均匀切分特性，将部分计算量转移到其他 pp rank 上，能有效提升整体的训练性能。为了支持基于非均匀切分的继续预训练或微调功能，我们同步更新了 Qwen2-VL 的转换模型，用户可以通过控制 MP_PP0_LAYERS 环境变量，获得非均匀切分的模型权重文件。&lt;/p&gt; &lt;/li&gt; 
-&lt;/ul&gt; 
-&lt;p&gt;&amp;nbsp;&lt;/p&gt; 
-&lt;p&gt;&lt;img src=&quot;https://oscimg.oschina.net/oscnet//32be076a3fe4ab8d995a8aa30ddcf555.png&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
-&lt;p&gt;&amp;nbsp;&lt;/p&gt; 
-&lt;ul&gt; 
- &lt;li&gt; &lt;p&gt;虚拟流水线并行特性：虚拟流水线并行，或 interleaved 1F1B PP 是 Megatron-LM 在 1F1B 的流水线并行实现上的重要改进。它通过将同一个 pp stage 内的 transformer 层分配到多个 GPU，进一步打碎计算，通过增大通信量的方式使负载更加均衡，降低 Global Batch 内的 bubble 比例。然而， 对于 encoder_and_decoder 类型的模型（即英伟达内置的所有多模态模型），MCore 不支持启用 VPP。考虑到视觉编码器的整体计算量不需要独立 GPU，我们进一步改进了 Qwen2-VL 实现，移除了 Encoder PP 的支持，并将 Qwen2-VL 的模型类型设置为 LLM 的 encoder_or_decoder 来启用 VPP 选项。&lt;strong&gt;与官方论文的结果不同，我们观察到虚拟流水线并行也能起到训练加速效果，甚至在 H20 上，我们观察到相对于非均匀切分，虚拟流水线并行的加速效果更加明显。&lt;/strong&gt;&lt;/p&gt; &lt;/li&gt; 
-&lt;/ul&gt; 
-&lt;span id=&quot;OSC_h1_7&quot;&gt;&lt;/span&gt; 
-&lt;h1&gt;实验分析&lt;/h1&gt; 
-&lt;p&gt;在本节中，我们对上述提到的技术对 Qwen2-VL 模型的性能及收敛情况展开了全面的分析，主要包括三方面：1. 权重转换精度分析：通过对比转换前后的模型测试集表现，我们验证了权重转换模块的正确性；2.多模态长序列显存优化分析：通过引入 HDO 对优化器进行卸载，在相同 GPU 数量的情形下，Pai-Megatron-Patch 大大提升了长序列训练的可用性；3.多模态模型训练性能优化：全面测试了各训练加速技术对于不同设备/模型大小的影响，论证了技术的有效性，同时为用户提供开关设置的指引。&lt;/p&gt; 
-&lt;span id=&quot;OSC_h3_8&quot;&gt;&lt;/span&gt; 
-&lt;h3&gt;权重转换精度分析&lt;/h3&gt; 
-&lt;p&gt;为了验证 PAI-Megatron-Patch 内多模态模型转换的正确性，我们采用 VLMEvalKit 对转换前后的 Qwen2-VL-7B 模型在多个数据集上的表现进行评估。结果如下图，其中 Ref 是 VLMEvalKit 提供的在 SEEDBench 及 MMBench 上的评估分数，Official 是官方权重在测试环境内的实测分数，Convert 为将官方原始权重进行两次转换得到的新 Huggingface 权重的分数。可以看到，转换前后的模型评估分数完全一致，且均与开源 leaderboard 指标接近，有效说明了转换代码的正确性。&lt;/p&gt; 
-&lt;p&gt;&amp;nbsp;&lt;/p&gt; 
-&lt;p&gt;&lt;img src=&quot;https://oscimg.oschina.net/oscnet//03efee772c4e46b60b013c2d364ef1c2.png&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
-&lt;span id=&quot;OSC_h3_9&quot;&gt;&lt;/span&gt; 
-&lt;h3&gt;基于优化器卸载的多模态长序列显存优化&lt;/h3&gt; 
-&lt;p&gt;在本节中，我们探索了通过 HDO 与其他显存优化技术复合，进一步提升有限机器场景下可训练上下文长度上限的可能性。我们分别测试了 Qwen2-VL 7B/72B 在单机 8 卡、四机 32 卡的无 offload 情况下的最长上下文，以及打开所有优化后的上下文长度，结果如下表。&lt;/p&gt; 
-&lt;p&gt;&amp;nbsp;&lt;/p&gt; 
-&lt;p&gt;&lt;img src=&quot;https://oscimg.oschina.net/oscnet//e1dc0526f3b5d0fc7ccb86254065117d.png&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
-&lt;p&gt;&amp;nbsp;&lt;/p&gt; 
-&lt;p&gt;可以看到，对于 Qwen2-VL 7B 模型，通过结合激活重计算技术及优化器卸载技术，我们将原本 64K 上下文长度的训练上限进一步拓展到 128K，且没有 OOM 风险。*对于 72B 模型，结论类似，通过结合多种正交的显存优化技术，我们也将四机 32 卡 A100 的可训练上下文长度从 16K 提升到 128K。&lt;/p&gt; 
-&lt;p&gt;&amp;nbsp;&lt;/p&gt; 
-&lt;p&gt;*注：在单独开启重计算的情况下我们也成功在 demo 数据集上实现了 128K 上下文长度的训练，此时显存空闲不到 1G，考虑到实际场景下视觉模型占用的显存会随数据变化等原因，不推荐使用这一配置训练。&lt;/p&gt; 
-&lt;span id=&quot;OSC_h3_10&quot;&gt;&lt;/span&gt; 
-&lt;h3&gt;多模态模型训练性能优化&lt;/h3&gt; 
-&lt;p&gt;在本节中，我们针对两种大小的 Qwen2-VL 模型的训练场景，测试了 PAI-Megatron-Patch 当前支持的训练优化技术对吞吐的影响，来说明其在不同场景下的优势。具体地，我们采用预处理的 LLaVA-Pretrain 数据集 (参见 Qwen2-VL 的最佳实践文档) 在 4K 上下文长度下对 Qwen2-VL-7B/70B 进行训练，在最佳并行配置的基础上，进一步打开各类优化技术以比较模型性能的变化。其中，&lt;code&gt;PP0_layers&lt;/code&gt;表示开启非均匀切分时，PP Rank0 上的 LLM Decode r 层数，&lt;code&gt;TGP&lt;/code&gt;内的三个字母依次表示&lt;code&gt;tp-comm-overlap&lt;/code&gt;、&lt;code&gt;overlap-grad-reduce&lt;/code&gt;、&lt;code&gt;overlap-param-gather&lt;/code&gt;三个优化开关的启用状态。对于每个实验，我们记录了其训练时的每秒 token 数 (TGS) 及 MFU。需要注意的是，由于 megatron-core 暂不支持估计视觉编码器的 TFLOPs，记录的 MFU 仅基于 LLM 的运算量计算得到，因此略低于实际值。&lt;/p&gt; 
-&lt;span id=&quot;OSC_h4_11&quot;&gt;&lt;/span&gt; 
-&lt;h4&gt;overlap 开关对训练吞吐的影响&lt;/h4&gt; 
-&lt;p&gt;&lt;img src=&quot;https://oscimg.oschina.net/oscnet//8ccde1833962a155ee78229e63d7572e.png&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
-&lt;p&gt;&amp;nbsp;&lt;/p&gt; 
-&lt;p&gt;相对于 LLM，由于存在多个不同结构的 transformer，多模态模型并不原生支持 megatron-core 的某些 overlap 技术，同时差异化的结构也可能导致 overlap 的收益与 LLM 不同。在本节中，我们在 A100 上测试了&lt;code&gt;tp-comm-overlap&lt;/code&gt;、&lt;code&gt;overlap-grad-reduce&lt;/code&gt;、&lt;code&gt;overlap-param-gather&lt;/code&gt;三个优化开关对 Qwen2-VL 7B/72B 训练吞吐的影响，结果如上表所示。主要结论如下：&lt;/p&gt; 
-&lt;p&gt;&amp;nbsp;&lt;/p&gt; 
-&lt;ol&gt; 
- &lt;li&gt; &lt;p&gt;对于 Qwen2-VL，可以观察到&lt;code&gt;overlap-grad-reduce&lt;/code&gt;及&lt;code&gt;overlap-param-gather&lt;/code&gt;无论在 7B/72B 模型规模上均导致了性能出现略微下降。&lt;/p&gt; &lt;/li&gt; 
- &lt;li&gt; &lt;p&gt;相对于 72B 模型 (~8%),7B 模型开启&lt;code&gt;tp-comm-overlap&lt;/code&gt;的直接收益可以忽略不计。这主要是因为 7B 模型实际运行时的低 TP 数以及未开启 overlap 的 vision model 计算量占比相对较高。&lt;/p&gt; &lt;/li&gt; 
-&lt;/ol&gt; 
-&lt;span id=&quot;OSC_h4_12&quot;&gt;&lt;/span&gt; 
-&lt;h4&gt;虚拟流水并行及非均匀切分对训练吞吐的影响&lt;/h4&gt; 
-&lt;p&gt;基于 megatron-core 的核心能力，Pai-Megatron-Patch 为 Qwen2-VL 提供了两种性能优化方式：多模态大模型的虚拟流水并行及解码器非均匀切分技术。为了比较这两者对训练吞吐的影响差异，我们在最佳并行配置的基础上，比较了两种技术的性能上限，结果如下表。其中，VP 表示每个虚拟并行块中的解码器 Transformer 层数（区别于通常意义的 VPP Size）。&lt;/p&gt; 
-&lt;p&gt;&amp;nbsp;&lt;/p&gt; 
-&lt;p&gt;&lt;img src=&quot;https://oscimg.oschina.net/oscnet//e941277896d9cc4003214357264a1e77.png&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
-&lt;p&gt;&amp;nbsp;&lt;/p&gt; 
-&lt;p&gt;从表中我们能得出的主要结论如下：&lt;/p&gt; 
-&lt;p&gt;&amp;nbsp;&lt;/p&gt; 
-&lt;ol&gt; 
- &lt;li&gt; &lt;p&gt;尽管&lt;code&gt;tp-comm-overlap&lt;/code&gt;仅能为 Qwen2-VL 72B 模型直接带来约 8% 的性能提升，然而，通过序列并行带来的显存优化，模型有进一步降低并行数来提升吞吐的潜力。例如在 H20 上，我们观察到，通过打开 SP 及 TP Comm overlap 开关，模型可以采用 TP4PP4 的配置进行训练，通过调整虚拟流水并行，相对于 TP8PP4 的最佳性能有额外 15% 的性能提升。&lt;/p&gt; &lt;/li&gt; 
- &lt;li&gt; &lt;p&gt;由于各 GPU 的机内、机间带宽差异，在不同的 GPU 上，最佳优化技术有所不同。&lt;/p&gt; &lt;/li&gt; 
- &lt;li&gt; &lt;p&gt;与 Qwen2-VL 论文的结果不同，我们的 VPP（或 1F1B interleaved）实现在 A100/H20 机器上均有一定的性能提升。&lt;/p&gt; &lt;/li&gt; 
-&lt;/ol&gt; 
-&lt;span id=&quot;OSC_h1_13&quot;&gt;&lt;/span&gt; 
-&lt;h1&gt;总结&lt;/h1&gt; 
-&lt;p&gt;在基于 Megatron 的 Qwen2-VL 多模态大模型最佳实践开发过程中，我们围绕大模型训练测试了以下核心技术的性能：&lt;/p&gt; 
-&lt;p&gt;&amp;nbsp;&lt;/p&gt; 
-&lt;ul&gt; 
- &lt;li&gt; &lt;p&gt;支持模型并行的权重转换。&lt;/p&gt; &lt;/li&gt; 
- &lt;li&gt; &lt;p&gt;基于 CPU 卸载的多模态长序列显存优化的鲁棒性。&lt;/p&gt; &lt;/li&gt; 
- &lt;li&gt; &lt;p&gt;基于 Megatron 的多重训练加速技术的稳定性。&lt;/p&gt; &lt;/li&gt; 
- &lt;li&gt; &lt;p&gt;运用综合加速技术来训练 Qwen2-VL 过程中的易用性和稳定性。&lt;/p&gt; &lt;/li&gt; 
-&lt;/ul&gt; 
-&lt;p&gt;&amp;nbsp;&lt;/p&gt; 
-&lt;p&gt;后续在 Pai-Megatron-Patch 中还会陆续放出更多高质量的大模型最佳实践以及最新的训练加速技术应用示例，敬请期待。&lt;/p&gt; 
-&lt;span id=&quot;OSC_h1_14&quot;&gt;&lt;/span&gt; 
-&lt;h1&gt;参考文献&lt;/h1&gt; 
-&lt;ol&gt; 
- &lt;li&gt; &lt;p&gt;DeepSeek-V2: A Strong, Economical, and Efficient Mixture-of-Experts Language Model&lt;/p&gt; &lt;/li&gt; 
- &lt;li&gt; &lt;p&gt;Qwen2-VL: Enhancing Vision-Language Model&#39;s Perception of the World at Any Resolution&lt;/p&gt; &lt;/li&gt; 
- &lt;li&gt; &lt;p&gt;MMBench: Is Your Multi-modal Model an All-around Player?&lt;/p&gt; &lt;/li&gt; 
- &lt;li&gt; &lt;p&gt;SEED-Bench: Benchmarking Multimodal LLMs with Generative Comprehension&lt;/p&gt; &lt;/li&gt; 
- &lt;li&gt; &lt;p&gt;&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fgithub.com%2Fopen-compass%2FVLMEvalKit&quot; rel=&quot;nofollow&quot; target=&quot;_blank&quot;&gt;https://github.com/open-compass/VLMEvalKit&lt;/a&gt;&lt;/p&gt; &lt;/li&gt; 
-&lt;/ol&gt; 
-&lt;p&gt;&amp;nbsp;&lt;/p&gt;
-                                                                                    &lt;/div&gt;
-                                                                            </description>
-            <link>https://my.oschina.net/u/5583868/blog/17876695</link>
-            <guid isPermaLink="false">https://my.oschina.net/u/5583868/blog/17876695</guid>
-            <pubDate>Wed, 05 Mar 2025 07:09:00 GMT</pubDate>
-            <author>原创</author>
-        </item>
-        <item>
-            <title>奇安信：攻击 X 平台的僵尸网络与春节攻击 DeepSeek 的为同一组织</title>
-            <description>&lt;div class=&quot;content&quot;&gt;
-                                                                    
-                                                        &lt;p&gt;美国东部时间 3 月 10 日，埃隆·马斯克一天内遭遇了双重打击：除了特斯拉股价下跌 15%、自高点几乎腰斩之外，其旗下的社交媒体 X 平台（原 Twitter）还遭遇了大规模网络攻击，导致全球范围内多次宕机，许多用户无法正常使用该应用程序。&lt;/p&gt; 
-&lt;p&gt;&lt;img alt=&quot;&quot; src=&quot;https://oscimg.oschina.net/oscnet/up-3d867334583b4a067b5d5ac7e28903e2b6f.png&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
-&lt;p&gt;&lt;img alt=&quot;&quot; src=&quot;https://oscimg.oschina.net/oscnet/up-c22e078be8628892b35aceafc606813c59c.png&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
-&lt;p&gt;&lt;u&gt;&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fmp.weixin.qq.com%2Fs%2FBSbnMTxG_piE0Mi_bH4v0A&quot; target=&quot;_blank&quot;&gt;奇安信 Xlab 实验室监测发现&lt;/a&gt;&lt;/u&gt;，&lt;strong&gt;此次攻击所使用的僵尸网络为 Mirai 变种僵尸网络 RapperBot，&lt;/strong&gt;攻击时间与 X 平台宕机时间完全吻合，主要集中在北京时间 3 月 10 日晚 10 点至 11 日凌晨 2 点。&lt;strong&gt;与 2025 年春节期间攻击 DeepSeek 的属于同一组僵尸网络&lt;/strong&gt;。&lt;/p&gt; 
-&lt;p&gt;据称该僵尸网络常年活跃，以高强度的流量攻击闻名，平均每天攻击上百个目标，高峰时期指令上千条，能够迅速瘫痪目标服务器。攻击目标分布在巴西、白俄罗斯、俄罗斯、中国、瑞典等地区。此次攻击规模之大、烈度之猛，直接导致 X 平台在美国东部时间 3 月 10 日遭遇三次明显服务中断，最高时有 20538 名用户报告故障。&lt;/p&gt; 
-&lt;p&gt;RapperBot 僵尸网络并非普通黑客组织，而是对外提供有偿攻击服务的「职业打手」。其攻击规模和资源投入远超普通网络攻击，可能涉及大型组织甚至国家层面的支持。&lt;/p&gt;
-                                                                                &lt;/div&gt;
-                                                                            </description>
-            <link>https://www.oschina.net/news/338164</link>
-            <guid isPermaLink="false">https://www.oschina.net/news/338164</guid>
-            <pubDate>Wed, 05 Mar 2025 07:04:00 GMT</pubDate>
-            <author>来源: OSCHINA</author>
-        </item>
-        <item>
-            <title>RWKV7-G1 0.1B 推理模型发布，最适合嵌入式的纯血 RNN 模型</title>
-            <description>&lt;div class=&quot;content&quot;&gt;
-                                                                    
-                                                        &lt;p&gt;2025 年 3 月 10 日，RWKV 基金会发布第一个 &lt;strong&gt;RWKV-7 推理模型&lt;/strong&gt;（Reasoning Model）： &lt;strong&gt;RWKV7-G1&lt;/strong&gt; 0.1B。&lt;/p&gt; 
-&lt;p&gt;RWKV7-G1 系列模型拥有&lt;strong&gt;杰出的推理能力&lt;/strong&gt;，且原生支持世界 100+ 种语言和代码。即使是最小的 0.1B 也能回答&lt;strong&gt;开放性和创造性问题&lt;/strong&gt;。&lt;/p&gt; 
-&lt;blockquote&gt; 
- &lt;p&gt;RWKV7-G1（&quot;GooseOne&quot;）系列推理模型是基于 World v3.5 数据集&lt;strong&gt;继续训练&lt;/strong&gt; RWKV-7 &quot;Goose&quot; World 系列模型。&lt;/p&gt; 
- &lt;p&gt;World v3.5 数据集包含更多小说、网页、数学、代码和 reasoning 数据，总数据为 5.16T tokens。对于 0.1B 模型，我们会随机采样其中的 1T tokens 训练。&lt;/p&gt; 
-&lt;/blockquote&gt; 
-&lt;p&gt;目前我们已能在手机高通 8gen3 以 62 token/s 推理 RWKV-7 1.5B 模型，而 0.1B 模型在树莓派也能跑得挺快，欢迎做嵌入式的朋友加入 RWKV 技术群讨论。&lt;/p&gt; 
-&lt;h2&gt;模型表现&lt;/h2&gt; 
-&lt;p&gt;RWKV7-G1 0.1B 模型回答 &lt;code&gt;simulate SpaceX mars landing using python&lt;/code&gt;（使用 python 模拟 SpaceX 火星着陆）」：&lt;/p&gt; 
-&lt;p&gt;&lt;img alt=&quot;RWKV G1 0.1B simulate SpaceX mars landing using python&quot; height=&quot;2276&quot; src=&quot;https://oscimg.oschina.net/oscnet/up-a90a626d3589d084f50ce2836131854b642.jpg&quot; width=&quot;650&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
-&lt;p&gt;日本开发者测试 RWKV7-G1 0.1B 的多语言能力：&lt;/p&gt; 
-&lt;p&gt;&lt;img alt=&quot;RWKV7-G1-0.1B-jpn&quot; height=&quot;480&quot; src=&quot;https://oscimg.oschina.net/oscnet/up-30c2c03d927be963bcead808ee26ffd2196.png&quot; width=&quot;600&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
-&lt;p&gt;如此小的 0.1B 模型，也能同时支持世界 100+ 种语言和代码。更大参数的 RWKV7-G1 0.4B/1.5B/2.9B &lt;strong&gt;正在同时训练中&lt;/strong&gt;。&lt;/p&gt; 
-&lt;h2&gt;英文和多语言测评&lt;/h2&gt; 
-&lt;p&gt;RWKV7-G1 0.1B 的英文和多语言能力相比 RWKV-7-World 0.1B 继续提升：&lt;/p&gt; 
-&lt;p&gt;&lt;img height=&quot;141&quot; src=&quot;https://oscimg.oschina.net/oscnet/up-c2badec5fa9dba560aa79f167930e033418.png&quot; width=&quot;1441&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
-&lt;p&gt;我们也对 RWKV7-G1 0.1B 进行了 「无法作弊的模型评测」 Uncheatable Eval，可见 RWKV7-G1 0.1B 对于多种新数据的压缩率，显著超越所有其它同尺寸的开源模型：&lt;/p&gt; 
-&lt;p&gt;&lt;img height=&quot;154&quot; src=&quot;https://oscimg.oschina.net/oscnet/up-d64cc13d9c6b94f4752c404005bbf9b83bb.png&quot; width=&quot;700&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
-&lt;p&gt;&lt;strong&gt;Uncheatable Eval：&lt;/strong&gt;&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fhuggingface.co%2Fspaces%2FJellyfish042%2FUncheatableEval&quot; target=&quot;_blank&quot;&gt;https://huggingface.co/spaces/Jellyfish042/UncheatableEval&lt;/a&gt;&lt;/p&gt; 
-&lt;h2&gt;训练中的 RWKV7-G1 1.5B 模型&lt;/h2&gt; 
-&lt;p&gt;以下示例基于 &lt;code&gt;RWKV7-G1-1.5B-16%trained&lt;/code&gt;模型，注意这个模型目前只训练了 16%。后续 100% 训练完成的 RWKV7-G1 1.5B 会显著更强：&lt;/p&gt; 
-&lt;p&gt;&lt;img height=&quot;1556&quot; src=&quot;https://oscimg.oschina.net/oscnet/up-4b81465fc759bfe4e90f4c9969ce95b71d2.png&quot; width=&quot;812&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
-&lt;p&gt;RWKV7-G1-1.5B-16%trained 的示例二：&lt;/p&gt; 
-&lt;p&gt;&lt;img height=&quot;541&quot; src=&quot;https://oscimg.oschina.net/oscnet/up-a300e868682a29ea61efa75a25523cee5fd.png&quot; width=&quot;660&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
-&lt;p&gt;训练中的 RWKV 模型可在 &lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fhuggingface.co%2FBlinkDL%2Ftemp-latest-training-models%2Ftree%2Fmain&quot; target=&quot;_blank&quot;&gt;https://huggingface.co/BlinkDL/temp-latest-training-models/tree/main&lt;/a&gt; 下载。&lt;/p&gt; 
-&lt;h2&gt;模型试用&lt;/h2&gt; 
-&lt;p&gt;可以在 &lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fhuggingface.co%2Fspaces%2FBlinkDL%2FRWKV-Gradio-2&quot; target=&quot;_blank&quot;&gt;Hugging Face Gradio Demo&lt;/a&gt; 试用 RWKV7-G1 0.1B 模型。&lt;/p&gt; 
-&lt;p&gt;G1 的整体 prompt 格式与 RWKV-7 模型类似，可选使用 &lt;code&gt;&amp;lt;think&amp;gt;&lt;/code&gt; 标签开启 reasoning 功能：&lt;/p&gt; 
-&lt;pre&gt;&lt;code&gt;User: 你不许参加学术派对！
-
-Assistant: &amp;lt;think&amp;gt;
-&lt;/code&gt;&lt;/pre&gt; 
-&lt;p&gt;RWKV Runner 和 Ai00 等 RWKV 推理工具&lt;strong&gt;正在适配 reasoning 聊天模式&lt;/strong&gt;，因此目前只能在&lt;strong&gt;续写模式中&lt;/strong&gt;体验 reasoning 功能。&lt;/p&gt; 
-&lt;h2&gt;模型下载&lt;/h2&gt; 
-&lt;p&gt;下载已完成训练的 RWKV7-G1 0.1B 模型：&lt;/p&gt; 
-&lt;ul&gt; 
- &lt;li&gt;Hugging Face：&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fhuggingface.co%2FBlinkDL%2Frwkv7-g1%2Ftree%2Fmain&quot; target=&quot;_blank&quot;&gt;https://huggingface.co/BlinkDL/rwkv7-g1/tree/main&lt;/a&gt;&lt;/li&gt; 
- &lt;li&gt;魔搭社区：&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fmodelscope.cn%2Fmodels%2FRWKV%2Frwkv7-g1%2Ffiles&quot; target=&quot;_blank&quot;&gt;https://modelscope.cn/models/RWKV/rwkv7-g1/files&lt;/a&gt;&lt;/li&gt; 
- &lt;li&gt;WiseModel：&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fwisemodel.cn%2Fmodels%2Frwkv4fun%2FRWKV-7-G1%2Ffile&quot; target=&quot;_blank&quot;&gt;https://wisemodel.cn/models/rwkv4fun/RWKV-7-G1/file&lt;/a&gt;&lt;/li&gt; 
-&lt;/ul&gt; 
-&lt;p&gt;下载其他训练中的 RWKV7-G1 模型：&lt;/p&gt; 
-&lt;ul&gt; 
- &lt;li&gt;Hugging Face：&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fhuggingface.co%2FBlinkDL%2Ftemp-latest-training-models%2Ftree%2Fmain&quot; target=&quot;_blank&quot;&gt;https://huggingface.co/BlinkDL/temp-latest-training-models/tree/main &lt;/a&gt;&lt;/li&gt; 
- &lt;li&gt;魔搭社区：&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fmodelscope.cn%2Fmodels%2FRWKV%2Ftemp-latest-training-models%2Ffiles&quot; target=&quot;_blank&quot;&gt;https://modelscope.cn/models/RWKV/temp-latest-training-models/files&lt;/a&gt;&lt;/li&gt; 
-&lt;/ul&gt; 
-&lt;h2&gt;G1 模型发布计划&lt;/h2&gt; 
-&lt;p&gt;当前已发布 G1 0.1B 模型，正在训练 G1 0.4B/1.5B/2.9B，具体发布计划如下：&lt;/p&gt; 
-&lt;table&gt; 
- &lt;tbody&gt; 
-  &lt;tr&gt; 
-   &lt;th&gt;模型&lt;/th&gt; 
-   &lt;th&gt;发布计划&lt;/th&gt; 
-  &lt;/tr&gt; 
- &lt;/tbody&gt; 
- &lt;tbody&gt; 
-  &lt;tr&gt; 
-   &lt;td&gt;G1 0.1B&lt;/td&gt; 
-   &lt;td&gt;3 月 8 日（已发布）&lt;/td&gt; 
-  &lt;/tr&gt; 
-  &lt;tr&gt; 
-   &lt;td&gt;G1 0.4B&lt;/td&gt; 
-   &lt;td&gt;3 月下旬&lt;/td&gt; 
-  &lt;/tr&gt; 
-  &lt;tr&gt; 
-   &lt;td&gt;G1 1.6B&lt;/td&gt; 
-   &lt;td&gt;4 月&lt;/td&gt; 
-  &lt;/tr&gt; 
-  &lt;tr&gt; 
-   &lt;td&gt;G1 2.9B&lt;/td&gt; 
-   &lt;td&gt;5 月&lt;/td&gt; 
-  &lt;/tr&gt; 
- &lt;/tbody&gt; 
-&lt;/table&gt; 
-&lt;p&gt;我们也在同时准备更大更优的数据集 &lt;strong&gt;World v3.7&lt;/strong&gt;，用于 G1 7B 训练。&lt;/p&gt; 
-&lt;h2&gt;RWKV-7 学术支持&lt;/h2&gt; 
-&lt;p&gt;RWKV 社区近期新增了大量 RWKV 学术研究论文，以下是截至 2025 年 2 月的 RWKV 论文数量统计表格：&lt;/p&gt; 
-&lt;p&gt;&lt;img height=&quot;546&quot; src=&quot;https://oscimg.oschina.net/oscnet/up-ad88e36470c390ace32e587452140fa813c.png&quot; width=&quot;650&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
-&lt;p&gt;欢迎大家基于 RWKV-7 进行创业、科研，我们也会为基于 RWKV 的项目提供技术支持。&lt;/p&gt; 
-&lt;p&gt;如果您的团队正在基于 RWKV 创业或开展研究，请联系我们！（在「RWKV 元始智能」微信公众号留言您的联系方式，或发送邮件到「contact@rwkvos.com」。）&lt;/p&gt; 
-&lt;h2&gt;加入 RWKV 社区&lt;/h2&gt; 
-&lt;p&gt;欢迎大家加入 RWKV 社区，可以从 RWKV 中文官网了解 RWKV 模型，也可以加入 RWKV 论坛、QQ 频道和 QQ 群聊，一起探讨 RWKV 模型。&lt;/p&gt; 
-&lt;ul&gt; 
- &lt;li&gt;📖 RWKV 中文文档：&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fwww.rwkv.cn&quot; target=&quot;_blank&quot;&gt;https://www.rwkv.cn&lt;/a&gt;&lt;/li&gt; 
- &lt;li&gt;💬 RWKV 论坛：&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fcommunity.rwkv.cn%2F&quot; target=&quot;_blank&quot;&gt;https://community.rwkv.cn/&lt;/a&gt;&lt;/li&gt; 
- &lt;li&gt;🐧 QQ 频道：&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fpd.qq.com%2Fs%2F9n21eravc&quot; target=&quot;_blank&quot;&gt;https://pd.qq.com/s/9n21eravc&lt;/a&gt;&lt;/li&gt; 
- &lt;li&gt;📺 BiliBili 视频教程：&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fspace.bilibili.com%2F3546689096910933&quot; target=&quot;_blank&quot;&gt;https://space.bilibili.com/3546689096910933&lt;/a&gt;&lt;/li&gt; 
-&lt;/ul&gt;
-                                                                                &lt;/div&gt;
-                                                                            </description>
-            <link>https://www.oschina.net/news/338160</link>
-            <guid isPermaLink="false">https://www.oschina.net/news/338160</guid>
-            <pubDate>Wed, 05 Mar 2025 06:53:00 GMT</pubDate>
-            <author>来源: 投稿</author>
-        </item>
-        <item>
-            <title>李想：AGI 投资远超互联网、一两年内还不具备更好的商业模式</title>
-            <description>&lt;div class=&quot;content&quot;&gt;
-                                                                    
-                                                        &lt;p&gt;理想汽车 CEO 李想近日在朋友圈分享了对 AGI 的一些观点，他表示，AGI 所需的投资远超互联网，一两年内还不具备好的商业模式。&lt;/p&gt; 
-&lt;p&gt;&lt;img height=&quot;1612&quot; src=&quot;https://static.oschina.net/uploads/space/2025/0311/144714_pwWM_2720166.png&quot; width=&quot;1002&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
-&lt;p&gt;李想还说道，&lt;strong&gt;AGI 早期虽然自己不赚钱，但会破坏传统商业模式赚钱&lt;/strong&gt;。他还提到，新技术往往从通缩开始，AGI 的发展趋势不可阻挡。&lt;/p&gt; 
-&lt;p&gt;理想汽车在 2024 年底举行 2024 理想 AI Talk ，李想当时曾就 AI 等话题展开对话。&lt;/p&gt; 
-&lt;p&gt;他表示，理想汽车一年一百亿的研发，一半投在了人工智能上。大模型出现以后，人类会发生根本性的改变。互联网让信息平权，人工智能帮助实现认知和知识的平权。&lt;/p&gt; 
-&lt;p&gt;李想还谈到了人工智能的三个阶段：&lt;/p&gt; 
-&lt;ul&gt; 
- &lt;li&gt; &lt;p&gt;第一阶段，「增强能力」，主要起辅助作用，决策权在用户。例如 L3 自动驾驶，需要用户监督，并且负责任。&lt;/p&gt; &lt;/li&gt; 
- &lt;li&gt; &lt;p&gt;第二阶段，「我的助手」，助手角色，布置给它任务，它就可以独立完成，并对结果承担责任。例如 L4 自动驾驶，可以让它到学校帮忙接孩子等。&lt;/p&gt; &lt;/li&gt; 
- &lt;li&gt; &lt;p&gt;第三阶段，终极阶段，「硅基家人」，不需要指示、分配任务，它就是我们的家庭成员，甚至是家庭重要的组织者。它不但了解我，它还了解我的孩子，了解我身边的朋友，甚至比我还了解。&lt;/p&gt; &lt;/li&gt; 
-&lt;/ul&gt; 
-&lt;hr&gt; 
-&lt;p&gt;相关阅读&lt;/p&gt; 
-&lt;ul&gt; 
- &lt;li&gt;&lt;a href=&quot;https://www.oschina.net/news/285159&quot; target=&quot;news&quot;&gt;理想汽车多模态认知大模型 Mind GPT 正式上线&lt;/a&gt;&lt;/li&gt; 
- &lt;li&gt;&lt;a href=&quot;https://www.oschina.net/news/270426&quot; target=&quot;news&quot;&gt;理想汽车全自研多模态认知大模型 —— Mind GPT&lt;/a&gt;&lt;/li&gt; 
-&lt;/ul&gt;
-                                                                                &lt;/div&gt;
-                                                                            </description>
-            <link>https://www.oschina.net/news/338155</link>
-            <guid isPermaLink="false">https://www.oschina.net/news/338155</guid>
-            <pubDate>Wed, 05 Mar 2025 06:49:00 GMT</pubDate>
-            <author>来源: OSCHINA</author>
-        </item>
-        <item>
-            <title>iPhone 17 系列机模曝光</title>
-            <description>&lt;div class=&quot;content&quot;&gt;
-                                                                    
-                                                        &lt;p&gt;博主 MajinBuOfficial 根据供应链获得的 CAD 数据，以 3D 打印的方式获得了 iPhone 17 全系列的机模。这批机模包括了 iPhone 17、iPhone 17 Air、iPhone 17 Pro、iPhone 17 Pro Max 四款机型，而外观信息与此前透露的谍照基本一致。&lt;/p&gt; 
-&lt;p&gt;&lt;img alt=&quot;&quot; src=&quot;https://oscimg.oschina.net/oscnet/up-2fecc3d4611b83757346306026632dfd575.png&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
-&lt;p&gt;除了 iPhone 17 的后置摄像头排列没有太大变化之外，新的 iPhone 17 Air 采用了后置单摄的配置，并将它放置于一个长条形的横向模块当中，整机的厚度也有了明显缩小。&lt;/p&gt; 
-&lt;p&gt;Pro 版本的摄像头同样变化较大，采用横向的大尺寸模组，将后置三摄、LiDAR 传感器、闪光灯、后置麦克风等元器件都收纳于其中。至于为什么苹果要预留如此巨大的模组位置，还有待观察。&lt;/p&gt; 
-&lt;p&gt;此前，分析师郭明𫓹透露，新的 iPhone 17 Air 或将采用高密度电池，使其可以在紧凑尺寸之中获得更胜于以往的电池续航表现。&lt;/p&gt; 
-&lt;p&gt;此外，彭博社记者 Mark Gurman 今日发文&lt;u&gt;&lt;a href=&quot;https://www.oschina.net/news/338104/apple-ios-ipados-macos-design-overhaul&quot;&gt;透露&lt;/a&gt;&lt;/u&gt;，苹果将会统一 iPhone、iPad 以及 Mac 三个设备的系统界面。据 Gurman 预测，本次系统界面统一将涉及图标、菜单、界面窗口样式等内容。值得关注的是，统一后的系统界面设计将会与 visionOS 的风格保持一致，同时简化用户使用的操作步骤、方式。&lt;/p&gt; 
-&lt;p&gt;&lt;img src=&quot;https://static.oschina.net/uploads/space/2025/0311/103415_RHy0_2720166.png&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
-&lt;p&gt;据悉，本次改动将会在 iOS19、iPadOS19 和 MacOS16 中出现。报道指出，这也是自 iOS7 后，时隔十年，苹果再一次为 iPhone 进行 UI 大改变；而 Mac 方面，MacOS16 将是自 2020 年 MacOS Big Sur 发布以来，苹果对 MacOS 最大的一次升级。&lt;/p&gt; 
-&lt;p&gt;相关阅读&lt;/p&gt; 
-&lt;ul&gt; 
- &lt;li&gt;&lt;a href=&quot;https://www.oschina.net/news/335621&quot; target=&quot;news&quot;&gt;iPhone 17 系列 CAD 图曝光&lt;/a&gt;&lt;/li&gt; 
- &lt;li&gt;&lt;a href=&quot;https://www.oschina.net/news/338104/apple-ios-ipados-macos-design-overhaul&quot; target=&quot;news&quot;&gt;苹果计划对 iOS、iPadOS 和 macOS 系统外观进行大幅重新设计&lt;/a&gt;&lt;/li&gt; 
-&lt;/ul&gt;
-                                                                                &lt;/div&gt;
-                                                                            </description>
-            <link>https://www.oschina.net/news/338152</link>
-            <guid isPermaLink="false">https://www.oschina.net/news/338152</guid>
-            <pubDate>Wed, 05 Mar 2025 06:40:00 GMT</pubDate>
-            <author>来源: OSCHINA</author>
-        </item>
-        <item>
-            <title>越疆发布 Dobot Atom：全球首款「灵巧操作+直膝行走」具身智能人形机器人</title>
-            <description>&lt;div class=&quot;content&quot;&gt;
-                                                                    
-                                                        &lt;p&gt;深圳越疆科技今日&lt;u&gt;&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fwww.bilibili.com%2Fvideo%2FBV1EkREYbEsg%2F&quot; target=&quot;_blank&quot;&gt;发布&lt;/a&gt;&lt;/u&gt;了全球首款「灵巧操作 + 直膝行走」具身智能人形机器人 Dobot Atom，可实现跨场景、多台协同胜任复杂操作泛化任务。&lt;/p&gt; 
-&lt;p&gt;&lt;img height=&quot;1502&quot; src=&quot;https://static.oschina.net/uploads/space/2025/0311/143353_pHFB_2720166.png&quot; width=&quot;2430&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
-&lt;p&gt;据介绍，该款机器人是面向工业级精细操作全尺寸仿生人形机器人，搭载自研操作技能模型 ROM-1，具有神经驱动灵巧操作和仿人直膝步态行走两大特征。&lt;/p&gt; 
-&lt;p&gt;区别于传统机器人，该产品通过「脑-手协同」技术突破，结合视觉感知与五指灵巧手闭环操作，无需预编程即可自主完成上百种复杂任务。&lt;/p&gt; 
-&lt;p&gt;官方介绍称，这台为「打工」而生的工业级操作类人形机器人，身高 1.53 米，体重 62 公斤，采用 1:1 仿人手臂构型设计，全身配置 41 个自由度，搭载重复定位精度 ±0.05mm 的 7 自由度工业级仿生协作臂，适应常见 700-1000mm 工作台高度灵巧作业，并具有工业现场稳定通过能力。&lt;/p&gt; 
-&lt;p&gt;&lt;img alt=&quot;&quot; src=&quot;https://oscimg.oschina.net/oscnet/up-fbf5c225d2fa360687b55084e48cf17f3d8.png&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
-&lt;p&gt;作为中国首款具备工业级双臂操作与仿人直膝行走能力的人形机器人，其核心搭载越疆自研的神经驱动灵巧操作系统（NDS）与仿人直膝行走系统（AWS），双臂协同灵巧操作，高还原度仿人直膝行走，这种同时拥有上下肢体高水平运动和控制表现的能力，标志着人形机器人操作领域取得重要进展。&lt;/p&gt; 
-&lt;p&gt;NDS 系统通过端到端自主推理，赋予机器人 28 个上肢自由度及伺服级抖动抑制能力，可完成工具制造、脆弱物料无损抓取（如车厘子）等复杂任务，操作精度高达 ±0.05mm。&lt;/p&gt; 
-&lt;p&gt;AWS 系统则基于类人生物力学与强化学习技术，实现高度拟人的直膝行走和灵活转身，适配短程狭小空间作业需求。其自适应泛化能力尤为突出，仅需 2 小时采集少量数据即可掌握新技能，显著提升非结构化场景下的操作效率。&lt;/p&gt; 
-&lt;p&gt;据官方介绍，这台人形机器人的核心零部件、软硬件系统采用了自主研发的工业级方案，主要面向数以千计用工的车厂组装备料环节、咖啡店制饮多台设备的流程操作、连锁药店夜间取药等场景，即设备位置不固定、产品多规格、操作相似度高，并有短程狭小空间通过、灵活转身操作需求的工业商业连续重复工作场景。&lt;/p&gt;
-                                                                                &lt;/div&gt;
-                                                                            </description>
-            <link>https://www.oschina.net/news/338149</link>
-            <guid isPermaLink="false">https://www.oschina.net/news/338149</guid>
-            <pubDate>Wed, 05 Mar 2025 06:35:00 GMT</pubDate>
-            <author>来源: OSCHINA</author>
-        </item>
-        <item>
-            <title>马斯克尝试用 AI 取代美国公务员</title>
-            <description>&lt;div class=&quot;content&quot;&gt;
-                                                                    
-                                                        &lt;p&gt;&lt;u&gt;&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fwww.theatlantic.com%2Ftechnology%2Farchive%2F2025%2F03%2Fgsa-chat-doge-ai%2F681987%2F&quot; target=&quot;_blank&quot;&gt;大西洋月刊报道称&lt;/a&gt;&lt;/u&gt;，马斯克领导的政府效率部（DOGE）正在努力缩减和重组美国公务员队伍，这一努力已进入新阶段。其理念很简单：&lt;strong&gt;利用生成式人工智能来自动化以前由人完成的工作&lt;/strong&gt;。&lt;/p&gt; 
-&lt;p&gt;&lt;img src=&quot;https://static.oschina.net/uploads/space/2025/0311/142816_kg1u_2720166.png&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
-&lt;p&gt;美国政府正在与美国总务管理局（GSA）的 1,500 名联邦雇员一起测试一款新型聊天机器人 「GSA Chat」&amp;nbsp;，并可能最早于本周五向整个机构发布，这意味着超过 10,000 名负责超过 1,000 亿美元合同和服务的工作人员可以使用这款机器人。&lt;/p&gt; 
-&lt;p&gt;这款聊天机器人被 GSA 领导层视为提升联邦工作人员生产力的工具，是政府效率部及其盟友更大行动方案的一部分。谈到 GSA 的整体计划时，最近被任命为 GSA 信息技术部门 —— 技术转型服务局局长的前特斯拉工程师托马斯・谢德上个月在全体员工会议上表示，&lt;strong&gt;该机构正在推进「人工智能优先战略」&lt;/strong&gt;。&lt;/p&gt; 
-&lt;p&gt;谢德称，「正如大家所知，随着我们缩减联邦政府的整体规模，仍有大量项目需要保留，这为技术和自动化全面发挥作用提供了巨大机遇」。他提出，可以在政府范围内提供「编码代理」—— 指的是能够代替人类编写并可能部署代码的 AI 程序。此外，谢德还表示，AI 可以「对合同进行分析」，软件可用于「自动化」GSA 的「财务职能」。&lt;/p&gt; 
-&lt;p&gt;目前，在工作中使用人工智能很常见，GSA 的聊天机器人可能不会对政府运作产生巨大影响。但这只是政府效率部继续大幅削减公务员体系的一个小例子。据报道，在教育部，政府效率部顾问将有关机构支出的敏感数据输入 AI 程序，以确定削减开支的方向。据说政府效率部打算利用 AI 来帮助决定政府各部门的员工是否应保住工作。&lt;/p&gt; 
-&lt;p&gt;在上周晚些时候的另一场 TTS 会议上，谢德表示，他预计该部门在几周内规模将「至少缩小 50%」。&lt;/p&gt;
-                                                                                &lt;/div&gt;
-                                                                            </description>
-            <link>https://www.oschina.net/news/338147/musk-replacing-workers-with-ai</link>
-            <guid isPermaLink="false">https://www.oschina.net/news/338147/musk-replacing-workers-with-ai</guid>
-            <pubDate>Wed, 05 Mar 2025 06:28:00 GMT</pubDate>
-            <author>来源: OSCHINA</author>
-        </item>
-        <item>
-            <title>RISC-V 工委会：征集《RISC-V 指令集架构矩阵扩展（ME）指令集》等三项团体标准参编单位</title>
-            <description>&lt;div class=&quot;content&quot;&gt;
-                                                                    
-                                                        &lt;p&gt;&lt;span style=&quot;color:#000000&quot;&gt;中国电子工业标准化技术协会 RISC-V 工委会发布「关于公开征集《RISC-V 指令集架构矩阵扩展（ME）指令集》等三项团体标准参编单位的通知」。&lt;/span&gt;&lt;/p&gt; 
-&lt;p&gt;&lt;span style=&quot;color:#000000&quot;&gt;通知内容指出，由阿里巴巴达摩院（杭州）科技发起制定的《RISC-V 指令集架构矩阵扩展（ME）指令集》、进迭时空（杭州）科技发起制定的《开放精简指令集（RISC-V）配置文件》，以及由芯升科技发起制定的《RISC-V 指令集架构无线矢量扩展（Zvw）指令集》三项团体标准已获批立项。&lt;/span&gt;&lt;/p&gt; 
-&lt;p&gt;&lt;span style=&quot;color:#000000&quot;&gt;为更高质量地完成标准编制工作，保障标准的广泛性、科学性和实用性，现向全行业及 RISC-V 工委会成员征集上述三项团体标准参编单位，共同完成标准的制定工作。&lt;/span&gt;&lt;/p&gt; 
-&lt;p&gt;&lt;img height=&quot;383&quot; src=&quot;https://static.oschina.net/uploads/space/2025/0311/142732_nWVQ_4252687.png&quot; width=&quot;500&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
-&lt;p&gt;&lt;span style=&quot;color:#000000&quot;&gt;&lt;strong&gt;报名条件&lt;/strong&gt;&lt;/span&gt;&lt;/p&gt; 
-&lt;blockquote&gt; 
- &lt;p&gt;&lt;span style=&quot;color:#000000&quot;&gt;1、参编单位具备相关领域工作基础，具有较高的社会影响力，重视标准化工作，能够提供技术专家作为参编人员参与标准编制。&lt;/span&gt;&lt;/p&gt; 
- &lt;p&gt;&lt;span style=&quot;color:#000000&quot;&gt;2、参编单位应指定固定的起草人员，能够确保参与标准制修订过程中的各项会议，按时完成标准编制组分配的工作任务。&lt;/span&gt;&lt;/p&gt; 
- &lt;p&gt;&lt;span style=&quot;color:#000000&quot;&gt;3、起草人应具备相应的专业知识、经验和能力，了解产业现状和技术发展水平。同时较熟悉标准化工作流程，具有标准制修订相关工作经验的优先。起草人应及时对标准提出建设性意见建议。&lt;/span&gt;&lt;/p&gt; 
- &lt;p&gt;&lt;span style=&quot;color:#000000&quot;&gt;4、在可以公开的前提下，参编单位向标准编制工作组提供相关研究成果、经典案例和数据，供编制标准组参考。&lt;/span&gt;&lt;/p&gt; 
-&lt;/blockquote&gt; 
-&lt;p&gt;&lt;span style=&quot;color:#000000&quot;&gt;更多详情可&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fmp.weixin.qq.com%2Fs%2FjAQEyU7kzEWgp9HefHji_g&quot; target=&quot;_blank&quot;&gt;查看官方公告&lt;/a&gt;。&lt;/span&gt;&lt;/p&gt;
-                                                                                &lt;/div&gt;
-                                                                            </description>
-            <link>https://www.oschina.net/news/338146</link>
-            <guid isPermaLink="false">https://www.oschina.net/news/338146</guid>
-            <pubDate>Wed, 05 Mar 2025 06:28:00 GMT</pubDate>
-            <author>来源: OSCHINA</author>
-        </item>
-        <item>
-            <title>Composio —— 适用于 AI 代理的生产就绪工具集</title>
-            <description>&lt;div class=&quot;content&quot;&gt;
-                                                                                                                                                                        
-                                                                                    &lt;p style=&quot;color:#1f2328; text-align:start&quot;&gt;&lt;strong&gt;Composio 为 AI 代理提供可用于生产的工具集&lt;/strong&gt;，提供：&lt;/p&gt;
-
-&lt;ul&gt;
-&lt;li&gt;支持多个类别的 250 多种工具：
-&lt;ul&gt;
-&lt;li&gt;GitHub、Notion、Linear、Gmail、Slack、Hubspot、Salesforce 等软件工具 &amp;amp;&lt;span&gt;&amp;nbsp;&lt;/span&gt;&lt;a href=&quot;https://app.composio.dev/apps&quot;&gt;更多&lt;/a&gt;&lt;/li&gt;
-&lt;li&gt;操作系统操作, 包括文件工具、shell 工具、代码分析工具 &amp;amp;&lt;span&gt;&amp;nbsp;&lt;/span&gt;&lt;a href=&quot;https://app.composio.dev/apps&quot;&gt;更多&lt;/a&gt;&lt;/li&gt;
-&lt;li&gt;通过 Google、Perplexity、Tavily 和 Exa 实现搜索功能 &amp;amp;&lt;span&gt;&amp;nbsp;&lt;/span&gt;&lt;a href=&quot;https://app.composio.dev/apps&quot;&gt;更多&lt;/a&gt;&lt;/li&gt;
-&lt;/ul&gt;
-&lt;/li&gt;
-&lt;li&gt;全面的框架支持，包括 OpenAI、 Groq、Claude、LlamaIndex、Langchain、CrewAI、Autogen、Gemini 以及&lt;a href=&quot;https://docs.composio.dev/framework&quot;&gt;更多&lt;/a&gt;&lt;/li&gt;
-&lt;li&gt;支持多种协议 (OAuth、API 密钥、Basic JWT) 的托管身份验证&lt;/li&gt;
-&lt;li&gt;通过优化设计将工具调用准确率提高高达 40%&lt;/li&gt;
-&lt;li&gt;用于后端集成的白标解决方案&lt;/li&gt;
-&lt;li&gt;支持自定义工具和扩展的可插拔架构&lt;/li&gt;
-&lt;/ul&gt;
-
-&lt;p&gt;&lt;img alt=&quot;&quot; height=&quot;500&quot; src=&quot;https://static.oschina.net/uploads/space/2025/0310/163052_S7VK_4252687.gif&quot; width=&quot;500&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt;
-
-                                                                    &lt;/div&gt;
-                                                                </description>
-            <link>https://www.oschina.net/p/composio</link>
-            <guid isPermaLink="false">https://www.oschina.net/p/composio</guid>
-            <pubDate>Wed, 05 Mar 2025 06:15:00 GMT</pubDate>
         </item>
     </channel>
 </rss>
