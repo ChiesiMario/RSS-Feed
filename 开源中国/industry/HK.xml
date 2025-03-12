@@ -9,21 +9,1525 @@
         <generator>RSSHub</generator>
         <webMaster>contact@rsshub.app (RSSHub)</webMaster>
         <language>en</language>
-        <lastBuildDate>Wed, 12 Mar 2025 02:36:31 GMT</lastBuildDate>
+        <lastBuildDate>Wed, 12 Mar 2025 07:36:48 GMT</lastBuildDate>
         <ttl>5</ttl>
+        <item>
+            <title>為什麼説 JSON 不一定是 LLM 結構化輸出的最佳選擇？</title>
+            <description>&lt;div class=&quot;content&quot;&gt;
+                                                                                                                    
+                                                                                                                                                    &lt;blockquote&gt; 
+ &lt;p&gt;&lt;strong&gt;編者按：&lt;/strong&gt; 在使用大語言模型時，如何在保證輸出質量的同時降低成本？在眾多數據輸出格式中，究竟應該如何選擇？&lt;/p&gt; 
+ &lt;p&gt;我們今天為大家帶來的文章中，作者通過實際測試給出建議：在某些場景下，相比廣泛使用的 JSON 格式，不妨考慮一下其他數據格式，做一些測試，挑選出既能控制成本又能保證穩定性和速度的最佳選項。&lt;/p&gt; 
+ &lt;p&gt;文章通過對比 TSV、CSV、Columnar JSON、YAML、TOML 和 JSON 六種格式，從 token 使用量、響應時間和實用性三個維度進行了深入分析。作者指出，沒有一種格式能在所有場景下都表現最佳。文章詳細分析了每種格式的優劣勢，並提供了一個實用的投資回報率計算方法，幫助讀者評估是否值得將現有系統從 JSON 轉換為其他格式。&lt;/p&gt; 
+&lt;/blockquote&gt; 
+&lt;p&gt;&lt;strong&gt;作者 | David Gilbertson&lt;/strong&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;strong&gt;編譯 | 嶽揚&lt;/strong&gt;&lt;/p&gt; 
+&lt;p&gt;當要求大語言模型（LLM）輸出結構化數據時，所採用的格式會對結果產生比較大的影響。本文對比了六種不同的格式，評估考察了它們的處理速度、tokens 消耗以及各自的限制。&lt;/p&gt; 
+&lt;h1&gt;&lt;strong&gt;01 簡要説明&lt;/strong&gt;&lt;/h1&gt; 
+&lt;p&gt;JSON 雖然是多數人的首選，但它對 tokens 的消耗極大。處理相同數據時，它可能需要其他格式兩倍的 tokens。&lt;/p&gt; 
+&lt;p&gt;需要注意的是，沒有一種格式能在所有情況下都表現最佳，以下是一個決策指南：&lt;/p&gt; 
+&lt;p&gt;&lt;img src=&quot;https://oscimg.oschina.net/oscnet/up-7ec39896fc3d3679ce7a11780ae2500f61e.png&quot; alt=&quot;&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
+&lt;p&gt;（如果你好奇為何沒有提及 XML，那是因為我有個個人目標：50 年不碰 XML ------ 只剩下 4 年就能達成了！）&lt;/p&gt; 
+&lt;p&gt;我將在下文中詳細解釋這些格式選擇，並探討每種格式的侷限性。但在此之前，先讓我們對比一下它們的 token 使用情況和速度。&lt;/p&gt; 
+&lt;h1&gt;&lt;strong&gt;02 token 使用情況&lt;/strong&gt;&lt;/h1&gt; 
+&lt;p&gt;探究 JSON 之外的其他選項，主要目的是為了減少所需的 tokens 數量，這樣做可以降低運營成本並縮短響應時間。&lt;/p&gt; 
+&lt;p&gt;為了對這些格式進行有效比較，我們將基於它們表示特定數據集所需的 token 數量來進行評估。&lt;/p&gt; 
+&lt;h2&gt;&lt;strong&gt;2.1 比較框架&lt;/strong&gt;&lt;/h2&gt; 
+&lt;p&gt;本次比較我將使用一段文本作為輸入，該文本包含了關於歐盟每個國家的一段信息。&lt;/p&gt; 
+&lt;p&gt;&lt;img src=&quot;https://oscimg.oschina.net/oscnet/up-8e50ab87cb9683306d67a1d3a1c4b5339a0.png&quot; alt=&quot;&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
+&lt;p&gt;我將要求 LLM 將這段普通文本轉換成結構化數據，其中每個國家都是一條記錄，每條記錄包含國家名稱、領導人姓名、領導人出生日期、領導人性別、人口數量和領土面積等鍵/值對。&lt;/p&gt; 
+&lt;p&gt;我將針對每種結構化輸出格式執行這一操作，並檢查六種格式的輸出結果是否相同。&lt;/p&gt; 
+&lt;p&gt;感興趣的朋友，可以在這個 gist[1] 中查看完整的代碼。對於不太感興趣的朋友，這裏展示了我如何為每種格式定義 name、可選的 hint 以及 parser（這裏將所有數據解析成 Pandas DataFrame）：&lt;/p&gt; 
+&lt;p&gt;&lt;img src=&quot;https://oscimg.oschina.net/oscnet/up-c0a13f96703898de6c7ca324a996d388a64.png&quot; alt=&quot;&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
+&lt;p&gt;LLM（本次測試使用的是 gpt-4o-mini）能夠以不同格式準確返回相同的數據。當然，如果數據更復雜，或者使用的 LLM 不夠強大，結果可能就不會這麼精確了。&lt;/p&gt; 
+&lt;h2&gt;&lt;strong&gt;2.2 比較結果&lt;/strong&gt;&lt;/h2&gt; 
+&lt;p&gt;下表展示了使用不同格式表示數據所需的 tokens 數量。&lt;/p&gt; 
+&lt;p&gt;&lt;img src=&quot;https://oscimg.oschina.net/oscnet/up-22079d7588db10f57fdd85fd544a99231d5.png&quot; alt=&quot;&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
+&lt;p&gt;JSON 所需的 tokens 數量是 TSV 的兩倍。這個差異不容小覷。設想一下，如果你在某個 API 的價格頁面上看到，選擇 JSON 格式的數據需要支付 1 美元，而 TSV 格式只需 0.5 美元，YAML 格式則是 0.8 美元。&lt;/p&gt; 
+&lt;p&gt;當然，這些結果僅針對我們的示例數據。展示本圖表的目的並非要讓你認為 JSON 在所有情況下都會大量消耗 tokens，而是讓你相信值得用其他格式測試自己的數據。&lt;/p&gt; 
+&lt;p&gt;接下來，我們來看看這些格式的響應時間。&lt;/p&gt; 
+&lt;p&gt;儘管 JSON &quot;只&quot;需要兩倍於 TSV 的 tokens ，但其響應時間通常比 TSV 慢四倍。我原本以為 token 數量與響應時間之間的關係是近似線性的 ------ 接近 O(n)，因此如此誇張的響應時間出乎我的意料，我建議我們可以將這種現象的時間複雜度設為 O(my)。&lt;/p&gt; 
+&lt;p&gt;將數據結構化輸出的響應時間還是蠻重要的，所以趕緊測試吧。&lt;/p&gt; 
+&lt;h1&gt;&lt;strong&gt;03 侷限性與考慮因素&lt;/strong&gt;&lt;/h1&gt; 
+&lt;p&gt;如果這些格式都同樣可靠和靈活，那麼結論就會很簡單：使用 TSV。但事實並非如此，所以讓我們對每一種格式進行更深入的瞭解。&lt;/p&gt; 
+&lt;h2&gt;&lt;strong&gt;3.1 TSV&lt;/strong&gt;&lt;/h2&gt; 
+&lt;p&gt;在表示表格數據時，TSV 和 CSV 格式頗為相似，區別在於 TSV 使用製表符分隔每一行的數據，而 CSV 則採用逗號。如果數據中本身就包含逗號或製表符，那麼這些值就需要用雙引號括起來，這時兩種格式的 tokens 使用差異才會顯現。&lt;/p&gt; 
+&lt;p&gt;由於製表符在數據中出現的頻率低於逗號，因此 TSV 在大多數情況下使用的分隔符數量會少於 CSV。&lt;/p&gt; 
+&lt;p&gt;在解析數據時，TSV 與 CSV 相比 JSON，在純 Python 環境下解析起來略顯複雜。雖然可以利用 Python 內置的 csv 模塊進行解析，但使用 Pandas 庫會更加便捷。在其他編程語言中，解析這兩種格式要麼需要編寫更多代碼，要麼得依賴第三方庫。&lt;/p&gt; 
+&lt;p&gt;如果數據中不含換行符，TSV 可以輕鬆地逐行解析。&lt;strong&gt;因此，若想從 LLM 流式傳輸響應數據並&lt;/strong&gt; 實時&lt;strong&gt;處理每一行數據，TSV（以及 CSV）都是不錯的選擇。雖然 TOML、YAML 和 JSON 也能實現類似功能，但處理起來會更加繁瑣。&lt;/strong&gt; 另外，本文尚未測試的 NDJSON 也是一個值得考慮的選項。&lt;/p&gt; 
+&lt;h2&gt;&lt;strong&gt;3.2 CSV&lt;/strong&gt;&lt;/h2&gt; 
+&lt;p&gt;如前文所述，CSV 格式的挑戰在於逗號在數據中較為常見，這可能會導致兩種情況：要麼是需要更多的 tokens 來處理這些逗號，要麼是 LLM 在處理時未能正確進行轉義，從而產生錯誤的數據。因此，如果你的數據可能包含逗號，最好避免使用 CSV，或者設計一個詳盡的提示詞，並實施有效的評估流程，以便準確衡量其可靠性。&lt;/p&gt; 
+&lt;p&gt;&lt;strong&gt;對於 TSV 和 CSV 兩種格式，你需要用那些可能包含特殊字符（如逗號、製表符、換行符和雙引號）的數據來測試你的系統配置。這樣，你才能確保系統能夠正確處理這些特殊情況。&lt;/strong&gt;&lt;/p&gt; 
+&lt;h2&gt;&lt;strong&gt;3.3 Columnar JSON&lt;/strong&gt;&lt;/h2&gt; 
+&lt;p&gt;Columnar JSON 並不是一個常見的技術術語；我之所以將它納入這次比較，是因為我很好奇它的 tokens 使用效率如何。&lt;/p&gt; 
+&lt;p&gt;可能有些人還不清楚 Columnar JSON 是什麼樣的，下面就是前文提到的國家數據所對應的 Columnar JSON 格式：&lt;/p&gt; 
+&lt;p&gt;&lt;img src=&quot;https://oscimg.oschina.net/oscnet/up-9428ef8b78e0bdb835baea9f4cda42d717f.png&quot; alt=&quot;&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
+&lt;p&gt;在所有格式中，Columnar JSON 的直觀性最差。但是，由於其結構特點，每個字段名只會出現一次，而不是每條記錄都重複，這樣就能節省 tokens。&lt;/p&gt; 
+&lt;p&gt;我注意到，有時 LLM 能夠理解&quot;Columnar JSON&quot;的含義，但有時候需要一些額外的提示詞，例如：&quot;應以列名作為鍵名，對應的列內容以列表的形式組織呈現&quot;。&lt;/p&gt; 
+&lt;p&gt;要解析 columnar JSON，你可以這樣將其傳遞給 Pandas 處理：&lt;/p&gt; 
+&lt;p&gt;&lt;img src=&quot;https://oscimg.oschina.net/oscnet/up-8742900bd0a0c9bd237f20e2e53833ad8be.png&quot; alt=&quot;&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
+&lt;p&gt;與 CSV 和 TSV 不同，columnar JSON 支持嵌套的數據結構，因此它非常適合表示那些某些字段具有複雜結構的記錄列表。&lt;/p&gt; 
+&lt;p&gt;這三種格式------TSV、CSV、columnar JSON------僅適用於表示表格數據，即以記錄列表為核心的結構。它們都不適合用來表示像配置文件這樣的單一 top-level object（譯者注：指在結構化數據格式（如 JSON/YAML/TOML）中，最外層定義的單一根對象，通常作為整個數據結構的入口點。）。而接下來的三種格式（YAML、TOML、JSON）則更為靈活多變。&lt;/p&gt; 
+&lt;h2&gt;&lt;strong&gt;3.4 YAML&lt;/strong&gt;&lt;/h2&gt; 
+&lt;p&gt;YAML 能夠返回一個 top-level list（譯者注：指在結構化數據格式中，最外層直接定義為列表結構而非對象。），但我注意到，某些 LLM 更傾向於生成一個 top-level object。因此，在給出提示詞時，我們需要明確指出，以確保 LLM 按照統一的格式返回數據。&lt;/p&gt; 
+&lt;p&gt;我還遇到了一個問題，即 LLM 在返回字符串值時，格式可能會不一致。在某些情況下，這可能無關緊要，但 YAML 有五種不同的方式來表示字符串，而其中只有一種能夠正確解析轉義序列（例如\t, \u03B1）。因此，如果你的數據中包含轉義序列，那麼最好明確要求 LLM 使用雙引號來定義字符串。&lt;/p&gt; 
+&lt;p&gt;&lt;strong&gt;YAML 相較於 JSON，存在更多的&quot;陷阱&quot;和注意事項。建議你深入瞭解這些潛在的問題，而不是盲目地期待 LLM 能夠自動正確地格式化 YAML。&lt;/strong&gt;&lt;/p&gt; 
+&lt;p&gt;為瞭解析 YAML，你需要安裝一個第三方庫。我個人使用的是 pyyaml，這是一個無依賴的庫。&lt;/p&gt; 
+&lt;h2&gt;&lt;strong&gt;3.5 TOML&lt;/strong&gt;&lt;/h2&gt; 
+&lt;p&gt;TOML 是在此場景中唯一不支持 top-level list 的格式，因為它的設計初衷是作為一種配置文件格式。因此，若想用 TOML 來表示記錄列表，就必須將這些記錄包含在一個 top-level object 內，並告訴 LLM 你想在這個對象中調用什麼鍵。&lt;/p&gt; 
+&lt;p&gt;TOML 在使用上通常會比 YAML 需要更多的 token，因為 TOML 要求所有的字符串值都必須用引號括起來。&lt;/p&gt; 
+&lt;p&gt;在解析方面，如果你的 Python 版本是 3.11 或以上，那麼內置的 TOML 解析器[2]就可以直接使用。如果不是，那就需要安裝 tomlkit 或類似的庫來處理。&lt;/p&gt; 
+&lt;p&gt;TOML 的普及度不及 YAML，你可能會擔心 LLM 在處理 TOML 格式時是否會遇到難題。但在我所使用的頂級 LLM 中，並沒有發現明顯的格式處理問題。我認為，TOML 相較於 YAML 的簡潔性在一定程度上彌補了這一普及度差距。而且，YAML 有多種方式可以表達相同的數據，這可能會降低 LLM 的確定性，使得兩種格式的可靠性相差無幾。&lt;/p&gt; 
+&lt;p&gt;&lt;strong&gt;根據我的個人經驗，TOML 和 YAML 都可能出現錯誤，但這些錯誤通常可以通過更精確的提示詞來解決。&lt;/strong&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;strong&gt;關於 YAML 中的字符串和轉義序列的問題，TOML 也同樣存在。&lt;/strong&gt;&lt;/p&gt; 
+&lt;p&gt;總體而言，TOML 和 YAML 非常相似，TOML 需要更多的 token，不支持 top-level lists，但對於使用 Python 3.11 或以上版本的用户來説，不需要額外的解析庫。&lt;/p&gt; 
+&lt;h2&gt;&lt;strong&gt;3.6 JSON&lt;/strong&gt;&lt;/h2&gt; 
+&lt;p&gt;&lt;strong&gt;關於 JSON，其實沒什麼特別需要強調的。它之所以能成為默認格式，是因為它用途廣泛、易於解析，而且出錯率低。只是它包含了大量的引號、逗號、冒號和換行符，這些都增加了 token 的數量，這一點稍顯遺憾。&lt;/strong&gt;&lt;/p&gt; 
+&lt;p&gt;值得注意的是，如果你想要使用 LLM 服務商提供的&quot;結構化數據模式&quot;，或者使用像 Guardrails[3]、Outlines[4] 這樣的結構化工具，JSON 往往是唯一的選擇。但我認為這種情況會隨着時間的推移而有所改變。隨着越來越多的基於 LLM 的應用投入實際使用，開發者會開始關注如何減少 token 使用等優化措施，LLM 服務商也會通過支持更多結構化數據格式來滿足這一需求。&lt;/p&gt; 
+&lt;p&gt;理想的情況是，LLM 服務商能夠調整模型，使其能夠可靠地處理多種格式的數據，並在結構化數據模式中提供這些格式作為可選項。&lt;/p&gt; 
+&lt;p&gt;這裏有一個注意事項：對於有關 LLM 在輸出特定格式時的可靠性方面的舊建議，我們應該保持謹慎。正如 OpenAI 在 2024 年 8 月的一篇博客文章中所提到的[5]，GPT-4 的早期版本在處理複雜的 JSON 測試時的正確率僅為 35%，而較新版本的 GPT-4 正確率則高達 85%。這在 GPT-4 系列中是一個巨大的飛躍。&lt;/p&gt; 
+&lt;p&gt;這一點對於使用某些特殊功能或軟件包的人來説尤為重要，這些功能或軟件包可能會基於一年或更久之前的假設或證據來強制輸出結構化數據。你可能並不需要這些功能或軟件包，它們可能會迫使你使用 JSON，而實際上你可以選擇更經濟、更快捷的格式。&lt;/p&gt; 
+&lt;h1&gt;&lt;strong&gt;04 實際應用&lt;/strong&gt;&lt;/h1&gt; 
+&lt;p&gt;在理論層面這些格式各有優勢，但假設你已經有了一套使用 JSON 的結構化數據處理系統，並且運行得很順暢。你知道 TSV 格式也能適用於你的數據，那麼是否有必要進行格式轉換呢？&lt;/p&gt; 
+&lt;p&gt;如果你關注的是速度------因為人們需要等待 LLM 生成 token，那麼你需要評估等待時間的價值，這部分在這裏不展開討論。&lt;/p&gt; 
+&lt;p&gt;但如果你只是在後台運行一個進程，這個問題就簡單多了。舉例來説，我們可以設定以下假設條件：&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt;&lt;strong&gt;你的時間成本是每天 1000 美元&lt;/strong&gt;&lt;/li&gt; 
+ &lt;li&gt;&lt;strong&gt;將現有系統從 JSON 轉換為 TSV 需要半天時間&lt;/strong&gt;&lt;/li&gt; 
+ &lt;li&gt;&lt;strong&gt;輸出 token 的費用是每百萬 0.60 美元&lt;/strong&gt;&lt;/li&gt; 
+ &lt;li&gt;&lt;strong&gt;使用 TSV 可以減少 50% 的 token 使用量&lt;/strong&gt;&lt;/li&gt; 
+ &lt;li&gt;&lt;strong&gt;你希望一年內收回投資&lt;/strong&gt;&lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;p&gt;我們可以用一個小 Python 腳本來計算這些數值：&lt;/p&gt; 
+&lt;p&gt;&lt;img src=&quot;https://oscimg.oschina.net/oscnet/up-f69e9075bdd7f5c7bebe4b594c36a14407d.png&quot; alt=&quot;&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;strong&gt;根據計算，如果你現在每天生成大約 4,566,210 個 JSON token，一年後就能實現收支平衡。&lt;/strong&gt;&lt;/p&gt; 
+&lt;p&gt;當然，你應該根據自己的實際情況來調整這些數值，但以下基準數據可供你參考。如果你每天只生成幾千個結構化數據的 token（並且不介意速度），那麼盲目調整數據格式的性價比極低。但如果你每天需要處理數千萬個 token，那麼探索其他格式絕對是一個划算的決定。&lt;/p&gt; 
+&lt;h1&gt;&lt;strong&gt;05 總結&lt;/strong&gt;&lt;/h1&gt; 
+&lt;p&gt;選擇默認的 JSON 格式確實很有吸引力，因為它靈活、穩定且解析起來簡單。但相對而言，它的處理速度較慢，成本也更高。因此，不妨考慮一下其他數據格式，做一些測試，挑選出既能控制成本又能保證穩定性和速度的最佳選項。&lt;/p&gt; 
+&lt;p&gt;&lt;em&gt;Thanks for reading!&lt;/em&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;em&gt;Hope you have enjoyed and learned new things from this blog!&lt;/em&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;strong&gt;About the author&lt;/strong&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;em&gt;&lt;strong&gt;David Gilbertson&lt;/strong&gt;&lt;/em&gt;&lt;/p&gt; 
+&lt;p&gt;I like machine learning stuff.&lt;/p&gt; 
+&lt;p&gt;&lt;strong&gt;END&lt;/strong&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;strong&gt;本期互動內容 🍻&lt;/strong&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;strong&gt;❓你在實際項目中最常用哪種數據格式？遇到過哪些意想不到的問題？歡迎分享經驗👇&lt;/strong&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;strong&gt;🔗文中鏈接🔗&lt;/strong&gt;&lt;/p&gt; 
+&lt;p&gt;[1]&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fgist.github.com%2Fdavidgilbertson%2Ffcabb55478b4a4e1537a706f808b8b09&quot; target=&quot;_blank&quot;&gt;https://gist.github.com/davidgilbertson/fcabb55478b4a4e1537a706f808b8b09&lt;/a&gt;&lt;/p&gt; 
+&lt;p&gt;[2]&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fdocs.python.org%2F3%2Flibrary%2Ftomllib.html&quot; target=&quot;_blank&quot;&gt;https://docs.python.org/3/library/tomllib.html&lt;/a&gt;&lt;/p&gt; 
+&lt;p&gt;[3]&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fgithub.com%2Fguardrails-ai%2Fguardrails&quot; target=&quot;_blank&quot;&gt;https://github.com/guardrails-ai/guardrails&lt;/a&gt;&lt;/p&gt; 
+&lt;p&gt;[4]&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fgithub.com%2Fdottxt-ai%2Foutlines&quot; target=&quot;_blank&quot;&gt;https://github.com/dottxt-ai/outlines&lt;/a&gt;&lt;/p&gt; 
+&lt;p&gt;[5]&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fopenai.com%2Findex%2Fintroducing-structured-outputs-in-the-api%2F&quot; target=&quot;_blank&quot;&gt;https://openai.com/index/introducing-structured-outputs-in-the-api/&lt;/a&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;strong&gt;原文鏈接：&lt;/strong&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fdavid-gilbertson.medium.com%2Fllm-output-formats-why-json-costs-more-than-tsv-ebaf590bd541&quot; target=&quot;_blank&quot;&gt;https://david-gilbertson.medium.com/llm-output-formats-why-json-costs-more-than-tsv-ebaf590bd541&lt;/a&gt;&lt;/p&gt;
+                                                                                    &lt;/div&gt;
+                                                                            </description>
+            <link>https://my.oschina.net/IDP/blog/17883527</link>
+            <guid isPermaLink="false">https://my.oschina.net/IDP/blog/17883527</guid>
+            <pubDate>Wed, 12 Mar 2025 07:28:44 GMT</pubDate>
+            <author>原創</author>
+        </item>
+        <item>
+            <title>逆向分析 Github Copilot，探索代碼補全能力的實現細節</title>
+            <description>&lt;div class=&quot;content&quot;&gt;
+                                                                    
+                                                        &lt;p&gt;GitHub Copilot 是一種基於機器學習的代碼自動補全工具，它使用來自 GitHub 的大量代碼作為訓練數據，並結合 OpenAI 的語言模型來生成代碼。Copilot 還能學習用户的編碼習慣，根據上下文推斷出正確的代碼片段。&lt;/p&gt; 
+&lt;p&gt;為了探索其 VSCode 插件的實現，我們進行了以下逆向工程。&lt;/p&gt; 
+&lt;h2&gt;準備工作&lt;/h2&gt; 
+&lt;p&gt;由於 Copilot 沒有開源，我們需要進行一些逆向的準備。首先，找到 VSCode 插件的安裝目錄，拿到經過壓縮混淆的 extension.js。然後，通過分割 webpack_modules、識別模塊依賴、優化壓縮後的語法和 require 的模塊 id 取名等步驟，對代碼進行逆向處理。&lt;/p&gt; 
+&lt;h2&gt;入口分析&lt;/h2&gt; 
+&lt;p&gt;入口文件的模塊 id 是 91238，經過手動優化操作，可以大致還原其原始樣貌。在 VSCode 的 active 函數中，copilot 做了大量初始化工作，並將各個模塊的示例註冊到 context 中。&lt;/p&gt; 
+&lt;h2&gt;代碼提示入口邏輯&lt;/h2&gt; 
+&lt;p&gt;代碼提示邏輯在 registerGhostText 中註冊，主要通過 InlineCompletionItemProvider 實現。其核心邏輯包括判斷用户是否關閉了 InlineSuggestEnable、document 是否在處理白名單內、用户是否取消了輸入等，若不滿足條件則提前 return，不進行代碼提示。然後調用 getGhostText 方法獲取 texts，並通過 completionsFromGhostTextResults 拿到最終的 completions。&lt;/p&gt; 
+&lt;h2&gt;getGhostText 核心邏輯&lt;/h2&gt; 
+&lt;p&gt;getGhostText 是獲取提示代碼的核心方法，其邏輯包括：&lt;/p&gt; 
+&lt;ol&gt; 
+ &lt;li&gt; &lt;p&gt;提取 Prompt：通過 extractprompt.extractPrompt 獲取 prompt 對象。&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;邊界判斷：判斷是否包含在 .copilotignore 裏的文件、上下文是否太小、用户是否已經取消等三種情況。&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;二級緩存：保存上一次的 prefix 和 suffix，若當前請求的 prefix 和 suffix 與之前的一樣，則讀取緩存內容。若未命中緩存，計算當前的 prompt 是否在緩存範圍內，copilot 採取 LRU 緩存策略，默認緩存 100 條。&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;真正發起請求：設置 Debounce 時延，判斷 contextualFilterScore 是否達到閾值，最後向後台發送 prompt 請求。&lt;/p&gt; &lt;/li&gt; 
+&lt;/ol&gt; 
+&lt;p&gt;&lt;img alt=&quot;&quot; src=&quot;https://oscimg.oschina.net/oscnet/up-578f48c2e81b288fb7d2d52e2fac1803777.png&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
+&lt;h2&gt;prompt 的組成&lt;/h2&gt; 
+&lt;p&gt;prompt 由多種類型組合而成，包括 BeforeCursor、AfterCursor、SimilarFile、ImportedFile、LanguageMarker、PathMarker 等。不同類型的優先級通過 Priorities 輔助類設置，如 highSnippetPriority &amp;gt; beforeCursorPriority &amp;gt; importedFilePriority &amp;gt; lowSnippetPriority &amp;gt; pathMarkderPriority &amp;gt; languageMarkerPriority。&lt;/p&gt; 
+&lt;p&gt;&lt;img alt=&quot;&quot; src=&quot;https://oscimg.oschina.net/oscnet/up-49d262082d2bb695078a8c544ed9f9b431b.png&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
+&lt;h2&gt;抓包實驗&lt;/h2&gt; 
+&lt;p&gt;通過抓包實驗，可以看到在 Copilot 發起的請求中，prompt 包含了 Path Marker 和 BeforeCursor 兩個部分。如果代碼相關性夠高，還會生成對應的 snippet。&lt;/p&gt; 
+&lt;h2&gt;小結&lt;/h2&gt; 
+&lt;p&gt;從 Copilot 中可以學到以下核心思想：&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt;對於編輯器輸入的邊界判斷，包括太少、太多、取消等等很多場景齊全的考慮&lt;/li&gt; 
+ &lt;li&gt;緩存思想，利用多級緩存策略保護後台，模型運算本身就是一件昂貴的事情&lt;/li&gt; 
+ &lt;li&gt;prompt 的設計，不僅僅包含了上下文代碼，在文件解析、編輯器打開的相關代碼上還做了很多&lt;/li&gt; 
+ &lt;li&gt;利用簡單的 Jaccard 算法計算分詞後的文本相似度，能夠快速決策出當前上下文相關的 snippet&lt;/li&gt; 
+ &lt;li&gt;實驗特性，在 Copilot 中，大量的參數、優先級、設置字段都是通過實驗來控制的，有一套完整的監控上報體系，幫助 Copilot 去調整這些參數，以達到更好的效果&lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;p&gt;詳情查看：&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fgithub.com%2Fmengjian-github%2Fcopilot-analysis&quot; target=&quot;_blank&quot;&gt;https://github.com/mengjian-github/copilot-analysis&lt;/a&gt;&lt;/p&gt;
+                                                                                &lt;/div&gt;
+                                                                            </description>
+            <link>https://www.oschina.net/news/338373</link>
+            <guid isPermaLink="false">https://www.oschina.net/news/338373</guid>
+            <pubDate>Wed, 12 Mar 2025 07:26:44 GMT</pubDate>
+            <author>來源: OSCHINA</author>
+        </item>
+        <item>
+            <title>Anthropic CEO：未來 3-6 個月內，90% 的代碼將由 AI 編寫</title>
+            <description>&lt;div class=&quot;content&quot;&gt;
+                                                                    
+                                                        &lt;p&gt;&lt;span style=&quot;color:#000000&quot;&gt;Anthropic 首席執行官達 Dario Amodei 在 U.S. Foreign Relations Committee (CFR) 上&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fwww.aibase.com%2Fnews%2F16219&quot; target=&quot;_blank&quot;&gt;表示&lt;/a&gt;，他認為在未來 3 到 6 個月內，90% 的代碼將由 AI 編寫；在 12 個月後，幾乎所有的代碼都可能由 AI 生成。&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;span style=&quot;color:#000000&quot;&gt;不過他也補充稱，雖然這一趨勢可能聽起來令人擔憂，但程序員在定義所需功能、應用程序設計和決策方面仍將發揮關鍵作用。&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;span style=&quot;color:#000000&quot;&gt;Amodei 表示，雖然人類程序員的參與仍將必不可少，但 AI 將逐漸承擔許多人類的任務。他鼓勵重新評估「有用」和「無用」的概念，並認為人類的生活仍將有意義，而 AI 將帶來新的可能性。&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;img height=&quot;433&quot; src=&quot;https://oscimg.oschina.net/oscnet/up-c1d6e1707a9e7f798d77cff8849380c0e52.png&quot; width=&quot;500&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;span style=&quot;color:#000000&quot;&gt;在被 CFR 主席 Mike Froman 問及關於「DeepSeek」是否可以被視為「Sputnik moment」時。Amodei 則認為，DeepSeek 並沒有什麼不尋常之處，只是成本降低曲線上的又一個數據點。他強調，人人都能編程的未來正在迅速到來。&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;span style=&quot;color:#000000&quot;&gt;此外，OpenAI 首席執行官 Sam Altman 也在播客中分享了他對編程未來的看法。他認為，編程方法將在未來五到十年內發生重大變化，許多人已經使用自然語言進行編程，逐漸淘汰傳統的編碼方法。Altman 開玩笑稱，目前很少有人通過寫代碼來編程，這意味着編程的定義和所需技能將發生巨大變化。&lt;/span&gt;&lt;/p&gt;
+                                                                                &lt;/div&gt;
+                                                                            </description>
+            <link>https://www.oschina.net/news/338372/anthropic-ceo-ai-will-be-writing-90-of-code-in-3-6-months</link>
+            <guid isPermaLink="false">https://www.oschina.net/news/338372/anthropic-ceo-ai-will-be-writing-90-of-code-in-3-6-months</guid>
+            <pubDate>Wed, 12 Mar 2025 07:09:44 GMT</pubDate>
+            <author>來源: OSCHINA</author>
+        </item>
+        <item>
+            <title>阿里巴巴董事局主席蔡崇信：AI 開源開放將讓中小企業受益</title>
+            <description>&lt;div class=&quot;content&quot;&gt;
+                                                                    
+                                                        &lt;p&gt;3 月 12 日上午，在新加坡舉辦的一場論壇中，阿里巴巴集團董事長蔡崇信分享了對 AI 開源開放的看法。他説，開源的力量在於令中小企業和創業者低成本使用 AI，未來的應用繁榮將受益於今天的開源。&lt;/p&gt; 
+&lt;p&gt;&lt;strong&gt;「技術進步的意義不在於中國是否擁有比美國更好的 AI，而是在於開源能夠普惠地幫助人們掌握 AI 的力量」，蔡崇信表示，AI 不是大企業的專屬遊戲，中小企業將受益於開源開放，未來應用繁榮將正是今天開源的結果。&lt;/strong&gt;&lt;/p&gt; 
+&lt;p&gt;在去年 11 月的 2024 年世界互聯網大會烏鎮峯會期間，阿里巴巴 CEO 吳泳銘在互聯網企業家論壇上表示，阿里巴巴目前已經發布了超過 100 個開源模型，累計下載量超過 4000 萬次。基於「通義千問」模型進行二次開發的衍生模型數量已突破 7.8 萬個，活躍開發者超過 800 萬。&lt;/p&gt; 
+&lt;p&gt;據其介紹，目前已有超過 30 萬家企業接入通義大模型，利用 AI 技術重塑代碼開發、藥物研發、生產製造等多個行業。吳泳銘認為，行業「並不需要」眾多的基礎大模型，而是需要針對不同規模、不同領域的開源模型來滿足市場需求。&lt;/p&gt; 
+&lt;p&gt;相關閲讀&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt;&lt;a href=&quot;https://www.oschina.net/news/337397&quot; target=&quot;news&quot;&gt;阿里通義千問大模型登頂全球開源社區榜首&lt;/a&gt;&lt;/li&gt; 
+ &lt;li&gt;&lt;a href=&quot;https://www.oschina.net/news/333071&quot; target=&quot;news&quot;&gt;全球開源大模型前十均為阿里通義千問衍生模型&lt;/a&gt;&lt;/li&gt; 
+&lt;/ul&gt;
+                                                                                &lt;/div&gt;
+                                                                            </description>
+            <link>https://www.oschina.net/news/338371</link>
+            <guid isPermaLink="false">https://www.oschina.net/news/338371</guid>
+            <pubDate>Wed, 12 Mar 2025 07:08:44 GMT</pubDate>
+            <author>來源: OSCHINA</author>
+        </item>
+        <item>
+            <title>上海徐匯：最高獎勵 3000 萬元，加快培育科技領軍企業</title>
+            <description>&lt;div class=&quot;content&quot;&gt;
+                                                                    
+                                                        &lt;p&gt;&lt;span style=&quot;color:#000000&quot;&gt;上海《徐彙區關於加快培育科技領軍企業的實施意見》已發佈。該，意見自 2025 年 2 月 24 日起試行，試行期二年。&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;span style=&quot;color:#000000&quot;&gt;《實施意見》明確了 10 個支持方向：&lt;/span&gt;&lt;/p&gt; 
+&lt;blockquote&gt; 
+ &lt;p&gt;&lt;span style=&quot;color:#000000&quot;&gt;1.支持高能級企業集聚發展。引導企業擴大投資、歸集核心職能，招引一批主營業務突出、競爭優勢明顯的高能級企業。加快吸引和促進符合區域產業發展導向的高能級企業，經綜合評估，可給予最高 1000 萬元的一次性支持；對行業影響力大、專業能力強、競爭優勢明顯的企業，經綜合評估，可給予不超過 3000 萬元的獎勵。&lt;/span&gt;&lt;/p&gt; 
+ &lt;p&gt;&lt;span style=&quot;color:#000000&quot;&gt;2.大力引進優質企業。發揮企業「標杆」導向作用，引進一批核心技術能力強、引領產業發展集聚、市場佔有率高的高成長性企業。加快吸引和促進符合區域產業發展導向的高成長企業、潛力企業等，經綜合評估，可給予最高 500 萬元的一次性支持；對示範效應好、專業能力硬、發展潛力突出的企業，經綜合評估，可給予不超過 1500 萬元的獎勵。&lt;/span&gt;&lt;/p&gt; 
+ &lt;p&gt;&lt;span style=&quot;color:#000000&quot;&gt;3.支持企業規模化發展。支持企業做大做強，不斷集聚業務，提升規模能級和輻射能力，根據企業所屬行業領域、經營水平及成長髮展能力等綜合因素，經綜合評估，可給予不超過 3000 萬元的獎勵。&lt;/span&gt;&lt;/p&gt; 
+ &lt;p&gt;&lt;span style=&quot;color:#000000&quot;&gt;4.加快創新型企業梯隊建設。引導企業提升創新能級和核心競爭實力，壯大創新型領軍企業梯隊和「蓄水池」。對新增高新技術企業資質的，經認定，可給予最高 30 萬元獎勵；對重新認定高新技術企業資質的，經認定，可給予最高 10 萬元獎勵。對新增上海科技小巨人（培育）企業等資質，經認定，可給予一定資金支持。&lt;/span&gt;&lt;/p&gt; 
+ &lt;p&gt;&lt;span style=&quot;color:#000000&quot;&gt;5.提升企業技術攻關能力。圍繞戰新產業和未來產業等領域，紮實推進「賽馬制」等攻關新模式，鼓勵企業加速研發創新，開展跨領域基礎研究或者顛覆性技術攻關，經評審，可給予不超過項目總投入 30%、最高 300 萬元的支持；鼓勵企業推動科研成果轉化落地、產業試點示範，經評審，可給予不超過項目總投入 30%、最高 1000 萬元的支持；主動服務企業開展研發費用税前加計扣除、技術合同登記、技術先進型服務企業認定，並享受相應的支持政策。對技術合同成交額大幅提升的單位，經評審，可給予不超過 50 萬元的獎勵。&lt;/span&gt;&lt;/p&gt; 
+ &lt;p&gt;&lt;span style=&quot;color:#000000&quot;&gt;6.支持標杆應用場景建設。鼓勵開展應用場景「揭榜掛帥」，支持企業建立針對應用場景的技術、產品和解決方案資源庫。對形成行業或區域標杆引領、示範效應帶動強的應用場景建設項目，經評審，可按不超過項目總投入的 30%,給予不超過 300 萬元的支持。&lt;/span&gt;&lt;/p&gt; 
+ &lt;p&gt;&lt;span style=&quot;color:#000000&quot;&gt;7.支持創新合作發展。鼓勵企業充分利用區域豐富的科技創新資源開展創新創業活動，降低科技創新成本，激發科技創新動能，提升科技創新能級。支持科技企業申請科技創新服務券，經認定，給予每年不超過 80 萬元的支持。支持企業數字化轉型，對符合區域產業發展方向的企業購買雲計算等服務的，經綜合評估，可給予每年不超過 200 萬元的支持。&lt;/span&gt;&lt;/p&gt; 
+ &lt;p&gt;&lt;span style=&quot;color:#000000&quot;&gt;8.加強市區聯動。支持企業申報國家、市級政策，對獲得市級及以上資金扶持的項目，結合區域或行業特點，對具有行業示範作用、競爭優勢顯著的項目，經綜合評估，可給予企業一定資金支持。&lt;/span&gt;&lt;/p&gt; 
+ &lt;p&gt;&lt;span style=&quot;color:#000000&quot;&gt;9.做實做細人才服務保障。對用人單位引進的國內外優秀人才，按照相關政策推薦申請「光啓人才行動計劃」，並提供人才落户、安居、醫療、出入境等方面便利化服務。&lt;/span&gt;&lt;/p&gt; 
+ &lt;p&gt;&lt;span style=&quot;color:#000000&quot;&gt;10.打造高能級品牌活動。鼓勵企業發揮國際化、市場化、品牌化、專業化等資源優勢，舉辦或者承辦在行業領域內或者國內外具有較大影響力的創新或者產業活動，經評價，給予一定支持。&lt;/span&gt;&lt;/p&gt; 
+&lt;/blockquote&gt;
+                                                                                &lt;/div&gt;
+                                                                            </description>
+            <link>https://www.oschina.net/news/338370</link>
+            <guid isPermaLink="false">https://www.oschina.net/news/338370</guid>
+            <pubDate>Wed, 12 Mar 2025 06:55:44 GMT</pubDate>
+            <author>來源: OSCHINA</author>
+        </item>
+        <item>
+            <title>DeepSeek-R1 聯網搜索能力測評：騰訊元寶綜合實力領先</title>
+            <description>&lt;div class=&quot;content&quot;&gt;
+                                                                    
+                                                        &lt;p&gt;3 月 11 日，中文大模型測評基準 SuperCLUE &lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fmp.weixin.qq.com%2Fs%2Fs_ZjP3tjxkyTVEPK_GucZg&quot; target=&quot;_blank&quot;&gt;發佈最新報告&lt;/a&gt;，測評了各平台接入 DeepSeek-R1 的聯網搜索能力，測評內容包括基礎檢索能力如文化生活、經濟生活、實時新聞等，以及分析推理能力如推理計算、分析排序、數據檢索與分析等，&lt;/p&gt; 
+&lt;p&gt;測評結果顯示，騰訊元寶在 10 家接入 DeepSeek-R1 的平台中聯網搜索能力最強，在總分、基礎檢索能力和分析推理能力三項核心指標上均排名第一。&lt;/p&gt; 
+&lt;p&gt;&lt;img height=&quot;4468&quot; src=&quot;https://static.oschina.net/uploads/space/2025/0312/145142_W1Ch_2720166.png&quot; width=&quot;3488&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
+&lt;p&gt;據悉，本次測評模擬了用户的真實搜索需求，考察 AI 在查找實時新聞、文化生活、經濟動態等信息時的準確度，以及在複雜問題上的推理計算、數據分析和排序能力。而據測試結果顯示，元寶在基礎檢索能力、分析推理能力均超越多個平台。&lt;/p&gt;
+                                                                                &lt;/div&gt;
+                                                                            </description>
+            <link>https://www.oschina.net/news/338369</link>
+            <guid isPermaLink="false">https://www.oschina.net/news/338369</guid>
+            <pubDate>Wed, 12 Mar 2025 06:54:44 GMT</pubDate>
+            <author>來源: OSCHINA</author>
+        </item>
+        <item>
+            <title>豆包文生圖技術報告發布，數據處理、預訓練、RLHF 全流程公開</title>
+            <description>&lt;div class=&quot;content&quot;&gt;
+                                                                    
+                                                        &lt;p&gt;豆包大模型團隊&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fmp.weixin.qq.com%2Fs%2F3E4s2c7TcWQ_g_6DdJPJkQ&quot; target=&quot;_blank&quot;&gt;發佈&lt;/a&gt;文生圖技術報告，首次公開 Seedream 2.0 圖像生成模型技術細節，覆蓋數據構建、預訓練框架、 後訓練 RLHF 全流程。報告針對 Seedream 2.0 原生中英雙語理解、文字渲染、高美感、分辨率與畫幅變換等特性的實現，進行了具體介紹。&lt;/p&gt; 
+&lt;p&gt;豆包大模型團隊文生圖模型 Seedream 2.0 於 2024 年 12 月初在豆包 APP 和即夢上線，相比 Ideogram 2.0、Midjourney V6.1、Flux 1.1 Pro 等主流模型，該模型更好解決了文本渲染能力欠佳、對中國文化理解不足等諸多實際問題，支持原生中英雙語，美感、指令遵循等能力有整體提升。&lt;/p&gt; 
+&lt;p&gt;&lt;span style=&quot;color:rgba(0, 0, 0, 0.9)&quot;&gt;Seedream 2.0 採用了全新的預訓練架構設計，其整體框圖如下：&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;img height=&quot;274&quot; src=&quot;https://oscimg.oschina.net/oscnet/up-457ee588823b38a7eef1e2ee5c0e9e855d4.png&quot; width=&quot;500&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
+&lt;p&gt;根據介紹，團隊為了較全面客觀地評估模型，圍繞圖文匹配度、結構準確率、美感等基礎維度，嚴格構建了 Bench-240 評測基準。通過測試發現 Seedream 2.0 面向英文提示詞，其生成內容的結構合理性、文本理解準確性高於主流模型。&lt;/p&gt; 
+&lt;p&gt;&lt;img height=&quot;459&quot; src=&quot;https://oscimg.oschina.net/oscnet/up-1b1b01a3b00d4f19f14b66e8f4a52dca01a.png&quot; width=&quot;500&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;span style=&quot;color:#000000&quot;&gt;中文綜合能力同樣突出，&lt;/span&gt;&lt;span style=&quot;color:#000000&quot;&gt;其生成與渲染文字可用率達 78%，完美響應率為 63%，高於業界目前其他模型。&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;img height=&quot;465&quot; src=&quot;https://oscimg.oschina.net/oscnet/up-e549ec802bb4d76bbba44b30474aebe0c15.png&quot; width=&quot;500&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
+&lt;p&gt;公告稱，此次技術報告的發佈，旨在推動圖像生成技術進一步發展，加強業內交流。展望未來，團隊將持續探索更高效地 Scaling 模型參數及數據的創新技術，進一步提升模型的性能邊界。&lt;/p&gt; 
+&lt;p&gt;&lt;strong&gt;完整報告詳情可查看：&lt;/strong&gt;&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt;技術展示頁：&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fteam.doubao.com%2Ftech%2Fseedream&quot; target=&quot;_blank&quot;&gt;https://team.doubao.com/tech/seedream&lt;/a&gt;&lt;/li&gt; 
+ &lt;li&gt;技術報告：&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Farxiv.org%2Fpdf%2F2503.07703&quot; target=&quot;_blank&quot;&gt;https://arxiv.org/pdf/2503.07703&lt;/a&gt;&lt;/li&gt; 
+&lt;/ul&gt;
+                                                                                &lt;/div&gt;
+                                                                            </description>
+            <link>https://www.oschina.net/news/338350</link>
+            <guid isPermaLink="false">https://www.oschina.net/news/338350</guid>
+            <pubDate>Thu, 06 Mar 2025 05:55:00 GMT</pubDate>
+            <author>來源: OSCHINA</author>
+        </item>
+        <item>
+            <title>字節跳動 EB 級日誌系統設計與優化實踐</title>
+            <description>&lt;div class=&quot;content&quot;&gt;
+                                                                                                                    
+                                                                                                                                                    &lt;div&gt; 
+ &lt;div&gt; 
+  &lt;img src=&quot;https://oscimg.oschina.net/oscnet//e27a1d3e532d1aab8b65d5203bac1eab.jpg&quot; referrerpolicy=&quot;no-referrer&quot;&gt; 
+ &lt;/div&gt; 
+ &lt;div&gt;
+   作者｜劉卯銀，火山引擎日誌系統架構師 
+ &lt;/div&gt; 
+ &lt;div&gt; 
+  &lt;img src=&quot;https://oscimg.oschina.net/oscnet//8942fd743308c45d84b2a600e94847fa.jpg&quot; referrerpolicy=&quot;no-referrer&quot;&gt; 
+ &lt;/div&gt; 
+ &lt;div&gt;
+   日誌在可觀測技術發展的早期是用做故障回顧的。 我們通過 metrics 發現指標異常，比如成功率下降，然後通過 trace 找到了有異常的某個服務，最後才通過日誌找到具體的原因（接口返回異常）。 在現代日誌系統裏，這些都可以通過日誌來一站式解決： trace 本身就是一種特殊格式的日誌，metrics 可以通過日誌來實時生成。 
+ &lt;/div&gt; 
+ &lt;div&gt;
+   日誌主要有三個明顯優勢： 
+ &lt;/div&gt; 
+ &lt;ul&gt; 
+  &lt;li&gt; 
+   &lt;div&gt;
+     生成和採集非常容易，基本上各個編程語言都有日誌框架； 
+   &lt;/div&gt; &lt;/li&gt; 
+  &lt;li&gt; 
+   &lt;div&gt;
+     採集是旁路的，不需要用户系統做任何改造。日誌生成到文件，日誌採集器去讀文件後採集到日誌系統； 
+   &lt;/div&gt; &lt;/li&gt; 
+  &lt;li&gt; 
+   &lt;div&gt;
+     保留了大量的細節。 
+   &lt;/div&gt; &lt;/li&gt; 
+ &lt;/ul&gt; 
+ &lt;div&gt;
+   日誌的挑戰也很明確：日誌量大，流量容易突發，非結構化的數據難以利用。 
+ &lt;/div&gt; 
+ &lt;div&gt;
+   本文將主要探討如何解決日誌面臨的挑戰。 
+ &lt;/div&gt; 
+ &lt;div&gt; 
+  &lt;strong&gt;字節跳動日誌系統介紹&lt;/strong&gt; 
+ &lt;/div&gt; 
+ &lt;div&gt; 
+  &lt;strong&gt;EB&lt;/strong&gt; 
+  &lt;strong&gt;&lt;span&gt;&amp;nbsp;&lt;/span&gt;級日誌系統 TLS（Tinder&lt;span&gt;&amp;nbsp;&lt;/span&gt;&lt;/strong&gt; 
+  &lt;strong&gt;Log&lt;/strong&gt; 
+  &lt;strong&gt;&lt;span&gt;&amp;nbsp;&lt;/span&gt;Service）&lt;/strong&gt; 
+ &lt;/div&gt; 
+ &lt;div&gt; 
+  &lt;img src=&quot;https://oscimg.oschina.net/oscnet//c4921393194a0512d1f9e28b5aab33f7.jpg&quot; referrerpolicy=&quot;no-referrer&quot;&gt; 
+ &lt;/div&gt; 
+ &lt;div&gt;
+   字節跳動在集團內部和火山引擎（公有云）是一套統一的日誌系統 TLS（Tinder Log Service），下面簡稱 TLS。集團內部包括抖音、頭條、飛書、懂車帝在內的大部分用户的日誌都是在 TLS 上。用户的日誌包含了運營、運維、審計和 Trace 等類型的日誌。TLS 對用户提供採集、存儲、加工、查詢分析、告警、消費、投遞等功能。大家知道字節跳動的業務規模增長比較迅猛、最近的抖音電商也是快速增長，TLS 經受住了業務快速增長導致日誌規模快速增長的考驗。 
+ &lt;/div&gt; 
+ &lt;div&gt; 
+  &lt;strong&gt;TLS 的演進&lt;/strong&gt; 
+ &lt;/div&gt; 
+ &lt;div&gt; 
+  &lt;img src=&quot;https://oscimg.oschina.net/oscnet//1de7b567db5294791cb60ea117e65c64.jpg&quot; referrerpolicy=&quot;no-referrer&quot;&gt; 
+ &lt;/div&gt; 
+ &lt;div&gt;
+   早期字節跳動沒有統一的日誌系統，各業務系統存在日誌需求，不得不各自自建，選用的方案五花八門，有基於 ELK 的，有基於 Clickhouse 的，也有基於對象存儲+Hive 的。自建的日誌系統存在穩定性不足、運維複雜、成本高、彈性不足等諸多痛點，於是我們構建了日誌的 1.0 系統。因為主要是運維日誌，我們調研了業內開源的一些方案，綜合需求和進度要求，最終選擇了類似 Loki 的方案。 
+ &lt;/div&gt; 
+ &lt;div&gt;
+   Loki 是 Grafana 旗下一款開源的日誌低成本解決方案，沒有全文索引，查詢日誌主要通過掃描。日誌 1.0 的數據存儲在 HDFS 上，採用掃描式查詢，解決了自建系統的穩定性不足、運維複雜、成本高和彈性不足的問題。但是日誌 1.0 有一個問題沒有解決，那就是性能。因為沒有索引，所以查詢速度很慢，有同學調侃，查日誌的時間，都可以去泡杯咖啡了。 
+ &lt;/div&gt; 
+ &lt;div&gt;
+   1.0 顯然不能滿足客户的需求，所以我們又馬不停蹄的開發了日誌 2.0，我們在 1.0 的基礎上增加了自研的倒排索引，同時把底層存儲更換為了字節內部自研的池化存儲 bytestore，2.0 上線後查詢性能得到了很大的提升，所以我們把 trace 的數據也接入進來了。 
+ &lt;/div&gt; 
+ &lt;div&gt;
+   隨着業務系統的進一步演進，只有索引還是不夠的，因為有很多用户希望能基於日誌來做運營分析，需要實時的日誌報表分析，日誌告警等能力。因此我們又開發了日誌 3.0（TLS），我們認為 TLS 是一個比較現代且全面的日誌系統。日誌 3.0 在 2.0 的基礎上增加了列存、OLAP 分析引擎以及智能 AI 引擎，同時底層存儲也引入了高性能的混合存儲。為了滿足業務系統多樣性的需求，我們還加大了在生態兼容方面的投入，3.0 時代，日誌規模也達到了 EB 級。 
+ &lt;/div&gt; 
+ &lt;div&gt; 
+  &lt;strong&gt;字節跳動日誌系統 TLS 的設計優化實踐&lt;/strong&gt; 
+ &lt;/div&gt; 
+ &lt;div&gt; 
+  &lt;strong&gt;現代日誌系統的核心屬性&lt;/strong&gt; 
+ &lt;/div&gt; 
+ &lt;div&gt; 
+  &lt;img src=&quot;https://oscimg.oschina.net/oscnet//a6dc3be41760eca4e05d1ac007090049.jpg&quot; referrerpolicy=&quot;no-referrer&quot;&gt; 
+ &lt;/div&gt; 
+ &lt;div&gt;
+   在我們看來，一個現代的日誌系統具備以下幾個方面的核心屬性： 
+ &lt;/div&gt; 
+ &lt;ul&gt; 
+  &lt;li&gt; 
+   &lt;div&gt;
+     高性能：實時的日誌系統必須具備查詢分析百億行日誌秒級返回的能力。 
+   &lt;/div&gt; &lt;/li&gt; 
+  &lt;li&gt; 
+   &lt;div&gt;
+     彈性&amp;amp;高可用：日誌的量不好預估、存在突發，必須要具備彈性能力；高可用是基本的穩定性訴求。 
+   &lt;/div&gt; &lt;/li&gt; 
+  &lt;li&gt; 
+   &lt;div&gt;
+     高效率：海量的數據只有在成本足夠低的時候才能發揮出重要的價值，要讓用户能用的起，所以要提升日誌系統的效率，降本增效。 
+   &lt;/div&gt; &lt;/li&gt; 
+  &lt;li&gt; 
+   &lt;div&gt;
+     生態兼容：適應用户業務系統的多樣性，讓更多的用户能方便的接入，讓更多的日誌發揮出價值。 
+   &lt;/div&gt; &lt;/li&gt; 
+  &lt;li&gt; 
+   &lt;div&gt;
+     豐富的功能：日誌加工、可視化儀表盤、日誌告警滿足用户的多樣化需求，適應更多場景的日誌。 
+   &lt;/div&gt; &lt;/li&gt; 
+  &lt;li&gt; 
+   &lt;div&gt;
+     智能化：智能化有兩個方面，一是日誌系統具備智能運維 AIOPS 的能力，包括日誌聚類、智能文本分析、機器學習算子；另外一個是提供智能助手，幫助用户寫 SQL，寫正則，用自然語言生成圖表等。 
+   &lt;/div&gt; &lt;/li&gt; 
+ &lt;/ul&gt; 
+ &lt;div&gt; 
+  &lt;strong&gt;為高性能而設計的數據組織方式&lt;/strong&gt; 
+ &lt;/div&gt; 
+ &lt;div&gt; 
+  &lt;img src=&quot;https://oscimg.oschina.net/oscnet//d89dae7feec9c09e8592344c89f02988.jpg&quot; referrerpolicy=&quot;no-referrer&quot;&gt; 
+ &lt;/div&gt; 
+ &lt;div&gt;
+   TLS 對外提供寫入、消費、查詢、分析四個數據面的重要接口，這幾個接口的性能決定了 TLS 的性能。 
+ &lt;/div&gt; 
+ &lt;ul&gt; 
+  &lt;li&gt; 
+   &lt;div&gt;
+     日誌原文：日誌順序寫入，順序讀取，是消息隊列相似的接口，所以我們也按消息隊列的方式來組織數據。原文以 append 的方式寫入到底層存儲，順序讀取消費。我們按日誌到達服務端的時間構建了時間的稀疏索引，用於獲取消費位點。同時為了能夠對流量進行控制，我們引入了 shard 的概念，每個 shard 是一個順序的性能流，類似於 Kafka 的 partition，用户需要保序的時候可以指定 shard 寫入，需要高性能的時候可以分散到多個 shard 做負載均衡。 
+   &lt;/div&gt; &lt;/li&gt; 
+  &lt;li&gt; 
+   &lt;div&gt;
+     索引：用户需要通過關鍵字查詢日誌原文，為了提升查詢效率，我們構建了倒排索引。倒排索引存儲了關鍵字和日誌行號的對應關係，查詢關鍵字的時候直接獲取日誌行號，不用做掃描查詢。用户查詢是指定時間窗口查詢的，我們在索引裏存放了日誌的時間。為了減少查詢時間窗口內的數據量，我們做了個優化，把時間相近的日誌存放在一起，並以小時為切分單位來分組存放。查詢某一個小時內的日誌只需要處理對應小時的分組，其它小時的分組可以直接跳過。同時按小時分組存放還有一個好處，小時內的索引只需要存放小時內的時間，如果精確到秒用 0-3599（12 位） 就可以表示時間，大大縮小了時間字段的存儲空間。因為數據量少了，一次 I/O 可以讀更多的有效數據上來，也提升了時間過濾的效率。 
+   &lt;/div&gt; &lt;/li&gt; 
+  &lt;li&gt; 
+   &lt;div&gt;
+     列存：OLAP 引擎分析數據最高效的就是列式存儲了，因為對某一個字段的聚合分析不需要讀取別的字段。還是上面的那個道理，相對於行存，列存一次 I/O 可以讀取更多的有效數據，自然就提升了性能。TLS 為了適應小流量的場景，列存的切分窗口設置為按天切分，如果按小時切分一些小流量的場景列存會切的太碎，I/O 太小讀取效率不高。 
+   &lt;/div&gt; &lt;/li&gt; 
+  &lt;li&gt; 
+   &lt;div&gt;
+     存儲：TLS 的這三種類型的數據都統一存放到了字節跳動內部的池化存儲 bytestore，池化存儲通過 EC 做數據冗餘，保證數據的可靠性。 
+   &lt;/div&gt; &lt;/li&gt; 
+ &lt;/ul&gt; 
+ &lt;div&gt; 
+  &lt;strong&gt;系統架構&lt;/strong&gt; 
+ &lt;/div&gt; 
+ &lt;div&gt; 
+  &lt;img src=&quot;https://oscimg.oschina.net/oscnet//afa92f12dcf5cc56ada63c05b8d8ab7c.jpg&quot; referrerpolicy=&quot;no-referrer&quot;&gt; 
+ &lt;/div&gt; 
+ &lt;div&gt;
+   這是 TLS 的系統架構，分為存儲集羣、計算集羣和管控集羣。 重點介紹一下計算集羣的組件： 
+ &lt;/div&gt; 
+ &lt;ul&gt; 
+  &lt;li&gt; 
+   &lt;div&gt;
+     API Gateway：用户操作的統一入口； 
+   &lt;/div&gt; &lt;/li&gt; 
+  &lt;li&gt; 
+   &lt;div&gt;
+     ShardServer：原文引擎，負責原文的寫入、消費、索引查詢到，行號後返回日誌原文； 
+   &lt;/div&gt; &lt;/li&gt; 
+  &lt;li&gt; 
+   &lt;div&gt;
+     Query：OLAP 查詢分析引擎，負責列存 SQL 分析和查詢結果的聚合； 
+   &lt;/div&gt; &lt;/li&gt; 
+  &lt;li&gt; 
+   &lt;div&gt;
+     IndexServer：索引、列存的寫入構建； 
+   &lt;/div&gt; &lt;/li&gt; 
+  &lt;li&gt; 
+   &lt;div&gt;
+     SearchServer：索引查詢。 
+   &lt;/div&gt; &lt;/li&gt; 
+ &lt;/ul&gt; 
+ &lt;div&gt;
+   可以看到我們的系統架構遵循了三個原則： 
+ &lt;/div&gt; 
+ &lt;ul&gt; 
+  &lt;li&gt; 
+   &lt;div&gt;
+     存算分離：計算和存儲可以分別擴展，這是為了彈性而做出的選擇。 
+   &lt;/div&gt; &lt;/li&gt; 
+  &lt;li&gt; 
+   &lt;div&gt;
+     讀寫分離：也是為了適應彈性做出的選擇。前面介紹過字節內部的日誌系統是從掃描查詢演進過來的，有非常重的讀，計算節點會把 100G 的網卡讀帶寬打滿。所以對我們來説，讀寫分離很重要，一方面是讀寫資源隔離，另一方面業務系統也在向索引查詢切換，需要足夠的彈性來支撐這種遷移。 
+   &lt;/div&gt; &lt;/li&gt; 
+  &lt;li&gt; 
+   &lt;div&gt;
+     數據面和管控面分離：數據面和管控面是完全分離的。數據面有完整的配置信息緩存，管控面故障時，數據面的業務不會中斷。 
+   &lt;/div&gt; &lt;/li&gt; 
+ &lt;/ul&gt; 
+ &lt;div&gt; 
+  &lt;strong&gt;多級緩存和熱點消除&lt;/strong&gt; 
+ &lt;/div&gt; 
+ &lt;div&gt; 
+  &lt;img src=&quot;https://oscimg.oschina.net/oscnet//a927c673fcd1414ef3c8a05655e75eed.jpg&quot; referrerpolicy=&quot;no-referrer&quot;&gt; 
+ &lt;/div&gt; 
+ &lt;div&gt;
+   增加緩存是提升性能最有效的手段，我們在系統的多個層級都設置了緩存。 
+ &lt;/div&gt; 
+ &lt;ul&gt; 
+  &lt;li&gt; 
+   &lt;div&gt;
+     ShardServer：近期寫入的數據馬上就會被消費，所以 shardserver 在數據落盤的同時在內存裏保存了最近寫入的數據，保證索引消費、實時消費、投遞都能在緩存裏命中。 
+   &lt;/div&gt; &lt;/li&gt; 
+  &lt;li&gt; 
+   &lt;div&gt;
+     IndexServer：緩存索引列存構建的元數據信息，包括索引、列存文件清單，索引的 meta 信息以及列存的 footer 信息，查詢的時候從 IndexServer 實時獲取才能查詢到最新的數據。 
+   &lt;/div&gt; &lt;/li&gt; 
+  &lt;li&gt; 
+   &lt;div&gt;
+     Query：Query 上有元數據緩存，中間結果緩存，數據緩存。重點提一下中間結果緩存：因為查詢分析命令大部分都是分析最近時間點的數據，所以直接緩存結果大多是無效的，我們需要的是一箇中間結果的緩存，聯合最新寫入的數據和之前查詢的中間結果緩存一起計算出當前查詢的結果後返回，中間結果的緩存命中率是很高的。 
+   &lt;/div&gt; &lt;/li&gt; 
+  &lt;li&gt; 
+   &lt;div&gt;
+     SearchServer：Searchserver 的緩存和 query 類似，SearchServer 是索引查詢的緩存，query 是 SQL 分析的緩存。 
+   &lt;/div&gt; &lt;/li&gt; 
+  &lt;li&gt; 
+   &lt;div&gt;
+     Bytestore：Bytestore 上會緩存熱點數據，主要是對物理盤的緩存。 
+   &lt;/div&gt; &lt;/li&gt; 
+ &lt;/ul&gt; 
+ &lt;div&gt;
+   緩存可以提升系統的性能，但緩存要麼是全局的，要麼就要有親和節點。我們的緩存是按節點親和的，會碰到一個問題：日誌的流量不太好預估，由於某些事件或者故障發生，日誌的量會出現井噴。調度的親和會造成節點的熱點，產生瓶頸。我們的解決方式是在每個服務的入口都設置隊列，當一個節點的隊列達到水位，説明這個節點已經有請求積壓了，處於繁忙狀態，這時候會返回 busy，發送節點會根據節點的負載情況，重新選擇一個負載低的節點進行重試，從而消除熱點。 
+ &lt;/div&gt; 
+ &lt;div&gt; 
+  &lt;strong&gt;索引實時可見&lt;/strong&gt; 
+ &lt;/div&gt; 
+ &lt;div&gt; 
+  &lt;img src=&quot;https://oscimg.oschina.net/oscnet//04794f3416e8a9444744c2fb5e8289e7.jpg&quot; referrerpolicy=&quot;no-referrer&quot;&gt; 
+ &lt;/div&gt; 
+ &lt;div&gt;
+   索引的實時可見是實時業務系統的需求。我們的日誌系統 TLS 已經應用到了實時業務場景，所以對從寫入成功到可以查詢的時間是有要求的，而索引和列存是一個批處理的數據結構，這決定了寫入到查詢不是立即可見的。用開源自建的小夥伴應該瞭解 ES 有一個 refresh_interval 參數來控制索引的可見時間，官方建議不能配置的太小，否則頻繁刷盤會影響性能。 
+ &lt;/div&gt; 
+ &lt;div&gt;
+   能否兼顧性能和可見性？我們做了索引的內存可見，實測可以在 HDD 的場景把索引的可見性做到 3 秒以內。什麼是內存可見呢？數據到了 IndexWriter 後，先放在內存的 buffer 中，如果數據量比較大，buffer 達到設定大小後就開始構建索引寫盤，如果 3 秒還沒達到設定大小，我們在內存裏構建了索引的數據結構，查詢的時候可以從內存裏查，這就做到了索引的 3 秒可見。內存中的索引會有一定的淘汰策略，進行 merge 後刷盤。 
+ &lt;/div&gt; 
+ &lt;div&gt;
+   需要注意，ES 有一個 translog ，用途是在掉電的時候恢復數據，而我們不需要 translog，因為我們有日誌原文，我們通過記錄原文消費的 offset 來記錄索引的構建進度。但如果處理的不好，內存構建的索引會有幻讀的問題，比如在內存中構建了索引，用户也查詢到了，突然這個節點故障，內存裏的數據丟失，重新啓動後提供服務，之前已經查到的數據又查不到了，只有等索引從記錄的進度開始重新構建後才能查到，這就是幻讀。我們是通過一致性的視圖管理來解決幻讀的，通過 commit point 記錄了索引可見的進度，故障後重啓時只有當 commit point 之前的索引都構建好了才會讓用户再次查詢到。 
+ &lt;/div&gt; 
+ &lt;div&gt; 
+  &lt;strong&gt;EB 級日誌系統 TLS 的採集客户端&lt;/strong&gt; 
+ &lt;/div&gt; 
+ &lt;div&gt; 
+  &lt;img src=&quot;https://oscimg.oschina.net/oscnet//e5fe7270407f299ac067709dff0c7c27.jpg&quot; referrerpolicy=&quot;no-referrer&quot;&gt; 
+ &lt;/div&gt; 
+ &lt;div&gt;
+   系統的採集客户端叫 LogCollector ，採用的是多 pipeline 的設計，目的是進行資源隔離、故障隔離。比如某個 output 出現問題，不會影響到其它的 output。在 pipeline 設置有自適應的反壓機制，輸出端慢採集速度也會放慢。在資源上採用的是資源共享和自動調配機制，每個 pipeline 有獨享的內存資源，還有一個全局的共享資源池以應對某些 pipeline 的流量突發。 
+ &lt;/div&gt; 
+ &lt;div&gt;
+   為了應對 AI 時代訓練任務的需求，我們還開發了秒級生命週期的容器日誌採集能力，通過實時監控 K8s 的事件，做到啓動到退出生命週期只有幾秒的容器日誌能正常採集，不漏不丟。採集客户端的性能非常重要，因為採集客户端部署在用户側，裝機量大，效率提升對成本的收益非常明顯。我們也持續在優化採集客户端的性能，這些優化包括： 
+ &lt;/div&gt; 
+ &lt;ul&gt; 
+  &lt;li&gt; 
+   &lt;div&gt;
+     批量處理：將日誌讀取一批後統一處理，降低了 Lock/Unlock 操作的次數，減少了日誌狀態等對象的內存分配頻率。 
+   &lt;/div&gt; &lt;/li&gt; 
+  &lt;li&gt; 
+   &lt;div&gt;
+     並行處理：日誌的結構化全部併發多線程執行，提升了 CPU 密集型任務的處理的速率。雖然我們採集客户端通常只配置 1C，但是因為有很多 I/O 操作，多線程是可以提高處理性能的。 
+   &lt;/div&gt; &lt;/li&gt; 
+  &lt;li&gt; 
+   &lt;div&gt;
+     零拷貝技術：日誌讀取到結構化處理到 OutPut，共用一份內存，避免無效的內存拷貝性能開銷，省略非必要的編碼/解碼動作。 
+   &lt;/div&gt; &lt;/li&gt; 
+  &lt;li&gt; 
+   &lt;div&gt;
+     內存池：對通用數據結構進行池化管理，減少內存碎片。 
+   &lt;/div&gt; &lt;/li&gt; 
+  &lt;li&gt; 
+   &lt;div&gt;
+     其他（以 JSON 採集模式為例）：byte 級別直接操作 JSON 日誌，省略內存分配，避免類型轉換和反射，提高了 JSON 日誌的處理速度。 
+   &lt;/div&gt; &lt;/li&gt; 
+ &lt;/ul&gt; 
+ &lt;div&gt; 
+  &lt;strong&gt;如何應對業務的快速增長&lt;/strong&gt; 
+ &lt;/div&gt; 
+ &lt;div&gt; 
+  &lt;img src=&quot;https://oscimg.oschina.net/oscnet//bf22d05d45ee15c9c3a67bba5d11c5be.jpg&quot; referrerpolicy=&quot;no-referrer&quot;&gt; 
+ &lt;/div&gt; 
+ &lt;div&gt;
+   應對業務的快速增長，我們的策略是多 AZ、多集羣部署。TLS 對用户看到是統一的 EB 級大集羣，實際內部是由多個小的集羣組成的。這樣設計有兩個方面的考慮，一是故障域隔離，減少故障爆炸半徑；二是能充分利用多個機房的資源，有這種靈活性才能拿到足夠多的機器應對業務突發上量。 
+ &lt;/div&gt; 
+ &lt;ul&gt; 
+  &lt;li&gt; 
+   &lt;div&gt;
+     存算分離：前面提到過存算分離，這裏再詳細説説。我們的存儲使用相對大一些的集羣，方便資源共享，而計算使用相對小的集羣，故障隔離，資源隔離。這樣做除了計算集羣和存儲集羣分別靈活擴展外，還有一個優勢：計算集羣支持離線升級。一個存儲集羣上有多個計算集羣，因為是共享存儲，在升級某個計算集羣的時，可以把待升級的集羣上的業務全部切到其他計算集羣，切走後在沒有業務流量的情況下升級計算集羣，升級完再逐漸把流量灰度切回來。 
+   &lt;/div&gt; &lt;/li&gt; 
+  &lt;li&gt; 
+   &lt;div&gt;
+     Serverless：所有的服務都是雲原生的，包括存儲都是 on K8s，讀寫服務資源隔離，分別靈活擴展。 
+   &lt;/div&gt; &lt;/li&gt; 
+  &lt;li&gt; 
+   &lt;div&gt;
+     多集羣管理：因為有多個小的集羣，多集羣管理就非常重要了，彈性是通過多集羣管理來實現的，自動負載分配，自動負載均衡。 
+   &lt;/div&gt; &lt;/li&gt; 
+  &lt;li&gt; 
+   &lt;div&gt;
+     存儲集羣故障時切換：計算集羣故障時對業務是沒有影響的，快速切換集羣後只需要根據水位處理擴容。存儲集羣故障時，是不是業務就中斷了呢？我們在存儲集羣故障時做了一些降級處理的預案：因為日誌寫入不中斷很重要，寫入如果中斷有些 SDK 上傳的日誌就丟了，所以我們在存儲集羣故障時將寫入流量切換到新集羣，切換後寫數據不中斷，新寫入的數據在新集羣上也可查詢，只是歷史數據需要等待故障集羣恢復時才可查。有些用户對日誌的穩定性要求更高，給我們提了 3AZ 高可用的需求，目前在規劃中。 
+   &lt;/div&gt; &lt;/li&gt; 
+ &lt;/ul&gt; 
+ &lt;div&gt; 
+  &lt;strong&gt;租户隔離&lt;/strong&gt; 
+ &lt;/div&gt; 
+ &lt;div&gt; 
+  &lt;img src=&quot;https://oscimg.oschina.net/oscnet//40f2695e9e0560fc1a2bc8a329edf636.jpg&quot; referrerpolicy=&quot;no-referrer&quot;&gt; 
+ &lt;/div&gt; 
+ &lt;div&gt;
+   無論是公有云還是內部的系統，除非系統的建設是垂直隔離的孤島，都繞不開租户隔離的問題。我們的處理策略是多點位的流控和資源控制，並且按照單請求/單 shard/單 topic/單租户設置多個分級，控制住扇入和扇出。 
+ &lt;/div&gt; 
+ &lt;ul&gt; 
+  &lt;li&gt; 
+   &lt;div&gt;
+     寫入和消費鏈路：寫入和消費是對用户明確了系統的規格的，shard 就是讀寫的性能單元。為了防止一些異常的場景，我們還設置了租户級別的流控： 
+   &lt;/div&gt; 
+   &lt;ul&gt; 
+    &lt;li&gt; 
+     &lt;div&gt;
+       按 shard/租户的寫入帶寬流控，寫入 QPS 流控； 
+     &lt;/div&gt; &lt;/li&gt; 
+    &lt;li&gt; 
+     &lt;div&gt;
+       按 shard/租户的讀取帶寬流控，讀取 QPS 流控。 
+     &lt;/div&gt; &lt;/li&gt; 
+   &lt;/ul&gt; &lt;/li&gt; 
+  &lt;li&gt; 
+   &lt;div&gt;
+     查詢分析鏈路：查詢分析鏈路對用户明確了單個 Topic 的併發控制 
+   &lt;/div&gt; 
+   &lt;ul&gt; 
+    &lt;li&gt; 
+     &lt;div&gt;
+       按 Topic /租户的併發數流控 
+     &lt;/div&gt; &lt;/li&gt; 
+   &lt;/ul&gt; &lt;/li&gt; 
+  &lt;li&gt; 
+   &lt;div&gt;
+     訪問存儲：訪問存儲的流控就是要控制扇出，當然存儲自己也會有控制扇入的流控，這裏是一個雙重保障。 
+   &lt;/div&gt; 
+   &lt;ul&gt; 
+    &lt;li&gt; 
+     &lt;div&gt;
+       分析引擎單 shard 掃描數據量的流控； 
+     &lt;/div&gt; &lt;/li&gt; 
+    &lt;li&gt; 
+     &lt;div&gt;
+       單節點訪問存儲的帶寬/QPS 流控。 
+     &lt;/div&gt; &lt;/li&gt; 
+   &lt;/ul&gt; &lt;/li&gt; 
+  &lt;li&gt; 
+   &lt;div&gt;
+     資源控制：資源控制有三個方面的控制，CPU、內存的使用量、讀盤量： 
+   &lt;/div&gt; 
+   &lt;ul&gt; 
+    &lt;li&gt; 
+     &lt;div&gt;
+       分析引擎按請求/Topic/租户的三級資源流控 
+     &lt;/div&gt; &lt;/li&gt; 
+    &lt;li&gt; 
+     &lt;div&gt;
+       查詢引擎按請求/Topic/租户的三級資源流控 
+     &lt;/div&gt; &lt;/li&gt; 
+    &lt;li&gt; 
+     &lt;div&gt;
+       訪問存儲按 shard 設置了單次請求掃描的數據量 
+     &lt;/div&gt; &lt;/li&gt; 
+   &lt;/ul&gt; &lt;/li&gt; 
+ &lt;/ul&gt; 
+ &lt;div&gt; 
+  &lt;strong&gt;高效混合存儲&lt;/strong&gt; 
+ &lt;/div&gt; 
+ &lt;div&gt; 
+  &lt;img src=&quot;https://oscimg.oschina.net/oscnet//8740a5a87fd84b6419330f7c131c145a.jpg&quot; referrerpolicy=&quot;no-referrer&quot;&gt; 
+ &lt;/div&gt; 
+ &lt;div&gt;
+   開源自建的日誌系統，通常使用全 SSD，因為 HDD 的 IOPS 能力有限，需要做大量的優化，否則 HDD 的 IOPS 性能會成為系統的瓶頸。但是對於日誌的應用場景，HDD 比 SSD 更適合，因為日誌的讀寫都是順序 I/O，HDD 的帶寬能力是足夠的，且 HDD 沒有壽命問題、單位容量成本比 SSD 低很多，所以我們需要一個高效率的混合存儲，充分利用 SSD 的小 I/O 響應延遲以及 HDD 的低成本優勢。 
+ &lt;/div&gt; 
+ &lt;div&gt;
+   通常的混合存儲是轉儲模型，數據先以 3 副本的方式寫入 SSD，然後後台 Dump 到 HDD。這種模型會有以下四個問題： 
+ &lt;/div&gt; 
+ &lt;ul&gt; 
+  &lt;li&gt; 
+   &lt;div&gt;
+     三副本導致 SSD 的壽命和成本問題。 
+   &lt;/div&gt; &lt;/li&gt; 
+  &lt;li&gt; 
+   &lt;div&gt;
+     小 I/O 性能差：SSD overlap 寫入的問題，小於 4KB 寫要對齊到 4KB，寫前擦除等。 
+   &lt;/div&gt; &lt;/li&gt; 
+  &lt;li&gt; 
+   &lt;div&gt;
+     後台讀對 SSD 的壓力，dump 到 HDD 會有一次全量的數據讀。 
+   &lt;/div&gt; &lt;/li&gt; 
+  &lt;li&gt; 
+   &lt;div&gt;
+     三副本導致的網絡流量放大（圖中箭頭旁邊的數字標識的是流量放大）。 
+   &lt;/div&gt; &lt;/li&gt; 
+ &lt;/ul&gt; 
+ &lt;div&gt;
+   我們的高效混合存儲在架構上做了大的優化，實現了全流程的 EC 直寫。首先我們設置了一個 WAL log 層，整個節點上的所有寫請求匯聚成一條大的順序流，聚合後 EC 滿條帶寫入到 SSD，如果用户下發的本身就是大 I/O，就會 bypassSSD 直寫 HDD。用户的數據在 Membuffer 裏聚合，聚合到一定大小或者達到了強制刷盤的時間才下刷到 HDD。這麼設計後，用户寫入的數據先給用户返回成功後，在內存中充分聚合，充分聚合到滿條帶 EC 寫 HDD。 
+ &lt;/div&gt; 
+ &lt;ul&gt; 
+  &lt;li&gt; 
+   &lt;div&gt;
+     寫 SSD 由副本變成了 EC，大幅減少寫入量和網絡流量。 
+   &lt;/div&gt; &lt;/li&gt; 
+  &lt;li&gt; 
+   &lt;div&gt;
+     都是大塊 IO 寫 SSD、HDD。SSD 壽命、系統的吞吐量、訪問延遲都有極大的改善。 
+   &lt;/div&gt; &lt;/li&gt; 
+ &lt;/ul&gt; 
+ &lt;div&gt; 
+  &lt;strong&gt;私有編解碼協議&lt;/strong&gt; 
+ &lt;/div&gt; 
+ &lt;div&gt; 
+  &lt;img src=&quot;https://oscimg.oschina.net/oscnet//9c56e3ab4521d805fbad7fff87cf6dfc.jpg&quot; referrerpolicy=&quot;no-referrer&quot;&gt; 
+ &lt;/div&gt; 
+ &lt;div&gt;
+   我們發現日誌裏的 key 佔比通常會超過 30% ，而每條日誌的 key 幾乎都是一樣的，對於這種結構化的日誌，如果對 key 進行一個編碼，可以大幅縮減數據量。通常大家使用 ProtoBuffer 的標準編解碼在盤上存儲或在網絡上發送數據，Protobuffer 沒法對相同的 key 進行壓縮。因此我們自研了一個私有編解碼協議，把日誌的 key 映射成數字編碼，解碼的時候把數字再轉換為 key，把 key 到數字的映射存放在日誌裏，這樣 key 只有一次存儲，節省約 30% 的網絡數據傳輸和存儲空間。 
+ &lt;/div&gt; 
+ &lt;div&gt;
+   同時日誌在流轉及查詢過程中，大部分場景不需要讀數據，只需要讀 header 裏的元數據。但是在 PB 編碼的情況下是需要對整個 PB 進行反序列化的，浪費大量的計算資源，增加了延遲。因此，在我們的私有化協議裏，把 head 和 data 分別編碼和壓縮，讀 head 的時候，只需要解壓和序列化 header，大幅提升了流轉過程中的解析速度。 
+ &lt;/div&gt; 
+ &lt;div&gt; 
+  &lt;strong&gt;彈性&amp;amp;高性能&amp;amp;高效率的總結&lt;/strong&gt; 
+ &lt;/div&gt; 
+ &lt;div&gt; 
+  &lt;img src=&quot;https://oscimg.oschina.net/oscnet//5d64d4c99bca66d81824a1c1f0cde2d7.jpg&quot; referrerpolicy=&quot;no-referrer&quot;&gt; 
+ &lt;/div&gt; 
+ &lt;div&gt; 
+  &lt;strong&gt;生態兼容實踐-輸入和輸出生態建設&lt;/strong&gt; 
+ &lt;/div&gt; 
+ &lt;div&gt; 
+  &lt;img src=&quot;https://oscimg.oschina.net/oscnet//ed3fc149d567f7949b017a7ccd326150.jpg&quot; referrerpolicy=&quot;no-referrer&quot;&gt; 
+ &lt;/div&gt; 
+ &lt;div&gt;
+   我們認為最好的生態是支持標準協議的兼容的同時提供更高性能的私有接口，讓用户有更多的兼容性選擇。在 TLS 上也在踐行這一套理念。 
+ &lt;/div&gt; 
+ &lt;div&gt;
+   標準協議兼容：寫入和消費 TLS 支持標準的 Kafka 協議接口，OpenTelemetry 接口，S3 接口，在查詢分析側我們支持開源的 Grafana，支持 SQL92 標準的 SQL 命令，也提供了 ES 類似的 stringquery 接口。 
+ &lt;/div&gt; 
+ &lt;div&gt;
+   私有高性能接口：日誌採集提供了高性能的採集客户端 LogCollector、多語言 SDK，日誌消費提供了消費組和消費者的多語言 SDK，查詢分析側也提供了高性能的多語言 SDK。 
+ &lt;/div&gt; 
+ &lt;div&gt; 
+  &lt;strong&gt;生態兼容實踐-Kafka 協議&lt;/strong&gt; 
+ &lt;/div&gt; 
+ &lt;div&gt; 
+  &lt;img src=&quot;https://oscimg.oschina.net/oscnet//2b8f3e272d4635df42cc17e0e5cb83d1.jpg&quot; referrerpolicy=&quot;no-referrer&quot;&gt; 
+ &lt;/div&gt; 
+ &lt;div&gt;
+   剛剛提到了開源的生態兼容，Kafka 協議是大數據生態的標準協議，使用範圍廣，因此我們選擇了兼容 Kafka 協議。由於底層存儲是共享存儲，因此不需要 Kafka 的副本機制，我們將 Kafka 改造成了一個存算分離的架構，共享日誌原文的存儲，可兼容 TLS 的輸入和輸入生態，支持採集過來的日誌用 Kafka 協議消費，也支持從 Kafka 協議導入的數據通過 SDK 進行消費。 
+ &lt;/div&gt; 
+ &lt;div&gt;
+   在 Kafka 業務層面，保留了 Kafka 的 broker 和 coordinator 的實現邏輯，分別支持水平擴展，保留了對 Kafka 協議的兼容，用户在使用的時候看到的是一個增強的 Serverless 的 Kafka。 
+ &lt;/div&gt; 
+ &lt;div&gt; 
+  &lt;strong&gt;數據加工（ETL）&lt;/strong&gt; 
+ &lt;/div&gt; 
+ &lt;div&gt; 
+  &lt;img src=&quot;https://oscimg.oschina.net/oscnet//c6c70061a30f5c0c306d3b8485cb90a8.jpg&quot; referrerpolicy=&quot;no-referrer&quot;&gt; 
+ &lt;/div&gt; 
+ &lt;div&gt;
+   數據加工是日誌數據結構化的一個必備功能，TLS 為用户提供了簡單易用，類 Python 的日誌加工腳本語言，支持語法調試、執行預覽，很容易上手。用户只需要簡單的編寫加工語句即可對日誌數據進行加工。日誌加工的工作流程是讀取源 Topic 內的日誌數據，根據用户配置的加工語句對日誌進行過濾、富化、脱敏、分發的處理，然後輸入出到目的 Topic。TLS 提供了豐富的日誌加工函數，通過加工函數來便捷的加工日誌。 
+ &lt;/div&gt; 
+ &lt;div&gt; 
+  &lt;strong&gt;日誌智能化的實踐—快速故障定位&lt;/strong&gt; 
+ &lt;/div&gt; 
+ &lt;div&gt; 
+  &lt;img src=&quot;https://oscimg.oschina.net/oscnet//3c81b69d6a108815d1707b3173d22ea7.jpg&quot; referrerpolicy=&quot;no-referrer&quot;&gt; 
+ &lt;/div&gt; 
+ &lt;div&gt;
+   日誌系統的智能化目前在進行兩個方向的建設：智能運維和 AI 日誌助手。 
+ &lt;/div&gt; 
+ &lt;div&gt;
+   智能運維主要是通過機器學習的聚類算法進行日誌聚類、文本分析、模板匹配；AI 助手主要是用自然語言去生成查詢分析語句，寫 SQL，配置正則表達式，生成圖表等。 
+ &lt;/div&gt; 
+ &lt;div&gt;
+   這裏重點介紹下日誌智能化的應用。快速故障定位是火山引擎穩定性團隊的訴求，期望能夠藉助日誌實現【快速感知】【快速決策】【快速止損】【快速恢復】。我們的實現方式是：以存儲產品為例，首先將各個業務模塊的日誌都接入到日誌系統 TLS，在線上模擬常見的故障，根據日誌聚類的結果，將出現的日誌模板配置到對應的故障。下次出現類似的日誌 pattern 時，TLS 就會判斷出現了對應的故障，將結果以告警的形式推送，並直接明確故障類型，處理預案。線上出現故障後也可以提取模板，配置到故障庫裏，下次再出現類似的故障就會產生告警。同時 TLS 還支持故障的拓撲，在出現故障的時候明確出問題的節點。 
+ &lt;/div&gt; 
+ &lt;div&gt; 
+  &lt;strong&gt;內容回顧&lt;/strong&gt; 
+ &lt;/div&gt; 
+ &lt;div&gt; 
+  &lt;img src=&quot;https://oscimg.oschina.net/oscnet//7fde6e62c1aeda80fee1ffe37d99beb9.jpg&quot; referrerpolicy=&quot;no-referrer&quot;&gt; 
+ &lt;/div&gt; 
+ &lt;div&gt; 
+  &lt;strong&gt;用户案例&lt;/strong&gt; 
+ &lt;/div&gt; 
+ &lt;div&gt; 
+  &lt;strong&gt;內部案例：對象存儲日誌上雲&lt;/strong&gt; 
+ &lt;/div&gt; 
+ &lt;div&gt; 
+  &lt;img src=&quot;https://oscimg.oschina.net/oscnet//a72c6c774c5eecc62c9dbbd8856f1083.jpg&quot; referrerpolicy=&quot;no-referrer&quot;&gt; 
+ &lt;/div&gt; 
+ &lt;div&gt;
+   字節跳動的對象存儲建設的比日誌系統早，早期對象存儲有對日誌的需求而集團沒有日誌系統，所以採用了自建。對象存儲團隊基於自己的業務需求，採用了 2 個採集 agent + 3 套日誌查詢系統來支撐業務。1 個 agent 採集實時日誌，用 filebeat，另一個 agent 自己開發，採集滾動後的歷史日誌，上傳到對象存儲降低成本。對於熱日誌使用 ES 做實時查詢，Hive 做離線分析。對於冷日誌，開發了一套掃描查詢引擎去詢對象存儲內的日誌。 
+ &lt;/div&gt; 
+ &lt;div&gt;
+   對象存儲自建的這套系統建設複雜，運維成本高，3 個查詢入口查詢起來不方便，成本非常高，也沒有精力投入後續的優化。後來日誌系統 TLS 建立起來後，對象存儲果斷切換到 TLS，一次採集，多種應用集成，低成本多功能，免運維。切換後對象存儲的同學用起來非常滿意，後面把歷史冷日誌也導入了 TLS，他們專心於自己的業務能力建設。 
+ &lt;/div&gt; 
+ &lt;div&gt; 
+  &lt;strong&gt;客户案例—某國際旅行社&lt;/strong&gt; 
+ &lt;/div&gt; 
+ &lt;div&gt; 
+  &lt;img src=&quot;https://oscimg.oschina.net/oscnet//f64a82deb3a93f255e50d75f65366264.jpg&quot; referrerpolicy=&quot;no-referrer&quot;&gt; 
+ &lt;/div&gt; 
+ &lt;div&gt;
+   該案例把火山引擎的日誌系統 TLS 當作一個在線的 OLAP 數據庫在使用。客户為在線機票服務商，通過自己的搜索服務在各航空公司網站獲取機票報價信息，經過處理後，對線上的機票平台提供報價、訂單等服務，並對驗價異常、報價異常、訂單異常等實時告警。我們為客户提供了日誌加工、運營大盤、檢索分析、日誌告警等功能。因為是在線的系統，TLS 的可用性、可靠性就非常重要，任何問題都會直接對客户產生資損。目前客户在 TLS 上運行 2 年多，非常平穩。 
+ &lt;/div&gt; 
+ &lt;div&gt; 
+  &lt;strong&gt;下一步展望&lt;/strong&gt; 
+ &lt;/div&gt; 
+ &lt;div&gt; 
+  &lt;img src=&quot;https://oscimg.oschina.net/oscnet//4dc9f33845d62e01dbc4f91aea73d489.jpg&quot; referrerpolicy=&quot;no-referrer&quot;&gt; 
+ &lt;/div&gt; 
+ &lt;div&gt; 
+  &lt;strong&gt;關於作者&lt;/strong&gt; 
+ &lt;/div&gt; 
+ &lt;div&gt;
+   劉卯銀，火山引擎日誌系統架構師 ，現負責火山引擎日誌系統的設計、研發和架構技術演進。從 0 到 1 構建了火山引擎雲原生日誌系統 TLS，並主導了日誌系統架構的升級換代。 
+ &lt;/div&gt; 
+ &lt;div&gt;
+   &amp;nbsp; 
+ &lt;/div&gt; 
+ &lt;div&gt;
+   資料來源： 
+  &lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fdeveloper.volcengine.com%2Farticles%2F7389141787136229403&quot; rel=&quot;nofollow&quot; target=&quot;_blank&quot;&gt;字節跳動 EB 級日誌系統設計與優化實踐 - 文章 - 開發者社區 - 火山引擎&lt;/a&gt; 
+ &lt;/div&gt; 
+&lt;/div&gt;
+                                                                                    &lt;/div&gt;
+                                                                            </description>
+            <link>https://my.oschina.net/u/6800876/blog/17884414</link>
+            <guid isPermaLink="false">https://my.oschina.net/u/6800876/blog/17884414</guid>
+            <pubDate>Thu, 06 Mar 2025 05:46:00 GMT</pubDate>
+            <author>原創</author>
+        </item>
+        <item>
+            <title>基於 ANTLR4 的大數據 SQL 編輯器解析引擎實踐</title>
+            <description>&lt;div class=&quot;content&quot;&gt;
+                                                                                                                    
+                                                                                                                                                    &lt;h1&gt;一、背景&lt;/h1&gt; 
+&lt;p&gt;隨着得物離線業務的快速增長，為了脱離全託管服務的一些限制和享受技術發展帶來的成本優化，公司提出了大數據 Galaxy 開源演進項目，將離線業務從全託管且封閉的環境遷移到一個開源且自主可控的生態系統中，而離線開發治理套件是 Galaxy 自研體系中一個核心的項目，在數據開發 IDE 中最核心的就是 SQL 編輯器，我們需要一個 SQL 解析引擎在 SQL 編輯提供適配得物自研 Spark 引擎的語法定義，實時語法解析，語法補全，語法校驗等能力，結合業內 dataworks 和 dataphin 的實踐，我們最終選用 ANTLR 作為 SQL 解析引擎底座。&lt;/p&gt; 
+&lt;h1&gt;二、ANTLR4 簡介&lt;/h1&gt; 
+&lt;p&gt;ANTLR（一種語法解析引擎工具）是一個功能強大的解析器生成器，用於讀取、處理、執行或翻譯結構化文本或二進制文件。它廣泛用於構建語言、工具和框架。ANTLR 可以根據語法規則文件生成一個可以構建和遍歷解析樹的解析器。&lt;/p&gt; 
+&lt;h2&gt;ANTLR4 特性&lt;/h2&gt; 
+&lt;p&gt;ANTLR4 是一個強大的工具，適合用於語言處理、編譯器構建、代碼分析等多種場景。它的易用性、靈活性和強大的特性使得它成為開發者的熱門選擇。&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt;強大的文法定義：ANTLR4 允許用户使用簡單且易讀的文法語法來定義語言的結構。這使得創建和維護語言解析器變得更加直觀，同時在複雜文法構造上支持左遞歸文法、嵌套結構以及其他複雜的文法構造，使得能夠解析更復雜的語言結構。&lt;/li&gt; 
+ &lt;li&gt;抽象語法樹遍歷：ANTLR4 可以生成抽象語法樹，使得在解析源代碼時能夠更容易地進行分析和變換。AST 是編譯器和解釋器的核心組件。同時提供了簡單的 API 來遍歷生成的語法樹，使得實現代碼分析、轉換等操作變得簡單&lt;/li&gt; 
+ &lt;li&gt;自動語法錯誤處理：ANTLR4 提供了內置的錯誤處理機制，可以在解析過程中自動處理語法錯誤，並且可以自定義錯誤消息和處理邏輯&lt;/li&gt; 
+ &lt;li&gt;可擴展性：ANTLR4 允許用户擴展和自定義生成的解析器的行為。例如，您可以自定義解析器的方法、錯誤處理以及其他功能。&lt;/li&gt; 
+ &lt;li&gt;工具&amp;amp;社區生態：ANTLR4 提供了豐富的工具支持，包括命令行工具、集成開發環境插件和可視化工具，可以幫助您更輕鬆地開發和調試解析器。同時擁有活躍的社區，提供了大量的文檔、示例和支持。這使得新用户能夠快速上手，並得到必要的幫助。&lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;h2&gt;ANTLR4 的應用場景&lt;/h2&gt; 
+&lt;p&gt;&lt;strong&gt;Apache Spark&lt;/strong&gt; : 流行的大數據處理框架，使用 ANTLR 作為其 SQL 解析器的一部分，支持 SQL 查詢。 &lt;strong&gt;Twitter&lt;/strong&gt; : Twitter 使用 ANTLR 來解析和分析用户的查詢語言，這有助於他們的搜索和分析功能。 &lt;strong&gt;IBM&lt;/strong&gt;: IBM 使用 ANTLR 來支持一些其產品和工具中的 DSL（領域特定語言）解析需求，例如，在其企業集成解決方案中。&lt;/p&gt; 
+&lt;h2&gt;ANTLR4 入門&lt;/h2&gt; 
+&lt;h3&gt;ANTLR 元語言&lt;/h3&gt; 
+&lt;p&gt;為了實現一門計算機編程語言，我們需要構建一個程序來讀取輸入語句，對其中的詞組和符號進行識別處理，即我們需要語法解釋器或者翻譯器來識別出一門特定語言的所有詞組，子詞組，語句。我們將語法分析過程拆分為兩個獨立的階段則為詞法分析和語法分析。&lt;/p&gt; 
+&lt;p&gt;&lt;img src=&quot;https://oscimg.oschina.net/oscnet//81dd91bd990fb8d2339b4576739630a6.jpeg&quot; alt=&quot;antlr4 入門.jpeg&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
+&lt;p&gt;ANTLR 語法遵循了一種專門用來描述其他語言的語法，我們稱之為 ANTLR 元語言（ANTLR&#39;s meta-language）。ANTLR 元語句是一個強大的工具，可以用來定義編程語言的語法。通過定義詞法和語法規則，可以基於 antlr 生成解析器和詞法分析器。&lt;/p&gt; 
+&lt;p&gt;&lt;strong&gt;1、自頂向下&lt;/strong&gt; 在語言結構中，整體的辨識都是從最粗的粒度開始，一直進行到最詳細的層次，並把它們編寫成為語法規則，ANTLR4 就是採用自頂向下的，詞法語法分離，上下文無關的語法框架來描述語言。&lt;/p&gt; 
+&lt;pre&gt;&lt;code class=&quot;language-java&quot;&gt;// MyGLexer.g4
+lexer grammar MyGLexer;
+
+SEMICOLON: &#39;;&#39;;
+LEFT_PAREN: &#39;(&#39;;
+RIGHT_PAREN: &#39;)&#39;;
+COMMA: &#39;,&#39;;
+DOT: &#39;.&#39;;
+LEFT_BRACKET: &#39;[&#39;;
+RIGHT_BRACKET: &#39;]&#39;;
+LEFT_BRACES: &#39;{&#39;;
+RIGHT_RACES: &#39;}&#39;;
+EQ: &#39;=&#39;;
+
+FUNCTOM: &#39;FUNCTION&#39;;
+LET: &#39;LET&#39;;
+CONST: &#39;CONST&#39;;
+VAR: &#39;VAR&#39;;
+IF: &#39;IF&#39;;
+ELSE: &#39;ELSE&#39;;
+WHILE: &#39;WHILE&#39;;
+FOR: &#39;FOR&#39;;
+RETURN: &#39;RETURN&#39;;
+&lt;/code&gt;&lt;/pre&gt; 
+&lt;pre&gt;&lt;code class=&quot;language-java&quot;&gt;// MyGParser.g4
+parser grammar MyGParser;
+
+options {
+  tokenVocab = MyGLexer;
+}
+
+// 入口規則
+program: statement* EOF;
+
+statement:
+  variableDeclaration
+  | functionDeclaration
+  | expressionStatement
+  | blockStatement
+  | ifStatement
+  | whileStatement
+  | forStatement
+  | returnStatement;
+  ......
+&lt;/code&gt;&lt;/pre&gt; 
+&lt;p&gt;&lt;strong&gt;2、語言模式&lt;/strong&gt;&lt;/p&gt; 
+&lt;p&gt;計算機語言常見 4 種語言模式：&lt;strong&gt;序列（sequence）、選擇（choice）、詞法符號依賴 （token dependency），以及嵌套結構（nested phrase）&lt;/strong&gt;。以下是 ANTLR 對 4 種模式的語法規則描述。&lt;/p&gt; 
+&lt;p&gt;&lt;img src=&quot;https://oscimg.oschina.net/oscnet//b8f12204531cd87309e362da4410dfa4.jpeg&quot; alt=&quot;語言模式.jpeg&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;strong&gt;3、語法歧義&lt;/strong&gt;&lt;/p&gt; 
+&lt;p&gt;在自頂向下的語法和手工編寫的遞歸下降語法分析器中，處理表達式都是一件相當棘手的事情，這首先是因為大多數語法都存在歧義，其次是因為大多數語言的規範使用了一種特殊的遞歸方式，稱為左遞歸。&lt;/p&gt; 
+&lt;pre&gt;&lt;code class=&quot;language-java&quot;&gt;expr : expr &#39;*&#39; expr
+     | expr &#39;+&#39; expr
+     | INT
+     ;
+
+&lt;/code&gt;&lt;/pre&gt; 
+&lt;p&gt;我們舉個運算符優先級帶來的&lt;strong&gt;語法歧義&lt;/strong&gt; 問題，同樣的規則可以&lt;strong&gt;匹配多個輸入字符流&lt;/strong&gt;。&lt;/p&gt; 
+&lt;p&gt;&lt;img src=&quot;https://oscimg.oschina.net/oscnet//a1b004a9b39b1d0f0b968702144345d4.jpeg&quot; alt=&quot;匹配多個輸入字符流.jpeg&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
+&lt;p&gt;在其他語法工具中，通常通過指定額外的標記來指定運算符優先級。而在 ANTLR4 中通過&lt;strong&gt;備選分支的排序來指定優先級&lt;/strong&gt;，越靠前優先級越高。&lt;/p&gt; 
+&lt;h2&gt;代碼自動生成&lt;/h2&gt; 
+&lt;p&gt;ANTLR 可以根據 lexer.g4 和 parser.g4 自動生成&lt;strong&gt;詞法分析器，語法分析器，監聽器，訪問器&lt;/strong&gt;等。&lt;/p&gt; 
+&lt;pre&gt;&lt;code class=&quot;language-java&quot;&gt;antlr4ng -Dlanguage=TypeScript -visitor -listener -Xexact-output-dir -o ./src/lib ./src/grammar/*.g
+&lt;/code&gt;&lt;/pre&gt; 
+&lt;p&gt;&lt;img src=&quot;https://oscimg.oschina.net/oscnet//a9d8e1ae84707424b16af8af7b204466.jpeg&quot; alt=&quot;代碼自動生成.jpeg&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
+&lt;h3&gt;語法解析與業務邏輯解耦&lt;/h3&gt; 
+&lt;p&gt;在 ANTLR4 中語法解析和業務邏輯的高度解耦是一個重要的設計理念，優點就是同一個 AST 結構能夠在不同的業務邏輯實現之間實現複用。不同的業務邏輯（如執行、轉換、優化等）可以對同一個 AST 進行不同的處理，而不需要關心解析過程。核心幾個設計方案如下：&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt;&lt;strong&gt;訪問者模式&lt;/strong&gt;：ANTLR4 通過訪問者模式支持業務代碼可訪問特定&quot;詞法&quot;或&quot;語法&quot;節點執行自定義的操作，通過這個方式完全解耦 AST（抽象語法樹）生成和業務邏輯，詞法分析器和解釋器專注於 AST 生成，而業務可以通過訪問器的擴展支持業務定製化訴求。&lt;/li&gt; 
+ &lt;li&gt;&lt;strong&gt;語法和語義的獨立性&lt;/strong&gt;：ANTLR4 中可以獨立進行語法解析和語義分析，可以在 AST 中進行語義檢查和業務邏輯處理。這種分離使得開發者可以更靈活地處理輸入的語法和語義。&lt;/li&gt; 
+ &lt;li&gt;&lt;strong&gt;AST 生成&lt;/strong&gt;：ANRL4 通過語法解析器生成結構化 AST（抽象語法樹），不同業務邏輯可以不斷複用同一個 AST。&lt;/li&gt; 
+ &lt;li&gt;&lt;strong&gt;上下文模式&lt;/strong&gt;：解析器在處理輸入數據時，上下文會在解析樹中傳遞信息。每當進入一個新的語法規則時，都會創建一個新的上下文實例上下文可以存儲解析過程中需要的臨時信息，例如變量的值、數據類型等。上下文信息主要結合訪問器模式進行使用，同時也解決了在解析複雜語句如多層嵌套結構的層級調用問題。&lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;h1&gt;三、SparkSQL 介紹&lt;/h1&gt; 
+&lt;p&gt;Spark SQL 是 Apache Spark 的一個模塊，專門用於處理結構化數據，Spark SQL 的特點包括：&lt;/p&gt; 
+&lt;ol&gt; 
+ &lt;li&gt;&lt;strong&gt;高效的查詢執行&lt;/strong&gt;：通過 Catalyst 優化器和 Tungsten 執行引擎，Spark SQL 能夠優化查詢執行計劃，提升查詢性能。&lt;/li&gt; 
+ &lt;li&gt;&lt;strong&gt;與 Hive 的兼容性&lt;/strong&gt;：Spark SQL 支持 HiveQL 語法，使得用户可以輕鬆遷移現有的 Hive 查詢。&lt;/li&gt; 
+ &lt;li&gt;&lt;strong&gt;支持多種數據源&lt;/strong&gt;：Spark SQL 可以從多種數據源讀取數據，包括 HDFS、Parquet、ORC、JDBC 等。&lt;/li&gt; 
+&lt;/ol&gt; 
+&lt;h1&gt;四、技術實現&lt;/h1&gt; 
+&lt;h2&gt;語法設計&lt;/h2&gt; 
+&lt;p&gt;在 Aparch Spark 源碼中就是使用 ANTLR4 來解析和處理 SQL 語句，以下為 Apach Spark 中基於 ANTLR 元語言定義的詞法分析器和語法分析器，在語法定義上我們只需要基於這套&lt;strong&gt;標準的 SparkSQL 語法&lt;/strong&gt; 去&lt;strong&gt;適配得物自研引擎&lt;/strong&gt;的能力，做能力對齊。&lt;/p&gt; 
+&lt;pre&gt;&lt;code class=&quot;language-java&quot;&gt;Lexer.g4
+
+https://github.com/apache/spark/blob/master/sql/api/src/main/antlr4/org/apache/spark/sql/catalyst/parser/SqlBaseLexer.g4
+
+Parser.g4
+
+https://github.com/apache/spark/blob/master/sql/api/src/main/antlr4/org/apache/spark/sql/catalyst/parser/SqlBaseParser.g4
+&lt;/code&gt;&lt;/pre&gt; 
+&lt;h2&gt;語法補全&lt;/h2&gt; 
+&lt;p&gt;以下我們以字段補全場景為例解析從語法定義，語法解析，語法補全，上下文信息採集各個流程節點剖析最後完成的表字段信息精準推薦。在下列語法場景中，存在多層 Select 語法嵌套，同時表&lt;strong&gt;du_emr_test.empsalary tableB&lt;/strong&gt; 和表&lt;strong&gt;du_emr_test.hujh_type_tk AS tableB&lt;/strong&gt; 設置了同一別名, 如圖在父子查詢中都使用了同一個表別名（tableB），當用户在父子查詢中分別輸入**tableB.**時，這時候需要結合當前上下文語境，&lt;strong&gt;對 tableB 別名推薦不同表的字段&lt;/strong&gt;。&lt;/p&gt; 
+&lt;pre&gt;&lt;code class=&quot;language-java&quot;&gt;SELECT 
+    tableB.c1
+ FROM
+    (
+       SELECT
+            tableB.empno,
+            tableC.department
+        FROM
+                du_emr_test.empsalary as tableB
+        LEFT JOIN du_emr_test.employees AS tableC
+        WHERE tableC.department = tableB.depname
+
+    ) AS tableA
+LEFT JOIN du_emr_test.hujh_type_tk AS tableB
+WHERE tableB.c1 = tableA.dename
+&lt;/code&gt;&lt;/pre&gt; 
+&lt;p&gt;&lt;img src=&quot;https://oscimg.oschina.net/oscnet//11f9ab3c0b5c4f373c68b3d2bebf371a.jpeg&quot; alt=&quot;語法補全 1.jpeg&quot; referrerpolicy=&quot;no-referrer&quot;&gt; &lt;img src=&quot;https://oscimg.oschina.net/oscnet//b10816cc6c404da1008ce00d6203db1c.jpeg&quot; alt=&quot;語法補全 2.jpeg&quot; referrerpolicy=&quot;no-referrer&quot;&gt; &lt;img src=&quot;https://oscimg.oschina.net/oscnet//d3cc5f87e722c4d838e0726ff70049c4.jpeg&quot; alt=&quot;語法補全 3.jpeg&quot; referrerpolicy=&quot;no-referrer&quot;&gt; &lt;img src=&quot;https://oscimg.oschina.net/oscnet//f37945f4806eebe4f62eb1dc81145dfd.jpeg&quot; alt=&quot;語法補全 4.jpeg&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
+&lt;p&gt;在子查詢中我們期望推薦 tableB 來自 du_emr_test.empsalary tableB 的字段信息，而在最外層中我們期望的是 du_emr_test.hujh_type_tk 的字段，如上圖。&lt;/p&gt; 
+&lt;p&gt;基於以上場景我們核心要解決 2 個問題：&lt;/p&gt; 
+&lt;p&gt;&lt;strong&gt;問題 1：當前光標應該提示哪些推薦語法類型&lt;/strong&gt;&lt;/p&gt; 
+&lt;p&gt;目前，開源方案 ANTLR-C3 引擎就能完美解決我們問題，用户在編輯器實時輸入時，獲取當前光標位置，實時做語法解析，然後基於開源的 ANTLR-C3 引擎能力結合 ANTLR 生成的 AST 即可&lt;strong&gt;獲取當前光標位置所需要的語法規則&lt;/strong&gt;。&lt;/p&gt; 
+&lt;p&gt;&lt;strong&gt;問題 2: 獲取當前上下文信息以實現精準推薦&lt;/strong&gt;&lt;/p&gt; 
+&lt;p&gt;根據不同業務場景需要採集的上下文信息不同，基於字段推薦的場景，我們需要獲取當前光標位置處可以推薦的表信息，表別名信息，結合編輯器能力實時獲取表對應的字段信息進行字段推薦補全，而&lt;strong&gt;上下文信息的採集&lt;/strong&gt; ，我們可以通過&lt;strong&gt;ANTLR 生成的監聽器&lt;/strong&gt;來實現。&lt;/p&gt; 
+&lt;h2&gt;語法定義&lt;/h2&gt; 
+&lt;p&gt;以下我們用 ANTLR 元語言實現一段簡化版的 SQL 查詢場景的語法規則 (QueryStatment)，方便我們理解。&lt;/p&gt; 
+&lt;pre&gt;&lt;code class=&quot;language-java&quot;&gt;lexer grammar SqlLexer;
+
+// 基礎詞法
+COMMA: &#39;,&#39;;
+LEFT_PAREN: &#39;(&#39;;
+RIGHT_PAREN: &#39;)&#39;;
+IDENTIFY: (LETTER | DIGIT | &#39;_&#39; | &#39;.&#39;)+;
+fragment DIGIT: [0-9];
+fragment LETTER: [A-Z];
+SEMICOLON: &#39;;&#39;;
+
+parser grammar SqlParser;
+
+program: statment* EOF;
+
+statment: queryStatment SEMICOLON?;
+// 查詢語句
+queryStatment:
+  SELECT columnNames FROM (
+    tableName
+    | (LEFT_PAREN queryStatment LEFT_PAREN)
+  ) whereExpression? relationsExpresssion? SEMICOLON？;
+
+// 字段
+columnNames: columnName (COMMA columnName)*;
+
+tableName: IDENTIFY AS? tableAlis;
+
+tableAlis: IDENTIFY;
+
+columnName: IDENTIFY AS? columnAlis;
+
+columnAlis: IDENTIFY;
+
+whereExpression: WHERE booleanExpression;
+
+booleanExpression: (NOT | BANG) booleanExpression           # logicalBinary
+  | left = booleanExpression operator = AND right = booleanExpression # logicalBinary
+  | left = booleanExpression operator = OR right = booleanExpression  # logicalBinary;
+
+relationsExpresssion:
+  LEFT JOIN tableName whereExpression?
+  | RIGHT JOIN tableName whereExpression?;
+
+&lt;/code&gt;&lt;/pre&gt; 
+&lt;h2&gt;代碼生成&lt;/h2&gt; 
+&lt;p&gt;&lt;img src=&quot;https://oscimg.oschina.net/oscnet//4617eef73838489e30b11c02a3a13b13.jpeg&quot; alt=&quot;代碼生成 1.jpeg&quot; referrerpolicy=&quot;no-referrer&quot;&gt; &lt;img src=&quot;https://oscimg.oschina.net/oscnet//6269562f3adc14da67cc5732c0272632.jpeg&quot; alt=&quot;代碼生成 2.jpeg&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
+&lt;p&gt;以下是部分生成代碼：&lt;/p&gt; 
+&lt;p&gt;&lt;strong&gt;1、詞法分析器&lt;/strong&gt;&lt;/p&gt; 
+&lt;pre&gt;&lt;code class=&quot;language-java&quot;&gt; // SqlLexer.ts
+    
+    public static readonly COMMA = 1;
+    public static readonly LEFT_PAREN = 2;
+    public static readonly RIGHT_PAREN = 3;
+    public static readonly IDENTIFY = 4;
+    public static readonly SEMICOLON = 5;
+
+    // 詞法分析器可以使用的通道
+    public static readonly channelNames = [
+        &quot;DEFAULT_TOKEN_CHANNEL&quot;, &quot;HIDDEN&quot;
+    ];
+    // 包含了所有字面量記號的名稱
+    public static readonly literalNames = [
+        null, &quot;&#39;,&#39;&quot;, &quot;&#39;(&#39;&quot;, &quot;&#39;)&#39;&quot;, null, &quot;&#39;;&#39;&quot;
+    ];
+    // 包含為每個記號分配的符號名，這些符號在生成解析器時用於標識記號
+    public static readonly symbolicNames = [
+        null, &quot;COMMA&quot;, &quot;LEFT_PAREN&quot;, &quot;RIGHT_PAREN&quot;, &quot;IDENTIFY&quot;, &quot;SEMICOLON&quot;
+    ];
+    
+    //  ANTLR 生成的類中的一個字段，列出了所有定義的規則
+    public static readonly ruleNames = [
+        &quot;COMMA&quot;, &quot;LEFT_PAREN&quot;, &quot;RIGHT_PAREN&quot;, &quot;IDENTIFY&quot;, &quot;DIGIT&quot;, &quot;LETTER&quot;, 
+        &quot;SEMICOLON&quot;,
+    ];
+
+&lt;/code&gt;&lt;/pre&gt; 
+&lt;p&gt;&lt;strong&gt;2、語法分析器&lt;/strong&gt;&lt;/p&gt; 
+&lt;p&gt;ANTLR 自動為每個規則生成了一個解析方法，以下是 tableName 的 ANTLR 中的解析器方法，具備了處理標識符、可選的別名和錯誤處理的能力。&lt;/p&gt; 
+&lt;pre&gt;&lt;code class=&quot;language-java&quot;&gt;// SQLParse.ts
+// ANTLR 自動生成了一個解析 SQL 表名的 ANTLR 中的解析器方法，具備了處理標識符、可選的別名和錯誤處理的能力
+public tableName(): TableNameContext {
+        let localContext = new TableNameContext(this.context, this.state);
+        this.enterRule(localContext, 8, SqlParser.RULE_tableName);
+        let _la: number;
+        try {
+            this.enterOuterAlt(localContext, 1);
+            {
+            this.state = 60;
+            this.match(SqlParser.IDENTIFY);
+            this.state = 62;
+            this.errorHandler.sync(this);
+            _la = this.tokenStream.LA(1);
+            if (_la === 8) {
+                {
+                this.state = 61;
+                this.match(SqlParser.AS);
+                }
+            }
+
+            this.state = 64;
+            this.tableAlis();
+            }
+        }
+        catch (re) {
+            if (re instanceof antlr.RecognitionException) {
+                this.errorHandler.reportError(this, re);
+                this.errorHandler.recover(this, re);
+            } else {
+                throw re;
+            }
+        }
+        finally {
+            this.exitRule();
+        }
+        return localContext;
+    }
+
+&lt;/code&gt;&lt;/pre&gt; 
+&lt;h3&gt;自動補全&lt;/h3&gt; 
+&lt;p&gt;ANTLR4 代碼補全核心（antlr4-c3） 是一個開創性的工具，它為 ANTLR4 生成的解析器提供了一個通用的代碼補全解決方案。無論你的項目是處理哪種編程語言或領域特定語言（DSL），只要是基於 ANTLR 就能夠利用這個庫實現精準的代碼建議和自動補全，極大地增強開發體驗。通過 antlr4-c3 能力我們通過手動配置需要收集的語法規則，獲取在當前光標處需要推薦的語法規則類型。&lt;/p&gt; 
+&lt;p&gt;&lt;strong&gt;1、語法規則&lt;/strong&gt;&lt;/p&gt; 
+&lt;p&gt;通過 ANTLR4 工具我們可以自動生成 Sqllexer.ts 詞法解析器，SqlParser.ts 語法解析器，SqlParserLister.ts 訪問器，SqlParseVisitor.ts 監聽器，在 SqlParser 語法解析器自動生成了我們在語法定義中的語法規則。&lt;/p&gt; 
+&lt;pre&gt;&lt;code class=&quot;language-java&quot;&gt;preferredRules = new Set([
+        SqlParser.RULE_tableName,
+        SqlParser.RULE_columnName,
+]);
+&lt;/code&gt;&lt;/pre&gt; 
+&lt;p&gt;&lt;strong&gt;2、代碼補全&lt;/strong&gt;&lt;/p&gt; 
+&lt;p&gt;以下我們實現一套簡化版的代碼補全能力。&lt;/p&gt; 
+&lt;p&gt;當用户在編輯器實時輸入時，調用 getSuggestionAtCaretPosition 獲取當前語境中需要推薦的信息，包含語法規則，關鍵詞，上下文信息，在結合業務層數據做自動補全，其中包含 5 個核心步驟：&lt;/p&gt; 
+&lt;ol&gt; 
+ &lt;li&gt;獲取當前語法解析器實例。&lt;/li&gt; 
+ &lt;li&gt;獲取當前光標位置對應的 Token。&lt;/li&gt; 
+ &lt;li&gt;生成 AST。&lt;/li&gt; 
+ &lt;li&gt;獲取當前語境上下文信息。&lt;/li&gt; 
+ &lt;li&gt;通過 ANTLR-C3 獲取當前位置候選語法規則。&lt;/li&gt; 
+&lt;/ol&gt; 
+&lt;pre&gt;&lt;code class=&quot;language-java&quot;&gt;public getSuggestionAtCaretPosition(
+        sqlContent: string,
+        caretPosition: CaretPosition
+        preferredRules: Set
+    ): Suggestions | null {
+        
+        // 1、 使用 SqlParse 解析器獲取
+        const sqlParserIns = new SqlParse(sqlContent)
+        
+        // 2、獲取當前光標處 token
+        const charStreams = CharStreams.fromString(sqlContent);
+        const lexer = new SqlLexer(charStreams);
+        const tokenStream = new CommonTokenStream(lexer)；
+        tokenStream.fill()
+        const allTokens = tokenStream.getTokens(); 
+        let caretTokenIndex = findCaretToken(caretPosition, allTokens); 
+
+        // 3、獲取 AST 抽象語法樹
+        const parseTree = sqlParserIns.program()
+        
+        // 4、通過監聽器採集上下文表信息（下面上下文分析部分闡述細節）
+        const tableEntity = getTableEntitys()
+        
+         // 異常場景兼容存在多條 sql， 獲取有效最小 SQL 範圍給到 antlr4-c3 做推薦。
+        const statementCount = splitListener.statementsContext?.length;
+        const statementsContext = splitListener.statementsContext; 
+
+        // 5、antlr4-c3 接入獲取推薦語法規則
+        let tokenIndexOffset: number = 0;
+        const core = new CodeCompletionCore(sqlParserIns);
+        // 推薦規則，來自 SQLparse 解析器的規則（元語言定義）
+        core.preferredRules = preferredRules; 
+        // 通過 AST 和當前光標 Token 獲取推薦類型
+        const candidates = core.collectCandidates(caretTokenIndex, parseTree); 
+        
+        // ruleType -&amp;gt; preferredRules 
+        // const [rules, tokens] = candidate;
+        const rules = [];
+        const keywords = [
+                
+        for (let candidate of candidates.rules) {
+        const [ruleType] = candidate;
+        let synContextType;
+        switch (ruleType) {
+            case SqlParser.RULE_tableName: {
+                syntaxContextType = &#39;table&#39;;
+                break;
+            }
+            case SqlParser.RULE_columnName: {
+                syntaxContextType = &#39;column&#39;;
+                break;
+            }
+            default:
+                break;
+        }
+        if (synContextType) {
+            rules.push(syntaxContextType)
+        }
+    }
+
+    // 獲取對應 keywords
+    for (let candidate of candidates.tokens) {
+        const displayName = sqlParserIns.vocabulary.getDisplayName(candidate[0]);
+        const keyword = displayName.startsWith(&quot;&#39;&quot;) &amp;amp;&amp;amp; displayName.endsWith(&quot;&#39;&quot;)
+                ? displayName.slice(1, -1)
+                : displayName
+        keywords.push(keyword);
+    }
+
+    return {
+        rules,
+        keywords,
+        tableEntity
+    };
+  }
+&lt;/code&gt;&lt;/pre&gt; 
+&lt;p&gt;在這裏我們簡化了流程，忽略了很多異常 case 的處理，自動補全的前提是在當前語法規則正確，而在多級子查詢嵌套場景我們需要考慮到過濾異常 QueryStatment, 在當前光標出最小範圍有效的 QueryStatment 做補全。這時候需要配合監聽器去做上下文采集做容錯性更高的自動補全。&lt;/p&gt; 
+&lt;h3&gt;上下文分析&lt;/h3&gt; 
+&lt;p&gt;&lt;img src=&quot;https://oscimg.oschina.net/oscnet//64f71c668caeed6cbd18460cb28c795d.jpeg&quot; alt=&quot;上下文分析.jpeg&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
+&lt;p&gt;如圖：每個 table 都歸屬於一個 QueryStatment 表達式, 查詢中又存在子層級查詢的嵌套。我們需要通過上下文收集以下信息：&lt;/p&gt; 
+&lt;ol&gt; 
+ &lt;li&gt;每個查詢語句的信息，包含 Position 位置信息，記錄當前的查詢開始行，結束行，開始列，結束列。&lt;/li&gt; 
+ &lt;li&gt;查詢語句的關聯關係，即記錄當前查詢語句父級查詢語句對象。&lt;/li&gt; 
+ &lt;li&gt;表實體信息包含表名，表位置信息，表別名信息，當前表歸屬於那個查詢語句。&lt;/li&gt; 
+&lt;/ol&gt; 
+&lt;p&gt;則我們需要監聽 3 個語法規則包含&lt;strong&gt;QueryStatment, TableName,TableAlias&lt;/strong&gt; , 採集 QueryStatment 信息，Table 信息同時將 table 與&lt;strong&gt;當前歸屬的 QueryStatment 做關聯&lt;/strong&gt; ， 還有&lt;strong&gt;與別名信息作配對關聯&lt;/strong&gt; 。這就要求在不同監聽器之間的信息需要做共享，上下文信息需要做傳遞和保留。ANTLR 常用的 3 種&lt;strong&gt;信息共享方案&lt;/strong&gt;包含：&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt;&lt;strong&gt;使用訪問器方法來返回值，&lt;/strong&gt;&lt;/li&gt; 
+ &lt;li&gt;&lt;strong&gt;使用類成員在事件方法之間共享數據，&lt;/strong&gt;&lt;/li&gt; 
+ &lt;li&gt;&lt;strong&gt;在語法定義中使用樹標記來存儲信息。&lt;/strong&gt;&lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;p&gt;在這裏我們使用第二種（在這裏我們簡化了 SQL 的語法定義，在實際場景中語法層級深度和複雜度遠比當前高，這也使得方案 1 和 3 實際操作起來更麻煩，規則嵌套層級深使得方案一和方案三開發成本和維護成本更高）&lt;/p&gt; 
+&lt;p&gt;&lt;strong&gt;1、監聽器（SqlParserLister）&lt;/strong&gt; 通過 ANTLR4 工具我們可以自動生成 SqlParserLister.ts 監聽器進行自定義擴展。&lt;/p&gt; 
+&lt;pre&gt;&lt;code class=&quot;language-java&quot;&gt;// SqlParserListener.ts
+export class QueryStatmentContext extends antlr.ParserRuleContext {
+   public override enterRule(listener: SqlParserListener): void {
+        if(listener.enterQueryStatment) {
+             listener.enterQueryStatment(this);
+        }
+    }
+    public override exitRule(listener: SqlParserListener): void {
+        if(listener.exitQueryStatment) {
+             listener.exitQueryStatment(this);
+        }
+    }
+ }
+ 
+ export class TableNameContext extends antlr.ParserRuleContext {
+     public override enterRule(listener: SparkSqlParserListener): void {
+        if(listener.enterTableName) {
+             listener.enterTableName(this);
+        }
+    }
+    public override exitRule(listener: SparkSqlParserListener): void {
+        if(listener.exitTableName) {
+             listener.exitTableName(this);
+        }
+    }
+ }
+// ....
+
+export class TableAliasContext extends antlr.ParserRuleContext {
+    public KW_AS(): antlr.TerminalNode | null {
+        return this.getToken(SparkSqlParser.KW_AS, 0);
+    }
+    public override enterRule(listener: SparkSqlParserListener): void {
+        if(listener.enterTableAlias) {
+             listener.enterTableAlias(this);
+        }
+    }
+    public override exitRule(listener: SparkSqlParserListener): void {
+        if(listener.exitTableAlias) {
+             listener.exitTableAlias(this);
+        }
+    }
+}
+
+&lt;/code&gt;&lt;/pre&gt; 
+&lt;p&gt;&lt;strong&gt;2、自定義監聽器擴展&lt;/strong&gt;&lt;/p&gt; 
+&lt;p&gt;通過 SqlParserListener 我們可以自定義採集上下文信息。在&lt;/p&gt; 
+&lt;ol&gt; 
+ &lt;li&gt;監聽進入 QueryStatment 表達式採集當前表達式信息到_queryStmtsStack。&lt;/li&gt; 
+ &lt;li&gt;監聽退出 TableNameToken 時採集當前 Table 信息，並關聯當前 QueryStatment。&lt;/li&gt; 
+ &lt;li&gt;監聽退出 TableAliasToken 時採集信息，並關聯到 Table 實體。&lt;/li&gt; 
+ &lt;li&gt;監聽退出 QueryStatment 表達式推出_queryStmtsStack&lt;/li&gt; 
+&lt;/ol&gt; 
+&lt;pre&gt;&lt;code class=&quot;language-java&quot;&gt;// tableEntityCollect
+ export class SqlEntityCollector implements SqlParserListener {
+     super() {
+         this._tableEntitiesSet = new Set();
+         this._queryStmtsStack = [];
+         this._tableAliasStack = [];
+         this._currentTable = &#39;&#39;;
+     }
+     
+     enterQueryStatment(ctx: QueryStatmentContext) {
+        this.pushQueryStmt(ctx);
+    }
+
+    exitQueryStatment(ctx: QueryStatmentContext) {
+        this.popQueryStmt(); 
+    }
+
+     exitTableName(ctx: TableNameContext) {
+        this.pushTableEntity(ctx);
+        this.setCurrentTable(ctx);
+     }
+     
+     exitTableAlias(ctx: TableAliasContext) {
+        this.pushTableEntity(ctx);
+     }
+     
+     pushQueryStmt() {}   // 採集 QueryStmt 信息
+     
+     popQueryStmt() {}    // 推出當前 QueryStmt，進入下個同級 Stmt
+     
+     pushTableEntity() {} // 採集當前表信息，關聯當前 Stmt
+     
+     pushTableEntity() {} // 採集關聯表
+     
+     enterProgram() {}    // 清空重置
+     
+     getTableEntity() {
+         return this.TableEntity(ctx)
+     }
+    
+ }
+
+&lt;/code&gt;&lt;/pre&gt; 
+&lt;p&gt;在這裏我們簡化了語法定義的規則便於講解，但在實際中語法規則的整體嵌套層級是很深的，從以下的 SparkSql 語法定義中我們可以看到右側聚合的表達式高達&lt;strong&gt;200+&lt;strong&gt;個，單個表達式的備選分支最多高達&lt;/strong&gt;140+&lt;/strong&gt; ，這也加大了上下文分析採集的複雜度，即我們無法簡單的從 QueryStmt 當前&lt;strong&gt;QueryStatmentContext&lt;/strong&gt;中獲取全量信息。&lt;/p&gt; 
+&lt;p&gt;&lt;img src=&quot;https://oscimg.oschina.net/oscnet//2d551f77d029061d92774ee9c5d183fd.jpeg&quot; alt=&quot;獲取全量信息.jpeg&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;strong&gt;3、觸發監聽器採集上下文信息&lt;/strong&gt;&lt;/p&gt; 
+&lt;pre&gt;&lt;code class=&quot;language-java&quot;&gt;getTableEntitys() {
+    const collectListener = new SqlEntityCollector(sqlContent, caretTokenIndex);
+    const parse = new SqlParse(sqlContent);
+    const parseTree= sqlParserIns.program();
+    ParseTreeWalker.DEFAULT.walk(collectListener, parseTree); 
+    return collectListener.getTableEntity()
+}
+
+&lt;/code&gt;&lt;/pre&gt; 
+&lt;h2&gt;語法校驗&lt;/h2&gt; 
+&lt;p&gt;ANRLR 在生成語法分析器中內置了自動錯誤報告和恢復策略，能夠在遇到句法錯誤時自動產生錯誤消息，為每個句法錯誤產生一條錯誤消息。&lt;/p&gt; 
+&lt;h3&gt;詞法錯誤&lt;/h3&gt; 
+&lt;p&gt;常見的詞法錯誤包含字符遺漏，詞法錯誤。舉個例子，在 spark 標準語法定義中 tableName 規則不支持表變量場景（${variable}），如果要兼容這裏詞法，就需要在語法定義中變更 tableName 的語法規則定義。&lt;/p&gt; 
+&lt;p&gt;&lt;img src=&quot;https://oscimg.oschina.net/oscnet//fcde1482434ed1b4299df511146621f1.jpeg&quot; alt=&quot;語法錯誤.jpeg&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
+&lt;p&gt;以下是語法定義變更:&lt;/p&gt; 
+&lt;ol&gt; 
+ &lt;li&gt;新增詞法規則$, {, }。&lt;/li&gt; 
+ &lt;li&gt;新增語法規則&lt;strong&gt;identifyVar&lt;/strong&gt;支持變量模式。&lt;/li&gt; 
+&lt;/ol&gt; 
+&lt;pre&gt;&lt;code class=&quot;language-java&quot;&gt;SqlLexer.g4
+// 新增詞法
+LEFT_BRACE    : &#39;{&#39;;
+RIGHT_BRACE   : &#39;}&#39;;
+
+VARIABLE    : &#39;$&#39;;
+
+SqlParse.g4
+// before tableName: IDENTIFY AS? tableAlis; 
+tableName: identifyVar AS? tableAlis; 
+
+identifyVar
+    : IDENTIFY // odps_table_a
+    | IDENTIFY? VARIABLE LEFT_BRACE IDENTIFY RIGHT_BRACE IDENTIFY? // odps_table_a_${variable} odps_table_a_${prefix_variable}_abs
+
+&lt;/code&gt;&lt;/pre&gt; 
+&lt;h3&gt;自動恢復機制&lt;/h3&gt; 
+&lt;p&gt;語法分析器不應該在遇到非法的成員定義時結束，而是應盡最大可能匹配到一個合法的類定義，ANRTL4 自動錯誤恢復機制能在語法分析器在發現語法錯誤後還能繼續進行嘗試語法解析和自動恢復。&lt;/p&gt; 
+&lt;p&gt;&lt;strong&gt;1、異常捕獲&lt;/strong&gt;&lt;/p&gt; 
+&lt;p&gt;ANRLT 自動生成的語法解析器中自動為每個規則包裹異常捕獲能力，並在 catch 中嘗試錯誤恢復。&lt;/p&gt; 
+&lt;p&gt;&lt;img src=&quot;https://oscimg.oschina.net/oscnet//4b5d4b7a277c9691e3724fea2d383372.jpeg&quot; alt=&quot;異常補貨.jpeg&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;strong&gt;2、恢復策略&lt;/strong&gt;&lt;/p&gt; 
+&lt;p&gt;一般情況下，語法分析器在遇到無法匹配的錯誤時會嘗試最簡單的符號補全和移除來嘗試解析，都不管用時，這時候就會用更高階的策略來進行恢復。包括&lt;strong&gt;掃描後續詞法符號來恢復，從不匹配的詞法符號中恢復，從子規則的錯誤中恢復，捕獲失敗的語義判定。&lt;/strong&gt;&lt;/p&gt; 
+&lt;p&gt;雖然 ANTLR 提供了很多策略來進行錯誤恢復，但在實際業務場景中，需要結合考慮語法、語境的複雜度去權衡性能與更友好的錯誤提示之間的抉擇。在複雜場景中 ANTLR 表現並不理想，在一些複雜語法和語境的情況下解析器在檢測錯誤時難以做出合理的決策，例如：&lt;strong&gt;遞歸和嵌套結構&lt;/strong&gt; 中會使得錯誤恢復變得很複雜，導致解析器無法做出合理決策。還有在&lt;strong&gt;上下文敏感的語境&lt;/strong&gt;中，錯誤恢復機制基本無法提供有效恢復。&lt;/p&gt; 
+&lt;h2&gt;性能&lt;/h2&gt; 
+&lt;p&gt;在 ANTLR 4 中，語法複雜度、語法歧義、語法規則嵌套深度與預測算法的選擇都會顯著影響解析器的性能和準確性。Spark SQL 語法規則達 200+，備選分支最高達 140, 嵌套深度達 20+，同時又存在負責循環嵌套場景， 這也意味着在整個語法解析，語法錯誤的處理過程是很複雜的，當遇到複雜大 SQL 量和一片狼籍的語法錯誤 SQL，會導致語法解析過程變得緩慢引發性能問題。目前在性能優化上，有以下幾個方向。&lt;/p&gt; 
+&lt;h3&gt;緩存優化&lt;/h3&gt; 
+&lt;p&gt;在 antlr4 中詞法解析和語法解析能力和業務是&lt;strong&gt;完全解耦&lt;/strong&gt; 的，這也意味着底層基於同個 SQL 內容解析出來的 tokens 和 parserTree 都是可以在&lt;strong&gt;不同業務邏輯&lt;/strong&gt; 應用裏&lt;strong&gt;複用&lt;/strong&gt;。我們可以通過緩存 tokens,parseTree 減少詞法解析和語法解析的損耗。&lt;/p&gt; 
+&lt;h3&gt;語法優化&lt;/h3&gt; 
+&lt;p&gt;通過減少語法樹的層級和優化表達式減少解析過程中&quot;&lt;strong&gt;二義性&lt;/strong&gt; &quot;的次數，可以加速語法解析的速度，優化 AST 生成性能。合理使用語法定義中用法，例如&lt;strong&gt;樹標記&lt;/strong&gt; （用於上下文通信數據共享），在語法解析過程中會為每個標記生成上下文，這也意味着每個局部結果都會保留，會有更大的&lt;strong&gt;內存消耗&lt;/strong&gt;。&lt;/p&gt; 
+&lt;h3&gt;預測模型選擇&lt;/h3&gt; 
+&lt;p&gt;在語法解析中不同預測模型的選擇對解析性能有顯著影響，針對不同的場景需要評估時效性與正確性之間的衡量。&lt;/p&gt; 
+&lt;p&gt;ANTLR4 預測模型：&lt;/p&gt; 
+&lt;p&gt;&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fwww.antlr.org%2Fapi%2FJava%2Forg%2Fantlr%2Fv4%2Fruntime%2Fatn%2FPredictionMode.html&quot; target=&quot;_blank&quot;&gt;https://www.antlr.org/api/Java/org/antlr/v4/runtime/atn/PredictionMode.html&lt;/a&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;img src=&quot;https://oscimg.oschina.net/oscnet//06898551ffe681816203521cc61b6f21.jpeg&quot; alt=&quot;預測模型.jpeg&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
+&lt;p&gt;我們可以選擇性價比更高的 SLL 預測模型作為語法分析策略，結合定製化的錯誤監聽器做錯誤糾正。&lt;/p&gt; 
+&lt;h2&gt;編輯器應用&lt;/h2&gt; 
+&lt;h3&gt;編輯器集成&lt;/h3&gt; 
+&lt;p&gt;與 MonacoEditor 集成流程可查看此文章 &lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fblog.shizhuang-inc.com%2Farticle%2FMTUzNzY%3FfromType%3Dpersonal_blog&quot; target=&quot;_blank&quot;&gt;https://blog.shizhuang-inc.com/article/MTUzNzY?fromType=personal_blog&lt;/a&gt;&lt;/p&gt; 
+&lt;h3&gt;輔助編程&lt;/h3&gt; 
+&lt;p&gt;&lt;strong&gt;1、信息項提示（表，函數，字段）&lt;/strong&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;img src=&quot;https://oscimg.oschina.net/oscnet//3895a1d1409dc14bcd930b7e9f2e9540.jpeg&quot; alt=&quot;信息項提示 1.jpeg&quot; referrerpolicy=&quot;no-referrer&quot;&gt; &lt;img src=&quot;https://oscimg.oschina.net/oscnet//796778887250140114df44a1625790db.jpeg&quot; alt=&quot;信息項提示 2.jpeg&quot; referrerpolicy=&quot;no-referrer&quot;&gt; &lt;img src=&quot;https://oscimg.oschina.net/oscnet//f7edd1df9978727023d30b6ff0ab3aac.jpeg&quot; alt=&quot;信息項提示 3.jpeg&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;strong&gt;2、自動補全（庫，表，字段，語法）&lt;/strong&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;img src=&quot;https://oscimg.oschina.net/oscnet//c470b64063a4399028d9e922c22da0c7.jpeg&quot; alt=&quot;自動補全 1.jpeg&quot; referrerpolicy=&quot;no-referrer&quot;&gt; &lt;img src=&quot;https://oscimg.oschina.net/oscnet//8505dc99d92edbc6f97f5d2d1acd8d6b.jpeg&quot; alt=&quot;自動補全 2.jpeg&quot; referrerpolicy=&quot;no-referrer&quot;&gt; &lt;img src=&quot;https://oscimg.oschina.net/oscnet//705496e06b98dffebc37375cb7fa5fe4.jpeg&quot; alt=&quot;自動補全 3.jpeg&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
+&lt;h1&gt;五、大模型下的 SQL 編輯器應用&lt;/h1&gt; 
+&lt;p&gt;隨着大模型的蓬勃發展，在數據產品中的應用也逐步得到了驗證和落地，目前，Galaxy 還沒有接入 Copilot, 內部暫時還沒有基於 SQL 的 Copilot。業界較成熟的是阿里雲的 Dataworks, DataWorks 於 2023 年推出了 Copilot 產品， 核心 2 個方向，一個方向是智能 SQL 編程助手，輔助 SQL 編程，支持 NL2SQL 及 SQL 代碼補全；另一個方向是 AI Agent，提供 LUI（自然語言用户界面），以提升產品功能操作的便捷性和用户體驗。&lt;/p&gt; 
+&lt;h2&gt;NL2SQL 應用場景&lt;/h2&gt; 
+&lt;p&gt;基於 SQL 的 Copilot 一般在以下幾個應用場景比較深入和廣泛的落地效果：&lt;strong&gt;簡單數據查詢，SQL 優化與轉換，SQL 語法查詢與講解， 函數查詢，功能諮詢，註釋生成，SQL 解釋，SQL 一鍵糾錯&lt;/strong&gt;。&lt;/p&gt; 
+&lt;h2&gt;NL2SQL 自動補全&lt;/h2&gt; 
+&lt;p&gt;代碼補全是編程類 Copilot 的主要場景和能力，單市場上主流的編程類 Copilot 對 SQL 支持的好的並不多見。眾所周知，SQL 代碼補全比其他高級語言的代碼補全更具挑戰性，主要原因有以下幾個方面：&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt;上下文和環境的依賴性：SQL 代碼不是獨立存在的，而是依賴於數據表的元數據信息以及表與表之間的關聯關係。&lt;/li&gt; 
+ &lt;li&gt;SQL 語義多樣性：實現同一種查詢結果，可以有多種 SQL 寫法，如何實現&quot;最佳&quot;寫法存在挑戰。&lt;/li&gt; 
+ &lt;li&gt;語法簡潔但高度專業化：SQL 語法簡潔但每一個關鍵字、函數或語法都有特定的含義，大模型要準確理解這些得通過針對性的訓練學習。&lt;/li&gt; 
+ &lt;li&gt;執行計劃和性能考量: 這跟數據庫底層的執行計劃有關，需要考慮如何書寫才能使 SQL 的性能最優。&lt;/li&gt; 
+ &lt;li&gt;數據庫特異性：市面上不同的數據庫往往存在不同的 SQL 方言，存在差異，針對這種差異性我們要投入大量時間做 SQL 數據集準備、數據標註、模型微調。&lt;/li&gt; 
+ &lt;li&gt;高度業務相關性：SQL 語句通常與特定業務高度相關，比如一個指標存在特定的計算口徑，這是與公司業務相關，通用的大模型也無法提前學習。&lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;p&gt;目前較成熟的代碼補全核心場景主要在有規律的代碼連續推薦場景（例如：字段、字段別名推薦，註釋推薦、分區字段推薦、Group by 字段推薦，上下文自動聯想推薦等）。&lt;/p&gt; 
+&lt;h1&gt;六、總結&lt;/h1&gt; 
+&lt;p&gt;通過 SQL 引擎能力建設我們在 Galaxy 數據研發 IDE 上支持了&lt;strong&gt;個性化詞法規則定製能力&lt;/strong&gt; ，包含字段別名支持中文, 表變量等場景， 同時通過語法解析和監聽器能力，支持實時識別&lt;strong&gt;各類的語法規則&lt;/strong&gt; ，&lt;strong&gt;包含表，函數，字段等做輔助編程提示&lt;/strong&gt; 和做精準化的&lt;strong&gt;庫，表，字段代碼補全和推薦&lt;/strong&gt;。&lt;/p&gt; 
+&lt;p&gt;後續我們仍面臨很大的挑戰，在非專業的數據開發背景、複雜的業務定製需求、語言定義的複雜性和嵌套深度等因素共同導致瞭解析器的開發難度。目前，在語法校驗自動糾錯提示上，雖然 ANTLR 的提供了自動錯誤恢復機制但整體表現並不理想，後續 2 個方向，第一，接入大模型的能力。第二，從基礎語法定義上進行重構，減少語法歧義和層級優化。為了應對這些挑戰，我們需要加強對 ANTLR 和 Spark SQL 語言，數據處理的理解，以便順利使用和擴展解析器。&lt;/p&gt; 
+&lt;p&gt;參考資料&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt;ANTLR&lt;/li&gt; 
+ &lt;li&gt;ANTLR4-C3&lt;/li&gt; 
+ &lt;li&gt;DataWorks Copilot：大模型時代數據開發的新範式&lt;/li&gt; 
+ &lt;li&gt;ANTLR4 權威指南 - [美] 特恩斯·帕爾，著&lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;p&gt;文 / 吳所謂 (Ethan)&lt;/p&gt; 
+&lt;p&gt;關注得物技術，每週更新技術乾貨&lt;/p&gt; 
+&lt;p&gt;要是覺得文章對你有幫助的話，歡迎評論轉發點贊～&lt;/p&gt; 
+&lt;p&gt;未經得物技術許可嚴禁轉載，否則依法追究法律責任。&lt;/p&gt;
+                                                                                    &lt;/div&gt;
+                                                                            </description>
+            <link>https://my.oschina.net/u/5783135/blog/17836649</link>
+            <guid isPermaLink="false">https://my.oschina.net/u/5783135/blog/17836649</guid>
+            <pubDate>Thu, 06 Mar 2025 05:43:00 GMT</pubDate>
+            <author>原創</author>
+        </item>
+        <item>
+            <title>金投科技在 2024 四川省軟件行業評選中蟬聯三項大獎</title>
+            <description>&lt;div class=&quot;content&quot;&gt;
+                                                                    
+                                                        &lt;p style=&quot;color:#333333; margin-left:0; margin-right:0; text-align:start&quot;&gt;近日，2024 年四川省軟件行業協會公示了年度評優結果名單，四川金投科技股份有限公司（以下簡稱「金投科技」）憑藉卓越表現，脱穎而出，再度攬獲「2024 四川省軟件行業具有核心競爭力軟件企業-規模型」「2024 四川省優秀軟件產品」「2024 四川省軟件行業優秀企業家」三項重要榮譽。&lt;/p&gt; 
+&lt;p style=&quot;color:#333333; margin-left:0; margin-right:0; text-align:center&quot;&gt;&lt;img src=&quot;https://oscimg.oschina.net/oscnet//e7b2f504c2843f5ac7f00841c2ec3db5.png&quot; width=&quot;600&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
+&lt;p style=&quot;color:#333333; margin-left:0; margin-right:0; text-align:start&quot;&gt;作為一家專注為銀行、保險、政企單位等客户提供重要物資安全運營服務及解決方案的企業，金投科技自成立以來，持續深耕現代化科技服務領域，累計通過技術創新申請專利 40 餘項，獲軟件著作權 130 餘項。過去一年，金投科技通過不斷提升技術實力、優化業務能級，實現企業競爭力的再次跨越，並由「2023 四川省軟件行業具有核心競爭力軟件企業-成長型」，成功進階「2024 四川省軟件行業具有核心競爭力軟件企業-規模型」。&lt;/p&gt; 
+&lt;p style=&quot;color:#333333; margin-left:0; margin-right:0; text-align:center&quot;&gt;&lt;img src=&quot;https://oscimg.oschina.net/oscnet//eb578c4581f8f6fef0c4659dc21219e9.png&quot; width=&quot;600&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
+&lt;p style=&quot;color:#333333; margin-left:0; margin-right:0; text-align:start&quot;&gt;金投科技持續深入融合智能物聯網技術，打造先進的技術架構，研發「授信押品實物庫房管理系統 V1.0」，實現對庫房的高效、精準管理，在保障數據安全與操作流程規範方面表現卓越，為金融行業信息安全管理提供了可靠的優質解決方案，在此次評選中榮獲「2024 四川省優秀軟件產品」。&lt;/p&gt; 
+&lt;p style=&quot;color:#333333; margin-left:0; margin-right:0; text-align:center&quot;&gt;&lt;img src=&quot;https://oscimg.oschina.net/oscnet//ffc21e054acf1fca70b05f2897219ac4.png&quot; width=&quot;600&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
+&lt;p style=&quot;color:#333333; margin-left:0; margin-right:0; text-align:start&quot;&gt;金投科技成立 17 餘年來，董事長兼總經理夏予柱領導公司團隊不斷加大研發投入，推動技術創新，積極拓展市場，實現企業業績的穩步快速增長，在行業內樹立了良好的品牌形象。為表彰公司創始人為全省軟件行業發展做出的重大積極貢獻，四川省軟件行業協會為夏予柱先生頒發「2024 四川省軟件行業優秀企業家」榮譽。&lt;/p&gt; 
+&lt;p style=&quot;color:#333333; margin-left:0; margin-right:0; text-align:center&quot;&gt;&lt;img src=&quot;https://oscimg.oschina.net/oscnet//0c3a8d1f1b1909a1bdb79243f28747f8.png&quot; width=&quot;600&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
+&lt;p style=&quot;color:#333333; margin-left:0; margin-right:0; text-align:start&quot;&gt;金投科技已連續兩年在四川省軟件行業協會年度評選中斬獲三大獎項，這是對公司綜合實力的高度肯定，也是對團隊不斷開拓進取的期許。未來，金投科技將繼續腳踏實地，深耕銀行數字化轉型，秉持一直以來的創新精神，在軟件行業創造更多佳績。&lt;/p&gt; 
+&lt;p&gt;&amp;nbsp;&lt;/p&gt;
+                                                                                &lt;/div&gt;
+                                                                            </description>
+            <link>https://www.oschina.net/news/338338</link>
+            <guid isPermaLink="false">https://www.oschina.net/news/338338</guid>
+            <pubDate>Thu, 06 Mar 2025 04:34:00 GMT</pubDate>
+            <author>來源: 投稿</author>
+        </item>
+        <item>
+            <title>李飛飛團隊公佈「具身智能」最新成果：行為機器人套件框架</title>
+            <description>&lt;div class=&quot;content&quot;&gt;
+                                                                    
+                                                        &lt;p&gt;斯坦福大學李飛飛團隊近日&lt;u&gt;&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fx.com%2Fdrfeifei%2Fstatus%2F1899127976979226835&quot; target=&quot;_blank&quot;&gt;公佈&lt;/a&gt;&lt;/u&gt;了「具身智能」領域最新研究成果 — &lt;strong&gt;行為機器人套件（Behavior Robot Suite, 簡稱 BRS）&lt;/strong&gt;框架，並公佈了搭載該框架的「保姆型」人形機器人實操畫面。&lt;/p&gt; 
+&lt;p&gt;&lt;img alt=&quot;&quot; src=&quot;https://oscimg.oschina.net/oscnet/up-0403f506fcd2b5568108c941353a2945556.png&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
+&lt;p&gt;公佈視頻顯示，搭載了 BRS 框架的人形機器人能夠完成倒垃圾、刷馬桶、整理衣物等多樣化家務任務，而 BRS 框架通過全身協調動作實現高效家務操作。&lt;/p&gt; 
+&lt;p&gt;據悉，演示的為雙臂輪式機器人，配備 4 自由度（DoF）軀幹，並且通過 JoyLo（全身遙操作界面）和 WB-VIMA（用於學習全身視覺運動策略的創新算法），解決了硬件和學習難題。&lt;/p&gt; 
+&lt;p&gt;值得關注的是，JoyLo 能通過對 Nintendo Switch 適配，實現機器人的全身控制。而 JoyLo 不僅能夠提供豐富的同步操作，還能生成高質量的示範數據，為視覺 – 運動策略學習提供了很好的數據支持。&lt;/p&gt; 
+&lt;p&gt;團隊還將 JoyLo 與兩個主流的基於逆向運動學（Inverse kinematics，IK）的界面（VR 控制器和蘋果 Vision Pro）進行對比。測試結果顯示，使用 JoyLo 完成整體任務的平均成功率是 VR 控制器的 5 倍，而使用蘋果 Vision Pro 的參與者則無一人能完成整體任務。&lt;/p&gt; 
+&lt;p&gt;而 WB-VIMA 是一種機器人模仿學習算法，專門用於建模機器人的全身動作，並充分利用其固有的運動學層級結構，從而達到更同步的全身運動。此外，WB-VIMA 通過自注意力機制，動態整合多模態感知信息，從而提升系統的魯棒性和適應性。&lt;/p&gt; 
+&lt;p&gt;研究人員表示，BRS 未來將是實現機器人以更高自主性和可靠性執行日常家務的重要一步。&lt;/p&gt;
+                                                                                &lt;/div&gt;
+                                                                            </description>
+            <link>https://www.oschina.net/news/338332</link>
+            <guid isPermaLink="false">https://www.oschina.net/news/338332</guid>
+            <pubDate>Thu, 06 Mar 2025 03:50:00 GMT</pubDate>
+            <author>來源: OSCHINA</author>
+        </item>
+        <item>
+            <title>OpenAI 透露 CoT 思維鏈研究成果：CoT 監控可阻止大模型惡意行為</title>
+            <description>&lt;div class=&quot;content&quot;&gt;
+                                                                    
+                                                        &lt;p&gt;OpenAI 近日&lt;u&gt;&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fopenai.com%2Findex%2Fchain-of-thought-monitoring%2F&quot; target=&quot;_blank&quot;&gt;發佈文章&lt;/a&gt;&lt;/u&gt;介紹在思維鏈（COT）推理模型方面的最新研究進度。這種模型可以幫助開發者監控他模型的思考過程，提早發現其錯誤行為。&lt;/p&gt; 
+&lt;p&gt;&lt;img alt=&quot;&quot; src=&quot;https://oscimg.oschina.net/oscnet/up-8d07e02a59419e7fab3bdb76b4d125a43c1.png&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
+&lt;p&gt;OpenAI 表示，思維鏈推理模型以人類可以理解的自然語言進行「思考」。而監控他們的「思考」行為能夠讓人們提早發現其不當行為，例如在編碼任務中破壞測試、欺騙用户或在問題太難時放棄。&lt;/p&gt; 
+&lt;p&gt;OpenAI 表示，&lt;strong&gt;CoT 監控可能是人類監督未來「超級模型」的少數工具之一&lt;/strong&gt;。&lt;/p&gt; 
+&lt;p&gt;最新研究發現，直接優化 CoT 以遵守特定標準（例如不考慮獎勵黑客）可能會在短期內提高性能；然而，它並不能消除所有不當行為，並可能導致模型隱藏其意圖。&lt;/p&gt; 
+&lt;p&gt;&lt;img height=&quot;1082&quot; src=&quot;https://static.oschina.net/uploads/space/2025/0312/113553_c3Z4_2720166.png&quot; width=&quot;2160&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
+&lt;p&gt;OpenAI 希望未來的研究能夠找到直接優化 CoT 而沒有這個缺點的方法，但在此之前，建議不要直接對前沿推理模型的 CoT 施加強大的優化壓力，而應該對 CoT 進行不受限制的監控。&lt;/p&gt;
+                                                                                &lt;/div&gt;
+                                                                            </description>
+            <link>https://www.oschina.net/news/338329/openai-chain-of-thought-monitoring</link>
+            <guid isPermaLink="false">https://www.oschina.net/news/338329/openai-chain-of-thought-monitoring</guid>
+            <pubDate>Thu, 06 Mar 2025 03:37:00 GMT</pubDate>
+            <author>來源: OSCHINA</author>
+        </item>
+        <item>
+            <title>京東算法崗全員喜提 30% 普調漲薪</title>
+            <description>&lt;div class=&quot;content&quot;&gt;
+                                                                    
+                                                        &lt;p&gt;近日，在小紅書和脈脈上等平台上均有網友爆料，&lt;strong&gt;京東全體算法崗喜提 30% 普調漲薪（廣告 / 搜推 / 算法交易部全覆蓋）&lt;/strong&gt;，4 月 1 號開始生效。&lt;/p&gt; 
+&lt;p&gt;&lt;img src=&quot;https://static.oschina.net/uploads/space/2025/0312/112922_UUnj_2720166.png&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;strong&gt;據內部員工透露，Leader 本週已經口頭通知，這次漲薪是全員覆蓋，一個不落&lt;/strong&gt;。&lt;/p&gt; 
+&lt;p&gt;近三年來，京東已經連續六輪上調員工薪酬，不斷優化薪資體系。據公開數據可知，2024 屆京東算法崗薪資總包大概在 36.5k，按照超 75% 的漲幅算，2025 屆算法崗薪資可能達到 64k。消息一出，瞬間登上脈脈熱搜第一。&lt;/p&gt; 
+&lt;p&gt;&lt;img height=&quot;142&quot; src=&quot;https://static.oschina.net/uploads/space/2025/0312/112712_uv4g_2720166.png&quot; width=&quot;560&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;img height=&quot;1418&quot; src=&quot;https://static.oschina.net/uploads/space/2025/0312/112704_uPtg_2720166.png&quot; width=&quot;990&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
+&lt;p&gt;據京東發佈的的財務數據來看，2024 年全年營收達到 11588 億元，同比增長 6.8%，淨利潤大增 71.1%。第四季度營收 3470 億元，淨利潤同比暴增 190.8%。&lt;/p&gt; 
+&lt;p&gt;&lt;em&gt;相關閲讀：&lt;a href=&quot;https://www.oschina.net/news/335609&quot; target=&quot;news&quot;&gt;京東：外賣騎手五險一金全部由京東承擔，包含個人需繳納部分，外賣騎手現金收入不會減少&lt;/a&gt;&lt;/em&gt;&lt;/p&gt;
+                                                                                &lt;/div&gt;
+                                                                            </description>
+            <link>https://www.oschina.net/news/338325</link>
+            <guid isPermaLink="false">https://www.oschina.net/news/338325</guid>
+            <pubDate>Thu, 06 Mar 2025 03:30:00 GMT</pubDate>
+            <author>來源: OSCHINA</author>
+        </item>
+        <item>
+            <title>蘋果智能（Apple Intelligence）中文版要來了</title>
+            <description>&lt;div class=&quot;content&quot;&gt;
+                                                                    
+                                                        &lt;p&gt;3 月 11 日，蘋果向 iPhone 和 iPad 用户推送了 iOS / iPadOS 18.4 開發者預覽版 Beta 3 更新（內部版本號：22E5222f），本次更新距離上次發佈 Beta / RC 間隔 7 天。&lt;/p&gt; 
+&lt;p&gt;&lt;strong&gt;其中 Apple 智能（Apple Intelligence）新增支持法語、德語、意大利語、葡萄牙語（巴西）、西班牙語、日語、韓語和簡體中文&lt;/strong&gt;，以及新加坡和印度的本地化英語。而這也意味着，國行版的蘋果 AI 又能再進一步。&lt;/p&gt; 
+&lt;p&gt;據悉，簡體中文版的 Apple Intelligence 預計在 4 月初正式上線，與 iOS 18.4 正式版一同推出。 &amp;nbsp;&lt;/p&gt; 
+&lt;p&gt;&lt;img src=&quot;https://oscimg.oschina.net/oscnet/up-cdd018ef12a613a98fbadee0fe4c431a02f.png&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
+&lt;p&gt;蘋果方面曾表示，蘋果智能在中國推出的時間要根據監管部門審批情況而定。也就是説，如果今年 4 月還未獲得有關部門批准，用户仍無法體驗到蘋果智能的 AI 功能。&lt;/p&gt; 
+&lt;p&gt;據彭博社此前的報道，有知情人士透露，蘋果公司計劃在 2025 年中期之前，在國行版 iPhone 上引入 AI 功能。 在 2 月 13 日，在阿聯酋迪拜舉辦的 World Governments Summit 2025 峯會上，阿里巴巴聯合創始人、董事局主席蔡崇信&lt;u&gt;&lt;a href=&quot;https://www.oschina.net/news/333543&quot;&gt;確認&lt;/a&gt;&lt;/u&gt;了蘋果與阿里巴巴共同中國 iPhone AI 功能一事。&lt;/p&gt; 
+&lt;p&gt;同時，據 The Information 報道，有兩位知情人士透露，雖然蘋果公司已經與阿里巴巴達成合作，將為國行版的 iPhone 用户提供 AI 功能，&lt;u&gt;&lt;a href=&quot;https://www.oschina.net/news/333667/apple-continues-to-work-with-baidu-on-a&quot;&gt;但蘋果仍在繼續與百度合作&lt;/a&gt;&lt;/u&gt;，共同為中國的 iPhone 用户開發人工智能功能。&lt;/p&gt; 
+&lt;p&gt;&lt;em&gt;相關閲讀：&lt;a href=&quot;https://www.oschina.net/news/334825/iphone-16e&quot; target=&quot;news&quot;&gt;iPhone 16e 正式發佈，蘋果智能將在四月支持中文&lt;/a&gt;&lt;/em&gt;&lt;/p&gt;
+                                                                                &lt;/div&gt;
+                                                                            </description>
+            <link>https://www.oschina.net/news/338319</link>
+            <guid isPermaLink="false">https://www.oschina.net/news/338319</guid>
+            <pubDate>Thu, 06 Mar 2025 03:03:00 GMT</pubDate>
+            <author>來源: OSCHINA</author>
+        </item>
+        <item>
+            <title>微軟將在 Copilot 植入廣告位，增加商業化收入</title>
+            <description>&lt;div class=&quot;content&quot;&gt;
+                                                                    
+                                                        &lt;p&gt;&lt;u&gt;&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fwww.neowin.net%2Fnews%2Fmicrosoft-launches-new-ad-formats-exclusively-designed-for-copilot-users%2F&quot; target=&quot;_blank&quot;&gt;Neowin 報道稱&lt;/a&gt;&lt;/u&gt;，微軟將&lt;u&gt;&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fabout.ads.microsoft.com%2Fen%2Fblog%2Fpost%2Fmarch-2025%2Ftransforming-the-future-of-audience-engagement&quot; target=&quot;_blank&quot;&gt;推進&lt;/a&gt;&lt;/u&gt;旗下 AI 產品 Copilot 的商業化，前者將會在 Copilot 中添加兩種全新的廣告宣傳位置。&lt;/p&gt; 
+&lt;p&gt;報道稱，其中一種廣告位將命名為「廣告展示廳」。該種廣告將會在用户具體搜索、詢問特定商品的相關問題時，Copilot 會給出相對應的產品推薦、價格、購買鏈接等內容；而另一種廣告位稱為「動態過濾廣告」，能夠在用户搜索產品時，動態推送相關的產品廣告，並結合用户的搜索內容進行推送範圍縮小。&lt;/p&gt; 
+&lt;p&gt;&lt;img src=&quot;https://static.oschina.net/uploads/space/2025/0312/105509_BhLK_2720166.png&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
+&lt;p&gt;「廣告展示廳」將會在 4 月進行開始推送，而「動態過濾廣告」則會在本月內開始試行。&lt;/p&gt; 
+&lt;p&gt;報道指出，微軟在 Copilot 中設計、投放廣告，將能夠利用 AI 助手這一類產品的流量，帶來更多的盈利收入。但過多的廣告推送，也可能引發用户對軟件的厭惡。&lt;/p&gt;
+                                                                                &lt;/div&gt;
+                                                                            </description>
+            <link>https://www.oschina.net/news/338310/ms-launches-new-ad-formats-for-copilot-users</link>
+            <guid isPermaLink="false">https://www.oschina.net/news/338310/ms-launches-new-ad-formats-for-copilot-users</guid>
+            <pubDate>Thu, 06 Mar 2025 02:56:00 GMT</pubDate>
+            <author>來源: OSCHINA</author>
+        </item>
+        <item>
+            <title>OpenAI 發佈 Agent 開發套件，讓 AI 能自主操作計算機</title>
+            <description>&lt;div class=&quot;content&quot;&gt;
+                                                                    
+                                                        &lt;p&gt;3 月 12 日，OpenAI&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fopenai.com%2Findex%2Fnew-tools-for-building-agents%2F&quot;&gt;發佈&lt;/a&gt;針對 AI Agent 打造的系列工具與 API，助力開發者更便捷地創建可自動執行任務的 AI Agent。&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt;&lt;strong&gt;全新的 Responses API&lt;/strong&gt;：深度融合對話式 API 的交互簡潔性與助手 API 的工具調用能力，打造面向智能體開發的統一接口範式。該 API 支持動態任務解析與工具鏈自主調度，顯著降低複雜業務流程的架構複雜度。&lt;/li&gt; 
+ &lt;li&gt;&lt;strong&gt;內置工具&lt;/strong&gt;：包括網絡搜索、文件搜索和計算機使用等功能。&lt;/li&gt; 
+ &lt;li&gt;&lt;strong&gt;全新的&amp;nbsp;Agents SDK&lt;/strong&gt;：基於 Swarm 框架升級，用於協調單代理和多代理工作流。&lt;/li&gt; 
+ &lt;li&gt;&lt;strong&gt;集成的可觀測性工具&lt;/strong&gt;：用於追蹤和檢查智能代理工作流的執行情況。&lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;p&gt;&lt;img alt=&quot;&quot; src=&quot;https://static.oschina.net/uploads/space/2025/0312/104151_8zaU_2720166.png&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
+&lt;p&gt;▲OpenAI 官方提供的 Agent 工作流跟蹤面板&lt;/p&gt; 
+&lt;p&gt;具體來説，在 Responses API 結的加持下，開發者只需調用一次 API ，即可利用多種工具和多輪模型交互解決複雜任務。&lt;/p&gt; 
+&lt;p&gt;而在內置工具方面，Web 搜索工具支持 GPT-4o 和 GPT-4o-mini 模型獲取網絡最新信息並提供清晰的引用，在 SimpleQA 基準測試中，這兩款模型的搜索預覽版分別拿下了 90% 和 88% 的亮眼準確率；升級後的文件搜索工具更是給力，支持多種文件格式，還能優化查詢、過濾元數據、自定義排序。&lt;/p&gt; 
+&lt;p&gt;計算機使用工具則由與 Operator 相同的 Computer-Using Agent (CUA) 模型提供支持，可捕獲模型生成的鼠標和鍵盤操作，在 OSWorld、WebArena 和 WebVoyager 基準測試中分別取得 38.1%、58.1% 和 87% 的成績。&lt;/p&gt; 
+&lt;p&gt;而 Agents SDK 提供易於配置的 LLM 與內置工具集成、Agent 間智能交接控制、可配置安全檢查以及可視化追蹤等功能，適用於客户支持自動化、多步研究、內容生成等多種應用場景。&lt;/p&gt; 
+&lt;p&gt;對於現有 API 的安排，OpenAI 表示會繼續全力支持 Chat Completions API，為不需要內置工具的開發者提供新模型和功能。而基於 Assistants API 測試版的反饋，他們已經把關鍵改進整合到 Responses API 中，計劃在功能對齊後，於 2026 年中期正式停用 Assistants API，同時會提供詳細的遷移指南。&lt;/p&gt; 
+&lt;p&gt;價格方面，Web 搜索每千次查詢分別為 GPT-4o 搜索 30 美元和 GPT-4o-mini 搜索 25 美元；文件搜索每千次查詢 2.5 美元，文件存儲 0.1 美元 / GB / 天（首 GB 免費）；計算機使用工具則按每輸入百萬 token/3 美元和每輸出百萬 token/12 美元計費。&lt;/p&gt; 
+&lt;p&gt;這些新工具簡化了智能體的核心邏輯、編排和交互，極大地降低了開發者構建智能體的入門門檻。在未來幾周和幾個月內，OpenAI 計劃陸續推出更多工具和功能，進一步簡化並加速在 OpenAI 平台上構建智能體應用的流程。&lt;/p&gt;
+                                                                                &lt;/div&gt;
+                                                                            </description>
+            <link>https://www.oschina.net/news/338306/openai-new-tools-for-building-agents</link>
+            <guid isPermaLink="false">https://www.oschina.net/news/338306/openai-new-tools-for-building-agents</guid>
+            <pubDate>Thu, 06 Mar 2025 02:43:00 GMT</pubDate>
+            <author>來源: OSCHINA</author>
+        </item>
         <item>
             <title>TypeScript 編譯器和工具鏈將移植到 Go：性能提升 10 倍</title>
             <description>&lt;div class=&quot;content&quot;&gt;
                                                                     
-                                                        &lt;p&gt;TypeScript、C#語言、Delphi 語言之父 Anders Hejlsberg 今日在 Microsoft 開發者博客&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fdevblogs.microsoft.com%2Ftypescript%2Ftypescript-native-port%2F&quot; target=&quot;_blank&quot;&gt;宣佈重大消息&lt;/a&gt;，TypeScript 編譯器以及工具鏈將移植到 Go 語言，性能提升高達 10 倍！&lt;/p&gt; 
+                                                        &lt;p&gt;TypeScript、C#、Delphi 語言之父 Anders Hejlsberg 今日在 Microsoft 開發者博客&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fdevblogs.microsoft.com%2Ftypescript%2Ftypescript-native-port%2F&quot; target=&quot;_blank&quot;&gt;宣佈重大消息&lt;/a&gt;：TypeScript 編譯器以及工具鏈將移植到 Go 語言，性能提升高達 10 倍！&lt;/p&gt; 
 &lt;p&gt;&lt;img src=&quot;https://static.oschina.net/uploads/space/2025/0312/102953_R1VQ_2720166.png&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
 &lt;p&gt;這一舉動旨在解決 TypeScript 在大型代碼庫中性能瓶頸的問題，為開發者帶來更流暢、更高效的開發體驗。&lt;/p&gt; 
 &lt;p&gt;根據官方公佈的數據，新的原生實現將帶來以下驚人的改進：&lt;/p&gt; 
 &lt;ul&gt; 
- &lt;li&gt; &lt;p&gt;&lt;strong&gt;編輯器啓動的項目加載速度提升 8 倍！&lt;/strong&gt;&lt;/p&gt; &lt;/li&gt; 
- &lt;li&gt; &lt;p&gt;&lt;strong&gt;大多數構建時間縮短 10 倍！&lt;/strong&gt;&lt;/p&gt; &lt;/li&gt; 
- &lt;li&gt; &lt;p&gt;&lt;strong&gt;內存使用量大幅減少！&lt;/strong&gt;&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;&lt;strong&gt;編輯器啓動的項目加載速度提升 8 倍&lt;/strong&gt;&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;&lt;strong&gt;大多數構建時間縮短 10 倍&lt;/strong&gt;&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;&lt;strong&gt;內存使用量大幅減少&lt;/strong&gt;&lt;/p&gt; &lt;/li&gt; 
 &lt;/ul&gt; 
+&lt;p&gt;&lt;img src=&quot;https://static.oschina.net/uploads/space/2025/0312/103930_Vsns_2720166.png&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
 &lt;p&gt;Anders Hejlsberg 和 TypeScript 團隊在 GitHub 倉庫的討論區解釋了為何採用 Go，主要原因有以下幾點：&lt;/p&gt; 
 &lt;ol&gt; 
  &lt;li&gt; &lt;p&gt;代碼結構相似性：TypeScript 現有代碼庫採用函數式編程風格，很少使用類。而 Go 語言也以函數和數據結構為中心，與現有代碼結構高度相似，這使得移植工作更加容易。&lt;/p&gt; &lt;/li&gt; 
@@ -37,7 +1541,7 @@
                                                                             </description>
             <link>https://www.oschina.net/news/338304/typescript-native-port</link>
             <guid isPermaLink="false">https://www.oschina.net/news/338304/typescript-native-port</guid>
-            <pubDate>Wed, 12 Mar 2025 02:34:27 GMT</pubDate>
+            <pubDate>Thu, 06 Mar 2025 02:33:00 GMT</pubDate>
             <author>來源: OSCHINA</author>
         </item>
         <item>
@@ -58,7 +1562,7 @@
                                                                             </description>
             <link>https://www.oschina.net/news/338302</link>
             <guid isPermaLink="false">https://www.oschina.net/news/338302</guid>
-            <pubDate>Wed, 12 Mar 2025 02:32:27 GMT</pubDate>
+            <pubDate>Thu, 06 Mar 2025 02:31:00 GMT</pubDate>
             <author>來源: OSCHINA</author>
         </item>
         <item>
@@ -75,7 +1579,7 @@
                                                                             </description>
             <link>https://www.oschina.net/news/338296</link>
             <guid isPermaLink="false">https://www.oschina.net/news/338296</guid>
-            <pubDate>Wed, 12 Mar 2025 02:16:27 GMT</pubDate>
+            <pubDate>Thu, 06 Mar 2025 02:15:00 GMT</pubDate>
             <author>來源: OSCHINA</author>
         </item>
         <item>
@@ -90,632 +1594,8 @@
                                                                             </description>
             <link>https://www.oschina.net/news/338293</link>
             <guid isPermaLink="false">https://www.oschina.net/news/338293</guid>
-            <pubDate>Wed, 12 Mar 2025 02:04:27 GMT</pubDate>
+            <pubDate>Thu, 06 Mar 2025 02:04:00 GMT</pubDate>
             <author>來源: OSCHINA</author>
-        </item>
-        <item>
-            <title>DevEco Studio 聯合小藝接入 DeepSeek，步驟更簡單開發鴻蒙更專業</title>
-            <description>&lt;div class=&quot;content&quot;&gt;
-                                                                    
-                                                        &lt;p style=&quot;color:#555555; margin-left:0; margin-right:0; text-align:left&quot;&gt;隨着小藝接入了 DeepSeek，智能體的問答變得更加絲滑流暢，讓人不禁想到鴻蒙原生應用開發如果接入這個智能體會產生什麼樣的效果？確實，當我們把負責開發原生鴻蒙應用的 DevEco Studio 聯合小藝接入 DeepSeek 後，這 4 個亮點迫不及待要和大家分享：&lt;/p&gt; 
-&lt;p style=&quot;color:#555555; margin-left:0; margin-right:0; text-align:center&quot;&gt;&lt;img alt=&quot;111.jpg&quot; height=&quot;179&quot; src=&quot;https://oscimg.oschina.net/oscnet//0a2c5184bd5cec66f8a5e358d0d64d96.jpg&quot; width=&quot;600&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
-&lt;p style=&quot;color:#555555; margin-left:0; margin-right:0; text-align:left&quot;&gt;只需輕鬆兩步，就可以在 DevEco Studio 中使用 DeepSeek！&lt;/p&gt; 
-&lt;p style=&quot;color:#555555; margin-left:0; margin-right:0; text-align:left&quot;&gt;&lt;strong&gt;第一步：環境準備&lt;/strong&gt;&lt;/p&gt; 
-&lt;p style=&quot;color:#555555; margin-left:0; margin-right:0; text-align:left&quot;&gt;&lt;strong&gt;&lt;span&gt;1、下載並安裝 DevEco Studio&lt;/span&gt;&lt;/strong&gt;&lt;/p&gt; 
-&lt;p style=&quot;color:#555555; margin-left:0; margin-right:0; text-align:left&quot;&gt;如果尚未安裝 DevEco Studio，請訪問華為開發者官網下載並安裝最新版本 DevEco Studio 5.0.3 Beta2，本次指導就以 5.0.3 Beta2 進行演示。根據指導安裝完成後，打開 DevEco Studio，創建一個新的鴻蒙應用項目，選擇適合的模板（如 Empty Ability）。&lt;/p&gt; 
-&lt;p style=&quot;color:#555555; margin-left:0; margin-right:0; text-align:center&quot;&gt;&lt;img alt=&quot;222.jpg&quot; height=&quot;395&quot; src=&quot;https://oscimg.oschina.net/oscnet//a5fb544214738530955257b8b3249982.jpg&quot; width=&quot;600&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
-&lt;p style=&quot;color:#555555; margin-left:0; margin-right:0; text-align:left&quot;&gt;&lt;strong&gt;&lt;span&gt;2、下載並安裝 CodeGenie 工具&lt;/span&gt;&lt;/strong&gt;&lt;/p&gt; 
-&lt;p style=&quot;color:#555555; margin-left:0; margin-right:0; text-align:left&quot;&gt;如果你安裝的是官網最新的 DevEco Studio 5.0.3 Beta2 可以直接跳過這一步，該版本已經內置了最新版本的 CodeGenie。&lt;/p&gt; 
-&lt;p style=&quot;color:#555555; margin-left:0; margin-right:0; text-align:left&quot;&gt;CodeGenie 是華為開發者官網推出的官方 DevEco Studio AI 輔助編程工具，提供智能知識問答、代碼生成、元服務卡片生成的能力，新增支持對接小藝 DeepSeek，可以幫助開發者高效開發鴻蒙應用及元服務。&lt;/p&gt; 
-&lt;p style=&quot;color:#555555; margin-left:0; margin-right:0; text-align:left&quot;&gt;在 DevEco Studio 下載頁向下翻，就可以看到 CodeGenie 的下載鏈接，點擊鏈接進行下載：&lt;/p&gt; 
-&lt;p style=&quot;color:#555555; margin-left:0; margin-right:0; text-align:center&quot;&gt;&lt;img alt=&quot;333.jpg&quot; height=&quot;207&quot; src=&quot;https://oscimg.oschina.net/oscnet//610c7328b3615d26d8f89c6247683ffe.jpg&quot; width=&quot;600&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
-&lt;p style=&quot;color:#555555; margin-left:0; margin-right:0; text-align:left&quot;&gt;&lt;span&gt;CodeGenie 下載完成後，在右上方打開 DevEco Studio 中的插件市場，我們可以看到 DevEco Studio 已經為我們內置了一個 CodeGenie，但是該版本不是最新的，所以我們手動再安裝這一步下載的最新的 CodeGenie。&lt;/span&gt;&lt;/p&gt; 
-&lt;p style=&quot;color:#555555; margin-left:0; margin-right:0; text-align:left&quot;&gt;&lt;span&gt;點擊右上方的設置按鈕，選擇其中的 Install plugin from Disk...&lt;/span&gt;&lt;/p&gt; 
-&lt;p style=&quot;color:#555555; margin-left:0; margin-right:0; text-align:center&quot;&gt;&lt;img alt=&quot;444.jpg&quot; height=&quot;268&quot; src=&quot;https://oscimg.oschina.net/oscnet//fc25f14715c5290ac56666a09c606253.jpg&quot; width=&quot;600&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
-&lt;p style=&quot;color:#555555; margin-left:0; margin-right:0; text-align:center&quot;&gt;&lt;img alt=&quot;555.jpg&quot; height=&quot;398&quot; src=&quot;https://oscimg.oschina.net/oscnet//712e023ff09b4a0a4393dfdc4d855ea9.jpg&quot; width=&quot;600&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
-&lt;p style=&quot;color:#555555; margin-left:0; margin-right:0; text-align:left&quot;&gt;選擇這一步下載的 CodeGenie 路徑，點擊 OK：&lt;/p&gt; 
-&lt;p style=&quot;color:#555555; margin-left:0; margin-right:0; text-align:center&quot;&gt;&lt;img alt=&quot;666.jpg&quot; height=&quot;411&quot; src=&quot;https://oscimg.oschina.net/oscnet//f04615f19acf657db03d1c12dbe7e68d.jpg&quot; width=&quot;600&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
-&lt;p style=&quot;color:#555555; margin-left:0; margin-right:0; text-align:left&quot;&gt;在列表頂部就會出現最新的 CodeGenie 工具，然後我們選擇 Restart IDE 重啓 DevEco Studio：&lt;/p&gt; 
-&lt;p style=&quot;color:#555555; margin-left:0; margin-right:0; text-align:center&quot;&gt;&lt;img alt=&quot;777.jpg&quot; height=&quot;392&quot; src=&quot;https://oscimg.oschina.net/oscnet//b28dd8f3476776fc62ab340a446b36fa.jpg&quot; width=&quot;600&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
-&lt;p style=&quot;color:#555555; margin-left:0; margin-right:0; text-align:left&quot;&gt;&lt;strong&gt;&lt;span&gt;第二步：登錄華為賬號&lt;/span&gt;&lt;/strong&gt;&lt;/p&gt; 
-&lt;p style=&quot;color:#555555; margin-left:0; margin-right:0; text-align:left&quot;&gt;&lt;strong&gt;&lt;span&gt;1&lt;/span&gt;&lt;span&gt;、登錄華為賬號&lt;/span&gt;&lt;/strong&gt;&lt;/p&gt; 
-&lt;p style=&quot;color:#555555; margin-left:0; margin-right:0; text-align:left&quot;&gt;點擊 DevEco Studio 右側欄中的 CodeGenie，可以看到彈出框中顯示的登錄按鈕，點擊登錄按鈕進行華為開發者賬號的登錄。&lt;/p&gt; 
-&lt;p style=&quot;color:#555555; margin-left:0; margin-right:0; text-align:center&quot;&gt;&lt;img alt=&quot;888.jpg&quot; height=&quot;406&quot; src=&quot;https://oscimg.oschina.net/oscnet//2141f8fbad4aff2afcc474092fcb3ac9.jpg&quot; width=&quot;600&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
-&lt;p style=&quot;color:#555555; margin-left:0; margin-right:0; text-align:left&quot;&gt;&lt;strong&gt;&lt;span&gt;2&lt;/span&gt;&lt;span&gt;、即刻開啓智能原生鴻蒙開發之旅&lt;/span&gt;&lt;/strong&gt;&lt;/p&gt; 
-&lt;p style=&quot;color:#555555; margin-left:0; margin-right:0; text-align:left&quot;&gt;登錄後再次打開 CodeGenie，在底部 Agents 中選擇 DeepSeek-R1(Beta)，就可以直接開始使用 DeepSeek 的能力輔助開發原生鴻蒙應用了！&lt;/p&gt; 
-&lt;p style=&quot;color:#555555; margin-left:0; margin-right:0; text-align:center&quot;&gt;&lt;img alt=&quot;999.jpg&quot; height=&quot;392&quot; src=&quot;https://oscimg.oschina.net/oscnet//e3a11024f6c427d1a868b7d7bcb3d5df.jpg&quot; width=&quot;600&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
-&lt;p style=&quot;color:#555555; margin-left:0; margin-right:0; text-align:left&quot;&gt;我們來結合鴻蒙原生應用開發+應用流行趨勢+鴻蒙特性來做一些複雜的示例，一起來看看他的表現吧！&lt;/p&gt; 
-&lt;p style=&quot;color:#555555; margin-left:0; margin-right:0; text-align:left&quot;&gt;1） 我先給他一個網站，讓他幫我分析出這個網站中包含的流行的設計元素，並在應用首頁中結合這些流行設計元素做一個個人 IP 的展示，讓他先給出我整體設計説明&lt;/p&gt; 
-&lt;p style=&quot;color:#555555; margin-left:0; margin-right:0; text-align:center&quot;&gt;&lt;img alt=&quot;100.jpg&quot; height=&quot;404&quot; src=&quot;https://oscimg.oschina.net/oscnet//cba411bc060e254789dae8feb95878d9.jpg&quot; width=&quot;600&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
-&lt;p style=&quot;color:#555555; margin-left:0; margin-right:0; text-align:left&quot;&gt;剛將訴求發出，馬上獲得反饋，並且明確給出了對網站的設計元素分析和整體架構設計，甚至給出了性能優化方案和設計驗收指標。簡直是又快又清晰又準確。&lt;/p&gt; 
-&lt;p style=&quot;color:#555555; margin-left:0; margin-right:0; text-align:left&quot;&gt;2） 現在讓他結合鴻蒙最佳實踐，按照他的設計，生成這個首頁所有的代碼，並且希望快點看到效果&lt;/p&gt; 
-&lt;p style=&quot;color:#555555; margin-left:0; margin-right:0; text-align:center&quot;&gt;&lt;img alt=&quot;11.jpg&quot; height=&quot;405&quot; src=&quot;https://oscimg.oschina.net/oscnet//74044a3f8aeebd52ba6aac0eaba5c564.jpg&quot; width=&quot;600&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
-&lt;p style=&quot;color:#555555; margin-left:0; margin-right:0; text-align:left&quot;&gt;按照提供的代碼，將整個工程進行代碼和資源的填充和簡單修改，馬上一個富有設計元素，擁有點擊動效的個人 IP 首頁就可以馬上運行了，整個過程不到半個小時，是不是很快！&lt;/p&gt; 
-&lt;p style=&quot;color:#555555; margin-left:0; margin-right:0; text-align:center&quot;&gt;&lt;img alt=&quot;12.jpg&quot; height=&quot;406&quot; src=&quot;https://oscimg.oschina.net/oscnet//12bcc374a63fa3fb6db7913a9795f213.jpg&quot; width=&quot;600&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
-&lt;p style=&quot;color:#555555; margin-left:0; margin-right:0; text-align:left&quot;&gt;無需等待，DeepSeek 的反饋即刻呈現，幫助開發者高效便捷的進行原生鴻蒙應用的開發！大家快去試試吧！&lt;/p&gt;
-                                                                                &lt;/div&gt;
-                                                                            </description>
-            <link>https://www.oschina.net/news/338286</link>
-            <guid isPermaLink="false">https://www.oschina.net/news/338286</guid>
-            <pubDate>Thu, 06 Mar 2025 01:23:00 GMT</pubDate>
-            <author>來源: 投稿</author>
-        </item>
-        <item>
-            <title>梁文鋒拒絕用 DeepSeek 賺快錢，騰訊、阿里近期都曾與其接觸</title>
-            <description>&lt;div class=&quot;content&quot;&gt;
-                                                                    
-                                                        &lt;p&gt;&lt;u&gt;&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fcn.wsj.com%2Farticles%2Finvestors-want-a-piece-of-deepseek-its-founder-says-not-now-724386a5%3Fmod%3Dcn_hp_lead_pos2&quot; target=&quot;_blank&quot;&gt;據《華爾街日報》報道&lt;/a&gt;&lt;/u&gt;，&lt;strong&gt;DeepSeek 創始人梁文鋒已經拒絕了通過其大模型賺快錢的投資提議。他告訴潛在投資者，自己希望保持那種致力於科學項目研究的精神&lt;/strong&gt;。&lt;/p&gt; 
-&lt;p&gt;&lt;img height=&quot;702&quot; src=&quot;https://static.oschina.net/uploads/space/2025/0311/184106_oQoG_2720166.png&quot; width=&quot;1800&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
-&lt;p&gt;據知情人士透露，梁文鋒告訴身邊的人，他並不急於獲得投資，因為擔心外部投資者會幹預 DeepSeek 的決策。最近幾周，包括騰訊和阿里巴巴在內的中國科技公司高管曾與梁文鋒會面，討論潛在合作機會。&lt;/p&gt; 
-&lt;p&gt;知情人士稱，自 2023 年底以來，DeepSeek 曾向多個風險投資基金進行推介，包括一些外國公司，但是這些公司拒絕投資，因為他們看不到明確的資金回報途徑。&lt;/p&gt; 
-&lt;p&gt;儘管對 DeepSeek 缺乏明確創收計劃表示擔憂，但最近更多潛在投資者表達了對投資 DeepSeek 的興趣。然而，梁文鋒着眼於公司的長期戰略，拒絕了他們的投資提議。DeepSeek 正在研究如何幫助科技巨頭利用 AI 開發商業應用並分享其中的收益。&lt;/p&gt; 
-&lt;p&gt;目前，梁文鋒似乎在堅持他在 2023 年一次罕見採訪中表達的理念。他當時説：「我們不做應用，我們只做研究和探索。」記者問他為什麼這樣做，梁文鋒回答説，原因是好奇心驅動。&lt;/p&gt; 
-&lt;p&gt;知情人士還透露，梁文鋒不想對 DeepSeek 的核心 AI 模型收費。這些模型目前是免費的。該公司計劃最早在 4 月發佈其下一個推理模型，旨在解決複雜問題。&lt;/p&gt;
-                                                                                &lt;/div&gt;
-                                                                            </description>
-            <link>https://www.oschina.net/news/338220</link>
-            <guid isPermaLink="false">https://www.oschina.net/news/338220</guid>
-            <pubDate>Wed, 05 Mar 2025 10:41:00 GMT</pubDate>
-            <author>來源: OSCHINA</author>
-        </item>
-        <item>
-            <title>微信小程序「聊天工具」模式開始內測</title>
-            <description>&lt;div class=&quot;content&quot;&gt;
-                                                                    
-                                                        &lt;p&gt;微信團隊今日發佈公告稱，為更好地支持開發者在微信羣聊場景內服務用户&lt;strong&gt;，小程序「聊天工具」模式開始內測&lt;/strong&gt;。&lt;/p&gt; 
-&lt;blockquote&gt; 
- &lt;p&gt;&lt;strong&gt;功能介紹&lt;/strong&gt;&lt;/p&gt; 
- &lt;p&gt;聊天工具模式是為了幫助小程序更好與微信聊天結合而推出的模式，可用於實現羣問卷、羣拼單、羣任務等功能。其與小程序普通模式相比開放更多與聊天緊密結合的能力：&lt;/p&gt; 
- &lt;ul&gt; 
-  &lt;li&gt;聊天成員相關能力：開發者可調用聊天成員選擇器並獲取成員相關 id，通過開放數據域渲染聊天成員的頭像暱稱&lt;/li&gt; 
-  &lt;li&gt;發送內容到聊天能力：開發者可發送文本、提醒、圖片、表情、視頻等內容類型到聊天中&lt;/li&gt; 
-  &lt;li&gt;動態消息能力：小程序卡片上的輔標題可以動態更新，在用户完成/參與了活動後下發系統消息&lt;/li&gt; 
- &lt;/ul&gt; 
- &lt;p&gt;同時，聊天工具模式需要使用獨立分包基於 skyline 開發，該分包也可被普通模式打開。&lt;/p&gt; 
-&lt;/blockquote&gt; 
-&lt;p&gt;小程序「聊天工具」模式的能力介紹如下：&lt;/p&gt; 
-&lt;ul&gt; 
- &lt;li&gt;&lt;strong&gt;聊天成員相關能力&lt;/strong&gt;：開發者可調用聊天成員選擇器並獲取成員相關 id，通過開放數據域渲染聊天成員的頭像暱稱&lt;/li&gt; 
-&lt;/ul&gt; 
-&lt;p&gt;&lt;img alt=&quot;&quot; src=&quot;https://img.ithome.com/newsuploadfiles/2025/3/70dbe39d-824d-4504-9929-aca7c109a807.png?x-bce-process=image/format,f_avif&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;img alt=&quot;&quot; src=&quot;https://oscimg.oschina.net/oscnet/up-681fa9ded30fbe32ccdcc7d158863ac4818.png&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
-&lt;ul&gt; 
- &lt;li&gt;&lt;strong&gt;發送內容到聊天能力&lt;/strong&gt;：開發者可發送文本、提醒、圖片、表情、視頻等內容類型到聊天中，用户通過內容可進入小程序&lt;/li&gt; 
-&lt;/ul&gt; 
-&lt;p&gt;&lt;img alt=&quot;&quot; src=&quot;https://oscimg.oschina.net/oscnet/up-59fa2aecb7ab97672121ab713e31a28004e.png&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;img alt=&quot;&quot; src=&quot;https://img.ithome.com/newsuploadfiles/2025/3/b38d2ebf-68ab-4a08-ac94-60d09d79681d.png?x-bce-process=image/format,f_avif&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
-&lt;ul&gt; 
- &lt;li&gt;&lt;strong&gt;動態消息能力&lt;/strong&gt;：小程序卡片上的輔標題可以動態更新，在用户完成 / 參與了活動後下發系統消息&lt;/li&gt; 
-&lt;/ul&gt; 
-&lt;p&gt;&lt;img alt=&quot;&quot; src=&quot;https://oscimg.oschina.net/oscnet/up-03294ca6c0c39d56a7d7127e664c8534b88.png&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
-&lt;p&gt;&lt;em&gt;詳情查看文檔：&lt;img alt=&quot;&quot; src=&quot;https://img.ithome.com/newsuploadfiles/2025/3/3e6a2e0e-35a8-48c6-bb62-6be791f89764.png?x-bce-process=image/format,f_avif&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fdevelopers.weixin.qq.com%2Fminiprogram%2Fdev%2Fframework%2Fopen-ability%2FchatTool.html&quot; target=&quot;_blank&quot;&gt;https://developers.weixin.qq.com/miniprogram/dev/framework/open-ability/chatTool.html&lt;/a&gt;&lt;/em&gt;&lt;/p&gt;
-                                                                                &lt;/div&gt;
-                                                                            </description>
-            <link>https://www.oschina.net/news/338202</link>
-            <guid isPermaLink="false">https://www.oschina.net/news/338202</guid>
-            <pubDate>Wed, 05 Mar 2025 09:04:00 GMT</pubDate>
-            <author>來源: OSCHINA</author>
-        </item>
-        <item>
-            <title>AI 的「臉」該怎麼管？</title>
-            <description>&lt;div class=&quot;content&quot;&gt;
-                                                                    
-                                                        &lt;p&gt;&lt;span style=&quot;color:#000000&quot;&gt;&lt;em&gt;人民網記者，趙竹青&lt;/em&gt;&lt;/span&gt;&lt;/p&gt; 
-&lt;p&gt;&lt;span style=&quot;color:#000000&quot;&gt;「靳東兩會建議 AI 換臉立法」「雷軍回應國慶 7 天被 AI 雷軍罵了 8 天」……今年兩會期間，AI 話題頻頻登上熱搜，「AI 換臉」引發的風險問題更是受到代表委員的熱議。 事實上，苦於被 AI 偷走面孔和聲音的，遠不止靳東與雷軍。前有「假張文宏」深夜直播帶貨，後有「假劉曉慶」分享人生雞湯，以及「假古天樂」代言遊戲平台，深度偽造 (Deepfake) 技術自 2017 年問世以來，正以指數級速度滲透日常生活。隨着技術持續進化、門檻不斷降低，「AI 換臉」的不當濫用已成為違法侵權重災區，並有愈演愈烈之勢。&lt;/span&gt;&lt;/p&gt; 
-&lt;p&gt;&lt;span style=&quot;color:#000000&quot;&gt;面對新型侵權形態，現行法律體系正面臨現實挑戰。全國人大代表、小米集團創始人雷軍坦言，現有法律體系仍將 AI 侵權嵌套在隱私權、肖像權、名譽權等傳統框架中，而「被罵 8 天」「因 AI 謠言導致股價下跌」等損失，卻因無法量化舉證而難以維權。&lt;/span&gt;&lt;/p&gt; 
-&lt;p&gt;&lt;span style=&quot;color:#000000&quot;&gt;「這些損害涉及眾多不特定個體，僅靠私益訴訟難以實現有效治理。」最高人民檢察院公益訴訟檢察廳廳長徐向春的觀察一針見血。顯然，面對新技術引發的新問題，仍沿用傳統追責機制，就好比用漁網去攔截數據洪流，是力所不逮的。&lt;/span&gt;&lt;/p&gt; 
-&lt;p&gt;&lt;span style=&quot;color:#000000&quot;&gt;近年來，我國《互聯網信息服務深度合成管理規定》《生成式人工智能服務管理暫行辦法》等法律法規已頒佈實施，《人工智能生成合成內容標識辦法 (徵求意見稿)》完成社會意見徵集，對人工智能治理進行了有益探索。然而，鑑於技術的迅猛發展，治理的「工具箱」仍需不斷擴容。&lt;/span&gt;&lt;/p&gt; 
-&lt;p&gt;&lt;span style=&quot;color:#000000&quot;&gt;如何管好 AI 這張「臉」？全國兩會上，代表委員們圍繞如何更好把握人工智能發展機遇、更好應對新技術帶來的風險挑戰，積極建言獻策。 雷軍建議，加快單行法立法進程，提升立法位階；強化行業自律共治，壓實平台企業等各方的責任和義務；加大普法宣傳的廣度力度，增強民眾的警惕性和鑑別力。&lt;/span&gt;&lt;/p&gt; 
-&lt;p&gt;&lt;span style=&quot;color:#000000&quot;&gt;全國人大代表、TCL 創始人李東生建議，加快人工智能深度合成內容標識管理規章制度的出台，明確懲罰制度，同時還需加強國際合作，形成人工智能生成合成內容的有效監管。&lt;/span&gt;&lt;/p&gt; 
-&lt;p&gt;&lt;span style=&quot;color:#000000&quot;&gt;全國政協委員、中華全國律師協會監事長呂紅兵認為，應當加快推進「小、快、靈」立法，儘早出台行政法規，規範相關領域發展。&lt;/span&gt;&lt;/p&gt; 
-&lt;p&gt;&lt;span style=&quot;color:#000000&quot;&gt;在全國人大代表、四川省律師協會會長李世亮看來，隨着 DeepSeek 在全世界範圍內引發轟動，「AI+」快速融入各行各業，AI 立法「條件已經成熟」。他期待 AI 全面系統性法案的出台，填補我國 AI 法律空白。&lt;/span&gt;&lt;/p&gt; 
-&lt;p&gt;&lt;span style=&quot;color:#000000&quot;&gt;記者注意到，8 日提請審議的全國人大常委會工作報告明確，今年將圍繞人工智能、數字經濟、大數據等新興領域加強立法研究。這也意味着，我國 AI 治理正逐步從「補丁式規範」向「體系化建構」轉型。&lt;/span&gt;&lt;/p&gt; 
-&lt;p&gt;&lt;span style=&quot;color:#000000&quot;&gt;技術狂飆的時代，規則不能只是追趕者。今年全國兩會關於 AI 治理的討論中，一個共識逐漸清晰：唯有構建起「法律劃界、技術鑑偽、平台擔責、全民共治」的多維防護網，才能讓 AI 的「臉」既綻放科技之美，又不失人性之真與善。&lt;/span&gt;&lt;/p&gt;
-                                                                                &lt;/div&gt;
-                                                                            </description>
-            <link>https://www.oschina.net/news/338192</link>
-            <guid isPermaLink="false">https://www.oschina.net/news/338192</guid>
-            <pubDate>Wed, 05 Mar 2025 08:33:00 GMT</pubDate>
-            <author>來源: OSCHINA</author>
-        </item>
-        <item>
-            <title>百度上線 AI 陪伴產品「月匣」App</title>
-            <description>&lt;div class=&quot;content&quot;&gt;
-                                                                    
-                                                        &lt;p&gt;&lt;span style=&quot;color:#000000&quot;&gt;百度近期低調推出情感陪伴類 App「月匣」，主打高自由度 AI 對話與沉浸式劇本互動兩大核心功能。&lt;/span&gt;&lt;/p&gt; 
-&lt;p&gt;&lt;span style=&quot;color:#000000&quot;&gt;&lt;img height=&quot;544&quot; src=&quot;https://oscimg.oschina.net/oscnet/up-2b1b8422cc0ee7f9d5a53332bf2f668b7d0.jpg&quot; width=&quot;300&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/span&gt;&lt;/p&gt; 
-&lt;p&gt;&lt;span style=&quot;color:#000000&quot;&gt;根據介紹，這款產品通過構建虛擬角色生態，試圖在泛娛樂社交領域開闢新賽道。與以往百度推出的 AI 社交產品不同的是，百度的這款全新 AI 社交產品，不僅搭載自研的文心一言大模型，還整合了 DeepSeek、豆包、MiniMax abab 三大外部的大模型，構建起「四核驅動」的 AI 社交引擎。&lt;/span&gt;&lt;/p&gt;
-                                                                                &lt;/div&gt;
-                                                                            </description>
-            <link>https://www.oschina.net/news/338176</link>
-            <guid isPermaLink="false">https://www.oschina.net/news/338176</guid>
-            <pubDate>Wed, 05 Mar 2025 07:39:00 GMT</pubDate>
-            <author>來源: OSCHINA</author>
-        </item>
-        <item>
-            <title>TIOBE 3 月榜單：Fortran 和 Delphi 爭奪前十</title>
-            <description>&lt;div class=&quot;content&quot;&gt;
-                                                                    
-                                                        &lt;p&gt;&lt;span style=&quot;color:#000000&quot;&gt;TIOBE 公佈了 2025&amp;nbsp;年 3 月的&lt;/span&gt;&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fwww.tiobe.com%2Ftiobe-index%2F&quot; target=&quot;_blank&quot;&gt;編程語言排行榜&lt;/a&gt;&lt;span style=&quot;color:#000000&quot;&gt;。&lt;/span&gt;&lt;/p&gt; 
-&lt;p&gt;&lt;img height=&quot;66&quot; src=&quot;https://oscimg.oschina.net/oscnet/up-538dc8bd513430c8df55d4d61c23929ab13.png&quot; width=&quot;700&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
-&lt;p&gt;&lt;span style=&quot;color:#000000&quot;&gt;本月榜單中，一些古老的語言正在悄然上升。其中，Fortran 和 Delphi 正在爭奪前十名的位置，COBOL 和本月新加入的 Ada 則稍稍靠後，但也均成功擠入了 Top 20。&lt;/span&gt;&lt;/p&gt; 
-&lt;p&gt;&lt;span style=&quot;color:#000000&quot;&gt;TIOBE CEO&amp;nbsp;Paul Jansen 認為，這一趨勢與維持世界運轉的許多重要遺留系統有關。&lt;/span&gt;&lt;/p&gt; 
-&lt;blockquote&gt; 
- &lt;p&gt;&lt;span style=&quot;color:#000000&quot;&gt;它們中的大多數都是藉助這些「dinosaur languages」開發出來的。現在，這些系統的最後一批核心開發人員即將退休，公司為了避免任何風險，選擇保留現有系統，甚至對其進行擴展，而不是用基於更現代語言的更新系統來取代它們。&lt;/span&gt;&lt;/p&gt; 
- &lt;p&gt;&lt;span style=&quot;color:#000000&quot;&gt;請注意，我們把這些語言稱為「dinosaurs」，但它們已經隨着時間的推移而不斷發展，而且已經相當先進。它們都有新的語言定義。譬如 Fortran 2023、Delphi 12（2024 年發佈）、Ada 2023 和 COBOL 2023。我們可能會對這些語言進入 TIOBE 指數前 20 名感到驚訝，但它們絕對是有作用的，值得稱讚。&lt;/span&gt;&lt;/p&gt; 
-&lt;/blockquote&gt; 
-&lt;p&gt;&lt;span style=&quot;color:#000000&quot;&gt;&lt;strong style=&quot;color:#333333&quot;&gt;TIOBE 3 月 TOP 20 編程語言&lt;/strong&gt;&lt;/span&gt;&lt;/p&gt; 
-&lt;p&gt;&lt;img height=&quot;400&quot; src=&quot;https://oscimg.oschina.net/oscnet/up-204e07ccd60ab4b3c568070f91028f34963.png&quot; width=&quot;500&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
-&lt;p&gt;&lt;span style=&quot;color:#000000&quot;&gt;&lt;strong style=&quot;color:#333333&quot;&gt;TOP 10 編程語言 TIOBE 指數走勢（2002-2024）&lt;/strong&gt;&lt;/span&gt;&lt;/p&gt; 
-&lt;p&gt;&lt;img height=&quot;221&quot; src=&quot;https://oscimg.oschina.net/oscnet/up-33bfc79079a90aaf3dd4ea7c65b16937581.png&quot; width=&quot;700&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
-&lt;p&gt;&lt;span style=&quot;color:#000000&quot;&gt;&lt;strong style=&quot;color:#333333&quot;&gt;第 21-50 名編程語言排行&lt;/strong&gt;&lt;/span&gt;&lt;/p&gt; 
-&lt;p&gt;&lt;img height=&quot;413&quot; src=&quot;https://oscimg.oschina.net/oscnet/up-270d625073c800a18b1102408d7f43cbb57.png&quot; width=&quot;500&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
-&lt;p style=&quot;color:#333333; margin-left:0; margin-right:0; text-align:left&quot;&gt;&lt;span style=&quot;color:#000000&quot;&gt;第 51-100 名如下，由於它們之間的數值差異較小，僅以文本形式列出（按字母排序）：&lt;/span&gt;&lt;/p&gt; 
-&lt;blockquote&gt; 
- &lt;p&gt;&lt;span style=&quot;color:#000000&quot;&gt;ActionScript, Algol, Alice, Apex, APL, CFML, CHILL, Clipper, CLIPS, Clojure, Curl, Eiffel, Elm, Erlang, F#, Forth, Groovy, Hack, Icon, Inform, Io, J, JScript, LabVIEW, Ladder Logic, Logo, Maple, Modula-2, Mojo, MQL5, NATURAL, Nim, OCaml, Occam, OpenCL, OpenEdge ABL, PL/I, Q, Raku, Ring, S, Scheme, Simulink, Smalltalk, SPARK, Tcl, Vala/Genie, VHDL, Wolfram, Xojo&lt;/span&gt;&lt;/p&gt; 
-&lt;/blockquote&gt; 
-&lt;p style=&quot;color:#333333; margin-left:0; margin-right:0; text-align:left&quot;&gt;&lt;span style=&quot;color:#000000&quot;&gt;TIOBE 編程社區指數（The TIOBE Programming Community index）是一個衡量編程語言受歡迎程度的指標，該指數每月更新一次。評判的依據來自世界範圍內的工程師、課程和第三方供應商，包括流行的搜索引擎，如 Google、必應、雅虎、維基百科、亞馬遜、YouTube 和百度都被用於指數計算。值得注意的是，TIOBE 指數並不代表編程語言的好壞或編寫代碼的多少。&lt;/span&gt;&lt;/p&gt; 
-&lt;p style=&quot;color:#333333; margin-left:0; margin-right:0; text-align:left&quot;&gt;&lt;span style=&quot;color:#000000&quot;&gt;該指數可以用來檢查你的編程技能是否還能跟上時代的步伐，或者在開始建立一個新的軟件系統時，基於指數對採用何種編程語言做出決策。&lt;/span&gt;&lt;/p&gt; 
-&lt;p style=&quot;color:#333333; margin-left:0; margin-right:0; text-align:left&quot;&gt;&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fwww.tiobe.com%2Ftiobe-index%2Fprogramminglanguages_definition%2F&quot; target=&quot;_blank&quot;&gt;TIOBE 指數&lt;/a&gt;&lt;span style=&quot;color:#000000&quot;&gt;的定義方式，以及詳細榜單信息&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fwww.tiobe.com%2Ftiobe-index%2F&quot; target=&quot;_blank&quot;&gt;均可查看官網&lt;/a&gt;。&lt;/span&gt;&lt;/p&gt;
-                                                                                &lt;/div&gt;
-                                                                            </description>
-            <link>https://www.oschina.net/news/338172/tiobe-index-202503</link>
-            <guid isPermaLink="false">https://www.oschina.net/news/338172/tiobe-index-202503</guid>
-            <pubDate>Wed, 05 Mar 2025 07:30:00 GMT</pubDate>
-            <author>來源: OSCHINA</author>
-        </item>
-        <item>
-            <title>最新消息：DeepSeek-R2 AI 模型將於 3 月 17 日發佈</title>
-            <description>&lt;div class=&quot;content&quot;&gt;
-                                                                    
-                                                        &lt;p&gt;&lt;span style=&quot;color:#d35400&quot;&gt;&lt;strong&gt;3 月 11 日晚更新&lt;/strong&gt;&lt;/span&gt;&lt;/p&gt; 
-&lt;p&gt;針對 DeepSeek 將在 3 月 17 日發佈下一代 R2 模型的傳聞，DeepSeek 官方企業諮詢賬號在用户羣中回應稱，「闢謠：R2 發佈為假消息」。&lt;/p&gt; 
-&lt;p&gt;&lt;img height=&quot;1124&quot; src=&quot;https://static.oschina.net/uploads/space/2025/0311/231933_8Rg2_2720166.png&quot; width=&quot;1280&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
-&lt;hr&gt; 
-&lt;p&gt;據智通財經援引消息人士透露，&lt;strong&gt;DeepSeek 下一代 AI 模型 DeepSeek-R2 或提前於下週一 (3 月 17 日) 正式發佈&lt;/strong&gt;。&lt;/p&gt; 
-&lt;blockquote&gt; 
- &lt;p&gt;&lt;img height=&quot;948&quot; src=&quot;https://static.oschina.net/uploads/space/2025/0311/153001_YozB_2720166.png&quot; width=&quot;1220&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
-&lt;/blockquote&gt; 
-&lt;p&gt;DeepSeek-R2 在多個關鍵領域實現突破，包括更出色的編程能力、多語言推理能力，以及以更低的成本提供更高的準確性。專業人士認為，這些特性若得以兑現，可能使其在全球 AI 競賽中佔據顯著優勢。這對於資產價格而言，可能又是一次重估機會。&lt;/p&gt; 
-&lt;p&gt;據悉，截至目前，DeepSeek 官方尚未正式公佈 R2 的具體日期及技術細節等。早前市場預期 DeepSeek-R2 模型於 5 月發佈。&lt;/p&gt; 
-&lt;p&gt;&lt;em&gt;相關閲讀：&lt;a href=&quot;https://www.oschina.net/news/335778/deepseek-rushes-launch-new-ai-model&quot; target=&quot;news&quot;&gt;DeepSeek R2 將提前推出&lt;/a&gt;&lt;/em&gt;&lt;/p&gt;
-                                                                                &lt;/div&gt;
-                                                                            </description>
-            <link>https://www.oschina.net/news/338171</link>
-            <guid isPermaLink="false">https://www.oschina.net/news/338171</guid>
-            <pubDate>Wed, 05 Mar 2025 07:25:00 GMT</pubDate>
-            <author>來源: OSCHINA</author>
-        </item>
-        <item>
-            <title>基於 Megatron 的多模態大模型訓練加速技術解析</title>
-            <description>&lt;div class=&quot;content&quot;&gt;
-                                                                                                                    
-                                                                                                                                                    &lt;p&gt;作者：胡凱文，李鵬，黃俊&lt;/p&gt; 
-&lt;p&gt;&amp;nbsp;&lt;/p&gt; 
-&lt;p&gt;單位：阿里雲智能集團人工智能平台 PAI 算法團隊&lt;/p&gt; 
-&lt;span id=&quot;OSC_h1_1&quot;&gt;&lt;/span&gt; 
-&lt;h1&gt;引言&lt;/h1&gt; 
-&lt;p&gt;多模態大模型是近期業界關注的熱點，OpenAI 的 GPT4O 以及谷歌 Gemini 等多模態大模型的出現讓人機交互變得更加簡單和自然。這種模型在多種下游任務上表現優異，比如圖文檢索、視覺問答等。通過結合語言理解和視覺感知能力，它能為用户提供更加豐富和自然的人機交互體驗。Pai-Megatron-Patch 是一款由阿里雲人工智能平台 PAI 研發的圍繞英偉達 Megatron 的大模型訓練配套工具，旨在幫助開發者快速上手大模型，打通大模型相關的高效分佈式訓練、有監督指令微調、下游任務評估等大模型開發鏈路。在 Megatron 的基礎之上，Pai-Megatron-Patch 及時追蹤社區最新需求，搭建了包括 LLaMA3、Qwen2 等在內的多種熱門大語言模型，並在此基礎上持續拓展新特性，如支持 Optimizer Offloading 功能的 Distributed Optimizer， 可與 Transformer Engine、MoE 以及流水並行等模塊協同使用，以適應更多場景需求。Pai-Megatron-Patch 的整體技術棧如下圖所示：&lt;/p&gt; 
-&lt;p&gt;&amp;nbsp;&lt;/p&gt; 
-&lt;p&gt;&lt;img src=&quot;https://oscimg.oschina.net/oscnet//0965cecdadad37ae040df3b73c232297.png&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
-&lt;p&gt;&amp;nbsp;&lt;/p&gt; 
-&lt;p&gt;本文以 Qwen2-VL 為例，從易用性和訓練性能優化兩個方面介紹基於 Megatron 構建的 Pai-Megatron-Patch 多模態大模型訓練的關鍵技術。在易用性方面，最新的 Pai-Megatron-Patch 實現了基於 Mcore 的多模態編碼器和 LLM 解碼器，同時實現了支持高精度低損耗的 Huggingface 和 MCore 多模態模型權重互轉轉換以及並行加載，極大簡化了不同框架間遷移的學習成本和技術障礙。在性能方面，實現了支持高性能的文本/圖像/視頻數據統一加載，實現了高性能的流水並行切分，另外通過引入 CPU 卸載技術以及 Sequence Packing 技術，進一步支持多模態長序列訓練的顯存優化，有效緩解了 GPU 的顯存壓力，提升了大模型訓練的效率與穩定性。這些改進共同作用，為用户提供更加流暢且高效的多模態大模型開發體驗。&lt;/p&gt; 
-&lt;span id=&quot;OSC_h1_2&quot;&gt;&lt;/span&gt; 
-&lt;h1&gt;支持模型並行的權重轉換&lt;/h1&gt; 
-&lt;p&gt;作為開源主流高效大模型訓練工具，用户在嘗試使用 Megatron 訓練開源模型時首先遇到的障礙是 Huggingface 與 Megatron 模型權重格式的差異。下面將以 Qwen2-VL 為例，詳解從 Huggingface 到 Megatron 的模型權重轉換技術。如下圖所示，Qwen2-VL[2] 主要由多模態編碼器和 LLM 解碼器兩個模塊組成。Qwen2-VL 採用了專門設計的多模態編碼器架構，可以同時接受文本/圖像/視頻作為輸入，並將它們轉換成統一形式的表示向量後送入 LLM 解碼器。這種設計使得模型能夠在同一個空間內有效地捕捉到跨模態的信息關聯。與 LLaVA 等多模態模型不同，Qwen2-VL 的視覺輸入不需要縮放到固定分辨率大小，而是根據圖像/視頻數據的原始分辨率，動態生成不同長度的視覺表示向量，這一特性被稱為動態分辨率。&lt;/p&gt; 
-&lt;p&gt;&amp;nbsp;&lt;/p&gt; 
-&lt;p&gt;&lt;img src=&quot;https://oscimg.oschina.net/oscnet//1eb93737ae6dbd05ddba2e152c5a393b.png&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
-&lt;p&gt;&amp;nbsp;&lt;/p&gt; 
-&lt;p&gt;通過將 Huggingface 模型轉換到 Megatron 格式，用户可在已經充分訓練好的 Qwen2-VL 基礎大模型或者微調大模型上進行二次訓練。所謂支持模型並行的權重轉換，其核心原理是在轉換時將大型模型權重分割成多個部分，並分配給不同的 GPU 進行並行加載。通過這種方式可以顯著減少單個設備上的顯存佔用量，加快訓練速度。然而，在實際應用中這一技術面臨着若干挑戰。在開發過程中，我們遇到的最常見問題之一是在完成權重轉換後重新加載進行訓練時，step 0 loss 比預期高。造成這種情況的原因主要有兩個方面：一方面是模型實現風格不一致，結構映射關係十分複雜；另一方面是模型權重並行切分算法實現容易出錯。因此，針對上述兩種原因，Pai-Megatron-Patch 分別進行了優化。&lt;/p&gt; 
-&lt;p&gt;&amp;nbsp;&lt;/p&gt; 
-&lt;p&gt;在 Pai-Megatron-Patch 的模型轉換中，針對模型結構映射關係十分複雜的問題，建模分析並構建映射表能有效對比 Huggingface 模型與 Megatron 實現的聯繫。下表總結了兩者分別在各個算子類型上的命名對應關係。在支持模型並行的權重轉換實現過程中，我們首先將 Huggingface 模型的 ckpt 賦值給 Megatron 模型，然後再在 Megatron 模型上進行 TP/PP 切分。這種先轉換再切分的好處是可以提升代碼的可維護性，減少轉換出錯的概率。&lt;/p&gt; 
-&lt;p&gt;&amp;nbsp;&lt;/p&gt; 
-&lt;p&gt;&lt;img src=&quot;https://oscimg.oschina.net/oscnet//ef715495d37cfd035b51f1b0d64e4bbb.png&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
-&lt;p&gt;&amp;nbsp;&lt;/p&gt; 
-&lt;p&gt;除了模塊層面的實現差異，在算子層，由於 3D 並行的存在，Megatron 與 Huggingface 的權重及計算方式也存在很大區別，需要根據實際情況進行轉換。針對模型權重並行切分算法實現容易出錯的問題，逐算子精細化切分保證了自底向上的準確轉換。&lt;/p&gt; 
-&lt;p&gt;&amp;nbsp;&lt;/p&gt; 
-&lt;p&gt;&lt;img src=&quot;https://oscimg.oschina.net/oscnet//0a7d46cfbd1f0e2bdb39037f639960a9.png&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
-&lt;p&gt;&amp;nbsp;&lt;/p&gt; 
-&lt;p&gt;上圖表示了一個 Huggingface 實現的 GQA 權重轉換到 Megatron 的正確/錯誤流程，其中每個塊表示一個 head 的權重，邊框和內部的顏色分別代表這個 head 對應的類型及被理解成的類型。在 transformers 庫中，Huggingface 採用 q_proj, k_proj, v_proj 這三個算子來計算 QKV status, 隨後再調用&lt;code&gt;repeat_kv()&lt;/code&gt;函數將同一個 Query Group 內的 KV status 數量與 Query 對齊，進而調用 attention 函數。在 Megatron 中，由於張量並行的存在，Attention Module 採用了 ColumnLinear(linear_qkv) 對 QKV 統一計算，為了降低節點間通信量，這個並行 Linear 將 Query Group 均勻切分到各個 Node 上，使每個節點內就能計算一部分 attention 結果，不需要對 QKV status 進行同步。在這個 case 下，如果直接拼接 QKV 的權重張量（如圖上半部分）再進行 TP 切分，可以明顯看到大部分 head 位置出現問題，因此，我們需要將 QKV 權重進行一定轉換，按 Query Group 的順序進行拼接（如圖下半部分）後再切分才能保證 Attention 的正確性。具體地説，在進行 TP=2 切分時，Pai-Megatron-Patch 先將 query，key 和 value 這三個 tensor 分別 reshape 成一個 4D 的 tensor，reshape 後的 shape 是&amp;lt;num_query_groups, -1, head_dim, hidden_dim&amp;gt;。接着沿着第二個維度拼接在一起，然後沿着 num_query_groups 維度進行算子拆分。才能確保並行加載 ckpt 後的起步 loss 值誤差偏移在合理範圍內。&lt;/p&gt; 
-&lt;p&gt;&amp;nbsp;&lt;/p&gt; 
-&lt;p&gt;&lt;img src=&quot;https://oscimg.oschina.net/oscnet//13b6f29e544514a59b0fa5f932487c7e.png&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
-&lt;span id=&quot;OSC_h1_3&quot;&gt;&lt;/span&gt; 
-&lt;h1&gt;用户友好的多模態數據加載&lt;/h1&gt; 
-&lt;p&gt;相對於 LLM 預訓練，在數據加載方面，由於引入了多個類型的數據，多模態模型的 DataLoader 尤其複雜。為了支持 LLaVA 等模型，英偉達的 Megatron 進一步推出了 Energon 來實現多模態數據的加載邏輯。儘管如此，由於目前多模態輸入並無統一的格式，在目前的 Megatron 中，對於多模態數據的支持仍比較有限，具體表現在 (1) 僅支持部分格式簡單的數據加載，例如每個樣本至多包含一張圖像或一個視頻，應用場景有限;(2) 現有 TaskEncoder 輸出格式固定，靈活性不大，難以高效支持模型訓練。在實際開發中，Qwen2-VL 同時遇到了上述兩類障礙:與已有的 LLaVA 相比，Qwen2-VL 基於 ChatML 格式設計輸入，應當支持單個樣本中多張圖片視頻、多輪對話等複雜功能，但這類數據無法使用當前 energon 的代碼進行讀取;此外，現有 TaskEncoder 僅支持將圖片縮放到固定大小，再傳入模型訓練，因此難以支持 Qwen2-VL 獨有的動態分辨率特性。&lt;/p&gt; 
-&lt;p&gt;&amp;nbsp;&lt;/p&gt; 
-&lt;p&gt;為瞭解決上述功能性問題，我們首先對內置的 DataLoader 代碼做了大量擴展，使其能基於輸入的原始多模態數據構造用於動態分辨率訓練的圖像切片序列以及位置信息，同時支持可自定義 prompt、多輪、包含任意數量圖像或視頻的對話樣本的數據處理。在此基礎上，我們設計了一套自動化腳本，能基於用户給定的 sharegpt 格式數據集路徑自動轉換成 energon 可讀取的 webdataset 數據集，繞過當前 energon 數據集準備的交互流程，加快數據轉換效率，同時降低用户學習成本。此外，對於數量不定的圖像，為了能在 energon 側自動解碼，webdataset 支持將其以 numpy array 的形式保存，然而，由於 jpg 到 ndarray 間的數據格式差異，在實際測試中，我們發現這將造成最終數據集文件體積出現幾倍到幾十倍的增加。為瞭解決這個問題，我們在運行時向 webdataset 的編解碼模塊增加鈎子函數，使其支持圖像文件列表的自動編解碼，實現在按原始二進制數據保存的同時能被 energon 自動轉換為圖像張量的需求。通過上述優化，在 Pai-Megatron-Patch 中，經過轉換的 sharegpt 格式數據相對於其原始總大小几乎沒有變化。&lt;/p&gt; 
-&lt;p&gt;&amp;nbsp;&lt;/p&gt; 
-&lt;p&gt;&lt;img src=&quot;https://oscimg.oschina.net/oscnet//6d2c8ff40024e1e3d09c02ef056fc475.png&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
-&lt;span id=&quot;OSC_h1_4&quot;&gt;&lt;/span&gt; 
-&lt;h1&gt;視覺特徵處理流程優化&lt;/h1&gt; 
-&lt;p&gt;與 LLM 相比，多模態模型先對視覺數據進行編碼，再與文本特徵拼接後送入 LLM 進行推理。與基於靜態分辨率的多模態大模型不同，複雜的多模態數據格式以及動態分辨率共同使得 Qwen2-VL 的這一過程更加複雜，不僅顯著影響訓練效率，也與能否應用 TP Comm Overlap 等技術相關。&lt;/p&gt; 
-&lt;p&gt;&amp;nbsp;&lt;/p&gt; 
-&lt;p&gt;與靜態分辨率使用固定數量視覺 token 不同，動態分辨率技術允許模型依據輸入圖像大小，將其編碼成不定數量的視覺特徵。這一改進使模型對於高分辨率圖像的細節捕捉能力獲得顯著提升，同時也優化了低分辨率圖像的推理性能。下圖是 Qwen2-VL 的訓練數據的簡單示例，針對不同長度的視覺 token，最終它們會被嵌入到文本序列中，與同一個 batch 的數據拼合後送入到 LLM 解碼器。在這個過程中主要存在兩個難點:(1) 如何對同一批次內的多個視覺輸入高效獲得特徵表示;(2) 如何拼合數據以支持原生性能優化開關。&lt;/p&gt; 
-&lt;p&gt;&amp;nbsp;&lt;/p&gt; 
-&lt;p&gt;&lt;img src=&quot;https://oscimg.oschina.net/oscnet//739d529e86745f50251962405174bef3.png&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
-&lt;p&gt;&amp;nbsp;&lt;/p&gt; 
-&lt;p&gt;由於視覺輸入的分辨率具有很大不確定性，為了將同一 batch 內的不同長度視覺數據轉換成推理所需的特徵表示，常見的做法是將每個視覺數據填充到相同長度後統一送入視覺模型。儘管這一方式實現簡潔，但填充的 token 不僅造成了顯存的浪費，同時也影響了視覺編碼器的吞吐，當同一批次數據中同時包含高分辨率視頻及低分辨率圖像，由於視覺 token 數量的顯著差異，將造成極為顯著的性能浪費。對此，Pai-Megatron-Patch 借鑑了 Sequence Packing 的做法，將同一批次內的所有視覺輸入打包後調用 varlen attention，來避免填充操作帶來的顯存/性能損耗。&lt;/p&gt; 
-&lt;p&gt;&amp;nbsp;&lt;/p&gt; 
-&lt;p&gt;&lt;img src=&quot;https://oscimg.oschina.net/oscnet//939334d510ecedf2be878901ae2b15b7.png&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
-&lt;p&gt;&amp;nbsp;&lt;/p&gt; 
-&lt;p&gt;在生成視覺特徵表示後，基於預先構造好的掩膜張量，視覺編碼器的輸出會被依次填入文本表示的對應位置，替換掉默認的佔位符。在不使用任何性能優化技術的情況下，這一實現並不會帶來什麼問題。然而，當開啓序列並行後，LanguageEmbedding 模塊的輸出會自動 reduce scatter 到各個 TP rank，導致基於原始輸入構造的完整掩膜張量無法使用。為瞭解決這一問題，同時避免冗餘通信，Pai-Megatron-Patch 針對性修改了 MCore 中實現的 LanguageEmbedding 模塊，在輸入序列拆分前增加利用掩膜張量替換文本表示的操作 ，不幹擾序列並行特性的正常運行。&lt;strong&gt;在實現序列並行機制的基礎上，通過進一步應用 TP Communication Overlap 特性，對於 Qwen2-VL-70B 我們在 4 機 32 卡 a100 上觀察到了 6% 性能提升。（詳見實驗部分）&lt;/strong&gt;&lt;/p&gt; 
-&lt;span id=&quot;OSC_h1_5&quot;&gt;&lt;/span&gt; 
-&lt;h1&gt;基於優化器卸載的多模態長序列顯存優化&lt;/h1&gt; 
-&lt;p&gt;相對於大語言模型訓練微調，由於視頻、音頻等模態存在，多模態大模型的輸入序列長度將遠遠大於純的語言模型。因此，在通常情況下，為了完成這類模型的訓練微調，往往需要更多的計算資源。而當獲取更多資源這條路徑不可行時，在資源受限的情況下拉起任務成為這一場景下的首要挑戰。在之前 Pai-Megatron-Patch 實現的優化器卸載特性基礎上，最近，PAI 團隊與英偉達 Megatron 團隊深度合作，共建了一套原生基於 Megatron 的權重卸載優化器。在此基礎上，通過與多種正交的卸載技術結合，Pai-Megatron-Patch 將四機 32 卡 A100 上的 Qwen2-VL 的最長上下文從 4K 提升至 32K。在本章節中，我們將以 BF16 訓練為例，詳細描述最新版權重卸載優化器的原理、實現及我們引入的最新性能優化特性--Optimizer Overlapping。&lt;/p&gt; 
-&lt;p&gt;&amp;nbsp;&lt;/p&gt; 
-&lt;p&gt;如下圖，與激活重計算或激活卸載等顯存優化技術不同，優化器卸載的目的在於將參數更新這一計算負載較低但顯存佔用相對高的步驟全部或部分放置到 CPU 上進行，以達到降低顯存佔用的目的。對於一個參數量為 M 的模型，Adam 會默認分配大小為 12M 字節的顯存以保存全精度的參數 (4M) 及優化器狀態 (8M)，當使用優化器卸載時，優化器則會將這 12M 大小的張量全部分配到內存上，同時額外分配 4M 的內存用於拷貝 GPU 上的全精度梯度數據。因此，當打開 Megatron 的分佈式優化器時，以 4 機 32 卡訓練 70B 為例，每張卡的顯存能進一步減少約 26GB。&lt;/p&gt; 
-&lt;p&gt;&amp;nbsp;&lt;/p&gt; 
-&lt;p&gt;&lt;img src=&quot;https://oscimg.oschina.net/oscnet//d9895494e5ede2ef2bfd1f6e0b119cdc.png&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
-&lt;p&gt;&amp;nbsp;&lt;/p&gt; 
-&lt;p&gt;如下圖所示，在最新的原生優化器卸載特性實現中，我們設計了一個混合設備優化器類 (Hybrid Device Optimizer, HDO) 來支持靜態優化器卸載功能。與先前的深度修改 DistributedOptimizer，難以快速遷移到其他訓練代碼不同，通過在頂層沿用 PyTorch 優化器的 API，HDO 能無縫替換 TorchAdam，同時仍保留一定的優化器卸載能力。我們希望這一設計能使用户在更多場景下體驗到優化器卸載帶來的資源需求下降*注。整個 HDO 大致分為兩部分，包括針對單個參數張量更新的底層優化器集合，以及用於管理優化器參數映射關係、優化器保存/讀取、以及更新過程中子優化器間同步的 HDO 類。&lt;/p&gt; 
-&lt;p&gt;&amp;nbsp;&lt;/p&gt; 
-&lt;p&gt;&lt;img src=&quot;https://oscimg.oschina.net/oscnet//f44b34f0fc6d5d9c7efc682cbcd49061.png&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
-&lt;p&gt;&amp;nbsp;&lt;/p&gt; 
-&lt;p&gt;由於在先前版本的 Megatron-Core 中，優化器內全精度參數創建部分由 DistributedOptimizer 默認分配到 GPU 上，並不能進行卸載，導致最初 HDO 的實際顯存優化僅有 8M 而非舊版深度定製 DO 的 12M。為瞭解決這一問題，我們修改了 DO 的參數創建邏輯，當識別到用户啓用優化器卸載特性時，DO 自動將全精度參數創建這一步驟交由 HDO 進行，避免了冗餘顯存分配。&lt;/p&gt; 
-&lt;p&gt;&amp;nbsp;&lt;/p&gt; 
-&lt;p&gt;注: 由於參數已經被外部創建，為了不對這些參數進行修改，這一場景下僅能將 8M 的 Adam/AdamW 優化器狀態分配及參數更新移動到 CPU 上進行，對於 SGD 優化器，由於無額外的固定顯存分配，HDO 沒有卸載效果。&lt;/p&gt; 
-&lt;p&gt;&amp;nbsp;&lt;/p&gt; 
-&lt;ul&gt; 
- &lt;li&gt; &lt;p&gt;優化器初始化&lt;/p&gt; &lt;/li&gt; 
-&lt;/ul&gt; 
-&lt;p&gt;&amp;nbsp;&lt;/p&gt; 
-&lt;p&gt;與支持單一設備張量的優化器不同，為了實現位於不同設備上的多個張量的參數更新及性能優化，HDO 被實現為多個子優化器的集合，每個子優化器負責單一設備上的數個張量的參數更新，而 HDO 用於實現主優化器與子優化器間的優化狀態同步、Device/Host 間的參數/梯度傳遞以及由此引發的 CUDA 同步問題。在優化器初始化階段，相對於普通的 Adam，HDO 額外要求用户指定 CPU/CUDA 上的子優化器類型以及相應的卸載比例，隨後基於這一比例對 param_groups 進行拆分，再重新構造對應設備上的子優化器。在訓練階段，由於 lr_scheduler 等外部因素可能會對優化器參數產生影響，在子優化器參數更新前，HDO 會將所有狀態同步到子優化器，如果子優化器在 CPU 上更新，也會將 GPU 梯度複製到 CPU 上。由於子優化器也可能修改參數組的狀態，在更新結束後，每個子優化器也會將這些狀態同步到主優化器，從而保證與非優化器卸載訓練的收斂一致性。&lt;/p&gt; 
-&lt;p&gt;&amp;nbsp;&lt;/p&gt; 
-&lt;ul&gt; 
- &lt;li&gt; &lt;p&gt;優化器保存/讀取，及 卸載比例變換&lt;/p&gt; &lt;/li&gt; 
-&lt;/ul&gt; 
-&lt;p&gt;&amp;nbsp;&lt;/p&gt; 
-&lt;p&gt;相對於 Pai-Megatron-Patch 內的優化器卸載模塊，HDO 支持完整的優化器保存/讀取特性，同時也支持加載優化器時切換優化器卸載比例，具有更大的靈活性。如前文所述，HDO 內部由多個子優化器負責實際參數更新，在每個參數更新階段開始前/結束後分別進行 HDO 及子優化器間參數的同步。在保存優化器狀態時，由於 HDO 內數據與子優化器一致，HDO 的 state_dict 即包含恢復優化器所需的全部信息。在加載權重時，由於子優化器需要基於 fp32 參數進行更新，我們引入了 pre_load_state_dict_hook 以及 post_load_state_dict_hook，將 HDO 的 state 中的半精度參數數據臨時用保存的 fp32 替換後同步到子優化器，再替換回來，隨後調用&lt;code&gt;_move_new_state_to_right_device&lt;/code&gt;，將每個子優化器的狀態移動到其對應的設備。通過在運行時更新子優化器的對應設備，我們能將在一個卸載比例下保存的模型在另一個優化器卸載配置上拉起訓練。&lt;/p&gt; 
-&lt;p&gt;&amp;nbsp;&lt;/p&gt; 
-&lt;ul&gt; 
- &lt;li&gt; &lt;p&gt;Naive Optimizer Overlapping 技術&lt;/p&gt; &lt;/li&gt; 
-&lt;/ul&gt; 
-&lt;p&gt;&amp;nbsp;&lt;/p&gt; 
-&lt;p&gt;與 CUDA 上的參數更新相比，基於 CPU 的參數更新性能成為優化器卸載技術是否可用的關鍵因素。通常，優化器卸載的時間包含三個部分：將 CUDA 梯度同步到 CPU(D2H)、在 CPU 上進行參數更新 (C)、將更新後的 CPU 參數同步到 CUDA(H2D)。為了儘可能提升性能，我們提出了一項 Naive optimizer Overlapping 技術，通過 PyTorch 的 CUDA Stream 機制，實現通信與計算重疊，將 CPU-CUDA 間數據拷貝的時間儘可能掩蓋在 CPU 計算下。在 Naive optimizer Overlapping 中，我們的一個主要改進是將 CPU 子優化器進一步打散，使一個 CPU 參數對應一個 CPU 優化器，同時令所有拷貝非阻塞化。這一改進允許 HDO 在單個梯度張量同步完成後立即調用 CPU 參數更新，無需等待所有梯度完成拷貝，也允許 CPU 參數更新完成後立刻非阻塞拷貝到 GPU，從而實現重疊。為了保證多個 CUDA Stream 以及 CPU 之間正確的數據同步關係，同時儘可能避免影響性能，我們僅在關鍵位置引入 CUDAEvent，來避免額外流同步帶來的開銷。下圖表示了一個理想的優化器重疊場景，其中每個參數張量的更新時間與兩次數據傳輸接近。當流水線熱身結束後（time step 2），可以看到 HDO 在兩個 CUDA Stream 上進行雙向的數據拷貝同時，CPU 也在同時進行參數更新。這一方式最大化掩蓋了冗長的數據傳輸時間，&lt;strong&gt;在我們測試的 LLaMA2-70B 訓練中，我們觀察到該優化能減少約 1s 的端到端時間。&lt;/strong&gt;&lt;/p&gt; 
-&lt;p&gt;&amp;nbsp;&lt;/p&gt; 
-&lt;p&gt;&lt;img src=&quot;https://oscimg.oschina.net/oscnet//5ca7cdd30c2c3af2cf816eeb23f0e253.png&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
-&lt;span id=&quot;OSC_h1_6&quot;&gt;&lt;/span&gt; 
-&lt;h1&gt;多模態流水並行性能優化&lt;/h1&gt; 
-&lt;p&gt;多模態大模型訓練微調作為英偉達 Megatron 的新特性，目前仍在持續開發中。在 3D 並行方面，目前以 LLaVA 為代表的多模態模型的類型均為 ModelType.encoder_and_decoder，它對 encoder（視覺編碼器）與 decoder（LLM 解碼器）分別引入了一套 TP/PP 參數，同時支持特殊的 Encoder PP 配置：當 Encoder PP&amp;gt;0 時，Megatron 會將 Encoder 放在獨立的 GPU 上，允許兩部分模型使用不同的 TP/PP 參數初始化；當 Encoder PP=0 時，Megatron 將 Encoder 部分按照 Decoder 的 TP 切分後，與 Decoder 的第一個 PP Stage 合併，放置在同一組 GPU 上。其中，前種切分方式一般適用於編碼器/解碼器結構類似、參數量接近的情況；後者則適用於視覺編碼器參數量較少，計算量不大的場景。考慮到 Qwen2-VL 的視覺編碼器大小以及用户體驗，我們最初採用了編碼器與解碼器部分合並的切分方式，來保持和其他 LLM 相似的切分參數配置，減少學習成本。但在實際測試中，通過與基模型 Qwen2 對比，我們觀察到這一合併顯著降低了 Qwen2-VL 的訓練吞吐。這主要由兩方面因素導致：(1) 由於模型結構不一致，視覺編碼器與 LLM 解碼器的前向速度有差異，導致 micro batch 內哥 GPU 間存在負載不均衡;(2) 由於視覺編碼器支持動態分辨率特性，對於每個 micro batch，實際前向的 token 數並不一致，使得每個 mciro batch 計算量略有差異，出現各 GPU 間存在負載不均衡的情況。&lt;/p&gt; 
-&lt;p&gt;&amp;nbsp;&lt;/p&gt; 
-&lt;p&gt;為瞭解決上述負載不均衡的問題，進一步提升訓練吞吐，在原生 Megatron 的基礎上，我們從兩個方向對現有框架進行改進嘗試：(1) 基於非均勻切分策略間的負載均衡;(2) 拓展模型實現以支持虛擬流水線並行特性。&lt;/p&gt; 
-&lt;p&gt;&amp;nbsp;&lt;/p&gt; 
-&lt;ul&gt; 
- &lt;li&gt; &lt;p&gt;基於非均勻切分策略間的負載均衡：在模型總參數量較小或 PP 較大的並行配置下，pp rank 0 包含的視覺編碼器帶來的額外計算量相對於原有的 LLM 解碼器的計算量比例有顯著提升。由於在流水線中，最慢的步驟決定了整體的性能，應用 megatron 內的非均勻切分特性，將部分計算量轉移到其他 pp rank 上，能有效提升整體的訓練性能。為了支持基於非均勻切分的繼續預訓練或微調功能，我們同步更新了 Qwen2-VL 的轉換模型，用户可以通過控制 MP_PP0_LAYERS 環境變量，獲得非均勻切分的模型權重文件。&lt;/p&gt; &lt;/li&gt; 
-&lt;/ul&gt; 
-&lt;p&gt;&amp;nbsp;&lt;/p&gt; 
-&lt;p&gt;&lt;img src=&quot;https://oscimg.oschina.net/oscnet//32be076a3fe4ab8d995a8aa30ddcf555.png&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
-&lt;p&gt;&amp;nbsp;&lt;/p&gt; 
-&lt;ul&gt; 
- &lt;li&gt; &lt;p&gt;虛擬流水線並行特性：虛擬流水線並行，或 interleaved 1F1B PP 是 Megatron-LM 在 1F1B 的流水線並行實現上的重要改進。它通過將同一個 pp stage 內的 transformer 層分配到多個 GPU，進一步打碎計算，通過增大通信量的方式使負載更加均衡，降低 Global Batch 內的 bubble 比例。然而， 對於 encoder_and_decoder 類型的模型（即英偉達內置的所有多模態模型），MCore 不支持啓用 VPP。考慮到視覺編碼器的整體計算量不需要獨立 GPU，我們進一步改進了 Qwen2-VL 實現，移除了 Encoder PP 的支持，並將 Qwen2-VL 的模型類型設置為 LLM 的 encoder_or_decoder 來啓用 VPP 選項。&lt;strong&gt;與官方論文的結果不同，我們觀察到虛擬流水線並行也能起到訓練加速效果，甚至在 H20 上，我們觀察到相對於非均勻切分，虛擬流水線並行的加速效果更加明顯。&lt;/strong&gt;&lt;/p&gt; &lt;/li&gt; 
-&lt;/ul&gt; 
-&lt;span id=&quot;OSC_h1_7&quot;&gt;&lt;/span&gt; 
-&lt;h1&gt;實驗分析&lt;/h1&gt; 
-&lt;p&gt;在本節中，我們對上述提到的技術對 Qwen2-VL 模型的性能及收斂情況展開了全面的分析，主要包括三方面：1. 權重轉換精度分析：通過對比轉換前後的模型測試集表現，我們驗證了權重轉換模塊的正確性；2.多模態長序列顯存優化分析：通過引入 HDO 對優化器進行卸載，在相同 GPU 數量的情形下，Pai-Megatron-Patch 大大提升了長序列訓練的可用性；3.多模態模型訓練性能優化：全面測試了各訓練加速技術對於不同設備/模型大小的影響，論證了技術的有效性，同時為用户提供開關設置的指引。&lt;/p&gt; 
-&lt;span id=&quot;OSC_h3_8&quot;&gt;&lt;/span&gt; 
-&lt;h3&gt;權重轉換精度分析&lt;/h3&gt; 
-&lt;p&gt;為了驗證 PAI-Megatron-Patch 內多模態模型轉換的正確性，我們採用 VLMEvalKit 對轉換前後的 Qwen2-VL-7B 模型在多個數據集上的表現進行評估。結果如下圖，其中 Ref 是 VLMEvalKit 提供的在 SEEDBench 及 MMBench 上的評估分數，Official 是官方權重在測試環境內的實測分數，Convert 為將官方原始權重進行兩次轉換得到的新 Huggingface 權重的分數。可以看到，轉換前後的模型評估分數完全一致，且均與開源 leaderboard 指標接近，有效説明瞭轉換代碼的正確性。&lt;/p&gt; 
-&lt;p&gt;&amp;nbsp;&lt;/p&gt; 
-&lt;p&gt;&lt;img src=&quot;https://oscimg.oschina.net/oscnet//03efee772c4e46b60b013c2d364ef1c2.png&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
-&lt;span id=&quot;OSC_h3_9&quot;&gt;&lt;/span&gt; 
-&lt;h3&gt;基於優化器卸載的多模態長序列顯存優化&lt;/h3&gt; 
-&lt;p&gt;在本節中，我們探索了通過 HDO 與其他顯存優化技術複合，進一步提升有限機器場景下可訓練上下文長度上限的可能性。我們分別測試了 Qwen2-VL 7B/72B 在單機 8 卡、四機 32 卡的無 offload 情況下的最長上下文，以及打開所有優化後的上下文長度，結果如下表。&lt;/p&gt; 
-&lt;p&gt;&amp;nbsp;&lt;/p&gt; 
-&lt;p&gt;&lt;img src=&quot;https://oscimg.oschina.net/oscnet//e1dc0526f3b5d0fc7ccb86254065117d.png&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
-&lt;p&gt;&amp;nbsp;&lt;/p&gt; 
-&lt;p&gt;可以看到，對於 Qwen2-VL 7B 模型，通過結合激活重計算技術及優化器卸載技術，我們將原本 64K 上下文長度的訓練上限進一步拓展到 128K，且沒有 OOM 風險。*對於 72B 模型，結論類似，通過結合多種正交的顯存優化技術，我們也將四機 32 卡 A100 的可訓練上下文長度從 16K 提升到 128K。&lt;/p&gt; 
-&lt;p&gt;&amp;nbsp;&lt;/p&gt; 
-&lt;p&gt;*注：在單獨開啓重計算的情況下我們也成功在 demo 數據集上實現了 128K 上下文長度的訓練，此時顯存空閒不到 1G，考慮到實際場景下視覺模型佔用的顯存會隨數據變化等原因，不推薦使用這一配置訓練。&lt;/p&gt; 
-&lt;span id=&quot;OSC_h3_10&quot;&gt;&lt;/span&gt; 
-&lt;h3&gt;多模態模型訓練性能優化&lt;/h3&gt; 
-&lt;p&gt;在本節中，我們針對兩種大小的 Qwen2-VL 模型的訓練場景，測試了 PAI-Megatron-Patch 當前支持的訓練優化技術對吞吐的影響，來説明其在不同場景下的優勢。具體地，我們採用預處理的 LLaVA-Pretrain 數據集 (參見 Qwen2-VL 的最佳實踐文檔) 在 4K 上下文長度下對 Qwen2-VL-7B/70B 進行訓練，在最佳並行配置的基礎上，進一步打開各類優化技術以比較模型性能的變化。其中，&lt;code&gt;PP0_layers&lt;/code&gt;表示開啓非均勻切分時，PP Rank0 上的 LLM Decode r 層數，&lt;code&gt;TGP&lt;/code&gt;內的三個字母依次表示&lt;code&gt;tp-comm-overlap&lt;/code&gt;、&lt;code&gt;overlap-grad-reduce&lt;/code&gt;、&lt;code&gt;overlap-param-gather&lt;/code&gt;三個優化開關的啓用狀態。對於每個實驗，我們記錄了其訓練時的每秒 token 數 (TGS) 及 MFU。需要注意的是，由於 megatron-core 暫不支持估計視覺編碼器的 TFLOPs，記錄的 MFU 僅基於 LLM 的運算量計算得到，因此略低於實際值。&lt;/p&gt; 
-&lt;span id=&quot;OSC_h4_11&quot;&gt;&lt;/span&gt; 
-&lt;h4&gt;overlap 開關對訓練吞吐的影響&lt;/h4&gt; 
-&lt;p&gt;&lt;img src=&quot;https://oscimg.oschina.net/oscnet//8ccde1833962a155ee78229e63d7572e.png&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
-&lt;p&gt;&amp;nbsp;&lt;/p&gt; 
-&lt;p&gt;相對於 LLM，由於存在多個不同結構的 transformer，多模態模型並不原生支持 megatron-core 的某些 overlap 技術，同時差異化的結構也可能導致 overlap 的收益與 LLM 不同。在本節中，我們在 A100 上測試了&lt;code&gt;tp-comm-overlap&lt;/code&gt;、&lt;code&gt;overlap-grad-reduce&lt;/code&gt;、&lt;code&gt;overlap-param-gather&lt;/code&gt;三個優化開關對 Qwen2-VL 7B/72B 訓練吞吐的影響，結果如上表所示。主要結論如下：&lt;/p&gt; 
-&lt;p&gt;&amp;nbsp;&lt;/p&gt; 
-&lt;ol&gt; 
- &lt;li&gt; &lt;p&gt;對於 Qwen2-VL，可以觀察到&lt;code&gt;overlap-grad-reduce&lt;/code&gt;及&lt;code&gt;overlap-param-gather&lt;/code&gt;無論在 7B/72B 模型規模上均導致了性能出現略微下降。&lt;/p&gt; &lt;/li&gt; 
- &lt;li&gt; &lt;p&gt;相對於 72B 模型 (~8%),7B 模型開啓&lt;code&gt;tp-comm-overlap&lt;/code&gt;的直接收益可以忽略不計。這主要是因為 7B 模型實際運行時的低 TP 數以及未開啓 overlap 的 vision model 計算量佔比相對較高。&lt;/p&gt; &lt;/li&gt; 
-&lt;/ol&gt; 
-&lt;span id=&quot;OSC_h4_12&quot;&gt;&lt;/span&gt; 
-&lt;h4&gt;虛擬流水並行及非均勻切分對訓練吞吐的影響&lt;/h4&gt; 
-&lt;p&gt;基於 megatron-core 的核心能力，Pai-Megatron-Patch 為 Qwen2-VL 提供了兩種性能優化方式：多模態大模型的虛擬流水並行及解碼器非均勻切分技術。為了比較這兩者對訓練吞吐的影響差異，我們在最佳並行配置的基礎上，比較了兩種技術的性能上限，結果如下表。其中，VP 表示每個虛擬並行塊中的解碼器 Transformer 層數（區別於通常意義的 VPP Size）。&lt;/p&gt; 
-&lt;p&gt;&amp;nbsp;&lt;/p&gt; 
-&lt;p&gt;&lt;img src=&quot;https://oscimg.oschina.net/oscnet//e941277896d9cc4003214357264a1e77.png&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
-&lt;p&gt;&amp;nbsp;&lt;/p&gt; 
-&lt;p&gt;從表中我們能得出的主要結論如下：&lt;/p&gt; 
-&lt;p&gt;&amp;nbsp;&lt;/p&gt; 
-&lt;ol&gt; 
- &lt;li&gt; &lt;p&gt;儘管&lt;code&gt;tp-comm-overlap&lt;/code&gt;僅能為 Qwen2-VL 72B 模型直接帶來約 8% 的性能提升，然而，通過序列並行帶來的顯存優化，模型有進一步降低並行數來提升吞吐的潛力。例如在 H20 上，我們觀察到，通過打開 SP 及 TP Comm overlap 開關，模型可以採用 TP4PP4 的配置進行訓練，通過調整虛擬流水並行，相對於 TP8PP4 的最佳性能有額外 15% 的性能提升。&lt;/p&gt; &lt;/li&gt; 
- &lt;li&gt; &lt;p&gt;由於各 GPU 的機內、機間帶寬差異，在不同的 GPU 上，最佳優化技術有所不同。&lt;/p&gt; &lt;/li&gt; 
- &lt;li&gt; &lt;p&gt;與 Qwen2-VL 論文的結果不同，我們的 VPP（或 1F1B interleaved）實現在 A100/H20 機器上均有一定的性能提升。&lt;/p&gt; &lt;/li&gt; 
-&lt;/ol&gt; 
-&lt;span id=&quot;OSC_h1_13&quot;&gt;&lt;/span&gt; 
-&lt;h1&gt;總結&lt;/h1&gt; 
-&lt;p&gt;在基於 Megatron 的 Qwen2-VL 多模態大模型最佳實踐開發過程中，我們圍繞大模型訓練測試了以下核心技術的性能：&lt;/p&gt; 
-&lt;p&gt;&amp;nbsp;&lt;/p&gt; 
-&lt;ul&gt; 
- &lt;li&gt; &lt;p&gt;支持模型並行的權重轉換。&lt;/p&gt; &lt;/li&gt; 
- &lt;li&gt; &lt;p&gt;基於 CPU 卸載的多模態長序列顯存優化的魯棒性。&lt;/p&gt; &lt;/li&gt; 
- &lt;li&gt; &lt;p&gt;基於 Megatron 的多重訓練加速技術的穩定性。&lt;/p&gt; &lt;/li&gt; 
- &lt;li&gt; &lt;p&gt;運用綜合加速技術來訓練 Qwen2-VL 過程中的易用性和穩定性。&lt;/p&gt; &lt;/li&gt; 
-&lt;/ul&gt; 
-&lt;p&gt;&amp;nbsp;&lt;/p&gt; 
-&lt;p&gt;後續在 Pai-Megatron-Patch 中還會陸續放出更多高質量的大模型最佳實踐以及最新的訓練加速技術應用示例，敬請期待。&lt;/p&gt; 
-&lt;span id=&quot;OSC_h1_14&quot;&gt;&lt;/span&gt; 
-&lt;h1&gt;參考文獻&lt;/h1&gt; 
-&lt;ol&gt; 
- &lt;li&gt; &lt;p&gt;DeepSeek-V2: A Strong, Economical, and Efficient Mixture-of-Experts Language Model&lt;/p&gt; &lt;/li&gt; 
- &lt;li&gt; &lt;p&gt;Qwen2-VL: Enhancing Vision-Language Model&#39;s Perception of the World at Any Resolution&lt;/p&gt; &lt;/li&gt; 
- &lt;li&gt; &lt;p&gt;MMBench: Is Your Multi-modal Model an All-around Player?&lt;/p&gt; &lt;/li&gt; 
- &lt;li&gt; &lt;p&gt;SEED-Bench: Benchmarking Multimodal LLMs with Generative Comprehension&lt;/p&gt; &lt;/li&gt; 
- &lt;li&gt; &lt;p&gt;&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fgithub.com%2Fopen-compass%2FVLMEvalKit&quot; rel=&quot;nofollow&quot; target=&quot;_blank&quot;&gt;https://github.com/open-compass/VLMEvalKit&lt;/a&gt;&lt;/p&gt; &lt;/li&gt; 
-&lt;/ol&gt; 
-&lt;p&gt;&amp;nbsp;&lt;/p&gt;
-                                                                                    &lt;/div&gt;
-                                                                            </description>
-            <link>https://my.oschina.net/u/5583868/blog/17876695</link>
-            <guid isPermaLink="false">https://my.oschina.net/u/5583868/blog/17876695</guid>
-            <pubDate>Wed, 05 Mar 2025 07:09:00 GMT</pubDate>
-            <author>原創</author>
-        </item>
-        <item>
-            <title>奇安信：攻擊 X 平台的殭屍網絡與春節攻擊 DeepSeek 的為同一組織</title>
-            <description>&lt;div class=&quot;content&quot;&gt;
-                                                                    
-                                                        &lt;p&gt;美國東部時間 3 月 10 日，埃隆·馬斯克一天內遭遇了雙重打擊：除了特斯拉股價下跌 15%、自高點幾乎腰斬之外，其旗下的社交媒體 X 平台（原 Twitter）還遭遇了大規模網絡攻擊，導致全球範圍內多次宕機，許多用户無法正常使用該應用程序。&lt;/p&gt; 
-&lt;p&gt;&lt;img alt=&quot;&quot; src=&quot;https://oscimg.oschina.net/oscnet/up-3d867334583b4a067b5d5ac7e28903e2b6f.png&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
-&lt;p&gt;&lt;img alt=&quot;&quot; src=&quot;https://oscimg.oschina.net/oscnet/up-c22e078be8628892b35aceafc606813c59c.png&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
-&lt;p&gt;&lt;u&gt;&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fmp.weixin.qq.com%2Fs%2FBSbnMTxG_piE0Mi_bH4v0A&quot; target=&quot;_blank&quot;&gt;奇安信 Xlab 實驗室監測發現&lt;/a&gt;&lt;/u&gt;，&lt;strong&gt;此次攻擊所使用的殭屍網絡為 Mirai 變種殭屍網絡 RapperBot，&lt;/strong&gt;攻擊時間與 X 平台宕機時間完全吻合，主要集中在北京時間 3 月 10 日晚 10 點至 11 日凌晨 2 點。&lt;strong&gt;與 2025 年春節期間攻擊 DeepSeek 的屬於同一組殭屍網絡&lt;/strong&gt;。&lt;/p&gt; 
-&lt;p&gt;據稱該殭屍網絡常年活躍，以高強度的流量攻擊聞名，平均每天攻擊上百個目標，高峯時期指令上千條，能夠迅速癱瘓目標服務器。攻擊目標分佈在巴西、白俄羅斯、俄羅斯、中國、瑞典等地區。此次攻擊規模之大、烈度之猛，直接導致 X 平台在美國東部時間 3 月 10 日遭遇三次明顯服務中斷，最高時有 20538 名用户報告故障。&lt;/p&gt; 
-&lt;p&gt;RapperBot 殭屍網絡並非普通黑客組織，而是對外提供有償攻擊服務的「職業打手」。其攻擊規模和資源投入遠超普通網絡攻擊，可能涉及大型組織甚至國家層面的支持。&lt;/p&gt;
-                                                                                &lt;/div&gt;
-                                                                            </description>
-            <link>https://www.oschina.net/news/338164</link>
-            <guid isPermaLink="false">https://www.oschina.net/news/338164</guid>
-            <pubDate>Wed, 05 Mar 2025 07:04:00 GMT</pubDate>
-            <author>來源: OSCHINA</author>
-        </item>
-        <item>
-            <title>RWKV7-G1 0.1B 推理模型發佈，最適合嵌入式的純血 RNN 模型</title>
-            <description>&lt;div class=&quot;content&quot;&gt;
-                                                                    
-                                                        &lt;p&gt;2025 年 3 月 10 日，RWKV 基金會發布第一個 &lt;strong&gt;RWKV-7 推理模型&lt;/strong&gt;（Reasoning Model）： &lt;strong&gt;RWKV7-G1&lt;/strong&gt; 0.1B。&lt;/p&gt; 
-&lt;p&gt;RWKV7-G1 系列模型擁有&lt;strong&gt;傑出的推理能力&lt;/strong&gt;，且原生支持世界 100+ 種語言和代碼。即使是最小的 0.1B 也能回答&lt;strong&gt;開放性和創造性問題&lt;/strong&gt;。&lt;/p&gt; 
-&lt;blockquote&gt; 
- &lt;p&gt;RWKV7-G1（&quot;GooseOne&quot;）系列推理模型是基於 World v3.5 數據集&lt;strong&gt;繼續訓練&lt;/strong&gt; RWKV-7 &quot;Goose&quot; World 系列模型。&lt;/p&gt; 
- &lt;p&gt;World v3.5 數據集包含更多小説、網頁、數學、代碼和 reasoning 數據，總數據為 5.16T tokens。對於 0.1B 模型，我們會隨機採樣其中的 1T tokens 訓練。&lt;/p&gt; 
-&lt;/blockquote&gt; 
-&lt;p&gt;目前我們已能在手機高通 8gen3 以 62 token/s 推理 RWKV-7 1.5B 模型，而 0.1B 模型在樹莓派也能跑得挺快，歡迎做嵌入式的朋友加入 RWKV 技術羣討論。&lt;/p&gt; 
-&lt;h2&gt;模型表現&lt;/h2&gt; 
-&lt;p&gt;RWKV7-G1 0.1B 模型回答 &lt;code&gt;simulate SpaceX mars landing using python&lt;/code&gt;（使用 python 模擬 SpaceX 火星着陸）」：&lt;/p&gt; 
-&lt;p&gt;&lt;img alt=&quot;RWKV G1 0.1B simulate SpaceX mars landing using python&quot; height=&quot;2276&quot; src=&quot;https://oscimg.oschina.net/oscnet/up-a90a626d3589d084f50ce2836131854b642.jpg&quot; width=&quot;650&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
-&lt;p&gt;日本開發者測試 RWKV7-G1 0.1B 的多語言能力：&lt;/p&gt; 
-&lt;p&gt;&lt;img alt=&quot;RWKV7-G1-0.1B-jpn&quot; height=&quot;480&quot; src=&quot;https://oscimg.oschina.net/oscnet/up-30c2c03d927be963bcead808ee26ffd2196.png&quot; width=&quot;600&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
-&lt;p&gt;如此小的 0.1B 模型，也能同時支持世界 100+ 種語言和代碼。更大參數的 RWKV7-G1 0.4B/1.5B/2.9B &lt;strong&gt;正在同時訓練中&lt;/strong&gt;。&lt;/p&gt; 
-&lt;h2&gt;英文和多語言測評&lt;/h2&gt; 
-&lt;p&gt;RWKV7-G1 0.1B 的英文和多語言能力相比 RWKV-7-World 0.1B 繼續提升：&lt;/p&gt; 
-&lt;p&gt;&lt;img height=&quot;141&quot; src=&quot;https://oscimg.oschina.net/oscnet/up-c2badec5fa9dba560aa79f167930e033418.png&quot; width=&quot;1441&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
-&lt;p&gt;我們也對 RWKV7-G1 0.1B 進行了 「無法作弊的模型評測」 Uncheatable Eval，可見 RWKV7-G1 0.1B 對於多種新數據的壓縮率，顯著超越所有其它同尺寸的開源模型：&lt;/p&gt; 
-&lt;p&gt;&lt;img height=&quot;154&quot; src=&quot;https://oscimg.oschina.net/oscnet/up-d64cc13d9c6b94f4752c404005bbf9b83bb.png&quot; width=&quot;700&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
-&lt;p&gt;&lt;strong&gt;Uncheatable Eval：&lt;/strong&gt;&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fhuggingface.co%2Fspaces%2FJellyfish042%2FUncheatableEval&quot; target=&quot;_blank&quot;&gt;https://huggingface.co/spaces/Jellyfish042/UncheatableEval&lt;/a&gt;&lt;/p&gt; 
-&lt;h2&gt;訓練中的 RWKV7-G1 1.5B 模型&lt;/h2&gt; 
-&lt;p&gt;以下示例基於 &lt;code&gt;RWKV7-G1-1.5B-16%trained&lt;/code&gt;模型，注意這個模型目前只訓練了 16%。後續 100% 訓練完成的 RWKV7-G1 1.5B 會顯著更強：&lt;/p&gt; 
-&lt;p&gt;&lt;img height=&quot;1556&quot; src=&quot;https://oscimg.oschina.net/oscnet/up-4b81465fc759bfe4e90f4c9969ce95b71d2.png&quot; width=&quot;812&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
-&lt;p&gt;RWKV7-G1-1.5B-16%trained 的示例二：&lt;/p&gt; 
-&lt;p&gt;&lt;img height=&quot;541&quot; src=&quot;https://oscimg.oschina.net/oscnet/up-a300e868682a29ea61efa75a25523cee5fd.png&quot; width=&quot;660&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
-&lt;p&gt;訓練中的 RWKV 模型可在 &lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fhuggingface.co%2FBlinkDL%2Ftemp-latest-training-models%2Ftree%2Fmain&quot; target=&quot;_blank&quot;&gt;https://huggingface.co/BlinkDL/temp-latest-training-models/tree/main&lt;/a&gt; 下載。&lt;/p&gt; 
-&lt;h2&gt;模型試用&lt;/h2&gt; 
-&lt;p&gt;可以在 &lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fhuggingface.co%2Fspaces%2FBlinkDL%2FRWKV-Gradio-2&quot; target=&quot;_blank&quot;&gt;Hugging Face Gradio Demo&lt;/a&gt; 試用 RWKV7-G1 0.1B 模型。&lt;/p&gt; 
-&lt;p&gt;G1 的整體 prompt 格式與 RWKV-7 模型類似，可選使用 &lt;code&gt;&amp;lt;think&amp;gt;&lt;/code&gt; 標籤開啓 reasoning 功能：&lt;/p&gt; 
-&lt;pre&gt;&lt;code&gt;User: 你不許參加學術派對！
-
-Assistant: &amp;lt;think&amp;gt;
-&lt;/code&gt;&lt;/pre&gt; 
-&lt;p&gt;RWKV Runner 和 Ai00 等 RWKV 推理工具&lt;strong&gt;正在適配 reasoning 聊天模式&lt;/strong&gt;，因此目前只能在&lt;strong&gt;續寫模式中&lt;/strong&gt;體驗 reasoning 功能。&lt;/p&gt; 
-&lt;h2&gt;模型下載&lt;/h2&gt; 
-&lt;p&gt;下載已完成訓練的 RWKV7-G1 0.1B 模型：&lt;/p&gt; 
-&lt;ul&gt; 
- &lt;li&gt;Hugging Face：&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fhuggingface.co%2FBlinkDL%2Frwkv7-g1%2Ftree%2Fmain&quot; target=&quot;_blank&quot;&gt;https://huggingface.co/BlinkDL/rwkv7-g1/tree/main&lt;/a&gt;&lt;/li&gt; 
- &lt;li&gt;魔搭社區：&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fmodelscope.cn%2Fmodels%2FRWKV%2Frwkv7-g1%2Ffiles&quot; target=&quot;_blank&quot;&gt;https://modelscope.cn/models/RWKV/rwkv7-g1/files&lt;/a&gt;&lt;/li&gt; 
- &lt;li&gt;WiseModel：&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fwisemodel.cn%2Fmodels%2Frwkv4fun%2FRWKV-7-G1%2Ffile&quot; target=&quot;_blank&quot;&gt;https://wisemodel.cn/models/rwkv4fun/RWKV-7-G1/file&lt;/a&gt;&lt;/li&gt; 
-&lt;/ul&gt; 
-&lt;p&gt;下載其他訓練中的 RWKV7-G1 模型：&lt;/p&gt; 
-&lt;ul&gt; 
- &lt;li&gt;Hugging Face：&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fhuggingface.co%2FBlinkDL%2Ftemp-latest-training-models%2Ftree%2Fmain&quot; target=&quot;_blank&quot;&gt;https://huggingface.co/BlinkDL/temp-latest-training-models/tree/main &lt;/a&gt;&lt;/li&gt; 
- &lt;li&gt;魔搭社區：&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fmodelscope.cn%2Fmodels%2FRWKV%2Ftemp-latest-training-models%2Ffiles&quot; target=&quot;_blank&quot;&gt;https://modelscope.cn/models/RWKV/temp-latest-training-models/files&lt;/a&gt;&lt;/li&gt; 
-&lt;/ul&gt; 
-&lt;h2&gt;G1 模型發佈計劃&lt;/h2&gt; 
-&lt;p&gt;當前已發佈 G1 0.1B 模型，正在訓練 G1 0.4B/1.5B/2.9B，具體發佈計劃如下：&lt;/p&gt; 
-&lt;table&gt; 
- &lt;tbody&gt; 
-  &lt;tr&gt; 
-   &lt;th&gt;模型&lt;/th&gt; 
-   &lt;th&gt;發佈計劃&lt;/th&gt; 
-  &lt;/tr&gt; 
- &lt;/tbody&gt; 
- &lt;tbody&gt; 
-  &lt;tr&gt; 
-   &lt;td&gt;G1 0.1B&lt;/td&gt; 
-   &lt;td&gt;3 月 8 日（已發佈）&lt;/td&gt; 
-  &lt;/tr&gt; 
-  &lt;tr&gt; 
-   &lt;td&gt;G1 0.4B&lt;/td&gt; 
-   &lt;td&gt;3 月下旬&lt;/td&gt; 
-  &lt;/tr&gt; 
-  &lt;tr&gt; 
-   &lt;td&gt;G1 1.6B&lt;/td&gt; 
-   &lt;td&gt;4 月&lt;/td&gt; 
-  &lt;/tr&gt; 
-  &lt;tr&gt; 
-   &lt;td&gt;G1 2.9B&lt;/td&gt; 
-   &lt;td&gt;5 月&lt;/td&gt; 
-  &lt;/tr&gt; 
- &lt;/tbody&gt; 
-&lt;/table&gt; 
-&lt;p&gt;我們也在同時準備更大更優的數據集 &lt;strong&gt;World v3.7&lt;/strong&gt;，用於 G1 7B 訓練。&lt;/p&gt; 
-&lt;h2&gt;RWKV-7 學術支持&lt;/h2&gt; 
-&lt;p&gt;RWKV 社區近期新增了大量 RWKV 學術研究論文，以下是截至 2025 年 2 月的 RWKV 論文數量統計表格：&lt;/p&gt; 
-&lt;p&gt;&lt;img height=&quot;546&quot; src=&quot;https://oscimg.oschina.net/oscnet/up-ad88e36470c390ace32e587452140fa813c.png&quot; width=&quot;650&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
-&lt;p&gt;歡迎大家基於 RWKV-7 進行創業、科研，我們也會為基於 RWKV 的項目提供技術支持。&lt;/p&gt; 
-&lt;p&gt;如果您的團隊正在基於 RWKV 創業或開展研究，請聯繫我們！（在「RWKV 元始智能」微信公眾號留言您的聯繫方式，或發送郵件到「contact@rwkvos.com」。）&lt;/p&gt; 
-&lt;h2&gt;加入 RWKV 社區&lt;/h2&gt; 
-&lt;p&gt;歡迎大家加入 RWKV 社區，可以從 RWKV 中文官網瞭解 RWKV 模型，也可以加入 RWKV 論壇、QQ 頻道和 QQ 羣聊，一起探討 RWKV 模型。&lt;/p&gt; 
-&lt;ul&gt; 
- &lt;li&gt;📖 RWKV 中文文檔：&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fwww.rwkv.cn&quot; target=&quot;_blank&quot;&gt;https://www.rwkv.cn&lt;/a&gt;&lt;/li&gt; 
- &lt;li&gt;💬 RWKV 論壇：&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fcommunity.rwkv.cn%2F&quot; target=&quot;_blank&quot;&gt;https://community.rwkv.cn/&lt;/a&gt;&lt;/li&gt; 
- &lt;li&gt;🐧 QQ 頻道：&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fpd.qq.com%2Fs%2F9n21eravc&quot; target=&quot;_blank&quot;&gt;https://pd.qq.com/s/9n21eravc&lt;/a&gt;&lt;/li&gt; 
- &lt;li&gt;📺 BiliBili 視頻教程：&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fspace.bilibili.com%2F3546689096910933&quot; target=&quot;_blank&quot;&gt;https://space.bilibili.com/3546689096910933&lt;/a&gt;&lt;/li&gt; 
-&lt;/ul&gt;
-                                                                                &lt;/div&gt;
-                                                                            </description>
-            <link>https://www.oschina.net/news/338160</link>
-            <guid isPermaLink="false">https://www.oschina.net/news/338160</guid>
-            <pubDate>Wed, 05 Mar 2025 06:53:00 GMT</pubDate>
-            <author>來源: 投稿</author>
-        </item>
-        <item>
-            <title>李想：AGI 投資遠超互聯網、一兩年內還不具備更好的商業模式</title>
-            <description>&lt;div class=&quot;content&quot;&gt;
-                                                                    
-                                                        &lt;p&gt;理想汽車 CEO 李想近日在朋友圈分享了對 AGI 的一些觀點，他表示，AGI 所需的投資遠超互聯網，一兩年內還不具備好的商業模式。&lt;/p&gt; 
-&lt;p&gt;&lt;img height=&quot;1612&quot; src=&quot;https://static.oschina.net/uploads/space/2025/0311/144714_pwWM_2720166.png&quot; width=&quot;1002&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
-&lt;p&gt;李想還説道，&lt;strong&gt;AGI 早期雖然自己不賺錢，但會破壞傳統商業模式賺錢&lt;/strong&gt;。他還提到，新技術往往從通縮開始，AGI 的發展趨勢不可阻擋。&lt;/p&gt; 
-&lt;p&gt;理想汽車在 2024 年底舉行 2024 理想 AI Talk ，李想當時曾就 AI 等話題展開對話。&lt;/p&gt; 
-&lt;p&gt;他表示，理想汽車一年一百億的研發，一半投在了人工智能上。大模型出現以後，人類會發生根本性的改變。互聯網讓信息平權，人工智能幫助實現認知和知識的平權。&lt;/p&gt; 
-&lt;p&gt;李想還談到了人工智能的三個階段：&lt;/p&gt; 
-&lt;ul&gt; 
- &lt;li&gt; &lt;p&gt;第一階段，「增強能力」，主要起輔助作用，決策權在用户。例如 L3 自動駕駛，需要用户監督，並且負責任。&lt;/p&gt; &lt;/li&gt; 
- &lt;li&gt; &lt;p&gt;第二階段，「我的助手」，助手角色，佈置給它任務，它就可以獨立完成，並對結果承擔責任。例如 L4 自動駕駛，可以讓它到學校幫忙接孩子等。&lt;/p&gt; &lt;/li&gt; 
- &lt;li&gt; &lt;p&gt;第三階段，終極階段，「硅基家人」，不需要指示、分配任務，它就是我們的家庭成員，甚至是家庭重要的組織者。它不但瞭解我，它還瞭解我的孩子，瞭解我身邊的朋友，甚至比我還瞭解。&lt;/p&gt; &lt;/li&gt; 
-&lt;/ul&gt; 
-&lt;hr&gt; 
-&lt;p&gt;相關閲讀&lt;/p&gt; 
-&lt;ul&gt; 
- &lt;li&gt;&lt;a href=&quot;https://www.oschina.net/news/285159&quot; target=&quot;news&quot;&gt;理想汽車多模態認知大模型 Mind GPT 正式上線&lt;/a&gt;&lt;/li&gt; 
- &lt;li&gt;&lt;a href=&quot;https://www.oschina.net/news/270426&quot; target=&quot;news&quot;&gt;理想汽車全自研多模態認知大模型 —— Mind GPT&lt;/a&gt;&lt;/li&gt; 
-&lt;/ul&gt;
-                                                                                &lt;/div&gt;
-                                                                            </description>
-            <link>https://www.oschina.net/news/338155</link>
-            <guid isPermaLink="false">https://www.oschina.net/news/338155</guid>
-            <pubDate>Wed, 05 Mar 2025 06:49:00 GMT</pubDate>
-            <author>來源: OSCHINA</author>
-        </item>
-        <item>
-            <title>iPhone 17 系列機模曝光</title>
-            <description>&lt;div class=&quot;content&quot;&gt;
-                                                                    
-                                                        &lt;p&gt;博主 MajinBuOfficial 根據供應鏈獲得的 CAD 數據，以 3D 打印的方式獲得了 iPhone 17 全系列的機模。這批機模包括了 iPhone 17、iPhone 17 Air、iPhone 17 Pro、iPhone 17 Pro Max 四款機型，而外觀信息與此前透露的諜照基本一致。&lt;/p&gt; 
-&lt;p&gt;&lt;img alt=&quot;&quot; src=&quot;https://oscimg.oschina.net/oscnet/up-2fecc3d4611b83757346306026632dfd575.png&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
-&lt;p&gt;除了 iPhone 17 的後置攝像頭排列沒有太大變化之外，新的 iPhone 17 Air 採用了後置單攝的配置，並將它放置於一個長條形的橫向模塊當中，整機的厚度也有了明顯縮小。&lt;/p&gt; 
-&lt;p&gt;Pro 版本的攝像頭同樣變化較大，採用橫向的大尺寸模組，將後置三攝、LiDAR 傳感器、閃光燈、後置麥克風等元器件都收納於其中。至於為什麼蘋果要預留如此巨大的模組位置，還有待觀察。&lt;/p&gt; 
-&lt;p&gt;此前，分析師郭明錤透露，新的 iPhone 17 Air 或將採用高密度電池，使其可以在緊湊尺寸之中獲得更勝於以往的電池續航表現。&lt;/p&gt; 
-&lt;p&gt;此外，彭博社記者 Mark Gurman 今日發文&lt;u&gt;&lt;a href=&quot;https://www.oschina.net/news/338104/apple-ios-ipados-macos-design-overhaul&quot;&gt;透露&lt;/a&gt;&lt;/u&gt;，蘋果將會統一 iPhone、iPad 以及 Mac 三個設備的系統界面。據 Gurman 預測，本次系統界面統一將涉及圖標、菜單、界面窗口樣式等內容。值得關注的是，統一後的系統界面設計將會與 visionOS 的風格保持一致，同時簡化用户使用的操作步驟、方式。&lt;/p&gt; 
-&lt;p&gt;&lt;img src=&quot;https://static.oschina.net/uploads/space/2025/0311/103415_RHy0_2720166.png&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
-&lt;p&gt;據悉，本次改動將會在 iOS19、iPadOS19 和 MacOS16 中出現。報道指出，這也是自 iOS7 後，時隔十年，蘋果再一次為 iPhone 進行 UI 大改變；而 Mac 方面，MacOS16 將是自 2020 年 MacOS Big Sur 發佈以來，蘋果對 MacOS 最大的一次升級。&lt;/p&gt; 
-&lt;p&gt;相關閲讀&lt;/p&gt; 
-&lt;ul&gt; 
- &lt;li&gt;&lt;a href=&quot;https://www.oschina.net/news/335621&quot; target=&quot;news&quot;&gt;iPhone 17 系列 CAD 圖曝光&lt;/a&gt;&lt;/li&gt; 
- &lt;li&gt;&lt;a href=&quot;https://www.oschina.net/news/338104/apple-ios-ipados-macos-design-overhaul&quot; target=&quot;news&quot;&gt;蘋果計劃對 iOS、iPadOS 和 macOS 系統外觀進行大幅重新設計&lt;/a&gt;&lt;/li&gt; 
-&lt;/ul&gt;
-                                                                                &lt;/div&gt;
-                                                                            </description>
-            <link>https://www.oschina.net/news/338152</link>
-            <guid isPermaLink="false">https://www.oschina.net/news/338152</guid>
-            <pubDate>Wed, 05 Mar 2025 06:40:00 GMT</pubDate>
-            <author>來源: OSCHINA</author>
-        </item>
-        <item>
-            <title>越疆發佈 Dobot Atom：全球首款「靈巧操作+直膝行走」具身智能人形機器人</title>
-            <description>&lt;div class=&quot;content&quot;&gt;
-                                                                    
-                                                        &lt;p&gt;深圳越疆科技今日&lt;u&gt;&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fwww.bilibili.com%2Fvideo%2FBV1EkREYbEsg%2F&quot; target=&quot;_blank&quot;&gt;發佈&lt;/a&gt;&lt;/u&gt;了全球首款「靈巧操作 + 直膝行走」具身智能人形機器人 Dobot Atom，可實現跨場景、多台協同勝任複雜操作泛化任務。&lt;/p&gt; 
-&lt;p&gt;&lt;img height=&quot;1502&quot; src=&quot;https://static.oschina.net/uploads/space/2025/0311/143353_pHFB_2720166.png&quot; width=&quot;2430&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
-&lt;p&gt;據介紹，該款機器人是面向工業級精細操作全尺寸仿生人形機器人，搭載自研操作技能模型 ROM-1，具有神經驅動靈巧操作和仿人直膝步態行走兩大特徵。&lt;/p&gt; 
-&lt;p&gt;區別於傳統機器人，該產品通過「腦-手協同」技術突破，結合視覺感知與五指靈巧手閉環操作，無需預編程即可自主完成上百種複雜任務。&lt;/p&gt; 
-&lt;p&gt;官方介紹稱，這台為「打工」而生的工業級操作類人形機器人，身高 1.53 米，體重 62 公斤，採用 1:1 仿人手臂構型設計，全身配置 41 個自由度，搭載重複定位精度 ±0.05mm 的 7 自由度工業級仿生協作臂，適應常見 700-1000mm 工作台高度靈巧作業，並具有工業現場穩定通過能力。&lt;/p&gt; 
-&lt;p&gt;&lt;img alt=&quot;&quot; src=&quot;https://oscimg.oschina.net/oscnet/up-fbf5c225d2fa360687b55084e48cf17f3d8.png&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
-&lt;p&gt;作為中國首款具備工業級雙臂操作與仿人直膝行走能力的人形機器人，其核心搭載越疆自研的神經驅動靈巧操作系統（NDS）與仿人直膝行走系統（AWS），雙臂協同靈巧操作，高還原度仿人直膝行走，這種同時擁有上下肢體高水平運動和控制表現的能力，標誌着人形機器人操作領域取得重要進展。&lt;/p&gt; 
-&lt;p&gt;NDS 系統通過端到端自主推理，賦予機器人 28 個上肢自由度及伺服級抖動抑制能力，可完成工具製造、脆弱物料無損抓取（如車釐子）等複雜任務，操作精度高達 ±0.05mm。&lt;/p&gt; 
-&lt;p&gt;AWS 系統則基於類人生物力學與強化學習技術，實現高度擬人的直膝行走和靈活轉身，適配短程狹小空間作業需求。其自適應泛化能力尤為突出，僅需 2 小時採集少量數據即可掌握新技能，顯著提升非結構化場景下的操作效率。&lt;/p&gt; 
-&lt;p&gt;據官方介紹，這台人形機器人的核心零部件、軟硬件系統採用了自主研發的工業級方案，主要面向數以千計用工的車廠組裝備料環節、咖啡店制飲多台設備的流程操作、連鎖藥店夜間取藥等場景，即設備位置不固定、產品多規格、操作相似度高，並有短程狹小空間通過、靈活轉身操作需求的工業商業連續重複工作場景。&lt;/p&gt;
-                                                                                &lt;/div&gt;
-                                                                            </description>
-            <link>https://www.oschina.net/news/338149</link>
-            <guid isPermaLink="false">https://www.oschina.net/news/338149</guid>
-            <pubDate>Wed, 05 Mar 2025 06:35:00 GMT</pubDate>
-            <author>來源: OSCHINA</author>
-        </item>
-        <item>
-            <title>馬斯克嘗試用 AI 取代美國公務員</title>
-            <description>&lt;div class=&quot;content&quot;&gt;
-                                                                    
-                                                        &lt;p&gt;&lt;u&gt;&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fwww.theatlantic.com%2Ftechnology%2Farchive%2F2025%2F03%2Fgsa-chat-doge-ai%2F681987%2F&quot; target=&quot;_blank&quot;&gt;大西洋月刊報道稱&lt;/a&gt;&lt;/u&gt;，馬斯克領導的政府效率部（DOGE）正在努力縮減和重組美國公務員隊伍，這一努力已進入新階段。其理念很簡單：&lt;strong&gt;利用生成式人工智能來自動化以前由人完成的工作&lt;/strong&gt;。&lt;/p&gt; 
-&lt;p&gt;&lt;img src=&quot;https://static.oschina.net/uploads/space/2025/0311/142816_kg1u_2720166.png&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
-&lt;p&gt;美國政府正在與美國總務管理局（GSA）的 1,500 名聯邦僱員一起測試一款新型聊天機器人 「GSA Chat」&amp;nbsp;，並可能最早於本週五向整個機構發佈，這意味着超過 10,000 名負責超過 1,000 億美元合同和服務的工作人員可以使用這款機器人。&lt;/p&gt; 
-&lt;p&gt;這款聊天機器人被 GSA 領導層視為提升聯邦工作人員生產力的工具，是政府效率部及其盟友更大行動方案的一部分。談到 GSA 的整體計劃時，最近被任命為 GSA 信息技術部門 —— 技術轉型服務局局長的前特斯拉工程師託馬斯・謝德上個月在全體員工會議上表示，&lt;strong&gt;該機構正在推進「人工智能優先戰略」&lt;/strong&gt;。&lt;/p&gt; 
-&lt;p&gt;謝德稱，「正如大家所知，隨着我們縮減聯邦政府的整體規模，仍有大量項目需要保留，這為技術和自動化全面發揮作用提供了巨大機遇」。他提出，可以在政府範圍內提供「編碼代理」—— 指的是能夠代替人類編寫並可能部署代碼的 AI 程序。此外，謝德還表示，AI 可以「對合同進行分析」，軟件可用於「自動化」GSA 的「財務職能」。&lt;/p&gt; 
-&lt;p&gt;目前，在工作中使用人工智能很常見，GSA 的聊天機器人可能不會對政府運作產生巨大影響。但這只是政府效率部繼續大幅削減公務員體系的一個小例子。據報道，在教育部，政府效率部顧問將有關機構支出的敏感數據輸入 AI 程序，以確定削減開支的方向。據説政府效率部打算利用 AI 來幫助決定政府各部門的員工是否應保住工作。&lt;/p&gt; 
-&lt;p&gt;在上週晚些時候的另一場 TTS 會議上，謝德表示，他預計該部門在幾周內規模將「至少縮小 50%」。&lt;/p&gt;
-                                                                                &lt;/div&gt;
-                                                                            </description>
-            <link>https://www.oschina.net/news/338147/musk-replacing-workers-with-ai</link>
-            <guid isPermaLink="false">https://www.oschina.net/news/338147/musk-replacing-workers-with-ai</guid>
-            <pubDate>Wed, 05 Mar 2025 06:28:00 GMT</pubDate>
-            <author>來源: OSCHINA</author>
-        </item>
-        <item>
-            <title>RISC-V 工委會：徵集《RISC-V 指令集架構矩陣擴展（ME）指令集》等三項團體標準參編單位</title>
-            <description>&lt;div class=&quot;content&quot;&gt;
-                                                                    
-                                                        &lt;p&gt;&lt;span style=&quot;color:#000000&quot;&gt;中國電子工業標準化技術協會 RISC-V 工委會發布「關於公開徵集《RISC-V 指令集架構矩陣擴展（ME）指令集》等三項團體標準參編單位的通知」。&lt;/span&gt;&lt;/p&gt; 
-&lt;p&gt;&lt;span style=&quot;color:#000000&quot;&gt;通知內容指出，由阿里巴巴達摩院（杭州）科技發起制定的《RISC-V 指令集架構矩陣擴展（ME）指令集》、進迭時空（杭州）科技發起制定的《開放精簡指令集（RISC-V）配置文件》，以及由芯昇科技發起制定的《RISC-V 指令集架構無線矢量擴展（Zvw）指令集》三項團體標準已獲批立項。&lt;/span&gt;&lt;/p&gt; 
-&lt;p&gt;&lt;span style=&quot;color:#000000&quot;&gt;為更高質量地完成標準編制工作，保障標準的廣泛性、科學性和實用性，現向全行業及 RISC-V 工委會成員徵集上述三項團體標準參編單位，共同完成標準的制定工作。&lt;/span&gt;&lt;/p&gt; 
-&lt;p&gt;&lt;img height=&quot;383&quot; src=&quot;https://static.oschina.net/uploads/space/2025/0311/142732_nWVQ_4252687.png&quot; width=&quot;500&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
-&lt;p&gt;&lt;span style=&quot;color:#000000&quot;&gt;&lt;strong&gt;報名條件&lt;/strong&gt;&lt;/span&gt;&lt;/p&gt; 
-&lt;blockquote&gt; 
- &lt;p&gt;&lt;span style=&quot;color:#000000&quot;&gt;1、參編單位具備相關領域工作基礎，具有較高的社會影響力，重視標準化工作，能夠提供技術專家作為參編人員參與標準編制。&lt;/span&gt;&lt;/p&gt; 
- &lt;p&gt;&lt;span style=&quot;color:#000000&quot;&gt;2、參編單位應指定固定的起草人員，能夠確保參與標準制修訂過程中的各項會議，按時完成標準編制組分配的工作任務。&lt;/span&gt;&lt;/p&gt; 
- &lt;p&gt;&lt;span style=&quot;color:#000000&quot;&gt;3、起草人應具備相應的專業知識、經驗和能力，瞭解產業現狀和技術發展水平。同時較熟悉標準化工作流程，具有標準制修訂相關工作經驗的優先。起草人應及時對標準提出建設性意見建議。&lt;/span&gt;&lt;/p&gt; 
- &lt;p&gt;&lt;span style=&quot;color:#000000&quot;&gt;4、在可以公開的前提下，參編單位向標準編制工作組提供相關研究成果、經典案例和數據，供編制標準組參考。&lt;/span&gt;&lt;/p&gt; 
-&lt;/blockquote&gt; 
-&lt;p&gt;&lt;span style=&quot;color:#000000&quot;&gt;更多詳情可&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fmp.weixin.qq.com%2Fs%2FjAQEyU7kzEWgp9HefHji_g&quot; target=&quot;_blank&quot;&gt;查看官方公告&lt;/a&gt;。&lt;/span&gt;&lt;/p&gt;
-                                                                                &lt;/div&gt;
-                                                                            </description>
-            <link>https://www.oschina.net/news/338146</link>
-            <guid isPermaLink="false">https://www.oschina.net/news/338146</guid>
-            <pubDate>Wed, 05 Mar 2025 06:28:00 GMT</pubDate>
-            <author>來源: OSCHINA</author>
-        </item>
-        <item>
-            <title>Composio —— 適用於 AI 代理的生產就緒工具集</title>
-            <description>&lt;div class=&quot;content&quot;&gt;
-                                                                                                                                                                        
-                                                                                    &lt;p style=&quot;color:#1f2328; text-align:start&quot;&gt;&lt;strong&gt;Composio 為 AI 代理提供可用於生產的工具集&lt;/strong&gt;，提供：&lt;/p&gt;
-
-&lt;ul&gt;
-&lt;li&gt;支持多個類別的 250 多種工具：
-&lt;ul&gt;
-&lt;li&gt;GitHub、Notion、Linear、Gmail、Slack、Hubspot、Salesforce 等軟件工具 &amp;amp;&lt;span&gt;&amp;nbsp;&lt;/span&gt;&lt;a href=&quot;https://app.composio.dev/apps&quot;&gt;更多&lt;/a&gt;&lt;/li&gt;
-&lt;li&gt;操作系統操作, 包括文件工具、shell 工具、代碼分析工具 &amp;amp;&lt;span&gt;&amp;nbsp;&lt;/span&gt;&lt;a href=&quot;https://app.composio.dev/apps&quot;&gt;更多&lt;/a&gt;&lt;/li&gt;
-&lt;li&gt;通過 Google、Perplexity、Tavily 和 Exa 實現搜索功能 &amp;amp;&lt;span&gt;&amp;nbsp;&lt;/span&gt;&lt;a href=&quot;https://app.composio.dev/apps&quot;&gt;更多&lt;/a&gt;&lt;/li&gt;
-&lt;/ul&gt;
-&lt;/li&gt;
-&lt;li&gt;全面的框架支持，包括 OpenAI、 Groq、Claude、LlamaIndex、Langchain、CrewAI、Autogen、Gemini 以及&lt;a href=&quot;https://docs.composio.dev/framework&quot;&gt;更多&lt;/a&gt;&lt;/li&gt;
-&lt;li&gt;支持多種協議 (OAuth、API 密鑰、Basic JWT) 的託管身份驗證&lt;/li&gt;
-&lt;li&gt;通過優化設計將工具調用準確率提高高達 40%&lt;/li&gt;
-&lt;li&gt;用於後端集成的白標解決方案&lt;/li&gt;
-&lt;li&gt;支持自定義工具和擴展的可插拔架構&lt;/li&gt;
-&lt;/ul&gt;
-
-&lt;p&gt;&lt;img alt=&quot;&quot; height=&quot;500&quot; src=&quot;https://static.oschina.net/uploads/space/2025/0310/163052_S7VK_4252687.gif&quot; width=&quot;500&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt;
-
-                                                                    &lt;/div&gt;
-                                                                </description>
-            <link>https://www.oschina.net/p/composio</link>
-            <guid isPermaLink="false">https://www.oschina.net/p/composio</guid>
-            <pubDate>Wed, 05 Mar 2025 06:15:00 GMT</pubDate>
         </item>
     </channel>
 </rss>
