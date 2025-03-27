@@ -9,8 +9,472 @@
         <generator>RSSHub</generator>
         <webMaster>contact@rsshub.app (RSSHub)</webMaster>
         <language>en</language>
-        <lastBuildDate>Thu, 27 Mar 2025 02:42:28 GMT</lastBuildDate>
+        <lastBuildDate>Thu, 27 Mar 2025 07:41:01 GMT</lastBuildDate>
         <ttl>5</ttl>
+        <item>
+            <title>深度剖析 StarRocks 讀取 ORC 加密文件背後的技術</title>
+            <description>&lt;div class=&quot;content&quot;&gt;
+                                                                                                                    
+                                                                                                                                                    &lt;blockquote&gt; 
+ &lt;p&gt;作者：vivo 互聯網大數據團隊 - Zheng Xiaofeng&lt;/p&gt; 
+&lt;/blockquote&gt; 
+&lt;p&gt;本文介紹了 StarRocks 數據庫如何讀取 ORC 加密文件，包括基礎概念以及具體實現方案。深入探討了利用 ORC 文件的四層結構和三層索引機制，實現高效查詢加密數據。希望通過本文對 ORC 加密文件讀取功能的實現細節的剖析，讓讀者更加深刻理解 ORC 文件，同時瞭解 StarRocks 支持加解密數據分析的方案。&lt;/p&gt; 
+&lt;span id=&quot;OSC_h1_1&quot;&gt;&lt;/span&gt; 
+&lt;h1&gt;一、背景&lt;/h1&gt; 
+&lt;ul&gt; 
+ &lt;li&gt; &lt;p&gt;為了提升對敏感數據的保護，需要對 Hive 表一些敏感數據進行加密存儲。&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;Spark 組件已經通過引入了 Apache ORC 項目（Java 版本）對 ORC 格式的 Hive 表的數據進行加解密。&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;StarRocks 也使用了 Apache ORC 項目的 C++版本讀寫 ORC 文件，但是&lt;strong&gt;C++版本沒有實現加解密功能&lt;/strong&gt;，在使用 StarRocks 對 Hive 表進行即席分析時，無法對具有加密列的 Hive 表進行查詢，因此，需要對 StarRocks 的 Apache ORC 模塊進行改造，使其支持對 ORC 格式的 Hive 加密表數據讀取功能，數據架構圖如下圖所示：&lt;/p&gt; &lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;p&gt;&lt;img src=&quot;https://oscimg.oschina.net/oscnet//42662e0b81a83165a856f0c38387b668.png&quot; alt=&quot;&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt;希望通過本文對 ORC 加密文件讀取功能的實現細節的剖析，讓讀者更加深刻理解 ORC 文件，同時瞭解 StarRocks 支持加解密數據分析的方案。&lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;span id=&quot;OSC_h1_2&quot;&gt;&lt;/span&gt; 
+&lt;h1&gt;二、問題引入&lt;/h1&gt; 
+&lt;p&gt;在正式開啓全文的閲讀之前，我們首先引入幾個問題，然後帶着這些問題去閲讀後面的內容，將會更有針對性與啓發性，通過深入解答這些問題，我們不僅能夠更好地理解相關的概念和技術，還能提升分析和解決問題的能力。問題如下：&lt;/p&gt; 
+&lt;blockquote&gt; 
+ &lt;ol&gt; 
+  &lt;li&gt; &lt;p&gt;程序解壓某個文件時，是否需要一次性讀取整個文件後再進行解壓操作？&lt;/p&gt; &lt;/li&gt; 
+  &lt;li&gt; &lt;p&gt;ORC 文件究竟是如何做到在不掃描全文件的情況下就能精準查詢到想要的數據？&lt;/p&gt; &lt;/li&gt; 
+  &lt;li&gt; &lt;p&gt;當 SQL 查詢條件不符合最左前綴原則時，ORC 文件中的索引是否就會失效？&lt;/p&gt; &lt;/li&gt; 
+  &lt;li&gt; &lt;p&gt;數據加密、解密、解壓以及壓縮之間的關聯關係到底是怎樣的？&lt;/p&gt; &lt;/li&gt; 
+  &lt;li&gt; &lt;p&gt;在寫 ORC 文件時為什麼是先壓縮後加密，而不是先加密後解壓？&lt;/p&gt; &lt;/li&gt; 
+ &lt;/ol&gt; 
+&lt;/blockquote&gt; 
+&lt;span id=&quot;OSC_h1_3&quot;&gt;&lt;/span&gt; 
+&lt;h1&gt;三、ORC 文件介紹&lt;/h1&gt; 
+&lt;p&gt;ORC（Optimized Row Columnar）文件格式是一種高度優化的列式存儲格式，它主要用於 Hadoop 生態系統中的大數據處理和分析。ORC 文件結構的設計旨在提高 I/O 效率、減少數據讀取時間，並支持複雜的數據類型和壓縮算法。&lt;/p&gt; 
+&lt;span id=&quot;OSC_h2_4&quot;&gt;&lt;/span&gt; 
+&lt;h2&gt;3.1 四層結構 File ,Stripe,Stream，Group&lt;/h2&gt; 
+&lt;p&gt;一個 File 中包含多個 Stripe，一個 Stripe 包含多個 Steam，一個 Stream 包含多個 Group，每個 Group 默認存儲 1 萬行數據，如下圖所示：&lt;/p&gt; 
+&lt;p&gt;&lt;img src=&quot;https://oscimg.oschina.net/oscnet//daf79f27d162699ca73e6745cd92b780.png&quot; alt=&quot;&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
+&lt;span id=&quot;OSC_h2_5&quot;&gt;&lt;/span&gt; 
+&lt;h2&gt;3.2&amp;nbsp;三層索引&lt;/h2&gt; 
+&lt;ul&gt; 
+ &lt;li&gt; &lt;p&gt;&lt;strong&gt;FileStat&lt;/strong&gt; ：文件級別各列的統計信息，用於判斷 SQL 條件是否下推。&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;&lt;strong&gt;StripeStat&lt;/strong&gt;：Stripe 級別各列的統計信息，用於判斷 SQL 條件是否下推。&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;&lt;strong&gt;IndexData&lt;/strong&gt;：每個 Stripe 內部各列的索引信息，用於判斷 SQL 條件是否下推。&lt;/p&gt; &lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;p&gt;在讀取文件中數據之前，會先讀取以上 3 類索引數據，根據 SQL 條件逐層進行比對，來決定是否跳過某些數據的讀取，減少數據掃描量，從而提升 SQL 查詢效率。&lt;/p&gt; 
+&lt;p&gt;下表是隻包含 id 和 name 兩列的 ORC 文件的各層統計信息的案例：&lt;/p&gt; 
+&lt;p&gt;&lt;strong&gt;FileStat&lt;/strong&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;img src=&quot;https://oscimg.oschina.net/oscnet//18e323617df740616d0230aa1e15ae4c.png&quot; alt=&quot;&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;strong&gt;StripeStat&lt;/strong&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;img src=&quot;https://oscimg.oschina.net/oscnet//0679ad98f36eaec4b8e50af132d4ee96.png&quot; alt=&quot;&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;strong&gt;IndexData&lt;/strong&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;img src=&quot;https://oscimg.oschina.net/oscnet//a0ad1992999f1f653a589ab33cb184db.png&quot; alt=&quot;&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
+&lt;span id=&quot;OSC_h2_6&quot;&gt;&lt;/span&gt; 
+&lt;h2&gt;3.3 ORC 文件內部詳細結構&lt;/h2&gt; 
+&lt;p&gt;前面已經大體介紹了 ORC 文件的結構，下面詳細介紹其內部結構，ORC 文件由多個邏輯層次組成，每個層次都有特定的作用和結構，下圖具體描述了包含 2 列（id，name）的 ORC 文件結構圖：&lt;/p&gt; 
+&lt;p&gt;&lt;img src=&quot;https://oscimg.oschina.net/oscnet//51bb6963b452f9f0a51c7531681f452e.png&quot; alt=&quot;&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt; &lt;p&gt;&lt;strong&gt;Tail&lt;/strong&gt;：存儲文件的元數據，如列的壓縮信息、統計信息、版本等，包含了三個部分：PostScript、Footer、MetaData。&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;&lt;strong&gt;Body&lt;/strong&gt;：實際存儲數據的部分，由多個 Stripe 組成。&lt;/p&gt; &lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;p&gt;下面分別介紹 Tail 和 Body 內部包含哪些結構：&lt;/p&gt; 
+&lt;p&gt;Tail 文件尾部是讀取 ORC 文件的起點，它包含了文件關鍵信息：&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt; &lt;p&gt;&lt;strong&gt;PostScript&lt;/strong&gt;：存儲文件的壓縮類型、壓縮塊大小、版本信息，Footer 和 MetaData 的長度等，這部分數據不會被壓縮。&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;&lt;strong&gt;Footer&lt;/strong&gt;：記錄了整個文件所有列的統計信息（FileStat），所有 Stripe 的元數據信息（stripesList），加密信息（encryption）以及文件 body 長度。&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;&lt;strong&gt;MetaData&lt;/strong&gt;：存儲該文件所有 Stripe 的統計信息（StripeStat）。&lt;/p&gt; &lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;p&gt;Body 實際存儲數據的部分，由多個 Stripe 組成，每個 Stripe 包含多個 Stream，先存儲索引相關的 Stream（index-Stream），後面存儲實際數據相關的 Stream（data-Stream），每一列包含多個 index-Stream 和 data-Stream，Stripe 是 ORC 文件中數據存儲的基本單元，每個 Stripe 數據大小一般不超過 200M，主要包含下面幾塊內容：&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt; &lt;p&gt;&lt;strong&gt;Stripe Footer&lt;/strong&gt;：包含所有 Stream 的元數據（streamsList）和加密信息（encryption）等。&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;&lt;strong&gt;Index-Stream&lt;/strong&gt;：存儲索引相關數據的 Stream，按列存儲。&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;&lt;strong&gt;Data-Stream&lt;/strong&gt;：儲實際數據相關的 Stream，按列存儲。&lt;/p&gt; &lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;p&gt;ORC 文件的讀取是從尾部最後一個字節開始的，得到 PostScript 的長度，讀取 PostScript，然後根據 PostScript 中的 FooteLength，MetaDataLength 信息讀取 MetaData 和 Footer，最後根據 Footer 中的 Stripe 信息讀取具體的數據 Stripe，上面的文字介紹可能不是很直觀，如果想更細節瞭解 ORC 文件結構內容可以參考（&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fwww.processon.com%2Fmindmap%2F6503c70803ab061eb31b80da&quot; rel=&quot;nofollow&quot; target=&quot;_blank&quot;&gt;ORC 文件結構思維導圖&lt;/a&gt;，&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Forc.apache.org%2F&quot; rel=&quot;nofollow&quot; target=&quot;_blank&quot;&gt;ORC 文件官網介紹&lt;/a&gt;）。&lt;/p&gt; 
+&lt;span id=&quot;OSC_h1_7&quot;&gt;&lt;/span&gt; 
+&lt;h1&gt;四、相關概念的理解&lt;/h1&gt; 
+&lt;span id=&quot;OSC_h2_8&quot;&gt;&lt;/span&gt; 
+&lt;h2&gt;4.1 對稱加解密&lt;/h2&gt; 
+&lt;p&gt;&lt;img src=&quot;https://oscimg.oschina.net/oscnet//1c56a2f7a82e7f369cd1548d0ef7eb36.png&quot; alt=&quot;&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
+&lt;p&gt;對稱加解密的要素包括密鑰、明文、密文和加密算法。以下是對這些要素關係的描述：&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt; &lt;p&gt;&lt;strong&gt;密鑰&lt;/strong&gt;：密鑰是加密和解密過程中的關鍵元素，它是由隨機數生成的，通常是固定長度的一串二進制數。&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;&lt;strong&gt;明文&lt;/strong&gt;：明文是指原始的信息，可以是文本、圖片、音頻等各種形式的數據。&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;&lt;strong&gt;密文&lt;/strong&gt;：密文是經過加密算法處理後的數據，只有知道密鑰的人才能解密還原成明文。&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;&lt;strong&gt;加密算法&lt;/strong&gt;：加密算法是將明文轉換成密文的過程，這個過程通常涉及到一系列的數學運算，比如 AEC，RSA 等。&lt;/p&gt; &lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;p&gt;注意：對稱加密的加密密鑰，和 解密密鑰是一樣的。&lt;/p&gt; 
+&lt;span id=&quot;OSC_h2_9&quot;&gt;&lt;/span&gt; 
+&lt;h2&gt;4.2 文件的壓縮和解壓縮&lt;/h2&gt; 
+&lt;span id=&quot;OSC_h3_10&quot;&gt;&lt;/span&gt; 
+&lt;h3&gt;4.2.1&amp;nbsp;壓縮算法&lt;/h3&gt; 
+&lt;p&gt;壓縮算法是用於減小文件大小的數學方法。它通過各種技術，如替換、重新編碼、差分編碼、運行長度編碼、字典編碼、變換編碼等，來減少數據的冗餘和實現數據的體積縮小。壓縮算法可以是無損的或有損的：&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt; &lt;p&gt;&lt;strong&gt;無損壓縮&lt;/strong&gt;：意味着原始數據可以完全從壓縮文件中恢復，常用於文本和某些類型的數據文件。&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;&lt;strong&gt;有損壓縮&lt;/strong&gt;：為了獲得更高的壓縮率，允許丟失一些數據，常用於圖像、音頻和視頻文件。&lt;/p&gt; &lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;span id=&quot;OSC_h3_11&quot;&gt;&lt;/span&gt; 
+&lt;h3&gt;4.2.2 解壓算法&lt;/h3&gt; 
+&lt;p&gt;解壓算法是壓縮算法的逆過程，它用於將壓縮文件恢復到其原始狀態。無損壓縮的解壓算法能夠完全恢復原始數據，而有損壓縮的解壓算法則可能無法完全恢復所有原始數據。&lt;/p&gt; 
+&lt;p&gt;文件壓縮和解壓縮簡單流程圖如下：&lt;/p&gt; 
+&lt;p&gt;&lt;img src=&quot;https://oscimg.oschina.net/oscnet//3edcbf4fcc94f0f715892423538e2ded.png&quot; alt=&quot;&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
+&lt;p&gt;注意：數據的壓縮算法和解壓算法要一樣&lt;/p&gt; 
+&lt;span id=&quot;OSC_h3_12&quot;&gt;&lt;/span&gt; 
+&lt;h3&gt;4.2.3 壓縮塊&lt;/h3&gt; 
+&lt;p&gt;文件壓縮塊是指對文件進行壓縮處理後生成的一組連續的數據塊。在文件壓縮過程中，文件被分割成多個塊，每個塊都經過壓縮算法處理。一般來説，文件壓縮塊的大小可配置。例如，ZIP 壓縮的每個壓縮塊的大小可以達到 64KB 或更大，而在其他壓縮格式如 7z 中，壓縮塊的大小可以更大，通常為數 MB。這些大小可以根據文件的特性和壓縮算法的性能進行調整，以達到更好的壓縮比和解壓性能。&lt;/p&gt; 
+&lt;p&gt;注意：在解壓文件的過程中會從文件中讀取整個壓縮塊數據到內存之後再使用解壓算法進行解壓處理，所以壓縮塊越大每次解壓讀取到內存裏的數據會越大。&lt;/p&gt; 
+&lt;span id=&quot;OSC_h2_13&quot;&gt;&lt;/span&gt; 
+&lt;h2&gt;4.3 加密壓縮文件讀寫大致流程&lt;/h2&gt; 
+&lt;p&gt;在掌握了數據加密和壓縮的基礎知識之後，讓我們從宏觀的角度瞭解一下 ORC 加密文件讀寫流程，如下圖所示：在寫入時，內存中的數據首先被序列化，然後壓縮以減少體積，最後對數據加密。在讀取時，數據首先被解密以恢復原始格式，然後解壓數據得到原始數據，最後通過反序列化原始數據轉換為內存對象。&lt;/p&gt; 
+&lt;p&gt;&lt;img src=&quot;https://oscimg.oschina.net/oscnet//cd6b640a5a79817353e9bfb6a7fe81d5.png&quot; alt=&quot;&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
+&lt;p&gt;詳細説明寫入和讀取過程中的各個步驟：&lt;/p&gt; 
+&lt;p&gt;&lt;strong&gt;（1）寫入過程（序列化、壓縮、加密）&lt;/strong&gt;&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt; &lt;p&gt;&lt;strong&gt;序列化&lt;/strong&gt;：在數據寫入存儲系統之前，首先需要將內存中的對象轉換成可以存儲或傳輸的格式，這個過程稱為序列化。序列化後的數據通常是一個二進制格式，便於後續的處理。&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;&lt;strong&gt;壓縮&lt;/strong&gt;：序列化後的數據可能會佔用較大的空間。為了減少存儲需求和&lt;strong&gt;提升後續數據加密處理效率&lt;/strong&gt;，接下來對數據進行壓縮。壓縮算法會嘗試去除數據中的冗餘，從而減少數據的體積。&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;&lt;strong&gt;加密&lt;/strong&gt;：壓縮後的數據需要進行加密，以確保數據的安全性。加密算法會使用密鑰對數據進行加密，生成密文。&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;&lt;strong&gt;存入文件中&lt;/strong&gt;：加密後的密文被存儲在文件中，等待後續的讀取或傳輸。&lt;/p&gt; &lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;p&gt;&lt;strong&gt;（2）讀取過程（解密、解壓、反序列化）&lt;/strong&gt;&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt; &lt;p&gt;&lt;strong&gt;解密&lt;/strong&gt;：當需要讀取文件中的數據時，首先需要使用正確的密鑰和加密算法對密文進行解密，恢復為壓縮前的數據。&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;&lt;strong&gt;解壓&lt;/strong&gt;：解密後，應用解壓算法對數據進行解壓，恢復到序列化前的狀態。&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;&lt;strong&gt;反序列化&lt;/strong&gt;：解壓後的數據是一個二進制格式，需要進行反序列化，將其轉換為內存中的對象。反序列化是序列化的逆過程，它將二進制數據轉換為可讀可操作的數據結構。&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;&lt;strong&gt;內存對象&lt;/strong&gt;：經過解密、解壓和反序列化之後，數據最終以內存對象的形式被程序處理。&lt;/p&gt; &lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;span id=&quot;OSC_h1_14&quot;&gt;&lt;/span&gt; 
+&lt;h1&gt;五、StarRocks 讀取 ORC 加密文件實現方案&lt;/h1&gt; 
+&lt;span id=&quot;OSC_h2_15&quot;&gt;&lt;/span&gt; 
+&lt;h2&gt;5.1 ORC 文件內部數據加密關係&lt;/h2&gt; 
+&lt;p&gt;首先，介紹幾個密鑰的含義：&lt;/p&gt; 
+&lt;p&gt;&lt;strong&gt;statKey&lt;/strong&gt;：用於解密加密列的 FileStat，StripeStat 的密鑰，每個列一個，加密存儲在文件 Footer 裏。&lt;/p&gt; 
+&lt;p&gt;&lt;strong&gt;dataKey&lt;/strong&gt;：用於解密加密列的 IndexData 和 RowData，每個 Stripe 的每一列都有一個，加密存儲在 Stripe 的 Footer 裏。&lt;/p&gt; 
+&lt;p&gt;&lt;strong&gt;masterKey&lt;/strong&gt;：文件的根密鑰，用於解密 ORC 文件中被加密的 statKey 和 dataKey，該密鑰沒有存儲在文件中，一般存儲在 Hive 表屬性上。要解密 ORC 文件中的數據，首先需要獲取這個 masterKey。然而，masterKey 本身也是加密的，因此在讀取 Hive 表之前，必須先從表屬性中提取出加密的 masterKey,訪問密鑰管理服務（Key Management Service, KMS），對加密的 masterKey 進行解密，從而獲得可用於實際解密操作的明文 masterKey 密鑰，一旦獲得了 masterKey 的明文形式，就可以用它來解密 ORC 文件中的 dataKey 和 statKey。&lt;/p&gt; 
+&lt;p&gt;&lt;img src=&quot;https://oscimg.oschina.net/oscnet//3f858f3c7fc6ed6c7e5dcdb8f10d2253.png&quot; alt=&quot;&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
+&lt;p&gt;下圖是描述了 masterKey、statKey，dataKey 之間的關係，灰色部分代表是存儲在文件中被加密的數據，綠色部分則是解密之後的數據，包括我們解密後的 statKey，dataKey。獲得這兩個密鑰之後分別用於解密統計信息和文件中的真實數據。&lt;/p&gt; 
+&lt;span id=&quot;OSC_h2_16&quot;&gt;&lt;/span&gt; 
+&lt;h2&gt;5.2 StarRocks 讀取 ORC 加密文件流程&lt;/h2&gt; 
+&lt;p&gt;在深入掌握了 ORC 文件中密鑰的相互關係和功能後，我們現在轉向探討 StarRocks 是如何讀取 ORC 加密表的數據。這個過程如下圖所示：&lt;/p&gt; 
+&lt;p&gt;&lt;img src=&quot;https://oscimg.oschina.net/oscnet//b39f8da7c9f25c2316cbbb845730a54b.png&quot; alt=&quot;&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;strong&gt;1）提交 SQL 查詢&lt;/strong&gt;：用戶首先通過 SQL 客戶端向 StarRocks FE 節點提交查詢請求。這通常涉及到對 Hive 表下存儲的 ORC 加密文件進行讀取操作。&lt;/p&gt; 
+&lt;p&gt;&lt;strong&gt;2）獲取解密的 masterKey&lt;/strong&gt;：查詢提交後，系統首要根據 SQL 獲取 Hive 表中的 ORC 文件所需的 masterKey。這個 masterKey 一般存儲在表屬性裏，並且是加密存儲的，必須調用 KMS 服務來解密，得到密鑰明文。&lt;/p&gt; 
+&lt;p&gt;&lt;strong&gt;3）傳遞 masterKey 明文&lt;/strong&gt;：解密後的 masterKey，以明文形式傳遞給 StarRocks BE 節點。&lt;/p&gt; 
+&lt;p&gt;&lt;strong&gt;4）讀取並解密密鑰&lt;/strong&gt;：BE 拿到已解密的 masterKey 之後，讀取並解密 ORC 文件中的 statKey 和 dataKey，這兩個密鑰分別用於解密統計信息（FileStat，StripeStat）和實際數據內容，為接下來的統計信息和數據解密做準備。&lt;/p&gt; 
+&lt;p&gt;&lt;strong&gt;5）使用 statKey 和 dataKey 解密數據&lt;/strong&gt;：BE 使用 statKey 來解密文件的統計信息（fileStat 和 StripeStat）同時使用 dataKey 來解密實際的數據內容。&lt;/p&gt; 
+&lt;span id=&quot;OSC_h2_17&quot;&gt;&lt;/span&gt; 
+&lt;h2&gt;5.3 讀取 ORC 加密文件的關鍵實現細節&lt;/h2&gt; 
+&lt;p&gt;通過瞭解前文 StarRocks 讀取 ORC 加密文件流程，我們將深入探討讀取 ORC 加密文件的數據關鍵實現細節。首先，我們提出一個問題：在物理存儲中，文件存儲的是什麼內容？答案是二進制數據。這些二進制數據通常會經過壓縮處理。&lt;/p&gt; 
+&lt;p&gt;ORC 文件的讀取流程是自外向內的，類似於&lt;strong&gt;剝洋蔥的過程&lt;/strong&gt;，逐步深入到我們需要讀取的目標數據。讀取流程可以概括為：首先讀取文件元數據，通過元數據獲取目標數據的偏移量（offset）和數據長度如下圖所示，然後通過流的方式讀取目標數據。&lt;/p&gt; 
+&lt;p&gt;&lt;img src=&quot;https://oscimg.oschina.net/oscnet//e9be4bd8a50aa1870bb661641f960c6e.png&quot; alt=&quot;&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
+&lt;p&gt;具體到 ORC 加密文件的讀取實現代碼，主要採用了設計模式中的裝飾模式方式來組織代碼的。在這個模式中，原始的文件流（SeekableFileInputStream）首先被解密流（DecryptionInputStream）所包裝，如果是非加密文件就沒有這一層，然後解密流又被解壓縮流（DecompressionStream）所包裝。每一層流都只負責向其包裝的流請求數據，並在接收到一定量數據後開始處理自己的邏輯。如下圖所示：&lt;/p&gt; 
+&lt;p&gt;&lt;img src=&quot;https://oscimg.oschina.net/oscnet//97de9ae2095fa9576fac708b4fe83419.png&quot; alt=&quot;&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
+&lt;p&gt;這種分層的方法保證每一層都專注於自己的職責，共同協作完成 ORC 文件的讀取任務。通過這種方式，我們不僅能夠高效地讀取 ORC 文件，還能確保數據的安全性和完整性。綜上所述，ORC 文件的讀取流程是一個從文件元數據到具體數據內容的逐步深入過程。&lt;/p&gt; 
+&lt;span id=&quot;OSC_h2_18&quot;&gt;&lt;/span&gt; 
+&lt;h2&gt;5.4 加密字段跳讀機制&lt;/h2&gt; 
+&lt;p&gt;為了提升數據的查詢效率，查詢數據時會根據索引數據跳過不必要的數據讀取，下面我們介紹加密列跳讀機制，理解了這部分的內容，就能非常清晰的知道，讀取加密字段時，對數據解密與解壓是怎樣協作的。&lt;/p&gt; 
+&lt;span id=&quot;OSC_h3_19&quot;&gt;&lt;/span&gt; 
+&lt;h3&gt;5.4.1 加密塊與壓縮塊的關係&lt;/h3&gt; 
+&lt;p&gt;加密列的數據劃分了多個加密塊與壓縮塊，一個壓縮塊，包含多個加密塊，讀取數據時，先對每個加密塊進行解密，解密多個加密塊之後，把這些解密後的數據塊合併成一個完整的壓縮塊，然後對這個壓縮塊進行解壓得到原始數據下圖是加密塊與壓縮塊的關係圖：&lt;/p&gt; 
+&lt;p&gt;&lt;img src=&quot;https://oscimg.oschina.net/oscnet//cf9450e0def2e8eb5a9cbe6abbfde7fe.png&quot; alt=&quot;&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
+&lt;span id=&quot;OSC_h3_20&quot;&gt;&lt;/span&gt; 
+&lt;h3&gt;5.4.2 ORC 文件使用的加解密算法和模式&lt;/h3&gt; 
+&lt;p&gt;下圖描述了具體的數據加解密過程中以及設計到整個過程中各種元素輸入輸出的關係：&lt;/p&gt; 
+&lt;p&gt;&lt;img src=&quot;https://oscimg.oschina.net/oscnet//4f53e022e28a5159e3253e08d126e357.png&quot; alt=&quot;&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
+&lt;p&gt;注意：同一個數據塊（16 字節）加密過程和解密過程中的，密鑰、IV 值、加密算法和加密模式必須相同。&lt;/p&gt; 
+&lt;p&gt;&lt;strong&gt;明文塊&lt;/strong&gt;：我們對 ORC 文件加密使用的加密算法是 AES-128-CTR/NoPadding，該算法加密數據時 ，會把明文按照 16 個字節劃分多個塊，每個塊加密之後得到的數據就是加密塊。&lt;/p&gt; 
+&lt;p&gt;&lt;strong&gt;加密塊&lt;/strong&gt;：每個明文數據塊加密之後得到的數據就是加密塊。&lt;/p&gt; 
+&lt;p&gt;&lt;strong&gt;初始向量 IV&lt;/strong&gt;：初始向量 IV 的作用是使加密更加安全可靠（加鹽），我們使用 AES 加密時需要主動提供這個初始向量 IV，而且只需要提供一個初始向量就夠了，後面每個數據塊的加密向量由加密模式決定，所以每個數據塊的加密向量都不一樣。初始向量 IV 的長度規定為 128 位 16 個字節，ORC 文件解密參數 IV 的描述如下：總共 16 個字節，前面 8 個字節分別存儲：列 ID，Stream 類型，Stripe 的 ID ，後面 8 個字節用於填充 min_count，由於我們使用的是 CTR 加密模式，所以這個 min_count 就是加密塊在整個加密數據中的計數，iv 各個內容長度定義如下圖：&lt;/p&gt; 
+&lt;p&gt;&lt;img src=&quot;https://oscimg.oschina.net/oscnet//7a5939566e16aa553d81b75f3c0936fd.png&quot; alt=&quot;&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;strong&gt;密鑰&lt;/strong&gt;：AES 要求密鑰的長度可以是 128 位 16 個字節、192 位或者 256 位，位數越高，加密強度自然越大，但是加密的效率自然會低一些，因此要做好權衡。我們開發通常採用 128 位 16 個字節的密鑰，我們使用 AES 加密時需要主動提供密鑰，而且只需要提供一個密鑰就夠了，每個數據塊加解密使用的都是同一個密鑰。&lt;/p&gt; 
+&lt;p&gt;&lt;strong&gt;加密模式&lt;/strong&gt;：有 5 種加密模式，這些加密模式的主要目的是為了&lt;strong&gt;不讓重複的明文加密之後得到的密文一樣&lt;/strong&gt;，提升數據安全性，我們使用的是 CTR 模式（計數器模式）對數據加密，那解密的時候也需要 CTR 模式對數據解密，計數器模式介紹請參考鏈接，CTR 模式，的 iv 參數，包含了，加密塊計數（min_count），所以，每次對一個加密塊解密時，需要知道，當前加密塊的初始計數值。&lt;/p&gt; 
+&lt;span id=&quot;OSC_h3_21&quot;&gt;&lt;/span&gt; 
+&lt;h3&gt;5.4.3 舉例説明跳讀流程&lt;/h3&gt; 
+&lt;p&gt;學習了前面讀取加密數據的關鍵細節之後，舉個例子説明跳讀 ORC 文件流程，假設根據索引數據和查詢條件確定需要讀取某個文件中第 1 個 Strip 中第 1 列的第 5 個 group 的數據，那麼我們知道 group5 數據的偏移量 offset，文件結構如下圖所示：&lt;/p&gt; 
+&lt;p&gt;&lt;img src=&quot;https://oscimg.oschina.net/oscnet//84f4126e46e2dcc2d4149f24ffab44c2.png&quot; alt=&quot;&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
+&lt;p&gt;具體邏輯大體流程如下：&lt;/p&gt; 
+&lt;p&gt;&lt;img src=&quot;https://oscimg.oschina.net/oscnet//712c47a3adf74ce35e0044d5b87e8498.png&quot; alt=&quot;&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
+&lt;p&gt;注意：解壓數據塊時，必須把當前解壓塊的所有數據讀出來才能使用對應的解壓算法解壓數據。&lt;/p&gt; 
+&lt;p&gt;1）group5 數據的偏移量 group_offset 計算出 group5 數據在哪個壓縮塊裏,計算公式為：block_index = group_offset/zipBlockSize（壓縮塊大小），並得到該壓縮塊的起始位置 zip_head_offset 公式為：zip_head_offset = block_index*zipBlockSize。&lt;/p&gt; 
+&lt;p&gt;2）獲取 zip_head_offset 位置對應的加密塊計數，加密塊計數值計算公式為：min_count = zip_head_offset/encrypted-size（加密塊大小） 更新 iv 向量的 min_count 值。&lt;/p&gt; 
+&lt;p&gt;3）文件讀指針定位到 zip_head_offset，開始讀取壓縮塊的數據，這個壓縮塊的數據全部讀出之後，使用解壓算法進行解壓。&lt;/p&gt; 
+&lt;p&gt;4）通過 group5 在解壓的數據上偏移量和長度，讀取 group5 數據，然後再對數據進行解碼。&lt;/p&gt; 
+&lt;span id=&quot;OSC_h1_22&quot;&gt;&lt;/span&gt; 
+&lt;h1&gt;六、問題解答&lt;/h1&gt; 
+&lt;p&gt;通過前面對相關內容的講解，下面我們來解答前文提出的問題：&lt;/p&gt; 
+&lt;p&gt;1）文件解壓是否意味着一定是對整個文件進行解壓操作？&lt;/p&gt; 
+&lt;p&gt;答：不需要，文件是按照一定大小劃分出若干個壓縮塊，只要讀出相應的壓縮塊進行解壓就行。&lt;/p&gt; 
+&lt;p&gt;2）ORC 文件究竟是如何做到在不掃描全文件的情況下就能精準查詢到想要的數據？&lt;/p&gt; 
+&lt;p&gt;答：ORC 文件有三層索引，在讀取文件數據之前先讀取各層級的索引信息，根據過濾條件過濾掉不必要的數據掃描，從而提升數據查詢效率。&lt;/p&gt; 
+&lt;p&gt;3）當 SQL 查詢條件不符合最左前綴原則時，其索引效果是否就會失效呢？&lt;/p&gt; 
+&lt;p&gt;答：不會失效，ORC 文件是列式存儲的，各列信息都是相互獨立的，有自己的索引信息，與行式數據庫的索引最左前綴規則不同。&lt;/p&gt; 
+&lt;p&gt;4）數據加密、解密、解壓以及壓縮之間的關聯關係到底是怎樣的？&lt;/p&gt; 
+&lt;p&gt;答：請參考本文：5.1 ORC 文件內部數據加密關係，內容。&lt;/p&gt; 
+&lt;p&gt;5）在寫加密列數據時，為什麼不是先加密數據再壓縮，而是先壓縮後加密？&lt;/p&gt; 
+&lt;p&gt;答：主要是為了提升加密效率，數據被壓縮處理之後，數據量變少了，加密效率就提升了。&lt;/p&gt; 
+&lt;span id=&quot;OSC_h1_23&quot;&gt;&lt;/span&gt; 
+&lt;h1&gt;七、總結&lt;/h1&gt; 
+&lt;p&gt;本文介紹了 StarRocks 數據庫如何讀取 ORC 文件的加密數據，包括相關概念理解、ORC 文件介紹、以及 StarRocks 讀取加密 ORC 文件的具體實現方案。闡述了出於數據安全的需要，對 Hive 表中的敏感數據進行加密存儲的必要性，介紹了對稱加密、文件壓縮與解壓、加密壓縮文件讀寫流程等概念，深入探討了 ORC 文件的三層結構和索引機制，以及如何利用這些特性實現高效查詢加密數據。還詳細描述了 StarRocks 讀取加密 ORC 文件的流程，包括獲取解密的 masterKey、使用 masterKey 解密 ORC 文件中的密鑰、以及使用這些密鑰解密數據。&lt;/p&gt; 
+&lt;p&gt;希望通過本文對 ORC 加密文件讀取功能的實現細節，讓讀者對 ORC 文件的理解更深刻。最後如果想從代碼層面瞭解 ORC 文件解密過程可以參考&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fgithub.com%2FStarRocks%2Fstarrocks%2Fpull%2F46809&quot; rel=&quot;nofollow&quot; target=&quot;_blank&quot;&gt;開源 PR&lt;/a&gt;。&lt;/p&gt;
+                                                                                    &lt;/div&gt;
+                                                                            </description>
+            <link>https://my.oschina.net/vivotech/blog/18015502</link>
+            <guid isPermaLink="false">https://my.oschina.net/vivotech/blog/18015502</guid>
+            <pubDate>Thu, 27 Mar 2025 07:23:58 GMT</pubDate>
+            <author>原創</author>
+        </item>
+        <item>
+            <title>AI 產品榜最新統計數據：夸克成國內唯一月活破億 AI 應用</title>
+            <description>&lt;div class=&quot;content&quot;&gt;
+                                                                                            &lt;p&gt;&lt;span style=&quot;color:#000000&quot;&gt;AI 產品榜最新統計數據顯示，2025 年 2 月份中國 AI 應用中僅夸克 MAU 破億。AI 產品榜認為，中國互聯網巨頭即將拉開 AI 超級應用爭奪戰，而阿里夸克憑藉 MAU 優勢取得領先身位。&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;span style=&quot;color:#000000&quot;&gt;&lt;img height=&quot;355&quot; src=&quot;https://oscimg.oschina.net/oscnet/up-a4a2edf6a5ba93c9a47715cca6b9c4c06f7.png&quot; width=&quot;500&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;span style=&quot;color:#000000&quot;&gt;AI 產品榜指出，以阿里、騰訊、字節為代表的中國互聯網巨頭紛紛將戰略重心轉向 AI，他們將重燃戰火，爭奪 AI 時代的超級應用。&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&amp;nbsp;&lt;/p&gt; 
+&lt;p style=&quot;color:#000000; margin-left:0; margin-right:0; text-align:justify&quot;&gt;&lt;span style=&quot;color:#000000&quot;&gt;3 月 13 日，阿里巴巴宣佈推出 AI 旗艦應用——新夸克。全新夸克基於阿里通義領先的推理及多模態大模型，宣佈告別傳統搜索，升級為一個 All in One 的「AI 超級框」，滿足用戶工作、學習、生活的各類 AI 需求。&lt;/span&gt;&lt;/p&gt; 
+&lt;p style=&quot;color:#000000; margin-left:0; margin-right:0; text-align:justify&quot;&gt;&lt;span style=&quot;color:#000000&quot;&gt;夸克用戶規模上的領先，很大程度上源於夸克對於產品價值的定位。阿里巴巴集團副總裁吳嘉近日在接受採訪時就指出，「夸克的核心定位還是希望成為一個服務廣大用戶的有用的 AI 產品。我們的目標始終是成為 AI 時代體驗領先的「超級入口」，讓夸克通過‘AI 超級框’重構人與信息和任務的交互方式，成為覆蓋工作、學習、生活的‘全能助手’。」&lt;/span&gt;&lt;/p&gt; 
+&lt;p style=&quot;color:#000000; margin-left:0; margin-right:0; text-align:justify&quot;&gt;&lt;span style=&quot;color:#000000&quot;&gt;知名投資人、金沙江創投董事總經理朱嘯虎前不久也在公開場合指出，AI 應用將迎來爆發，新的超級應用將不侷限於 Chat 形態，要做成 AI 超級應用要足夠易用、有產品創新。他提到像夸克就提供了一個好思路，通過一個「AI 超級框」連接用戶與智能體。&lt;/span&gt;&lt;/p&gt; 
+&lt;p style=&quot;color:#000000; margin-left:0; margin-right:0; text-align:justify&quot;&gt;&lt;span style=&quot;color:#000000&quot;&gt;此外，AIGCRank 最新一期發佈的《中國 AI 應用排行榜》亦顯示，在 2 月份的榜單中，夸克以日活用戶 3429.8 萬，連續兩個月穩居行業第一。&lt;/span&gt;&lt;/p&gt;
+                                                                                &lt;/div&gt;
+                                                                            </description>
+            <link>https://www.oschina.net/news/341335</link>
+            <guid isPermaLink="false">https://www.oschina.net/news/341335</guid>
+            <pubDate>Thu, 27 Mar 2025 07:20:58 GMT</pubDate>
+            <author>來源: OSCHINA</author>
+        </item>
+        <item>
+            <title>DuckDB 路線圖發佈</title>
+            <description>&lt;div class=&quot;content&quot;&gt;
+                                                                                            &lt;p&gt;&lt;span style=&quot;color:#000000&quot;&gt;DuckDB 是一個高性能的分析型關係數據庫，旨在實現高效的數據分析，由非盈利組織 DuckDB 基金會管理。它易於安裝，運行速度非常快，並且可以在進程內 (in-process) 運行。&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;span style=&quot;color:#000000&quot;&gt;項目團隊發佈了最新的&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fduckdb.org%2Fdocs%2Fstable%2Fdev%2Froadmap.html&quot; target=&quot;_blank&quot;&gt;發展路線圖&lt;/a&gt;，具體內容如下：&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;strong&gt;Planned Features (March 2025)&lt;/strong&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;span style=&quot;color:#000000&quot;&gt;DuckDB 團隊計劃在來年開發的功能：&lt;/span&gt;&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt;&lt;span style=&quot;background-color:#fafafa; color:#0d0d0d&quot;&gt;&lt;span&gt;&amp;nbsp;&lt;/span&gt;&lt;/span&gt;&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fgithub.com%2Fduckdb%2Fextension-template-c&quot; target=&quot;_blank&quot;&gt;C extension API&lt;/a&gt;&amp;nbsp;的文檔&lt;/li&gt; 
+ &lt;li&gt;Generic ODBC catalog，類似於現有的 PostgreSQL / MySQL / SQLite 集成&lt;/li&gt; 
+ &lt;li&gt;支持 Go 和 Rust 擴展&lt;/li&gt; 
+ &lt;li&gt;&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fduckdb.org%2Fdocs%2Fextensions%2Ficeberg&quot; target=&quot;_blank&quot;&gt;通過 iceberg 擴展&lt;/a&gt;改進了對 iceberg 格式的支持&lt;/li&gt; 
+ &lt;li&gt;用於模式匹配的&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fgithub.com%2Fduckdb%2Fduckdb%2Fdiscussions%2F3994&quot; target=&quot;_blank&quot;&gt;&lt;code class=&quot;language-plaintext&quot;&gt;MATCH RECOGNIZE&lt;/code&gt;&lt;/a&gt;&lt;/li&gt; 
+ &lt;li&gt;使用緩衝區管理器緩存遠程文件內容（例如，在 S3 上查詢 Parquet 文件時）&lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;p&gt;&lt;strong&gt;Future Work&lt;/strong&gt;&lt;/p&gt; 
+&lt;p&gt;計劃在未來的某個時間點完成以下實現：&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt;時間序列優化&lt;/li&gt; 
+ &lt;li&gt;分區感知優化&lt;/li&gt; 
+ &lt;li&gt;排序感知優化&lt;/li&gt; 
+ &lt;li&gt;&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fgithub.com%2Fduckdb%2Fduckdb%2Fdiscussions%2F4512&quot; target=&quot;_blank&quot;&gt;數據庫文件加密&lt;/a&gt;&lt;/li&gt; 
+ &lt;li&gt;使用自動維護的 table samples 進行更好的&amp;nbsp;Filter Cardinality Estimation&lt;/li&gt; 
+ &lt;li&gt;&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fgithub.com%2Fduckdb%2Fduckdb%2Fissues%2F14817&quot; target=&quot;_blank&quot;&gt;Parallel Python UDF&lt;/a&gt;&lt;/li&gt; 
+ &lt;li&gt;&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fgithub.com%2Fduckdb%2Fduckdb%2Fdiscussions%2F4204&quot; target=&quot;_blank&quot;&gt;&lt;code class=&quot;language-plaintext&quot;&gt;ALTER TABLE&lt;/code&gt;支持添加外鍵&lt;/a&gt;&lt;/li&gt; 
+ &lt;li&gt;查詢分析的改進（尤其是對於併發運行的查詢）&lt;/li&gt; 
+ &lt;li&gt;&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fgithub.com%2Fduckdb%2Fduckdb%2Fdiscussions%2F9547&quot; target=&quot;_blank&quot;&gt;XML 讀取支持&lt;/a&gt;&lt;/li&gt; 
+ &lt;li&gt;&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fgithub.com%2Fduckdb%2Fduckdb%2Fdiscussions%2F3638&quot; target=&quot;_blank&quot;&gt;Materialized views&lt;/a&gt;&lt;/li&gt; 
+ &lt;li&gt;&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fgithub.com%2Fduckdb%2Fduckdb%2Fdiscussions%2F13396&quot; target=&quot;_blank&quot;&gt;&lt;code class=&quot;language-plaintext&quot;&gt;MERGE&lt;/code&gt;statement&lt;/a&gt;&lt;/li&gt; 
+ &lt;li&gt;&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fgithub.com%2Fduckdb%2Fduckdb%2Fdiscussions%2F3560&quot; target=&quot;_blank&quot;&gt;支持異步 I/O&lt;/a&gt;&lt;/li&gt; 
+ &lt;li&gt;&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fgithub.com%2Fduckdb%2Fduckdb%2Fdiscussions%2F8104&quot; target=&quot;_blank&quot;&gt;支持 PL/SQL 存儲過程&lt;/a&gt;&lt;/li&gt; 
+&lt;/ul&gt;
+                                                                                &lt;/div&gt;
+                                                                            </description>
+            <link>https://www.oschina.net/news/341325/duckdb-roadmap</link>
+            <guid isPermaLink="false">https://www.oschina.net/news/341325/duckdb-roadmap</guid>
+            <pubDate>Sun, 23 Mar 2025 06:37:00 GMT</pubDate>
+            <author>來源: OSCHINA</author>
+        </item>
+        <item>
+            <title>Ferrous Systems 向 Rust 項目捐贈 Ferrocene 語言規範</title>
+            <description>&lt;div class=&quot;content&quot;&gt;
+                                                                                            &lt;p&gt;&lt;span style=&quot;color:#000000&quot;&gt;Rust 基金會發文&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Frustfoundation.org%2Fmedia%2Fferrous-systems-donates-ferrocene-language-specification-to-rust-project%2F&quot; target=&quot;_blank&quot;&gt;宣佈&lt;/a&gt;，Ferrous Systems 已同意將其 Ferrocene 語言規範 (FLS) 貢獻給 Rust 項目。&lt;/span&gt;&lt;/p&gt; 
+&lt;blockquote&gt; 
+ &lt;p&gt;&lt;span style=&quot;color:#000000&quot;&gt;&quot;這筆慷慨的捐贈將為提供官方 Rust 規範提供更清晰的途徑。它還將使 Rust 項目能夠監督其持續發展，為已經依賴 FLS 的公司和個人提供信心，並標誌着 Rust 生態系統的一個重要里程碑。&quot;&lt;/span&gt;&lt;/p&gt; 
+&lt;/blockquote&gt; 
+&lt;p&gt;&lt;img height=&quot;245&quot; src=&quot;https://oscimg.oschina.net/oscnet/up-b43895946bbb58b8a614809fc729137ed7e.png&quot; width=&quot;700&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;span style=&quot;color:#000000&quot;&gt;眾所周知，Rust 一直缺乏一份官方的語言規範。2022 年 12 月，Rust 項目提交了一份 RFC 以鼓勵 Rust 項目開始制定規範。該 RFC 於 2023 年 7 月獲得批准，並開始工作的推進。起初，Rust 項目規範團隊（t-spec）希望以 Rust Reference 為指導，從頭開始創建文檔。&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;span style=&quot;color:#000000&quot;&gt;但考慮到現有的一份被廣泛應用的外部 Rust 規範 -- FLS。為避免行業內存在兩種高度可見的 Rust 規範而造成的潛在混淆，t-spec 團隊決定嘗試將 FLS 與 Rust Reference 集成以創建官方 Rust 項目規範。&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;span style=&quot;color:#000000&quot;&gt;FLS 是對 Rust 編程語言的描述，由 Ferrous Systems 於 2022 年 7 月開發，Ferrocene 是專為安全關鍵型和受監管行業設計的 Rust 編譯器和工具鏈。FLS 為 Rust 的語法、語義和行為提供了結構化和詳細的參考，可作為驗證、合規性和標準化工作的基礎。&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;span style=&quot;color:#000000&quot;&gt;在經過溝通後，Ferrous Systems 同意將其 FLS 貢獻給 Rust 項目，並允許 Rust 項目接管其開發和管理。&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;span style=&quot;color:#000000&quot;&gt;公告指出，FLS 集成到 Rust 項目會有一個過渡期。第一階段的工作將涉及將 FLS 整合到項目的工具和流程中，以符合現有的 Rust 項目目標。&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;span style=&quot;color:#000000&quot;&gt;「一旦集成完成，Ferrous Systems 將能夠依賴該項目的規範版本並停止使用自己的版本。更廣泛地説，這項工作將為其他需要 Rust 規範的人提供官方、權威的參考，幫助他們使用 Rust 編程語言。」&lt;/span&gt;&lt;/p&gt;
+                                                                                &lt;/div&gt;
+                                                                            </description>
+            <link>https://www.oschina.net/news/341324/donates-ferrocene-language-specification-rust-project</link>
+            <guid isPermaLink="false">https://www.oschina.net/news/341324/donates-ferrocene-language-specification-rust-project</guid>
+            <pubDate>Sun, 23 Mar 2025 06:27:00 GMT</pubDate>
+            <author>來源: OSCHINA</author>
+        </item>
+        <item>
+            <title>李想官宣開源整車操作系統</title>
+            <description>&lt;div class=&quot;content&quot;&gt;
+                                                                                            &lt;p&gt;李想又拋了一個重磅核彈：&lt;strong&gt;理想汽車要開源汽車操作系統&lt;/strong&gt;！&lt;/p&gt; 
+&lt;p&gt;&lt;img height=&quot;450&quot; src=&quot;https://static.oschina.net/uploads/space/2025/0327/140153_niCC_2720166.png&quot; width=&quot;850&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
+&lt;p&gt;理想汽車董事長兼 CEO 李想在今天上午舉辦的中關村論壇年會上宣佈理想汽車自研整車操作系統——&lt;strong&gt;「理想星環 OS」全面開源，4 月登陸開源社區，成為全球首個將整車操作系統開源的車企&lt;/strong&gt;。&lt;/p&gt; 
+&lt;p&gt;&lt;img height=&quot;563&quot; src=&quot;https://static.oschina.net/uploads/space/2025/0327/140214_PaFU_2720166.png&quot; width=&quot;1000&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
+&lt;p&gt;▲理想星環 OS 架構&lt;/p&gt; 
+&lt;p&gt;李想認為，智能汽車需要專用的操作系統，但每個企業都進行閉源開發會導致資源浪費，延緩行業發展。同時，李想指出，開源生態有助於車企節約研發成本，最終普惠終端消費者。&lt;/p&gt; 
+&lt;p&gt;&lt;img src=&quot;https://static.oschina.net/uploads/space/2025/0327/140225_ublh_2720166.png&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
+&lt;p&gt;▲理想星環 OS 可有效節約硬件資源&lt;/p&gt; 
+&lt;p&gt;長期以來，在汽車電子控制單元（ECU）的標準化軟件架構上，基於 AUTOSAR（AUTomotive Open System ARchitecture）架構的操作系統佔據行業主導地位。&lt;/p&gt; 
+&lt;p&gt;&lt;img src=&quot;https://static.oschina.net/uploads/space/2025/0327/140237_0776_2720166.png&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
+&lt;p&gt;▲AUTOSAR 的作用&lt;/p&gt; 
+&lt;p&gt;儘管該架構本身是開放標準，聯盟成員裏也有一汽、上汽、華為等國內公司深度參與，但裏面的核心大廠其實還是傳統歐美汽車產業巨頭在主導。&lt;/p&gt; 
+&lt;p&gt;同時，使用該架構的工具鏈需要支付高額授權費，加之閉源系統適配一款新的芯片要 6 個月，耗費大量人力，不確定性強。&lt;/p&gt; 
+&lt;p&gt;對此，理想汽車開源整車操作系統打破「黑盒化」技術壁壘，再加之開源能夠幫助企業降低基礎研發投入，避免資源浪費。&lt;/p&gt; 
+&lt;hr&gt; 
+&lt;p&gt;&lt;em&gt;來源：&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fmp.weixin.qq.com%2Fs%2Fx--tVE4jRT3tOwmglULGwg&quot; target=&quot;_blank&quot;&gt;https://mp.weixin.qq.com/s/x--tVE4jRT3tOwmglULGwg&lt;/a&gt;&lt;/em&gt;&lt;/p&gt;
+                                                                                &lt;/div&gt;
+                                                                            </description>
+            <link>https://www.oschina.net/news/341314</link>
+            <guid isPermaLink="false">https://www.oschina.net/news/341314</guid>
+            <pubDate>Sun, 23 Mar 2025 06:02:00 GMT</pubDate>
+            <author>來源: OSCHINA</author>
+        </item>
+        <item>
+            <title>英偉達計劃收購賈揚清的創企 Lepton AI</title>
+            <description>&lt;div class=&quot;content&quot;&gt;
+                                                                                            &lt;p&gt;&lt;span style=&quot;color:#000000&quot;&gt;The Information 報道稱，英偉達正洽談收購初創公司 Lepton AI，此次交易價值數億美元。此舉被認為是英偉達進軍雲計算和企業軟件市場的一部分，旨在與亞馬遜和谷歌等主要雲計算提供商展開競爭。&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;img height=&quot;302&quot; src=&quot;https://oscimg.oschina.net/oscnet/up-df08b6fc0c14edc200906b275dd01be2425.png&quot; width=&quot;700&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;span style=&quot;color:#000000&quot;&gt;Lepton AI 成立於 2023 年，由阿里雲前副總裁賈揚清創辦，是一家專注於構建高性能 AI 訓練與推理平台。2023 年 5 月，Lepton AI 完成了 1100 萬美元（摺合人民幣約 7900 萬元）天使輪融資，由 Fusion Fund 基金和 CRV 風投兩家機構投資。&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;span style=&quot;color:#000000&quot;&gt;目前，Lepton AI 主要發佈了兩款產品&lt;/span&gt;&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt;&lt;span style=&quot;color:#000000&quot;&gt;FastGPU：2024 年 6 月上線的雲 GPU 解決方案，主打經濟高效和可靠。&lt;/span&gt;&lt;/li&gt; 
+ &lt;li&gt;&lt;span style=&quot;color:#000000&quot;&gt;Lepton Search：2023 年 12 月推出的對話式搜索引擎，基於 Lepton AI 平台實現，代碼量不到 500 行。&lt;/span&gt;&lt;/li&gt; 
+&lt;/ul&gt;
+                                                                                &lt;/div&gt;
+                                                                            </description>
+            <link>https://www.oschina.net/news/341312/nvidia-advanced-talks-acquire-lepton</link>
+            <guid isPermaLink="false">https://www.oschina.net/news/341312/nvidia-advanced-talks-acquire-lepton</guid>
+            <pubDate>Sun, 23 Mar 2025 05:50:00 GMT</pubDate>
+            <author>來源: OSCHINA</author>
+        </item>
+        <item>
+            <title>谷歌將 Android OS 完全轉變為「內部開發」</title>
+            <description>&lt;div class=&quot;content&quot;&gt;
+                                                                                            &lt;p&gt;Android Authority &lt;u&gt;&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fwww.androidauthority.com%2Fgoogle-android-development-aosp-3538503%2F&quot; target=&quot;_blank&quot;&gt;發佈獨家報道稱&lt;/a&gt;&lt;/u&gt;，谷歌調整了針對 Android OS 的開發策略，&lt;strong&gt;未來 Android OS 將完全轉變為「內部開發」&lt;/strong&gt;。&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt;谷歌已確認 Android OS 的開發將很快完全在「私有環境」中進行&lt;/li&gt; 
+ &lt;li&gt;目前，谷歌會在公開的 AOSP Gerrit 上分享一些工作，但未來所有的工作都將在「私有環境」中進行&lt;/li&gt; 
+ &lt;li&gt;&lt;strong&gt;將&amp;nbsp;Android OS 將完全轉變為「內部開發」是為了簡化開發流程&lt;/strong&gt;，對外部開發者沒有影響，谷歌承諾在每次發佈新版操作系統後仍會將源代碼更新到 AOSP&lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;blockquote&gt; 
+ &lt;p&gt;&lt;img src=&quot;https://oscimg.oschina.net/oscnet/up-2390338a0fc5120e9ddaf4181dad39a2051.png&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
+&lt;/blockquote&gt; 
+&lt;p&gt;根據報道，谷歌正在從根本上改變未來開發 Android 的方式，將相關開發工作流程徹底轉向內部分支。&lt;strong&gt;這些內部分支僅供 Google 員工和擁有 Google 移動服務 (GMS) 許可的合作公司使用，例如三星和摩托羅拉&lt;/strong&gt;。&lt;/p&gt; 
+&lt;p&gt;谷歌解釋稱，這一變化是為了簡化開發工作流程和軟件發佈。這是近期主幹開發趨勢的延續。該公司表示，他們花了多少工作來保持內部開發分支和公共 AOSP 分支之間的同步，而這些分支在功能和 API 支持上會有所不同。合併開發應該可以讓他們擺脫這些複雜性。&lt;/p&gt; 
+&lt;p&gt;&lt;strong&gt;為了平衡 AOSP 的開源性質與產品開發策略，谷歌維護了兩個主要的 Android 分支：公開的 AOSP 分支和內部開發分支。&lt;/strong&gt;&lt;/p&gt; 
+&lt;p&gt;AOSP 分支面向所有人開放，而谷歌的內部分支僅限於擁有谷歌移動服務（GMS）許可協議的公司訪問。雖然諸如 Android 藍牙協議棧等一些 OS 組件是在 AOSP 分支中公開開發的，但大多數組件，包括核心 Android OS 框架，都是在谷歌的內部分支中私下開發的。&lt;/p&gt; 
+&lt;p&gt;現在，&lt;strong&gt;谷歌已確認將把所有 Android OS 開發轉移到其內部分支&lt;/strong&gt;，這一變化旨在簡化其開發流程。&lt;/p&gt; 
+&lt;p&gt;雖然發生了這一轉變，但谷歌重申了其對開源的承諾。它繼續致力於在完成開發和準備發佈版本後將後續 Android 版本的最終源代碼發佈到 AOSP，堅持成品的開源性質。&lt;/p&gt; 
+&lt;p&gt;谷歌很可能會在不久的將來宣佈有關這一開發流程變化的更多信息，這些變化可能會在一週內生效。&lt;/p&gt;
+                                                                                &lt;/div&gt;
+                                                                            </description>
+            <link>https://www.oschina.net/news/341310/google-android-development-aosp</link>
+            <guid isPermaLink="false">https://www.oschina.net/news/341310/google-android-development-aosp</guid>
+            <pubDate>Sun, 23 Mar 2025 05:37:00 GMT</pubDate>
+            <author>來源: OSCHINA</author>
+        </item>
+        <item>
+            <title>Warm-Flow 過去、現在和未來都不會有商業版</title>
+            <description>&lt;div class=&quot;content&quot;&gt;
+                                                                                            &lt;h1&gt;Warm-Flow 過去、現在和未來都不會有商業版&lt;/h1&gt; 
+&lt;ul&gt; 
+ &lt;li&gt; &lt;p&gt;Warm-Flow 從 24 年 2 月加入 Dromara 開源社區，也正是由於加入他，Warm-Flow 才等到更多人的關注和幫助。&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;同時吸引了不少貢獻者，有的也成為了 Warm-Flow 的成員。&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;因此為了回饋大家，也是為了 Warm-Flow 更好的發展，再次申明&lt;/p&gt; &lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;p&gt;&lt;span style=&quot;color:#e74c3c&quot;&gt;過去、現在和未來都不會有商業版！！！&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;所以還請大家不用擔心，該有的功能陸續都會加上去，敬請期待！&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt;事件&lt;/li&gt; 
+ &lt;li&gt;子流程&lt;/li&gt; 
+ &lt;li&gt;會籤和票籤通過率策略，支持擴展&lt;/li&gt; 
+ &lt;li&gt;重啓流程&lt;/li&gt; 
+ &lt;li&gt;包容網關&lt;/li&gt; 
+ &lt;li&gt;動態表單&lt;/li&gt; 
+ &lt;li&gt;仿釘釘設計器&lt;/li&gt; 
+ &lt;li&gt;取回&lt;/li&gt; 
+ &lt;li&gt;撤銷&lt;/li&gt; 
+ &lt;li&gt;實體類、dto、vo 等獨立成一個模塊，方便微服務接入&lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;h2&gt;&lt;strong&gt;項目介紹&lt;/strong&gt;&lt;/h2&gt; 
+&lt;p&gt;&lt;strong&gt;Dromara Warm-Flow 國產工作流引擎，其特點簡潔輕量，五臟俱全，靈活擴展性強，是一個可通過 jar 引入設計器的工作流。&lt;/strong&gt;&lt;/p&gt; 
+&lt;ol&gt; 
+ &lt;li&gt;支持常見審批功能、監聽器與流程變量、條件表達式、辦理人變量表達式&lt;/li&gt; 
+ &lt;li&gt;自帶流程圖、流程設計器、節點擴展屬性&lt;/li&gt; 
+ &lt;li&gt;支持常見的 orm 框架&lt;/li&gt; 
+ &lt;li&gt;支持不同的數據庫&lt;/li&gt; 
+ &lt;li&gt;生態豐富可擴展，文檔全面&lt;/li&gt; 
+&lt;/ol&gt; 
+&lt;h2&gt;&lt;strong&gt;功能思維導圖&lt;/strong&gt;&lt;/h2&gt; 
+&lt;div&gt;
+ &lt;img src=&quot;https://oscimg.oschina.net/oscnet//2e2cf041b103c7d70aa49f71b2eb2d72.png&quot; referrerpolicy=&quot;no-referrer&quot;&gt;
+&lt;/div&gt; 
+&lt;h2&gt;&lt;strong&gt;流程圖&lt;/strong&gt;&lt;/h2&gt; 
+&lt;div&gt;
+ &lt;img src=&quot;https://oscimg.oschina.net/oscnet//e7b50dfdeb4fac83b405024b890982da.png&quot; referrerpolicy=&quot;no-referrer&quot;&gt;
+&lt;/div&gt; 
+&lt;h2&gt;&lt;strong&gt;演示地址&lt;/strong&gt;&lt;/h2&gt; 
+&lt;p&gt;&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=http%3A%2F%2Fwww.hhzai.top&quot; target=&quot;_blank&quot;&gt;http://www.hhzai.top&lt;/a&gt;&lt;/p&gt; 
+&lt;p&gt;賬號密碼：admin/admin123&lt;/p&gt; 
+&lt;h2&gt;&lt;strong&gt;官網&lt;/strong&gt;&lt;/h2&gt; 
+&lt;p&gt;&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fwarm-flow.dromara.org&quot; target=&quot;_blank&quot;&gt;https://warm-flow.dromara.org&lt;/a&gt;&lt;/p&gt; 
+&lt;h2&gt;&lt;strong&gt;Warm-Flow 視頻&lt;/strong&gt;&lt;/h2&gt; 
+&lt;p&gt;&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fwww.bilibili.com%2Fvideo%2FBV1AWRGYEEVr%2F%3Fspm_id_from%3D333.1387.0.0%26vd_source%3D1be886ace16159801f6ed0106df215d9&quot; target=&quot;_blank&quot;&gt;Warm-Flow 初體驗&lt;/a&gt;&lt;/p&gt;
+                                                                                &lt;/div&gt;
+                                                                            </description>
+            <link>https://www.oschina.net/news/341305</link>
+            <guid isPermaLink="false">https://www.oschina.net/news/341305</guid>
+            <pubDate>Sun, 23 Mar 2025 04:27:00 GMT</pubDate>
+            <author>來源: 投稿</author>
+        </item>
+        <item>
+            <title>OpenAI 將完成 400 億美元融資：軟銀領投、估值 3000 億美元</title>
+            <description>&lt;div class=&quot;content&quot;&gt;
+                                                                                            &lt;p&gt;&lt;u&gt;&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fwww.bloomberg.com%2Fnews%2Farticles%2F2025-03-26%2Fopenai-close-to-finalizing-its-40-billion-softbank-led-funding&quot; target=&quot;_blank&quot;&gt;據知情人士透露&lt;/a&gt;&lt;/u&gt;，OpenAI 即將完成由軟銀集團領投的 400 億美元融資，包括 Magnetar Capital、Coatue Management、Founders Fund 和 Altimeter Capital Management 在內的投資者正在洽談參與。&lt;/p&gt; 
+&lt;p&gt;&lt;img src=&quot;https://static.oschina.net/uploads/space/2025/0327/113653_D5HA_2720166.png&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
+&lt;p&gt;據多名知情人士透露，總部位於伊利諾伊州埃文斯頓的對沖基金 Magnetar Capital 可能會注資高達 10 億美元。由於信息屬於保密性質，這些知情人士均要求不具名。&lt;/p&gt; 
+&lt;p&gt;OpenAI、Magnetar 和 Founders Fund 的代表拒絕就此輪融資發表評論。Coatue 和 Altimeter 尚未立即回應置評請求。&lt;/p&gt; 
+&lt;p&gt;根據研究公司 PitchBook 彙編的數據，這家人工智能開發商的這輪融資將是有史以來規模最大的一輪融資。這筆交易將使該公司的估值達到 3000 億美元，幾乎是 ChatGPT 製造商去年 10 月融資時 1570 億美元的估值的兩倍。&lt;/p&gt; 
+&lt;p&gt;據一位知情人士透露，作為交易的一部分，軟銀將向該公司投資 75 億美元，外加來自投資者財團的 25 億美元。這位知情人士表示，今年晚些時候還將有第二筆 300 億美元的投資，其中 225 億美元來自軟銀，75 億美元來自投資者財團。&lt;/p&gt; 
+&lt;p&gt;軟銀拒絕置評。這家日本企業集團已向星際之門項目投入了數十億美元，該項目是與 OpenAI、甲骨文公司和 MGX 等合作伙伴在德克薩斯州阿比林成立的合資企業。&lt;/p&gt;
+                                                                                &lt;/div&gt;
+                                                                            </description>
+            <link>https://www.oschina.net/news/341284/openai-close-to-finalizing-its-40-billion-softbank-led-funding</link>
+            <guid isPermaLink="false">https://www.oschina.net/news/341284/openai-close-to-finalizing-its-40-billion-softbank-led-funding</guid>
+            <pubDate>Sun, 23 Mar 2025 03:38:00 GMT</pubDate>
+            <author>來源: OSCHINA</author>
+        </item>
+        <item>
+            <title>2024 年度「中國科學十大進展」發佈</title>
+            <description>&lt;div class=&quot;content&quot;&gt;
+                                                                                            &lt;p&gt;&lt;span style=&quot;color:#000000&quot;&gt;2025 年 3 月 27 日，國家自然科學基金委員會&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fmp.weixin.qq.com%2Fs%2FNE2935ZMmTN1Ixd04orn6w&quot; target=&quot;_blank&quot;&gt;發佈&lt;/a&gt;了 2024 年度「中國科學十大進展」，分別為：&lt;/span&gt;&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt;&lt;span style=&quot;color:#000000&quot;&gt;嫦娥六號返回樣品揭示月背 28 億年前火山活動&lt;/span&gt;&lt;/li&gt; 
+ &lt;li&gt;&lt;span style=&quot;color:#000000&quot;&gt;實現大規模光計算芯片的智能推理與訓練&lt;/span&gt;&lt;/li&gt; 
+ &lt;li&gt;&lt;span style=&quot;color:#000000&quot;&gt;闡明單胺類神經遞質轉運機制及相關精神疾病藥物調控機理&lt;/span&gt;&lt;/li&gt; 
+ &lt;li&gt;&lt;span style=&quot;color:#000000&quot;&gt;實現原子級特徵尺度與可重構光頻相控陣的納米激光器&lt;/span&gt;&lt;/li&gt; 
+ &lt;li&gt;&lt;span style=&quot;color:#000000&quot;&gt;發現自旋超固態巨磁卡效應與極低溫製冷新機制&lt;/span&gt;&lt;/li&gt; 
+ &lt;li&gt;&lt;span style=&quot;color:#000000&quot;&gt;異體 CAR-T 細胞療法治療自身免疫病&lt;/span&gt;&lt;/li&gt; 
+ &lt;li&gt;&lt;span style=&quot;color:#000000&quot;&gt;額外 X 染色體多維度影響男性生殖細胞發育&lt;/span&gt;&lt;/li&gt; 
+ &lt;li&gt;&lt;span style=&quot;color:#000000&quot;&gt;凝聚態物質中引力子模的實驗發現&lt;/span&gt;&lt;/li&gt; 
+ &lt;li&gt;&lt;span style=&quot;color:#000000&quot;&gt;高能量轉化效率錒系輻射光伏微核電池的創制&lt;/span&gt;&lt;/li&gt; 
+ &lt;li&gt;&lt;span style=&quot;color:#000000&quot;&gt;發現超大質量黑洞影響宿主星系形成演化的重要證據&lt;/span&gt;&lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;p&gt;&lt;span style=&quot;color:#000000&quot;&gt;&lt;img height=&quot;302&quot; src=&quot;https://oscimg.oschina.net/oscnet/up-b9a7717267f93f463b0853bd1f6c5ae250f.png&quot; width=&quot;500&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&amp;nbsp;&lt;/span&gt;&lt;/p&gt;
+                                                                                &lt;/div&gt;
+                                                                            </description>
+            <link>https://www.oschina.net/news/341273</link>
+            <guid isPermaLink="false">https://www.oschina.net/news/341273</guid>
+            <pubDate>Sun, 23 Mar 2025 03:23:00 GMT</pubDate>
+            <author>來源: OSCHINA</author>
+        </item>
+        <item>
+            <title>美圖 AI 素材生成器 WHEE 接入 DeepSeek R1</title>
+            <description>&lt;div class=&quot;content&quot;&gt;
+                                                                                            &lt;p&gt;&lt;span style=&quot;color:#000000&quot;&gt;美圖公司旗下的 AI 素材生成器 WHEE 近日&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fmp.weixin.qq.com%2Fs%2F9Sa0Q68P-74QR8WKhXg47Q&quot; target=&quot;_blank&quot;&gt;宣佈&lt;/a&gt;成功接入&amp;nbsp;DeepSeek R1 滿血版。此舉旨在將 DeepSeek 的專業提示詞設計能力與 WHEE 的易用性相結合，幫助用戶在無專業背景的情況下輕鬆生成高質量的圖像內容。用戶只需輸入簡單的詞彙，AI 便能一鍵生成專業提示詞，大大降低了使用門檻。&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;span style=&quot;color:#000000&quot;&gt;此次 WHEE 接入 DeepSeek R1，通過提示詞優化功能，能夠自動補全光影、構圖和風格等關鍵詞，從而生成更為豐富和完整的文案內容。&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;img height=&quot;350&quot; src=&quot;https://oscimg.oschina.net/oscnet/up-025674c89918714c860c2c35557502b8f99.png&quot; width=&quot;300&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;span style=&quot;color:#000000&quot;&gt;WHEE 的相關負責人指出，DeepSeek 的接入不僅是功能上的疊加，更是一個 「翻譯器」 和 「靈感孵化器」，能通過多種方案的對比來激發創作者的靈感。藉助 DeepSeek 強大的語義理解和聯想能力，WHEE 希望降低創作者的使用門檻，助力創意的精準落地。&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;span style=&quot;color:#000000&quot;&gt;目前，美圖公司旗下的多款產品，如美圖設計室、開拍、WHEE、MOKI 等均已接入 DeepSeek R1。&lt;/span&gt;&lt;/p&gt;
+                                                                                &lt;/div&gt;
+                                                                            </description>
+            <link>https://www.oschina.net/news/341261</link>
+            <guid isPermaLink="false">https://www.oschina.net/news/341261</guid>
+            <pubDate>Sun, 23 Mar 2025 03:02:00 GMT</pubDate>
+            <author>來源: OSCHINA</author>
+        </item>
         <item>
             <title>OpenAI 預估 2025 年營收將達到 127 億美元</title>
             <description>&lt;div class=&quot;content&quot;&gt;
@@ -24,7 +488,7 @@
                                                                             </description>
             <link>https://www.oschina.net/news/341252</link>
             <guid isPermaLink="false">https://www.oschina.net/news/341252</guid>
-            <pubDate>Thu, 27 Mar 2025 02:34:25 GMT</pubDate>
+            <pubDate>Sun, 23 Mar 2025 02:34:00 GMT</pubDate>
             <author>來源: OSCHINA</author>
         </item>
         <item>
@@ -82,7 +546,7 @@
                                                                             </description>
             <link>https://my.oschina.net/u/7819858/blog/18015313</link>
             <guid isPermaLink="false">https://my.oschina.net/u/7819858/blog/18015313</guid>
-            <pubDate>Thu, 27 Mar 2025 02:32:25 GMT</pubDate>
+            <pubDate>Sun, 23 Mar 2025 02:31:00 GMT</pubDate>
             <author>原創</author>
         </item>
         <item>
@@ -101,7 +565,7 @@
                                                                             </description>
             <link>https://www.oschina.net/news/341248</link>
             <guid isPermaLink="false">https://www.oschina.net/news/341248</guid>
-            <pubDate>Thu, 27 Mar 2025 02:23:25 GMT</pubDate>
+            <pubDate>Sun, 23 Mar 2025 02:22:00 GMT</pubDate>
             <author>來源: OSCHINA</author>
         </item>
         <item>
@@ -1839,7 +2303,7 @@ default:
                                                                             </description>
             <link>https://my.oschina.net/qiangmzsx/blog/18014540</link>
             <guid isPermaLink="false">https://my.oschina.net/qiangmzsx/blog/18014540</guid>
-            <pubDate>Thu, 27 Mar 2025 02:15:25 GMT</pubDate>
+            <pubDate>Sun, 23 Mar 2025 02:15:00 GMT</pubDate>
             <author>原創</author>
         </item>
         <item>
@@ -1867,7 +2331,7 @@ default:
                                                                             </description>
             <link>https://www.oschina.net/news/341243/qwen2-5-omni-7b</link>
             <guid isPermaLink="false">https://www.oschina.net/news/341243/qwen2-5-omni-7b</guid>
-            <pubDate>Thu, 27 Mar 2025 02:12:25 GMT</pubDate>
+            <pubDate>Sun, 23 Mar 2025 02:11:00 GMT</pubDate>
             <author>來源: OSCHINA</author>
         </item>
         <item>
@@ -1888,7 +2352,7 @@ default:
                                                                             </description>
             <link>https://www.oschina.net/news/341240/openai-agents-sdk-mcp</link>
             <guid isPermaLink="false">https://www.oschina.net/news/341240/openai-agents-sdk-mcp</guid>
-            <pubDate>Thu, 27 Mar 2025 02:04:25 GMT</pubDate>
+            <pubDate>Sun, 23 Mar 2025 02:04:00 GMT</pubDate>
             <author>來源: OSCHINA</author>
         </item>
         <item>
@@ -1902,7 +2366,7 @@ default:
                                                                             </description>
             <link>https://www.oschina.net/news/341239</link>
             <guid isPermaLink="false">https://www.oschina.net/news/341239</guid>
-            <pubDate>Thu, 27 Mar 2025 02:00:25 GMT</pubDate>
+            <pubDate>Sun, 23 Mar 2025 02:00:00 GMT</pubDate>
             <author>來源: OSCHINA</author>
         </item>
         <item>
@@ -1917,7 +2381,7 @@ default:
                                                                             </description>
             <link>https://www.oschina.net/news/341237</link>
             <guid isPermaLink="false">https://www.oschina.net/news/341237</guid>
-            <pubDate>Thu, 27 Mar 2025 01:56:25 GMT</pubDate>
+            <pubDate>Sun, 23 Mar 2025 01:56:00 GMT</pubDate>
             <author>來源: OSCHINA</author>
         </item>
         <item>
@@ -1945,372 +2409,7 @@ default:
                                                                             </description>
             <link>https://www.oschina.net/news/341235</link>
             <guid isPermaLink="false">https://www.oschina.net/news/341235</guid>
-            <pubDate>Thu, 27 Mar 2025 01:47:25 GMT</pubDate>
-            <author>來源: OSCHINA</author>
-        </item>
-        <item>
-            <title>中國 AIGC APP 月活 TOP10 出爐：DeepSeek 第一、豆包第二</title>
-            <description>&lt;div class=&quot;content&quot;&gt;
-                                                                                            &lt;p&gt;&lt;u&gt;&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fmp.weixin.qq.com%2Fs%2Fl4_g0dgHMu0g9E2AEbRLfw&quot; target=&quot;_blank&quot;&gt;QuestMobile 數據顯示&lt;/a&gt;&lt;/u&gt;，截止 2025 年 1 月，全網用戶月人均使用時長提升至 171.4 小時，增速放緩，人均使用次數及 APP 個數分別達到 2487.9 次和 28.7 個，趨於穩定。其中，數量、時長同比均微增，但是次數同比出現了罕見的下降。&lt;/p&gt; 
-&lt;p&gt;&lt;img height=&quot;582&quot; src=&quot;https://static.oschina.net/uploads/space/2025/0326/192553_3GKs_2720166.png&quot; width=&quot;960&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
-&lt;p&gt;2025 年 1 月，月活躍用戶增長榜單中，AIGC、智能家居、用車服務等領域同比分別增長了 244.7%、16.7%、20.8%；相比之下，兩年前的 2023 年 1 月，月活躍用戶增長較快的領域分別為綜合電商、手機銀行、效率辦公、益智休閒遊戲等領域，增速分別為 12.1%、18.4%、22.9%、57.5%。&lt;/p&gt; 
-&lt;p&gt;QuestMobile 數據顯示，2025 年 1 月，AIGC APP 行業月活躍用戶規模同比增長率高達 244.7%，淨增量超 9200 萬，領跑移動互聯網行業。&lt;/p&gt; 
-&lt;p&gt;&lt;img src=&quot;https://static.oschina.net/uploads/space/2025/0326/192740_XN38_2720166.png&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
-&lt;p&gt;隨着 AI 大模型的不斷升級，深度思考和推理能力顯著提升，AIGC 已成為全網增速最快賽道，&lt;strong&gt;DeepSeek APP 上線次月活躍用戶規模突破 1.8 億，豆包 APP 破億，騰訊元寶、納米 AI 搜索在 DeepSeek 大模型加持下，躋身 TOP5&lt;/strong&gt;。&lt;/p&gt; 
-&lt;p&gt;&lt;img src=&quot;https://static.oschina.net/uploads/space/2025/0326/192702_SJHe_2720166.png&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
-&lt;p&gt;&lt;img src=&quot;https://static.oschina.net/uploads/space/2025/0326/192719_cAAX_2720166.png&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
-&lt;p&gt;QuestMobile 數據顯示，納米 AI 搜索、騰訊元寶 APP 在接入 DeepSeek 大模型後日活躍用戶規模提升顯著，其中，騰訊元寶 APP 在接入大模型 11 天后日活躍用戶規模突破 500 萬，納米 AI 搜索 2 月日活峯值達 384.8 萬。&lt;/p&gt;
-                                                                                &lt;/div&gt;
-                                                                            </description>
-            <link>https://www.oschina.net/news/341168</link>
-            <guid isPermaLink="false">https://www.oschina.net/news/341168</guid>
-            <pubDate>Sat, 22 Mar 2025 11:28:00 GMT</pubDate>
-            <author>來源: OSCHINA</author>
-        </item>
-        <item>
-            <title>worth-calculator —— 計算「這班上得值不值」的開源項目</title>
-            <description>&lt;div class=&quot;content&quot;&gt;
-                                                                                                                                                                                                                            &lt;p&gt;worth-calculator 是一個工作性價比計算器，通過一系列計算公式，計算出我們當前工作的性價比分數，看到底 「值不值得」 上這個（B）班。&lt;/p&gt;
-
-&lt;p&gt;具體能算以下幾項信息：&lt;/p&gt;
-
-&lt;ul&gt;
-&lt;li&gt;&amp;nbsp;到手工資: 基於年薪和實際工作天數算出真實日薪。&lt;/li&gt;
-&lt;li&gt;時間成本: 上班時長、通勤時間、各種假期都考慮進去了。&lt;/li&gt;
-&lt;li&gt;&amp;nbsp;工作環境: 從工位到同事，全方位評估。&lt;/li&gt;
-&lt;li&gt;最終結果: 給你一個直觀的參考指標。&lt;/li&gt;
-&lt;/ul&gt;
-
-&lt;p&gt;結果評判標準：&lt;/p&gt;
-
-&lt;ul&gt;
-&lt;li&gt;😱 低於 1.0：很慘&lt;/li&gt;
-&lt;li&gt;😐 1.0-1.8：一般&lt;/li&gt;
-&lt;li&gt;😎 1.8-2.5：很爽&lt;/li&gt;
-&lt;li&gt;🤩 高於 2.5：爽到爆炸&lt;/li&gt;
-&lt;/ul&gt;
-
-&lt;p&gt;運行效果&lt;/p&gt;
-
-&lt;p&gt;&lt;img height=&quot;3494&quot; src=&quot;https://static.oschina.net/uploads/space/2025/0326/185439_kGZz_2720166.png&quot; width=&quot;1862&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt;
-
-&lt;p&gt;&lt;img src=&quot;https://static.oschina.net/uploads/space/2025/0326/185507_bxX6_2720166.png&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt;
-
-                                                                    &lt;/div&gt;
-                                                                </description>
-            <link>https://www.oschina.net/p/worth-calculator</link>
-            <guid isPermaLink="false">https://www.oschina.net/p/worth-calculator</guid>
-            <pubDate>Sat, 22 Mar 2025 11:07:00 GMT</pubDate>
-        </item>
-        <item>
-            <title>讓 AI 評審代碼！Gitee Code MCP 幫你高效完成 PR Review</title>
-            <description>&lt;div class=&quot;content&quot;&gt;
-                                                                                            &lt;p&gt;還在為開發寫的「屎山」代碼發愁？&lt;/p&gt; 
-&lt;p&gt;還在為每天 Review 不完的代碼苦惱？&lt;/p&gt; 
-&lt;p&gt;每次看完代碼卻不知道怎麼評論合適？&lt;/p&gt; 
-&lt;p&gt;&lt;strong&gt;今天馬建倉繼續帶着 Gitee Code MCP 走來了！&lt;/strong&gt;&lt;/p&gt; 
-&lt;p&gt;馬建倉今天將帶你體驗 Gitee Code MCP + Cursor 的完整實踐流程，並展示 AI 在&lt;code&gt;代碼審核&lt;/code&gt;、&lt;code&gt;優化建議&lt;/code&gt;、&lt;code&gt;自動合併&lt;/code&gt;環節的強大能力。&lt;/p&gt; 
-&lt;p&gt;把代碼託管簡單化，把 PR Review 敏捷化，用 Gitee Code MCP 把 PR Review 的煩惱統統搞定！&lt;/p&gt; 
-&lt;h1&gt;01 快速上手：配置 Gitee Code MCP&lt;/h1&gt; 
-&lt;p&gt;在開始之前，要先擁有屬於自己的 Gitee DevOps 旗艦版賬號，並創建私人令牌（僅需&lt;code&gt;接口操作&lt;/code&gt;和&lt;code&gt;代碼庫&lt;/code&gt;、&lt;code&gt;代碼組&lt;/code&gt;權限）。&lt;/p&gt; 
-&lt;p&gt;&lt;img src=&quot;https://static.oschina.net/uploads/space/2025/0326/182107_e4mQ_2720166.png&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
-&lt;p&gt;下載並編譯 Gitee Code MCP Server，可選擇&lt;code&gt;Docker&lt;/code&gt;或&amp;nbsp;&lt;code&gt;Node&lt;/code&gt;方式運行。&lt;/p&gt; 
-&lt;ul&gt; 
- &lt;li&gt;Docker build 編譯：&lt;/li&gt; 
-&lt;/ul&gt; 
-&lt;pre&gt;&lt;code&gt;docker build -t gitee-mcp:latest -f Dockerfile .&amp;nbsp;&lt;/code&gt;&lt;/pre&gt; 
-&lt;ul&gt; 
- &lt;li&gt;Npm 安裝依賴，使用 node 運行：&lt;/li&gt; 
-&lt;/ul&gt; 
-&lt;pre&gt;&lt;code&gt;npm install&lt;/code&gt;&lt;/pre&gt; 
-&lt;ul&gt; 
- &lt;li&gt;在 Cursor 中安裝使用 MCP&lt;/li&gt; 
-&lt;/ul&gt; 
-&lt;p&gt;&lt;img src=&quot;https://static.oschina.net/uploads/space/2025/0326/182139_sUUi_2720166.png&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
-&lt;ul&gt; 
- &lt;li&gt;配置 MCP Server&lt;/li&gt; 
-&lt;/ul&gt; 
-&lt;p&gt;以 Docker 方式運行 MCP Server：&lt;/p&gt; 
-&lt;pre&gt;&lt;code&gt;{
-&amp;nbsp;&amp;nbsp;&quot;mcpServers&quot;: {
-&amp;nbsp; &amp;nbsp;&amp;nbsp;&quot;mcp_server_gitee&quot;: {
-&amp;nbsp; &amp;nbsp; &amp;nbsp;&amp;nbsp;&quot;command&quot;:&amp;nbsp;&quot;docker&quot;,
-&amp;nbsp; &amp;nbsp; &amp;nbsp;&amp;nbsp;&quot;args&quot;: [
-&amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp;&amp;nbsp;&quot;run&quot;,
-&amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp;&amp;nbsp;&quot;--rm&quot;,
-&amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp;&amp;nbsp;&quot;-i&quot;,
-&amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp;&amp;nbsp;&quot;-e&quot;,
-&amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp;&amp;nbsp;&quot;GITEE_PERSONAL_ACCESS_TOKEN&quot;,
-&amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp;&amp;nbsp;&quot;-e&quot;,
-&amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp;&amp;nbsp;&quot;GITEE_API_URL&quot;,
-&amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp;&amp;nbsp;&quot;gitee-mcp:latest&quot;
-&amp;nbsp; &amp;nbsp; &amp;nbsp; ],
-&amp;nbsp; &amp;nbsp; &amp;nbsp;&amp;nbsp;&quot;env&quot;: {
-&amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp;&amp;nbsp;&quot;GITEE_PERSONAL_ACCESS_TOKEN&quot;:&amp;nbsp;&quot;個人令牌&quot;,
-&amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp;&amp;nbsp;&quot;GITEE_API_URL&quot;:&amp;nbsp;&quot;http://xxx.gitee.work/api/v8&quot;&amp;nbsp;// V8 接口
-&amp;nbsp; &amp;nbsp; &amp;nbsp; },
-&amp;nbsp; &amp;nbsp; &amp;nbsp;&amp;nbsp;&quot;disabled&quot;:&amp;nbsp;false,
-&amp;nbsp; &amp;nbsp; &amp;nbsp;&amp;nbsp;&quot;autoApprove&quot;: []
-&amp;nbsp; &amp;nbsp; }
-&amp;nbsp; }
-}&lt;/code&gt;&lt;/pre&gt; 
-&lt;p&gt;以 Node 方式運行 MCP Server：&lt;/p&gt; 
-&lt;pre&gt;&lt;code&gt;{
-&amp;nbsp;&amp;nbsp;&quot;mcpServers&quot;: {
-&amp;nbsp; &amp;nbsp;&amp;nbsp;&quot;gitee_mcp&quot;: {
-&amp;nbsp; &amp;nbsp; &amp;nbsp;&amp;nbsp;&quot;command&quot;:&amp;nbsp;&quot;node&quot;,
-&amp;nbsp; &amp;nbsp; &amp;nbsp;&amp;nbsp;&quot;args&quot;: [
-&amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp;&amp;nbsp;&quot;mcp 代碼目錄/build/index.js&quot;
-&amp;nbsp; &amp;nbsp; &amp;nbsp; ],
-&amp;nbsp; &amp;nbsp; &amp;nbsp;&amp;nbsp;&quot;env&quot;: {
-&amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp;&amp;nbsp;&quot;GITEE_PERSONAL_ACCESS_TOKEN&quot;:&amp;nbsp;&quot;個人令牌&quot;,
-&amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp;&amp;nbsp;&quot;GITEE_API_URL&quot;:&amp;nbsp;&quot;http://xxx.gitee.work/api/v8&quot;
-&amp;nbsp; &amp;nbsp; &amp;nbsp; }
-&amp;nbsp; &amp;nbsp; }
-&amp;nbsp; }
-}&lt;/code&gt;&lt;/pre&gt; 
-&lt;p&gt;出現彈窗後，無需關閉，查看 MCP Server 顯示為綠色即為成功運行。&lt;/p&gt; 
-&lt;p&gt;&lt;img src=&quot;https://static.oschina.net/uploads/space/2025/0326/182208_c2r1_2720166.png&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
-&lt;p&gt;打開新的聊天窗口，設置為 Agent 聊天。&lt;/p&gt; 
-&lt;p&gt;&lt;img src=&quot;https://static.oschina.net/uploads/space/2025/0326/182219_BpD2_2720166.png&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
-&lt;p&gt;至此環境配置完成，接下來讓我們看看 Gitee Code MCP 如何，智能化提升 PR Review 體驗。&lt;/p&gt; 
-&lt;h1&gt;02 AI 賦能 PR Review：高效應對三大評審場景&lt;/h1&gt; 
-&lt;h2&gt;「屎山」代碼？快速駁回！&lt;/h2&gt; 
-&lt;p&gt;面對團隊中堆積如山的 PR，逐個手動檢查不僅低效，還可能遺漏關鍵問題。Gitee Code MCP 可以直接獲取代碼倉庫中的所有待審 PR，快速呈現變更內容，並智能分析代碼質量，幫助開發者精準識別可能存在的問題。&lt;/p&gt; 
-&lt;ul&gt; 
- &lt;li&gt;獲取代碼倉庫&lt;/li&gt; 
-&lt;/ul&gt; 
-&lt;p&gt;&lt;img src=&quot;https://static.oschina.net/uploads/space/2025/0326/182245_vg10_2720166.png&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
-&lt;p&gt;這時 Gitee Code MCP 會把想要查的倉庫展示出來。如果想知道這個倉庫裏當前有哪些 PR 沒處理的，同樣可以讓 Gitee Code MCP 列出來：&lt;/p&gt; 
-&lt;p&gt;&lt;img src=&quot;https://static.oschina.net/uploads/space/2025/0326/182259_ahK3_2720166.png&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
-&lt;p&gt;分析 PR 很累？不用擔心，Gitee Code MCP 可以幫你一鍵 Review：&lt;/p&gt; 
-&lt;p&gt;&lt;img src=&quot;https://static.oschina.net/uploads/space/2025/0326/182317_cprc_2720166.png&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
-&lt;p&gt;讓我們再回到 Gitee Code 上看一看：&lt;/p&gt; 
-&lt;p&gt;&lt;img src=&quot;https://static.oschina.net/uploads/space/2025/0326/182334_8utO_2720166.png&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
-&lt;h2&gt;神級代碼？照樣鋭評！&lt;/h2&gt; 
-&lt;p&gt;即便是經驗豐富的開發者，寫出了看起來十分完美的代碼，也難免在代碼優化上有所疏漏。&lt;/p&gt; 
-&lt;p&gt;Gitee Code MCP 不僅能識別問題代碼，還能提供優化建議，幫助團隊提升整體代碼質量：&lt;/p&gt; 
-&lt;p&gt;&lt;img src=&quot;https://static.oschina.net/uploads/space/2025/0326/182349_ch25_2720166.png&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
-&lt;p&gt;我們可以在 Gitee Code 的 PR 詳情中看到 AI 具體説了什麼。&lt;/p&gt; 
-&lt;p&gt;&lt;img src=&quot;https://static.oschina.net/uploads/space/2025/0326/182402_676Y_2720166.png&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
-&lt;h2&gt;無可挑剔，輕鬆合併！&lt;/h2&gt; 
-&lt;p&gt;當代碼通過審核後，Gitee Code MCP 還能，自動執行 PR 合併操作，避免繁瑣的人工點擊流程：&lt;/p&gt; 
-&lt;p&gt;&lt;img src=&quot;https://static.oschina.net/uploads/space/2025/0326/182422_7myc_2720166.png&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
-&lt;p&gt;再返回 Gitee Code 查看合併結果：&lt;/p&gt; 
-&lt;p&gt;&lt;img src=&quot;https://static.oschina.net/uploads/space/2025/0326/182435_wt9o_2720166.png&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
-&lt;p&gt;至此，我們在 PR Review 時不再需要任何人工的操作，對代碼的評審也完全可以交給 Cursor 和 Gitee MCP Server 去做，從此不再需要為代碼評審苦惱。&lt;/p&gt; 
-&lt;p&gt;除了 PR Review，Gitee Code MCP 還支持 Issue 處理、Commit 追蹤、代碼倉庫管理等完整代碼倉庫相關 DevOps 流程。現在就去試試，探索 AI 賦能開發的新方式吧！&lt;/p&gt; 
-&lt;hr&gt; 
-&lt;p&gt;&lt;strong&gt;推薦閲讀&lt;/strong&gt;&lt;/p&gt; 
-&lt;ul&gt; 
- &lt;li&gt;&lt;a href=&quot;https://www.oschina.net/news/340077&quot; target=&quot;news&quot;&gt;寫一行代碼，用 Cursor + Gitee MCP 實現貪吃蛇遊戲&lt;/a&gt;&lt;/li&gt; 
- &lt;li&gt;&lt;a href=&quot;https://www.oschina.net/news/339785&quot; target=&quot;news&quot;&gt;Gitee MCP Server：讓 AI 助手接管繁瑣事務，助力 Gitee 專業版研發提效&lt;/a&gt;&lt;/li&gt; 
- &lt;li&gt;&lt;a href=&quot;https://www.oschina.net/news/338794/gitee-mcp-server&quot; target=&quot;news&quot;&gt;Gitee MCP Server 正式開源：讓 AI 助手直連你的代碼倉庫&lt;/a&gt;&lt;/li&gt; 
-&lt;/ul&gt;
-                                                                                &lt;/div&gt;
-                                                                            </description>
-            <link>https://www.oschina.net/news/341154</link>
-            <guid isPermaLink="false">https://www.oschina.net/news/341154</guid>
-            <pubDate>Sat, 22 Mar 2025 10:25:00 GMT</pubDate>
-            <author>來源: OSCHINA</author>
-        </item>
-        <item>
-            <title>DeepSeek 官方詳解 V3 模型「小版本」升級，各項能力全面進階</title>
-            <description>&lt;div class=&quot;content&quot;&gt;
-                                                                                            &lt;p&gt;DeepSeek-V3 模型&lt;u&gt;&lt;a href=&quot;https://www.oschina.net/news/340789/deepseek-v3-0324&quot;&gt;近日進行了更新&lt;/a&gt;&lt;/u&gt;，雖然大家都説更新後的 DeepSeek-V3-0324 強到沒邊——哪怕叫 DeepSeek V3.5 也不為過，但官方仍低調地稱其是「小版本升級」。&lt;/p&gt; 
-&lt;p&gt;&lt;img height=&quot;486&quot; src=&quot;https://static.oschina.net/uploads/space/2025/0326/172423_W9Lc_2720166.png&quot; width=&quot;1402&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
-&lt;p&gt;下面是官方針對 DeepSeek-V3-0324 &lt;u&gt;&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fmp.weixin.qq.com%2Fs%2FXK6ymJL7y0vo_GQXxmpuBA&quot; target=&quot;_blank&quot;&gt;發佈的更新説明&lt;/a&gt;&lt;/u&gt;。&lt;/p&gt; 
-&lt;hr&gt; 
-&lt;p&gt;DeepSeek V3 模型已完成小版本升級，目前版本號 DeepSeek-V3-0324，用戶登錄官方網頁、APP、小程序進入對話界面後，&lt;strong&gt;關閉深度思考&lt;/strong&gt;即可體驗。API 接口和使用方式保持不變。&lt;/p&gt; 
-&lt;p&gt;如非複雜推理任務，建議使用新版本 V3 模型，即刻享受速度更加流暢、效果全面提升的對話體驗。&lt;/p&gt; 
-&lt;h2&gt;&lt;strong&gt;模型能力提升一覽&lt;/strong&gt;&lt;/h2&gt; 
-&lt;p&gt;&lt;strong&gt;推理任務表現提高&lt;/strong&gt;&lt;/p&gt; 
-&lt;p&gt;新版 V3 模型借鑑 DeepSeek-R1 模型訓練過程中所使用的強化學習技術，大幅提高了在推理類任務上的表現水平，在數學、代碼類相關評測集上取得了超過 GPT-4.5 的得分成績。&lt;/p&gt; 
-&lt;p&gt;&lt;img height=&quot;799&quot; src=&quot;https://static.oschina.net/uploads/space/2025/0326/173130_fEuG_2720166.png&quot; width=&quot;1280&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
-&lt;blockquote&gt; 
- &lt;p&gt;新版 V3 模型的百科知識（MMLU-Pro, GPQA）、數學（MATH-500, AIME 2024）和代碼任務（LiveCodeBench）表現均有提升&lt;/p&gt; 
-&lt;/blockquote&gt; 
-&lt;p&gt;&lt;strong&gt;前端開發能力增強&lt;/strong&gt;&lt;/p&gt; 
-&lt;p&gt;在 HTML 等代碼前端任務上，新版 V3 模型生成的代碼可用性更高，視覺效果也更加美觀、富有設計感。&lt;/p&gt; 
-&lt;p&gt;&lt;img src=&quot;https://oscimg.oschina.net/oscnet/up-8c268dc1982a47b1d5c1d3960317fb4b7c2.gif&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
-&lt;blockquote&gt; 
- &lt;p&gt;&lt;em&gt;動圖展示了一個由模型生成的演示多個小球在指定空間範圍內運動的 p5.js 程序，包含若干可以調整重力、摩擦力等參數的滑動按鈕，並以賽博朋克風格的 HTML 呈現&lt;/em&gt;&lt;/p&gt; 
-&lt;/blockquote&gt; 
-&lt;p&gt;&lt;strong&gt;中文寫作升級&lt;/strong&gt;&lt;/p&gt; 
-&lt;p&gt;在中文寫作任務方面，新版 V3 模型基於 R1 的寫作水平進行了進一步優化，同時特別提升了中長篇文本創作的內容質量。&lt;/p&gt; 
-&lt;p&gt;&lt;img height=&quot;1761&quot; src=&quot;https://static.oschina.net/uploads/space/2025/0326/173210_hnNh_2720166.png&quot; width=&quot;1252&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
-&lt;p&gt;&lt;strong&gt;中文搜索能力優化&lt;/strong&gt;&lt;/p&gt; 
-&lt;p&gt;新版 V3 模型可以在聯網搜索場景下，對於報告生成類指令輸出內容更為詳實準確、排版更加清晰美觀的結果。&lt;/p&gt; 
-&lt;p&gt;&lt;img alt=&quot;&quot; src=&quot;https://oscimg.oschina.net/oscnet/up-3ceb41b23b1984968d9c56909a7beb38153.png&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
-&lt;p&gt;此外，新版 V3 模型在&lt;strong&gt;工具調用、角色扮演、&lt;strong&gt;&lt;strong&gt;問答&lt;/strong&gt;&lt;/strong&gt;閒聊&lt;/strong&gt;等方面也得到了一定幅度的能力提升。&lt;/p&gt; 
-&lt;h2&gt;&lt;strong&gt;模型開源&lt;/strong&gt;&lt;/h2&gt; 
-&lt;p&gt;DeepSeek-V3-0324 與之前的 DeepSeek-V3 使用同樣的 base 模型，僅改進了後訓練方法。私有化部署時只需要更新 checkpoint 和 tokenizer_config.json（tool calls 相關變動）。模型參數約 660B，開源版本上下文長度為 128K（網頁端、App 和 API 提供 64K 上下文）。&lt;/p&gt; 
-&lt;p&gt;V3-0324 模型權重下載請參考：&lt;/p&gt; 
-&lt;ul&gt; 
- &lt;li&gt;&lt;strong&gt;Model Scope:&amp;nbsp;&lt;/strong&gt;&lt;strong&gt;&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fmodelscope.cn%2Fmodels%2Fdeepseek-ai%2FDeepSeek-V3-0324&quot; target=&quot;_blank&quot;&gt;https://modelscope.cn/models/deepseek-ai/DeepSeek-V3-0324&lt;/a&gt;&lt;/strong&gt;&lt;/li&gt; 
- &lt;li&gt;&lt;strong&gt;Huggingface:&amp;nbsp;&lt;/strong&gt;&lt;strong&gt;&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fhuggingface.co%2Fdeepseek-ai%2FDeepSeek-V3-0324&quot; target=&quot;_blank&quot;&gt;https://huggingface.co/deepseek-ai/DeepSeek-V3-0324&lt;/a&gt;&lt;/strong&gt;&lt;/li&gt; 
-&lt;/ul&gt; 
-&lt;p&gt;與 DeepSeek-R1 保持一致，此次我們的開源倉庫（包括模型權重）&lt;strong&gt;統一採用 MIT License&lt;/strong&gt;，並允許用戶利用模型輸出、通過模型蒸餾等方式訓練其他模型。&lt;/p&gt; 
-&lt;hr&gt; 
-&lt;p style=&quot;color:#333333; margin-left:0; margin-right:0; text-align:left&quot;&gt;&lt;span style=&quot;color:#d35400&quot;&gt;&lt;strong&gt;最後，奉上 DeepSeek V3 最新版的免費體驗地址，由模力方舟提供：&lt;/strong&gt;&lt;/span&gt;&lt;/p&gt; 
-&lt;p style=&quot;color:#333333; margin-left:0; margin-right:0; text-align:left&quot;&gt;&lt;u&gt;&lt;a href=&quot;https://ai.gitee.com/serverless-api/packages/1917?model=DeepSeek-V3&amp;amp;package=1917&quot; target=&quot;_blank&quot;&gt;https://ai.gitee.com/serverless-api/packages/1917?model=DeepSeek-V3&amp;amp;package=1917&lt;/a&gt;&lt;/u&gt;&lt;/p&gt; 
-&lt;p style=&quot;color:#333333; margin-left:0; margin-right:0; text-align:left&quot;&gt;&lt;img src=&quot;https://static.oschina.net/uploads/space/2025/0326/103438_ukgv_2720166.png&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
-&lt;p style=&quot;color:#333333; margin-left:0; margin-right:0; text-align:left&quot;&gt;模力方舟的 Serverless API 提供了視頻生成、文本生成、視覺模型、圖像生成與處理、文檔處理 / OCR、自動語音識別、語音合成、特徵抽取、代碼生成、風控識別十大類共 58 款各領域的頂尖開源模型的在線體驗和 API 使用。通過購買模型資源包，即可通過極低的價格即可盡享眾多主流模型。&lt;/p&gt; 
-&lt;p style=&quot;color:#333333; margin-left:0; margin-right:0; text-align:left&quot;&gt;&lt;img height=&quot;683&quot; src=&quot;https://static.oschina.net/uploads/space/2025/0326/103139_wjCp_2720166.png&quot; width=&quot;1080&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt;
-                                                                                &lt;/div&gt;
-                                                                            </description>
-            <link>https://www.oschina.net/news/341137/deepseek-v3-0324-detail</link>
-            <guid isPermaLink="false">https://www.oschina.net/news/341137/deepseek-v3-0324-detail</guid>
-            <pubDate>Sat, 22 Mar 2025 09:35:00 GMT</pubDate>
-            <author>來源: OSCHINA</author>
-        </item>
-        <item>
-            <title>高通在全球三大洲指控 ARM 壟斷，芯片架構授權模式面臨重構</title>
-            <description>&lt;div class=&quot;content&quot;&gt;
-                                                                                            &lt;p&gt;英國芯片設計公司 Arm&amp;nbsp;自被軟銀收購後，業務模式已經逐漸從基礎架構提供商轉向完整芯片設計商。&lt;/p&gt; 
-&lt;p&gt;&lt;u&gt;&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fwww.bloomberg.com%2Fnews%2Farticles%2F2025-03-25%2Fqualcomm-takes-legal-fight-with-arm-to-global-antitrust-agencies&quot; target=&quot;_blank&quot;&gt;彭博社今天援引知情人士的話透露&lt;/a&gt;&lt;/u&gt;，高通已向歐盟委員會、美國聯邦貿易委員會（FTC）及韓國公平交易委員會提交機密文件，指控 Arm&amp;nbsp;涉嫌濫用市場支配地位實施反競爭行為。&lt;/p&gt; 
-&lt;p&gt;高通是全球最大手機芯片製造商。該公司認為，Arm 通過開放授權模式使業界對其技術形成高度依賴，同時也促成了芯片產業的蓬勃發展。但是，這一充滿活力的市場如今正受到威脅，因為 Arm 正通過限制技術訪問來推動自身的芯片製造野心，以提高利潤。&lt;/p&gt; 
-&lt;p&gt;&lt;img alt=&quot;&quot; src=&quot;https://oscimg.oschina.net/oscnet/up-378959a9f2407fecd1acaf54103c1824963.png&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
-&lt;p&gt;在與監管機構的私下會議和保密文件中，高通指控 Arm 在運營開放授權模式 20 餘年後，突然限制技術訪問權限，試圖通過自研芯片業務提升利潤。具體表現為：&lt;/p&gt; 
-&lt;ul&gt; 
- &lt;li&gt;&lt;span style=&quot;color:#e67e22&quot;&gt;&lt;strong&gt;拒絕提供協議範圍內的關鍵技術&lt;/strong&gt;&lt;/span&gt;&lt;/li&gt; 
- &lt;li&gt;&lt;span style=&quot;color:#e67e22&quot;&gt;&lt;strong&gt;修改授權條款阻礙客戶產品開發&lt;/strong&gt;&lt;/span&gt;&lt;/li&gt; 
- &lt;li&gt;&lt;span style=&quot;color:#e67e22&quot;&gt;&lt;strong&gt;利用指令集架構壟斷地位擠壓下游廠商&lt;/strong&gt;&lt;/span&gt;&lt;/li&gt; 
-&lt;/ul&gt; 
-&lt;p&gt;高通表示，Arm 正「不擇手段」提升財務表現，包括終止與部分客戶的授權協議、要求芯片廠商簽訂捆綁協議、強制收取更高專利費。&lt;/p&gt; 
-&lt;p&gt;高通認為，Arm 通過開放的許可模式建立了對其技術的嚴重依賴，這也促進了一個蓬勃發展的芯片產業。高通向全球競爭管理機構表示，由於 Arm 種種限制行為，目前市場正在受到威脅。&lt;/p&gt; 
-&lt;p&gt;高通發言人拒絕置評。歐盟委員會、美國 FTC 和韓國公平貿易委員會的發言人也拒絕置評。&lt;/p&gt; 
-&lt;p&gt;Arm 方面則表示對勝訴充滿信心：「Arm 仍然專注於加強創新，促進競爭，並尊重合同權利和義務。任何關於反競爭行為的指控都不過是高通為了自身競爭利益，不擇手段地轉移人們對其與我方持續商業糾紛實質的注意力並擴大爭端範圍的絕望嘗試。」&lt;/p&gt; 
-&lt;p&gt;閲讀更多：&lt;a href=&quot;https://www.oschina.net/news/318231&quot; target=&quot;news&quot;&gt;英偉達、高通等芯片四巨頭聯手，以新 CPU 架構對抗英特爾、AMD&lt;/a&gt;&lt;/p&gt;
-                                                                                &lt;/div&gt;
-                                                                            </description>
-            <link>https://www.oschina.net/news/341129</link>
-            <guid isPermaLink="false">https://www.oschina.net/news/341129</guid>
-            <pubDate>Sat, 22 Mar 2025 09:17:00 GMT</pubDate>
-            <author>來源: OSCHINA</author>
-        </item>
-        <item>
-            <title>螞蟻數科發佈能源電力時序大模型 EnergyTS，預測精度超谷歌、亞馬遜</title>
-            <description>&lt;div class=&quot;content&quot;&gt;
-                                                                                            &lt;p&gt;&lt;span style=&quot;color:#000000&quot;&gt;螞蟻數科在蘇州舉辦的新能源數字資產社區春季峯會上，宣佈正式推出能源電力時序大模型 EnergyTS。&lt;/span&gt;&lt;/p&gt; 
-&lt;p&gt;&lt;span style=&quot;color:#000000&quot;&gt;EnergyTS 專為新能源行業定製，在光伏場景測評中，其發電量預測準確率顯著超越谷歌（TimesFM-V2.0）和亞馬遜 (Chronos-Large) 等國際主流通用時序模型。在 T+1 天預測中，模型的平均絕對誤差僅為 0.0233，較谷歌模型提升約 22.4%;在 T+3 天預測中，性能提升更是達到 46.8%。&lt;/span&gt;&lt;/p&gt; 
-&lt;p&gt;&lt;img height=&quot;206&quot; src=&quot;https://oscimg.oschina.net/oscnet/up-e865e9a90be3dc50aca39f98046b6a90b3a.png&quot; width=&quot;500&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
-&lt;p&gt;&lt;span style=&quot;color:#000000&quot;&gt;EnergyTS 通過 AI 技術，可精準預測發電量、電力供需情況，有效緩解電價波動、儲能調度收益低等關聯風險，為行業提供更智能的經營決策支持。&lt;/span&gt;&lt;/p&gt; 
-&lt;p&gt;&lt;span style=&quot;color:#000000&quot;&gt;該模型具備多尺度訓練、多模態融合、多任務學習和零樣本冷啓等優勢，可廣泛應用於光伏發電、風力發電、儲能、微電網、電力交易等多個場景，實現&quot;開箱即用&quot;。&lt;/span&gt;&lt;/p&gt; 
-&lt;p&gt;&lt;span style=&quot;color:#000000&quot;&gt;螞蟻數科 CEO 趙聞飆表示，公司致力於解決各行業在 AI 時代的智能化轉型問題，未來將在更多領域探索大模型技術與行業實際問題的結合。&lt;/span&gt;&lt;/p&gt;
-                                                                                &lt;/div&gt;
-                                                                            </description>
-            <link>https://www.oschina.net/news/341125</link>
-            <guid isPermaLink="false">https://www.oschina.net/news/341125</guid>
-            <pubDate>Sat, 22 Mar 2025 09:06:00 GMT</pubDate>
-            <author>來源: OSCHINA</author>
-        </item>
-        <item>
-            <title>TensorRT-LLM —— 優化大型語言模型推理的 TensorRT 工具箱</title>
-            <description>&lt;div class=&quot;content&quot;&gt;
-                                                                                                                                                                                                                            &lt;p&gt;TensorRT-LLM 為用戶提供了易於使用的 Python API，用於定義大型語言模型（LLM）和構建 TensorRT 引擎，這些引擎包含最先進的優化技術，可在英偉達（NVIDIA）圖形處理器上高效執行推理。&lt;/p&gt;
-
-&lt;p&gt;TensorRT-LLM 還包含用於創建執行這些 TensorRT 引擎的 Python 和 C++ 運行時的組件。它還包括一個用於與英偉達 Triton 推理服務器（NVIDIA Triton Inference Server）集成的後端；這是一個為 LLM 提供服務的生產質量系統。使用 TensorRT-LLM 構建的模型可以在多種配置上執行，從單個 GPU 到具有多個 GPU 的多個節點（使用張量並行和/或管道並行）。&lt;/p&gt;
-
-&lt;p&gt;TensorRT-LLM 的 Python API 架構與 PyTorch API 相似。它為用戶提供了包含 einsum、softmax、matmul 或 view 等函數的功能模塊。層模塊捆綁了用於組裝 LLM 的有用構件，如 Attention 塊、MLP 或整個 Transformer 層。GPTAttention 或 BertAttention 等特定模型組件可在模型模塊中找到。&lt;/p&gt;
-
-&lt;p&gt;TensorRT-LLM 預先定義了幾種常用模型。它們可以很容易地修改和擴展，以滿足客戶的需求。可&lt;a href=&quot;https://github.com/NVIDIA/TensorRT-LLM#Models&quot;&gt;參閲支持型號&lt;/a&gt;列表&amp;nbsp;。&lt;/p&gt;
-
-&lt;p&gt;為了最大限度地提高性能並減少內存佔用，TensorRT-LLM 允許使用不同的量化模式來執行模型（具體示例見 &lt;a href=&quot;https://github.com/NVIDIA/TensorRT-LLM/blob/release/0.5.0/examples/gpt&quot;&gt;&lt;code&gt;examples/gpt&lt;/code&gt;&lt;/a&gt;&lt;span style=&quot;background-color:#ffffff; color:#1f2328&quot;&gt;&lt;span&gt;&amp;nbsp;&lt;/span&gt;&lt;/span&gt;）。TensorRT-LLM 支持 INT4 或 INT8 權重（和 FP16 activations，又稱 INT4/INT8 weight-only）以及 SmoothQuant 技術的完整&lt;a href=&quot;https://arxiv.org/abs/2211.10438&quot;&gt;實現&lt;/a&gt;。&lt;/p&gt;
-
-&lt;p&gt;&lt;img height=&quot;284&quot; src=&quot;https://static.oschina.net/uploads/space/2023/1116/164435_jwZL_4252687.png&quot; width=&quot;500&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt;
-
-                                                                    &lt;/div&gt;
-                                                                </description>
-            <link>https://www.oschina.net/p/tensorrt-llm</link>
-            <guid isPermaLink="false">https://www.oschina.net/p/tensorrt-llm</guid>
-            <pubDate>Sat, 22 Mar 2025 08:44:00 GMT</pubDate>
-        </item>
-        <item>
-            <title>蘿蔔快跑在自貢成立科技公司，含 AI 相關業務</title>
-            <description>&lt;div class=&quot;content&quot;&gt;
-                                                                                            &lt;p&gt;&lt;span style=&quot;color:#000000&quot;&gt;天眼查資料顯示，近日，蘿蔔運力（自貢）科技有限公司成立，法定代表人為畢然，註冊資本 100 萬人民幣。公司由蘿蔔快跑關聯公司蘿蔔運力（北京）科技有限公司全資持股。&lt;/span&gt;&lt;/p&gt; 
-&lt;p&gt;&lt;img height=&quot;313&quot; src=&quot;https://oscimg.oschina.net/oscnet/up-a544cf9d0bfa2827963e1b32d87d99f4929.png&quot; width=&quot;700&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
-&lt;p&gt;&lt;span style=&quot;color:#000000&quot;&gt;經營範圍包括軟件開發、計算機系統服務、互聯網數據服務、數據處理和存儲支持服務、人工智能應用軟件開發、人工智能基礎軟件開發等，由蘿蔔快跑關聯公司蘿蔔運力（北京）科技有限公司全資持股。&lt;/span&gt;&lt;/p&gt;
-                                                                                &lt;/div&gt;
-                                                                            </description>
-            <link>https://www.oschina.net/news/341116</link>
-            <guid isPermaLink="false">https://www.oschina.net/news/341116</guid>
-            <pubDate>Sat, 22 Mar 2025 08:36:00 GMT</pubDate>
-            <author>來源: OSCHINA</author>
-        </item>
-        <item>
-            <title>華為增資至 409.4 億，近一年已 3 次增資</title>
-            <description>&lt;div class=&quot;content&quot;&gt;
-                                                                                            &lt;p&gt;&lt;span style=&quot;color:#000000&quot;&gt;天眼查 App 顯示，華為技術有限公司近日發生工商變更，註冊資本由約 408.4 億人民幣增至約 409.4 億人民幣。&lt;/span&gt;&lt;/p&gt; 
-&lt;p&gt;&lt;span style=&quot;color:#000000&quot;&gt;&lt;img height=&quot;300&quot; src=&quot;https://oscimg.oschina.net/oscnet/up-f5af3d0d03a8d4183622343df88b625dd7f.png&quot; width=&quot;700&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/span&gt;&lt;/p&gt; 
-&lt;p&gt;&lt;span style=&quot;color:#000000&quot;&gt;基本信息顯示，華為技術有限公司 (曾用名：深圳市華為技術有限公司) ，成立於 1987 年，位於廣東省深圳市，由華為投資控股有限公司全資持股。是一家以從事計算機、通信和其他電子設備製造業為主的企業。企業註冊資本 4094113.182 萬人民幣，超過了 100% 的廣東省同行，實繳資本 4054113.18 萬人民幣。&lt;/span&gt;&lt;/p&gt; 
-&lt;p&gt;&lt;span style=&quot;color:#000000&quot;&gt;變更記錄表明，該公司近一年已三次增資，前兩次分別發生於 2024 年 4 月、2024 年 6 月。&lt;/span&gt;&lt;/p&gt;
-                                                                                &lt;/div&gt;
-                                                                            </description>
-            <link>https://www.oschina.net/news/341115</link>
-            <guid isPermaLink="false">https://www.oschina.net/news/341115</guid>
-            <pubDate>Sat, 22 Mar 2025 08:28:00 GMT</pubDate>
-            <author>來源: OSCHINA</author>
-        </item>
-        <item>
-            <title>Cloudflare 開源 OpenPubkey SSH（OPKSSH），將單點登錄集成到 SSH</title>
-            <description>&lt;div class=&quot;content&quot;&gt;
-                                                                                            &lt;p&gt;Cloudflare 近日&lt;u&gt;&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fblog.cloudflare.com%2Fopen-sourcing-openpubkey-ssh-opkssh-integrating-single-sign-on-with-ssh%2F&quot; target=&quot;_blank&quot;&gt;宣佈&lt;/a&gt;&lt;/u&gt;將 OPKSSH（OpenPubkey SSH）代碼庫捐贈給 Linux 基金會旗下的 OpenPubkey 項目，這意味着開發者現在可通過開源方式實現基於單點登錄（SSO）的 SSH 密鑰管理。&lt;/p&gt; 
-&lt;p&gt;OPKSSH 通過將 OpenID Connect（OIDC）協議與 SSH 協議無縫結合，使企業能夠利用現有身份提供商（如 Google、Azure AD）直接管理 SSH 訪問權限，徹底告別手動配置 SSH 密鑰的時代。&lt;/p&gt; 
-&lt;p&gt;&lt;img alt=&quot;&quot; src=&quot;https://oscimg.oschina.net/oscnet/up-609a9940408bc6b0fe8a976760b572a27f8.png&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
-&lt;p&gt;OPKSSH 基於 OpenPubkey 協議，該協議通過在 OIDC 的 ID Token 中嵌入用戶公鑰，生成名為「PK Token」的短期證書。當用戶執行&lt;code&gt;opkssh login&lt;/code&gt;時，流程如下：&lt;/p&gt; 
-&lt;ol&gt; 
- &lt;li&gt;生成臨時 SSH 密鑰對（默認有效期 24 小時）；&lt;/li&gt; 
- &lt;li&gt;通過瀏覽器跳轉完成 OIDC 認證，獲取包含公鑰的 PK Token；&lt;/li&gt; 
- &lt;li&gt;將 PK Token 寫入本地 SSH 公鑰文件，私鑰僅存於內存。&lt;/li&gt; 
-&lt;/ol&gt; 
-&lt;p&gt;服務器端只需在 SSH 配置中添加兩行驗證邏輯（&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fgithub.com%2Fopenpubkey%2Fopenpubkey&quot; target=&quot;_blank&quot;&gt;示例代碼&lt;/a&gt;），即可將傳統 SSH 公鑰驗證替換為 PK Token 驗證。該方案兼容任何 OIDC 提供商，且無需修改 SSH 協議棧。&lt;/p&gt; 
-&lt;p&gt;&lt;strong&gt;OPKSSH&amp;nbsp;三大核心優勢&lt;/strong&gt;&lt;/p&gt; 
-&lt;ul&gt; 
- &lt;li&gt;&lt;strong&gt;安全性躍升&lt;/strong&gt;：臨時密鑰自動過期，消除長期密鑰泄露風險。&lt;/li&gt; 
- &lt;li&gt;&lt;strong&gt;運維簡化&lt;/strong&gt;：管理員通過郵件地址管理權限（如&lt;code&gt;authorized_emails&lt;/code&gt;文件），無需跟蹤密鑰指紋。用戶可在任意設備通過&lt;code&gt;opkssh login&lt;/code&gt;生成密鑰，徹底解決密鑰分發難題。&lt;/li&gt; 
- &lt;li&gt;&lt;strong&gt;審計透明化&lt;/strong&gt;：所有 SSH 登錄事件均關聯 OIDC 身份信息，天然支持 SIEM 系統集成。&lt;/li&gt; 
-&lt;/ul&gt; 
-&lt;p&gt;&lt;strong&gt;適用場景與遷移成本&lt;/strong&gt;&lt;/p&gt; 
-&lt;p&gt;OPKSSH 適用於已部署 OIDC 的企業環境，尤其是需嚴格管控雲服務器或 CI/CD 系統訪問權限的場景。遷移僅需：&lt;/p&gt; 
-&lt;ol&gt; 
- &lt;li&gt;在目標服務器運行安裝腳本（&lt;code&gt;curl -sSfL https://install.opkssh.dev | sh&lt;/code&gt;）；&lt;/li&gt; 
- &lt;li&gt;在身份提供商註冊 OPKSSH 客戶端 ID。&lt;/li&gt; 
-&lt;/ol&gt; 
-&lt;p&gt;OpenPubkey SSH（OPKSSH）採用 Apache 2.0 許可證，開源地址：&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fgithub.com%2Fopenpubkey%2Fopkssh&quot; target=&quot;_blank&quot;&gt;https://github.com/openpubkey/opkssh&lt;/a&gt;&lt;/p&gt;
-                                                                                &lt;/div&gt;
-                                                                            </description>
-            <link>https://www.oschina.net/news/341113/cloudflare-open-sourcing-openpubkey</link>
-            <guid isPermaLink="false">https://www.oschina.net/news/341113/cloudflare-open-sourcing-openpubkey</guid>
-            <pubDate>Sat, 22 Mar 2025 08:21:00 GMT</pubDate>
-            <author>來源: OSCHINA</author>
-        </item>
-        <item>
-            <title>崑崙萬維發佈全球首款音樂推理大模型 Mureka O1</title>
-            <description>&lt;div class=&quot;content&quot;&gt;
-                                                                                            &lt;p&gt;&lt;span style=&quot;color:#000000&quot;&gt;崑崙萬維宣佈&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fmp.weixin.qq.com%2Fs%2F1JPYXUwX-1JAVpz3IgygtQ&quot; target=&quot;_blank&quot;&gt;推出&lt;/a&gt; Mureka O1 模型與 Mureka V6 模型。「Mureka O1 作為全球首款音樂推理大模型，性能超越 Suno、模型登頂 SOTA，中國科技創新再次在 AI 音樂領域領跑全球。」&lt;/span&gt;&lt;/p&gt; 
-&lt;p&gt;&lt;span style=&quot;color:#000000&quot;&gt;2024 年 4 月，崑崙萬維發佈了第一代音樂生成模型：Mureka V1（SkyMusic）。Mureka V6 是當前 Mureka 的基座模型，支持純音樂生成，還支持 10 種語言的 AI 音樂創作，包括英語、中文、日語、韓語、法語、西班牙語、葡萄牙語、德語、意大利語和俄語。在 Mureka V6 中，團隊引入自研 ICL（in-context learning）技術，使得聲場更加開闊，人聲質感和混音設計進一步強化。&lt;/span&gt;&lt;/p&gt; 
-&lt;p&gt;&lt;img height=&quot;270&quot; src=&quot;https://oscimg.oschina.net/oscnet/up-eb6a0135a337596b6a6a105f75b95b34fb8.png&quot; width=&quot;500&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
-&lt;p&gt;&lt;span style=&quot;color:#000000&quot;&gt;Mureka O1 模型是基於 Mureka V6 思維鏈的推理優化版本，也是全球範圍內首個引入 CoT 的音樂模型，在推理過程中加入思考與自我批判，大幅提升音樂品質、音樂創作效率和靈活性。&lt;/span&gt;&lt;/p&gt; 
-&lt;p&gt;&lt;span style=&quot;color:#000000&quot;&gt;Mureka V6 和 O1 模式支持多元化的音樂創作風格及情感表達。曲風涵蓋爵士 (Jazz)、電子 (Electronic)、流行 (Pop)、鄉村 (Country)、節奏布魯斯 (R&amp;amp;B)、靈魂樂 (Soul)、藍調 (Blues)、搖滾 (Rock)、舞曲 (Dance) 等；情感維度包括快樂、放縱、神祕、充滿活力、悲傷等多種情緒表達。&lt;/span&gt;&lt;/p&gt; 
-&lt;p&gt;&lt;span style=&quot;color:#000000&quot;&gt;此外，Mureka 還提供兩個特色音樂生成功能：&lt;/span&gt;&lt;/p&gt; 
-&lt;ul&gt; 
- &lt;li&gt;&lt;span style=&quot;color:#000000&quot;&gt;歌曲參考（Reference Fuction）：將音樂本身作為提示，用戶可直接上傳音頻或 Youtube 鏈接作為創作提示，比文本提示更直接更高級的提示方式；&lt;/span&gt;&lt;/li&gt; 
- &lt;li&gt;&lt;span style=&quot;color:#000000&quot;&gt;音色克隆（Vocal Fuction）：Mureka 是全球首個可以指定演唱歌手音色的 AI 音樂生成平台，用戶不僅可以選擇官方提供的多種歌手音色，還可以上傳自己的聲音，讓 AI 學習並復刻，精準模擬歌手音色，一鍵生成個性化專屬作品。自定義歌手音色的功能宣告人人都能成為 AI 歌手的時代正式到來了。&lt;/span&gt;&lt;/li&gt; 
-&lt;/ul&gt; 
-&lt;p&gt;&lt;span style=&quot;color:#000000&quot;&gt;Mureka O1 中包含了 Mureka 團隊最新發布的音樂生成領域的創新研究成果——MusiCoT。根據介紹，MusiCoT 利用了思維鏈 Chain-of-Thought （CoT）方法，不同於傳統自迴歸模型逐步生成音頻，MusiCoT 首次在細粒度音頻 token 預測前預生成整體音樂結構，大幅提升生成音樂的結構連貫性與樂器編排精準度。&lt;/span&gt;&lt;/p&gt; 
-&lt;p&gt;&lt;span style=&quot;color:#000000&quot;&gt;MusiCoT 基於 CLAP 模型，無需人工標註即具備高擴展性，並顯著提高了生成音樂的可解釋性和質量。&lt;/span&gt;&lt;/p&gt; 
-&lt;p&gt;&lt;span style=&quot;color:#000000&quot;&gt;基於首次在音樂生成領域引入 Chain-of-Thought（CoT）技術、算法框架的升級，Mureka O1 不僅保持了低延遲音樂生成，還顯著提升了歌詞旋律契合度、演唱準確性和藝術表現力等，多項指標領先於 Suno V4。&lt;/span&gt;&lt;/p&gt; 
-&lt;p&gt;&lt;img height=&quot;294&quot; src=&quot;https://oscimg.oschina.net/oscnet/up-503e30956b12803e771c5937b2b29cdd12d.png&quot; width=&quot;500&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
-&lt;p&gt;&lt;img height=&quot;305&quot; src=&quot;https://oscimg.oschina.net/oscnet/up-cbf0a6f76c773afe0506002d7f11fe7135c.png&quot; width=&quot;500&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
-&lt;p&gt;&lt;img height=&quot;336&quot; src=&quot;https://oscimg.oschina.net/oscnet/up-82ca85f7fa60597b44ceaddec62bfe1e73c.png&quot; width=&quot;500&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
-&lt;p&gt;&lt;img height=&quot;330&quot; src=&quot;https://oscimg.oschina.net/oscnet/up-051e429a4d3e0dc2eb7a98978f95ef96f3c.png&quot; width=&quot;500&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt;
-                                                                                &lt;/div&gt;
-                                                                            </description>
-            <link>https://www.oschina.net/news/341110</link>
-            <guid isPermaLink="false">https://www.oschina.net/news/341110</guid>
-            <pubDate>Sat, 22 Mar 2025 08:11:00 GMT</pubDate>
+            <pubDate>Sun, 23 Mar 2025 01:46:00 GMT</pubDate>
             <author>來源: OSCHINA</author>
         </item>
     </channel>
