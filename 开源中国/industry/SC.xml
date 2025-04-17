@@ -9,8 +9,476 @@
         <generator>RSSHub</generator>
         <webMaster>contact@rsshub.app (RSSHub)</webMaster>
         <language>en</language>
-        <lastBuildDate>Thu, 17 Apr 2025 02:36:10 GMT</lastBuildDate>
+        <lastBuildDate>Thu, 17 Apr 2025 07:36:44 GMT</lastBuildDate>
         <ttl>5</ttl>
+        <item>
+            <title>Spark on K8s 在 vivo 大数据平台的混部实战</title>
+            <description>&lt;div class=&quot;content&quot;&gt;
+                                                                                                                    
+                                                                                                                                                    &lt;blockquote&gt; 
+ &lt;p&gt;作者：vivo 互联网大数据团队- Qin Yehai&lt;/p&gt; 
+ &lt;p&gt;在离线混部可以提高整体的资源利用率，不过离线 Spark 任务部署到混部容器集群需要做一定的改造，本文将从在离线混部中的离线任务的角度，讲述离线任务是如何进行容器化、平台上的离线任务如何平滑地提交到混部集群、离线任务在混部集群中如何调度的完整实现以及过程中的问题解决。&lt;/p&gt; 
+&lt;/blockquote&gt; 
+&lt;span id=&quot;OSC_h1_1&quot;&gt;&lt;/span&gt; 
+&lt;h1&gt;一、在离线业务差异&lt;/h1&gt; 
+&lt;p&gt;互联网数据业务服务一般可以分为在线服务和离线任务两大类，在线服务是指那些长时间运行、随时响应对实时性要求高、负载压力随着接收流量起伏的服务，如电商、游戏等服务，离线任务是指运行周期短、可执行时间提交对实时性要求低、有一定容错性、负载压力基本可控的服务，如离线计算任务、模型训练等。一般在线服务在白天时段繁忙，离线任务在凌晨繁忙，两者的业务高峰期存在错峰现象，如果按传统方式在线和离线都是分别独立机器部署，业务高峰时期需要更多机器来支持，业务低峰期又存在部分机器空闲，整体资源利用率都不高。因此行业提出来在离线混部的解决方案，在线和离线业务通过混部系统部署在同一批机器，实现共享资源并错峰互补，提高整体的资源利用率。目前业内利用混部技术可以将数据中心的 CPU 利用率提升至 40% 左右，vivo 在 2023 年混部平台投入生产也已经将部分混部集群的 CPU 利用率提升至 30% 左右，整体收益也是可观的。&lt;/p&gt; 
+&lt;p&gt;混部系统需要有强大的隔离能力，绝大部分都是基于容器，所以混部的前提是在线和离线业务都容器化，对于容器管理工具如 K8s 来说是更适应于运行时间长、启停次数少、容器数量少的在线服务，在线服务也能比较容易地上容器，而对于运行时间短、启停频繁、容器数量大的离线任务，对 K8s 来说不是天然地适应，但容器化已是大势所趋，K8s 也推出了性能更好的调度器、用于离线任务的控制器，Spark 在 2.3 版本后也支持容器化，诸多技术的发展也推动离线任务实现容器化以及在离线混部的落地。&lt;/p&gt; 
+&lt;p&gt;本文将从在离线混部中的离线任务的角度，讲述离线任务是如何进行容器化、平台上的离线任务如何平滑地提交到混部集群、离线任务在混部集群中如何调度的完整实现以及过程中的问题解决。&lt;/p&gt; 
+&lt;span id=&quot;OSC_h1_2&quot;&gt;&lt;/span&gt; 
+&lt;h1&gt;二、离线任务容器化&lt;/h1&gt; 
+&lt;span id=&quot;OSC_h2_3&quot;&gt;&lt;/span&gt; 
+&lt;h2&gt;2.1 Spark Operator 方案&lt;/h2&gt; 
+&lt;span id=&quot;OSC_h3_4&quot;&gt;&lt;/span&gt; 
+&lt;h3&gt;2.1.1 方案对比&lt;/h3&gt; 
+&lt;p&gt;vivo 离线任务大部分任务是以 Spark 作为执行引擎，Spark 任务运行在 K8s 上，目前业界有两种架构的方案：Spark on K8s 及 Yarn on K8s。两者部分优缺点对比如下：&lt;/p&gt; 
+&lt;p&gt;&lt;img src=&quot;https://oscimg.oschina.net/oscnet//944f211eda9a472ce3e9c7cc7342579a.jpeg&quot; alt=&quot;图片&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
+&lt;p&gt;Spark on K8s 是 Spark 容器化，由 K8s 直接创建 Driver 和 Executor 的 Pod 来运行 Spark 作业，Yarn on K8s 是 Yarn 的容器化，由 K8s 创建 RM 和 NM 的 Pod，Spark 的 Driver 和 Executor 运行在 NM Pod 的 container 中，正是由于两种架构方案的区别，它们各自也会存在优缺点。&lt;/p&gt; 
+&lt;p&gt;Yarn on K8s 方案可以支持原生的 Hive、Spark、Flink 等引擎，它仅需要创建一定数量的 NodeManager Pod 来满足作业需求，Pod 运行相对稳定因此对 K8s 的压力比较小，本身 Yarn 支持调度性能和调度策略也是专门为离线任务设计的，调度性能比 K8s 的强很多。由于 NodeManager ESS 服务是对磁盘有容量和读写性能要求的，混部机器的磁盘一般难以满足，所以也需要能支持不同引擎的 Remote Shuffle Service。在资源利用上，NodeManager 需要满足多个作业的资源，最小单位是 Container，Pod 的资源粒度比较大，自身也会占用一些资源，如果资源粒度得不到有效地弹性伸缩，也会造成资源的浪费，因此需要引入额外的组件来协调,根据 Kubernetes 集群节点的剩余资源，动态调整 NodeManager 的 CPU 和内存，然而这也需要一定的改造成本。在资源紧张的情况下，NodeManager Pod 如果被驱逐也就意味着整个 NodeManager 被销毁，将会影响多个任务。&lt;/p&gt; 
+&lt;p&gt;Spark on K8s 方案目前在 Spark 3.1 以上版本才正式可用，它需要频繁的创建、查询、销毁大量的 Executor Pod，对 K8s 的 ApiServer 和 ETCD 等组件都会造成比较大的压力，K8s 的调度器也不是专门为离线的大批量任务设计的，调度性能也比较弱。另一方面，Spark on K8s 虽然只能支持 Spark3.X 的 RSS，不过目前有较多的开源产品可选择。在资源利用上，最小单位是 Driver 和 Executor 的 Pod，资源粒度小，可以填充到更多的碎片资源，调度时直接与 K8s 对接，资源的弹性调度更多由 K8s 来承担，不需要额外的组件，改造成本比较低。在资源紧张的情况下，Executor、Driver 的 Pod 将依次逐个被驱逐，任务的稳定性会更高。&lt;/p&gt; 
+&lt;p&gt;而对于 Spark on K8s 方案，还细分 2 种实现方案：Spark Submit on K8s 和 Spark Operator on K8s。&lt;/p&gt; 
+&lt;p&gt;&lt;img src=&quot;https://oscimg.oschina.net/oscnet//65d397e91ee4e5dc2fd2dc1392df5e8c.png&quot; alt=&quot;图片&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
+&lt;p&gt;SparkOnK8s 架构图&lt;/p&gt; 
+&lt;p&gt;(图片来源：Spark 官网)&lt;/p&gt; 
+&lt;p&gt;&lt;img src=&quot;https://oscimg.oschina.net/oscnet//9690ad754f277e44ce4a6a09f6f7058a.png&quot; alt=&quot;图片&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
+&lt;p&gt;Spark Operator 架构图&lt;/p&gt; 
+&lt;p&gt;(图片来源：Spark Operator 开源项目)&lt;/p&gt; 
+&lt;p&gt;以 spark-submit 方式提交到 K8s 集群是 Spark 在 2.3 版本后提供的原生功能，客户端通过 spark-submit 设置 K8s 的相关参数，内部再调用 K8sApi 在 K8s 集群中创建 Driver Pod，Driver 再调用 K8sApi 创建需要的 Executor Pod，共同组成 Spark Application，作业结束后 Executor Pod 会被 Driver Pod 销毁，而 Driver Pod 则继续存在直到被清理。使用 spark-submit 方式的最大好处是由 spark-submit 来与 K8s 的进行交换，提交作业的方式几乎保持一致。但是因为使用的便利性所需要的封装也会带来一些缺点，spark-submit 是通过 K8sApi 创建 Pod，使用非声明式的提交接口，如果需要修改 K8s 配置就需要重新开发新接口，二次开发复杂繁琐，虽然 Spark 提供了大量的 K8s 配置参数，但也远比不了 K8s YAML 的声明式的提交方式更加灵活，而且 Spark Application 和 K8s Workload 的生命周期还不能较好地对应起来，生命周期不能灵活控制，任务监控也比较难接入 Prometheus 集群监控。虽然 Spark 社区也不断地在推出新特性来和 K8s 集成地更加灵活，不过对于些复杂场景需要定制开发，spark-submit 的封装性也会成为阻碍。&lt;/p&gt; 
+&lt;p&gt;spark-submit 还是离线任务提交的思维，而 Spark Operator 方式就更倾向于 K8s 作业的思维，作为 K8s 的自定义控制器，在集成了原生的 Spark on K8s 的基础上利用 K8s 原生能力提供了更全面管控功能。Spark Operator 使用声明式的 YAML 提交 Spark 作业，并提供额外组件来管理 Spark 作业的生命周期，SparkApplication 控制器，负责 SparkApplicationObject 的创建、更新和删除，同时处理各种事件和作业状态，Submission Runner, 负责调用 spark-submit 提交 Spark 作业，Driver 和 Executor 的运行流程是一致的，Spark Pod Monitor，负责监控和同步 Spark 作业相关 Pod 的状态。Spark Operator 最大的好处是为在 K8s 中的 Spark 作业提供了更好的控制、管理和监控的功能，可以更加紧密地与 K8s 结合并能灵活使用 K8s 各种特性来满足复杂场景，例如混部场景，而相对地它也不再像 spark-submit 那样方便地提交任务，所以如何使用 Spark Operator 优雅提交任务将是在离线混部中一项重要的工作。&lt;/p&gt; 
+&lt;span id=&quot;OSC_h3_5&quot;&gt;&lt;/span&gt; 
+&lt;h3&gt;2.1.2 最终选项&lt;/h3&gt; 
+&lt;p&gt;在大的架构选型上，我们选择了 Spark on K8s，一方面因为 Spark3.X 是 vivo 当前及未来 2~3 年的主流离线引擎，另一方面 vivo 有比较完善的 K8s 生态体系，内部对 K8s 研发也比较深入，环境和能力都能很好地支持，在应用的小方向上，我们选择了 Spark Operator，因为它在混部这种复杂场景下使用更加灵活、扩展性更强、改造成本更低，我们最终决定使用 Spark Operator 方案。&lt;/p&gt; 
+&lt;span id=&quot;OSC_h2_6&quot;&gt;&lt;/span&gt; 
+&lt;h2&gt;2.2 Spark 优化&lt;/h2&gt; 
+&lt;span id=&quot;OSC_h3_7&quot;&gt;&lt;/span&gt; 
+&lt;h3&gt;2.2.1 Spark 镜像&lt;/h3&gt; 
+&lt;p&gt;Spark 任务容器化的第一步就是构建具有 Spark 相关环境的镜像，Spark 任务类型主要分为 sql 任务和 jar 任务，在实践的过程中我们发现 Spark 的镜像构建需要&lt;strong&gt;注意几个问题&lt;/strong&gt;：&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt; &lt;p&gt;&lt;strong&gt;Spark 环境的完整性&lt;/strong&gt;：镜像中除了打入自研的 Spark 包以外，还需要打入相应的依赖如 Hadoop、ZSTD、RSS 等包，对于 SparkJar 任务还有直接调用 Hadoop 客户端的，因此 Hadoop 客户端也需要打入镜像中。&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;&lt;strong&gt;JDK 版本问题&lt;/strong&gt;：K8s 使用的 Spark 是基于 3.2.0 版本，镜像打包工具默认使用 JDK11，而自研的 Spark 用的 JDK1.8，由于在 Yarn 和 K8s 上使用的 JDK 版本不同，导致在双跑验证数据一致性时发现了 hash 函数、时间戳不一致的问题，因此 Spark 镜像中的 JDK 版本需要和 Yarn 保持一致。&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;&lt;strong&gt;环境变量问题&lt;/strong&gt;：镜像生成容器后需要预置如 Spark、Hadoop 的环境变量，如果镜像中相关目录的位置不能完全和 Yarn 的提交节点保持一致，则需要检查各启动脚本，如 spark-env.sh 中的环境变量的路径是否存在，发生冲突时可以修改为绝对路径。&lt;/p&gt; &lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;p&gt;Spark 镜像构建完成后，区分 SparkSql 任务和 SparkJar 任务实质就是启动命令的不同，事实上 SparkSql 任务也就是 SparkJar 任务的一种，只是启动的主类是固定的，两者的启动参数如下：&lt;/p&gt; 
+&lt;p&gt;SparkSql 任务：&lt;/p&gt; 
+&lt;pre&gt;&lt;code&gt;driver --class org.apache.spark.sql.hive.thriftserver.SparkSQLCLIDriver -f {sql 文件}
+&lt;/code&gt;&lt;/pre&gt; 
+&lt;p&gt;SparkJar 任务：&lt;/p&gt; 
+&lt;pre&gt;&lt;code&gt;driver --class {jar 任务主类} {jar 任务 jar 包} {参数}
+&lt;/code&gt;&lt;/pre&gt; 
+&lt;p&gt;早期不仅构建了 Spark 镜像，还构建了 Spark 日志镜像，容器组成结构会复杂一些。如图例如 Driver 容器，我们将 Spark、Hadoop 等配置文件构建了 configMap，启动 initContainer 来拉取从 configMap 拉取配置文件，然后启动 Driver 容器执行 Spark 任务，同时也使用 sidecar 创建日志上报的容器，在 Spark 任务运行完成后上报 Driver 和 Executor 日志到 Spark HistoryServer。这样的方案看似充分应用了 K8s 技术，但是在实践的过程中这些技术却被一一弃用，转而逐步地把各种功能集中到了一个 Driver 容器上。&lt;/p&gt; 
+&lt;p&gt;&lt;img src=&quot;https://oscimg.oschina.net/oscnet//c1f0bf5a2f03578b42831a80908e1aad.png&quot; alt=&quot;图片&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
+&lt;p&gt;具体演进如下：&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt; &lt;p&gt;&lt;strong&gt;移除 initContainer&lt;/strong&gt;，拉取 Spark 等配置文件步骤写在启动命令中，Spark 作业执行前执行下载配置，原因在多个 namespace 下不方便统一管理，而且 configmap 内容较大，会导致 Pod 启动时配置加载的延迟增加，影响了 Pod 创建速度，同时 K8s 的内存和 CPU 资源占用增加，对 kube-apiserver、ETCD 负载有一些影响。去掉 initContainer 还有个重要的好处就是减小 ETCD 的存储压力，事实上我们在移除 initContainer 拉取配置的功能后的一段时间内还保留着 initContainer，在任务逐渐上量后发现 ETCD 的存储比较满，分析后发现 Spark 作业中的一个 Pod 生命周期大约 8 次更新，其中 initContainer 更新会占用 2 次，移除了之后理论上是可以减少 1/4 的 ETCD 存储，实际应用中完全去除了 initContainer 也确实能减小了 ETCD 的存储压力。&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;&lt;strong&gt;移除 sidecar 创建日志上报的容器&lt;/strong&gt;，Driver 和 Executor 日志上报步骤写在启动命令中，Spark 作业执行完后再执行脚本上报，原因是 sidecar 在同一个 Pod 中与主容器共享相同的生命周期，不使用 sidecar 方式就能更快创建 Pod，Spark 任务执行完成后能更快释放资源。&lt;/p&gt; &lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;p&gt;对于 Spark 作业会频繁创建、更新和销毁大量的 Pod，所以去除非必要的容器，提高 Pod 生命周期流转速度，就能降低 kube-apiserver、ETCD 工作负载，也能提高 Spark 的作业效率。&lt;/p&gt; 
+&lt;span id=&quot;OSC_h3_8&quot;&gt;&lt;/span&gt; 
+&lt;h3&gt;2.2.2 Spark 改造&lt;/h3&gt; 
+&lt;p&gt;Spark 任务运行在 K8s 上，对于一些使用的兼容问题也进行了&lt;strong&gt;相关改造&lt;/strong&gt;。&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt; &lt;p&gt;&lt;strong&gt;HistoryServer 改造&lt;/strong&gt;，因为 Spark Operator 没有存储已结束作业的日志，因此参考了 on Yarn 的方式，在 Spark 作业结束后，通过日志上传脚本把 Driver 和 Executor 的日志上传 HDFS，与 Yarn 日志聚合类似，同时也在 Spark HistoryServer 做了二次开发工作，增加了 on K8s 方式的日志查看接口，用户查看已完成的 Executor 日志时，不再请求 JobHistory Server，而是请求 Spark HistoryServer 接口。但日志上传方式需要 Executor 执行完才能查看到日志，为了能实时查看到执行中的日志，可以在 Executor 内部实现一个 HTTP 服务，根据 Pod 以及端口信息拼接出日志请求 URL，Executor 启动一个 Servlet 自动获取本地日志并返回。日志查看体验上做到了基本与 Yarn 一致。&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;&lt;strong&gt;主机 ip 通信&lt;/strong&gt;，Spark Driver 和 Executor 之间的通信通常是通过主机名进行的，不过随着 Spark 任务增多，CoreDNS 因为频繁的域名解释请求导致压力增大，甚至会影响到在线服务，因此我们将 Hadoop 的配置文件改为 ip 格式、设置 Driver 和 Executor 使用 ip 地址，同时去除了对应的 K8s Service，通过访问 ip 而不是域名的方式来规避这个问题。&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;&lt;strong&gt;文件参数兼容&lt;/strong&gt;，Spark Driver 在 K8s 上是运行在某一个 Pod 中的，所以文件需要是全局可视的，如 HDFS 文件，否则就会报文件未找到的错误，但 Spark 作业运行在大数据作业平台时有的任务使用的上传的本地文件，因此对于提交到 K8s 的任务，第一步是要把上传到大数据作业平台的文件再次上传到 HDFS，第二步是改造 add jar 和--file 等命令逻辑，Spark 任务在未能读取本地文件后将再尝试读取二次上传到 HDFS 的文件，实现任务无需修改成全局可视的文件路径也能读取到文件。&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;&lt;strong&gt;non-daemon 线程终止&lt;/strong&gt;，在 K8s 上运行的 Spark 任务是指定 Client 模式，Client 模式下 Driver 遇到异常时停掉 SparkContxet，等所有 non-daemon 线程结束后，Driver 才会退出，但如果存在一直运行的 non-daemon 线程，那么 Driver 一直不退出，任务就一直处于执行中。因此需要改造成 Cluster 模式的异常退出机制，即异常时以非 0 退出码退出，不再等待其他的 non-daemon 线程结束，Driver 直接终止，以确保 Driver Pod 的正常结束。&lt;/p&gt; &lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;span id=&quot;OSC_h2_9&quot;&gt;&lt;/span&gt; 
+&lt;h2&gt;2.3 Spark Operator 优化&lt;/h2&gt; 
+&lt;p&gt;随着在 K8s 上运行的 Spark 任务不断增加，K8s 集群的负载也逐渐显现。因此，需要对 Spark Operator 进行一系列优化，以减轻 K8s 集群的压力。&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt; &lt;p&gt;&lt;strong&gt;离线使用独立的 kube-apiserver&lt;/strong&gt;，混部集群中离线容器占了很大一部分，而且离线任务由于生命周期短，容器创建销毁更加频繁，这对 kube-apiserver 造成了很大的压力，然而在线业务需要更高的稳定性，为了减少离线对在线业务的影响，我们拆分了 kube-apiserver，离线任务通过指定 master 参数来使用独立的 kube-apiserver。&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;&lt;strong&gt;使用 K8s 的 HostNetwork 网络模式&lt;/strong&gt;，在 K8s 上启动 Driver 与 Executor 虽然使用的是独立 ip+固定端口，但频繁的 ip 申请和释放也对 kube-apiserver 造成了一定的压力，因此我们改为使用 HostNetwork 网络模式，同时不指定端口避免端口冲突。&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;&lt;strong&gt;优化 Spark Operator 控制器的队列&lt;/strong&gt;，在任务量比较大的情况下，Spark Operator 对 Pod 创建消耗效率会遇到瓶颈，排查后发现是 Spark Operator 的事件处理队列的并发数和限速桶的默认配置地太小，因此我们调低 Spark maxPendingPods 参数，调高 schedulerBacklogTimeout、 sustainedSchedulerBacklogTimeout 参数，减少 Pending Pod 个数，使 Pod 的处理效率符合集群的承载水平。&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;&lt;strong&gt;优化 Spark Driver List Pod 接口&lt;/strong&gt;，使用 kube-apiserver 缓存，避免对 ETCD 产生影响，同时修改 Spark Driver 清理 Executor 逻辑，直接 Delete，减少 List Pod 对 kube-apiserver 压力。&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;&lt;strong&gt;存储 emptydir + log lv 存储优化&lt;/strong&gt;，开发 CSI 插件，Spark 任务的离线日志单独存储，避免对在线业务 pod 的影响和磁盘负载高等问题。&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;&lt;strong&gt;Spark Secret 标记 immutable&lt;/strong&gt;，减少 kubelet watch secret 请求，降低 kube-apiserver 的负载。&lt;/p&gt; &lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;span id=&quot;OSC_h1_10&quot;&gt;&lt;/span&gt; 
+&lt;h1&gt;三、离线任务提交&lt;/h1&gt; 
+&lt;span id=&quot;OSC_h2_11&quot;&gt;&lt;/span&gt; 
+&lt;h2&gt;3.1 平台任务提交平滑切换&lt;/h2&gt; 
+&lt;p&gt;离线任务容器化方案确定后就要落地到生产，目前有 SparkSql 和 SparkJar 两种离线任务实现了容器化，这里以 SparkSql 任务为例描述 Spark 提交到混部 K8s 集群的流程并达到与传统客户端提交任务几乎无差异的平滑切换。目前 vivo 的离线任务都是通过大数据平台进行提交和调度的，平台会把主要的提交流程进行封装形成简单操作的功能，例如在平台上提交 SparkSql 任务流程一般是编写 sql、提交任务、查看 Driver 日志或在跳转到 SparkUI、执行完成后获取结果以及更新任务状态。&lt;/p&gt; 
+&lt;p&gt;在平台内部，SparkSql 任务使用传统的 spark-submit&lt;strong&gt;提交流程&lt;/strong&gt;是：&lt;/p&gt; 
+&lt;ol&gt; 
+ &lt;li&gt; &lt;p&gt;用户编写好的 sql 上传到提交节点生成一个 sql 文件；&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;在提交节点使用 Spark 客户端执行该 sql 文件启动 SparkSql 任务；&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;任务启动后，通过不断地 tail 操作查询日志转存到 HBase 方便在平台页面上查询到 Driver 日志；&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;任务结束后，再查询输出结果转存到 HBase 方便在平台页面上查询到执行结果；&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;根据提交 sql 任务命令的返回码来更新任务状态。&lt;/p&gt; &lt;/li&gt; 
+&lt;/ol&gt; 
+&lt;p&gt;传统 Spark 客户端提交任务大部分只会涉及到提交节点的客户端与平台服务器之间的交互，而 SparkSql 任务提交到混部 K8s 集群，从上节的 Spark 容器化方案的原理可知最终目的是要将 Spark 任务的任务参数按一定的格式封装好传入 Spark Operator 控制器来创建相关的容器，平台需要通过会调用容器团队提供的封装好 K8sApi 的统一接入层来创建 Spark 容器。&lt;/p&gt; 
+&lt;p&gt;&lt;img src=&quot;https://oscimg.oschina.net/oscnet//15dcd589c32637e1dde5ed6757b4eed7.png&quot; alt=&quot;图片&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
+&lt;p&gt;在平台内部，SparkSql 任务提交到混部 K8s 集群的&lt;strong&gt;完整流程&lt;/strong&gt;为：&lt;/p&gt; 
+&lt;ol&gt; 
+ &lt;li&gt; &lt;p&gt;用户编写好的 sql 上传到 HDFS 生成一个远程可访问的 HDFS 文件；&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;SparkSql 任务参数封装好传入容器接入层的 createSpark 接口来调用 Spark Operator 控制器容器，再由 Spark Operator 控制器创建 Driver Pod，最后由 Driver Pod 根据 Spark 任务需要创建多个 Executor Pod，这些 Driver、Executor 的 Pod 相当于 Driver 和 Executor 的角色，共同配合执行 Spark 作业；&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;任务启动后，通过容器接入层的 getDriverLog 接口周期性地查询 Driver 日志，实质上是查询 Driver 容器的日志，查询到的 Driver 日志会转存到 HBase 方便在平台页面上查询；&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;任务结束后，一方面通过 Spark 启动脚本中的日志上传命令，把 Driver 和 Executor 的日志上传 HDFS，可以在改造后的 Spark HistoryServer 直接查看，另一方面执行结果也会先输出到 HDFS，再从 HDFS 转存到 HBase 方便在平台页面上查询到执行结果；&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;通过轮询接入层的 getSpark 接口根据返回的状态码来更新任务状态，在任务结束后，此时 Driver Pod 不会主动退出，首先将任务状态更新为成功，在日志和结果都存储完成后，再调用 deleteSpark 接口主动地杀死 Driver Pod 释放资源，完成整个 Spark 任务流程。&lt;/p&gt; &lt;/li&gt; 
+&lt;/ol&gt; 
+&lt;p&gt;可以看出 SparkSql 任务提交到混部 K8s 的执行主体是容器，因此需要增加容器接入层来管理 Spark 相关的容器，同时容器的使用更倾向于存算分离的效果，因此需要使用 HDFS 作为远程文件中转。&lt;/p&gt; 
+&lt;p&gt;大数据平台上传统使用 spark-submit 和 onK8s 使用 spark-operator 的 SparkSql 任务执行流程对比如下：&lt;/p&gt; 
+&lt;p&gt;&lt;img src=&quot;https://oscimg.oschina.net/oscnet//024fa2e15ecb64123b58156eb1fd2188.jpeg&quot; alt=&quot;图片&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
+&lt;span id=&quot;OSC_h2_12&quot;&gt;&lt;/span&gt; 
+&lt;h2&gt;3.2 混部任务的资源参数调整&lt;/h2&gt; 
+&lt;p&gt;Spark 任务的 Driver 和 Executor，在 Yarn 上执行实质是运行在 NodeManager 节点上的，而在 K8s 上执行实质是运行在对应的 Pod 中的，由于 Spark on K8s 的提交方式和运行环境都不同于 on Yarn，任务的资源参数不能直接套用，需要做一些参数调整才能提交到 K8s 上。&lt;/p&gt; 
+&lt;p&gt;&lt;strong&gt;1、资源参数提取和转换&lt;/strong&gt;&lt;/p&gt; 
+&lt;p&gt;SparkSql 任务在 Yarn 上可以灵活地调整 sql 中的配置来满足不同特性的任务，sql 中的资源配置会覆盖客户端启动时的全局配置，因为 Executor 是运行在 NodeManager 节点上的，资源会相对充裕能满足 Executor 的资源需求，与此不同的是 Spark on K8s 的 Executor 是运行在 Executor Pod 中的，使用的资源会受到 Pod 资源规格大小的限制，而 spark-operator 的提交方式是要先获取 Executor 全局资源规格并生成相应资源规格大小的 Executor Pod，所以在提交 Spark 任务到 K8s 前就要准确地获取任务真正生效的资源参数。在大数据平台中资源参数会存在多中类型的参数中，参数的优先级为：任务配置参数 &amp;lt; 任务模板参数 &amp;lt; sql 中设置参数 &amp;lt; HBO 优化参数 &amp;lt; 平台统一参数，按此优先级顺序依次提取最终的资源参数并传入容器接入层创建 Spark 作业。另外容器接入层对于 Spark 的 arguments 和 sparkConf 参数都是要求以字符数组的方式传入，需要做好对原任务参数中的单引号、双引号、反斜杠和回车等符号以及分段落的处理和转换。&lt;/p&gt; 
+&lt;p&gt;&lt;strong&gt;2、overheadMemory 的计算&lt;/strong&gt;&lt;/p&gt; 
+&lt;p&gt;在 Yarn 上 Executor 是运行在 NodeManager 节点上的，节点的资源一般都大于并能满足 container 申请的资源，所以在 Yarn 上只需要关心 container 本身申请的资源即可，而在 K8s 上 Executor 运行在对应的 Pod 中，可以把 Pod 理解为只一台独立的节点，除了要满足 container 申请的资源量，还需要一些 Pod 容运行时网络、存储等基础设施的自身开销资源，如果把 Spark 任务中 Driver 和 Executor 申请的资源直接设置为 K8s 中 Driver Pod 和 Executor Pod 的资源规格，有可能出现 OOM 情况，另外还要考虑非 JVM 内存，Spark 默认会把申请的 Executor 内存乘以一个系数或者至少预留 384 MiB 内存作为额外的非 JVM 内存缓冲区，用于堆外内存分配、非 JVM 任务以及各类系统进程的使用，可以通过设置 overheadMemory 进行覆盖。因此 K8s 的 Pod 除了要满足申请的 Memory 和运行时需要的 overheadMemory 的资源，还会再添加 100M 资源用于 Pod 运行的自身开销。&lt;/p&gt; 
+&lt;p&gt;pod 的资源规格 = memory + pod overheadMemory&lt;/p&gt; 
+&lt;p&gt;对于 overheadMemory 也需要先获取到并加到 Pod 的资源规格，如果任务有配置就直接使用配置的 overheadMemory，如果没有配置值则按一定计算公式来计算得到。&lt;/p&gt; 
+&lt;p&gt;&lt;strong&gt;有配置&lt;/strong&gt;：&lt;/p&gt; 
+&lt;p&gt;pod overheadMemory = overheadMemory + 100M&lt;/p&gt; 
+&lt;p&gt;&lt;strong&gt;无配置&lt;/strong&gt;：&lt;/p&gt; 
+&lt;p&gt;pod overheadMemory = (max(384M，0.1*memory)) 向上取整到 512MB 的整数倍 + 100M&lt;/p&gt; 
+&lt;p&gt;不过在实际应用中发现对于个别任务，即使 K8s 上配置的 overheadMemory 比在 Yarn 的配置多 100M，完全一样的任务在 K8s 上则有较多的 Executor OOM 情况，而在 Yarn 上却完全没有，目前排查到的现象是有 JVM 堆外的内存无法回收，如果任务需要较多的对外内存，堆外内存一直增长最终导致 OOM，但哪些内存无法回收的还未排查到。目前对于这些 OOM 过多且实际影响到运行效率的任务，在原 overheadMemory 基础上再增加 512M 后就没有 OOM 情况了，同时也有采用了大数据平台的 HBO 能力自动调整内存参数来事后规避这个问题。&lt;/p&gt; 
+&lt;p&gt;&lt;strong&gt;3、CPU 超分配置&lt;/strong&gt;&lt;/p&gt; 
+&lt;p&gt;Spark 任务申请的 CPU 使用一般不会使用完，事实上 Executor Pod 的 CPU 利用率也并不是很高，比如 Executor 申请 1 个核，通常只能利用 0.6 个核，存在 CPU 浪费的现象。Executor Pod 的资源规格是创建的时候分配的，利用容器的能力，可以采取 CPU 超分的方式提高 CPU 的利用率，例如 Executor 申请 1 核，实际用 0.6 核，如果 Pod 分配 1 核，那利用率就只有 60%，但如果 Pod 只分配 0.8 核，那利用率就有 75% 了，所以超分的策略就是申请了 1 核只给 0.8 核，但还是要按 1 核的申请量来运行任务。目前平台使用的是静态的固定比例超分设置为 0.8，实施超分配置策略后 Pod 的实际 CPU 利用率打到 80% 以上。&lt;/p&gt; 
+&lt;p&gt;&lt;img src=&quot;https://oscimg.oschina.net/oscnet//29fe0829e28d1e2084e2dbba0910de3a.png&quot; alt=&quot;图片&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
+&lt;span id=&quot;OSC_h2_13&quot;&gt;&lt;/span&gt; 
+&lt;h2&gt;3.3 混部任务的筛选提交&lt;/h2&gt; 
+&lt;p&gt;经过上面的任务提交方式的改造和任务资源参数的调整，原 SparkSql 和 SparkJar 任务就可以平滑切换提交到混部 K8s 上执行了，但在大规模切换之前平台还做了比较长期的双跑验证工作，在执行成功率、数据一致性和执行时效等方案都进行了双跑比较，双跑通过的任务才能切换到 K8s 上执行。除了双跑通过，前期还设置了其他的筛选条件如下。&lt;/p&gt; 
+&lt;p&gt;&lt;img src=&quot;https://oscimg.oschina.net/oscnet//698830de13538cf7b2a6cf67d0b6fa45.jpeg&quot; alt=&quot;图片&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
+&lt;p&gt;前期按这些条件筛选出可以提交到 K8s 的任务，然后分批的进行 K8s 任务的参数标记，并把标记的这批任务添加监控进行跟踪。经过双跑验证、任务筛选、批量标记、监控跟踪和问题解决这一整套 SparkSql 任务上量 K8s 的流程，K8s 上的任务运行逐步稳定，K8s 的兼容问题也基本解决，因此目前取消了双跑通过的这一条件，主要保留了任务重要性、运行时长和重试次数这几个筛选指标。随着 SparkSql 任务上量和稳定，提交到 K8s 的任务类型也增加了 SparkJar 任务，SparkJar 任务无法进行双跑验证，所以在各种 K8s 兼容问题解决后再推进会更加稳妥。&lt;/p&gt; 
+&lt;p&gt;目前大数据平台会定期筛选和标记一批 SparkSql 和 SparkJar 任务允许提交到混部 K8s，用户也可以自行开启，在任务配置页面只显示已开启混部，则该任务就有机会被提交到混部 K8s 上执行。当然，用户也可以手动关闭这一开关，并且手动操作的优先级最高，手动关闭后平台的自动开启功能将不再生效。&lt;/p&gt; 
+&lt;span id=&quot;OSC_h1_14&quot;&gt;&lt;/span&gt; 
+&lt;h1&gt;四、弹性调度系统&lt;/h1&gt; 
+&lt;span id=&quot;OSC_h2_15&quot;&gt;&lt;/span&gt; 
+&lt;h2&gt;4.1 弹性调度功能矩阵&lt;/h2&gt; 
+&lt;p&gt;Spark 任务开启了混部也不是必定能提交到混部，最终能不能在混部集群上执行，还要根据当时混部集群的资源和运行情况等来确定，为了更好地协调离线任务和混部集群的供需关系，大数据平台构建了离线任务混部弹性调度系统。弹性调度系统的设计目是混部集群有资源了就调度离线任务，但在生产环境中不管是混部集群还是离线任务都会各自的问题需要解决和优化的需求，弹性调度系统也逐步演变成了全面管理离线任务提交到混部以实现混部资源最大化利用的功能矩阵。&lt;/p&gt; 
+&lt;span id=&quot;OSC_h3_16&quot;&gt;&lt;/span&gt; 
+&lt;h3&gt;4.1.1 资源水位线调度&lt;/h3&gt; 
+&lt;p&gt;&lt;img src=&quot;https://oscimg.oschina.net/oscnet//878bdd653f0ec47e7c32fe0b09e8f975.png&quot; alt=&quot;图片&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
+&lt;p&gt;弹性调度的流程，任务按调度时间以任务流的形式过来，如果任务标记了允许提交到混部，那就会先去查询 K8s 的各个集群，如果某一个集群资源充足就直接提交到 K8s，如果当时没有足够资源就等待资源再判断，这里分为有三类任务，第一类是一直等 K8s 资源，永不超时，只会提交到 K8s；第二类是长时间等待，超时时间在 1 到 5 分钟，可以等久一点；第三类是短时等待，超时时间为 30-60 秒，稍微等一下，如果 K8s 没有资源就回到 Yarn 上执行，目前平台标记的任务大部分任务都是第三类短时等待。&lt;/p&gt; 
+&lt;p&gt;混部集群提供给离线任务的资源是呈潮汐波动的，使用百分比的水位线方式才能更好地贴合资源的波动情况。混部集群提供的资源是指 CPU 和内存，但离线任务一般不能百分之百地获取到这部分资源，需要设置一个折算比例也就是水位线来计算出离线任务能使用的真正资源是多少，水位线的设置需要考虑&lt;strong&gt;几个因素&lt;/strong&gt;：&lt;/p&gt; 
+&lt;p&gt;&lt;strong&gt;1、混部集群的碎片化率&lt;/strong&gt;，混部集群中的机器规格和正在运行的业务占用量都是不确定的，但一般大规格的机器多的集群碎片化率较低，所以小规格的机器多的集群的水位线要设置低一点。&lt;/p&gt; 
+&lt;p&gt;&lt;strong&gt;2、资源动态分配容纳率&lt;/strong&gt;，对于开启了动态分配的 Spark 任务，无法提前知道任务所需的资源，需要留有一部分资源用于动态分配的消耗，如果同样的水位线资源规模大的混部集群容纳率会高，所以资源规模小的集群的水位线要设置低一点。&lt;/p&gt; 
+&lt;p&gt;&lt;strong&gt;3、资源配比的均衡性&lt;/strong&gt;，不同的集群或者同一集群的不同时间段的 CPU 和内存配比可能会存在很大的差异，例如 Spark 任务的 CPU 和内存的平均比例是 1 核 6G，即 1:6，如果有 CPU 和内存比为 1:2 的，内存会被用完而 CPU 有剩余，此时为了内存留有部分余量，水位线要设置低一点。&lt;/p&gt; 
+&lt;p&gt;&lt;code&gt;混部资源可用量 = 混部资源提供量 * 资源水位线&lt;/code&gt;&lt;/p&gt; 
+&lt;p&gt;资源水位线有 CPU 水位线和内存水位线，设计时以 CPU 或内存中的最低水位线为准，哪个资源先分配完就停止提交任务，不过在实际生产中大部分混部集群都是受内存限制较多，个别时段 CPU 比内存多但通过其他的限制手段即使 CPU 满载对任务影响不大，因此目前只开启了内存资源水位线。以上提到的 3 点可以当成集群的固有消耗需要保留有一定的余量，为了直观地控制混部资源使用率和引入优先策略，计算方式调整为：&lt;/p&gt; 
+&lt;p&gt;&lt;code&gt;混部资源可用量 = 混部资源提供量 * (1-余量水位线) * 优先水位线&lt;/code&gt;&lt;/p&gt; 
+&lt;p&gt;余量水位线根据各个集群来调整，一般为 0.05，优先水位线的范围可以在 0-1 之间。优先水位线的作用是对于一些符合优先条件的任务可以优先提交，但是任务调度是一有任务就要调度的流式调度，不能够先集中再挑选优先任务而是先到先得，所以要为优先任务预留一部分资源，例如优先水位线为 0.8，混部资源使用到 0.8 以下的时候任何任务都可以调度上来，但使用量超过了 0.8，那只有优先任务能调上来，也就是为优先任务预留了 0.2 的资源，当然即使资源使用量达到了 1，由于余量水位线的存在，实际的使用量为 0.95，混部集群仍有资源维持周转。优先水位线是最常用的调整参数，它实质就是控制混部任务提交量，不仅能调整混部资源的使用量，还在灰度测试、压力测试和问题排查等事项起到了灵活调节的作用。&lt;/p&gt; 
+&lt;span id=&quot;OSC_h3_17&quot;&gt;&lt;/span&gt; 
+&lt;h3&gt;4.1.2 其他调度能力&lt;/h3&gt; 
+&lt;p&gt;&lt;strong&gt;1.多集群管理&lt;/strong&gt;：混部集群通常会有多个，vivo 目前就有多个生产环境的混部集群，各混部集群由于建设周期、机器规格和业务接入的不同，混部资源的规模和变化趋势都会呈现比较大的差异，因此每个集群的调度策略配置都需要做到能独立调整来适应各自的资源特点。&lt;/p&gt; 
+&lt;p&gt;&lt;strong&gt;2.分时段控制&lt;/strong&gt;：每个混部集群上的在线业务一般是潮汐波动的，给到离线任务的资源也是潮汐波动的，因此每个集群需要做到在每天不同时段可以调整不同的调度策略，尤其在波峰波谷差异较大的时间段各自调整配置的差异会更大。&lt;/p&gt; 
+&lt;p&gt;&lt;strong&gt;3.分散 namespace&lt;/strong&gt;：Spark 任务的 Driver Pod 和 Executor Pod 都会放在一个 namespace 中管理，如果所有任务都由一个 namespace 管理，那需要管理的 pod 数量会达到数十万的级别，会对 K8s 集群的性能和稳定性产生影响。因此需要将 Spark 任务平均分配到多个 namespace，采用的方案是轮询填充，任务优先分配到多个 namespace 中任务最少 namespace。&lt;/p&gt; 
+&lt;p&gt;&lt;strong&gt;4.失败回退 Yarn&lt;/strong&gt;：离线任务混部推进的过程中还有会有 Spark 兼容问题、混部集群异常和平台变更等问题导致的离线任务在混部 K8s 上运行失败，为了减少失败对任务的影响，任务在 K8s 上首次执行失败后就会自动回到 Yarn 重新执行。&lt;/p&gt; 
+&lt;p&gt;&lt;strong&gt;5.资源准入粒度&lt;/strong&gt;：各混部集群的机器规格和碎片率是不一样的，如 executorMemory=2G 这样较小粒度的 Spark 任务即使碎片率较高的混部集群可以填充，而对于 executorMemory=16G 这样较大粒度的 Spark 任务，机器规格大的集群才更容易获取到资源，因此不同混部集群可以设置不同的准入粒度，小规格和碎片率高的集群准入粒度可以设置小一些。&lt;/p&gt; 
+&lt;p&gt;&lt;strong&gt;6.任务偏好配置&lt;/strong&gt;：对于一些灰度任务和特殊要求的任务，例如只有在 0 到 8 点才允许提交到混部、只提交到某几个指定的混部集群等调度要求，需要支持任务偏好配置，在任务参数中调整混部控制参数实现相应的调度需求。&lt;/p&gt; 
+&lt;span id=&quot;OSC_h2_18&quot;&gt;&lt;/span&gt; 
+&lt;h2&gt;4.2 弹性调度策略优化&lt;/h2&gt; 
+&lt;p&gt;弹性调度的核心是通过资源水位线的调节，有混部资源就调度离线任务，但实际生产中还要考虑混部集群的运行情况，是否能稳定地接收和消化离线任务，同时在存在多个差异较大的集群时提交到哪个集群最优。&lt;/p&gt; 
+&lt;span id=&quot;OSC_h3_19&quot;&gt;&lt;/span&gt; 
+&lt;h3&gt;4.2.1 任务调度稳定优化&lt;/h3&gt; 
+&lt;p&gt;大数据平台的离线任务提交高峰在凌晨时段而且调度时间集中在整点半点，还有 5 分和 10 分这样的整分，例如 03:00 调度的任务达 1000 个，但在 03:01 调度的任务只有 10 个，过于集中地提交任务会导致混部集群 Pending Pod 数量急剧上升，这是因为无论是查询集群资源还是 Pending 数的接口，更新数据都需要一定的周期时间，而且离线任务提交上去到获取资源也受 K8s 的调度时间的影响，所以获取集群运行情况总会滞后于任务提交。例如 03:00 查询集群是有资源的并且是健康的，由于任务开启了动态分配所以不能确定需要多少资源，此时集中提交了 1000 个任务，这 1000 个任务首先会创建 1000 个 Driver Pod，集群资源还是能满足的并且优先创建，假如每个 Driver 需要创建 100 个 Executor，如果集群没有这么多资源，那就会产生大量的 Penging Pod，严重影响集群的性能和稳定以及任务的执行效率，因此需要对弹性调度的稳定性进行优化。&lt;/p&gt; 
+&lt;p&gt;&lt;strong&gt;短时提交限制&lt;/strong&gt;：避免集中提交任务的直接方案就是根据各混部集群的资源规模设置短时提交的任务数量限制，例如 1 分钟内只能提交 100 个任务，集群短时间内 Pending Pod 数量会增加但仍在可以承受范围内，集群和任务都会稳定运行。短时提交限制相当于拦截并舍弃了部分某个时间点集中提交的任务，这里相当于舍弃了 900 个任务，那么提交的总任务量就减少了。&lt;/p&gt; 
+&lt;p&gt;&lt;strong&gt;延迟打散提交&lt;/strong&gt;：为解决短时提交限制导致舍弃部分任务的问题，增加了短时延迟打散提交，例如 03:00 提交的 1000 个任务，随机打散到 03:00 到 03:03 的 3 分钟内，即使有短时提交限制，这 3 分钟内也可以提交 300 个任务。理论上将集中提交的任务延迟更久，能提交到混部的任务会更多，但是增加延迟时长就等于增加任务的执行时长，会影响到业务数据产出的及时性，因此延迟打散提交策略只能是短时的，进一步的优化是执行时长更久的任务延迟更久一点，但根本解决方案还是用户能将调度时间尽量打散。&lt;/p&gt; 
+&lt;p&gt;&lt;strong&gt;集群反馈限制&lt;/strong&gt;：短时提交限制和延迟打散提交都属于静态限制，需要人为地根据各个混部集群的情况去判断和设置限制值，因此需要做到动态限制，就需要获取集群的运行情况并根据运行情况进行限制。事实上 K8s 的调度性能相比于 Yarn 还是有差距的，从提交的 Spark 任务到获取到资源运行 Pod 有一定的滞后时间差，这段时间查询内还是有剩余资源，但如果还继续提交新任务就会产生更多 Pending Pod，因此需要做集群运行情况的反馈控制，例如查询 Pending Pod 数、等待的 SparkApp 数，当数量达到一定数量就不再提交新任务。&lt;/p&gt; 
+&lt;p&gt;集群反馈限制虽然是动态的能根据混部集群情况进行反馈调节，但是查询集群状态是滞后的，这种滞后的控制就容易被集中提交给打垮，所以要加上短时提交限制来上一道保险，为缓解短时提交限制造成的任务损失，就引入了延迟打散提交，而在延时打散的过程中集群能逐步消化任务，查询集群状态逐步接近真实情况，这时又可以交给集群反馈限制来动态调节，逐步从突增恢复到稳定，三个调度稳定优化策略相辅相成。&lt;/p&gt; 
+&lt;span id=&quot;OSC_h3_20&quot;&gt;&lt;/span&gt; 
+&lt;h3&gt;4.2.2 集群分配均匀优化&lt;/h3&gt; 
+&lt;p&gt;离线任务会调度到多个混部集群，每个集群的资源总量和可用资源量，以及集群运行状况都不相同，为保证离线任务的运行稳定和执行效率，需要在多个混部集群中选择一个最合适的集群。各个集群会按一定的规则进行排序，离线任务会按这个排序依次轮询各个集群，只要集群剩余资源满足且没有被短时提交限制、集群反馈限制等拒绝，离线任务就提交到该集群。集群排序的&lt;strong&gt;演化顺序&lt;/strong&gt;如下：&lt;/p&gt; 
+&lt;p&gt;①初始方案&lt;/p&gt; 
+&lt;p&gt;&lt;strong&gt;排队队列+轮询&lt;/strong&gt;&lt;/p&gt; 
+&lt;p&gt;剩余资源量多的优先&lt;/p&gt; 
+&lt;p&gt;&lt;img src=&quot;https://oscimg.oschina.net/oscnet//2b0cade1eb777379e3744a4104790af8.png&quot; alt=&quot;图片&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;strong&gt;优点&lt;/strong&gt;&lt;/p&gt; 
+&lt;p&gt;离线任务优先提交到资源最多的集群，保证离线任务运行稳定&lt;/p&gt; 
+&lt;p&gt;&lt;strong&gt;缺点&lt;/strong&gt;&lt;/p&gt; 
+&lt;p&gt;对于小集群剩余资源量很小一直分配不到任务容易「饿死」（事实上有的小集群全部资源量都达不到一个大集群的 20%）&lt;/p&gt; 
+&lt;p&gt;② 优化方案&lt;/p&gt; 
+&lt;p&gt;&lt;strong&gt;随机队列+排序队列+轮询&lt;/strong&gt;&lt;/p&gt; 
+&lt;p&gt;将资源使用量超过一定比例的集群放到排序队列，剩余的集群放到随机队列&lt;/p&gt; 
+&lt;p&gt;&lt;img src=&quot;https://oscimg.oschina.net/oscnet//c8b8441d6a201f0d2e84113fcc307c2f.png&quot; alt=&quot;图片&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;strong&gt;优点&lt;/strong&gt;&lt;/p&gt; 
+&lt;p&gt;离线任务优先提交到资源较多的集群，即保证任务的运行稳定，随机的方式也能均匀「喂饱」每个集群&lt;/p&gt; 
+&lt;p&gt;&lt;strong&gt;缺点&lt;/strong&gt;&lt;/p&gt; 
+&lt;p&gt;随机分配在大任务量时相当于是平均分配，每个集群都会调度差不多的任务量，当前情况会存在整点集中提交大量任务，小集群接收和大集群同样任务量会抗不住，影响任务执行稳定和效率，小集群容易「撑死」&lt;/p&gt; 
+&lt;p&gt;③再优化方案&lt;/p&gt; 
+&lt;p&gt;&lt;strong&gt;加权随机队列+排序队列+轮询&lt;/strong&gt;&lt;/p&gt; 
+&lt;p&gt;按剩余资源进行加权随机，剩余资源多的集群有更多概率分配到任务&lt;/p&gt; 
+&lt;p&gt;&lt;img src=&quot;https://oscimg.oschina.net/oscnet//b39918d1411bca61982582118837a610.png&quot; alt=&quot;图片&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;strong&gt;优点&lt;/strong&gt;&lt;/p&gt; 
+&lt;p&gt;离线任务优先提交到资源较多的集群，「大集群多吃，小集群少吃」，每个集群都能填充同时保证任务的运行稳定&lt;/p&gt; 
+&lt;p&gt;④ 最终方案&lt;/p&gt; 
+&lt;p&gt;&lt;strong&gt;优先队列（排序）+加权随机队列+排序队列+轮询&lt;/strong&gt;&lt;/p&gt; 
+&lt;p&gt;考虑优先队列，无视其他排序规则，优先队列里的集群将最优先，在优先队列中的集群再按资源排序&lt;/p&gt; 
+&lt;p&gt;&lt;img src=&quot;https://oscimg.oschina.net/oscnet//db44e6961fb051bfbb59cb66ff17797f.png&quot; alt=&quot;图片&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;strong&gt;优点&lt;/strong&gt;&lt;/p&gt; 
+&lt;p&gt;继承上一方案的优点，同时对于特定项目或机房的离线任务，能优先调度到某些特定的集群&lt;/p&gt; 
+&lt;p&gt;目前只以内存作为资源水位线的衡量标准，这里的资源量指的是内存量。最开始方案是按集群的剩余资源排序，内存资源剩余多的集群优先，缺点是小集群一直分配不到任务容易「饿死」，然后使用随机的方式也能均匀「喂饱」每个集群，但小集群接收同样任务量时容易「撑死」，于是随机队列按剩余资源进行加权随机，剩余资源多的集群有更多概率分配到任务，这样离线任务优先提交到资源较多的集群，「大集群多吃，小集群少吃」，每个集群都能填充同时保证任务的运行稳定，在此基础上增加优先队列，无视其他排序规则，优先队列里的集群将最优先，在优先队列中的集群再按资源排序，能优先调度到某些特定的集群，形成最终集群选择排序方案。&lt;/p&gt; 
+&lt;span id=&quot;OSC_h1_21&quot;&gt;&lt;/span&gt; 
+&lt;h1&gt;五、混部的效果与未来规划&lt;/h1&gt; 
+&lt;p&gt;经过以上的对 Spark 组件、K8s 混部系统、大数据平台以及弹性调度系统的改造和优化，目前混部集群及提交混部的离线任务运行持续稳定，每天任务调度到混部的次数达 10+万次，在凌晨的高峰期通过混部能为离线任务额外增加数百 TB 内存的计算资源，部分混部集群的 CPU 利用率提升至 30% 左右，整体收益也是可观的。&lt;/p&gt; 
+&lt;p&gt;虽然目前 vivo 的在离线混部达到了一定的规模，但未来要继续提高混部的规模和收益，还有规划一些改进工作。&lt;/p&gt; 
+&lt;span id=&quot;OSC_h2_22&quot;&gt;&lt;/span&gt; 
+&lt;h2&gt;1、提高离线任务混部规模。&lt;/h2&gt; 
+&lt;p&gt;离线任务混部的节点是在线业务提供的，节点规模取决于在线业务峰值，峰值越高那么在业务低峰期能提供给离线混部资源就越多，因此提高混部规模的重要因素是提交更多的离线任务。然而目前采用的 Spark Operator 方案能提交的离线任务只有标准的 SparkSql 和 SparkJar 任务，而对于非标准的任务如脚本任务，脚本中除了调用 spark-submit 提交 Spark 作业还有额外的处理逻辑，这类任务还不能直接以 Spark Operator 的方式提交。事实上 Spark 作业更多是来自脚本任务的非标准任务，如果要继续增加离线任务的量，就必须把非标准任务也提交到混部，因此后续是选择改造 spark-submit 客户端支持 Spark Operator，或是选择使用 Yarn on K8s，还需要综合评估。&lt;/p&gt; 
+&lt;span id=&quot;OSC_h2_23&quot;&gt;&lt;/span&gt; 
+&lt;h2&gt;2、提高离线任务混部收益。&lt;/h2&gt; 
+&lt;p&gt;目前混部节点 CPU 的平均利用率达到 30%，但仍有提升空间。从离线任务的角度来看，一方面是要增加错峰互补的时间段，例如离线任务的高峰期是 02:00 到 08:00，在线业务的高峰期是 06:00 到 23:00，在 06:00 后在线业务逐步上量开始回收资源，所以离线任务能显著提高混部集群 CPU 利用率的黄金时间是有 02:00 到 06:00 这 4 个小时，因此如果能把离线任务高峰期提前到 00:00 到 06:00，混部提效的黄金时间就能达到 6 小时。所以需要推动离线任务高峰期的前移，对于有依赖链路的任务，尽量减少调度时间的间隔，上游任务完成后能尽快调起下游任务，而对于没有依赖的任务，可以尽量提前调度时间，不过这两种调整都需要推动业务方来调整，平台也可以给予一定的计算成本优惠作为激励。另一方面是要提高混部资源的填充率，Spark 任务需要创建大量的 Executor Pod，目前混部集群的调度器为了保证调度效率就没有开启预选、优先策略，事实上 Spark 的资源粒度比较小更适合填充资源碎片，所以在不影响 K8s 调度效率的情况下优化资源调配策略，把合适的资源粒度的 Pod 分配到合适的混部节点，也是提高混部收益的方向。&lt;/p&gt;
+                                                                                    &lt;/div&gt;
+                                                                            </description>
+            <link>https://my.oschina.net/vivotech/blog/18181972</link>
+            <guid isPermaLink="false">https://my.oschina.net/vivotech/blog/18181972</guid>
+            <pubDate>Thu, 17 Apr 2025 06:42:40 GMT</pubDate>
+            <author>原创</author>
+        </item>
+        <item>
+            <title>开源多模态大模型「书生·万象 3.0」发布</title>
+            <description>&lt;div class=&quot;content&quot;&gt;
+                                                                                            &lt;p&gt;&lt;span style=&quot;color:#000000&quot;&gt;上海人工智能实验室（上海 AI 实验室）升级并开源了通用多模态大模型&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fmp.weixin.qq.com%2Fs%2Frb_gVjQTuwdx0hse6KuAkA&quot; target=&quot;_blank&quot;&gt;书生·万象 3.0&lt;/a&gt;（InternVL3）。&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;span style=&quot;color:#000000&quot;&gt;根据介绍，通过采用创新的多模态预训练和后训练方法，InternVL3 多模态基础能力全面提升，在专家级基准测试、多模态性能全面测试中，10 亿~780 亿参数的全量级版本在开源模型中性能均位列第一，同时大幅提升了图形用户界面（GUI）智能体、建筑场景图纸理解、空间感知推理以及通识学科推理等方面的能力。&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;img height=&quot;292&quot; src=&quot;https://oscimg.oschina.net/oscnet/up-a1e01575a2bc4dfc8530b94281d9005d52e.png&quot; width=&quot;500&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt;&lt;span style=&quot;color:#000000&quot;&gt;在专家级多学科领域知识推理基准测试 MMMU 中再次突破开源模型极限，取得 72.2 分；&lt;/span&gt;&lt;/li&gt; 
+ &lt;li&gt;&lt;span style=&quot;color:#000000&quot;&gt;基于司南 OpenCompass 开源评测框架，研究团队对 InternVL3 进行了全面系统的评估，包括多学科推理、文档理解、多图像 / 视频理解、现实世界理解、多模态幻觉检测、视觉定位、多语言能力以及以语言为中心的基准测试。评测结果显示，InternVL3 在开源多模态大模型中性能表现最优，创造了开源多模态大模型的性能新标杆，性能接近闭源模型 Gemini-2.5-Pro；&lt;/span&gt;&lt;/li&gt; 
+ &lt;li&gt;&lt;span style=&quot;color:#000000&quot;&gt;创新提出原生多模态预训练方法，将语言和多模态学习整合于同一个预训练阶段，提升及拓展多模态能力的同时，进一步提升纯语言能力；&lt;/span&gt;&lt;/li&gt; 
+ &lt;li&gt;&lt;span style=&quot;color:#000000&quot;&gt;提出混合偏好优化算法以及多模态测试阶段增强，通过负监督修正模型响应分布，大幅提升模型推理能力。&lt;/span&gt;&lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;p&gt;公测版本：&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fchat.intern-ai.org.cn%2F%C2%A0&quot; target=&quot;_blank&quot;&gt;https://chat.intern-ai.org.cn/&amp;nbsp;&lt;/a&gt;&lt;/p&gt;
+                                                                                &lt;/div&gt;
+                                                                            </description>
+            <link>https://www.oschina.net/news/345071</link>
+            <guid isPermaLink="false">https://www.oschina.net/news/345071</guid>
+            <pubDate>Mon, 14 Apr 2025 06:08:00 GMT</pubDate>
+            <author>来源: OSCHINA</author>
+        </item>
+        <item>
+            <title>豆包 1.5·深度思考模型发布</title>
+            <description>&lt;div class=&quot;content&quot;&gt;
+                                                                                            &lt;p&gt;&lt;span style=&quot;color:#000000&quot;&gt;在今日火山引擎 AI 创新巡展杭州站现场，火山引擎总裁谭待发布了最新的豆包 1.5·深度思考模型，升级豆包·文生图模型 3.0、豆包·视觉理解模型。&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;span style=&quot;color:#000000&quot;&gt;同时，面向 Agent 服务，发布 OS Agent 解决方案、GUI Agent 大模型——豆包 1.5·UI-TARS 模型；面向大规模推理，发布 AI 云原生·ServingKit 推理套件。&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;span style=&quot;color:#000000&quot;&gt;据透露，截至 2025 年 3 月底，豆包大模型日均 tokens 调用量已超过 12.7 万亿，是 2024 年 12 月的 3 倍，是一年前刚刚发布时的 106 倍。IDC 报告显示，2024 年中国公有云大模型调用量激增，火山引擎以 46.4% 的市场份额位居中国市场第一。&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;span style=&quot;color:#000000&quot;&gt;豆包 1.5·深度思考模型在数学、编程、科学推理等专业领域及创意写作等通用任务中表现突出。同时，模型采用 MoE 架构，总参数 200B，激活参数为 20B，低于业界同类模型参数规模的 50%，具备显著的推理成本优势。基于高效算法，豆包 1.5·深度思考模型在提供行业极高并发承载能力的同时，实现 20 毫秒极低延迟。&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;img height=&quot;363&quot; src=&quot;https://oscimg.oschina.net/oscnet/up-be145536aac0c4457023c8127490097c66a.png&quot; width=&quot;700&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;span style=&quot;color:#000000&quot;&gt;此外，豆包 1.5·深度思考模型还具备视觉理解能力，可以像人类一样，不光基于文字思考，更能基于所见画面思考，思考更立体，让模型同时拥有「大脑」和「眼睛」。&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;span style=&quot;color:#000000&quot;&gt;升级的豆包·文生图模型 3.0 则能够实现更好的文字排版表现、实拍级的图像生成效果，以及 2K 的高清图片生成方式。可以广泛应用于影视、海报、绘画、玩偶设计等营销、电商、设计场景。&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;span style=&quot;color:#000000&quot;&gt;新版本的豆包·视觉理解模型具备更强的视觉定位能力，支持多目标、小目标、通用目标的框定位和点定位，并支持定位计数、描述定位内容、3D 定位。可应用于线下门店的巡检场景、GUI agent、机器人训练、自动驾驶训练等。新版本在视频理解能力上也有大幅提升，比如记忆、总结理解、速度感知、长视频理解等。&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;span style=&quot;color:#000000&quot;&gt;更多详情可&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fmp.weixin.qq.com%2Fs%2FRYJ2OiZM_M-Jh27x3OFEdg&quot; target=&quot;_blank&quot;&gt;查看官方公告&lt;/a&gt;。&lt;/span&gt;&lt;/p&gt;
+                                                                                &lt;/div&gt;
+                                                                            </description>
+            <link>https://www.oschina.net/news/345068</link>
+            <guid isPermaLink="false">https://www.oschina.net/news/345068</guid>
+            <pubDate>Mon, 14 Apr 2025 05:55:00 GMT</pubDate>
+            <author>来源: OSCHINA</author>
+        </item>
+        <item>
+            <title>谷歌推出了超越 Sora 的 Veo 2，生成 8 秒超逼真视频</title>
+            <description>&lt;div class=&quot;content&quot;&gt;
+                                                                                            &lt;p&gt;谷歌 DeepMind 终于将大家期待已久的 Veo 2 整合到 GeminiApp 应用中，全面开放使用。&lt;/p&gt; 
+&lt;p&gt;&lt;img src=&quot;https://static.oschina.net/uploads/space/2025/0417/114154_vVro_2720166.png&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
+&lt;p&gt;Veo 是谷歌迄今为止最强大的视频生成模型。它可以生成各种电影和视觉风格的视频，捕捉提示中的细微之处，以便在各个画面中一致呈现精致细节。&lt;/p&gt; 
+&lt;p&gt;据介绍，Veo 2 可以最高生成 8 秒 720P 电影级视频，在运镜、文本语义还原、物理模拟、动作一致性等方面非常优秀，同时支持图片转视频功能。谷歌公布的测试数据显示，Veo 2 在用户偏好和提示还原方面已经超过了 Sora、可灵 1.5、Meta Movie Gen 和 Minimax。&lt;/p&gt; 
+&lt;p&gt;开发者可以在 Google AI Studio 中通过 API 使用 Veo 2。&lt;/p&gt; 
+&lt;p&gt;&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fai.google.dev%2Fgemini-api%2Fdocs%2Fvideo%3Fhl%3Dzh-cn&quot; target=&quot;_blank&quot;&gt;https://ai.google.dev/gemini-api/docs/video?hl=zh-cn&lt;/a&gt;&lt;/p&gt;
+                                                                                &lt;/div&gt;
+                                                                            </description>
+            <link>https://www.oschina.net/news/345050/google-gemini-veo2</link>
+            <guid isPermaLink="false">https://www.oschina.net/news/345050/google-gemini-veo2</guid>
+            <pubDate>Mon, 14 Apr 2025 03:42:00 GMT</pubDate>
+            <author>来源: OSCHINA</author>
+        </item>
+        <item>
+            <title>Reachy 2 开源人形机器人 7 万美元正式开售</title>
+            <description>&lt;div class=&quot;content&quot;&gt;
+                                                                                            &lt;p&gt;&lt;span style=&quot;color:#000000&quot;&gt;Pollen Robotics 推出其最新开源人形机器人 Reachy2，正式开启销售，定价为 7 万美元。&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;span style=&quot;color:#000000&quot;&gt;Reachy2 并非面向消费市场，而是专为 AI 与机器人实验室设计，目标是推动开源机器人生态的发展。据 &lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fwww.aibase.com%2Fzh%2Fnews%2F17257&quot; target=&quot;_blank&quot;&gt;AIbase&lt;/a&gt;了解，这款机器人已在 Cornell 大学、Carnegie Mellon 大学及多家顶级 AI 实验室投入使用。&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;img height=&quot;324&quot; src=&quot;https://oscimg.oschina.net/oscnet/up-be15587448f52736ea558e37ca046b43429.png&quot; width=&quot;500&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
+&lt;p&gt;&amp;nbsp;&lt;/p&gt; 
+&lt;p style=&quot;color:#242424; margin-left:0; margin-right:0; text-align:left&quot;&gt;&lt;span style=&quot;color:#000000&quot;&gt;Reachy2 以其高度仿人的外形与交互能力脱颖而出，主要亮点如下：&amp;nbsp;&amp;nbsp;&lt;/span&gt;&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li style=&quot;text-align:left&quot;&gt;&lt;span style=&quot;color:#000000&quot;&gt;仿人设计：配备双臂、头部及独特的天线，Reachy2 的 7 自由度（DoF）手臂模仿成人手臂的尺寸与运动方式，可实现自然、精准的动作，每只手臂能负重高达 3 公斤。&amp;nbsp;&amp;nbsp;&lt;/span&gt;&lt;/li&gt; 
+ &lt;li style=&quot;text-align:left&quot;&gt;&lt;span style=&quot;color:#000000&quot;&gt;全向移动：其移动底盘采用三全向轮设计，结合 LiDAR 与多传感器系统，确保平滑、精准的导航，适应多样化应用场景。&amp;nbsp;&amp;nbsp;&lt;/span&gt;&lt;/li&gt; 
+ &lt;li style=&quot;text-align:left&quot;&gt;&lt;span style=&quot;color:#000000&quot;&gt;丰富的传感器阵列：集成双 1080p 摄像头、麦克风阵列、扬声器、LiDAR 及惯性测量单元（IMU），为环境感知与交互提供强大支持。&amp;nbsp;&amp;nbsp;&lt;/span&gt;&lt;/li&gt; 
+ &lt;li style=&quot;text-align:left&quot;&gt;&lt;span style=&quot;color:#000000&quot;&gt;开源与模块化：基于 ROS2 和 Hugging Face 的 LeRobotHF 框架，Reachy2 支持 Python SDK 编程，开发者可轻松扩展与定制功能，满足特定研究或应用需求。&amp;nbsp;&amp;nbsp;&lt;/span&gt;&lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;p&gt;&lt;span style=&quot;color:#000000&quot;&gt;目前，Reachy2 已被全球 20 多个国家的 100 多台机器人部署，客户包括 Hugging Face、Accenture、CNRS、Ecole Polytechnique 等。&lt;/span&gt;&lt;/p&gt;
+                                                                                &lt;/div&gt;
+                                                                            </description>
+            <link>https://www.oschina.net/news/345048</link>
+            <guid isPermaLink="false">https://www.oschina.net/news/345048</guid>
+            <pubDate>Mon, 14 Apr 2025 03:37:00 GMT</pubDate>
+            <author>来源: OSCHINA</author>
+        </item>
+        <item>
+            <title>谷歌宣布将全球搜索流量统一重定向至 google.com</title>
+            <description>&lt;div class=&quot;content&quot;&gt;
+                                                                                            &lt;p&gt;&lt;span style=&quot;color:#000000&quot;&gt;谷歌&lt;/span&gt;&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=http%3A%2F%2Fblog.google%2Fproducts%2Fsearch%2Fcountry-code-top-level-domains%2F&quot; target=&quot;_blank&quot;&gt;宣布&lt;/a&gt;&lt;span style=&quot;color:#000000&quot;&gt;将淘汰用于搜索的单独国家代码顶级域名（如 google.ng 或 google.com.br），并将其统一为 google.com。&lt;/span&gt;&lt;/p&gt; 
+&lt;blockquote&gt; 
+ &lt;p style=&quot;margin-left:0; margin-right:0; text-align:start&quot;&gt;&lt;span style=&quot;color:#000000&quot;&gt;当您在 Google 上搜索时，我们致力于提供最实用的信息，这在很多情况下包括提供与本地相关的搜索结果。一直以来，为了提供本地化结果，我们都会使用国家/地区代码顶级域名 (ccTLD)，例如尼日利亚的 google.ng 或巴西的 google.com.br。&lt;/span&gt;&lt;/p&gt; 
+ &lt;p style=&quot;margin-left:0; margin-right:0; text-align:start&quot;&gt;&lt;span style=&quot;color:#000000&quot;&gt;多年来，我们提供本地化体验的能力不断提升。2017 年&lt;/span&gt;&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fblog.google%2Fproducts%2Fsearch%2Fmaking-search-results-more-local-and-relevant%2F&quot; target=&quot;_blank&quot;&gt;&lt;span style=&quot;color:#000000&quot;&gt;，&lt;/span&gt;&lt;/a&gt;&lt;span style=&quot;color:#000000&quot;&gt;我们开始为所有使用 Google 搜索的用户提供一致的本地搜索结果体验，无论他们使用的是&amp;nbsp;&lt;/span&gt;&lt;span style=&quot;color:#5f6368&quot;&gt;&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=http%3A%2F%2Fgoogle.com%2F&quot; target=&quot;_blank&quot;&gt;google.com&lt;/a&gt;&amp;nbsp;&lt;/span&gt;&lt;span style=&quot;color:#000000&quot;&gt;还是其所在国家/地区的国家代码顶级域名 (ccTLD)。&lt;/span&gt;&lt;/p&gt; 
+ &lt;p style=&quot;margin-left:0; margin-right:0; text-align:start&quot;&gt;&lt;span style=&quot;color:#000000&quot;&gt;由于这项改进，国家/地区级域名已不再必要。因此，我们将开始将这些国家/地区顶级域名 (ccTLD) 的流量重定向至&amp;nbsp;&lt;/span&gt;&lt;span style=&quot;color:#5f6368&quot;&gt;&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=http%3A%2F%2Fgoogle.com%2F&quot; target=&quot;_blank&quot;&gt;google.com&lt;/a&gt;&lt;/span&gt;&lt;span style=&quot;color:#000000&quot;&gt;，以简化用户的搜索体验。此项更改将在未来几个月内逐步推出，在此期间，您可能会被提示重新输入部分搜索偏好设置。&lt;/span&gt;&lt;/p&gt; 
+ &lt;p style=&quot;margin-left:0; margin-right:0; text-align:start&quot;&gt;&lt;span style=&quot;color:#000000&quot;&gt;值得注意的是，虽然此更新将改变人们在浏览器地址栏中看到的内容，但它不会影响搜索的工作方式，也不会改变我们处理国家法律规定的义务的方式。&lt;/span&gt;&lt;/p&gt; 
+&lt;/blockquote&gt; 
+&lt;p&gt;&lt;img height=&quot;311&quot; src=&quot;https://oscimg.oschina.net/oscnet/up-5aaedebd84aee9085474149ca6015d401f8.png&quot; width=&quot;500&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&amp;nbsp;&lt;/p&gt;
+                                                                                &lt;/div&gt;
+                                                                            </description>
+            <link>https://www.oschina.net/news/345044/google-unifying-search-country-domains-to-googlecom</link>
+            <guid isPermaLink="false">https://www.oschina.net/news/345044/google-unifying-search-country-domains-to-googlecom</guid>
+            <pubDate>Mon, 14 Apr 2025 03:27:00 GMT</pubDate>
+            <author>来源: OSCHINA</author>
+        </item>
+        <item>
+            <title>微软发布安全提醒：攻击者滥用 Node.js 来传播恶意软件</title>
+            <description>&lt;div class=&quot;content&quot;&gt;
+                                                                                            &lt;p&gt;微软近日&lt;u&gt;&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fwww.microsoft.com%2Fen-us%2Fsecurity%2Fblog%2F2025%2F04%2F15%2Fthreat-actors-misuse-node-js-to-deliver-malware-and-other-malicious-payloads%2F&quot; target=&quot;_blank&quot;&gt;发布博文&lt;/a&gt;&lt;/u&gt;，称 Node.js 正日益被用于传播恶意软件和其他恶意负载。自 2024 年 10 月以来，微软持续监测到针对其客户的攻击活动，部分恶意活动甚至延续至 2025 年 4 月。&lt;/p&gt; 
+&lt;p&gt;尽管与 Node.js 相关的恶意软件并不普遍，但它们正迅速发展，成为威胁环境的一部分。&lt;/p&gt; 
+&lt;p&gt;&lt;img src=&quot;https://static.oschina.net/uploads/space/2025/0417/112133_vXu9_2720166.png&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
+&lt;p&gt;微软表示，Node.js 是开源、跨平台的 JavaScript 运行时环境，它允许 JavaScript 代码在浏览器之外运行，被广泛使用并被开发者信任，因为它让开发者能够构建前端和后端应用程序。然而，攻击者也在利用这些 Node.js 特性来尝试将恶意软件与合法应用程序混合，绕过传统的安全控制，并在目标环境中持续存在。&lt;/p&gt; 
+&lt;p&gt;微软举例称，犯罪分子利用与加密货币相关的恶意广告（malvertising）诱导用户下载伪装成来自 TradingView 或 Binance 等平台的合法文件的恶意安装程序。&lt;/p&gt; 
+&lt;p&gt;&lt;img alt=&quot;&quot; src=&quot;https://oscimg.oschina.net/oscnet/up-e9b941943b28336312ced97e7c00094ce72.png&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
+&lt;p&gt;这个安装程序内含恶意 DLL 文件，用于收集基本的系统信息。随后，一个 PowerShell 脚本会下载 Node.js 二进制文件和一个 JavaScript 文件，并通过 Node.js 执行。&lt;/p&gt; 
+&lt;p&gt;该 JavaScript 文件运行一系列程序，包括加载多个模块、向设备添加证书，以及窃取浏览器中的敏感信息。微软指出，这些行为可能预示后续的凭据窃取、规避检测或二次负载执行等恶意活动。&lt;/p&gt; 
+&lt;p&gt;微软在第二个攻击实例中表示，黑客采用了 ClickFix 社交工程技术，试图欺骗受害者执行恶意的 PowerShell 命令。&lt;/p&gt; 
+&lt;p&gt;该命令会启动多个组件的下载和执行，包括 Node.js 二进制文件，让 JavaScript 代码无需通过文件执行，能够直接在命令行中运行。&lt;/p&gt; 
+&lt;p&gt;微软强调，尽管 Python、PHP 和 AutoIT 等传统脚本语言仍被广泛用于威胁活动，但威胁行为者正转向编译后的 JavaScript，甚至直接利用 Node.js 在命令行中运行脚本，实施恶意行为。&lt;/p&gt; 
+&lt;p&gt;微软警告，这种威胁行为者技术、战术和程序（TTPs）的转变表明，尽管 Node.js 相关的恶意软件数量上相对其它攻击手段并不凸显，但正迅速融入不断演变的网络威胁。&lt;/p&gt;
+                                                                                &lt;/div&gt;
+                                                                            </description>
+            <link>https://www.oschina.net/news/345043/node-js-deliver-malware-and-other-malicious-payloads</link>
+            <guid isPermaLink="false">https://www.oschina.net/news/345043/node-js-deliver-malware-and-other-malicious-payloads</guid>
+            <pubDate>Mon, 14 Apr 2025 03:27:00 GMT</pubDate>
+            <author>来源: OSCHINA</author>
+        </item>
+        <item>
+            <title>JetBrains 宣布推出 AI 工具免费套餐</title>
+            <description>&lt;div class=&quot;content&quot;&gt;
+                                                                                            &lt;p&gt;&lt;span style=&quot;color:#000000&quot;&gt;JetBrains 发文&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fblog.jetbrains.com%2Fblog%2F2025%2F04%2F16%2Fjetbrains-ides-go-ai%2F&quot; target=&quot;_blank&quot;&gt;宣布&lt;/a&gt;，所有 JetBrains AI 工具（包括改进的 AI Assistant 和新的编码代理 Junie）现在都可以通过单一订阅在 IDE 中使用，并提供免费套餐。&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;span style=&quot;color:#000000&quot;&gt;公告称，为了让每个人都能使用 IDE 内的 AI 功能，从 2025.1 版本开始，所有的 IDE 许可证中都包含了 JetBrains AI free&amp;nbsp;套餐。AI Free 套餐为用户提供无限代码补全和本地 AI 模型访问权限，以及基于积分的云端 AI 辅助功能和编码代理 Junie。此外，免费套餐还包含 30 天的 AI Pro 访问权限。&amp;nbsp;&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;span style=&quot;color:#000000&quot;&gt;AI Pro（10 美元/月）和 AI Ultimate（20 美元/月）套餐计划将为高要求的工作流程提供更高的使用配额，&amp;nbsp;All Products Pack 和 dotUltimate 订阅则将包含 AI Pro。&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;img height=&quot;334&quot; src=&quot;https://oscimg.oschina.net/oscnet/up-7661cb02397405a130e0974ef8e9b7b5ef6.png&quot; width=&quot;500&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;span style=&quot;color:#000000&quot;&gt;&lt;span style=&quot;background-color:#ffffff&quot;&gt;与此同时，该公司宣布其&amp;nbsp;&lt;/span&gt;&lt;span style=&quot;background-color:#ffffff&quot;&gt;AI 编码助手&lt;/span&gt;&lt;/span&gt;&lt;span style=&quot;background-color:#ffffff&quot;&gt;&lt;span style=&quot;color:#585858&quot;&gt;&amp;nbsp;&lt;/span&gt;&lt;/span&gt;&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fsdtimes.com%2Fai%2Fjetbrains-releases-ai-coding-agent-junie%2F&quot; target=&quot;_blank&quot;&gt;Junie&lt;/a&gt;&amp;nbsp;&lt;span style=&quot;color:#000000&quot;&gt;&lt;span style=&quot;background-color:#ffffff&quot;&gt;现已面向所有 JetBrains 客户开放。Junie 已进行更新，能够执行更复杂的任务，&lt;/span&gt;&lt;span style=&quot;background-color:#ffffff&quot;&gt;并提供更精细的控制，实现真正的「人机交互」方法。目前，&lt;/span&gt;&lt;/span&gt;&lt;span style=&quot;background-color:#ffffff; color:#19191c&quot;&gt;Junie 已兼容 IntelliJ IDEA Ultimate、PyCharm Pro、WebStorm 和 GoLand。预计 PhpStorm、RustRover 和 RubyMine 也将很快获得支持。&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;span style=&quot;background-color:#ffffff; color:#19191c&quot;&gt;除了 Junie 的公开发布之外，该公司还发布了 JetBrains AI Assistant 的新版本。包含多项重大改进，旨在加速编码工作流程并减少重复性任务，为开发者提供全程开发支持。&lt;/span&gt;&lt;/p&gt; 
+&lt;p style=&quot;margin-left:0; margin-right:0; text-align:start&quot;&gt;&lt;span style=&quot;color:#000000&quot;&gt;&lt;span style=&quot;background-color:#ffffff&quot;&gt;AI Assistant 现在拥有更多模型选择，包括 Claude 3.7 Sonnet、Google Gemini 2.5 Pro 以及 OpenAI 的最新模型，以及具备更强大的本地模型集成功能。其他更新包括改进的代码补全、更强的上下文感知、可以编辑多个文件的新编辑模式，以及从代码生成到测试到文档的整个工作流程的更智能的支持。&amp;nbsp;&lt;/span&gt;&lt;/span&gt;&lt;/p&gt; 
+&lt;p style=&quot;margin-left:0; margin-right:0; text-align:start&quot;&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span style=&quot;color:#19191c&quot;&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span style=&quot;background-color:#ffffff&quot;&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=http%3A%2F%2Fjetbrains.com%2Fai-ides%2F&quot; target=&quot;_blank&quot;&gt;立即开始&lt;/a&gt;在 IDE 中使用 AI。&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/p&gt; 
+&lt;p style=&quot;margin-left:0; margin-right:0; text-align:start&quot;&gt;&lt;strong&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span style=&quot;color:#19191c&quot;&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span style=&quot;background-color:#ffffff&quot;&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;相关阅读：&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/strong&gt;&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li style=&quot;margin-left: 0px; margin-right: 0px; text-align: start;&quot;&gt;&lt;a href=&quot;https://www.oschina.net/news/345083/intellij-idea-2025-1-released&quot; target=&quot;news&quot;&gt;IntelliJ IDEA 2025.1 现已发布&lt;/a&gt;&lt;/li&gt; 
+&lt;/ul&gt;
+                                                                                &lt;/div&gt;
+                                                                            </description>
+            <link>https://www.oschina.net/news/345039/jetbrains-ides-go-ai</link>
+            <guid isPermaLink="false">https://www.oschina.net/news/345039/jetbrains-ides-go-ai</guid>
+            <pubDate>Mon, 14 Apr 2025 03:13:00 GMT</pubDate>
+            <author>来源: OSCHINA</author>
+        </item>
+        <item>
+            <title>美国政府不再为 CVE/CWE 项目提供资金支持</title>
+            <description>&lt;div class=&quot;content&quot;&gt;
+                                                                                            &lt;p&gt;4 月 15 日，MITRE 向 CVE 委员会发送了一封邮件，告知美国政府对 CVE/CWE 项目的资助合同将于 4 月 16 日到期。&lt;/p&gt; 
+&lt;p&gt;&lt;img src=&quot;https://static.oschina.net/uploads/space/2025/0417/110904_ginQ_2720166.png&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
+&lt;p&gt;受此影响，CVE 漏洞可能更新受到影响，并影响 NVD 等下游的漏洞库。&lt;/p&gt; 
+&lt;p&gt;CVE 项目始于 1999 年，由美国国土安全部（DHS）和网络基础设施安全局（CISA）的赞助，MITRE 负责运营，NVD（美国国家漏洞库）等下游漏洞库基于 CVE 的数据进一步加工分析。&lt;/p&gt; 
+&lt;p&gt;在过去的二十多年里，CVE 是对通用漏洞标识的标准，是漏洞情报共享、漏洞库、各类安全工具的重要基础数据，这是一项非常有意义的伟大工作。&lt;/p&gt; 
+&lt;p&gt;若资金链断裂，CVE 系统的崩溃将摧毁最受信赖的安全工具和流程。&lt;/p&gt; 
+&lt;p&gt;前 CISA 负责人 Jean Easterly 在 LinkedIn 上警告，CVE 虽不常上头条，但却是现代网络安全最重要的支柱之一，失去它如同「同时拆除所有图书馆的卡片目录」，防御者将陷入混乱，攻击者则有机可乘。她强调，网络威胁无国界，CVE 是全球共享情报和协调行动的通用语言，失去它等于「所有人都在盲飞」。&lt;/p&gt;
+                                                                                &lt;/div&gt;
+                                                                            </description>
+            <link>https://www.oschina.net/news/345038</link>
+            <guid isPermaLink="false">https://www.oschina.net/news/345038</guid>
+            <pubDate>Mon, 14 Apr 2025 03:11:00 GMT</pubDate>
+            <author>来源: OSCHINA</author>
+        </item>
+        <item>
+            <title>OpenAI 发布开源 AI 编程工具 Codex CLI</title>
+            <description>&lt;div class=&quot;content&quot;&gt;
+                                                                                            &lt;p&gt;OpenAI 发布了一个名为「Codex CLI」的实验性新工具。这是一个轻量级的 AI 编程助手，可以直接在用户的终端命令行运行，旨在充分发挥 o3、o4-mini 等模型强大的推理能力，连接本地代码环境，甚至支持处理截图或草图进行多模态编程。&lt;/p&gt; 
+&lt;p&gt;Codex CLI 已在 GitHub 完全开源：&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fgithub.com%2Fopenai%2Fcodex&quot; target=&quot;_blank&quot;&gt;https://github.com/openai/codex&lt;/a&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;img alt=&quot;&quot; src=&quot;https://oscimg.oschina.net/oscnet/up-f9e6e21608c2ed84ac64e14c0758cff7933.png&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
+&lt;p&gt;Codex 有两种运行模式：&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt;&lt;strong&gt;「建议模式」（默认）：&lt;/strong&gt;提出命令供用户确认；&lt;/li&gt; 
+ &lt;li&gt;&lt;strong&gt;「全自动模式」&lt;/strong&gt;：禁用网络访问，让 Agent 自主工作但保持安全。&lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;p&gt;OpenAI Agent 研究团队成员 Michael 为了展示 Codex CLI 的功能，截取了一张在 X 上关于一个「图像到 ASCII 风格转换」工具的推文截图。&lt;/p&gt; 
+&lt;p&gt;他将这个截图直接拖入终端，通过 Codex CLI 并利用 o4-mini 的多模态推理能力，最终成功创建了一个简单的 ASCII 风格图像转换工具。&lt;/p&gt; 
+&lt;p&gt;&lt;img alt=&quot;&quot; src=&quot;https://oscimg.oschina.net/oscnet/up-289ad265fb8a85af1f5a6e370f846aaffec.png&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
+&lt;p&gt;OpenAI 认为 Codex CLI 是一个将其模型与用户及其计算机连接起来的最小化界面。&lt;strong&gt;Codex CLI 是为已经生活在终端的开发者设计的&lt;/strong&gt;，他们想要 ChatGPT 级别的推理能力，以及实际运行代码、操作文件和迭代的权力 —— 所有这些都在版本控制之下。&lt;/p&gt; 
+&lt;p&gt;简而言之，它是一种理解并执行仓库的聊天驱动开发工具。&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt; &lt;p&gt;零配置 — 导入 OpenAI API 密钥，即可直接使用&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;全自动批准，同时通过运行网络禁用和目录沙箱化确保安全&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;多模态 — 输入截图或图表就可以实现推理功能&lt;/p&gt; &lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;p&gt;Codex CLI 可以在 macOS&amp;nbsp;12+、Ubuntu&amp;nbsp;20.04+/Debian&amp;nbsp;10+、Windows&amp;nbsp;11 的 WSL2 子系统中使用，要求最少拥有 4GB 内存（建议 8GB）。&lt;/p&gt;
+                                                                                &lt;/div&gt;
+                                                                            </description>
+            <link>https://www.oschina.net/news/345034/openai-codex-cli</link>
+            <guid isPermaLink="false">https://www.oschina.net/news/345034/openai-codex-cli</guid>
+            <pubDate>Mon, 14 Apr 2025 02:55:00 GMT</pubDate>
+            <author>来源: OSCHINA</author>
+        </item>
+        <item>
+            <title>OpenAI 发布 o3 与 o4-mini：开启多模态推理新时代</title>
+            <description>&lt;div class=&quot;content&quot;&gt;
+                                                                                            &lt;p&gt;距离 OpenAI 发布 &lt;a href=&quot;https://www.oschina.net/news/344606/openais-gpt-4-1-models&quot;&gt;GPT-4.1&lt;/a&gt; 仅过去两天，OpenAI 在本周再次投下「重磅炸弹」—— &lt;u&gt;&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fopenai.com%2Findex%2Fintroducing-o3-and-o4-mini%2F&quot; target=&quot;_blank&quot;&gt;正式发布&lt;/a&gt;&lt;/u&gt;其新一代推理模型 o3 与轻量级模型 o4-mini。&lt;/p&gt; 
+&lt;p&gt;&lt;img src=&quot;https://static.oschina.net/uploads/space/2025/0417/104452_zQp5_2720166.png&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
+&lt;p&gt;这两款模型在推理能力、视觉理解、个性化对话和跨领域应用等方面实现了显著飞跃，代表了当下人工智能技术的新高度。&lt;/p&gt; 
+&lt;h3&gt;&lt;strong&gt;o3：迄今为止最强的通用推理模型&lt;/strong&gt;&lt;/h3&gt; 
+&lt;p&gt;OpenAI o3 是目前最强大的推理型模型，专为应对复杂、多步骤的任务而打造，广泛适用于编程、数学、科学分析、图像理解等领域。&lt;/p&gt; 
+&lt;p&gt;它在多个权威基准测试中创下新纪录，包括：&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt; &lt;p&gt;&lt;strong&gt;Codeforces 编程排名&lt;/strong&gt;&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;&lt;strong&gt;SWE-bench 软件工程测试&lt;/strong&gt;（无需构建自定义脚手架）&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;&lt;strong&gt;MMMU 多模态任务测试&lt;/strong&gt;&lt;/p&gt; &lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;p&gt;不仅如此，&lt;strong&gt;o3 在图像、图表和视觉感知任务中表现尤为出色&lt;/strong&gt;。对于需要图像分析、图表解读等多模态输入的复杂问题，o3 能给出结构化、深入且精准的回答。&lt;/p&gt; 
+&lt;p&gt;外部专家评估结果显示：&lt;/p&gt; 
+&lt;blockquote&gt; 
+ &lt;p&gt;o3 在处理真实、复杂任务时比 o1 少 20% 的重大错误。尤其在编程、商业咨询、科研假设等场景中，o3 表现出色，能提出新颖想法并进行深度自我审查。&lt;/p&gt; 
+&lt;/blockquote&gt; 
+&lt;p&gt;首批使用者评价 o3 是 「值得信赖的思维伙伴」，特别擅长在生物、数学和工程领域中生成并评估新假设。&lt;/p&gt; 
+&lt;p&gt;&lt;img src=&quot;https://static.oschina.net/uploads/space/2025/0417/104214_ZHcj_2720166.png&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
+&lt;h3&gt;&lt;strong&gt;o4-mini：更小、更快、更高效&lt;/strong&gt;&lt;/h3&gt; 
+&lt;p&gt;与 o3 不同，&lt;strong&gt;o4-mini 是一款轻量级、优化后的高性价比推理模型&lt;/strong&gt;，在计算资源、响应速度与实际效果之间达成了优秀的平衡。&lt;/p&gt; 
+&lt;p&gt;亮点包括：&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt; &lt;p&gt;&lt;strong&gt;AIME 2024 和 2025 数学竞赛中表现最佳&lt;/strong&gt;&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;在非 STEM 任务（如数据科学）中的表现超越 o3-mini&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;数学、编程、图像识别任务中效率极高&lt;/p&gt; &lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;blockquote&gt; 
+ &lt;p&gt;✅ 由于模型本身更轻量，o4-mini 支持更高的调用频率和更低的成本，非常适合&lt;strong&gt;大批量、多并发、快响应&lt;/strong&gt;的应用场景。&lt;/p&gt; 
+&lt;/blockquote&gt; 
+&lt;h3&gt;&lt;strong&gt;更自然的人机互动体验&lt;/strong&gt;&lt;/h3&gt; 
+&lt;p&gt;无论是 o3 还是 o4-mini，这一代模型在对话体验上也有明显提升。得益于智能水平的增强与网络信息的集成支持，&lt;strong&gt;两款模型都能更好地理解用户意图，提供可验证、结构清晰的回答&lt;/strong&gt;。&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt; &lt;p&gt;支持上下文记忆引用，更贴合用户历史对话&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;指令遵循能力增强，响应更精准自然&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;更加个性化、情境感知的交互&lt;/p&gt; &lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;h3&gt;专家评语摘要&lt;/h3&gt; 
+&lt;table style=&quot;min-width:155px&quot;&gt; 
+ &lt;tbody&gt; 
+  &lt;tr&gt; 
+   &lt;th&gt; &lt;p&gt;&lt;span&gt;&lt;span&gt;模型&lt;/span&gt;&lt;/span&gt;&lt;/p&gt; &lt;/th&gt; 
+   &lt;th&gt; &lt;p&gt;&lt;span&gt;&lt;span&gt;优势亮点&lt;/span&gt;&lt;/span&gt;&lt;/p&gt; &lt;/th&gt; 
+  &lt;/tr&gt; 
+ &lt;/tbody&gt; 
+ &lt;tbody&gt; 
+  &lt;tr&gt; 
+   &lt;td&gt;&lt;strong&gt;&lt;span&gt;&lt;span&gt;o3&lt;/span&gt;&lt;/span&gt;&lt;/strong&gt;&lt;/td&gt; 
+   &lt;td&gt; &lt;p&gt;&lt;span&gt;&lt;span&gt;推理最强，图像理解领先，适用于高复杂任务&lt;/span&gt;&lt;/span&gt;&lt;/p&gt; &lt;/td&gt; 
+  &lt;/tr&gt; 
+  &lt;tr&gt; 
+   &lt;td&gt;&lt;strong&gt;&lt;span&gt;&lt;span&gt;o4-mini&lt;/span&gt;&lt;/span&gt;&lt;/strong&gt;&lt;/td&gt; 
+   &lt;td&gt; &lt;p&gt;&lt;span&gt;&lt;span&gt;高性价比，适合大规模调用，非 STEM 场景表现跃升&lt;/span&gt;&lt;/span&gt;&lt;/p&gt; &lt;/td&gt; 
+  &lt;/tr&gt; 
+ &lt;/tbody&gt; 
+&lt;/table&gt; 
+&lt;p&gt;外部专家一致认为，&lt;strong&gt;新模型在可用性、可靠性和语言自然度上均优于前代产品&lt;/strong&gt;，是未来 AI 助手的重要里程碑。&lt;/p&gt; 
+&lt;h3&gt;&lt;strong&gt;总结&lt;/strong&gt;&lt;/h3&gt; 
+&lt;p&gt;OpenAI 的 o3 与 o4-mini 的发布，标志着 AI 推理模型的又一次跃迁。从性能到体验，从通用性到多模态理解，它们都展现出前所未有的能力。&lt;/p&gt; 
+&lt;p&gt;如果你在寻找一个既能处理复杂问题，又能快速响应且个性化的 AI 模型，这一代产品值得你深入了解与使用。&lt;/p&gt;
+                                                                                &lt;/div&gt;
+                                                                            </description>
+            <link>https://www.oschina.net/news/345032/openai-gpt-o3-and-o4-mini</link>
+            <guid isPermaLink="false">https://www.oschina.net/news/345032/openai-gpt-o3-and-o4-mini</guid>
+            <pubDate>Mon, 14 Apr 2025 02:43:00 GMT</pubDate>
+            <author>来源: OSCHINA</author>
+        </item>
         <item>
             <title>多模态视觉理解大模型推理优化</title>
             <description>&lt;div class=&quot;content&quot;&gt;
@@ -630,7 +1098,7 @@
                                                                             </description>
             <link>https://my.oschina.net/u/5359019/blog/18160034</link>
             <guid isPermaLink="false">https://my.oschina.net/u/5359019/blog/18160034</guid>
-            <pubDate>Thu, 17 Apr 2025 02:31:06 GMT</pubDate>
+            <pubDate>Mon, 14 Apr 2025 02:30:00 GMT</pubDate>
             <author>原创</author>
         </item>
         <item>
@@ -644,7 +1112,7 @@
                                                                             </description>
             <link>https://www.oschina.net/news/345026</link>
             <guid isPermaLink="false">https://www.oschina.net/news/345026</guid>
-            <pubDate>Thu, 17 Apr 2025 02:25:06 GMT</pubDate>
+            <pubDate>Mon, 14 Apr 2025 02:24:00 GMT</pubDate>
             <author>来源: OSCHINA</author>
         </item>
         <item>
@@ -662,7 +1130,7 @@
                                                                             </description>
             <link>https://www.oschina.net/news/345019</link>
             <guid isPermaLink="false">https://www.oschina.net/news/345019</guid>
-            <pubDate>Thu, 17 Apr 2025 02:15:06 GMT</pubDate>
+            <pubDate>Mon, 14 Apr 2025 02:14:00 GMT</pubDate>
             <author>来源: OSCHINA</author>
         </item>
         <item>
@@ -1220,367 +1688,6 @@
             <guid isPermaLink="false">https://my.oschina.net/u/3874284/blog/18175077</guid>
             <pubDate>Sun, 13 Apr 2025 08:51:00 GMT</pubDate>
             <author>原创</author>
-        </item>
-        <item>
-            <title>微软收紧插件，限制 Cursor 使用 C/C++ 语言服务扩展</title>
-            <description>&lt;div class=&quot;content&quot;&gt;
-                                                                                            &lt;p&gt;&lt;span style=&quot;background-color:#ffffff; color:rgba(0, 0, 0, 0.9)&quot;&gt;&lt;span&gt;近日，微软限制 AI 编程工具 Cursor 使用&amp;nbsp;&lt;/span&gt;&lt;/span&gt;C/C++&amp;nbsp;语言服务扩展的消息&lt;span style=&quot;background-color:#ffffff; color:rgba(0, 0, 0, 0.9)&quot;&gt;&lt;span&gt;在开发者社区引发震动。&lt;/span&gt;&lt;/span&gt;&lt;/p&gt; 
-&lt;p&gt;&lt;img src=&quot;https://static.oschina.net/uploads/space/2025/0416/163758_tmEx_2720166.png&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
-&lt;p&gt;&lt;img alt=&quot;&quot; src=&quot;https://oscimg.oschina.net/oscnet/up-9d6dfb55c7972bbba5e3d23cf00502da411.png&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
-&lt;p&gt;&lt;span style=&quot;background-color:#ffffff; color:rgba(0, 0, 0, 0.9)&quot;&gt;&lt;span&gt;众多用户发现，微软的 C/C++语言服务扩展从 1.18.21 版本开始不再兼容 Cursor，而此前的 1.17.62 版本仍可正常使用。这一变化并非技术故障，而是微软对其扩展市场规则的严格执行——根据最新许可证条款，&lt;strong&gt;其官方扩展仅允许在 Visual Studio Code（&lt;/strong&gt;&lt;/span&gt;&lt;/span&gt;&lt;strong&gt;&lt;span style=&quot;background-color:#ffffff; color:var(--weui-LINK)&quot;&gt;VSCode&lt;/span&gt;&lt;/strong&gt;&lt;span style=&quot;background-color:#ffffff; color:rgba(0, 0, 0, 0.9)&quot;&gt;&lt;strong&gt;）、Visual Studio 等微软自家产品中使用，明确禁止在 Cursor 等第三方工具中运行&lt;/strong&gt;。&lt;/span&gt;&lt;/p&gt; 
-&lt;p&gt;有开发者表示，最新版本的扩展程序阻止了它的工作，但其通过降级并禁用自动更新的方式解决了。&lt;/p&gt; 
-&lt;blockquote&gt; 
- &lt;p&gt;「在扩展程序页面，‘卸载’旁边的下拉菜单中有一个「安装特定版本」。安装版本 1.23.6」。&lt;/p&gt; 
-&lt;/blockquote&gt; 
-&lt;p&gt;&lt;img src=&quot;https://static.oschina.net/uploads/space/2025/0416/163421_Vaid_2720166.png&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
-&lt;p&gt;微软此举被视为对新兴竞品的主动防御。近年来，Cursor 凭借 AI 驱动的代码生成、Agent Mode 等创新功能快速崛起，成为 VSCode 在 AI 编程领域的直接竞争对手。&lt;/p&gt; 
-&lt;p&gt;微软虽开源了 VSCode 基础代码，但通过扩展市场的闭源策略牢牢把控生态——其条款明确将「GitHub Codespaces、Azure DevOps」等自家服务纳入允许范围，却将 Cursor 等第三方工具排除在外。&lt;br&gt; &amp;nbsp;&lt;br&gt; 开发者社区对微软的「生态锁定」策略褒贬不一。支持者认为，微软投入数百万美元开发 VSCode 并免费开放，有权限制第三方利用其技术盈利；反对者则指出，此举暴露了开源与商业利益的矛盾——当企业基于开源代码构建付费产品时，原开发者是否有权通过技术限制进行「反制」？&lt;/p&gt; 
-&lt;p&gt;相关链接&lt;/p&gt; 
-&lt;p&gt;&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fgithub.com%2Fgetcursor%2Fcursor%2Fissues%2F2976&quot; target=&quot;_blank&quot;&gt;https://github.com/getcursor/cursor/issues/2976&lt;/a&gt;&lt;/p&gt; 
-&lt;p&gt;&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fwww.reddit.com%2Fr%2Fprogramming%2Fcomments%2F1jrl2zw%2Fmicrosoft_has_released_their_own_agent_mode_so%2F&quot; target=&quot;_blank&quot;&gt;https://www.reddit.com/r/programming/comments/1jrl2zw/microsoft_has_released_their_own_agent_mode_so/&lt;/a&gt;&lt;/p&gt; 
-&lt;blockquote&gt; 
- &lt;p&gt;阅读更多：&lt;a href=&quot;https://www.oschina.net/news/199863/csharp-extension-for-vscode-will-be-closed-sources&quot; target=&quot;_blank&quot;&gt;微软欲闭源 VS Code 的 C# 扩展惹众怒&lt;/a&gt;&lt;/p&gt; 
-&lt;/blockquote&gt;
-                                                                                &lt;/div&gt;
-                                                                            </description>
-            <link>https://www.oschina.net/news/344934/ms-block-cursor</link>
-            <guid isPermaLink="false">https://www.oschina.net/news/344934/ms-block-cursor</guid>
-            <pubDate>Sun, 13 Apr 2025 08:41:00 GMT</pubDate>
-            <author>来源: OSCHINA</author>
-        </item>
-        <item>
-            <title>Figma 提交 IPO 文件</title>
-            <description>&lt;div class=&quot;content&quot;&gt;
-                                                                                            &lt;p&gt;&lt;span style=&quot;color:#000000&quot;&gt;开发在线设计协作软件的初创公司 Figma &lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fwww.figma.com%2Fblog%2Fs1-confidential-submission%2F&quot; target=&quot;_blank&quot;&gt;宣布&lt;/a&gt;，已向美国证券交易委员会 (SEC) 提交了 IPO 的保密文件。&lt;/span&gt;&lt;/p&gt; 
-&lt;blockquote&gt; 
- &lt;p&gt;&lt;span style=&quot;color:#000000&quot;&gt;Figma, Inc. 已向美国证券交易委员会秘密提交了一份 S-1 表格注册声明草案，涉及其 A 类普通股的拟议首次公开发行。此声明并非出售任何证券的要约或购买任何证券的要约邀请。潜在公开发行的股份数量和价格区间尚未确定。任何未来的要约、邀请、购买或出售证券的要约或要约，都将在美国证券交易委员会完成审查程序后，根据《证券法》的注册要求进行。&lt;/span&gt;&lt;/p&gt; 
-&lt;/blockquote&gt; 
-&lt;p&gt;&lt;img height=&quot;278&quot; src=&quot;https://oscimg.oschina.net/oscnet/up-0b41dafcb8523ec8ffb05a64366ec5fbcda.png&quot; width=&quot;500&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
-&lt;p&gt;&lt;span style=&quot;color:#000000&quot;&gt;更多信息还需等待文件公开，乐观&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Ftechcrunch.com%2F2025%2F04%2F15%2Ffigma-ignores-the-fear-files-paperwork-for-an-ipo%2F&quot; target=&quot;_blank&quot;&gt;预计&lt;/a&gt;公开时间大约为一个月后。&lt;/span&gt;&lt;/p&gt; 
-&lt;p&gt;&lt;span style=&quot;color:#000000&quot;&gt;Figma 最新估值在 2024 年 5 月达到 125 亿美元，当时该公司完成了一项要约收购，允许现有股东套现部分股份。Adobe 曾试图以 200 亿美元收购 Figma，但由于欧洲和美国监管机构的阻力，该交易于 2023 年失败。&lt;/span&gt;&lt;/p&gt; 
-&lt;p&gt;&lt;span style=&quot;color:#000000&quot;&gt;目前，Figma 已得到了风险投资公司红杉资本、Index Ventures、Greylock 和 Kleiner Perkins 的支持，这些投资者是该公司的董事会成员，此外还有 Andreessen Horowitz 和 IVP 等众多其他机构的支持。&lt;/span&gt;&lt;/p&gt; 
-&lt;p&gt;&lt;strong&gt;&lt;span style=&quot;color:#000000&quot;&gt;相关阅读：&lt;/span&gt;&lt;/strong&gt;&lt;/p&gt; 
-&lt;ul&gt; 
- &lt;li&gt;&lt;a href=&quot;https://www.oschina.net/news/271682/figma-adobe-abandon-proposed-merger&quot; target=&quot;_blank&quot;&gt;Adobe 放弃收购 Figma，需支付 10 亿美元补偿费&lt;/a&gt;&lt;/li&gt; 
-&lt;/ul&gt;
-                                                                                &lt;/div&gt;
-                                                                            </description>
-            <link>https://www.oschina.net/news/344932/figma-s1-confidential-submission</link>
-            <guid isPermaLink="false">https://www.oschina.net/news/344932/figma-s1-confidential-submission</guid>
-            <pubDate>Sun, 13 Apr 2025 08:38:00 GMT</pubDate>
-            <author>来源: OSCHINA</author>
-        </item>
-        <item>
-            <title>英伟达对华特供版 AI 芯片（H20 GPU）遭遇出口管制</title>
-            <description>&lt;div class=&quot;content&quot;&gt;
-                                                                                            &lt;p&gt;4 月 16 日，英伟达向美国证监会（SEC）提交一份正式文件。&lt;/p&gt; 
-&lt;p&gt;文件显示，自 4 月 9 日起，美国政府已通知英伟达，公司「对华特供版」AI 芯片产品 H20 GPU（人工智能加速计算处理器）出口至中国及 D:5 国家（包括中国大陆及香港、澳门等特别行政区、俄罗斯、朝鲜、敍利亚、伊朗等面临美国最严格出口管制的地区），或总部、最终母公司位于这些国家及地区的公司，需要获得美国商务部颁发的出口许可证。&lt;/p&gt; 
-&lt;p&gt;&lt;img src=&quot;https://static.oschina.net/uploads/space/2025/0416/161554_VBb2_2720166.png&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
-&lt;p&gt;4 月 14 日，美国政府通知英伟达，H20 出口许可证要求将无限期生效。该许可证旨在应对相关产品可能被用于中国超级计算机或被转移至此类用途的风险。&lt;/p&gt; 
-&lt;p&gt;英伟达 15 日交易日股价报收 112.2 美元/股，小幅上涨 1.35%。此消息公布后，股价盘后大跌 6.3%。英伟达主要生产支持 AI 大模型训练及推理所需要的 GPU 加速计算处理器，H20 是公司为应对美国对华高性能 AI 芯片出口禁令推出的特供版产品。&lt;/p&gt; 
-&lt;p&gt;2022 年 9 月，在旗下多款先进 AI 芯片 GPU 产品 A100 与 H100、A800 与 H800 相继被禁后，英伟开发了降低性能配置的 H20 芯片，旨在符合美国出口管制的性能红线，同时满足中国市场的需求。&lt;/p&gt; 
-&lt;p&gt;H20 采用了与 H100 相同的上一代 Hopper 架构，算力性能据称只有后者的六分之一左右，同时配置了 HBM3E 高带宽内存。根据美国政府最新针对其的出口管制要求，此次不只 H20 制成品，H20 所涉及的高带宽内存、NVlink 通信互连或其他相关技术方案都需要审查。&lt;/p&gt;
-                                                                                &lt;/div&gt;
-                                                                            </description>
-            <link>https://www.oschina.net/news/344925</link>
-            <guid isPermaLink="false">https://www.oschina.net/news/344925</guid>
-            <pubDate>Sun, 13 Apr 2025 08:16:00 GMT</pubDate>
-            <author>来源: OSCHINA</author>
-        </item>
-        <item>
-            <title>Anubis —— 阻止 AI 爬虫</title>
-            <description>&lt;div class=&quot;content&quot;&gt;
-                                                                                                                                                                                                                            &lt;p&gt;Anubis 使用 sha256 工作量证明挑战来衡量你的连接「灵魂」，以保护上游资源免受爬虫机器人的侵害。安装和使用此工具可能会导致你的网站无法被某些搜索引擎索引。&lt;/p&gt;
-
-&lt;p&gt;&lt;span style=&quot;background-color:#ffffff; color:#1f2328&quot;&gt;大多数情况下，不需要此功能，使用 Cloudflare 保护特定来源即可。但是，如果你无法或不愿使用 Cloudflare，Anubis 可以为你提供帮助。&lt;/span&gt;&lt;/p&gt;
-
-&lt;ul&gt;
-&lt;li&gt;&lt;strong&gt;便于使用&lt;/strong&gt;&amp;nbsp;Anubis 安装简单、重量轻，并且有助于解决最棘手的问题。&lt;/li&gt;
-&lt;li&gt;&lt;strong&gt;轻便的&lt;/strong&gt;&amp;nbsp;Anubis 高效且尽可能轻便，可以阻止互联网上最危险的机器人，并轻松保护你在线托管的内容。&lt;/li&gt;
-&lt;li&gt;&lt;strong&gt;多线程&lt;/strong&gt;&amp;nbsp;Anubis 使用多线程工作量证明检查来确保用户浏览器是最新的并支持现代标准。&lt;/li&gt;
-&lt;/ul&gt;
-
-                                                                    &lt;/div&gt;
-                                                                </description>
-            <link>https://www.oschina.net/p/anubis</link>
-            <guid isPermaLink="false">https://www.oschina.net/p/anubis</guid>
-            <pubDate>Sun, 13 Apr 2025 08:13:00 GMT</pubDate>
-        </item>
-        <item>
-            <title>谷歌官宣：未来全球谷歌搜索流量均将重定向至 Google.com 主域名</title>
-            <description>&lt;div class=&quot;content&quot;&gt;
-                                                                                            &lt;p&gt;&lt;u&gt;&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fblog.google%2Fproducts%2Fsearch%2Fcountry-code-top-level-domains%2F&quot; target=&quot;_blank&quot;&gt;谷歌宣布了一项重大变革&lt;/a&gt;&lt;/u&gt;，如果用户尝试通过国家代码顶级域名 (ccTLD)（例如 Google.co.uk 或 Google.com.br ）访问 Google，他们将被重定向到 Google.com。&lt;/p&gt; 
-&lt;blockquote&gt; 
- &lt;p&gt;&lt;img src=&quot;https://static.oschina.net/uploads/space/2025/0416/154434_Aj1l_2720166.png&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
-&lt;/blockquote&gt; 
-&lt;p&gt;过去，这些不同的域名曾帮助谷歌实现搜索结果的本地化，但由于谷歌能够确定用户的位置，这些 ccTLD 已不再是必需的。&lt;/p&gt; 
-&lt;p&gt;需要指出的是，谷歌尚未完全淘汰这些 URL，只是会把这些 URL 重定向到 Google.com，这些域名本身不太可能完全被淘汰，因此使用这些地址的书签应该仍然可以正常使用。&lt;/p&gt; 
-&lt;p&gt;大型科技巨头似乎总是会因为这样或那样的原因与世界各地的政府发生冲突。这家搜索巨头表示，即使将重定向至 Google.com，也不会改变其根据运营所在国法律所承担的义务。&lt;/p&gt; 
-&lt;p&gt;随着这项变更推广到更多用户，您将在未来几个月内开始注意到重定向到 Google.com。该公司警告称，在此过程中，您可能会被提示重新输入部分搜索偏好设置。但并未提及需要提供哪些偏好设置。&lt;/p&gt; 
-&lt;p&gt;这一变化相当微妙，&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fblog.google%2Fproducts%2Fsearch%2Fmaking-search-results-more-local-and-relevant%2F&quot; target=&quot;_blank&quot;&gt;自 2017 年以来&lt;/a&gt;，用户已经可以访问 Google.com 并从搜索中获得本地结果，但绝大多数用户不太可能注意到这一变化。随着移动端的转变，如今许多搜索也来自 Android 上的 Google 应用，在这种情况下，您甚至看不到 URL 栏。&lt;/p&gt; 
-&lt;p&gt;虽然这一变化相当显著，但大多数读者无需考虑。只需访问您通常用于访问 Google 的 URL 即可跳转到 Google.com，且仍然可以获得本地搜索结果。&lt;/p&gt;
-                                                                                &lt;/div&gt;
-                                                                            </description>
-            <link>https://www.oschina.net/news/344914/google-search-to-redirect-its-country-level-tlds-to-google-com</link>
-            <guid isPermaLink="false">https://www.oschina.net/news/344914/google-search-to-redirect-its-country-level-tlds-to-google-com</guid>
-            <pubDate>Sun, 13 Apr 2025 07:45:00 GMT</pubDate>
-            <author>来源: OSCHINA</author>
-        </item>
-        <item>
-            <title>这是人类能想出来的 Python 包？</title>
-            <description>&lt;div class=&quot;content&quot;&gt;
-                                                                                                                                                                                                                            &lt;p&gt;TARIFF 是一个独特的 Python 包，它允许你对 Python 包征收 import 关税。通过这个工具，可以让外部导入变得更加昂贵，推动代码库中的经济效益。&lt;/p&gt;
-
-&lt;blockquote&gt;
-&lt;p&gt;The GREATEST, most TREMENDOUS Python package that makes importing great again！&lt;/p&gt;
-
-&lt;p&gt;最强、最令人震撼的 Python 包！让导入再次伟大！&lt;/p&gt;
-&lt;/blockquote&gt;
-
-&lt;h3&gt;&lt;img height=&quot;702&quot; src=&quot;https://static.oschina.net/uploads/space/2025/0416/145722_gY0L_3820517.png&quot; width=&quot;1256&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/h3&gt;
-
-&lt;h3&gt;安装&lt;/h3&gt;
-
-&lt;pre&gt;&lt;code class=&quot;language-shell&quot;&gt;pip install tariff
-&lt;/code&gt;&lt;/pre&gt;
-
-&lt;h3&gt;使用方法&lt;/h3&gt;
-
-&lt;ol&gt;
-&lt;li&gt;首先，导入 &lt;code&gt;tariff&lt;/code&gt; 模块。&lt;/li&gt;
-&lt;li&gt;设置你的关税率（包名：百分比）。&lt;/li&gt;
-&lt;li&gt;导入你想要应用关税的包。&lt;/li&gt;
-&lt;/ol&gt;
-
-&lt;p&gt;示例代码：&lt;/p&gt;
-
-&lt;pre&gt;&lt;code class=&quot;language-python&quot;&gt;import tariff
-
-# 设置关税率（包名：百分比）
-tariff.set({
-    &quot;numpy&quot;: 50,  # numpy 的关税为 50%
-    &quot;pandas&quot;: 200,  # pandas 的关税为 200%
-    &quot;requests&quot;: 150  # requests 的关税为 150%
-})
-
-# 现在当你导入这些包时，它们会被征收关税！
-import numpy  # 这将使 numpy 变慢 50% 
-import pandas  # 这将使 pandas 变慢 200% 
-&lt;/code&gt;&lt;/pre&gt;
-
-&lt;h3&gt;工作原理&lt;/h3&gt;
-
-&lt;p&gt;当你导入一个有关税的包时：&lt;/p&gt;
-
-&lt;ol&gt;
-&lt;li&gt;TARIFF 测量原始导入所需的时间。&lt;/li&gt;
-&lt;li&gt;根据你的关税百分比，TARIFF 使导入时间更长。&lt;/li&gt;
-&lt;li&gt;TARIFF 通过一条惊人的消息宣布关税。&lt;/li&gt;
-&lt;/ol&gt;
-
-&lt;h3&gt;示例输出&lt;/h3&gt;
-
-&lt;pre&gt;&lt;code class=&quot;language-plaintext&quot;&gt;JUST IMPOSED a 50% TARIFF on numpy! Original import took 45000 us, now takes 67500 us. American packages are WINNING AGAIN! #MIPA
-刚刚对 numpy 征收了 50% 的关税！原始导入耗时 45000 微秒，现在耗时 67500 微秒。美国的包再次获胜！#MIPA
-&lt;/code&gt;&lt;/pre&gt;
-
-&lt;h3&gt;这是一个恶搞包。请自行承担风险。让导入再次伟大！&lt;/h3&gt;
-
-                                                                    &lt;/div&gt;
-                                                                </description>
-            <link>https://www.oschina.net/p/hxu296_tariff</link>
-            <guid isPermaLink="false">https://www.oschina.net/p/hxu296_tariff</guid>
-            <pubDate>Sun, 13 Apr 2025 06:59:00 GMT</pubDate>
-        </item>
-        <item>
-            <title>全球最快的开源 Lakehouse 引擎？直播间见！</title>
-            <description>&lt;div class=&quot;content&quot;&gt;
-                                                                                                                    
-                                                                                                                                                    &lt;div&gt; 
- &lt;div&gt;
-   StarRocks 是一个开源的 Lakehouse 引擎， 采用 Apache License v2.0 许可证，商业使用友好，GitHub Star 数已经超过了 9.8 K。 
- &lt;/div&gt; 
- &lt;div&gt;
-   &amp;nbsp; 
- &lt;/div&gt; 
- &lt;div&gt;
-   在存算分离架构、物化视图查询加速和湖仓分析等方面，StarRocks 具备高效、稳定的性能，支持主流开放数据湖表格式，包括 Apache Hive、Apache lceberg、Apache Hudi、 Delta Lake 和 Apache Paimon，提供高效的查询与写入能力。 
- &lt;/div&gt; 
- &lt;div&gt;
-   &amp;nbsp; 
- &lt;/div&gt; 
- &lt;div&gt;
-   腾讯音乐数据基建团队曾 
-  &lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fmp.weixin.qq.com%2Fs%2FuJwS6B8Q1pw5pH42dPV0ug&quot; target=&quot;_blank&quot;&gt;分享&lt;/a&gt;过，在将原有的上千节点 ClickHouse 和 Druid 集群业务迁移至 StarRocks 存算分离后，效率不变的情况下，成本下降了 50%。 
- &lt;/div&gt; 
- &lt;div&gt;
-   &amp;nbsp; 
- &lt;/div&gt; 
- &lt;div&gt;
-   4 月 18 日晚，镜舟科技高级技术专家 
-  &lt;span style=&quot;color:#2980b9&quot;&gt;&lt;strong&gt;单菁茹&lt;/strong&gt;&lt;/span&gt;将做客开源中国直播栏目《技术领航》，聊一聊 StarRocks 的成长之路，解析 StarRocks 技术架构以及核心功能。 
- &lt;/div&gt; 
- &lt;div&gt;
-   &amp;nbsp; 
- &lt;/div&gt; 
- &lt;div&gt;
-   单菁茹是开源社区 StarRocks 的重要贡献者，主要负责指导 StarRocks 的落地实践与生态工具的开发。本次直播，她还将 
-  &lt;span style=&quot;color:#2980b9&quot;&gt;基于管理工具 StarRocks Manager，演示集群状态监控、SQL 执行与优化、任务管理、资源管理和版本升级与维护等。&lt;/span&gt; 
- &lt;/div&gt; 
- &lt;div&gt;
-   &amp;nbsp; 
- &lt;/div&gt; 
- &lt;div&gt; 
-  &lt;strong&gt;微信扫码，预约直播&lt;/strong&gt; 
- &lt;/div&gt; 
- &lt;div&gt;
-   &amp;nbsp; 
- &lt;/div&gt; 
- &lt;div&gt; 
-  &lt;img height=&quot;3033&quot; src=&quot;https://oscimg.oschina.net/oscnet/up-b8f2b5a44ee1e622f6f9548894b8923da4e.png&quot; width=&quot;900&quot; referrerpolicy=&quot;no-referrer&quot;&gt; 
- &lt;/div&gt; 
- &lt;div&gt;
-   &amp;nbsp; 
- &lt;/div&gt; 
- &lt;div&gt; 
-  &lt;div&gt; 
-   &lt;p style=&quot;color:#333333; margin-left:0; margin-right:0; text-align:left&quot;&gt;&lt;strong&gt;本次直播得到了诸多社区或组织的大力支持，在此特别表示感谢：&lt;/strong&gt;&lt;/p&gt; 
-   &lt;div&gt; 
-    &lt;div&gt; 
-     &lt;div&gt; 
-      &lt;p style=&quot;color:#333333; margin-left:0; margin-right:0; text-align:left&quot;&gt;&lt;span style=&quot;color:#2980b9&quot;&gt;&lt;strong&gt;Gitee&lt;/strong&gt;&lt;/span&gt;&lt;/p&gt; 
-      &lt;p style=&quot;color:#333333; margin-left:0; margin-right:0; text-align:left&quot;&gt;Gitee（码云）是开源中国于 2013 年推出的基于 Git 的代码托管平台、企业级研发效能平台，提供中国本土化的代码托管服务。&lt;br&gt; 目前，Gitee 已经有超过 1350 万名开发者，累计托管超过 3600 万个代码仓库，是中国境内规模最大的代码托管平台。同时，旗下企业级 DevOps 研发效能管理平台 Gitee 企业版已服务超过 36 万家企业。&lt;/p&gt; 
-      &lt;p style=&quot;color:#333333; margin-left:0; margin-right:0; text-align:left&quot;&gt;网址：&lt;a href=&quot;https://gitee.com/&quot;&gt;https://gitee.com/&lt;/a&gt;&lt;/p&gt; 
-      &lt;div&gt; 
-       &lt;div&gt; 
-        &lt;span style=&quot;color:#2980b9&quot;&gt;&lt;strong&gt;镜舟科技&lt;/strong&gt;&lt;/span&gt; 
-       &lt;/div&gt; 
-       &lt;div&gt;
-         &amp;nbsp; 
-       &lt;/div&gt; 
-       &lt;div&gt;
-         北京镜舟科技有限公司是一家专注开源商业化的中国公司，由 StarRocks 项目核心成员于 2022 年创立。基于开源项目 StarRocks ，镜舟打造了符合国家标准并适配国内外生态体系的企业级分析型（OLAP）数据库，在行业适配度、场景成熟度、产品稳定性等方面有着卓越表现。作为 StarRocks 社区中国最大贡献者，镜舟大力参与社区推广工作，未来也将持续与各大头部厂商一起创造世界顶级的开源项目，为社区发展贡献力量。 
-       &lt;/div&gt; 
-       &lt;div&gt;
-         &amp;nbsp; 
-       &lt;/div&gt; 
-       &lt;div&gt;
-         官网： 
-        &lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fwww.mirrorship.cn%2Fzh-CN%2Findex&quot; target=&quot;_blank&quot;&gt;https://www.mirrorship.cn/zh-CN/index&lt;/a&gt; 
-       &lt;/div&gt; 
-      &lt;/div&gt; 
-     &lt;/div&gt; 
-    &lt;/div&gt; 
-   &lt;/div&gt; 
-   &lt;div&gt; 
-    &lt;p&gt;&amp;nbsp;&lt;/p&gt; 
-    &lt;hr&gt; 
-    &lt;p style=&quot;color:#333333; margin-left:0; margin-right:0; text-align:left&quot;&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;《技术领航》是开源中国 OSCHINA 推出的一档直播栏目，旨在为&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;开源软件、商业产品、前沿技术、知名品牌活动等各类项目&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;提供一个展示平台，每周五晚上开播&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;。&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;栏目邀请项目的创始人、核心团队成员或资深用户作为嘉宾，通过路演式直播分享项目的亮点和经验，有助于提高项目的知名度，吸引更多的用户和开发者关注。&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/p&gt; 
-    &lt;p style=&quot;color:#333333; margin-left:0; margin-right:0; text-align:left&quot;&gt;&lt;span&gt;&lt;span style=&quot;background-color:#ffffff&quot;&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;如果你手上也有好的项目，想要跟同行交流分享，欢迎联系我，栏目随时开放～&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/p&gt; 
-    &lt;p style=&quot;color:#333333; margin-left:0; margin-right:0; text-align:center&quot;&gt;&lt;img height=&quot;537&quot; src=&quot;https://oscimg.oschina.net/oscnet/up-4dd54c1b0b817689ceefa15aa66d79cfae8.png&quot; width=&quot;400&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
-   &lt;/div&gt; 
-  &lt;/div&gt; 
- &lt;/div&gt; 
- &lt;div&gt;
-   &amp;nbsp; 
- &lt;/div&gt; 
-&lt;/div&gt;
-                                                                                    &lt;/div&gt;
-                                                                            </description>
-            <link>https://my.oschina.net/u/3859945/blog/18175940</link>
-            <guid isPermaLink="false">https://my.oschina.net/u/3859945/blog/18175940</guid>
-            <pubDate>Sun, 13 Apr 2025 06:50:00 GMT</pubDate>
-            <author>原创</author>
-        </item>
-        <item>
-            <title>抖音公开算法原理：通过神经网络计算预估用户行为、几乎不依赖打标签</title>
-            <description>&lt;div class=&quot;content&quot;&gt;
-                                                                                            &lt;p&gt;4 月 16 日，据抖音集团微信公众号，在昨日的抖音安全与信任中心开放日活动上，抖音相关业务负责人基于网站版块，就社会关切的算法和治理问题展开介绍。&lt;/p&gt; 
-&lt;blockquote&gt; 
- &lt;p&gt;&lt;img src=&quot;https://static.oschina.net/uploads/space/2025/0416/141208_AOQJ_2720166.png&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
-&lt;/blockquote&gt; 
-&lt;p&gt;据介绍，抖音推荐算法核心目标是通过分析用户的「行为」（点击、浏览、喜欢、转发、收藏等），构建个性化的推荐模型。系统会基于用户历史动作、对象特征和上下文环境，采用算法模型，预测用户可能会对什么样的内容产生什么样的行为。&lt;/p&gt; 
-&lt;p&gt;抖音算法已几乎不依赖对内容和用户打标签，而是通过神经网络计算，预估用户行为，计算用户观看这条内容获得的价值总和，把排名靠前的内容推给用户。&lt;/p&gt; 
-&lt;p&gt;在抖音的实际应用中，推荐系统采取「人工 + 机器」协同的方式进行风险治理，始终有人工运营和治理体系为算法导航；多目标体系算法能主动打破「信息茧房」，为用户带来更丰富多元、实用可靠的推荐结果。&lt;/p&gt; 
-&lt;p&gt;抖音应用的深度学习算法包括 Wide&amp;amp;Deep 模型、双塔召回模型等。前者可解决协同过滤算法容易造成信息单一、泛化不足的问题，后者在召回环节提供更好的推荐效果。&lt;/p&gt; 
-&lt;p&gt;基于人工智能机器学习和深度学习构建的推荐算法，其本质是数学模型的运算过程，只是在建立用户行为与内容特征之间的数学统计关联，而非理解内容本身。抖音推荐算法的核心逻辑可以简化为「推荐优先级公式」：综合预测用户行为概率×行为价值权重 = 视频推荐优先级。&lt;/p&gt; 
-&lt;p&gt;模型需要内容和用户两端的数据做输入，其中主要是学习用户行为数据。结合用户行为和视频本身的价值权重，推算出视频推荐的价值分数，并将综合得出的价值最高的视频推送给用户。&lt;/p&gt; 
-&lt;p&gt;官方表示，抖音的价值模型希望实现内容、用户、作者以及平台的多方价值共赢，并通过不断调整参数，对各类价值进行加权。随着算法的进步，抖音已经实现了「分钟级」实时反馈更新。&lt;/p&gt; 
-&lt;p&gt;抖音表示，推荐算法通过各种「目标」来预估用户行为。推荐算法诞生之初，只关注单一或者少量的目标。随着抖音的用户愈发多样化，内容风格也日益多元，平台上有了越来越多的优质中长视频，完播率等少数目标难以满足需求，多目标建模成为技术上的自然选择。&lt;/p&gt; 
-&lt;p&gt;抖音方面称，已经发展出非常复杂的多目标体系，比如将收藏率纳入多目标，帮助知识类内容推送给有需求的用户；增强「收藏+复访」「关注+追更」「打开+搜索」等组合目标，预估用户长期行为，帮助用户探索长期需求；设置探索类指标，帮助用户探索可能他们自己都还没发现的潜在需求，助力破除「信息茧房」；设置原创性目标，鼓励优质、新颖且具有独特价值的内容推荐。&lt;/p&gt; 
-&lt;p&gt;此外，抖音集团还表示，平台治理存在于内容发布与传播的每一个环节，整体遵循两个原则。一是所有在平台发布的内容都会经过评估，流量越高的内容经过评估的次数越多，标准也越严格；二是「人工+机器」审核相互分工又密切配合。&lt;/p&gt; 
-&lt;p&gt;一条视频可能触发多个治理研判节点，视频被举报、评论区出现集中质疑、流量激增等情况，均可能触发「人工+机器」审核。而在任一环节，一旦内容被处置，基本都会立即停止进一步的推荐和分发。&lt;/p&gt; 
-&lt;p&gt;针对社会普遍关心的、呈现聚集特征的、反复出现的、对用户造成较多困扰的焦点问题，抖音成立了数个专项治理团队，分别设置相应的治理标准、识别策略、处置手段和风险巡查能力，专注应对涉及特殊群体、网络暴力、AIGC 技术滥用等问题治理。&lt;/p&gt; 
-&lt;p&gt;据悉，3 月 30 日，「抖音安全与信任中心」网站上线，网站面向社会首次公开抖音算法原理、社区规范、治理体系和用户服务机制。&lt;/p&gt; 
-&lt;blockquote&gt; 
- &lt;p&gt;相关阅读：&lt;a href=&quot;https://www.oschina.net/news/341960&quot; target=&quot;news&quot;&gt;抖音上线「安全与信任中心」网站，首次公开推送算法&lt;/a&gt;&lt;/p&gt; 
-&lt;/blockquote&gt;
-                                                                                &lt;/div&gt;
-                                                                            </description>
-            <link>https://www.oschina.net/news/344876</link>
-            <guid isPermaLink="false">https://www.oschina.net/news/344876</guid>
-            <pubDate>Sun, 13 Apr 2025 06:12:00 GMT</pubDate>
-            <author>来源: OSCHINA</author>
-        </item>
-        <item>
-            <title>OpenAI 成立非营利委员会</title>
-            <description>&lt;div class=&quot;content&quot;&gt;
-                                                                                            &lt;p&gt;&lt;span style=&quot;color:#000000&quot;&gt;OpenAI &lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fopenai.com%2Findex%2Fnonprofit-commission-advisors%2F&quot; target=&quot;_blank&quot;&gt;宣布&lt;/a&gt;成立非营利委员会，旨在为 OpenAI 的慈善事业提供咨询。&lt;/span&gt;&lt;/p&gt; 
-&lt;blockquote&gt; 
- &lt;p&gt;&lt;span style=&quot;color:#000000&quot;&gt;正如我们所说，OpenAI 的非营利机构不会消失——而这个委员会将是扩大其影响力的关键。该委员会的目标是帮助确保我们的非营利机构成为社区和使命驱动型组织的力量倍增器，以应对从健康和教育到公共服务和科学发现等紧迫的全球挑战。&lt;/span&gt;&lt;/p&gt; 
-&lt;/blockquote&gt; 
-&lt;p&gt;&lt;img height=&quot;345&quot; src=&quot;https://oscimg.oschina.net/oscnet/up-198107f2f83d46e7e57833277ce4c1edf3c.png&quot; width=&quot;700&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
-&lt;p&gt;&lt;span style=&quot;color:#000000&quot;&gt;该公司任命 Dolores Huerta、Monica Lozano、Robert K. Ross 和 Jack Oliver 为非营利委员会顾问，Daniel Zingale 担任委员会召集人。声明称，顾问们将从社区中汲取经验和意见，了解 OpenAI 的慈善事业如何能解决长期的系统性问题，同时考虑人工智能的前景和风险。&lt;/span&gt;&lt;/p&gt; 
-&lt;p&gt;&lt;span style=&quot;color:#000000&quot;&gt;具体包括：&lt;/span&gt;&lt;/p&gt; 
-&lt;ul&gt; 
- &lt;li&gt;&lt;span style=&quot;color:#000000&quot;&gt;为董事会提供建议，指导透明的社区参与过程，其中包括受影响的社区和普通民众以及非营利组织和慈善领袖。&lt;/span&gt;&lt;/li&gt; 
- &lt;li&gt;&lt;span style=&quot;color:#000000&quot;&gt;汇集来自健康、科学、教育和公共服务领域人士和组织的顶尖见解，其中包括 OpenAI 总部所在地加利福尼亚州的人士和组织。这些意见对于 OpenAI 构建其投资潜力巨大、有望与公司共同成长的资源的能力至关重要。&lt;/span&gt;&lt;/li&gt; 
- &lt;li&gt;&lt;span style=&quot;color:#000000&quot;&gt;在 90 天内向董事会提交调查结果，作为持续的社区反馈和协作过程中的一个重要里程碑。&lt;/span&gt;&lt;/li&gt; 
-&lt;/ul&gt; 
-&lt;p&gt;&lt;span style=&quot;color:#000000&quot;&gt;更多详情可查看官方&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fopenai.com%2Findex%2Fnonprofit-commission-advisors%2F&quot; target=&quot;_blank&quot;&gt;公告&lt;/a&gt;。&amp;nbsp;&lt;/span&gt;&lt;/p&gt;
-                                                                                &lt;/div&gt;
-                                                                            </description>
-            <link>https://www.oschina.net/news/344863/openai-nonprofit-commission</link>
-            <guid isPermaLink="false">https://www.oschina.net/news/344863/openai-nonprofit-commission</guid>
-            <pubDate>Sun, 13 Apr 2025 05:50:00 GMT</pubDate>
-            <author>来源: OSCHINA</author>
-        </item>
-        <item>
-            <title>中国信通院联合发布软件智能开发工具及应用图谱</title>
-            <description>&lt;div class=&quot;content&quot;&gt;
-                                                                                            &lt;p&gt;&lt;span style=&quot;color:#000000&quot;&gt;为梳理软件智能开发工具产业及应用市场情况，洞察智能开发产业现状及未来发展趋势，中国信息通信研究院（以下简称「中国信通院」）与中国人工智能产业发展联盟（AIIA）牵头，联合中信、华为、百度、硅心科技、软通动力、东软、煤科总院，聚焦智能开发工具技术演进与产业生态，编制软件智能开发工具及应用图谱，并于 2025 年 4 月 9 日中国人工智能产业发展联盟第十四次全会上共同&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fmp.weixin.qq.com%2Fs%2FhYBpLQOwXGvwQHBGCpEqKQ&quot; target=&quot;_blank&quot;&gt;发布&lt;/a&gt;。&lt;/span&gt;&lt;/p&gt; 
-&lt;p&gt;&lt;span style=&quot;color:#000000&quot;&gt;该图谱一方面为工具提供方提供横向能力对比参考，推动产品差异化创新与能力升级；另一方面为应用方构建科学选型参考框架，助力其快速匹配业务需求，加速智能开发技术在生产场景中的规模化落地应用。&lt;/span&gt;&lt;/p&gt; 
-&lt;p&gt;&lt;span style=&quot;color:#000000&quot;&gt;本次软件智能开发工具及应用图谱通过问卷调研、公开资料查询、企业访谈等形式系统梳理软件智能开发产业各领域各环节成熟的厂商、平台、机构，聚焦基础支撑、应用工具、行业应用三大维度。&lt;/span&gt;&lt;/p&gt; 
-&lt;p&gt;&lt;span style=&quot;color:#000000&quot;&gt;基础支撑维度，国内代码大模型数量超过国外，集成开发环境（IDE）以国外 VS Code、JetBrains 等为主；应用工具维度，智能开发工具以插件形式的编码助手为主但 AI 原生趋势渐显，大模型为低代码平台、D2C 工具赋能，增强了复杂问题解决能力；行业应用维度，各行业积极融入智能化浪潮，其中金融、软件服务业、通信、互联网、科技等行业落地进展较快。&lt;/span&gt;&lt;/p&gt; 
-&lt;p&gt;&lt;img alt=&quot;&quot; height=&quot;708&quot; src=&quot;https://oscimg.oschina.net/oscnet/up-760e359819cfee321fe3e2a0dbd1d8511b0.webp&quot; width=&quot;500&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt;
-                                                                                &lt;/div&gt;
-                                                                            </description>
-            <link>https://www.oschina.net/news/344860</link>
-            <guid isPermaLink="false">https://www.oschina.net/news/344860</guid>
-            <pubDate>Sun, 13 Apr 2025 05:41:00 GMT</pubDate>
-            <author>来源: OSCHINA</author>
-        </item>
-        <item>
-            <title>清华大学将推 AI 辅修学位</title>
-            <description>&lt;div class=&quot;content&quot;&gt;
-                                                                                            &lt;p&gt;&lt;u&gt;&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fmp.weixin.qq.com%2Fs%2FH8qkBuP-gz10ccSCe0q5aA&quot; target=&quot;_blank&quot;&gt;据首都教育微信公众号消息&lt;/a&gt;&lt;/u&gt;，继今年 3 月清华大学宣布适度扩招、成立新书院后，学校教学委员会近期审议通过了 AI 辅修学位培养方案，决定今年秋季学期起推出新的 AI 辅修学位。&lt;/p&gt; 
-&lt;p&gt;清华大学表示 AI 辅修学位将面向校内有志于探索学科与 AI 交叉学生开放报名，&lt;strong&gt;设置基座模块课程帮助学生掌握 AI 思维、AI 技术与 AI 素养，形成正确的 AI 伦理观&lt;/strong&gt;；同时，建设「X+AI」进阶项目模块引导学生在问题导向实践中，开展自身所在学科与 AI 深度交叉融合的创新探索。&lt;/p&gt; 
-&lt;p&gt;除辅修学位外，学生还可选择更具通识特色、修读更为灵活的课程证书项目，掌握 AI 通识知识与素养。部分课程和项目，还将借助 AI 赋能教学方式展开教学，用最 AI 的方式满足更多学生的学习需求。&lt;/p&gt; 
-&lt;p&gt;&lt;img height=&quot;681&quot; src=&quot;https://static.oschina.net/uploads/space/2025/0416/114806_PeMc_2720166.png&quot; width=&quot;1080&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
-&lt;p&gt;▲ 清华大学 AI 成长助手「清小搭」&lt;/p&gt; 
-&lt;p&gt;&lt;strong&gt;阅读更多&lt;/strong&gt;&lt;/p&gt; 
-&lt;p&gt;&lt;a href=&quot;https://www.oschina.net/news/336597&quot; target=&quot;news&quot;&gt;清华大学将扩招本科生，重点培养「AI+」人才&lt;/a&gt;&lt;/p&gt; 
-&lt;p&gt;&lt;a href=&quot;https://www.oschina.net/news/337947&quot; target=&quot;news&quot;&gt;北京中小学将从秋季开始开展 AI 通识教育&lt;/a&gt;&lt;/p&gt; 
-&lt;p&gt;&lt;a href=&quot;https://www.oschina.net/news/325162&quot; target=&quot;news&quot;&gt;武汉大学人工智能学院成立，校长担任院长&lt;/a&gt;&lt;/p&gt; 
-&lt;p&gt;&lt;a href=&quot;https://www.oschina.net/news/296740&quot; target=&quot;news&quot;&gt;复旦大学将推至少 100 门 AI 领域课程&lt;/a&gt;&lt;/p&gt; 
-&lt;p&gt;&lt;a href=&quot;https://www.oschina.net/news/337095&quot; target=&quot;news&quot;&gt;上海交通大学发布 AI 使用新规&lt;/a&gt;&lt;/p&gt; 
-&lt;p&gt;&lt;a href=&quot;https://www.oschina.net/news/303861&quot; target=&quot;news&quot;&gt;教育部支持高校布局集成电路、AI 等专业&lt;/a&gt;&lt;/p&gt;
-                                                                                &lt;/div&gt;
-                                                                            </description>
-            <link>https://www.oschina.net/news/344843</link>
-            <guid isPermaLink="false">https://www.oschina.net/news/344843</guid>
-            <pubDate>Sun, 13 Apr 2025 03:48:00 GMT</pubDate>
-            <author>来源: OSCHINA</author>
         </item>
     </channel>
 </rss>
