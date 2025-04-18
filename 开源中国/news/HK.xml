@@ -9,12 +9,939 @@
         <generator>RSSHub</generator>
         <webMaster>contact@rsshub.app (RSSHub)</webMaster>
         <language>en</language>
-        <lastBuildDate>Fri, 18 Apr 2025 02:38:20 GMT</lastBuildDate>
+        <lastBuildDate>Fri, 18 Apr 2025 07:37:25 GMT</lastBuildDate>
         <ttl>5</ttl>
+        <item>
+            <title>如何合理規劃 Elasticsearch 的索引</title>
+            <description>&lt;div class=&quot;content&quot;&gt;
+                                                                                                                    
+                                                                                                                                                    &lt;h2&gt;一、背景&lt;/h2&gt; 
+&lt;p&gt;隨着 ES 在業務場景中的使用逐漸增多，平台對 ES 集羣的穩定性、管理、運維的壓力逐漸增大，通過日常的運維情況來看，發現用户對 ES 的瞭解熟悉程度參差不齊，經常性的遇到索引創建不規範，或者參考別人索引的創建腳本進行創建索引，對索引沒有一個比較清晰的認知，對索引結構的規劃也寥寥無幾，為此，平台使用了一些列手段來幫助用户提前合理規劃模板，比如索引、模板的創建接入飛書審批流，平台側會逐一結合業務場景和 ES 集羣情況詳細溝通確定索引或者模板結構；又比如 ES 內核增加業務不停服的動態擴分片能力，旨在進行不合理索引的治理提升 ES 集羣穩定性（索引一旦創建分片是不能修改的），我們內部改動 ES&lt;strong&gt;源碼實現了不停服動態擴分片。&lt;/strong&gt;&lt;/p&gt; 
+&lt;p&gt;因此有必要從 ES 的索引講起，讓大家對 ES 的索引從概念、原理到使用有一個清晰的認知，希望日常業務場景中用到 ES 的同學能夠抽時間讀一下。當然文章避免不了存在主觀的分析，大家可以在文章底部進行評論或者私聊我們，一起探討。好了廢話不多説了，現在開始介紹。&lt;/p&gt; 
+&lt;h1&gt;二、什麼是 index(索引)&lt;/h1&gt; 
+&lt;blockquote&gt; 
+ &lt;p&gt;下面會針對索引的組成和基本結構結合官方文檔逐一介紹。&lt;/p&gt; 
+&lt;/blockquote&gt; 
+&lt;p&gt;&lt;strong&gt;基本概念&lt;/strong&gt;&lt;/p&gt; 
+&lt;p&gt;index(索引) 是索引是具有相似特徵的文檔（Document）集合，類似於關係型數據庫中的表。每個索引都具有自己唯一的名稱與_id。並且可以進行不同的參數配置與 mapping 映射。以適應不同的業務場景。索引中的最小單位是文檔。每一條文檔 (doc) 都是一個 json 格式的數據對象。包含了實際的具體數據以及該數據所對應的元數據。文檔可以是結構化，半結構化或非結構化的數據。索引在 elasticsearch 中被用於存儲，檢索與分析數據。通過對索引進行搜索與聚合操作可以快速地找到相關的文檔。&lt;/p&gt; 
+&lt;blockquote&gt; 
+ &lt;p&gt;官方描述：The index is the fundamental unit of storage in Elasticsearch, a logical namespace for storing data that share similar characteristics. After you have Elasticsearch deployed, you’ll get started by creating an index to store your data.&lt;/p&gt; 
+&lt;/blockquote&gt; 
+&lt;blockquote&gt; 
+ &lt;p&gt;翻譯：索引是 Elasticsearch 中存儲數據的基本單位，是一個邏輯命名空間，用於存儲具有相似特性的數據。在部署 Elasticsearch 後，您將通過創建索引來存儲數據。&lt;/p&gt; 
+&lt;/blockquote&gt; 
+&lt;blockquote&gt; 
+ &lt;p&gt;An index is a collection of documents uniquely identified by a name or an alias. This unique name is important because it’s used to target the index in search queries and other operations.&lt;/p&gt; 
+ &lt;p&gt;翻譯：索引是一種文檔集合，通過名稱或別名唯一標識。這個唯一名稱非常重要，因為它用於在搜索查詢和其他操作中定位索引。&lt;/p&gt; 
+&lt;/blockquote&gt; 
+&lt;h1&gt;三、索引結構詳解&lt;/h1&gt; 
+&lt;p&gt;索引結構詳解&lt;/p&gt; 
+&lt;p&gt;&lt;img src=&quot;https://oscimg.oschina.net/oscnet/up-129e7712ef064f085f8595c90ff6913782f.png&quot; alt=&quot;圖片&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
+&lt;pre&gt;&lt;code&gt;創建索引結構
+PUT /index_demo
+{
+&amp;nbsp;&amp;nbsp;&quot;aliases&quot;&amp;nbsp;: {
+&amp;nbsp; &amp;nbsp;&amp;nbsp;&quot;index_demo_alias&quot;&amp;nbsp;: { }
+&amp;nbsp; },
+&amp;nbsp;&amp;nbsp;&quot;mappings&quot;&amp;nbsp;: {
+&amp;nbsp; &amp;nbsp;&amp;nbsp;&quot;properties&quot;&amp;nbsp;: {
+&amp;nbsp; &amp;nbsp; &amp;nbsp;&amp;nbsp;&quot;id&quot;&amp;nbsp;: {
+&amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp;&amp;nbsp;&quot;type&quot;&amp;nbsp;:&amp;nbsp;&quot;long&quot;
+&amp;nbsp; &amp;nbsp; &amp;nbsp; },
+&amp;nbsp; &amp;nbsp; &amp;nbsp;&amp;nbsp;&quot;name&quot;&amp;nbsp;: {
+&amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp;&amp;nbsp;&quot;type&quot;&amp;nbsp;:&amp;nbsp;&quot;text&quot;,
+&amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp;&amp;nbsp;&quot;fields&quot;&amp;nbsp;: {
+&amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp;&amp;nbsp;&quot;keyword&quot;&amp;nbsp;: {
+&amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp;&amp;nbsp;&quot;type&quot;&amp;nbsp;:&amp;nbsp;&quot;keyword&quot;,
+&amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp;&amp;nbsp;&quot;ignore_above&quot;&amp;nbsp;: 256
+&amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; }
+&amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; }
+&amp;nbsp; &amp;nbsp; &amp;nbsp; },
+&amp;nbsp; &amp;nbsp; &amp;nbsp;&amp;nbsp;&quot;status&quot;&amp;nbsp;: {
+&amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp;&amp;nbsp;&quot;type&quot;&amp;nbsp;:&amp;nbsp;&quot;keyword&quot;
+&amp;nbsp; &amp;nbsp; &amp;nbsp; },
+&amp;nbsp; &amp;nbsp; &amp;nbsp;&amp;nbsp;&quot;createDate&quot;&amp;nbsp;: {
+&amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp;&amp;nbsp;&quot;type&quot;&amp;nbsp;:&amp;nbsp;&quot;long&quot;
+&amp;nbsp; &amp;nbsp; &amp;nbsp; }
+&amp;nbsp; &amp;nbsp; }
+&amp;nbsp; },
+&amp;nbsp;&amp;nbsp;&quot;settings&quot;&amp;nbsp;: {
+&amp;nbsp; &amp;nbsp;&amp;nbsp;&quot;index&quot;&amp;nbsp;: {
+&amp;nbsp; &amp;nbsp; &amp;nbsp;&amp;nbsp;&quot;refresh_interval&quot;&amp;nbsp;:&amp;nbsp;&quot;5s&quot;,
+&amp;nbsp; &amp;nbsp; &amp;nbsp;&amp;nbsp;&quot;number_of_shards&quot;&amp;nbsp;:&amp;nbsp;&quot;3&quot;,
+&amp;nbsp; &amp;nbsp; &amp;nbsp;&amp;nbsp;&quot;number_of_replicas&quot;&amp;nbsp;:&amp;nbsp;&quot;1&quot;
+&amp;nbsp; &amp;nbsp; }
+&amp;nbsp; }
+}
+&lt;/code&gt;&lt;/pre&gt; 
+&lt;blockquote&gt; 
+ &lt;p&gt;ignore_above 屬性説明：&lt;/p&gt; 
+ &lt;p&gt;-&amp;nbsp;ignore_above 的默認值通常為 256 個字符，這意味着任何超過 256 個字符的字符串將不會被索引或存儲。&lt;/p&gt; 
+ &lt;p&gt;- 該參數僅適用於 keyword 類型的字段，因為這些字段主要用於過濾、排序和聚合操作，不需要進行全文搜索。&lt;/p&gt; 
+ &lt;p&gt;-&amp;nbsp;ignore_above 的值以字符為單位計算，包括英文字符和漢字。例如，一個漢字和一個英文字符都算作一個字符。&lt;/p&gt; 
+ &lt;p&gt;- 性能優化：通過限制字段長度，可以減少索引大小和查詢時間，從而提高性能。&lt;/p&gt; 
+ &lt;p&gt;- 避免資源浪費：對於包含大量數據的字段，如日誌文件中的長字符串，可以通過 ignore_above 避免不必要的存儲和索引。&lt;/p&gt; 
+&lt;/blockquote&gt; 
+&lt;blockquote&gt; 
+ &lt;p&gt;官方描述：Strings longer than the&amp;nbsp;ignore_above&amp;nbsp;setting will not be indexed or stored. For arrays of strings,&amp;nbsp;ignore_above&amp;nbsp;will be applied for each array element separately and string elements longer than&amp;nbsp;ignore_above&amp;nbsp;will not be indexed or stored.&lt;/p&gt; 
+&lt;/blockquote&gt; 
+&lt;h2&gt;3.1 別名&lt;/h2&gt; 
+&lt;p&gt;別名將其生命置於羣集狀態內，由主節點（master node) 管理; 這意味着如果你有一個名為 xiaoming 的別名指向一個名為 potato 的索引，那麼開銷就是羣集狀態映射中的一個額外鍵，它將名稱 xiaoming 映射到具體的索引字符串。這意味着與其他指數相比，別名的重量要輕得多; 可以維護數千個而不會對集羣產生負面影響。&lt;/p&gt; 
+&lt;blockquote&gt; 
+ &lt;p&gt;官方原話：An alias points to one or more indices or data streams. Most Elasticsearch APIs accept an alias in place of a data stream or index name.&lt;/p&gt; 
+&lt;/blockquote&gt; 
+&lt;blockquote&gt; 
+ &lt;p&gt;Aliases enable you to:&lt;/p&gt; 
+ &lt;p&gt;- Query multiple indices/data streams together with a single name&lt;/p&gt; 
+ &lt;p&gt;- Change which indices/data streams your application uses in real time&lt;/p&gt; 
+ &lt;p&gt;- Reindex data without downtime&lt;/p&gt; 
+&lt;/blockquote&gt; 
+&lt;blockquote&gt; 
+ &lt;p&gt;翻譯：別名（Alias）可以指向一個或多個索引或數據流。大多數 Elasticsearch API 接受別名代替數據流或索引名稱。別名的功能包括：&lt;/p&gt; 
+ &lt;p&gt;- 使用單一名稱查詢多個索引/數據流；&lt;/p&gt; 
+ &lt;p&gt;- 實時更改應用程序使用的索引/數據流；&lt;/p&gt; 
+ &lt;p&gt;- 在不中斷服務的情況下進行擴分片。&lt;/p&gt; 
+&lt;/blockquote&gt; 
+&lt;p&gt;可以看到索引有上面三個作用，&lt;strong&gt;平台建議為每個索引添加別名&lt;/strong&gt;（動態擴分片依賴別名）。添加別名可以在索引創建時和創建後再添加，即索引可以隨時添加，但是平台還是建議你在創建索引時候指定別名，&lt;strong&gt;避免動態擴分片時候再去修改代碼重新部署應用。&lt;/strong&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;strong&gt;添加別名的幾種方式&lt;/strong&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;strong&gt;1. 創建索引時指定別名&lt;/strong&gt;&lt;/p&gt; 
+&lt;pre&gt;&lt;code&gt;PUT /test_index
+{
+&amp;nbsp; &amp;nbsp;&amp;nbsp;&quot;settings&quot;&amp;nbsp;: {
+&amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp;&amp;nbsp;&quot;number_of_shards&quot;&amp;nbsp;: 1,
+&amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp;&amp;nbsp;&quot;number_of_replicas&quot;&amp;nbsp;: 1
+&amp;nbsp; &amp;nbsp; },
+&amp;nbsp; &amp;nbsp;&amp;nbsp;&quot;aliases&quot;:{&quot;test_alias&quot;:{}},
+&amp;nbsp; &amp;nbsp;&amp;nbsp;&quot;mappings&quot;&amp;nbsp;: {
+&amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp;&amp;nbsp;&quot;properties&quot;&amp;nbsp;: {
+&amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp;&amp;nbsp;&quot;field1&quot;&amp;nbsp;: {&amp;nbsp;
+&amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp;&amp;nbsp;&quot;type&quot;&amp;nbsp;:&amp;nbsp;&quot;text&quot;&amp;nbsp;
+&amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; },
+&amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp;&amp;nbsp;&quot;createdAt&quot;: {
+&amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp;&amp;nbsp;&quot;type&quot;:&amp;nbsp;&quot;date&quot;,
+&amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp;&amp;nbsp;&quot;format&quot;:&amp;nbsp;&quot;yyyy-MM-dd HH:mm:ss&quot;
+&amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp;}
+&amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; }
+&amp;nbsp; &amp;nbsp; }
+}
+&lt;/code&gt;&lt;/pre&gt; 
+&lt;p&gt;&lt;strong&gt;2. 已存在的索引添加別名&lt;/strong&gt;&lt;/p&gt; 
+&lt;pre&gt;&lt;code&gt;POST /_aliases
+{
+&amp;nbsp;&amp;nbsp;&quot;actions&quot;: [
+&amp;nbsp; &amp;nbsp; {
+&amp;nbsp; &amp;nbsp; &amp;nbsp;&amp;nbsp;&quot;add&quot;: {
+&amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp;&amp;nbsp;&quot;index&quot;:&amp;nbsp;&quot;test_index&quot;,&amp;nbsp;# 索引名
+&amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp;&amp;nbsp;&quot;alias&quot;:&amp;nbsp;&quot;test_alias&quot;&amp;nbsp;# 別名
+&amp;nbsp; &amp;nbsp; &amp;nbsp; }
+&amp;nbsp; &amp;nbsp; }
+&amp;nbsp; ]
+}
+&lt;/code&gt;&lt;/pre&gt; 
+&lt;p&gt;&lt;strong&gt;3. 別名更換&lt;/strong&gt;&lt;/p&gt; 
+&lt;blockquote&gt; 
+ &lt;p&gt;別名更換可以零停機進行動態擴分片。&lt;/p&gt; 
+&lt;/blockquote&gt; 
+&lt;pre&gt;&lt;code&gt;POST /_aliases
+{
+&amp;nbsp;&amp;nbsp;&quot;actions&quot;: [
+&amp;nbsp; &amp;nbsp; {
+&amp;nbsp; &amp;nbsp; &amp;nbsp;&amp;nbsp;&quot;add&quot;: {
+&amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp;&amp;nbsp;&quot;index&quot;:&amp;nbsp;&quot;existing_index&quot;,
+&amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp;&amp;nbsp;&quot;alias&quot;:&amp;nbsp;&quot;test_alias&quot;&amp;nbsp;# 別名
+&amp;nbsp; &amp;nbsp; &amp;nbsp; },
+&amp;nbsp; &amp;nbsp; &amp;nbsp; {
+&amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp;&amp;nbsp;&quot;remove&quot;: {
+&amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp;&amp;nbsp;&quot;index&quot;:&amp;nbsp;&quot;old_index&quot;,
+&amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp;&amp;nbsp;&quot;alias&quot;:&amp;nbsp;&quot;old_test_alias&quot;&amp;nbsp;# 別名
+&amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; }
+&amp;nbsp; &amp;nbsp; &amp;nbsp; }
+&amp;nbsp; &amp;nbsp; }
+&amp;nbsp; ]
+}
+&lt;/code&gt;&lt;/pre&gt; 
+&lt;h2&gt;3.2 映射&lt;/h2&gt; 
+&lt;p&gt;建立索引時需要定義文檔的數據結構，這種結構叫作映射。在映射中，文檔的字段類型一旦設定後就不能更改。因為字段類型在定義後，elasticsearch 已經針對定義的類型建立了特定的索引結構，這種結構不能更改。藉助映射可以給文檔新增字段。另外，elasticsearch 還提供了自動映射功能，即在添加數據時，如果該字段沒有定義類型，elasticsearch 會根據用户提供的該字段的真實數據來猜測可能的類型，從而自動進行字段類型的定義。&lt;/p&gt; 
+&lt;h2&gt;3.3 字段類型&lt;/h2&gt; 
+&lt;p&gt;字段類型（Field Type）是定義數據格式和索引方式的重要概念，它決定了字段在索引中的存儲、搜索和聚合行為。下面針對日常用到最多的三個字段類型進行解釋，text、keyword、Numeric（Integer、Long）。&lt;/p&gt; 
+&lt;p&gt;&lt;strong&gt;Text&lt;/strong&gt;&lt;/p&gt; 
+&lt;p&gt;text 字段類型是 Elasticsearch 中用於全文搜索的核心字段類型。它通過分析器將文本拆分為單個詞，並存儲為倒排索引，適用於非結構化文本的搜索和分析。然而，由於其經過分析器處理，不適用於排序和聚合操作。&lt;/p&gt; 
+&lt;p&gt;&lt;strong&gt;1. 特點&lt;/strong&gt;&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt; &lt;p&gt;&lt;strong&gt;全文搜索：&lt;/strong&gt; text 字段類型主要用於存儲和索引可讀的文本內容，例如郵件正文、產品描述、新聞文章等。這些字段會被分析器（analyzer）處理，將字符串拆分為單個詞（term），以便進行全文搜索。&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;&lt;strong&gt;分詞處理：&lt;/strong&gt; text 字段支持分詞器（tokenizer），可以根據語言和需求選擇不同的分詞策略（如標準分詞器、正則表達式分詞器等）。分詞後的結果會存儲為倒排索引，便於快速檢索。&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;&lt;strong&gt;不適用於排序和聚合：&lt;/strong&gt; 由於 text 字段經過分析器處理，其原始字符串無法直接用於排序或聚合操作。如果需要排序或聚合，通常需要結合 keyword 字段類型。&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;&lt;strong&gt;支持多字段映射：&lt;/strong&gt; 可以通過多字段（multi-field）映射同時使用 text 和 keyword 類型，以滿足全文搜索和精確匹配的需求。&lt;/p&gt; &lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;p&gt;&lt;strong&gt;2. 使用場景&lt;/strong&gt;&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt; &lt;p&gt;&lt;strong&gt;全文搜索：&lt;/strong&gt; 適用於需要對文本內容進行模糊搜索的場景，例如搜索引擎、新聞網站、商品搜索等。&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;&lt;strong&gt;文本分析：&lt;/strong&gt; 可以結合分析器（如 TF-IDF、BM25 等）進行文本相似性搜索或評分計算。&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;&lt;strong&gt;日誌分析：&lt;/strong&gt; 用於分析和搜索日誌文件中的文本內容，提取關鍵信息。&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;&lt;strong&gt;內容管理：&lt;/strong&gt; 在內容管理系統中，用於存儲和搜索文檔、文章等內容。&lt;/p&gt; &lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;p&gt;&lt;strong&gt;3. 官方建議&lt;/strong&gt;&lt;/p&gt; 
+&lt;blockquote&gt; 
+ &lt;p&gt;Use a field as both text and keyword&lt;/p&gt; 
+ &lt;p&gt;Sometimes it is useful to have both a full text (text) and a keyword (keyword) version of the same field: one for full text search and the other for aggregations and sorting. This can be achieved with multi-fields.&lt;/p&gt; 
+ &lt;p&gt;通過多字段映射同時使用 text 和 keyword 類型，可以實現全文搜索和精確匹配的雙重需求。&lt;/p&gt; 
+&lt;/blockquote&gt; 
+&lt;p&gt;&lt;strong&gt;4. 平台建議&lt;/strong&gt;&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt;明確業務使用場景，如果不需要進行模糊搜索的話，設置為 keyword 類型，來避免分詞帶來的存儲開銷，增加系統壓力。&lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;p&gt;&lt;strong&gt;Keyword&lt;/strong&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;em&gt;keyword&lt;/em&gt;字段類型是一種用於存儲和索引結構化數據的字段類型。&lt;/p&gt; 
+&lt;p&gt;&lt;strong&gt;1. 特點&lt;/strong&gt;&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt; &lt;p&gt;&lt;strong&gt;不進行分詞：&lt;/strong&gt; keyword 字段類型不會對字段值進行分詞處理，而是將其作為整體存儲。這意味着字段值會被原樣存儲到倒排索引中，不會被拆分成單獨的單詞或短語。&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;&lt;strong&gt;精確匹配：&lt;/strong&gt; 由於字段值不進行分詞，keyword 字段類型非常適合用於精確匹配查詢，例如查找特定的電子郵件地址、身份證號或狀態碼等。&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;&lt;strong&gt;tips：&lt;/strong&gt; 在 term 查詢中可以結合 case_insensitive 屬性，忽略大小寫對值進行搜索，但不支持 terms 查詢。&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;&lt;strong&gt;支持排序和聚合：&lt;/strong&gt; keyword 字段類型可以用於排序和聚合操作，例如按狀態碼統計數量或按用户 ID 進行分組。&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;&lt;strong&gt;存儲效率高：&lt;/strong&gt; 由於不需要分詞，keyword 字段類型的存儲開銷較低，適合存儲大量具有唯一性或固定值的字段。&lt;/p&gt; &lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;p&gt;&lt;strong&gt;2. 使用場景&lt;/strong&gt;&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt; &lt;p&gt;&lt;strong&gt;精確查詢：&lt;/strong&gt; 適用於需要精確匹配的場景，例如查找特定的電子郵件地址、身份證號、狀態碼等。&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;&lt;strong&gt;排序和聚合：&lt;/strong&gt; 當需要對數據進行排序或聚合時，keyword 字段類型是理想選擇。例如，按用户 ID 排序或按狀態統計數量。&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;&lt;strong&gt;標籤和分類：&lt;/strong&gt; 用於存儲標籤、分類等結構化數據，例如用户畫像標籤（學生、IT、教師等）。&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;&lt;strong&gt;唯一性字符串：&lt;/strong&gt; 適用於存儲具有唯一性的字符串，如 SpuId、貨號、得物訂單號等。&lt;/p&gt; &lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;p&gt;&lt;strong&gt;Numeric&lt;/strong&gt;&lt;/p&gt; 
+&lt;p&gt;數值類型，包含 long、interger、short、byte、double、float 等數字類型。&lt;/p&gt; 
+&lt;p&gt;&lt;strong&gt;1. 特點&lt;/strong&gt;&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt; &lt;p&gt;&lt;strong&gt;整數類型：&lt;/strong&gt; 適用於範圍查詢、排序和聚合操作。由於整數類型佔用空間較小，推薦優先使用範圍較小的類型（如 integer 或 long）以提高索引和搜索效率。&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;&lt;strong&gt;浮點類型：&lt;/strong&gt; 適用於需要高精度的計算場景。如果數據範圍較大或精度要求不高，可以使用 scaled_float 類型並設置合適的 scale 值。&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;&lt;strong&gt;選擇合適的類型：&lt;/strong&gt; 在滿足需求的前提下，儘量選擇範圍較小的類型以節約存儲空間和提升性能。&lt;/p&gt; &lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;blockquote&gt; 
+ &lt;p&gt;tips&lt;/p&gt; 
+ &lt;p&gt;如果確定業務使用場景，建議 keyword 代替數值類型字段，如果不確定則採用多字段，keyword 在 term 查詢中性能更佳。&lt;/p&gt; 
+&lt;/blockquote&gt; 
+&lt;p&gt;&lt;img src=&quot;https://oscimg.oschina.net/oscnet/up-3306ddf8b4bb4953bf98c9e87c6e92ac196.png&quot; alt=&quot;圖片&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
+&lt;h2&gt;3.4 針對字段類型選擇的幾條建議&lt;/h2&gt; 
+&lt;ol&gt; 
+ &lt;li&gt; &lt;p&gt;針對 Text 和數值類型場景的字段，儘量改成 keyword 字段類型，來提升查詢速度。&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;在不確定業務查詢有哪些需求的情況下，設置多字段類型 keyword。&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;枚舉字段沒有特殊業務場景下，統一使用 keyword 字段類型。&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;業務不需要範圍查詢的話，使用 keyword 字段類型（支持聚合和排序的）。&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;對 keyword 字段類型進行模糊查詢會性能較差，使用多字段類型 wildcard 來模糊查詢性能更高。&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;儘量不要使用聚合查詢，text 的 fielddata 會加大對內存的佔用，如有需求使用，建議使用 keyword。&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;需要中文分詞的話，不要使用默認分詞器，推薦使用 ik_smart，ik_max_word 會生成更多的分詞，其中含有重複的內容，需謹慎使用。&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;時間字段不要使用 keyword，除非點查，推薦使用 date/long 類型，支持範圍查詢，建議精確到分鐘，會提高查詢效率。&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;keyword 字段類型不適用於模糊 wildcard 查詢，建議使用 wildcard 字段類型。&lt;/p&gt; &lt;p&gt;&lt;img src=&quot;https://oscimg.oschina.net/oscnet/up-5c0c872ccde433d906584724b29b1c11cc0.png&quot; alt=&quot;圖片&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;日期的查詢條件為 now 時，並不能有效利用緩存，儘量換成絕對時間值。&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;ES 默認字段個數最大 1000，但建議不要超過 100，對於不需要建立索引的字段，不寫入 ES。&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;將不需要建立索引的字段 index 數據設置為 false，對字段不分詞，不索引可以減少很多運算操作。&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;不建議或者禁止每次寫入後立馬進行顯示的 refresh，refresh 會帶來較高的磁盤 IO，和 CPU 消耗，甚至有可能導致 ES 宕機。&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;持續補充......&lt;/p&gt; &lt;/li&gt; 
+&lt;/ol&gt; 
+&lt;h2&gt;3.5 索引結構與關係性數據庫對比&lt;/h2&gt; 
+&lt;p&gt;&lt;img src=&quot;https://oscimg.oschina.net/oscnet/up-951b6c3a4fdf40ef6d7829c7863f2b4da95.jpg&quot; alt=&quot;圖片&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
+&lt;h1&gt;四、索引 (Shard) 結構-分片與副本&lt;/h1&gt; 
+&lt;h2&gt;4.1 什麼是 Shard&lt;/h2&gt; 
+&lt;p&gt;&lt;strong&gt;基本概念&lt;/strong&gt;&lt;/p&gt; 
+&lt;p&gt;分片是管理文檔的一個數據單元，分片是 Elasticsearch 中邏輯概念。ES 內部把索引中文檔進行按照一定路由規則（文檔_id 的 hash 值與分片數取餘）進行路由到不同的存儲數據單元，存儲數據單元就是分片。你可以理解為 MySQL 的分表。&lt;/p&gt; 
+&lt;p&gt;ElS 的邏輯分片就是一個 Lucene 索引，一個 ES 索引是分哦的集合，當 ES 在索引中搜索的時候，他發送查詢到每一個屬於索引的分片（Lucene 索引）進行檢索，最後合併每個分片的結果得到一個全局的結果集。&lt;/p&gt; 
+&lt;p&gt;&lt;strong&gt;分片劃分&lt;/strong&gt;&lt;/p&gt; 
+&lt;p&gt;分片分為&lt;strong&gt;primary shard(主分片)&lt;/strong&gt; 和 &lt;strong&gt;replicate shard(副本分片)&lt;/strong&gt;。&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt; &lt;p&gt;&lt;strong&gt;主分片：&lt;/strong&gt; 索引的基本數據存儲單元，每個索引被水平拆分為多個主分片，每個分片都是互相獨立的。包含一部分索引的數據與索引的結構 (segement)。每個分片都可以在集羣中不同的節點上進行移動與複製。以提高數據的可用性與容錯性。&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;&lt;strong&gt;副本分片：&lt;/strong&gt; 主分片的完整拷貝，用於冗餘存儲和容災，副本分片和主分片在 ES 節點數足夠的情況下不會同時存在一個 ES 節點。&lt;/p&gt; &lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;p&gt;注意：單分片的記錄條數不要超過上限 2,147,483,519。&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt;&lt;strong&gt;主副分片分佈示意圖&lt;/strong&gt;&lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;p&gt;&lt;img src=&quot;https://oscimg.oschina.net/oscnet/up-3eb972387527c130877697c27743f14a261.jpg&quot; alt=&quot;圖片&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;strong&gt;分片的功能&lt;/strong&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;strong&gt;1. 主分片&lt;/strong&gt;&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt; &lt;p&gt;&lt;strong&gt;數據存儲與寫入：&lt;/strong&gt; 所有文檔通過路由算法（如&amp;nbsp;hash(_id) % num_primary_shards（主分片數））分配到主分片，主分片負責處理索引、更新、刪除等寫操作。&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;&lt;strong&gt;擴展性：&lt;/strong&gt; 通過增加節點和分片分佈，實現數據的水平擴展。&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;&lt;strong&gt;不可變性：&lt;/strong&gt; 主分片數量在索引創建時通過&amp;nbsp;number_of_shards&amp;nbsp;參數設定，創建後無法修改（需重建索引）。&lt;/p&gt; &lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;p&gt;&lt;strong&gt;2. 副本分片&lt;/strong&gt;&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt; &lt;p&gt;&lt;strong&gt;高可用性：&lt;/strong&gt; 當主分片所在節點宕機時，副本分片自動升級為主分片（和對應的主分片不在一個節點），避免數據丟失和服務中斷。&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;&lt;strong&gt;讀取負載均衡：&lt;/strong&gt; 副本分片可並行處理查詢請求，提升讀吞吐量。&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;&lt;strong&gt;動態調整：&lt;/strong&gt; 副本分片數量通過&amp;nbsp;number_of_replicas&amp;nbsp;參數動態配置，支持按需擴展或縮減。&lt;/p&gt; &lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;h2&gt;4.2 分片數規劃&lt;/h2&gt; 
+&lt;blockquote&gt; 
+ &lt;p&gt;分片的基本概念和功能咱們咱們已經瞭解，在日常 ES 運維過程中發現不少同學對分片和數量的設置沒有什麼概念，照搬其他同學的比較多，這是嚴重錯誤的。咱們在實際的業務場景中也要做好分片（主副）數量的規劃，來避免慢查、數據傾斜、磁盤容量浪費等問題。&lt;/p&gt; 
+ &lt;p&gt;當索引分片數量過多時，可能會對 ES 性能產生不利影響。因為每個分片都需要一定量的內存來存儲索引數據和緩存，從而導致內存消耗增加。另外當查詢或寫入數據涉及多個分片時，ES 需要在節點之間進行傳輸和協調數據，從而增加網絡開銷，這也會導致查詢和寫入性能的降低。可見分片數量的選擇需要慎重考慮。&lt;/p&gt; 
+&lt;/blockquote&gt; 
+&lt;p&gt;索引在不同場景中，其分片分設置是不一樣的，接下來咱們會在下面四個場景中來進行闡述。&lt;/p&gt; 
+&lt;p&gt;&lt;strong&gt;讀場景&lt;/strong&gt;&lt;/p&gt; 
+&lt;p&gt;索引單分片 20g~40g，儘量減少分片數，可以降低熱點，因為當分片數過多時，就容易出現長尾子請求，即有可能部分子請求因 ES 集羣節點異常、Old GC、網絡抖動等延遲響應，導致整個請求響應緩慢。另一方面，拆分過多的子請求無法提升數據節點請求吞吐，不能充分利用 CPU。在儘量減少主分片數的情況下，同時也可以適當增加副本數，從而提升查詢吞吐。&lt;/p&gt; 
+&lt;p&gt;&lt;strong&gt;寫場景&lt;/strong&gt;&lt;/p&gt; 
+&lt;p&gt;索引單分片 10g~20g，小分片更有利於數據寫入。小分片維護的 segment 數量遠低於大分片，在數據刷新落盤與段合併上更有優勢。由於單分片數據量更少，在寫入時數據可以更快地緩存至內存中並通過 refresh 參數更快的持久化至磁盤中。&lt;/p&gt; 
+&lt;p&gt;&lt;strong&gt;日誌存儲場景&lt;/strong&gt;&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt; &lt;p&gt;需要考慮每日寫入集羣的數據總量大小。通過過數據量與數據節點數評估索引分片數量。&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;在日誌存儲後是否需要兼顧查詢與聚合性能。合理大小的分片數據量能夠提高查詢效率。&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;根據日誌持久化策略，採用按月/周/天的策略生成索引。並使用 ILM(索引生命週期管理策略) 動態對日誌索引進行完整生命週期的管理。&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;建議副本數設置為 0 來減少磁盤容量成本。&lt;/p&gt; &lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;p&gt;&lt;strong&gt;小數據量索引業務場景&lt;/strong&gt;&lt;/p&gt; 
+&lt;p&gt;對於數據量比較小的索引，增加索引分片數並不一定會帶來性能提升，反而可能會帶來一些負面影響。&lt;/p&gt; 
+&lt;p&gt;首先，增加索引分片數會增加集羣的管理開銷，包括維護分片的狀態、備份和恢復分片等。如果索引數據量比較小，這種開銷可能會超過性能提升帶來的收益。&lt;/p&gt; 
+&lt;p&gt;其次，增加索引分片數可能會導致數據分佈不均衡，從而影響查詢性能。具體來説，如果某些分片中的數據量過小，可能會導致這些分片的查詢性能比其他分片差。此外，如果查詢涉及到多個分片，數據的合併操作也會增加查詢時間。&lt;/p&gt; 
+&lt;p&gt;因此，對於數據量比較小的索引，在查詢場景下，通常建議將分片數設置為 1 或 2，以避免不必要的開銷和性能問題。如果需要提高查詢性能，可以考慮配置索引副本，優化查詢語句或使用緩存。&lt;/p&gt; 
+&lt;p&gt;&lt;strong&gt;通用場景&lt;/strong&gt;&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt; &lt;p&gt;根據實際業務場景提前規劃預算索引數據量，做好分片數量規劃（索引一旦創建無法修改分片數）。&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;分片數量：推薦公式：主分片數 ≈ 總數據量 / 單分片容量上限（官方建議單分片 10-50GB，單個分片文檔數在 1 億條以內，日誌場景可放寬至 50-100GB）。&lt;/p&gt; 
+  &lt;blockquote&gt; 
+   &lt;p&gt;注意：分片數量平台強烈建議或者要求設置為 ES data 節點角色的整數倍。&lt;/p&gt; 
+  &lt;/blockquote&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;副本數量：增加副本數可提升讀性能，但會降低寫入速度（需同步更多副本），因此在讀場景可以酌情考慮。&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;如果索引是時序類，或者數據過大，單分片幾百 G，可以結合生命週期和索引模板進行索引滾動管理。&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;平台不建議使用自動移 routing 值進行分片，默認使用文檔_id 就好。&lt;/p&gt; 
+  &lt;blockquote&gt; 
+   &lt;p&gt;原因：使用自定義 routing 值進行路由分片的話很容易產生數據傾斜，另外 ES 內部會多一些計算邏輯來如何進行分片路由，在寫入較高的場景下也會有一定的性能損耗。&lt;/p&gt; 
+  &lt;/blockquote&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;控制分片數量，分片數不是越多越好，過多分分片，也會造成 ES 集羣元數據管理的壓力，降低系統的性能損耗。&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;設置 total_shards_per_node，將索引壓力分攤至多個節點。&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;index.routing.allocation.total_shards_per_node 參數可以限制每個節點上的 shard 數量，從而將索引的壓力分攤到多個節點，這樣可以提高集羣性能和可用性，避免某個節點過載導致整個集羣出現問題。&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;index.routing.allocation.total_shards_per_node 是一個索引級別設置（創建索引和對已有索引進行設置），語法如下：&lt;/p&gt; &lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;pre&gt;&lt;code&gt;PUT&amp;nbsp;&amp;lt;index_name&amp;gt;/_settings
+{
+&amp;nbsp; &amp;nbsp; &quot;index.routing.allocation.total_shards_per_node&quot;:&amp;lt;number_of_shards&amp;gt;
+}
+&amp;lt;index_name&amp;gt;為索引名字，&amp;lt;number_of_shards&amp;gt;表示每個節點上該索引的分片數量。
+&lt;/code&gt;&lt;/pre&gt; 
+&lt;p&gt;&lt;strong&gt;持續調整索分片&lt;/strong&gt;&lt;/p&gt; 
+&lt;p&gt;對於集羣分片的調整，通常不是一蹴而就的。隨着業務的發展，不斷新增的子業務，或 原有子業務規模發生突變，都需要持續調整分片數量。&lt;/p&gt; 
+&lt;h2&gt;4.3 索引與資源消耗的關係&lt;/h2&gt; 
+&lt;p&gt;&lt;strong&gt;分片數量與內存消耗&lt;/strong&gt;&lt;/p&gt; 
+&lt;blockquote&gt; 
+ &lt;p&gt;每個分片都是獨立的 Lucene 索引，需要維護倒排索引、緩存等內存結構。分片數量過多會導致以下問題：&lt;/p&gt; 
+&lt;/blockquote&gt; 
+&lt;ul&gt; 
+ &lt;li&gt; &lt;p&gt;&lt;strong&gt;內存佔用激增：&lt;/strong&gt; 每個分片默認佔用約 10-30MB 內存（含元數據），數千分片可能消耗數十 GB 內存。&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;&lt;strong&gt;文件句柄耗盡：&lt;/strong&gt; 集羣總分片數過多會佔用大量文件描述符，可能觸發&quot;too many open files&quot;錯誤。&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;&lt;strong&gt;CPU 熱點問題：&lt;/strong&gt; 分片分配不均會導致部分節點負載過高。&lt;/p&gt; &lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;p&gt;&lt;strong&gt;Segment 碎片化&lt;/strong&gt;&lt;/p&gt; 
+&lt;blockquote&gt; 
+ &lt;p&gt;分片由多個 segment 組成，segment 數量過多會：&lt;/p&gt; 
+&lt;/blockquote&gt; 
+&lt;ul&gt; 
+ &lt;li&gt; &lt;p&gt;&lt;strong&gt;增加 IO 壓力：&lt;/strong&gt; 查詢需遍歷多個 segment 文件。&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;&lt;strong&gt;佔用堆內存：&lt;/strong&gt; 每個 segment 需加載部分元數據到內存，百萬級 segment 可能消耗數 GB 內存。&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;&lt;strong&gt;影響 GC 效率：&lt;/strong&gt; 頻繁的 segment 合併會觸發 Full GC。&lt;/p&gt; &lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;h1&gt;五、總結&lt;/h1&gt; 
+&lt;p&gt;創建一個索引需要結合業務使用場景考量字段類型選擇和是否需要索引分詞，按照數據規模和業務增長速度來確定分片和副本的數量的大小。索引的結構直接影響集羣的穩定性，因此我們在創建索引的時候要養成習慣，作為技術方案的一環去仔細打磨這樣才能保證線上的穩定性。&lt;/p&gt; 
+&lt;p&gt;大家工作中遇到的一些穩定性問題，和使用上的一些問題都可以找我們一起探討，尋找最優解。&lt;/p&gt; 
+&lt;p&gt;文 / 陽光&lt;/p&gt; 
+&lt;p&gt;關注得物技術，每週一、三更新技術乾貨&lt;/p&gt; 
+&lt;p&gt;要是覺得文章對你有幫助的話，歡迎評論轉發點贊～&lt;/p&gt; 
+&lt;p&gt;未經得物技術許可嚴禁轉載，否則依法追究法律責任。&lt;/p&gt;
+                                                                                    &lt;/div&gt;
+                                                                            </description>
+            <link>https://my.oschina.net/u/5783135/blog/18167537</link>
+            <guid isPermaLink="false">https://my.oschina.net/u/5783135/blog/18167537</guid>
+            <pubDate>Fri, 18 Apr 2025 07:32:24 GMT</pubDate>
+            <author>原創</author>
+        </item>
+        <item>
+            <title>Layui 近期一些值得關注的更新</title>
+            <description>&lt;div class=&quot;content&quot;&gt;
+                                                                    
+                                                        &lt;blockquote&gt; 
+ &lt;p&gt;賢心不語，只是一味地在更新 Layui 2。&lt;/p&gt; 
+&lt;/blockquote&gt; 
+&lt;p&gt;&lt;strong&gt;「&lt;strong&gt;自今年三月份開始，Layui 的版本迭代突然加速，接連發布了許多具有重要意義的更新，其中包含的一些新特性，也為 Layui 2 增添了一定的「生命力」&lt;/strong&gt;」&lt;/strong&gt;&lt;/p&gt; 
+&lt;h3&gt;動態&lt;/h3&gt; 
+&lt;ul&gt; 
+ &lt;li&gt; &lt;p&gt;關於 Layui 不同版本的瀏覽器兼容説明：&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Flayui.dev%2Fnotes%2Fbrowser-support.html&quot; target=&quot;_blank&quot;&gt;https://layui.dev/notes/browser-support.html&lt;/a&gt;&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;記錄 Layui 2.x 系列版本主要升級變化：&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fgithub.com%2Flayui%2Flayui%2Fdiscussions%2F2565&quot; target=&quot;_blank&quot;&gt;https://github.com/layui/layui/discussions/2565&lt;/a&gt;&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;Layui ts 類型聲明文件，在編輯器中添加 Layui 的代碼補全和文檔提示：&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fgithub.com%2Flayui%2Flayui%2Fdiscussions%2F2598&quot; target=&quot;_blank&quot;&gt;https://github.com/layui/layui/discussions/2598&lt;/a&gt;&lt;/p&gt; &lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;h3&gt;新特性&lt;/h3&gt; 
+&lt;p&gt;&lt;span style=&quot;color:#2980b9&quot;&gt;&lt;strong&gt;新增 component 組件構建器&lt;/strong&gt;&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;一直以來，Layui 的很多組件自成一體，使得無法對組件進行統一管理。儘管 Layui 也曾努力嘗試改善這個問題，但很多時候為了向下兼容而又不得不保留許多舊有的特性，隨着組件的增加，該問題也顯得越加明顯。&lt;/p&gt; 
+&lt;p&gt;而 2.10 新增的 component 模塊可以很好地填補這一缺憾，它的初衷正是為了確保 Layui 組件的一致性，如核心邏輯和 API 設計等，主要意義在於：&lt;strong&gt;給 Layui 2 系列版本提供一個構建通用組件的方式&lt;/strong&gt;。&lt;/p&gt; 
+&lt;p&gt;現在，您可以這樣去創建 Layui 組件：&lt;/p&gt; 
+&lt;pre&gt;&lt;code class=&quot;language-javascript&quot;&gt;/**
+&amp;nbsp;* tabs
+&amp;nbsp;* 標籤頁組件
+&amp;nbsp;*/
+layui.define(&#39;component&#39;,&amp;nbsp;function(exports) {
+&amp;nbsp;&amp;nbsp;// 創建組件
+&amp;nbsp;&amp;nbsp;var&amp;nbsp;component = layui.component({
+&amp;nbsp; &amp;nbsp;&amp;nbsp;name:&amp;nbsp;&#39;tabs&#39;,&amp;nbsp;// 組件名稱
+&amp;nbsp; &amp;nbsp;&amp;nbsp;config: {&amp;nbsp;// 組件默認配置項
+&amp;nbsp; &amp;nbsp; &amp;nbsp;&amp;nbsp;// …
+&amp;nbsp; &amp;nbsp; },
+&amp;nbsp; &amp;nbsp;&amp;nbsp;render:&amp;nbsp;function() {&amp;nbsp;// 組件渲染邏輯
+&amp;nbsp; &amp;nbsp; &amp;nbsp;&amp;nbsp;// …
+&amp;nbsp; &amp;nbsp; },
+&amp;nbsp; &amp;nbsp;&amp;nbsp;// 其他選項
+&amp;nbsp; });
+&amp;nbsp;&amp;nbsp;// 將創建組件時返回的 `component` 對象作為組件的接口輸出
+&amp;nbsp;&amp;nbsp;// 組件將繼承通用的基礎接口，如 render, reload, set 等方法
+&amp;nbsp;&amp;nbsp;exports(component.CONST.MOD_NAME, component);
+});&lt;/code&gt;&lt;/pre&gt; 
+&lt;p&gt;通過 component 創建的組件可繼承它提供的全部基礎接口，如：&lt;/p&gt; 
+&lt;p&gt;&lt;img src=&quot;https://static.oschina.net/uploads/space/2025/0418/145134_S78s_2720166.png&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
+&lt;p&gt;這意味着你現在可以更加靈活地重構和擴展 Layui 組件了。&lt;/p&gt; 
+&lt;p&gt;Layui&amp;nbsp;當前已經完成了對 tabs, rate 組件的重構，後續在條件允許的情況下，還有望通過 component 重構更多組件。&lt;/p&gt; 
+&lt;p&gt;&lt;span style=&quot;color:#2980b9&quot;&gt;&lt;strong&gt;新增 tabs 組件加強版&lt;/strong&gt;&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;tabs 是通過 component 重構的首個組件，它來自於最早試圖發佈的 Layui 3.0（後因為 3.0 技術路線的變化，而整理放至 2.10+ 版本中），目的是將 element 模塊中的 tab 組件進行解耦，增強其可擴展性。&lt;/p&gt; 
+&lt;p&gt;新 tabs 組件主要包含以下功能：&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt; &lt;p&gt;支持，標籤頭部左右滾動模式，以應對複雜的多標籤頁使用場景&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;支持，關閉當前標籤和批量關閉「其他、右側、全部」標籤&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;支持，關閉前後、切換前後等週期事件&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;支持，標籤「自動渲染、方法渲染、任意綁定」三種渲染方式&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;支持，原 tab 組件的全部功能，並重新優化了界面和交互體驗&lt;/p&gt; &lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;p&gt;為了給開發者必要的時間緩衝，Layui 舊 tab 組件會仍然保留在後續的若干版本中，但會在合適的時機對舊 tab 組件進行剔除，建議開發者儘量提前過渡到當前新的 tabs 組件。&lt;/p&gt; 
+&lt;p&gt;&lt;span style=&quot;color:#2980b9&quot;&gt;&lt;strong&gt;增強 input-number 組件&lt;/strong&gt;&lt;/span&gt;&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt; &lt;p&gt;新增，限制允許輸入的字符功能&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;新增 lay-step-strictly 屬性，可開啓步長嚴格模式，只能輸入步長的倍數&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;新增 lay-wheel 屬性，可通過鼠標滾輪或觸摸板改變數值功能&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;新增，按 Up/Down 鍵時改變數值功能&lt;/p&gt; &lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;p&gt;&lt;span style=&quot;color:#2980b9&quot;&gt;&lt;strong&gt;新增「無縫擴展任意外部模塊」功能&lt;/strong&gt;&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;Layui 在 2.11 版本新增了無縫擴展任意外部模塊的支持，即無需遵循 Layui 模塊規範的第三方庫也能通過 Layui 去加載，並且無需對外部模塊做任何的代碼改動，只需在&amp;nbsp;layui.extend()&amp;nbsp;方法中聲明模塊名、路徑和接口即可。&lt;/p&gt; 
+&lt;pre&gt;&lt;code class=&quot;language-javascript&quot;&gt;// 擴展任意外部模塊
+layui.extend({
+&amp;nbsp; marked: {
+&amp;nbsp;&amp;nbsp;&amp;nbsp; src:&amp;nbsp;&#39;https://cdnjs.cloudflare.com/ajax/libs/marked/15.0.7/marked.min.js&#39;, // 模塊路徑
+&amp;nbsp;&amp;nbsp;&amp;nbsp; api:&amp;nbsp;&#39;marked&#39;&amp;nbsp;// 接口名稱
+&amp;nbsp; },
+&amp;nbsp; Prism: {
+&amp;nbsp;&amp;nbsp;&amp;nbsp; src:&amp;nbsp;&#39;https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js&#39;,
+&amp;nbsp;&amp;nbsp;&amp;nbsp; api:&amp;nbsp;&#39;Prism&#39;
+&amp;nbsp; }
+});
+// 加載擴展模塊
+layui.use([&#39;marked&#39;,&amp;nbsp;&#39;Prism&#39;],&amp;nbsp;function()&amp;nbsp;{
+&amp;nbsp; console.log(&#39;任意外部模塊 loaded: &#39;)
+&amp;nbsp; console.log(&#39; &amp;nbsp;&amp;gt; marked: &#39;, layui.marked);
+&amp;nbsp; console.log(&#39; &amp;nbsp;&amp;gt; Prism: &#39;, layui.Prism);
+});&lt;/code&gt;&lt;/pre&gt; 
+&lt;p&gt;&lt;span style=&quot;color:#2980b9&quot;&gt;&lt;strong&gt;重構&amp;nbsp;laytpl 模板引擎&lt;/strong&gt;&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;Layui 2.11 為 laytpl 賦予了面向更多複雜模板結構的解析能力。&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt; &lt;p&gt;新增 cache 選項，用於是否開啓模板緩存&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;新增 condense 選項，用於是否壓縮模板空白符&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;新增 tagStyle 選項，用於設置標籤風格。默認仍採用 &amp;lt; 2.11 版本風格&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;新增 laytpl.extendVars() 方法，用於擴展模板內部變量&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;新增 compile 實例方法，用於清除緩存後以便渲染時重新對模板進行編譯&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;新增，在模板中通過 include() 方法導入子模板的功能&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;新增，新的標籤風格：{{ 語句 }} {{= 轉義輸出 }} {{- 原文輸出 }} {{# 註釋 }}&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;新增，模板錯誤行捕獲，可更精準地找到模板出錯區域&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;提升，模板解析的整體性能及穩定性&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;適配 Node.js 和瀏覽器端的使用場景&lt;/p&gt; &lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;p&gt;導入子模版示例：&lt;/p&gt; 
+&lt;pre&gt;&lt;code class=&quot;language-javascript&quot;&gt;&amp;lt;template&amp;nbsp;id=&quot;ID-demo-tpl-header&quot;&amp;gt;
+&amp;nbsp;&amp;nbsp;&amp;lt;div&amp;gt;頭部公共模板&amp;lt;/div&amp;gt;
+&amp;lt;/template&amp;gt;
+&amp;lt;template&amp;nbsp;id=&quot;ID-demo-tpl-list&quot;&amp;gt;
+&amp;nbsp;&amp;nbsp;&amp;lt;ul&amp;gt;
+&amp;nbsp; &amp;nbsp; {{ d.items.forEach(function(item, index) { }}
+&amp;nbsp; &amp;nbsp; &amp;nbsp;&amp;nbsp;&amp;lt;li&amp;gt;
+&amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp;&amp;nbsp;&amp;lt;span&amp;gt;{{= item.title }}&amp;lt;/span&amp;gt;
+&amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; {{ if(item.children) { }}
+&amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; {{- include(&#39;ID-demo-tpl-list&#39;, { items: item.children }) }}
+&amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; {{ } }}
+&amp;nbsp; &amp;nbsp; &amp;nbsp;&amp;nbsp;&amp;lt;/li&amp;gt;
+&amp;nbsp; &amp;nbsp; {{ }); }}
+&amp;nbsp;&amp;nbsp;&amp;lt;/ul&amp;gt;
+&amp;lt;/template&amp;gt;
+&amp;lt;template&amp;nbsp;id=&quot;ID-demo-tpl-main&quot;&amp;gt;
+&amp;nbsp; {{- include(&#39;ID-demo-tpl-header&#39;) }}
+&amp;nbsp;&amp;nbsp;&amp;lt;h3&amp;gt;循環輸出：&amp;lt;/h3&amp;gt;
+&amp;nbsp; {{- include(&#39;ID-demo-tpl-list&#39;, { items: d.items }) }}
+&amp;lt;/template&amp;gt;&lt;/code&gt;&lt;/pre&gt; 
+&lt;p&gt;&lt;span style=&quot;color:#2980b9&quot;&gt;&lt;strong&gt;更多更新&lt;/strong&gt;&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;Layui 還將 jQuery&amp;nbsp;升級到 v3.7.1，並調整將最低瀏覽器兼容標準過渡到 IE9（如需兼容 IE8，可使用 2.9.x 版本），以及優化 layui.js 大量核心。&lt;/p&gt; 
+&lt;p&gt;具體更新日誌可前往官網文檔和 Github 查看：&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt; &lt;p&gt;&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Flayui.dev%2Fdocs%2F2%2Fversions.html&quot; target=&quot;_blank&quot;&gt;https://layui.dev/docs/2/versions.html&lt;/a&gt;&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fgithub.com%2Flayui%2Flayui%2Freleases&quot; target=&quot;_blank&quot;&gt;https://github.com/layui/layui/releases&lt;/a&gt;&lt;/p&gt; &lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;h3&gt;後續計劃&lt;/h3&gt; 
+&lt;p&gt;官方曾公佈過 Layui 3.0 版本計劃：&lt;/p&gt; 
+&lt;blockquote&gt; 
+ &lt;p&gt;基於當前國內外的前端技術格局，以及 Layui 既有的受眾形態，我們決定啓動 Layui 3.0 的升級計劃。同時，也為進一步體現 Web UI 組件庫的多樣化和差異化，Layui 3.0 將採用純原生的 JavaScript CSS HTML 進行開發，以更好地適應於未來。&lt;/p&gt; 
+ &lt;p&gt;…&lt;/p&gt; 
+ &lt;p&gt;Layui 3.0 是一次需要毅力、信心及其他多重條件允許的重大更新，既是對 2.x 開發模式的部分延續，更是一次全方位的加強，力圖為國內的 Web 應用開發提供多一種的技術選型，繼續發揮它應有的歷史價值。&lt;/p&gt; 
+ &lt;p&gt;&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Flayui.dev%2Fnotes%2F3.0%2Fmilestone.html&quot; target=&quot;_blank&quot;&gt;https://layui.dev/notes/3.0/milestone.html&lt;/a&gt;&lt;/p&gt; 
+&lt;/blockquote&gt; 
+&lt;p&gt;不少 Layui 使用者都在關心 Layui 3 的進展。&lt;/p&gt; 
+&lt;p&gt;&lt;strong&gt;作者不語，只是一味地在更新 Layui 2&lt;/strong&gt;。&lt;/p&gt; 
+&lt;p&gt;儘管 2.x 已基本夠用了。&lt;/p&gt; 
+&lt;p&gt;雖然具體的發佈日期無法獲悉，但對於 3.0 的內容有以下幾點可以明確：&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt; &lt;p&gt;Layui 3 將剔除 jQuery 的依賴，也不打算採用當前主流的前端基礎庫或框架，而是基於純原生的 JavaScript CSS HTML 進行完全重構，以更加輕量的姿態適應未來。&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;Layui 3 將全面擁抱 ES Modules、Web Components 等更多現代瀏覽器技術，理論上可用於 Vue, React 等任何技術棧。&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;Layui 3 有望支持多語言。&lt;/p&gt; &lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;p&gt;期待 Layui 能在燦若繁星的 Web UI 組件庫中貢獻一份多樣化的選擇。&lt;/p&gt; 
+&lt;p&gt;借用團隊的一句原話作為結語：&lt;/p&gt; 
+&lt;blockquote&gt; 
+ &lt;p&gt;我們的主要精力將放在構建全新版本上，繼續維持 Layui 存在的合理性，維持一種温度、一種希望。&lt;/p&gt; 
+&lt;/blockquote&gt; 
+&lt;p&gt;&lt;strong&gt;「&lt;strong&gt;冷知識：Layui &amp;nbsp;最早發佈於 2016 年。3.0 正好「十年之約」💖&lt;/strong&gt;」&lt;/strong&gt;&lt;/p&gt;
+                                                                                &lt;/div&gt;
+                                                                            </description>
+            <link>https://www.oschina.net/news/345307/layui2-update-2025</link>
+            <guid isPermaLink="false">https://www.oschina.net/news/345307/layui2-update-2025</guid>
+            <pubDate>Fri, 18 Apr 2025 06:54:54 GMT</pubDate>
+            <author>來源: OSCHINA</author>
+        </item>
+        <item>
+            <title>字節跳動開源 Godel-Rescheduler</title>
+            <description>&lt;div class=&quot;content&quot;&gt;
+                                                                    
+                                                        &lt;p&gt;&lt;span style=&quot;color:#000000&quot;&gt;字節跳動&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fmp.weixin.qq.com%2Fs%2FLJ-I7DDrqL7_-e9-tdVqVQ&quot; target=&quot;_blank&quot;&gt;宣佈&lt;/a&gt;開源 Godel-Rescheduler，一個基於全局最優調度策略的重調度框架。不僅能識別集羣中的異常節點和任務，還能智能推薦任務到最合適的位置，並通過圖算法生成詳細的遷移步驟，確保集羣的整體穩定性，真正實現全局最優調度。&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;span style=&quot;color:#000000&quot;&gt;Godel-Rescheduler 由兩個核心模塊組成：Policy Manager 和 Movement Manager。其中，Policy Manager 負責輸出重調度決策，而 Movement Manager 則負責拆解並執行這些決策。整個框架的目標是通過重調度，使集羣朝向全局最優狀態發展。&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;img height=&quot;361&quot; src=&quot;https://oscimg.oschina.net/oscnet/up-f4c02b26fb541ccdf67a167df4122427eb4.png&quot; width=&quot;500&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;span style=&quot;color:#000000&quot;&gt;目前，字節跳動已經成功將 Godel-Rescheduler 應用到多個內部項目中，支持多種重調度策略的協同工作。例如：&lt;/span&gt;&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt;&lt;span style=&quot;color:#000000&quot;&gt;合併部署重調度：優化上下游應用實例在相同節點上的調度。&lt;/span&gt;&lt;/li&gt; 
+ &lt;li&gt;&lt;span style=&quot;color:#000000&quot;&gt;負載均衡重調度：在負載、內存帶寬、網絡帶寬等方面進行優化。&lt;/span&gt;&lt;/li&gt; 
+ &lt;li&gt;&lt;span style=&quot;color:#000000&quot;&gt;碎片整理重調度：有效減少 CPU、GPU 等資源的碎片率等。&lt;/span&gt;&lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;p&gt;&lt;span style=&quot;color:#000000&quot;&gt;在實際應用中，Godel-Rescheduler 已幫助字節跳動的數萬卡 GPU 集羣將碎片率控制在 5% 以下，同時在大規模混合部署集羣中，熱點節點比例控制在 0.1% 以下。&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;span style=&quot;color:#000000&quot;&gt;接下來，Godel-Rescheduler 將持續擴展和優化：&lt;/span&gt;&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt;&lt;span style=&quot;color:#000000&quot;&gt;更多重調度策略：引入更多實時數據，以豐富調度策略的多樣性。&lt;/span&gt;&lt;/li&gt; 
+ &lt;li&gt;&lt;span style=&quot;color:#000000&quot;&gt;穩定性建設：在優化調度效果的同時，持續降低重調度對集羣穩定性的影響。&lt;/span&gt;&lt;/li&gt; 
+ &lt;li&gt;&lt;span style=&quot;color:#000000&quot;&gt;擴展性優化：進一步簡化策略接入方式，提升插件化能力。&lt;/span&gt;&lt;/li&gt; 
+ &lt;li&gt;&lt;span style=&quot;color:#000000&quot;&gt;通用指標構建：制定通用的重調度評價指標，以全面評估調度效果。&lt;/span&gt;&lt;/li&gt; 
+ &lt;li&gt;&lt;span style=&quot;color:#000000&quot;&gt;優化可解釋性：增強重調度算法的可解釋性，幫助用户更好地理解調度決策的依據。&lt;/span&gt;&lt;/li&gt; 
+&lt;/ul&gt;
+                                                                                &lt;/div&gt;
+                                                                            </description>
+            <link>https://www.oschina.net/news/345304</link>
+            <guid isPermaLink="false">https://www.oschina.net/news/345304</guid>
+            <pubDate>Fri, 18 Apr 2025 06:50:24 GMT</pubDate>
+            <author>來源: OSCHINA</author>
+        </item>
+        <item>
+            <title>微軟開源 DeepSeek-R1 魔改版「MAI-DS-R1」：響應 99% 敏感提示、風險降 50%</title>
+            <description>&lt;div class=&quot;content&quot;&gt;
+                                                                    
+                                                        &lt;p&gt;微軟今天開源了一款「魔改版」的 DeepSeek-R1 模型&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Ftechcommunity.microsoft.com%2Fblog%2Fmachinelearningblog%2Fintroducing-mai-ds-r1%2F4405076&quot; target=&quot;_blank&quot;&gt;「MAI-DS-R1」&lt;/a&gt;，其在保留原有推理性能的基礎上進行了大幅度增強，尤其是在響應和屏蔽詞方面有了顯著改進：&lt;/p&gt; 
+&lt;blockquote&gt; 
+ &lt;p&gt;MAI-DS-R1 可以響應 99.3% 的敏感話題提示，比原版 R1 提升了 2 倍，這對於政治學術研究、社會問題、倫理道德研究等幫助巨大；但在安全風險大幅度降低，比原版 R1 降低了 50%。&lt;/p&gt; 
+&lt;/blockquote&gt; 
+&lt;p&gt;&lt;img alt=&quot;&quot; src=&quot;https://oscimg.oschina.net/oscnet/up-1d053e10b28247309a20e59106571c44164.png&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
+&lt;p&gt;據介紹，MAI-DS-R1 是後訓練優化的 DeepSeek-R1 模型，微軟在訓練 MAI-DS-R1 的過程中，從大約 350000 個被屏蔽的主題示例中，收集和篩選查詢關鍵詞，將這些關鍵詞轉化為多個問題，並翻譯成不同語言；還通過 DeepSeek R1 和內部模型為這些問題生成答案和思維鏈。&lt;/p&gt; 
+&lt;p&gt;此外，訓練數據中還納入了來自 Tulu3 SFT 數據集的 110K 個安全和違規示例，這些示例涵蓋了 CoCoNot、WildJailbreak 和 WildGuardMix 等內容。&lt;/p&gt; 
+&lt;blockquote&gt; 
+ &lt;p&gt;&lt;img height=&quot;684&quot; src=&quot;https://static.oschina.net/uploads/space/2025/0418/142835_hjBJ_2720166.png&quot; width=&quot;1456&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
+ &lt;p&gt;&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fhuggingface.co%2Fmicrosoft%2FMAI-DS-R1&quot; target=&quot;_blank&quot;&gt;https://huggingface.co/microsoft/MAI-DS-R1&lt;/a&gt;&lt;/p&gt; 
+&lt;/blockquote&gt; 
+&lt;p&gt;隨後，微軟對 MAI-DS-R1 進行了綜合評估。在敏感話題響應方面，MAI-DS-R1 能夠成功響應 99.3% 的敏感話題提示，這一表現顯著優於 DeepSeek R1 和 R1-1776。&lt;/p&gt; 
+&lt;p&gt;在安全性評估方面，MAI-DS-R1 在 HarmBench 評估中表現出色，相比 DeepSeek R1 和 R1-1776，在減少有害內容方面降低了 50% 風險。這説明雖然 MAI-DS-R1 能響應更多的敏感話題，但還是在安全控制範圍之內。&lt;/p&gt; 
+&lt;p&gt;&lt;img alt=&quot;&quot; src=&quot;https://oscimg.oschina.net/oscnet/up-823d2f8af8e3a7240c9af642f78b87839a3.png&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
+&lt;p&gt;總而言之，&lt;span&gt;那些想體驗一下「放飛自我」版 R1 的小夥伴們可以試試這個，體驗一下打開全新世界。&lt;/span&gt;&lt;/p&gt;
+                                                                                &lt;/div&gt;
+                                                                            </description>
+            <link>https://www.oschina.net/news/345301/microsoft-mai-ds-r1</link>
+            <guid isPermaLink="false">https://www.oschina.net/news/345301/microsoft-mai-ds-r1</guid>
+            <pubDate>Fri, 18 Apr 2025 06:38:24 GMT</pubDate>
+            <author>來源: OSCHINA</author>
+        </item>
+        <item>
+            <title>法官裁定谷歌非法壟斷，或迫使其拆分廣告業務</title>
+            <description>&lt;div class=&quot;content&quot;&gt;
+                                                                    
+                                                        &lt;p&gt;&lt;span style=&quot;color:#000000&quot;&gt;美國聯邦法院的最新一項裁決&lt;/span&gt;&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fstorage.courtlistener.com%2Frecap%2Fgov.uscourts.vaed.533508%2Fgov.uscourts.vaed.533508.1410.0.pdf&quot; target=&quot;_blank&quot;&gt;判定&lt;/a&gt;&lt;span style=&quot;color:#000000&quot;&gt;，谷歌因「故意獲取並維持廣告技術市場的壟斷權」而違反了反壟斷法。&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;img height=&quot;324&quot; src=&quot;https://oscimg.oschina.net/oscnet/up-b8593d22fd40b0ddabcd20daec14ace9e49.png&quot; width=&quot;500&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;span style=&quot;color:#000000&quot;&gt;根據週四提交的文件，當地法院將制定簡報時間表和聽證日期，以確定針對反壟斷違法行為的適當補救措施。補救措施可能包括迫使谷歌拆分其廣告業務，例如出售其谷歌廣告管理器，其中包括 AdX 廣告交易平台和 DFP（DoubleClick for Publishers），即用於發佈商的廣告服務器。&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;span style=&quot;color:#000000&quot;&gt;或者，法院可以強制採取行為補救措施，允許谷歌保持其業務完整，但會施加限制以確保公平競爭，例如禁止谷歌在拍賣中優先考慮自己的交易或需求。&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;span style=&quot;color:#000000&quot;&gt;對此，谷歌監管事務副總裁 Lee-Anne Mulholland 在一封電子郵件聲明中&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Ftechcrunch.com%2F2025%2F04%2F17%2Fjudge-rules-google-illegally-monopolized-ad-tech-opening-door-to-potential-breakup%2F&quot; target=&quot;_blank&quot;&gt;表示&lt;/a&gt;：「我們贏了一半的官司，剩下的一半我們會上訴。法院裁定，我們的廣告商工具和收購（例如 DoubleClick）不會損害競爭。我們不同意法院關於我們發佈商工具裁決。發佈商有很多選擇，他們選擇谷歌是因為我們的廣告技術工具簡單、實惠且有效。」&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;span style=&quot;color:#000000&quot;&gt;此外，在另一起反壟斷案件中，另一位美國聯邦法官去年裁定谷歌非法壟斷了整個互聯網搜索市場。該法官尚未就該案發布救濟措施，但預計將在 2025 年中期發佈。&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;strong&gt;&lt;span style=&quot;color:#000000&quot;&gt;相關閲讀：&lt;/span&gt;&lt;/strong&gt;&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt;&lt;a href=&quot;https://www.oschina.net/news/321046/usa-justice-departmen-google-sell-chrome&quot; target=&quot;_blank&quot;&gt;美國司法部將推動谷歌出售 Chrome，以打破壟斷&lt;/a&gt;&lt;/li&gt; 
+ &lt;li&gt; &lt;p style=&quot;margin-left:0px; margin-right:0px; text-align:start&quot;&gt;&lt;a href=&quot;https://www.oschina.net/news/339992/eu-apple-google-breached-dma-antitrust-rules&quot; target=&quot;_blank&quot;&gt;歐盟認定蘋果、谷歌違反了 DMA 反壟斷法規&lt;/a&gt;&lt;/p&gt; &lt;/li&gt; 
+&lt;/ul&gt;
+                                                                                &lt;/div&gt;
+                                                                            </description>
+            <link>https://www.oschina.net/news/345292/judge-rules-google-illegally-monopolized-ad-tech</link>
+            <guid isPermaLink="false">https://www.oschina.net/news/345292/judge-rules-google-illegally-monopolized-ad-tech</guid>
+            <pubDate>Mon, 14 Apr 2025 06:20:00 GMT</pubDate>
+            <author>來源: OSCHINA</author>
+        </item>
+        <item>
+            <title>OpenAI 研究員姚順雨：AI 將由解決問題轉為定義問題</title>
+            <description>&lt;div class=&quot;content&quot;&gt;
+                                                                    
+                                                        &lt;blockquote&gt; 
+ &lt;p&gt;&lt;strong&gt;上半場是預訓練，是用算法、架構解決問題；&lt;/strong&gt;&lt;/p&gt; 
+ &lt;p&gt;&lt;strong&gt;下半場，是 RL 終於起作用了，要做的是定義問題和評估。&lt;/strong&gt;&lt;/p&gt; 
+&lt;/blockquote&gt; 
+&lt;p&gt;日前，畢業於清華大學姚班，現任 OpenAI 研究院的姚順雨&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fysymyth.github.io%2FThe-Second-Half%2F&quot; target=&quot;_blank&quot;&gt;發佈博文&lt;/a&gt;，探討了其對 AI 未來的發展預測。&lt;/p&gt; 
+&lt;blockquote&gt; 
+ &lt;p&gt;&lt;img src=&quot;https://static.oschina.net/uploads/space/2025/0418/141654_PIy5_2720166.png&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
+&lt;/blockquote&gt; 
+&lt;p&gt;姚順雨回顧了 AI 的發展歷史。其表示，幾十年來 AI 主要致力於開發新的訓練方法和模型，取得了顯著成就，而這些成就都源於基礎性創新，例如搜索、深度強化學習（Deep RL）和推理能力。而如今，深度強化學習終於開始泛化，AI 為人類賦能的局面也得到了變化。&lt;/p&gt; 
+&lt;p&gt;姚順雨認為，隨着強化學習的突破，AI 開始解決多樣化的任務，如軟件工程、創意寫作和 IMO 級別的數學問題。通過語言和推理的引入，AI 能夠跨領域泛化任務，解決複雜問題。姚順雨還提到，AI 的下半場將由解決問題轉向定義問題，評估方法的創新將成為關鍵。&lt;/p&gt; 
+&lt;p&gt;&lt;img alt=&quot;&quot; src=&quot;https://oscimg.oschina.net/oscnet/up-480072bbbfa62fc4f00ed636ff4dd3b6404.png&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
+&lt;p&gt;此外，姚順雨還表示，傳統的評估方法已難以應對複雜的現實需求，AI 需要具備長時記憶和適應能力。他強調，新的評估方式應着眼於實際應用，推動 AI 產品的效用和商業價值，為行業帶來更大的創新和影響。&lt;/p&gt;
+                                                                                &lt;/div&gt;
+                                                                            </description>
+            <link>https://www.oschina.net/news/345290/ysy-the-second-half</link>
+            <guid isPermaLink="false">https://www.oschina.net/news/345290/ysy-the-second-half</guid>
+            <pubDate>Mon, 14 Apr 2025 06:18:00 GMT</pubDate>
+            <author>來源: OSCHINA</author>
+        </item>
+        <item>
+            <title>八大金剛、網紅鬥舞，深圳具身智能馬拉松跑到哪了</title>
+            <description>&lt;div class=&quot;content&quot;&gt;
+                                                                                                                    
+                                                                                                                                                    &lt;p style=&quot;text-align:center&quot;&gt;&lt;img height=&quot;240&quot; src=&quot;https://oscimg.oschina.net/oscnet/up-24b7a055d82f59792efc41afa7dc6813fd5.gif&quot; width=&quot;424&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
+&lt;p&gt;清明假期，擁有 3800 萬國際粉絲的網紅「甲亢哥」 Speed 中國行旅程來到了深圳站，打卡「深圳特色」——與人形機器人互動、一起跳舞。這個直播片段在全球的觀看量預估超 5000 萬，成了對外展示深圳的一個重要切面。直播間彈幕刷屏的「China Tech」也傳達出一個信息——具身智能技術的研究正飛速進步，而擁有完備機器人產業鏈的深圳也正通過技術與文化的深度融合，以人形機器人+超級 IP 的破圈效應，為全球人機協作標註中國座標。&lt;/p&gt; 
+&lt;p&gt;再往前倒 2 個月，蛇年春節後，「深圳具身智能八大金剛」這一概念在科技圈不脛而走。這一稱號所指的具體企業雖未完全公開，但結合政策動向、融資動態與技術路徑，可能性較高的是優必選、普渡科技、逐際動力、眾擎機器人、帕西尼感知科技、跨維智能、數字華夏和智平方這 8 家企業。除了「八大金剛」，深圳還聚集了星塵智能、橋介數物、靈觸科技等具身智能企業，這些企業也不乏亮眼的研究。&lt;/p&gt; 
+&lt;p style=&quot;text-align:center&quot;&gt;&lt;img height=&quot;496&quot; src=&quot;https://oscimg.oschina.net/oscnet/up-3927e44e562fa58c54b669c5c6642e1f6f7.png&quot; width=&quot;600&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
+&lt;p&gt;透過這些具身智能公司的主要研究方向與成果，我們也能窺見整個具身智能研究的核心範式遷移與技術收斂趨勢：技術上，感知、決策、行動三大學科正從「孤立優化」轉向「閉環耦合」；應用層面，具身智能體正從「任務專用型」向「通用適應型」躍遷。比如此前專注觸覺感知的帕西尼，已通過異構感知-控制聯合訓練推出首款人形機器人&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fwww.paxini.com%2Frobot&quot; target=&quot;_blank&quot;&gt;TORA-ONE&lt;/a&gt;，其雙手內搭載近兩千個帕西尼自主研發生產的 ITPU 多維觸覺傳感單元，擁有 0.01N 的精準力控能力，能實現物體 6D 位姿識別與柔性抓取，可以廣泛應用於工業製造、精密製造、醫療康養、倉儲物流等多種場景。&lt;/p&gt; 
+&lt;span id=&quot;OSC_h2_1&quot;&gt;&lt;/span&gt; 
+&lt;h2&gt;技術線：嬰兒學步和超感官並存&lt;/h2&gt; 
+&lt;p&gt;廣義上的具身智能是指具有物理形態的智能體，除了人形機器人外，智能車、四足機器狗等等都囊括其中。隨着靈巧手、人形機器人研發的加速，現在我們提到的具身智能常用來專指人體形態的智能體。這類機器人無論是在外形上還是行動上，都在朝着「無限接近真實人類」的目標出發。&lt;/p&gt; 
+&lt;p&gt;人類的大腦與身體構造，可以簡單概括為一條「感知-認知-控制」閉環鏈路：五感負責接收外界信息；大腦皮層整合多模態信息並生成決策；脊髓與周圍神經系統傳遞信號；小腦實時協調運動肌羣完成動作；成年人體擁有 206 塊骨骼、約 360 個關節，主要活動關節 86 個，運動自由度達可以達到 230+。&lt;/p&gt; 
+&lt;p&gt;參照人類生理結構，具身智能機器人的研發可解構為以下核心模塊：&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt; &lt;p&gt;感知層：替代人類五感，包括激光雷達（視覺）、六維力傳感器（觸覺）、IMU（前庭平衡覺）等；&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;機器人大腦：主導認知與決策，大模型技術突飛猛進後，具身智能的決策系統研究開始依賴多模態大模型實現因果推理；&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;機器人小腦：運動控制中樞，通過模型預測控制、全身協同控制等算法實現毫米級精度；&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;行動層：對應人體肌肉與骨骼系統，由伺服電機（肌肉）、諧波減速器（肌腱）、碳纖維連桿（骨骼）等構成執行機構。&lt;/p&gt; &lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;p style=&quot;text-align:center&quot;&gt;&lt;img height=&quot;442&quot; src=&quot;https://oscimg.oschina.net/oscnet/up-46dfde3c6af89e66cbc31685a382a623fad.png&quot; width=&quot;600&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
+&lt;p&gt;從這 4 個角度出發，也能很直觀看出現有的機器人和人類之間差距。&lt;/p&gt; 
+&lt;span id=&quot;OSC_h3_2&quot;&gt;&lt;/span&gt; 
+&lt;h3&gt;感知&lt;/h3&gt; 
+&lt;p&gt;感知方面，機器人已初步構建起與人類五感對應的傳感器體系，但是在感知精度和不同感官的配合上還有差距。比如，人眼對運動物體的識別反應最快接近 0.1 秒，如接住飛來的棒球。而機器人依賴多維感知+計算，面對快速移動物體時決策延遲達有時可能達到 0.3-0.5 秒甚至更長。此外，人的五感配合非常絲滑，比如看到地面積水，腳底觸覺感知到鞋底打滑，立刻便能判斷摔倒風險，但機器人可能因傳感器數據衝突，激光雷達與 IMU 的位姿誤差，導致動作卡頓。&lt;/p&gt; 
+&lt;p&gt;但機器人在感知的「生物合理性」上存在硬傷：視覺系統依賴人工標註數據集，無法像人類嬰兒般通過自監督學習理解未知物體。更關鍵的是，多模態數據的時空對齊誤差可達 10ms 級，而人類神經傳導延遲僅 1ms，這會導致機器人面對動態場景時易出現「感官割裂」——例如當激光雷達檢測到前方障礙物時，慣性導航單元可能因振動幹擾傳遞錯誤位姿數據，引發運動控制衝突。&lt;/p&gt; 
+&lt;p&gt;不過，有時候機器人也會擁有人類無法企及的「超感官」能力，比如工業分揀機器人通過太赫茲成像檢測材料內部缺陷，農業機器人利用多光譜相機分析作物病蟲害，核電站檢修機器人搭載 γ 射線傳感器定位輻射源等等。這些超越生物極限的感知手段，正在特定垂直領域重構生產力標準。&lt;/p&gt; 
+&lt;span id=&quot;OSC_h3_3&quot;&gt;&lt;/span&gt; 
+&lt;h3&gt;大腦&lt;/h3&gt; 
+&lt;p&gt;傳統機器人決策系統依賴分層架構，如 ROS MoveIt 通過集成採樣、優化算法等實現運動規劃，並與基於規則的狀態機協同。新興具身智能企業則引入百億參數級多模態大模型，如智平方自主研發的 &lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fmp.weixin.qq.com%2Fs%2FcuVzo0CjphIEt7lV7GM63g&quot; target=&quot;_blank&quot;&gt;AI2R Brain 具身大模型，已成功部署於 Alpha Bot 系列機器人&lt;/a&gt;。&lt;/p&gt; 
+&lt;p&gt;從這個角度看，現有的大語言模型雖在文本理解、邏輯推理等任務中表現顯著，但其能力邊界高度依賴訓練數據的規模與質量，GPT-4 的訓練語料庫涵蓋約 13 萬億 token 的文本數據，接近人類個體一生閲讀量的數千倍。這種數據暴力美學使 LLMs 能夠模擬人類語言模式，但仍然存在無法解釋、不可避免的幻覺。&lt;/p&gt; 
+&lt;p&gt;相比之下，具身智能的決策系統面臨更嚴峻的數據瓶頸。以動作-狀態對為單位計算，當前全球可用的高質量具身智能數據集總量預估是千萬級，而且數據模態複雜，需要同步記錄視覺、力覺、關節位姿等信號，所以擴展起來也十分費勁。幾個知名具身數據集覆蓋的場景也有限：&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt; &lt;p&gt;RoboMIND：匯聚了來自 Franka Emika Panda、Tien Kung、AgileX Cobot Magic V2.0 和 UR5e 四種不同機器人實體的海量數據，目前總計約十萬條軌跡，年底將達到三十餘萬條。軌跡涵蓋了 479 個任務、96 個不同的物體類別以及 38 項操作技能。&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;AgiBot World：全球首個基於全域真實場景、全能硬件平台、全程質量把控的百萬真機數據集。&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;Meta Ego4D：最大規模開源數據集，含 4000 小時第一視角視頻+3D 關節數據，但僅覆蓋日常交互場景。&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;斯坦福 BEHAVIOR：包含 1000 種家庭任務仿真數據，但物理引擎精度誤差達 15%。&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;DeepMind Open X-Embodiment：整合 22 種機器人形態的 50 萬條操作記錄，但硬件異構性導致跨平台泛化率不足 30%。&lt;/p&gt; &lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;p&gt;這種數據稀缺性源於兩大挑戰：一是採集成本高昂，單台人形機器人採集 1 小時多模態數據，需要用到 RGB-D 相機+六維力傳感器+IMU，成本較高，且需專業工程師全程監控；二是標註效率低下，需要人類標註員二次處理機器人操作視頻的數據。&lt;/p&gt; 
+&lt;p&gt;&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fbaijiahao.baidu.com%2Fs%3Fid%3D1821723693588178341%26wfr%3Dspider%26for%3Dpc&quot; target=&quot;_blank&quot;&gt;有業內人士估算&lt;/a&gt;，特斯拉的人形機器人 Optimus 至少需要數百萬小時的數據才能完全準備好在特斯拉工廠工作，這期間可能需要至少 5 億美元的數據採集成本。&lt;/p&gt; 
+&lt;p&gt;高昂的採集成本也拖慢了具身智能數據的收集進度。目前業界的解決方式多是疊加「仿真+遷移」的技術，在虛擬環境中生成數億條廉價數據預訓練，再通過少量真實數據微調。但仿真器與現實的「物理鴻溝」仍導致實際場景性能損失 40% 以上。&lt;/p&gt; 
+&lt;span id=&quot;OSC_h3_4&quot;&gt;&lt;/span&gt; 
+&lt;h3&gt;小腦&lt;/h3&gt; 
+&lt;p&gt;在機器人運動控制領域，「小腦」技術的核心挑戰在於復現生物神經系統的高效性與魯棒性。&lt;/p&gt; 
+&lt;p&gt;人類小腦通過約 690 億神經元構成的微電路，以毫秒級延遲協調全身 600 餘塊肌肉，功耗不足 5 瓦，卻能在濕滑路面行走、接住意外拋來的鑰匙等動態場景中展現驚人的適應性。&lt;/p&gt; 
+&lt;p&gt;傳統方法依賴於精確的物理建模和數學推導，強調理論框架的完備性，但開發週期長、適應性有限。比如動力學模型控制，需建立複雜的運動學與動力學模型，通過在線優化計算生成軌跡，但依賴高精度傳感器和實時計算，對動態環境適應性差，難以應對複雜地形或突發擾動。此外還有模型預測控制（MPC），通過預測未來數步的動力學狀態，優化當前控制輸入，缺點是計算複雜度高，非線性模型求解速度慢，僅適用於特定步態或場景。&lt;/p&gt; 
+&lt;p&gt;隨着 AI 技術的發展，數據驅動的學習算法逐漸成為主流，顯著降低開發門檻並提升適應性。比如過仿真環境設計獎勵機制，讓機器人自主探索最優策略。&lt;/p&gt; 
+&lt;p&gt;又或是仿真學習，通過人類示教或動作捕捉數據生成運動策略。目前，橋介數物也正是通過 learning-based 的方式，&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fwww.dutenews.com%2Fn%2Farticle%2F8793981&quot; target=&quot;_blank&quot;&gt;讓機器人在仿真環境中通過深度強化學習自主學會行動策略&lt;/a&gt;，將開發週期從數月縮短至數天。&lt;/p&gt; 
+&lt;p&gt;然而，這類算法的工程化落地仍面臨一些困境，比如動態環境建模的物理鴻溝，仿真器中訓練的模型因摩擦係數、空氣阻力等參數誤差，遷移到真實場景時成功率會有所下降；此外還有算力與能效的失衡問題，雙足機器人實時運動控制需要的功耗遠超人類小腦同等任務功耗。&lt;/p&gt; 
+&lt;span id=&quot;OSC_h3_5&quot;&gt;&lt;/span&gt; 
+&lt;h3&gt;行動&lt;/h3&gt; 
+&lt;p&gt;行動上的進步很明顯，比如去年走都走不穩的人形機器人，今年已經可以和人類一起跳手絹舞、斧頭舞，完成後空翻等各種動作了。在機器人行動層技術的研究中，核心目標是通過仿生結構與驅動系統的協同設計，逼近甚至超越人類運動系統的效率與適應性。&lt;/p&gt; 
+&lt;p&gt;人類的行動自由度大概在 200-300 範圍，可以實現許多精細動作，比如人的單隻手掌的 27 個自由度允許抓握從雞蛋到扳手的全品類工具。相比之下，當前人形機器人的行動層仍受制於機械設計的物理桎梏：能與人類共舞的眾擎機器人 SE01 已經走在業界前沿，其&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fwww.engineai.com.cn%2Fproduct_one&quot; target=&quot;_blank&quot;&gt;32 個自由度&lt;/a&gt;雖能完成前空翻等高動態動作，但執行疊衣、擰瓶蓋等精細任務時，其手部動作與人類手指的連續柔順控制存在代際差距。&lt;/p&gt; 
+&lt;p style=&quot;text-align:center&quot;&gt;&lt;img height=&quot;238&quot; src=&quot;https://oscimg.oschina.net/oscnet/up-b11e15e9dda43fca3315dfafa613237102c.gif&quot; width=&quot;426&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
+&lt;p&gt;此前曾被視作機器人巔峯之作的波士頓動力 Atlas 也僅有 28 個自由度，背後也是高昂的成本在支撐。為了降低成本，提升性能，波士頓動力公司正轉向全電驅動技術的研究。即便如此，這樣一個機器人的售價也在&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fwww.163.com%2Fdy%2Farticle%2FJQHOBGHC0511D0C3.html%23%3A%7E%3Atext%3D%25E5%25BD%2593%25E5%2589%258D%25E7%2589%2588%25E6%259C%25AC%25E7%259A%2584Atlas%25E9%25A2%2584%25E8%25AE%25A1%25E5%2594%25AE%25E4%25BB%25B7%25E5%259C%25A815%25E4%25B8%2587%25E7%25BE%258E%25E5%2585%2583%25E5%25B7%25A6%25E5%258F%25B3%25E3%2580%2582%2C%25E8%25BF%2599%25E4%25B8%25AA%25E4%25BB%25B7%25E6%25A0%25BC%25E8%2599%25BD%25E7%2584%25B6%25E4%25B8%258D%25E8%258F%25B2%25EF%25BC%258C%25E4%25BD%2586%25E8%2580%2583%25E8%2599%2591%25E5%2588%25B0%25E5%2585%25B6%25E5%25BC%25BA%25E5%25A4%25A7%25E7%259A%2584%25E5%258A%259F%25E8%2583%25BD%25E5%2592%258C%25E6%25BD%259C%25E5%259C%25A8%25E7%259A%2584%25E6%258A%2595%25E8%25B5%2584%25E5%259B%259E%25E6%258A%25A5%25EF%25BC%258C%25E5%25AF%25B9%25E4%25BA%258E%25E5%25A4%25A7%25E5%259E%258B%25E5%2588%25B6%25E9%2580%25A0%25E4%25BC%2581%25E4%25B8%259A%25E6%259D%25A5%25E8%25AF%25B4%25E4%25BB%258D%25E5%2585%25B7%25E6%259C%2589%25E4%25B8%2580%25E5%25AE%259A%25E5%2590%25B8%25E5%25BC%2595%25E5%258A%259B%25E3%2580%2582%2520%25E6%259C%2589%25E8%25B6%25A3%25E7%259A%2584%25E6%2598%25AF%25EF%25BC%258C%25E5%259C%25A8Atlas%25E4%25B9%258B%25E5%25A4%2596%25EF%25BC%258C%25E5%25B8%2582%25E5%259C%25BA%25E4%25B8%258A%25E4%25B9%259F%25E5%2587%25BA%25E7%258E%25B0%25E4%25BA%2586%25E4%25B8%2580%25E4%25BA%259B%25E6%259B%25B4%25E7%25BB%258F%25E6%25B5%258E%25E7%259A%2584%25E9%2580%2589%25E6%258B%25A9%25E3%2580%2582&quot; target=&quot;_blank&quot;&gt;15 萬美元左右&lt;/a&gt;。&lt;/p&gt; 
+&lt;p&gt;從每個細分技術場景來看，也就不難解釋，為什麼機器人在許多日常生活場景中難以復刻人類的靈活與直覺，但是常常在一些人類實現不了地方取得意外之喜。想讓機器人既能跳得了舞、切得了鑽石、做得了手術，又能剝完整雞蛋，還有很長的路要走。&lt;/p&gt; 
+&lt;span id=&quot;OSC_h2_6&quot;&gt;&lt;/span&gt; 
+&lt;h2&gt;供應鏈：從以月為單位到當天送達&lt;/h2&gt; 
+&lt;p&gt;「這不是一家公司的事情。」&lt;/p&gt; 
+&lt;p&gt;我們常常能從具身智能企業那裏聽到這句話。動輒十億級的研發資金需求，全球範圍內稀缺的複合型人才，以及從毫米級觸覺傳感器到千瓦級關節模組的超長產業鏈，讓具身智能乃至整個機器人產業不僅僅需要上下游的配合，更需要各個細分技術廠商、通用技術廠商的配合。&lt;/p&gt; 
+&lt;p&gt;技術研發的爆點將在哪天到來難以預測，在那之前，各式零部件、基礎耗材的攻擊也是對產業鏈的一大考驗。&lt;/p&gt; 
+&lt;p&gt;近期，逐際動力聯合創始人兼首席運營官張力就公開表示，「深圳在機器人硬件供應鏈上優勢明顯，有的硬件我們上午下單，當天下午就能做好送到，這極大提升了機器人公司硬件產品的迭代速度。」對比此前，有學者在國外做機器人相關研究時，經常需要從中國購買零部件，通常得一兩個月才能收到貨，而發貨地多是深圳粵海街道發貨。&lt;/p&gt; 
+&lt;p&gt;因為機器人產業起步早、政策扶植等因素，深圳積累了硬件、供應鏈優勢。有了供應鏈優勢，再結合技術，量產才能成為可能。&lt;/p&gt; 
+&lt;p&gt;3 月 3 日，深圳市工業和信息化局發佈《深圳市加快推進人工智能終端產業發展行動計劃（2025—2026 年）》。其中提出目標，到 2026 年，深圳市人工智能終端產業核心競爭力進一步增強，產品「含深度」進一步提升，產業生態持續豐富。具體來看，目標包括屆時深圳市人工智能終端產業規模達 8000 億元以上、力爭 1 萬億元，集聚不少於 10 家現象級人工智能終端企業，人工智能終端產品產量突破 1.5 億台；手機、計算機、大模型一體機、可穿戴設備等領域推出 50 款以上爆款人工智能終端產品，智能製造、智慧金融、智慧城市、智慧養老、智慧政務等領域打造 60 個以上人工智能終端典型應用場景。&lt;/p&gt; 
+&lt;p&gt;同日，深圳市科技創新局發佈《深圳市具身智能機器人技術創新與產業發展行動計劃（2025—2027 年）》。其中提到，到 2027 年，深圳市在機器人關鍵核心零部件、AI 芯片、人工智能與機器人融合技術、多模態感知技術、高精度運動控制技術、靈巧操作技術等方面取得突破。具體來看，目標包括屆時深圳市新增培育估值過百億企業 10 家以上、營收超十億企業 20 家以上，實現十億級應用場景落地 50 個以上，關聯產業規模達到 1000 億元以上，具身智能機器人產業集羣相關企業超過 1200 家。打造公共服務平台矩陣，吸引更多上下游企業、科研機構、創新團隊等加入，形成更完善的產業生態，具身智能機器人產業綜合實力達到國際領先水平。&lt;/p&gt; 
+&lt;p&gt;中信證券認為，人形機器人產業快速發展，全球主要整機廠商陸續開始出貨，人形機器人將迎來商業化。今年以來，隨着一些具身智能整機廠商陸續公佈量產計劃，2025 年可能是人形機器人量產的元年的觀點也正在升温。&lt;/p&gt; 
+&lt;p style=&quot;text-align:center&quot;&gt;&lt;img height=&quot;74&quot; src=&quot;https://oscimg.oschina.net/oscnet/up-2ea50a939ccbd5d5d966f3a5bcae25f3de8.png&quot; width=&quot;500&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
+&lt;p style=&quot;text-align:center&quot;&gt;&lt;img height=&quot;774&quot; src=&quot;https://oscimg.oschina.net/oscnet/up-717bc0e7bb7303e625c3dfc274a2086fea7.png&quot; width=&quot;500&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
+&lt;p&gt;具身智能的進化、量產，本質是一場對人類生物本能的工程學解構——當機器人用碳纖維骨骼和代碼復刻出人類 230 個自由度的動作時，我們不僅需要技術的突破，更需要整個產業鏈的配合。&lt;/p&gt; 
+&lt;p&gt;本篇我們從宏觀角度看了深圳具身智能「明星」企業的概況和技術，接下來，我們將持續追蹤具身智能的技術攻堅與商業化落地，從多個角度深入解析具身智能的技術與發展。歡迎投稿和交流：18655807197&lt;/p&gt; 
+&lt;blockquote&gt; 
+ &lt;p style=&quot;margin-left:8px; margin-right:8px&quot;&gt;&lt;span style=&quot;background-color:#ffffff&quot;&gt;4 月 26 日，&lt;strong&gt;【未來智造：機器⼈軟件系統技術前沿】&lt;/strong&gt;OSC 源創會·深圳站·112 期開啓：&lt;/span&gt;&lt;/p&gt; 
+ &lt;p&gt;&lt;strong&gt;&lt;span style=&quot;background-color:#ffffff&quot;&gt;聽日本創客高須正和拆解機器人競賽中的 &lt;span style=&quot;background-color:#ffffff; color:#0052ff&quot;&gt;ROS 實戰密碼&lt;/span&gt;；&lt;/span&gt;&lt;/strong&gt;&lt;/p&gt; 
+ &lt;p style=&quot;margin-left:8px; margin-right:8px; text-align:left&quot;&gt;&lt;strong&gt;&lt;span style=&quot;background-color:#ffffff&quot;&gt;深挖&lt;/span&gt;&lt;span style=&quot;background-color:#ffffff&quot;&gt;&lt;span style=&quot;background-color:#ffffff; color:#0052ff&quot;&gt;具身智能數據生態&lt;/span&gt;&lt;/span&gt;&lt;span style=&quot;background-color:#ffffff&quot;&gt;的底層邏輯，建設開源生態；&lt;/span&gt;&lt;/strong&gt;&lt;/p&gt; 
+ &lt;p style=&quot;margin-left:8px; margin-right:8px; text-align:left&quot;&gt;&lt;strong&gt;&lt;span style=&quot;background-color:#ffffff&quot;&gt;直面&lt;/span&gt;&lt;span style=&quot;background-color:#ffffff&quot;&gt;&lt;span style=&quot;background-color:#ffffff; color:#0052ff&quot;&gt;運動控制&lt;/span&gt;&lt;/span&gt;&lt;span style=&quot;background-color:#ffffff&quot;&gt;的「腦機戰爭」技術博弈；&lt;/span&gt;&lt;/strong&gt;&lt;/p&gt; 
+ &lt;p style=&quot;margin-left:8px; margin-right:8px; text-align:left&quot;&gt;&lt;strong&gt;&lt;span style=&quot;background-color:#ffffff&quot;&gt;觸摸全球首款&lt;/span&gt;&lt;span style=&quot;background-color:#ffffff&quot;&gt;&lt;span style=&quot;background-color:#ffffff; color:#0052ff&quot;&gt;雙模態多維觸覺靈巧手技術&lt;/span&gt;&lt;/span&gt;&lt;span style=&quot;background-color:#ffffff&quot;&gt;，見證觸覺傳感升級；&lt;/span&gt;&lt;/strong&gt;&lt;/p&gt; 
+ &lt;p style=&quot;margin-left:8px; margin-right:8px; text-align:left&quot;&gt;&lt;strong&gt;&lt;span style=&quot;background-color:#ffffff&quot;&gt;&lt;span&gt;看國產 &lt;/span&gt;&lt;span&gt;RT-Thread&lt;/span&gt;&lt;span&gt; 如何用硬實力&lt;/span&gt;&lt;/span&gt;&lt;span style=&quot;background-color:#ffffff&quot;&gt;&lt;span style=&quot;background-color:#ffffff; color:#0052ff&quot;&gt;機器人操作系統&lt;/span&gt;&lt;/span&gt;&lt;span style=&quot;background-color:#ffffff&quot;&gt;難題；&lt;/span&gt;&lt;/strong&gt;&lt;/p&gt; 
+ &lt;p&gt;&lt;span style=&quot;background-color:#ffffff&quot;&gt;5 大領域專家帶你穿透技術瓶頸，直抵機器人智能化核心戰場。&lt;/span&gt;&lt;/p&gt; 
+ &lt;p style=&quot;margin-left:8px; margin-right:8px&quot;&gt;&lt;span style=&quot;background-color:#ffffff&quot;&gt;現場更有精美茶歇和超多禮品相待！&lt;/span&gt;&lt;/p&gt; 
+ &lt;p style=&quot;margin-left:8px; margin-right:8px&quot;&gt;&lt;span style=&quot;background-color:#ffffff&quot;&gt;（號外：報名本期源創會即可享受 4 月 24 日-26 日的 FAIR plus-機器人全產業鏈接會現場通票，一睹機器人全產業鏈展會風采）&lt;/span&gt;&lt;/p&gt; 
+ &lt;p style=&quot;margin-left:8px; margin-right:8px&quot;&gt;&lt;span style=&quot;background-color:#ffffff&quot;&gt;🔥 &lt;span style=&quot;background-color:#ffffff; color:#3da742&quot;&gt;&lt;strong&gt;即刻報名：&lt;/strong&gt;&lt;/span&gt;&lt;/span&gt;&lt;a href=&quot;https://www.oschina.net/event/8595590&quot;&gt;&lt;u&gt;&lt;em&gt;https://www.oschina.net/event/8595590&lt;/em&gt;&lt;/u&gt;&lt;/a&gt;&lt;span style=&quot;background-color:#ffffff&quot;&gt; 🔥&lt;/span&gt;&lt;/p&gt; 
+ &lt;p style=&quot;margin-left:8px; margin-right:8px&quot;&gt;&lt;span style=&quot;background-color:#ffffff&quot;&gt;⏰ &lt;span style=&quot;background-color:#ffffff; color:#3da742&quot;&gt;&lt;strong&gt;時間：2025-04-26 12:00 至 16:30&lt;/strong&gt;&lt;/span&gt;&lt;/span&gt;&lt;/p&gt; 
+ &lt;p style=&quot;margin-left:8px; margin-right:8px&quot;&gt;&lt;span style=&quot;background-color:#ffffff&quot;&gt;🏠 &lt;span style=&quot;background-color:#ffffff; color:#3da742&quot;&gt;&lt;strong&gt;地點：深圳市，福⽥區，福華三路深圳會展中⼼8 號館&lt;/strong&gt;&lt;/span&gt;&lt;/span&gt;&lt;/p&gt; 
+ &lt;p style=&quot;margin-left:8px; margin-right:8px&quot;&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;4 月 24-26 日，&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;「機器人全產業鏈接會（FAIR plus 2025）」&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;也講在&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;深圳會展中心（福田）7-8 號館舉辦，同期舉辦 LogiMAT China2025。活動內容精彩紛呈，包含學術會議、技術沙龍、社區培育，其中的技術社區共建會，涵蓋開源技術沙龍、社區生態召集會、標準工作組會議；另外還有場景協同開發對接會，精準對接匹配各方需求，新品發佈及產品説明會，為企業展示新品提供平台。&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/p&gt; 
+ &lt;p style=&quot;margin-left:8px; margin-right:8px&quot;&gt;&lt;img height=&quot;10025&quot; src=&quot;https://oscimg.oschina.net/oscnet/up-d713a34d8bfec30f2c1ce347fd7e7fdd457.png&quot; width=&quot;3125&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
+&lt;/blockquote&gt;
+                                                                                    &lt;/div&gt;
+                                                                            </description>
+            <link>https://my.oschina.net/u/4489239/blog/18183912</link>
+            <guid isPermaLink="false">https://my.oschina.net/u/4489239/blog/18183912</guid>
+            <pubDate>Mon, 14 Apr 2025 06:17:00 GMT</pubDate>
+            <author>原創</author>
+        </item>
+        <item>
+            <title>Linux 桌面環境 LXQt 2.2 發佈，提供更好的 Wayland 支持</title>
+            <description>&lt;div class=&quot;content&quot;&gt;
+                                                                    
+                                                        &lt;p&gt;LXQt 2.2 已正式發佈，成為這款輕量級開源 Qt 桌面環境的最新穩定更新。&lt;/p&gt; 
+&lt;p&gt;&lt;img alt=&quot;&quot; src=&quot;https://oscimg.oschina.net/oscnet/up-57210ac09afcfbef9e29f64b38ede90c152.png&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
+&lt;p&gt;LXQt 2.2 以之前 LXQt 版本中已實現的 Wayland 支持為基礎。LXQt 2.2 不僅提升了 Wayland 的多屏支持，還進行了其他一些功能改進，以便在 X11 繼續正常運行的同時，更好地支持 Wayland 環境。&lt;/p&gt; 
+&lt;p&gt;LXQt Wayland 會話也將繼續與所有可與其配對的不同 Wayland 合成器的最新穩定版本完美兼容。LXQt 2.2 還為 PCManFM-Qt 帶來了終端自定義選項支持、QTerminal 文本渲染修復以及 LXQt 電源管理中的 PPD 電源配置文件支持。&lt;/p&gt; 
+&lt;p&gt;LXQt Archiver 現在默認使用 7-Zip 構建，並依賴 7z 處理 RAR 壓縮包，libqtxdg 也已針對 Qt 6.9 頭文件進行了更新。LibFM-Qt 也能夠更好地處理 LXQt 2.2 桌面版的拖放操作。&lt;/p&gt; 
+&lt;p&gt;更多有關 LXQt 2.2 桌面版的詳細信息，請訪問&amp;nbsp;&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fgithub.com%2Flxqt%2Flxqt%2Freleases%2Ftag%2F2.2.0&quot; target=&quot;_blank&quot;&gt;GitHub&lt;/a&gt;。&lt;/p&gt;
+                                                                                &lt;/div&gt;
+                                                                            </description>
+            <link>https://www.oschina.net/news/345286/lxqt-2-2-released</link>
+            <guid isPermaLink="false">https://www.oschina.net/news/345286/lxqt-2-2-released</guid>
+            <pubDate>Mon, 14 Apr 2025 06:07:00 GMT</pubDate>
+            <author>來源: OSCHINA</author>
+        </item>
+        <item>
+            <title>騰訊混元開源定製化圖像生成插件 InstantCharacter</title>
+            <description>&lt;div class=&quot;content&quot;&gt;
+                                                                    
+                                                        &lt;p&gt;&lt;span style=&quot;color:#000000&quot;&gt;騰訊混元&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fmp.weixin.qq.com%2Fs%2Ft5kR44NShOJ1xfIopmG3_Q&quot; target=&quot;_blank&quot;&gt;宣佈&lt;/a&gt;開源定製化圖像生成插件 InstantCharacter，並實現了對開源文生圖模型 Flux 的兼容。「通過這個插件，在大模型中，只需要一張圖加一句話，你可以讓任何角色以你想要的姿勢出現在任何地方。」&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;strong&gt;&lt;span style=&quot;color:#000000&quot;&gt;示例：&lt;/span&gt;&lt;/strong&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;span style=&quot;color:#000000&quot;&gt;輸入原始圖片&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;span style=&quot;color:#000000&quot;&gt;&lt;img alt=&quot;&quot; height=&quot;200&quot; src=&quot;https://oscimg.oschina.net/oscnet/up-4df196bc9c553a794b45d8cf1060d941f53.webp&quot; width=&quot;200&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/span&gt;&lt;/p&gt; 
+&lt;p style=&quot;color:rgba(0, 0, 0, 0.9); margin-left:8px; margin-right:8px; text-align:left&quot;&gt;&lt;span style=&quot;color:#000000&quot;&gt;+ prompt ：a &amp;nbsp;rabbit is in the kitchen holding a spoon and drinking soup&lt;/span&gt;&lt;/p&gt; 
+&lt;p style=&quot;color:rgba(0, 0, 0, 0.9); margin-left:8px; margin-right:8px; text-align:left&quot;&gt;&lt;span style=&quot;color:#000000&quot;&gt;就能得到下面的圖：&lt;/span&gt;&lt;/p&gt; 
+&lt;p style=&quot;color:rgba(0, 0, 0, 0.9); margin-left:8px; margin-right:8px; text-align:left&quot;&gt;&lt;span style=&quot;color:#000000&quot;&gt;&lt;img alt=&quot;&quot; height=&quot;200&quot; src=&quot;https://oscimg.oschina.net/oscnet/up-522d4d038451c2800349f2773df0f0bcc22.webp&quot; width=&quot;200&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/span&gt;&lt;/p&gt; 
+&lt;p style=&quot;color:rgba(0, 0, 0, 0.9); margin-left:8px; margin-right:8px; text-align:left&quot;&gt;&lt;span style=&quot;color:#000000&quot;&gt;+prompt：a rabbit in the city,cyberpunk&lt;/span&gt;&lt;/p&gt; 
+&lt;p style=&quot;color:rgba(0, 0, 0, 0.9); margin-left:8px; margin-right:8px; text-align:left&quot;&gt;&lt;span style=&quot;color:#000000&quot;&gt;就可以得到：&lt;/span&gt;&lt;/p&gt; 
+&lt;p style=&quot;color:rgba(0, 0, 0, 0.9); margin-left:8px; margin-right:8px; text-align:justify&quot;&gt;&lt;span style=&quot;color:#000000&quot;&gt;&lt;img alt=&quot;&quot; height=&quot;200&quot; src=&quot;https://oscimg.oschina.net/oscnet/up-786026e787b00731c879cb61528879c252a.webp&quot; width=&quot;200&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/span&gt;&lt;/p&gt; 
+&lt;p style=&quot;color:rgba(0, 0, 0, 0.9); margin-left:8px; margin-right:8px; text-align:justify&quot;&gt;&lt;span style=&quot;color:#000000&quot;&gt;根據介紹，InstantCharacter 的優勢在於可以確保角色在不同場景中的一致性和真實性、畫質和精度高，同時具有靈活的文本編輯性，用户可以根據需要靈活切換任意場景，讓人物生成任意動作。&lt;/span&gt;&lt;/p&gt; 
+&lt;p style=&quot;color:rgba(0, 0, 0, 0.9); margin-left:8px; margin-right:8px; text-align:justify&quot;&gt;&lt;span style=&quot;color:#000000&quot;&gt;其在角色一致性和圖像生成的精確度上超過了此前業界的相關技術，能夠處理多種風格和複雜度的圖像。通過這個插件，內容創作者可以讓生成的角色保持高度一致，能夠更高效地創作出符合其需求的視覺作品，可以用於連環畫、影片創作等場景。&lt;/span&gt;&lt;/p&gt; 
+&lt;p style=&quot;color:rgba(0, 0, 0, 0.9); margin-left:8px; margin-right:8px; text-align:justify&quot;&gt;&lt;span style=&quot;color:#000000&quot;&gt;&lt;img alt=&quot;&quot; height=&quot;539&quot; src=&quot;https://oscimg.oschina.net/oscnet/up-4d73bdbca36b5f47b7bf14231e5f9000413.webp&quot; width=&quot;500&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/span&gt;&lt;/p&gt; 
+&lt;p style=&quot;color:rgba(0, 0, 0, 0.9); margin-left:8px; margin-right:8px; text-align:justify&quot;&gt;&lt;span style=&quot;color:#000000&quot;&gt;測評結果顯示，InstantCharacter 實現的效果媲美 GPT 4o 等業界領先模型。&lt;/span&gt;&lt;/p&gt; 
+&lt;p style=&quot;color:rgba(0, 0, 0, 0.9); margin-left:8px; margin-right:8px; text-align:justify&quot;&gt;&lt;span style=&quot;color:#000000&quot;&gt;&lt;img alt=&quot;&quot; height=&quot;681&quot; src=&quot;https://oscimg.oschina.net/oscnet/up-1b566bbb0acb6b270f4557ea3249ce96e7f.webp&quot; width=&quot;500&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/span&gt;&lt;/p&gt; 
+&lt;p style=&quot;color:rgba(0, 0, 0, 0.9); margin-left:8px; margin-right:8px; text-align:left&quot;&gt;&lt;span style=&quot;color:#000000&quot;&gt;InstantCharacter 利用 DiT 模型構建了一個創新的框架。框架引入了一個可擴展的適配器（adapter），採用多個 transformer encoder，能夠有效處理開放域的角色特徵，並與現代擴散變換器的潛在空間無縫交互。這種設計使得系統能夠靈活適應不同的角色特徵。&lt;/span&gt;&lt;/p&gt; 
+&lt;p style=&quot;color:rgba(0, 0, 0, 0.9); margin-left:8px; margin-right:8px; text-align:left&quot;&gt;&lt;span style=&quot;color:#000000&quot;&gt;同時，為了有效訓練框架，騰訊混元團隊還構建了一個包含千萬級樣本的大規模角色數據集。數據集被系統地組織為成對（多視角角色）和非成對（文本-圖像組合）子集。這種雙數據結構使得身份一致性和文本可編輯性能夠通過不同的學習路徑同時優化。&lt;/span&gt;&lt;/p&gt;
+                                                                                &lt;/div&gt;
+                                                                            </description>
+            <link>https://www.oschina.net/news/345284</link>
+            <guid isPermaLink="false">https://www.oschina.net/news/345284</guid>
+            <pubDate>Mon, 14 Apr 2025 05:56:00 GMT</pubDate>
+            <author>來源: OSCHINA</author>
+        </item>
+        <item>
+            <title>OpenAI 推出</title>
+            <description>&lt;div class=&quot;content&quot;&gt;
+                                                                    
+                                                        &lt;p&gt;為了更積極地與 Google 等競爭對手的人工智能公司競爭，OpenAI 推出了&amp;nbsp;&lt;strong&gt;&lt;u&gt;&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fplatform.openai.com%2Fdocs%2Fguides%2Fflex-processing&quot; target=&quot;_blank&quot;&gt;Flex 處理 (Flex processing)&lt;/a&gt;&lt;/u&gt;&lt;/strong&gt;，這是一種 API 選項，&lt;strong&gt;它提供更低的人工智能模型使用價格，但響應時間較慢且「偶爾資源不可用」&lt;/strong&gt;。&lt;/p&gt; 
+&lt;blockquote&gt; 
+ &lt;p&gt;「Flex processing&amp;nbsp;」可以顯著降低 Chat Completions 或 Responses 請求的成本，但會以較慢的響應時間和偶爾的資源不可用為代價。它非常適合非生產或低優先級任務，如模型評估、數據豐富化或異步工作負載。&lt;/p&gt; 
+ &lt;p&gt;&lt;img src=&quot;https://static.oschina.net/uploads/space/2025/0418/115203_ZCQZ_2720166.png&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
+&lt;/blockquote&gt; 
+&lt;p&gt;OpenAI 表示， Flex 處理是 OpenAI 最近發佈的 o3 和 o4-mini 推理模型的測試版，旨在處理模型評估、數據豐富和異步工作負載等低優先級和 「非生產」 任務。&lt;/p&gt; 
+&lt;p&gt;它將 API 成本降低了整整一半。對於 o3，Flex 處理價格為每百萬輸入詞元（約 75 萬字）5 美元，每百萬輸出詞元 20 美元，而標準價格為每百萬輸入詞元 10 美元，每百萬輸出詞元 40 美元。&lt;/p&gt; 
+&lt;p&gt;對於 o4-mini，Flex 將價格從每百萬輸入詞元 1.10 美元和每百萬輸出詞元 4.40 美元降至每百萬輸入詞元 0.55 美元和每百萬輸出詞元 2.20 美元。&lt;/p&gt; 
+&lt;p&gt;Flex 處理的推出正值前沿人工智能價格持續攀升之際，而競爭對手也紛紛推出更便宜、更高效的預算導向型模型。週四，Google 推出了 Gemini 2.5 Flash ，這款推理模型的性能與 DeepSeek R1 相當，甚至更勝一籌，而且輸入詞元成本更低。&lt;/p&gt; 
+&lt;p&gt;OpenAI 在致客户的一封宣佈推出 Flex 定價的電子郵件中還指出，其使用等級體系中 1-3 級的開發者必須完成新引入的身份驗證流程才能訪問 o3。（等級由在 OpenAI 服務上花費的金額決定。）O3 的推理摘要和流式 API 支持也需要經過身份驗證。&lt;/p&gt; 
+&lt;p&gt;OpenAI 此前表示，身份驗證旨在阻止不良行為者違反其使用政策。&lt;/p&gt; 
+&lt;p&gt;&lt;strong&gt;瞭解更多：&lt;/strong&gt;&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fplatform.openai.com%2Fdocs%2Fguides%2Fflex-processing&quot; target=&quot;_blank&quot;&gt;https://platform.openai.com/docs/guides/flex-processing&lt;/a&gt;&lt;/p&gt;
+                                                                                &lt;/div&gt;
+                                                                            </description>
+            <link>https://www.oschina.net/news/345261/openai-flex-processing</link>
+            <guid isPermaLink="false">https://www.oschina.net/news/345261/openai-flex-processing</guid>
+            <pubDate>Mon, 14 Apr 2025 03:52:00 GMT</pubDate>
+            <author>來源: OSCHINA</author>
+        </item>
+        <item>
+            <title>Cherry Studio v1.2.4 發佈，開源 AI 助手平台</title>
+            <description>&lt;div class=&quot;content&quot;&gt;
+                                                                    
+                                                        &lt;p&gt;Cherry Studio 是一款支持多個大語言模型（LLM）服務商的開源桌面客户端，兼容 Windows、Mac 和 Linux 系統。&lt;/p&gt; 
+&lt;p&gt;&lt;img alt=&quot;&quot; src=&quot;https://oscimg.oschina.net/oscnet/up-23dab8c50bfcc8126ab84229b00dbc2115c.png&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
+&lt;p&gt;該項目近日發佈新版本 1.2.4，包含以下更新：&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt;更新 LICENSE&lt;/li&gt; 
+ &lt;li&gt;重構 AgentPage UI&lt;/li&gt; 
+ &lt;li&gt;優化助手 Emoji 顯示&lt;/li&gt; 
+ &lt;li&gt;添加仿 Claude 樣式主題&lt;/li&gt; 
+ &lt;li&gt;優化一些 issue 反饋&lt;/li&gt; 
+ &lt;li&gt;優化 webdav 備份文件恢復管理功能&lt;/li&gt; 
+ &lt;li&gt;增加獲取系統 PATH 的功能, 修復 process.env.PATH 無法獲取系統 PATH 的問題&lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;p&gt;詳情查看：&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fgithub.com%2FCherryHQ%2Fcherry-studio%2Freleases%2Ftag%2Fv1.2.4&quot; target=&quot;_blank&quot;&gt;https://github.com/CherryHQ/cherry-studio/releases/tag/v1.2.4&lt;/a&gt;&lt;/p&gt;
+                                                                                &lt;/div&gt;
+                                                                            </description>
+            <link>https://www.oschina.net/news/345259/cherry-studio-1-2-4</link>
+            <guid isPermaLink="false">https://www.oschina.net/news/345259/cherry-studio-1-2-4</guid>
+            <pubDate>Mon, 14 Apr 2025 03:45:00 GMT</pubDate>
+            <author>來源: OSCHINA</author>
+        </item>
+        <item>
+            <title>飛豬推出新 AI 產品「問一問」</title>
+            <description>&lt;div class=&quot;content&quot;&gt;
+                                                                    
+                                                        &lt;p&gt;&lt;span style=&quot;color:#000000&quot;&gt;飛豬宣佈推出新 AI 產品「問一問」，首先面向飛豬 F5 及以上會員開放體驗。&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;span style=&quot;color:#000000&quot;&gt;根據介紹，「問一問」定位是一個多智能體驅動的 AI 產品。它能像專業的旅遊服務從業者一樣思考問題、執行任務，還可以調用飛豬上的機票、酒店價格和庫存，以及景點、玩法等專有數據，給出真實、可用的旅行方案。&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;img height=&quot;276&quot; src=&quot;https://oscimg.oschina.net/oscnet/up-0072977933356d6824d4cdd37de1a715c8d.png&quot; width=&quot;500&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;span style=&quot;color:#000000&quot;&gt;「問一問」集成了通義千問的多個主力模型，並通過多智能體分工協作加自主決策的方式，提升了對複雜旅行需求的識別精度和處理效率。在訓練過程中融入了由飛豬構建的高質量旅行場景數據集，並接入平台的實時報價引擎，包括機票、酒店的實時價格和庫存，旅行路線、景點和碎片化玩法等數據沉澱。&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;span style=&quot;color:#000000&quot;&gt;飛豬「問一問」產品負責人劉洪敏表示，「在‘問一問’研發過程中，我們的技術團隊反覆調研專業旅行定製師的工作流，將相關知識和經驗融入到 AI 的分析、執行、決策各個節點，提升思維鏈效率和產出質量。另一方面，作為一個旅行服務的開放平台，飛豬本身也積累了海量的商品、目的地、玩法、服務和評價等信息，它們都是歷經無數次消費者正負向反饋的真實數據，是訓練 AI 的重要底料。」&lt;/span&gt;&lt;/p&gt;
+                                                                                &lt;/div&gt;
+                                                                            </description>
+            <link>https://www.oschina.net/news/345251</link>
+            <guid isPermaLink="false">https://www.oschina.net/news/345251</guid>
+            <pubDate>Mon, 14 Apr 2025 03:14:00 GMT</pubDate>
+            <author>來源: OSCHINA</author>
+        </item>
+        <item>
+            <title>能否將擴散模型思想應用於 LLMs 領域？大型語言擴散模型（LLDM）詳解</title>
+            <description>&lt;div class=&quot;content&quot;&gt;
+                                                                                                                    
+                                                                                                                                                    &lt;blockquote&gt; 
+ &lt;p&gt;&lt;strong&gt;編者按：&lt;/strong&gt; 當你面對需要高質量逆向推理能力的應用場景時，傳統大語言模型是否讓你感到力不從心？在詩歌逆向補全、邏輯逆向推導等任務中，為什麼即使是 GPT-4o 這樣的強大模型也會表現失常？&lt;/p&gt; 
+ &lt;p&gt;文章深入介紹了 LLaDA(Large Language Diffusion with mAsking) 這一創新模型的工作原理、訓練過程與性能表現。與傳統自迴歸模型不同，LLaDA 借鑑了計算機視覺領域的擴散模型思想，通過逐步去除掩碼來生成文本，而非從左到右逐個生成 token。&lt;/p&gt; 
+ &lt;p&gt;性能測試顯示，8B 參數的 LLaDA 基礎模型明顯優於同等規模的 LLaMA 2，並與 LLaMA 3 表現相當。更令人驚喜的是，LLaDA 在逆向推理任務中表現出色，有效解決了自迴歸模型在&quot;逆向詛咒&quot;上的侷限性，甚至在詩歌逆向補全任務中超越了 GPT-4o 和 Qwen 2.5。&lt;/p&gt; 
+&lt;/blockquote&gt; 
+&lt;p&gt;&lt;strong&gt;作者 | AI Papers Academy&lt;/strong&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;strong&gt;編譯 | 嶽揚&lt;/strong&gt;&lt;/p&gt; 
+&lt;p&gt;在這篇文章，我們將對《Large Language Diffusion Models》這篇論文進行解析，介紹首個基於擴散模型的 LLM，該模型可與強大的 LLM 相媲美。&lt;/p&gt; 
+&lt;p&gt;&lt;img src=&quot;https://oscimg.oschina.net/oscnet/up-f2bc981b8e713cb0d30a265917a6a0977b8.png&quot; alt=&quot;&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
+&lt;p&gt;Paper authors (Source[1])&lt;/p&gt; 
+&lt;h1&gt;&lt;strong&gt;01 引言&lt;/strong&gt;&lt;/h1&gt; 
+&lt;p&gt;近年來，大語言模型（LLMs）變得極其強大，為通向通用人工智能（AGI）鋪平了道路。這些模型本質上是自迴歸的，即根據給定的 token 序列預測下一個 token。我們可以把這個過程想象成它們在一個詞一個詞地生成回答內容，其中的每個新詞都基於前面已有的詞彙。事實證明，這種方法非常強大，讓我們取得了今天的成就。&lt;/p&gt; 
+&lt;p&gt;然而，這種方法也面臨着一些挑戰。例如，&lt;strong&gt;按順序逐個生成 token 的計算成本很高&lt;/strong&gt; 。此外，&lt;strong&gt;固有的從左到右的建模方式限制了模型在逆向推理（reversal reasoning）任務中的有效性。&lt;/strong&gt; 後文將提到一個案例 ------ 逆向詩歌補全任務，即給定詩歌中的一句話，模型需要預測詩中這句話前一句的內容。無論如何，有一點值得探討：&lt;strong&gt;自迴歸建模是否唯一可行的方式？&lt;/strong&gt;&lt;/p&gt; 
+&lt;p&gt;《Large Language Diffusion Models》對這一假設提出了挑戰。正如 LLMs 是自然語言處理的基石一樣，擴散模型則是計算機視覺領域的王者，是頂級文生圖模型的核心技術。在本文中，我們將解讀研究人員如何將擴散模型應用於語言建模領域。&lt;/p&gt; 
+&lt;h1&gt;&lt;strong&gt;02 什麼是擴散模型？&lt;/strong&gt;&lt;/h1&gt; 
+&lt;p&gt;讓我們先快速回顧一下計算機視覺中的擴散模型，這將有助於我們理解本文的核心思想。&lt;/p&gt; 
+&lt;p&gt;&lt;img src=&quot;https://oscimg.oschina.net/oscnet/up-c7f247cb734cf9399a9c2ad31ec1f67ef1c.png&quot; alt=&quot;&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
+&lt;p&gt;擴散模型逐步去除圖像中的噪聲（Cat images source[2]）&lt;/p&gt; 
+&lt;p&gt;擴散模型以提示詞作為輸入，例如&quot;一隻貓坐在一台筆記本電腦上&quot;。模型通過學習逐步去除圖像中的噪聲來生成清晰的圖像。模型從最左側所示的隨機噪聲圖像開始，每一步都去除部分噪聲。去噪過程是以輸入提示詞為條件的，因此最終生成的圖像會匹配提示詞內容。上圖中的三個點（...）表示本例中我們跳過了一些中間步驟。最終我們得到一張清晰的貓圖像，這就是擴散模型根據給定提示詞生成的最終輸出。&lt;/p&gt; 
+&lt;p&gt;在訓練過程中，為了學習如何去除噪聲，我們會逐步向清晰圖像添加噪聲，這個過程稱為擴散過程。該領域已取得一系列進展，但這不是本文的重點。&lt;/p&gt; 
+&lt;h1&gt;&lt;strong&gt;03 大型語言擴散模型的直觀理解&lt;/strong&gt;&lt;/h1&gt; 
+&lt;p&gt;&lt;img src=&quot;https://oscimg.oschina.net/oscnet/up-628cbcf00b82e8b038212ce67241cf17d06.png&quot; alt=&quot;&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
+&lt;p&gt;LLaDA 逐步去除 token 序列中的掩碼&lt;/p&gt; 
+&lt;p&gt;本文介紹的模型名為 LLaDA，全稱是 Large Language Diffusion with mAsking。我們從最左側的 token 序列開始，其中黑色部分表示被掩碼的 token。黃色的未掩碼 token 代表提示詞，黑色的被掩碼 token 代表待生成的響應。請注意，這裏的被掩碼的 token 由特殊符號表示，不同於我們之前提到的圖像中疊加的噪聲。&lt;/p&gt; 
+&lt;p&gt;我們逐步去除 token 序列中的掩碼，藍色代表已解除掩碼的 token。最終，我們移除所有掩碼，得到針對輸入提示詞的完整響應。在本例中，清晰的響應 token 序列對應文字為：&quot;從前，在一個小村莊裏，住着一隻聰明的老貓頭鷹（Once upon a time, in a small village, there lived a wise old owl）&quot;。&lt;/p&gt; 
+&lt;h1&gt;&lt;strong&gt;04 LLaDA 訓練與推理過程概述&lt;/strong&gt;&lt;/h1&gt; 
+&lt;p&gt;讓我們來深入探討大型語言擴散模型的更多細節。下圖展示了該模型的兩個訓練階段（預訓練與監督式微調）以及推理過程。&lt;/p&gt; 
+&lt;p&gt;&lt;img src=&quot;https://oscimg.oschina.net/oscnet/up-eb1920b5061ab0e2ff45d664db3a7b05fab.png&quot; alt=&quot;&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
+&lt;p&gt;LLaDA 訓練過程與推理示意圖（Source[1]）&lt;/p&gt; 
+&lt;h2&gt;&lt;strong&gt;4.1 LLaDA 訓練階段 1 ------ 預訓練階段&lt;/strong&gt;&lt;/h2&gt; 
+&lt;p&gt;我們從預訓練階段開始，如上圖最左側所示。&lt;/p&gt; 
+&lt;p&gt;頂部是訓練集中的一個樣本序列。我們隨機選擇掩碼比例 t（0 到 1 之間的值），隨後獨立地為每個 token 隨機決定是否掩碼，概率為 t。這一步會產生部分被掩碼的 token 序列。該序列被輸入模型的核心組件 ------ mask predictor（這是一個基於 Transformer 的模型），該模型通過計算掩碼 token 上的交叉熵損失，訓練其還原被掩碼的 token。預訓練數據集規模為 2.3 萬億 token。&lt;/p&gt; 
+&lt;h2&gt;&lt;strong&gt;4.2 LLaDA 訓練階段 2 ------ 監督式微調&lt;/strong&gt;&lt;/h2&gt; 
+&lt;p&gt;第二個訓練階段是監督式微調，如上圖中間部分所示。&lt;strong&gt;此階段的目的是增強 LLaDA 遵循指令的能力。&lt;/strong&gt;&lt;/p&gt; 
+&lt;p&gt;頂部是包含提示詞和響應的樣本。我們希望訓練模型根據提示詞生成響應。與預訓練類似，我們隨機掩碼樣本中的部分 token，但此次僅掩碼響應部分的 token，保留提示詞完整。隨後，我們將提示詞和部分被掩碼的響應輸入 mask predictor，以恢復響應中被掩碼的 token。此過程與預訓練階段非常相似，區別在於此過程僅掩碼樣本的響應部分。&lt;/p&gt; 
+&lt;p&gt;訓練過程的掩碼比例（決定多少 token 被掩碼）對每個樣本都是隨機的。這意味着在訓練過程中，模型會接觸到幾乎未掩碼的樣本和高度掩碼的樣本。&lt;/p&gt; 
+&lt;p&gt;在這一階段，研究人員使用了 450 萬樣本訓練 LLaDA。由於樣本長度不一致，因此研究人員使用特殊的序列結束 tokens 填充樣本。通過這種方式，模型就能在人類設置的固定長度的（artificial fixed-length）輸入上進行訓練，並能預測序列結束 tokens，從而終止生成過程。&lt;/p&gt; 
+&lt;h2&gt;&lt;strong&gt;4.3 推理階段：LLaDA 如何生成文本&lt;/strong&gt;&lt;/h2&gt; 
+&lt;p&gt;瞭解完 LLaDA 的訓練方式後，接下來讓我們回顧一下上圖右側所示的推理過程。&lt;/p&gt; 
+&lt;p&gt;給定提示詞後，會創建包含完整提示詞和被完全掩碼的響應的樣本。然後通過稱為逆向擴散過程（reverse diffusion process）的迭代流程，逐步解除響應部分的掩碼。每次迭代開始時，我們會得到一個包含完整提示詞和被部分掩碼的響應的序列。將其輸入 mask predictor 後，它會預測出所有被掩碼的 token。然而，部分預測出的 token 會被重新掩碼，因此響應仍保持部分掩碼狀態，直到最後一次迭代，我們才會獲得完整響應。&lt;/p&gt; 
+&lt;h2&gt;&lt;strong&gt;4.4 推理期間的重新掩碼策略&lt;/strong&gt;&lt;/h2&gt; 
+&lt;p&gt;迭代次數是模型的超參數，需要在計算成本與生成質量間權衡（更多迭代次數可提升生成質量）。在每次迭代中，重新掩碼的 token 數量基於總迭代次數。但如何決定哪些 token 需要重新掩碼？研究者未採用隨機方法，而是使用了兩種更有效的策略：&lt;/p&gt; 
+&lt;ol&gt; 
+ &lt;li&gt;&lt;strong&gt;低置信度重新掩碼（Low-confidence remasking）&lt;/strong&gt; ------ 此方法中，預測置信度最低的 token 會被重新掩碼。對於每個 token，mask predictor 都會從詞表中選擇概率最高的 token 作為預測結果。此處的最高概率代表 token 預測的置信度，反映模型對此 token 相較於其他選項的正確性確定程度。&lt;/li&gt; 
+ &lt;li&gt;&lt;strong&gt;半自迴歸重新掩碼（Semi-autoregressive remasking）&lt;/strong&gt; ------ 響應長度可能因提示詞而異。對於需要簡短回答的提示詞，大部分響應內容可能是序列結束標記。為避免生成過多高置信度的序列結束標記，會將待生成的響應劃分為多個區塊，並按從左到右順序依次處理。在每個區塊內部應用逆向擴散過程進行採樣。&lt;/li&gt; 
+&lt;/ol&gt; 
+&lt;h1&gt;&lt;strong&gt;05 LLaDA Results&lt;/strong&gt;&lt;/h1&gt; 
+&lt;h2&gt;&lt;strong&gt;5.1 Benchmark Results&lt;/strong&gt;&lt;/h2&gt; 
+&lt;p&gt;&lt;img src=&quot;https://oscimg.oschina.net/oscnet/up-1722a74f816dfa334f530ffb7f055c067a1.png&quot; alt=&quot;&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
+&lt;p&gt;LLaDA 與 LLaMA 模型對比（Source[1]）&lt;/p&gt; 
+&lt;p&gt;在上圖中，我們對比了 8B 參數的 LLaDA 基礎模型與規模相近的 LLaMA 3 和 LLaMA 2 在多項任務上的表現。&lt;strong&gt;使用紅色標註的 LLaDA 明顯優於使用藍色標註的 LLaMA 2，並與使用紫色標註的 LLaMA 3 表現相當，甚至在部分任務上優於 LLaMA 3。&lt;/strong&gt;&lt;/p&gt; 
+&lt;p&gt;圖中結果為各模型基礎版本的測試結果。未在此圖表展示的經過指令調優的模型性能對比中，LLaMA 3 更具優勢。但需注意，指令調優版 LLaMA 3 在預訓練階段後既進行了監督式微調也進行了強化學習訓練，而指令調優版 LLaDA 僅在預訓練階段後進行了監督式微調。&lt;/p&gt; 
+&lt;h2&gt;&lt;strong&gt;5.2 LLaDA 在不同規模下的性能擴展規律（LLaDA Scaling Trends）&lt;/strong&gt;&lt;/h2&gt; 
+&lt;p&gt;&lt;img src=&quot;https://oscimg.oschina.net/oscnet/up-74c2dcc11f6287aaa8ca5b00e3507368a34.png&quot; alt=&quot;&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
+&lt;p&gt;LLaDA 在語言任務上的性能擴展規律（Source[1]）&lt;/p&gt; 
+&lt;p&gt;論文中另一張有趣的圖表展示了 LLaDA 在語言任務上的擴展能力。研究人員以不同訓練計算資源（x 軸顯示）訓練了規模相近的 LLaDA 和自迴歸基線模型（autoregressive baselines）。每張子圖代表不同任務，y 軸顯示模型性能。&lt;strong&gt;LLaDA 展現出強大的擴展能力，與自迴歸基線模型競爭力相當。&lt;/strong&gt; 在數學數據集 GSM8K 上，LLaDA 的擴展優勢尤為顯著；而在推理數據集 PIQA 上，LLaDA 稍落後於自迴歸模型，但隨着浮點運算量（FLOPs）的增加，差距逐漸縮小。&lt;/p&gt; 
+&lt;h2&gt;&lt;strong&gt;5.3 打破「逆向詛咒」&lt;/strong&gt;&lt;/h2&gt; 
+&lt;p&gt;&lt;img src=&quot;https://oscimg.oschina.net/oscnet/up-7b120834fbe63429dfa2c64eb38d3b8e47c.png&quot; alt=&quot;&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
+&lt;p&gt;詩歌補全任務上的模型性能對比（Source[1]）&lt;/p&gt; 
+&lt;p&gt;上表展示了詩歌補全任務上的模型性能對比。該任務要求模型根據給定詩句生成下一句（正向任務）或前一句（逆向任務）。觀察 GPT-4o 的表現，其在正向任務中的性能顯著優於逆向任務，這是自迴歸訓練固有的侷限性。LLaDA 則在此取得突破，在正向和逆向任務中表現更均衡，並在逆向任務中超越 GPT-4o 和 Qwen 2.5。&lt;strong&gt;大型語言擴散模型在更大規模的模型訓練中表現如何，讓我們拭目以待！&lt;/strong&gt;&lt;/p&gt; 
+&lt;h1&gt;&lt;strong&gt;06 結語：語言模型迎來新時代？&lt;/strong&gt;&lt;/h1&gt; 
+&lt;p&gt;LLaDA 通過將擴散模型應用於文本生成任務，掀起了語言建模的範式轉變。其雙向推理能力與強大的擴展性，向傳統的自迴歸模型發起了挑戰。&lt;strong&gt;雖然該模型尚處探索初期，但這場技術躍遷或將定義 AI 發展的下一程，未來可期。&lt;/strong&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;em&gt;Thanks for reading!&lt;/em&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;em&gt;Hope you have enjoyed and learned new things from this blog!&lt;/em&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;em&gt;&lt;strong&gt;About the author&lt;/strong&gt;&lt;/em&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;em&gt;&lt;strong&gt;AI Papers Academy&lt;/strong&gt;&lt;/em&gt;&lt;/p&gt; 
+&lt;p&gt;At AI Papers Academy, we simplify AI research papers and concepts, making AI more accessible.&lt;/p&gt; 
+&lt;p&gt;Our goal is to save you time by breaking down complex ideas into clear, digestible insights.&lt;/p&gt; 
+&lt;p&gt;&lt;strong&gt;END&lt;/strong&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;strong&gt;本期互動內容 🍻&lt;/strong&gt;&lt;/p&gt; 
+&lt;p&gt;❓&lt;strong&gt;有人認為擴散模型對文本生成是&#39;殺雞用牛刀&#39;，你同意嗎？為什麼？&lt;/strong&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;strong&gt;🔗文中鏈接🔗&lt;/strong&gt;&lt;/p&gt; 
+&lt;p&gt;[1]&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Farxiv.org%2Fabs%2F2502.09992&quot; target=&quot;_blank&quot;&gt;https://arxiv.org/abs/2502.09992&lt;/a&gt;&lt;/p&gt; 
+&lt;p&gt;[2]&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fdeveloper.nvidia.com%2Fblog%2Fimproving-diffusion-models-as-an-alternative-to-gans-part-1%2F&quot; target=&quot;_blank&quot;&gt;https://developer.nvidia.com/blog/improving-diffusion-models-as-an-alternative-to-gans-part-1/&lt;/a&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;strong&gt;原文鏈接：&lt;/strong&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Faipapersacademy.com%2Flarge-language-diffusion-models%2F&quot; target=&quot;_blank&quot;&gt;https://aipapersacademy.com/large-language-diffusion-models/&lt;/a&gt;&lt;/p&gt;
+                                                                                    &lt;/div&gt;
+                                                                            </description>
+            <link>https://my.oschina.net/IDP/blog/18181991</link>
+            <guid isPermaLink="false">https://my.oschina.net/IDP/blog/18181991</guid>
+            <pubDate>Mon, 14 Apr 2025 02:45:00 GMT</pubDate>
+            <author>原創</author>
+        </item>
+        <item>
+            <title>公安部道研中心：虛假宣傳自動駕駛可面臨 2 年以下刑期</title>
+            <description>&lt;div class=&quot;content&quot;&gt;
+                                                                    
+                                                        &lt;p&gt;&lt;span style=&quot;color:#000000&quot;&gt;近日，公安部道路交通安全研究中心官方公眾號「交通言究社」發表《智慧領航，安全護航——智能網聯汽車輔助駕駛功能使用須謹慎》一文，提到近期因駕駛人錯誤使用輔助駕駛導致的交通事故，並揭示其原因——部分駕駛人對輔助駕駛的認知不到位，誤以為「輔助駕駛=自動駕駛」。&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;span style=&quot;color:#000000&quot;&gt;文章指出，部分駕駛人開啓輔助駕駛功能後做出玩手機、睡覺、聊天、吃東西等危險行為，不僅違反了道路交通安全法律法規，也對其他道路使用者的安全構成嚴重威脅。&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;span style=&quot;color:#000000&quot;&gt;2021 年 8 月，中國國家市場監督管理總局、國家標準化管理委員會批准發佈《汽車駕駛自動化分級》（GB/T 40429-2021）標準，將駕駛自動化分為 0 至 5 級。&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;span style=&quot;color:#000000&quot;&gt;&lt;img height=&quot;373&quot; src=&quot;https://oscimg.oschina.net/oscnet/up-9ec350f80a4cb1369cfdbb89909afc2e5ae.png&quot; width=&quot;500&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;strong&gt;&lt;span style=&quot;color:#000000&quot;&gt;（一）關於車企誤導宣傳的相關法律責任&lt;/span&gt;&lt;/strong&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;span style=&quot;color:#000000&quot;&gt;根據《中華人民共和國廣告法》第二十八條，若車企通過廣告或宣傳材料虛構、誇大輔助駕駛功能（如將 2 級輔助駕駛描述為 「自動駕駛」），誤導消費者購買，市場監管部門可依據《中華人民共和國廣告法》對虛假宣傳行為處以廣告費用 5-10 倍罰款，情節嚴重的吊銷營業執照。若虛假宣傳造成嚴重後果（如引發交通事故致人傷亡），可能觸犯《中華人民共和國刑法》第二百二十二條，可對責任人處 2 年以下有期徒刑或拘役，並處或單處罰金。&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;strong&gt;&lt;span style=&quot;color:#000000&quot;&gt;（二）關於駕駛人濫用輔助駕駛的相關法律責任&lt;/span&gt;&lt;/strong&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;span style=&quot;color:#000000&quot;&gt;根據《中華人民共和國道路交通安全法》及其實施條例，機動車駕駛人始終對車輛運行安全負主體責任。當前我國道路通行環境下，市面量產汽車仍處於 2 級輔助駕駛階段，系統僅提供有限的輔助駕駛功能，因此，駕駛人在使用輔助駕駛功能時，必須持續履行觀察路況、預判風險和及時接管的義務。若駕駛人在輔助駕駛功能激活期間未盡上述義務，存在「脱手脱眼」行為，公安機關交通管理部門將依據《中華人民共和國道路交通安全法》第九十條，認定其存在妨礙安全駕駛的違法行為，依法處以罰款並記分。一旦因此類行為引發交通事故，駕駛人將承擔主要責任，需依法承擔民事賠償；若事故導致人員傷亡或重大財產損失，還可能構成交通肇事罪，被追究刑事責任。&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;strong&gt;&lt;span style=&quot;color:#000000&quot;&gt;（三）關於生產銷售「智駕神器」的相關法律責任&lt;/span&gt;&lt;/strong&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;span style=&quot;color:#000000&quot;&gt;對生產、銷售者而言。根據《中華人民共和國刑法》第一百四十六條規定，「智駕神器」不符合保障人身、財產安全的國家標準或行業標準（如干擾車輛安全監測系統），若造成嚴重後果（如交通事故致人傷亡），生產者和銷售者可能被判處 5 年以下有期徒刑或拘役，並處銷售金額 50% 至 2 倍罰金；後果特別嚴重的（如多人傷亡），刑期可至 5 年以上有期徒刑，罰金同上。若設備設計或宣傳直接誘導駕駛人脱離監管（如 「解放雙手」「免接管」），導致重大交通事故，可能被認定為危害公共安全，最高可判處死刑。&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;span style=&quot;color:#000000&quot;&gt;對使用者而言。根據《中華人民共和國道路交通安全法》及其實施條例，使用「智駕神器」導致雙手脱離方向盤、視線偏離道路，仍屬於「妨礙安全駕駛行為」，依法處以罰款並記分。一旦引發交通事故，駕駛人將承擔主要責任，需依法承擔民事賠償；若事故導致人員傷亡或重大財產損失，還可能構成交通肇事罪，被追究刑事責任。&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;span style=&quot;color:#000000&quot;&gt;對銷售平台而言。根據《中華人民共和國電子商務法》第三十八條規定，電子商務平台經營者知道或者應當知道平台內經營者銷售的商品或者提供的服務不符合保障人身、財產安全的要求，或者有其他侵害消費者合法權益行為，未採取必要措施的，依法與該平台內經營者承擔連帶責任。對關係消費者生命健康的商品或者服務，電子商務平台經營者對平台內經營者的資質資格未盡到審核義務，或者對消費者未盡到安全保障義務，造成消費者損害的，依法承擔相應的責任。&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;strong&gt;&lt;span style=&quot;color:#000000&quot;&gt;（四）關於駕駛人酒後使用輔助駕駛的相關法律責任&lt;/span&gt;&lt;/strong&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;span style=&quot;color:#000000&quot;&gt;對於駕駛人本人啓用輔助駕駛功能上路通行。即便本人通過使用「智駕神器」等方式實現脱手駕駛，未實際操縱方向盤駕駛車輛，仍然屬於道路交通安全違法行為，屬於醉酒駕駛的，還有可能構成危險駕駛罪。原因在於，駕駛人在使用輔助駕駛相關功能時，需要通過賬號登錄，驗證識別等方式進行授權和許可，表明駕駛人對車輛啓動具有明知且認可的主觀心態，駕駛人駕駛輔助駕駛汽車上道路通行期間，具有掌握車輛控制權、監控道路交通環境、保持專注並隨時準備接管車輛的義務，此種義務不能由未實際操作方向盤，或者車輛具有輔助駕駛功能等理由予以免除。駕駛人在明知自身因醉駕等原因導致風險控制能力下降，且車輛的情況，仍然放棄駕駛責任，放任不具有自動駕駛能力的車輛自主行駛，具有充分的社會危害性，既屬於《中華人民共和國道路交通安全法實施條例》第六十二條第 3 款規定的分心駕駛行為，亦屬於酒後駕駛行為。情節嚴重，構成犯罪的，還應當以危險駕駛罪追究其刑事責任。&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;span style=&quot;color:#000000&quot;&gt;對於幫助處於醉酒狀態的駕駛人設定終點、啓動車輛、規避駕駛員監控系統（DMS），再由輔助駕駛汽車根據預先設定好的線路行駛的行為，《中華人民共和國道路交通安全法》第二十二條第 3 款規定，任何人不得強迫、指使、縱容駕駛人違反道路交通安全法律法規和機動車安全駕駛要求駕駛機動車。在明知駕駛人處於醉酒狀態，且不會對車輛進行駕駛的情況下，仍然為其設定路線、啓動車輛，實質上縱容並幫助了車主實施分心駕駛、醉酒駕駛等道路交通安全違法行為，應追究其相應的法律責任。&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;span style=&quot;color:#000000&quot;&gt;總之，當前國內量產車型所搭載自動駕駛系統尚處於 2 級輔助駕駛階段，系統屬於「執行者」角色，駕駛人才是最終責任主體，違反法律或不安全使用行為不僅面臨行政處罰，還可能承擔事故賠償甚至刑事責任。因此，駕駛人應做自己生命的「第一責任人」，嚴格遵守《中華人民共和國道路交通安全法》，在使用輔助駕駛系統時保持專注，確保隨時可控。（中國青年報）&lt;/span&gt;&lt;/p&gt;
+                                                                                &lt;/div&gt;
+                                                                            </description>
+            <link>https://www.oschina.net/news/345239</link>
+            <guid isPermaLink="false">https://www.oschina.net/news/345239</guid>
+            <pubDate>Mon, 14 Apr 2025 02:40:00 GMT</pubDate>
+            <author>來源: OSCHINA</author>
+        </item>
+        <item>
+            <title>Grok 新增「記憶」功能，可回覆個性化內容</title>
+            <description>&lt;div class=&quot;content&quot;&gt;
+                                                                    
+                                                        &lt;p&gt;馬斯克旗下 xAI&amp;nbsp;&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fx.com%2Fgrok%2Fstatus%2F1912670183472476653&quot;&gt;宣佈&lt;/a&gt;&amp;nbsp;Grok 新增 「記憶」 功能，能根據用户過去的對話內容記住相關細節。用户尋求推薦或建議時會得到個性化的回覆 —— 當然前提是用户的使用頻率足夠高，讓它能 「學會」 你的喜好。&lt;/p&gt; 
+&lt;p&gt;同時，「記憶」 也是透明的，用户可以確切地看到 Grok 知曉的內容，並選擇 「忘記」 什麼。&lt;/p&gt; 
+&lt;blockquote&gt; 
+ &lt;p&gt;&lt;img src=&quot;https://static.oschina.net/uploads/space/2025/0418/103645_rJtV_2720166.png&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
+&lt;/blockquote&gt; 
+&lt;p&gt;相比之下，ChatGPT 早已支持類似的記憶功能，且最近升級後，能夠&lt;strong&gt;調用用户完整的聊天曆史&lt;/strong&gt;。谷歌的 Gemini 同樣具備持久記憶，能根據&lt;strong&gt;不同用户的習慣調整回應&lt;/strong&gt;。&lt;/p&gt; 
+&lt;p&gt;目前，Grok 的這項記憶功能已&lt;strong&gt;通過測試版&lt;/strong&gt;形式登陸 Grok.com 網站以及 iOS 和 Android 應用，但&lt;strong&gt;暫不向歐盟和英國用户開放&lt;/strong&gt;。&lt;/p&gt; 
+&lt;p&gt;用户可以在設置菜單的「數據控制」頁面關閉該功能，也能在網頁端的 Grok 聊天界面，通過點擊記憶下方的圖標刪除單條記憶 ——Android 版本很快也將支持這一操作。&lt;/p&gt; 
+&lt;p&gt;xAI 表示，X 平台上的 Grok 也將逐步具備「記憶」功能。&lt;/p&gt;
+                                                                                &lt;/div&gt;
+                                                                            </description>
+            <link>https://www.oschina.net/news/345238/xai-grok-memories</link>
+            <guid isPermaLink="false">https://www.oschina.net/news/345238/xai-grok-memories</guid>
+            <pubDate>Mon, 14 Apr 2025 02:37:00 GMT</pubDate>
+            <author>來源: OSCHINA</author>
+        </item>
         <item>
             <title>谷歌發佈 Gemini 2.5 Flash：性能與效率的平衡之作</title>
             <description>&lt;div class=&quot;content&quot;&gt;
-                                                                                            &lt;p&gt;2025 年 4 月 17 日，谷歌正式宣佈通過 Google AI Studio 和 Vertex AI 平台推出 Gemini 2.5 Flash 預覽版。作為 2.0 Flash 的全面升級，這款新模型在保持速度和成本優勢的同時，顯著提升了推理能力，成為谷歌首款真正意義上的混合推理模型。&lt;/p&gt; 
+                                                                    
+                                                        &lt;p&gt;2025 年 4 月 17 日，谷歌正式宣佈通過 Google AI Studio 和 Vertex AI 平台推出 Gemini 2.5 Flash 預覽版。作為 2.0 Flash 的全面升級，這款新模型在保持速度和成本優勢的同時，顯著提升了推理能力，成為谷歌首款真正意義上的混合推理模型。&lt;/p&gt; 
 &lt;h2&gt;思考能力成為焦點&lt;/h2&gt; 
 &lt;p&gt;Gemini 2.5 Flash 最引人注目的特點在於其可控制的思考能力。不同於傳統模型直接生成輸出，Gemini 2.5 系列模型能夠在響應前進行「思考」過程，更好地理解提示，分解複雜任務，並規劃回答。這一特性使模型在處理需要多步推理的複雜任務時（如解決數學問題或分析研究問題）能夠給出更準確、更全面的答案。&lt;/p&gt; 
 &lt;p&gt;據谷歌官方介紹，在 LMArena 的 Hard Prompts 基準測試中，Gemini 2.5 Flash 表現出色，僅次於 2.5 Pro。這一成就標誌着較小規模模型也能實現接近頂級模型的推理能力，為開發者提供了更經濟的選擇。&lt;/p&gt; 
@@ -39,13 +966,14 @@
                                                                             </description>
             <link>https://www.oschina.net/news/345237</link>
             <guid isPermaLink="false">https://www.oschina.net/news/345237</guid>
-            <pubDate>Fri, 18 Apr 2025 02:33:20 GMT</pubDate>
+            <pubDate>Mon, 14 Apr 2025 02:32:00 GMT</pubDate>
             <author>來源: 投稿</author>
         </item>
         <item>
             <title>百度創始人李彥宏 2025 年首場演講海報曝光</title>
             <description>&lt;div class=&quot;content&quot;&gt;
-                                                                                            &lt;p&gt;百度創始人李彥宏的 2025 年首場演講海報曝光，他將於 4 月 25 日在 Create2025 百度 AI 開發者大會上，帶來持續 1 個小時的演講《模型的世界，應用的天下》。&lt;/p&gt; 
+                                                                    
+                                                        &lt;p&gt;百度創始人李彥宏的 2025 年首場演講海報曝光，他將於 4 月 25 日在 Create2025 百度 AI 開發者大會上，帶來持續 1 個小時的演講《模型的世界，應用的天下》。&lt;/p&gt; 
 &lt;p&gt;海報背景文案囊括了 MCP、智能體、數字人、模型成本等 AI 熱點議題，預告了李彥宏將在大會現場帶來百度 AI 的全新產品發佈和業務進展。&lt;/p&gt; 
 &lt;p&gt;此前，百度預告將在 Create 大會上發佈文心大模型 4.5 Turbo，從海報看，李彥宏或將在演講中詳細介紹這款模型的特色和能力。&lt;/p&gt; 
 &lt;ul&gt; 
@@ -65,13 +993,14 @@
                                                                             </description>
             <link>https://www.oschina.net/news/345236</link>
             <guid isPermaLink="false">https://www.oschina.net/news/345236</guid>
-            <pubDate>Fri, 18 Apr 2025 02:27:20 GMT</pubDate>
+            <pubDate>Mon, 14 Apr 2025 02:26:00 GMT</pubDate>
             <author>來源: OSCHINA</author>
         </item>
         <item>
             <title>字節跳動開源 UI-TARS-1.5：基於視覺-語言模型構建的多模態智能體</title>
             <description>&lt;div class=&quot;content&quot;&gt;
-                                                                                            &lt;p&gt;字節豆包大模型團隊&lt;u&gt;&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fmp.weixin.qq.com%2Fs%2FgRqyNlF8BTkh9f36UlW3ew&quot; target=&quot;_blank&quot;&gt;宣佈&lt;/a&gt;&lt;/u&gt;開源 UI-TARS-1.5。&lt;/p&gt; 
+                                                                    
+                                                        &lt;p&gt;字節豆包大模型團隊&lt;u&gt;&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fmp.weixin.qq.com%2Fs%2FgRqyNlF8BTkh9f36UlW3ew&quot; target=&quot;_blank&quot;&gt;宣佈&lt;/a&gt;&lt;/u&gt;開源 UI-TARS-1.5。&lt;/p&gt; 
 &lt;p&gt;據介紹，這是一款基於視覺-語言模型構建的開源多模態智能體，能夠在虛擬世界中高效執行各類任務。目前，UI-TARS-1.5 已在 7 個典型的 GUI 圖形用户界面評測基準中取得 SOTA 表現，並首次展現了其在遊戲中的長時推理能力和在開放空間中的交互能力。&lt;/p&gt; 
 &lt;p&gt;&lt;img height=&quot;684&quot; src=&quot;https://static.oschina.net/uploads/space/2025/0418/101719_9W5Z_2720166.png&quot; width=&quot;1280&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
 &lt;p&gt;UI-TARS-1.5 基於該團隊此前提出的原生智能體方案 UI-TARS，通過強化學習進一步增強了模型的高階推理能力，使模型能夠在「行動」前先進行「思考」。&lt;/p&gt; 
@@ -94,13 +1023,14 @@
                                                                             </description>
             <link>https://www.oschina.net/news/345234/bytedance-ui-tars-1-5</link>
             <guid isPermaLink="false">https://www.oschina.net/news/345234/bytedance-ui-tars-1-5</guid>
-            <pubDate>Fri, 18 Apr 2025 02:18:20 GMT</pubDate>
+            <pubDate>Mon, 14 Apr 2025 02:18:00 GMT</pubDate>
             <author>來源: OSCHINA</author>
         </item>
         <item>
             <title>10 億上海具身智能基金正式成立</title>
             <description>&lt;div class=&quot;content&quot;&gt;
-                                                                                            &lt;p&gt;&lt;span style=&quot;color:#000000&quot;&gt;由上海國有資本投資有限公司與浦東新區聯合發起的上海具身智創創業投資合夥企業（有限合夥）（以下簡稱「上海具身智能基金」）已於近日完成工商註冊，目標規模 10 億元人民幣，首關 5.6 億元人民幣。&lt;/span&gt;&lt;/p&gt; 
+                                                                    
+                                                        &lt;p&gt;&lt;span style=&quot;color:#000000&quot;&gt;由上海國有資本投資有限公司與浦東新區聯合發起的上海具身智創創業投資合夥企業（有限合夥）（以下簡稱「上海具身智能基金」）已於近日完成工商註冊，目標規模 10 億元人民幣，首關 5.6 億元人民幣。&lt;/span&gt;&lt;/p&gt; 
 &lt;p&gt;&lt;span style=&quot;color:#000000&quot;&gt;上海具身智能基金由上海國資母基金、浦東創投、張江集團共同擔任基石出資人，國投孚騰擔任基金管理人，浦東創投擔任執行事務合夥人，基金將依託張江機器人谷，聚焦具身智能本體、核心零部件、泛機器人等產業鏈關鍵環節，加速技術研發與產業轉化，助力上海構建國際領先的具身智能產業集羣。&lt;/span&gt;&lt;/p&gt; 
 &lt;p&gt;&lt;img height=&quot;266&quot; src=&quot;https://oscimg.oschina.net/oscnet/up-7e14f6e8d13867a59603ab9e17aa3ba9e45.png&quot; width=&quot;300&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
 &lt;p&gt;&lt;span style=&quot;color:#000000&quot;&gt;該基金將重點投向三大領域：&lt;/span&gt;&lt;/p&gt; 
@@ -113,13 +1043,14 @@
                                                                             </description>
             <link>https://www.oschina.net/news/345232</link>
             <guid isPermaLink="false">https://www.oschina.net/news/345232</guid>
-            <pubDate>Fri, 18 Apr 2025 02:13:20 GMT</pubDate>
+            <pubDate>Mon, 14 Apr 2025 02:12:00 GMT</pubDate>
             <author>來源: OSCHINA</author>
         </item>
         <item>
             <title>阿里開源通義萬相「首尾幀生視頻」14B 模型</title>
             <description>&lt;div class=&quot;content&quot;&gt;
-                                                                                            &lt;p&gt;&lt;span style=&quot;color:#000000&quot;&gt;阿里通義萬相「首尾幀生視頻模型」&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fmp.weixin.qq.com%2Fs%2FkudRFGW7MZRfESYS__V5LA&quot; target=&quot;_blank&quot;&gt;宣佈&lt;/a&gt;開源，該模型參數量為 14B，是業界首個百億參數規模的開源首尾幀視頻模型。可根據用户指定的開始和結束圖片，生成一段能銜接首尾畫面的 720p 高清視頻。公告稱，此次升級將能滿足用户更可控、更定製化的視頻生成需求。&lt;/span&gt;&lt;/p&gt; 
+                                                                    
+                                                        &lt;p&gt;&lt;span style=&quot;color:#000000&quot;&gt;阿里通義萬相「首尾幀生視頻模型」&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fmp.weixin.qq.com%2Fs%2FkudRFGW7MZRfESYS__V5LA&quot; target=&quot;_blank&quot;&gt;宣佈&lt;/a&gt;開源，該模型參數量為 14B，是業界首個百億參數規模的開源首尾幀視頻模型。可根據用户指定的開始和結束圖片，生成一段能銜接首尾畫面的 720p 高清視頻。公告稱，此次升級將能滿足用户更可控、更定製化的視頻生成需求。&lt;/span&gt;&lt;/p&gt; 
 &lt;p&gt;&lt;span style=&quot;color:#000000&quot;&gt;基於現有的 Wan2.1 文生視頻基礎模型架構，通義萬相首尾幀生視頻模型進一步引入了額外的條件控制機制，通過該機制可實現流暢且精準的首尾幀變換；在訓練階段，團隊還構建了專門用於首尾幀模式的訓練數據，同時針對文本與視頻編碼模塊、擴散變換模型模塊採用了並行策略，這些策略提升了模型訓練和生成效率，也保障了模型具備高分辨率視頻生成的效果。&lt;/span&gt;&lt;/p&gt; 
 &lt;p&gt;&lt;span style=&quot;color:#000000&quot;&gt;在推理階段，為了在有限內存資源的條件下支持高清視頻推理，萬相首尾幀模型分別採用了模型切分策略以及序列並行策略，在確保推理效果無損的前提下，顯著縮短了推理時間。&lt;/span&gt;&lt;/p&gt; 
 &lt;p&gt;&lt;img height=&quot;239&quot; src=&quot;https://oscimg.oschina.net/oscnet/up-3ffeced748a2e76ecdd763255e46c87121b.png&quot; width=&quot;700&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
@@ -128,537 +1059,7 @@
                                                                             </description>
             <link>https://www.oschina.net/news/345229</link>
             <guid isPermaLink="false">https://www.oschina.net/news/345229</guid>
-            <pubDate>Fri, 18 Apr 2025 02:03:20 GMT</pubDate>
-            <author>來源: OSCHINA</author>
-        </item>
-        <item>
-            <title>有了它，AI 都能直接管理 Gitee 代碼倉啦</title>
-            <description>&lt;div class=&quot;content&quot;&gt;
-                                                                                                                    
-                                                                                                                                                    &lt;div&gt; 
- &lt;p&gt;不久前，Gitee 開源了官方的 MCP Server——&lt;a href=&quot;https://gitee.com/oschina/mcp-gitee&quot; rel=&quot;nofollow&quot;&gt;Gitee MCP Server&lt;/a&gt;。有了它，我們就能用 AI 助手直接管理 Gitee 代碼倉了！&lt;/p&gt; 
- &lt;p&gt;&lt;strong&gt;讀取文件內容、查看 PR 變更、理解 Issue 描述，甚至直接操作代碼管理任務，比如創建 PR、合併分支、發佈版本等等，全都不是問題。&lt;/strong&gt;&lt;/p&gt; 
- &lt;p style=&quot;text-align:left&quot;&gt;簡單來説，Gitee MCP Server 讓 AI 不再是「代碼的旁觀者」，真正成為了參與軟件開發過程的智能助手。&lt;/p&gt; 
- &lt;p&gt;如果你是&lt;strong&gt;個人開發者&lt;/strong&gt;， Gitee MCP Server 可以讓 AI 助手直接參與 PR 審查，減少低級錯誤，提高代碼質量；如果你是&lt;strong&gt;開源項目維護者&lt;/strong&gt;，可以接入 Gitee MCP Server，讓 AI 助手幫助處理大量 Issue，並提供自動化代碼審查，提升社區協作效率。&lt;/p&gt; 
- &lt;p&gt;&lt;strong&gt;既然它是一個 MCP Server，那麼所有支持 MCP Client 的應用都能用，&lt;/strong&gt;比如 Cursor、claude desktop、windsurf、cherry studio 或是自行實現的帶有 mcp client 的 Agent，等等。（之前「馬建倉」就&lt;a href=&quot;https://www.oschina.net/news/340077&quot; rel=&quot;nofollow&quot;&gt;秀了把操作&lt;/a&gt;：沒寫一行代碼，只用 Cursor 和 Gitee MCP 做了個貪吃蛇遊戲。 ）&lt;/p&gt; 
- &lt;p style=&quot;text-align:center&quot;&gt;&lt;img height=&quot;339&quot; src=&quot;https://oscimg.oschina.net/oscnet/up-9a4168709eaed70c553754b7015120c1931.png&quot; width=&quot;800&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
- &lt;p&gt;&lt;strong&gt;那麼，這麼好用的東西怎麼用呢？&lt;/strong&gt;&lt;/p&gt; 
- &lt;p&gt;4 月 21 日晚，&lt;strong&gt;&lt;span style=&quot;color:#2980b9&quot;&gt;Gitee 研發工程師黃家建&lt;/span&gt;&lt;/strong&gt;將做客【開源中國】直播欄目《技術領航》，手把手教學如何上手 Gitee MCP Server：從安裝與配置開始，實戰演練如何用 AI 開發工具結合 Gitee MCP Server 實現 AI + 研發流程的融合。&lt;/p&gt; 
- &lt;p&gt;當然啦，作為 Gitee MCP Server 核心開發者，黃家建還會結合自己的實踐經驗，講一講 MCP 協議是什麼，與 function call 到底有什麼區別。&lt;/p&gt; 
- &lt;p&gt;&lt;strong&gt;趕緊打開微信，掃碼預約直播吧~&lt;/strong&gt;&lt;/p&gt; 
- &lt;div&gt; 
-  &lt;img height=&quot;1840&quot; src=&quot;https://oscimg.oschina.net/oscnet/up-858977b0e133cc1bd2a46be9d6dc787b8dc.png&quot; width=&quot;900&quot; referrerpolicy=&quot;no-referrer&quot;&gt; 
- &lt;/div&gt; 
- &lt;div&gt;
-   &amp;nbsp; 
- &lt;/div&gt; 
- &lt;div&gt; 
-  &lt;p style=&quot;color:#333333; margin-left:0; margin-right:0; text-align:left&quot;&gt;&lt;span style=&quot;color:#2980b9&quot;&gt;&lt;strong&gt;Gitee&lt;/strong&gt;&lt;/span&gt;&lt;/p&gt; 
-  &lt;p style=&quot;color:#333333; margin-left:0; margin-right:0; text-align:left&quot;&gt;Gitee（碼雲）是開源中國於 2013 年推出的基於 Git 的代碼託管平台、企業級研發效能平台，提供中國本土化的代碼託管服務。&lt;br&gt; 目前，Gitee 已經有超過 1350 萬名開發者，累計託管超過 3600 萬個代碼倉庫，是中國境內規模最大的代碼託管平台。同時，旗下企業級 DevOps 研發效能管理平台 Gitee 企業版已服務超過 36 萬家企業。&lt;/p&gt; 
-  &lt;p style=&quot;color:#333333; margin-left:0; margin-right:0; text-align:left&quot;&gt;網址：&lt;a href=&quot;https://gitee.com/&quot; rel=&quot;nofollow&quot;&gt;https://gitee.com/&lt;/a&gt;&lt;/p&gt; 
- &lt;/div&gt; 
- &lt;div&gt; 
-  &lt;hr&gt; 
-  &lt;p style=&quot;color:#333333; margin-left:0; margin-right:0; text-align:left&quot;&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;《技術領航》是開源中國 OSCHINA 推出的一檔直播欄目，旨在為&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;開源軟件、商業產品、前沿技術、知名品牌活動等各類項目&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;提供一個展示平台，每週五晚上開播&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;。&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;欄目邀請項目的創始人、核心團隊成員或資深用户作為嘉賓，通過路演式直播分享項目的亮點和經驗，有助於提高項目的知名度，吸引更多的用户和開發者關注。&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/p&gt; 
-  &lt;p style=&quot;color:#333333; margin-left:0; margin-right:0; text-align:left&quot;&gt;&lt;span&gt;&lt;span style=&quot;background-color:#ffffff&quot;&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;如果你手上也有好的項目，想要跟同行交流分享，歡迎聯繫我，欄目隨時開放～&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/p&gt; 
-  &lt;p style=&quot;color:#333333; margin-left:0; margin-right:0; text-align:center&quot;&gt;&lt;img height=&quot;537&quot; src=&quot;https://oscimg.oschina.net/oscnet/up-4dd54c1b0b817689ceefa15aa66d79cfae8.png&quot; width=&quot;400&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
- &lt;/div&gt; 
-&lt;/div&gt;
-                                                                                    &lt;/div&gt;
-                                                                            </description>
-            <link>https://my.oschina.net/u/3859945/blog/18184933</link>
-            <guid isPermaLink="false">https://my.oschina.net/u/3859945/blog/18184933</guid>
-            <pubDate>Sun, 13 Apr 2025 13:44:00 GMT</pubDate>
-            <author>原創</author>
-        </item>
-        <item>
-            <title>北京市人工智能產業投資基金追加投資智譜（Z.ai）2 億元</title>
-            <description>&lt;div class=&quot;content&quot;&gt;
-                                                                                            &lt;p&gt;&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fbaijiahao.baidu.com%2Fs%3Fid%3D1829640482444053837%26wfr%3Dspider%26for%3Dpc&quot; target=&quot;_blank&quot;&gt;《北京日報》報道稱&lt;/a&gt;，&lt;strong&gt;北京市人工智能產業投資基金追加投資北京智譜華章科技股份有限公司（以下簡稱智譜）2 億人民幣。&lt;/strong&gt;&lt;/p&gt; 
-&lt;p&gt;北京市人工智能產業投資基金表示，智譜是基金成立以來投資的第一家 AI 大模型企業，也是目前成長最快的企業。智譜在包括文本、推理、語音、圖像、視頻、代碼等在內的全面模型能力上有深厚積累。此外，商業化佈局完善，擁有超過百萬規模的開發者社區和企業用户。&lt;/p&gt; 
-&lt;p&gt;北京市人工智能產業投資基金表示：希望通過這次投資，進一步推動智譜在開源模型和算法創新方面的能力建設。&lt;/p&gt; 
-&lt;p&gt;&lt;strong&gt;4 月 15 日，智譜開源 32B/9B 系列 GLM 模型，包括了基座、推理和沉思模型，所有模型採用寬鬆的 MIT 許可協議，免費商用、分發，引發業內關注。與此同時，智譜啓用全新域名 Z.ai，目前該平台整合了 32B 基座、推理、沉思三類 GLM 模型，後續將作為智譜最新模型的交互體驗入口。&lt;/strong&gt;&lt;/p&gt; 
-&lt;p&gt;&lt;img height=&quot;472&quot; src=&quot;https://static.oschina.net/uploads/space/2025/0417/192641_FbK5_2720166.png&quot; width=&quot;1080&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
-&lt;p&gt;&lt;strong&gt;智譜此前在開源方面已經做了很多貢獻，2023 年率先開源國內第一個 Chat 大模型 ChatGLM-6B，短時間內就吸引超過千萬次下載。智譜持續為開源社區和大模型生態發展注入源源不斷的活力。&lt;/strong&gt;&lt;/p&gt; 
-&lt;p&gt;北京市人工智能產業投資基金自 2023 年 12 月成立以來，圍繞北京市在人工智能領域的總體佈局，開展直接股權投資。重點方向包括人工智能芯片、訓練數據及相關軟件等底層技術領域，大模型算法創新、具身智能、可信 AI 等關鍵領域，以及大模型等人工智能技術產品開發和垂直行業創新應用等相關領域。&lt;/p&gt; 
-&lt;p&gt;&lt;strong&gt;閲讀更多&lt;/strong&gt;&lt;/p&gt; 
-&lt;p&gt;&lt;a href=&quot;https://www.oschina.net/news/344631&quot; target=&quot;news&quot;&gt;智譜啓動上市輔導&lt;/a&gt;&lt;/p&gt; 
-&lt;p&gt;&lt;a href=&quot;https://www.oschina.net/news/344598&quot; target=&quot;news&quot;&gt;智譜開源 32B/9B 系列 GLM 模型，極速版最高達到 200 tokens/秒&lt;/a&gt;&lt;/p&gt;
-                                                                                &lt;/div&gt;
-                                                                            </description>
-            <link>https://www.oschina.net/news/345155</link>
-            <guid isPermaLink="false">https://www.oschina.net/news/345155</guid>
-            <pubDate>Sun, 13 Apr 2025 11:29:00 GMT</pubDate>
-            <author>來源: OSCHINA</author>
-        </item>
-        <item>
-            <title>QuickLook 4.0 正式發佈，「仿 macOS」的 Windows 文件預覽工具</title>
-            <description>&lt;div class=&quot;content&quot;&gt;
-                                                                                            &lt;p style=&quot;color:#333333; margin-left:0; margin-right:0; text-align:left&quot;&gt;QuickLook 是一款 Windows 平台的開源文件快速預覽工具，只需要按下空格鍵，就可以預覽文件（沒錯，正是 macOS 上的 「Quick Look」 功能），支持常見的文檔、圖片、視頻，還能通過插件擴展支持更多的文件類型。&lt;/p&gt; 
-&lt;p style=&quot;color:#333333; margin-left:0; margin-right:0; text-align:left&quot;&gt;&lt;img alt=&quot;&quot; src=&quot;https://oscimg.oschina.net/oscnet/up-066752af3ed631a59d1c233f3f73299bfb9.png&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
-&lt;p style=&quot;color:#333333; margin-left:0; margin-right:0; text-align:left&quot;&gt;&lt;img src=&quot;https://static.oschina.net/uploads/space/2025/0417/185452_y23F_2720166.png&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
-&lt;p style=&quot;color:#333333; margin-left:0; margin-right:0; text-align:left&quot;&gt;該項目昨天發佈了 4.0 正式版：&lt;/p&gt; 
-&lt;ul&gt; 
- &lt;li&gt; &lt;p&gt;支持多圖層 GIMP XCF 文件的預覽 [#1224]&lt;/p&gt; &lt;/li&gt; 
- &lt;li&gt; &lt;p&gt;升級 &lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=http%3A%2F%2FMagick.NET&quot; target=&quot;_blank&quot;&gt;Magick.NET&lt;/a&gt; 至最新版，提升圖像處理能力 [#1230]&lt;/p&gt; &lt;/li&gt; 
- &lt;li&gt; &lt;p&gt;修正 GIMP XCF 文件擴展名檢測問題 [#1229]&lt;/p&gt; &lt;/li&gt; 
- &lt;li&gt; &lt;p&gt;優化 AllowDarkTheme（允許深色主題）設置的處理 [#1238]&lt;/p&gt; &lt;/li&gt; 
- &lt;li&gt; &lt;p&gt;更新對漫畫歸檔文件類型（如 .cbz、.cbr）的支持 [#1276]&lt;/p&gt; &lt;/li&gt; 
- &lt;li&gt; &lt;p&gt;改進 MarkdownViewer，提升 Markdown 文件預覽體驗 [#1490]&lt;/p&gt; &lt;/li&gt; 
- &lt;li&gt; &lt;p&gt;託盤菜單新增「打開數據文件夾」選項，並支持深色模式 [#1491]&lt;/p&gt; &lt;/li&gt; 
- &lt;li&gt; &lt;p&gt;增加 Multi Commander 文件管理器的支持 [#1398]&lt;/p&gt; &lt;/li&gt; 
- &lt;li&gt; &lt;p&gt;實現現代化消息框界面 [#1494]&lt;/p&gt; &lt;/li&gt; 
- &lt;li&gt; &lt;p&gt;實現 Windows 阻止檢測與自動修復功能 [#1495]&lt;/p&gt; &lt;/li&gt; 
- &lt;li&gt; &lt;p&gt;修復 ArchiveViewer 歸檔預覽相關問題 [#1497]&lt;/p&gt; &lt;/li&gt; 
- &lt;li&gt; &lt;p&gt;修復部分遠程桌面軟件驅動導致程序啓動時因 GPU 信息獲取異常而崩潰的問題 [#1532]&lt;/p&gt; &lt;/li&gt; 
- &lt;li&gt; &lt;p&gt;增加 Scoop 包管理器安裝方式 [#1397]&lt;/p&gt; &lt;/li&gt; 
-&lt;/ul&gt; 
-&lt;p&gt;下載地址：&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fgithub.com%2FQL-Win%2FQuickLook%2Freleases%2Ftag%2F4.0.0&quot; target=&quot;_blank&quot;&gt;https://github.com/QL-Win/QuickLook/releases/tag/4.0.0&lt;/a&gt;&lt;/p&gt;
-                                                                                &lt;/div&gt;
-                                                                            </description>
-            <link>https://www.oschina.net/news/345150/quicklook-4-0-0</link>
-            <guid isPermaLink="false">https://www.oschina.net/news/345150/quicklook-4-0-0</guid>
-            <pubDate>Sun, 13 Apr 2025 11:00:00 GMT</pubDate>
-            <author>來源: OSCHINA</author>
-        </item>
-        <item>
-            <title>Figma 要求 AI 初創公司停止使用「Dev Mode」一詞</title>
-            <description>&lt;div class=&quot;content&quot;&gt;
-                                                                                            &lt;p&gt;近日，設計協作平台 Figma 向瑞典人工智能編程初創公司 Loveable 發出了一份停止使用&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fx.com%2FBillHeyman%2Fstatus%2F1912182928471412932&quot; target=&quot;_blank&quot;&gt;警告&lt;/a&gt;，原因是 &lt;strong&gt;Loveable 將其新產品的某項功能命名為「Dev Mode」，而 Figma 聲稱該術語已被其註冊為商標&lt;/strong&gt;。&lt;/p&gt; 
-&lt;p&gt;&lt;img alt=&quot;&quot; src=&quot;https://oscimg.oschina.net/oscnet/up-a60eef82084c2c7bde0249e75284af4f5bc.png&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
-&lt;p&gt;&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Ftsdr.uspto.gov%2F%23caseNumber%3D98045640%26caseSearchType%3DUS_APPLICATION%26caseType%3DDEFAULT%26searchType%3DstatusSearch&quot; target=&quot;_blank&quot;&gt;據美國專利商標局的記錄顯示&lt;/a&gt;，Figma 在 2024 年 11 月成功註冊了「Dev Mode」商標。該公司於 2023 年推出了自己的「Dev Mode」功能，旨在幫助設計師和開發者更好地協作。&lt;/p&gt; 
-&lt;p&gt;&lt;img height=&quot;1838&quot; src=&quot;https://static.oschina.net/uploads/space/2025/0417/183511_QrFp_2720166.png&quot; width=&quot;2684&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
-&lt;p&gt;&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fwww.figma.com%2Fdev-mode%2F&quot; target=&quot;_blank&quot;&gt;https://www.figma.com/dev-mode/&lt;/a&gt;&lt;/p&gt; 
-&lt;p&gt;Figma 在致 Loveable 的信中表示：「我們很榮幸您認同‘Dev Mode’是連接設計與開發的軟件工具的理想名稱。」&lt;/p&gt; 
-&lt;p&gt;然而，Figma 強調，該術語已與其軟件廣泛關聯，並且公司需要「保護我們的知識產權」，因此要求 Loveable 停止在其產品中使用「Dev Mode」一詞。&lt;/p&gt;
-                                                                                &lt;/div&gt;
-                                                                            </description>
-            <link>https://www.oschina.net/news/345147/figma-the-term-dev-mode</link>
-            <guid isPermaLink="false">https://www.oschina.net/news/345147/figma-the-term-dev-mode</guid>
-            <pubDate>Sun, 13 Apr 2025 10:37:00 GMT</pubDate>
-            <author>來源: OSCHINA</author>
-        </item>
-        <item>
-            <title>Qt AI Assistant v0.9 發佈，AI 驅動的開發助手</title>
-            <description>&lt;div class=&quot;content&quot;&gt;
-                                                                                            &lt;p&gt;過去兩年中，Qt 一直在努力擁抱生成式 AI，以增強 Qt Creator 中 Qt/QML/C++應用程序的編碼能力。去年推出的 Qt AI Assistant 是一款 AI 驅動的開發助手，可在 Qt Creator 中運行，支持多種大型語言模型（LLM）。&lt;/p&gt; 
-&lt;p&gt;&lt;img alt=&quot;&quot; src=&quot;https://oscimg.oschina.net/oscnet/up-45670371548f2d5dce858a5fa6c1497cc5e.png&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
-&lt;p&gt;&lt;img height=&quot;1240&quot; src=&quot;https://static.oschina.net/uploads/space/2025/0417/182356_Duh4_2720166.png&quot; width=&quot;2308&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
-&lt;p&gt;Qt AI Assistant v0.9 已於近日發佈，旨在為構建 Qt/C++軟件提供最新的 AI 驅動編碼幫助。現在，通過 CodeLlama-7B-QML 和 DeepSeekCoder v2 Lite 語言模型支持，Qt AI Assistant 提供了本地 LLM 支持。&lt;/p&gt; 
-&lt;p&gt;Qt 還發布了 CodeLlama-7B-QML 和 CodeLlama-13B-QML 作為他們在 HuggingFace 和 Ollama 上微調的模型，這些模型基於額外的 QML 代碼片段進行訓練。&lt;/p&gt; 
-&lt;p&gt;Qt AI Assistant v0.9 還增加了流式文本支持，以便更好地逐段處理大型語言模型的響應。同時，還引入了利用 AI 構建 Google Test 測試的初步支持。此外，Qt AI Assistant 現在還能夠為 QML 和 C++ 代碼生成內聯代碼註釋。&lt;/p&gt; 
-&lt;p&gt;詳情查看&amp;nbsp;&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fwww.qt.io%2Fblog%2Fqt-ai-assistant-v0.9-released-deploy-llms-locally-and-enjoy-the-upgraded-user-experience&quot; target=&quot;_blank&quot;&gt;Qt 博客&lt;/a&gt;。&lt;/p&gt;
-                                                                                &lt;/div&gt;
-                                                                            </description>
-            <link>https://www.oschina.net/news/345140/qt-ai-assistant-v0-9-released</link>
-            <guid isPermaLink="false">https://www.oschina.net/news/345140/qt-ai-assistant-v0-9-released</guid>
-            <pubDate>Sun, 13 Apr 2025 10:24:00 GMT</pubDate>
-            <author>來源: OSCHINA</author>
-        </item>
-        <item>
-            <title>Scala 語言未來如何進化？</title>
-            <description>&lt;div class=&quot;content&quot;&gt;
-                                                                                            &lt;blockquote&gt; 
- &lt;p&gt;Scala 語言創建者 Martin Odersky 以及關鍵庫作者與維護者李浩毅描述了他們對 Scala 語言未來的規劃，並希望 Scala 能在現代編程領域保有一席之地。&lt;/p&gt; 
- &lt;p&gt;原文：&lt;u&gt;&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fwww.scala-lang.org%2Fblog%2F2025%2F03%2F24%2Fevolving-scala.html&quot; target=&quot;_blank&quot;&gt;Evolving Scala&lt;/a&gt;&lt;/u&gt;&lt;/p&gt; 
-&lt;/blockquote&gt; 
-&lt;p&gt;Scala 應該前進得多快？需要改進什麼？語言本身是否應該改變？本文討論了&lt;strong&gt;Scala 必須不斷進化&lt;/strong&gt;的原因，為什麼這種進化是必要的，以及我們預計這種進化將採取哪些方向。&lt;/p&gt; 
-&lt;p&gt;我們希望這能涵蓋許多關於 Scala 語言方向的常見問題，並幫助社區瞭解語言在未來幾個月和幾年中將走向何方。&lt;/p&gt; 
-&lt;h2&gt;摘要&lt;/h2&gt; 
-&lt;p&gt;儘管 Scala 不再像 2010 年代中期那樣處於炒作的風口浪尖，根據大多數調查，該語言保持在主流語言列表之外。從技術角度來看，核心語言和生態系統在過去十年中得到了極大的改善。在許多方面，Scala 今天的基石比十年前要好得多。&lt;/p&gt; 
-&lt;p&gt;Scala 一直引領着編程領域的潮流。為了換取比主流語言略遜一籌的打磨和穩定性，人們選擇 Scala，以便今天就能享受到下個十年的語言特性。Scala 的價值始終在於這些語言特性所賦予的獨特組合——&lt;strong&gt;&lt;em&gt;安全性和便利性&lt;/em&gt;&lt;/strong&gt;，以及它將&lt;strong&gt;&lt;em&gt;面向對象和函數式編程&lt;/em&gt;&lt;/strong&gt;思想融合在一起，從而優雅地適應這些特性。&lt;/p&gt; 
-&lt;p&gt;但其他語言也在不斷進步，因此 Scala 必須繼續創新，在它的優勢和劣勢上不斷改進，特別關注新用户的入門體驗。當然，有一些持續存在的問題，尤其是在 IDE 支持以及生態系統的易學性方面，隨着語言的發展，工具、兼容性和遷移成本等問題也始終會存在。但如果 Scala 想要在未來幾年保持其吸引力和相關性，它別無選擇，只能繼續前進。&lt;/p&gt; 
-&lt;h2&gt;Scala 當前所處的位置&lt;/h2&gt; 
-&lt;p&gt;儘管炒作已經消退，但從普及度來看，Scala 仍然處於其一貫的位置：並不完全屬於主流，但比那些更小眾的語言有着更廣泛的採用率。例如，RedMonk 語言排名在 2014 年將 Scala 排在第 14 位（&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fredmonk.com%2Fsogrady%2F2014%2F06%2F13%2Flanguage-rankings-6-14%2F&quot; target=&quot;_blank&quot;&gt;2014 年的排名&lt;/a&gt;），10 年後的 2024 年仍然在第 14 位（&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fredmonk.com%2Fsogrady%2F2024%2F09%2F12%2Flanguage-rankings-6-24%2F&quot; target=&quot;_blank&quot;&gt;2024 年的排名&lt;/a&gt;）。&lt;/p&gt; 
-&lt;p&gt;在這段時間裏，編程領域發生了顯著變化：Swift 取代了 Objective C，Go、Kotlin、Dart 和 Rust 的出現，CoffeeScript 和 Perl 的衰落。然而，Scala 的位置始終保持不變。儘管社區中的個人來來去去，但整體而言，Scala 似乎保持着強大的穩定性，擁有一個堅實的愛好者基礎。&lt;/p&gt; 
-&lt;p&gt;技術上，Scala 現在比 10 年前擁有更堅實的基礎。生態系統已經成熟，各種反應式或純函數式編程風格已經找到了他們的受眾。像&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fdocs.scala-lang.org%2Ftoolkit%2Fintroduction.html&quot; target=&quot;_blank&quot;&gt;Scala Toolkit&lt;/a&gt;和&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fgithub.com%2Fcom-lihaoyi&quot; target=&quot;_blank&quot;&gt;com.lihaoyi&lt;/a&gt;平台這樣的替代風格現在也可供選擇。新的構建工具如&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fscala-cli.virtuslab.org%2F&quot; target=&quot;_blank&quot;&gt;Scala-CLI&lt;/a&gt;和&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fmill-build.org%2F&quot; target=&quot;_blank&quot;&gt;Mill&lt;/a&gt;已經出現，而開發者工具如&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fgithub.com%2Fscalameta%2Fscalafmt&quot; target=&quot;_blank&quot;&gt;Scalafmt&lt;/a&gt;和&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fgithub.com%2Fscalacenter%2Fscalafix&quot; target=&quot;_blank&quot;&gt;Scalafix&lt;/a&gt;已經得到廣泛應用。IDE 仍然是一個痛點，但我們預計到 2025 年它們會有所改進。重用符號運算符的潮流已經逐漸式微。&lt;/p&gt; 
-&lt;p&gt;Scala 一直處於語言前沿，證明瞭像 lambda 表達式、記錄和模式匹配等語言特性在 10-15 年後被 Java、Python 和其他主流語言採納的可行性。目前尚不清楚主流語言在 10-15 年後將會採納 Scala 的哪些當前特性。&lt;/p&gt; 
-&lt;h2&gt;Scala 將走向何方？&lt;/h2&gt; 
-&lt;p&gt;在本節中，我們將討論核心 Scala 開發者將集中精力的一些領域。&lt;/p&gt; 
-&lt;h3&gt;安全性與便利性：兩者取其一&lt;/h3&gt; 
-&lt;p&gt;Scala 一直是一種混合型語言。面向對象和函數式風格的融合經常被提及。但它的另一種融合是 &lt;em&gt;安全性&lt;/em&gt; 和 &lt;em&gt;便利性&lt;/em&gt;。傳統上，「腳本」語言如 Python 不安全但方便，而「應用」語言如 Java 安全但不便。Scala 是第一個證明你可以在同一語言中做到這兩點的語言。更現代的語言如 Swift 或 Kotlin 也在這條道路上取得了進步，當 Scala 最初開始時，這種想法是聞所未聞的。&lt;/p&gt; 
-&lt;p&gt;然而，過去二十年裏，編程領域並沒有停滯不前。曾經屬於 Scala 的許多獨特之處現在已成為普遍現象。所有現代語言都提供了泛型、類型推斷、lambda 表達式、記錄、模式匹配等特性。為了繼續吸引用户，Scala 必須在這兩個方向上繼續創新：&lt;/p&gt; 
-&lt;ol&gt; 
- &lt;li&gt; &lt;p&gt;&lt;strong&gt;提升安全性而不犧牲便利性&lt;/strong&gt;：例如 &lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fdocs.scala-lang.org%2Fscala3%2Freference%2Fexperimental%2Fcc.html&quot; target=&quot;_blank&quot;&gt;捕獲檢查&lt;/a&gt;、&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fdocs.scala-lang.org%2Fscala3%2Freference%2Fexperimental%2Fexplicit-nulls.html&quot; target=&quot;_blank&quot;&gt;顯式空值&lt;/a&gt;、&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fdocs.scala-lang.org%2Fscala3%2Freference%2Fother-new-features%2Fsafe-initialization.html&quot; target=&quot;_blank&quot;&gt;安全初始化&lt;/a&gt;、&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fdocs.scala-lang.org%2Fscala3%2Fbook%2Fca-multiversal-equality.html&quot; target=&quot;_blank&quot;&gt;多態等價&lt;/a&gt; 等特性。&lt;/p&gt; &lt;/li&gt; 
- &lt;li&gt; &lt;p&gt;&lt;strong&gt;在不妥協安全性的前提下提高便利性&lt;/strong&gt;：如 &lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fdocs.scala-lang.org%2Fscala3%2Freference%2Fenums%2Fenums.html&quot; target=&quot;_blank&quot;&gt;枚舉&lt;/a&gt;、&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fdocs.scala-lang.org%2Fscala3%2Freference%2Fother-new-features%2Findentation.html&quot; target=&quot;_blank&quot;&gt;可選括號&lt;/a&gt;、&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fdotty.epfl.ch%2Fdocs%2Freference%2Fother-new-features%2Fnamed-tuples.html&quot; target=&quot;_blank&quot;&gt;命名元組&lt;/a&gt; 等特性。關於 &lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fcontributors.scala-lang.org%2Ft%2Fpre-sip-a-syntax-for-aggregate-literals%2F6697&quot; target=&quot;_blank&quot;&gt;聚合數據字面量&lt;/a&gt; 的討論激起了廣泛的興趣，儘管目前還太早看到它將帶來什麼結果。&lt;/p&gt; &lt;/li&gt; 
-&lt;/ol&gt; 
-&lt;p&gt;Scala 生態系統廣泛且多樣化，但我們認為這些雙重目標是共同的主線。無論您是在 JVM 上使用 &lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fakka.io%2F&quot; target=&quot;_blank&quot;&gt;Akka&lt;/a&gt; 實現後端服務，通過 &lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=http%3A%2F%2Fscala.js%2F&quot; target=&quot;_blank&quot;&gt;Scala.js&lt;/a&gt; 在瀏覽器中構建 Web UI，還是通過 &lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fwww.chisel-lang.org%2F&quot; target=&quot;_blank&quot;&gt;Chisel&lt;/a&gt; 定製硅芯片，Scala 的安全性和便利性是人們選擇這種語言的原因。&lt;/p&gt; 
-&lt;p&gt;其他語言也在追求這些目標，但我們相信 Scala 做得比大多數語言都要好：它的類型系統、模式匹配、集合庫、多重繼承系統等都是業界領先的，即使其他語言也有自己的特色。因此，Scala 能夠比其他語言更好地執行和組合特性，並以一種統一、簡潔和原則性的方式將這些特性結合起來，而不是臨時性地拼接它們。&lt;/p&gt; 
-&lt;p&gt;展望未來，Scala 必須繼續追求安全性和便利性的雙重目標。明天的流行框架可能與今天的不同，而今天的又與幾年前的不同。但幾十年來，開發者們一直希望獲得安全性和便利性，我們預計在未來幾年這種需求將繼續存在。&lt;/p&gt; 
-&lt;h3&gt;打磨「粗糙邊緣」&lt;/h3&gt; 
-&lt;p&gt;Scala 已不再是新興語言。二十年前，許多事物看似是好的想法，但並非所有決定都取得了預期的效果。儘管長期使用 Scala 的開發者可能已經習慣了這些特性，但 Scala 語言本身需要不斷打磨這些粗糙的邊緣：&lt;/p&gt; 
-&lt;ol&gt; 
- &lt;li&gt; &lt;p&gt;一些特性，如 &lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fdocs.scala-lang.org%2Foverviews%2Fcore%2Factors.html&quot; target=&quot;_blank&quot;&gt;scala-actors&lt;/a&gt;、&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fgithub.com%2Fscala%2Fscala-parser-combinators&quot; target=&quot;_blank&quot;&gt;scala-parser-combinators&lt;/a&gt; 或 &lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fgithub.com%2Fscala%2Fscala-xml&quot; target=&quot;_blank&quot;&gt;scala-xml&lt;/a&gt; 已經被移除。它們現在作為獨立的庫存在，你可以根據需要選擇使用或不使用，但已不再是語言的核心部分或標準庫的一部分。其他類似的清理工作包括 &lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fwww.scala-lang.org%2Fblog%2F2018%2F06%2F13%2Fscala-213-collections.html&quot; target=&quot;_blank&quot;&gt;Scala 2.13 集合重寫&lt;/a&gt;。&lt;/p&gt; &lt;/li&gt; 
- &lt;li&gt; &lt;p&gt;正在處理的更多問題包括：&lt;code&gt;@unroll&lt;/code&gt; 以避免與默認參數和 &lt;code&gt;case class&lt;/code&gt; 的二進制兼容性問題，這是實驗性的（&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fgithub.com%2Fscala%2Fimprovement-proposals%2Fpull%2F78&quot; target=&quot;_blank&quot;&gt;SIP-61&lt;/a&gt;），以及 &lt;code&gt;for&lt;/code&gt;-comprehension 的改進處於預覽階段（&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fgithub.com%2Fscala%2Fimprovement-proposals%2Fpull%2F79&quot; target=&quot;_blank&quot;&gt;SIP-62&lt;/a&gt;），這些改進應該有助於解決使用這些 Scala 語言特性時長期存在的問題。&lt;/p&gt; &lt;/li&gt; 
- &lt;li&gt; &lt;p&gt;一些其他長期存在的問題尚未得到解決，但正在討論中：&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fgithub.com%2Fscala%2Fimprovement-proposals%2Fpull%2F105&quot; target=&quot;_blank&quot;&gt;靈活的變長參數&lt;/a&gt;、&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fcontributors.scala-lang.org%2Ft%2Funpacking-classes-into-method-argument-lists%2F6329&quot; target=&quot;_blank&quot;&gt;解包&lt;/a&gt;、涉及 &lt;code&gt;for&lt;/code&gt;-comprehension 語法的一些其他問題，等等。&lt;/p&gt; &lt;/li&gt; 
-&lt;/ol&gt; 
-&lt;p&gt;過去 20 年間，編程領域發生了巨大變化，Swift、Kotlin、Java、C# 和 Python 等語言都迅速發展。有時是發現新的方法，有時是針對常見用例收斂到相似解決方案。僅僅因為 Scala 在 2005 年做出了一個設計決策，並且我們接受了這個決策 20 年，並不意味着這個決策在 2025 年仍然是最佳的。有時，我們可以也應該做得更好。&lt;/p&gt; 
-&lt;p&gt;Scala 的核心一直是其面向對象（OO）和函數式編程（FP）特徵的融合，以及安全性和便利性的融合，但其他一切都是可以討論的。例如，Scala 經歷了三次集合庫的迭代，才到達了今天的地位，儘管經歷了變革，但語言也因此變得更加出色。我們今天能夠解決哪些長期存在的問題，而我們在 5-10 年後會為此感到慶幸？我們可以從其他語言中採納哪些特性和約定，而不是以我們獨特的方式重新發明輪子？&lt;/p&gt; 
-&lt;h3&gt;讓新手更容易上手&lt;/h3&gt; 
-&lt;p&gt;我們相信 Scala 可以變得更加容易讓新入門者掌握。所有高級 Scala 用户在某個時刻也都是新手。你今天所聽到的所有大型 Scala 項目最初都是由一羣新手開始的：&lt;/p&gt; 
-&lt;ul&gt; 
- &lt;li&gt; &lt;p&gt;大學生嘗試使用這門語言來完成他們的研究項目&lt;/p&gt; &lt;/li&gt; 
- &lt;li&gt; &lt;p&gt;Python/Ruby 開發者嘗試使用這門語言來提高他們生產系統的穩定性&lt;/p&gt; &lt;/li&gt; 
- &lt;li&gt; &lt;p&gt;想要更多靈活性、力量和快速開發的 Java 老手&lt;/p&gt; &lt;/li&gt; 
-&lt;/ul&gt; 
-&lt;p&gt;我們支持高級用户和高級框架，但根據定義，高級用户能夠自我照顧：解決他們自己的問題，編寫他們自己的文檔，並提出他們自己的語言變更。Scala 的高級用户一直都在提交他們自己的補丁和改進——來自 Akka 世界的&lt;code&gt;scala.concurrent.Future&lt;/code&gt;，&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fgithub.com%2Ftypelevel%2Fcats%2Fissues%2F2948&quot; target=&quot;_blank&quot;&gt;部分統一&lt;/a&gt;，&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fwww.scala-lang.org%2F2021%2F02%2F26%2Ftuples-bring-generic-programming-to-scala-3.html&quot; target=&quot;_blank&quot;&gt;泛型元組&lt;/a&gt;，以及來自純函數式編程世界的&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fgithub.com%2Ftypelevel%2Fkind-projector&quot; target=&quot;_blank&quot;&gt;kind-projector&lt;/a&gt;——我們希望他們將繼續這樣做。相比之下，新來者必須依賴 Scala 的核心維護者來確保他們有一個良好的體驗。&lt;/p&gt; 
-&lt;p&gt;實際上，這意味着：&lt;/p&gt; 
-&lt;ol&gt; 
- &lt;li&gt; &lt;p&gt;優先支持簡單易用的庫，如&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fdocs.scala-lang.org%2Ftoolkit%2Fintroduction.html&quot; target=&quot;_blank&quot;&gt;Scala Toolkit&lt;/a&gt;和&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fgithub.com%2Fcom-lihaoyi&quot; target=&quot;_blank&quot;&gt;com.lihaoyi&lt;/a&gt;平台，提供代碼和文檔支持。&lt;/p&gt; &lt;/li&gt; 
- &lt;li&gt; &lt;p&gt;將 Scala 語法與其他語言中不必要的差異進行對齊。已經實現了通過&lt;code&gt;import foo.*&lt;/code&gt;進行的&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fdocs.scala-lang.org%2Fscala3%2Freference%2Fchanged-features%2Fimports.html&quot; target=&quot;_blank&quot;&gt;通配符導入&lt;/a&gt;和通過&lt;code&gt;foo*&lt;/code&gt;進行的&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fdocs.scala-lang.org%2Fscala3%2Freference%2Fchanged-features%2Fvararg-splices.html&quot; target=&quot;_blank&quot;&gt;可變參數拼接&lt;/a&gt;，後者取代了舊的&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fstackoverflow.com%2Fquestions%2F46418559%2Fextractor-not-compiling-in-scala%2F46420376&quot; target=&quot;_blank&quot;&gt;蝸牛操作符&lt;/a&gt; &lt;code&gt;foo@_*&lt;/code&gt;。&lt;/p&gt; &lt;/li&gt; 
-&lt;/ol&gt; 
-&lt;p&gt;下一個重要的 Scala 項目很可能會由那些為瞭解決之前沒有人想過要解決的問題而開始學習這門語言的新手發起。他們會很聰明，但不會是那些推動 Scala 語言極限的專家，他們也不會使用最複雜的高級語言特性或設計模式。他們會知道 Java、Python 或 JavaScript，因為那是他們在學校裏學的。這就是我們需要確保那些人能夠輕鬆地進入 Scala 語言的原因。&lt;/p&gt; 
-&lt;h2&gt;考慮的替代方案&lt;/h2&gt; 
-&lt;p&gt;關於 Scala 應該走向何方，總是有不同的意見。我們將討論兩個在語言發展方向上反覆出現的主張。&lt;/p&gt; 
-&lt;h3&gt;為什麼不全面擁抱框架？&lt;/h3&gt; 
-&lt;p&gt;社區中常見的請求之一是讓 Scala 社區全面擁抱某些框架或工具鏈。例如：&lt;/p&gt; 
-&lt;ol&gt; 
- &lt;li&gt;將 Scala 全面作為純函數式編程語言&lt;/li&gt; 
- &lt;li&gt;將 IO monads 作為構建應用程序的方式&lt;/li&gt; 
-&lt;/ol&gt; 
-&lt;p&gt;這些想法值得討論；畢竟，使用 Scala 進行純函數式編程和 IO 單子的子社區一直健康且充滿活力。然而，當更深入地分析這種做法時，存在一些問題：&lt;/p&gt; 
-&lt;ol&gt; 
- &lt;li&gt; &lt;p&gt;Scala 的設計初衷就是靈活且富有表現力。正如歷史所證明的那樣，這促進了創新：十年前，&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fgithub.com%2Fakka%2Fakka&quot; target=&quot;_blank&quot;&gt;Akka&lt;/a&gt; 和 &lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fgithub.com%2Fscalaz%2Fscalaz&quot; target=&quot;_blank&quot;&gt;Scalaz&lt;/a&gt; 是流行的框架。Scalaz 讓位於更新的函數式庫，如 &lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fgithub.com%2Fzio%2Fzio&quot; target=&quot;_blank&quot;&gt;ZIO&lt;/a&gt;、&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fgithub.com%2Ftypelevel%2Fcats-effect&quot; target=&quot;_blank&quot;&gt;Cats-Effect&lt;/a&gt;、&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fgithub.com%2Fmonix%2Fmonix&quot; target=&quot;_blank&quot;&gt;Monix&lt;/a&gt; 和 &lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fgithub.com%2Ftypelevel%2Ffs2&quot; target=&quot;_blank&quot;&gt;FS2&lt;/a&gt;。&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fgithub.com%2Fgetkyo%2Fkyo&quot; target=&quot;_blank&quot;&gt;Kyo&lt;/a&gt; 看起來有潛力，但仍然處於早期階段。Scala 語言必須足夠通用，以支持這種自然演變，而不能將自己綁定到那些隨時間興衰的具體框架上。&lt;/p&gt; &lt;/li&gt; 
- &lt;li&gt; &lt;p&gt;核心 Scala 開發者並非框架專家。當 Akka 流行時，他們並非 actor 模型方面的專家，如今也不是 IO monads 方面的專家。因此，我們需要那些子社區中的高級用户為自己發聲，並推動語言在社區所需方面的改進。&lt;/p&gt; &lt;/li&gt; 
-&lt;/ol&gt; 
-&lt;p&gt;因此，Scala 必須保持通用性，通過構建任何框架或庫都能從中受益的特性。我們鼓勵框架愛好者提出對 Scala 語言的改進建議：雖然並非每個具體想法都會被接受，但反饋會推動語言變化，從而惠及所有框架。&lt;/p&gt; 
-&lt;h3&gt;為什麼不能凍結所有特性開發？&lt;/h3&gt; 
-&lt;p&gt;另一個常見的請求是「停止實現特性」。這經常在語言討論中出現，來自對工具支持、就業市場或其他事物不滿意的人。這些情緒是可以理解的。但現實中，凍結特性開發將註定導致 Scala 語言的衰落。&lt;/p&gt; 
-&lt;p&gt;Scala 一直以來都比 Java 等語言功能更豐富，但打磨和穩定性卻相對不足。Scala 的核心價值主張是，作為交換，你將獲得來自未來的語言特性，而其他語言可能要過 10-15 年才能獲得：&lt;/p&gt; 
-&lt;ul&gt; 
- &lt;li&gt; &lt;p&gt;Apache Spark 於 2014 年選擇 Scala 作為在 JVM 上具有 lambda 表達式和模式匹配功能的語言。&lt;/p&gt; &lt;/li&gt; 
- &lt;li&gt; &lt;p&gt;Akka 選擇 Scala，因為它是一種簡潔、高效的編程語言，支持使用 Futures 或 Actors 進行輕量級併發。&lt;/p&gt; &lt;/li&gt; 
- &lt;li&gt; &lt;p&gt;Scalaz 和 Cats 選擇 Scala，因為它是一種簡潔的語言，擁有豐富的類型系統。&lt;/p&gt; &lt;/li&gt; 
-&lt;/ul&gt; 
-&lt;p&gt;其他語言開始採用這些特性，給 Scala 帶來了創新的壓力。到 2025 年，基本上在 &lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fredmonk.com%2Fsogrady%2F2024%2F09%2F12%2Flanguage-rankings-6-24%2F&quot; target=&quot;_blank&quot;&gt;RedMonk top 20&lt;/a&gt; 的所有語言中，都包含了 lambda 表達式、模式匹配、輕量級併發和類型系統！那麼，為什麼任何項目會選擇 Scala 呢？&lt;/p&gt; 
-&lt;p&gt;Scala 僅憑穩定性和完善性是無法與主流語言競爭的，因此如果我們今天停止功能開發，Scala 最終會變成一個功能更差、完善性和穩定性更差的編程語言，並且沒有存在的理由。因此，Scala 需要持續不斷的改進來維持其發展，為人們和項目提供選擇這門語言的理由。我們可能會犯錯——沒有一條保證成功的道路——但功能凍結是一條保證停滯和失敗的道路。&lt;/p&gt; 
-&lt;h2&gt;Scala 生態系統中的開放性問題&lt;/h2&gt; 
-&lt;p&gt;Scala 生態系統並非沒有問題。以下我們將簡要介紹我們認為 Scala 當前面臨的最大挑戰，以及我們將如何應對這些問題。&lt;/p&gt; 
-&lt;h3&gt;工具：集成開發環境 (IDEs)&lt;/h3&gt; 
-&lt;p&gt;「工具」是上次 &lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fscalasurvey2023.virtuslab.com%2F&quot; target=&quot;_blank&quot;&gt;VirtusLab Scala 調查&lt;/a&gt; 中指出的最大改進領域。這主要指的是集成開發環境（IntelliJ 和 VSCode）以及構建工具（如 sbt），這些是每位編寫 Scala 的人都必須與之交互的工具。&lt;/p&gt; 
-&lt;p&gt;在 Scala 社區中，使用的兩個主要 IDE 是 IntelliJ 和 VSCode。上述調查表明，大約 80% 的受訪者使用 IntelliJ，大約 50% 使用 VSCode，還有一些人同時使用兩者。&lt;/p&gt; 
-&lt;h4&gt;IntelliJ&lt;/h4&gt; 
-&lt;p&gt;IntelliJ 對 Scala 3 的支持仍然需要趕上它對 Scala 2 一直以來的支持質量。儘管如此，進展是穩步的，最近的改進顯示出加速的步伐。&lt;/p&gt; 
-&lt;ol&gt; 
- &lt;li&gt; &lt;p&gt;Scala 3 最近引入了「預覽」功能的概念：這些功能已經從實驗性穩定下來，但尚未在 IDE 和其他生態系統中獲得支持。這是為了幫助 IntelliJ 和其他 IDE 有足夠的時間跟進，以免在語言演變時落後。&lt;/p&gt; &lt;/li&gt; 
- &lt;li&gt; &lt;p&gt;&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fblog.jetbrains.com%2Fscala%2F2024%2F05%2F13%2Fjetbrains-joins-the-scala-center-advisory-board%2F&quot; target=&quot;_blank&quot;&gt;JetBrains 現已成為 Scala 中心諮詢委員會的成員&lt;/a&gt;。這已經改善了 JetBrains 和 Scala 編譯器團隊之間的溝通和協調，並有助於避免過去出現的問題，即 IntelliJ 需要時間才能跟上 Scala 的變化。&lt;/p&gt; &lt;/li&gt; 
- &lt;li&gt; &lt;p&gt;最近的語言變更已經相對迅速地融入到 IntelliJ 中：&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fdocs.scala-lang.org%2Fsips%2Fsips%2Ftypeclasses-syntax.html&quot; target=&quot;_blank&quot;&gt;SIP-64 改進的給定語法&lt;/a&gt; 和 &lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fdocs.scala-lang.org%2Fsips%2Fnamed-tuples.html&quot; target=&quot;_blank&quot;&gt;SIP-58 命名元組&lt;/a&gt; 已經在 IntelliJ 2024.3 中可用，而 &lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fdocs.scala-lang.org%2Fsips%2Fbetter-fors.html&quot; target=&quot;_blank&quot;&gt;SIP-62 For 推導改進&lt;/a&gt; 將在 2025.1 中提供。&lt;/p&gt; &lt;/li&gt; 
-&lt;/ol&gt; 
-&lt;p&gt;我們承認還有很多工作要做。IntelliJ 團隊正在努力提供對 Scala 3 的最佳支持，您可以期待在未來幾個月看到更多改進。&lt;/p&gt; 
-&lt;h4&gt;Metals - Scala 語言服務器&lt;/h4&gt; 
-&lt;p&gt;金屬（Metals）通常與 VSCode 一起使用，但也支持其他編輯器。金屬（Metals）與 IntelliJ 相比面臨不同的挑戰：它始終使用實際的 Scala 編譯器來進行代碼智能，因此始終與實際語言保持同步。但它曾遇到過穩定性問題（例如 &lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fgithub.com%2Fscalameta%2Fmetals%2Fissues%2F6478&quot; target=&quot;_blank&quot;&gt;#6478&lt;/a&gt;），其中一些問題源於其多進程架構的複雜性，另一些則源於其與 Scala 3 的新集成（例如 &lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fgithub.com%2Fscalameta%2Fmetals%2Fissues%2F6628&quot; target=&quot;_blank&quot;&gt;#6628&lt;/a&gt;）。金屬（Metals）的維護者目前正在專注於修復最突出的問題，但如果您在自己的代碼庫中發現了任何問題，請打開 &lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fgithub.com%2Fscalameta%2Fmetals%2Fissues&quot; target=&quot;_blank&quot;&gt;https://github.com/scalameta/metals/issues&lt;/a&gt; 上的問題，VirtusLab 團隊將樂意查看（必要時甚至簽署保密協議）。&lt;/p&gt; 
-&lt;p&gt;Scala 3 編譯器的開發者已經廣泛使用 IntelliJ 和 Metals，我們也清楚開發者在使用這兩個 IDE 時所面臨的問題。我們將繼續在發現問題時進行報告，並與 IntelliJ 和 Metals 的維護者合作，以改善編譯器與 IDE 之間的集成。但我們也需要社區人士積極參與問題報告，以便 IDE 維護者能夠進行調查和修復。&lt;/p&gt; 
-&lt;h3&gt;構建工具&lt;/h3&gt; 
-&lt;p&gt;構建工具 sbt 的複雜性在過去十年或更長時間一直是 Scala 社區的一個長期問題。然而，我們認為隧道盡頭已經出現了曙光：&lt;/p&gt; 
-&lt;ol&gt; 
- &lt;li&gt; &lt;p&gt;&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fscala-cli.virtuslab.org%2F&quot; target=&quot;_blank&quot;&gt;&lt;strong&gt;Scala-CLI&lt;/strong&gt;&lt;/a&gt; 已變得流行。現在它是默認的 Scala 啓動器（自 Scala &lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fgithub.com%2Fscala%2Fscala3%2Freleases%2Ftag%2F3.5.0&quot; target=&quot;_blank&quot;&gt;3.5.0&lt;/a&gt; 以來）。最新的 &lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fscalasurvey2023.virtuslab.com%2F&quot; target=&quot;_blank&quot;&gt;VirtusLab Scala 調查&lt;/a&gt; 顯示，35% 的人喜歡使用它，另外 35% 的人想要學習它。雖然不適合大型多模塊項目，但 Scala-CLI 幾乎為幾乎所有單模塊項目提供了所需的一切。它也是探索性編碼小型項目和實驗的出色工具。&lt;/p&gt; &lt;/li&gt; 
- &lt;li&gt; &lt;p&gt;&lt;strong&gt;替代方案如&lt;/strong&gt; &lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fmill-build.org%2F&quot; target=&quot;_blank&quot;&gt;&lt;strong&gt;Mill&lt;/strong&gt;&lt;/a&gt; &lt;strong&gt;存在&lt;/strong&gt;。調查發現，10% 的 Scala 開發者喜歡使用&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fmill-build.org%2F&quot; target=&quot;_blank&quot;&gt;Mill&lt;/a&gt;，但近 50% 的人希望學習它，而像&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Feed3si9n.com%2Fsbt-remote-cache%2F&quot; target=&quot;_blank&quot;&gt;Scala-CLI&lt;/a&gt;和&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fgithub.com%2Fcoursier%2Fcoursier&quot; target=&quot;_blank&quot;&gt;Coursier&lt;/a&gt;這樣的基礎項目也是使用 Mill 構建的。我們認為，Mill 為大型項目提供了 sbt 的一個很好的替代方案。&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fgithub.com%2Foyvindberg%2Fbleep&quot; target=&quot;_blank&quot;&gt;Bleep&lt;/a&gt;雖然仍處於早期階段，但在構建工具領域提供了一個不同的視角，同時也展現出了巨大的潛力。&lt;/p&gt; &lt;/li&gt; 
- &lt;li&gt; &lt;p&gt;&lt;strong&gt;sbt 本身也隨着時間的推移有了很大的改進&lt;/strong&gt;。在過去的幾年裏，我們看到了諸如 &lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fgithub.com%2Fsbt%2Fsbt%2Fpull%2F3434&quot; target=&quot;_blank&quot;&gt;Unified Slash Syntax&lt;/a&gt;、&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fgithub.com%2Fsbt%2Fsbt-projectmatrix&quot; target=&quot;_blank&quot;&gt;sbt Project-Matrix&lt;/a&gt; 等改進，而即將到來的 &lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fwww.scala-sbt.org%2F2.x%2Fdocs%2Fen%2Fchanges%2Fsbt-2.0-change-summary.html&quot; target=&quot;_blank&quot;&gt;sbt 2.0&lt;/a&gt; 發佈將帶來 &lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Feed3si9n.com%2Fsudori-part6%2F&quot; target=&quot;_blank&quot;&gt;構建查詢&lt;/a&gt;、&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Feed3si9n.com%2Fsbt-remote-cache%2F&quot; target=&quot;_blank&quot;&gt;遠程緩存&lt;/a&gt; 等其他改進。雖然仍然不是完美無缺，但到 2025 年使用 sbt 的體驗已經遠遠優於十年前。&lt;/p&gt; &lt;/li&gt; 
- &lt;li&gt; &lt;p&gt;&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fgithub.com%2FdavidB%2Fscala-maven-plugin&quot; target=&quot;_blank&quot;&gt;&lt;strong&gt;Maven&lt;/strong&gt;&lt;/a&gt; 和 &lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fdocs.gradle.org%2Fcurrent%2Fuserguide%2Fscala_plugin.html&quot; target=&quot;_blank&quot;&gt;&lt;strong&gt;Gradle&lt;/strong&gt;&lt;/a&gt; 也可以使用。這些構建工具在 Java 圈子裏已經流行了很長時間，並且廣為人知。雖然它們在開源社區中並不像 sbt 那樣受歡迎，但我們看到它們被廣泛應用於許多商業 Scala 代碼庫中。&lt;/p&gt; &lt;/li&gt; 
-&lt;/ol&gt; 
-&lt;p&gt;總體而言，我們預計這個問題在將來會自行解決：一方面是通過 sbt 本身隨時間不斷改進，另一方面是通過項目選擇提供優秀替代方案的其他工具。&lt;/p&gt; 
-&lt;h3&gt;生態系統易學性&lt;/h3&gt; 
-&lt;p&gt;我們在 Scala 語言中看到的第三大問題是生態系統的易學性。&lt;/p&gt; 
-&lt;ol&gt; 
- &lt;li&gt; &lt;p&gt;Scala 生態系統始終為高級用户提供了框架：&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fakka.io%2F&quot; target=&quot;_blank&quot;&gt;Akka&lt;/a&gt;、&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Ftypelevel.org%2Fcats-effect%2F&quot; target=&quot;_blank&quot;&gt;Cats-Effect&lt;/a&gt;、&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fzio.dev%2F&quot; target=&quot;_blank&quot;&gt;ZIO&lt;/a&gt; 以及其他。但它缺乏一個適合初級用户（例如：你的學生學期項目、你的新畢業生創業項目的代碼庫、由非工程師維護的 devops 或數據分析腳本）的平台。這些領域是 Scala 框架不適合的地方，但 Scala 語言卻可以適用。&lt;/p&gt; &lt;/li&gt; 
- &lt;li&gt; &lt;p&gt;在 Scala 生態系統中的文檔傳統上也一直是個問題。這加劇了上述問題：學習一個強大的框架或庫已經足夠困難，但糟糕的文檔使得學習變得更加困難。&lt;/p&gt; &lt;/li&gt; 
-&lt;/ol&gt; 
-&lt;p&gt;傳統上，儘管有人可能喜歡 Scala 語言，但當他們嘗試做一些簡單的事情，比如「發起一個 HTTP 請求」或「啓動一個服務器」時，他們會遇到一個障礙，突然需要學習關於 Actor、IO 單子或其他高級主題的知識，而相關文檔或學習資料卻不夠充分。&lt;/p&gt; 
-&lt;p&gt;但在這裏，我們也看到了樂觀的理由：&lt;/p&gt; 
-&lt;ol&gt; 
- &lt;li&gt; &lt;p&gt;&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fdocs.scala-lang.org%2Ftoolkit%2Fintroduction.html&quot; target=&quot;_blank&quot;&gt;Scala Toolkit&lt;/a&gt; 和高度重疊的 &lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fgithub.com%2Fcom-lihaoyi&quot; target=&quot;_blank&quot;&gt;com-lihaoyi&lt;/a&gt; 平台，它們包括許多相同的庫。這些提供了幾乎完整且易於使用的「新手友好」平台。它可能沒有更復雜框架的所有功能和裝飾，但絕對足夠用於許多生產部署，並且如果需要，可以輕鬆過渡到更復雜的框架。&lt;/p&gt; &lt;/li&gt; 
- &lt;li&gt; &lt;p&gt;最近 &lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fwww.scala-lang.org%2Fblog%2F2025%2F02%2F25%2Frock-the-jvm-partnership.html&quot; target=&quot;_blank&quot;&gt;Scala Center 與 Rock the JVM 的合作&lt;/a&gt; 有望幫助改善 Scala 的教學方面。來自 Rock the JVM 的 Daniel Ciocîrlan 一直是一位傑出的教育者和高質量教育材料的創作者。我們希望這次合作能夠擴大 Rock the JVM 的影響力，並幫助 Scala 新手發現並受益於他優秀的視頻和課程。&lt;/p&gt; &lt;/li&gt; 
-&lt;/ol&gt; 
-&lt;p&gt;這是一個我們一直在緩慢取得進步的領域，我們希望這種「新手友好」的 Scala 風格隨着時間的推移而發展：不是以犧牲更高級框架為代價，而是在它們並行發展的同時，隨着新手的數量增加，更多的人在需要時選擇更復雜的框架。&lt;/p&gt; 
-&lt;h2&gt;如何幫助&lt;/h2&gt; 
-&lt;p&gt;Scala 是一個社區努力的結果；沒有像其他語言那樣的龐大企業贊助 Scala 的開發。因此，我們需要社區的幫忙來推動語言的發展。這種幫助可以以各種方式實現。&lt;/p&gt; 
-&lt;h3&gt;財政&lt;/h3&gt; 
-&lt;p&gt;如果您想從財政上支持 Scala，有兩個主要羣體您可以支持：&lt;/p&gt; 
-&lt;h4&gt;Scala 中心&lt;/h4&gt; 
-&lt;p&gt;Scala 中心支持以下兩個方面：&lt;/p&gt; 
-&lt;ol&gt; 
- &lt;li&gt; &lt;p&gt;核心 Scala 語言和編譯器的開發：探索、原型設計、實施、維護和調試。&lt;/p&gt; &lt;/li&gt; 
- &lt;li&gt; &lt;p&gt;支持 Scala 社區。這包括 Scala Days 會議、Scala 大使計劃以及工具峯會。&lt;/p&gt; &lt;/li&gt; 
-&lt;/ol&gt; 
-&lt;p&gt;您可以通過以下兩種方式向 Scala 中心捐款：&lt;/p&gt; 
-&lt;ul&gt; 
- &lt;li&gt; &lt;p&gt;個人捐款或讓您的公司向 Scala 中心捐款 &lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fscala.epfl.ch%2Fdonate.html&quot; target=&quot;_blank&quot;&gt;https://scala.epfl.ch/donate.html&lt;/a&gt;&lt;/p&gt; &lt;/li&gt; 
- &lt;li&gt; &lt;p&gt;您可以鼓勵您的公司加入 Scala 中心諮詢委員會，以持續資助它。&lt;/p&gt; &lt;/li&gt; 
-&lt;/ul&gt; 
-&lt;p&gt;如果您想支持核心 Scala 語言和社區工作，請向 Scala 中心捐款。他們的大部分工作可能並不光彩奪目，但它們在確保 Scala 生態系統持續健康發展中發揮着關鍵作用。&lt;/p&gt; 
-&lt;h4&gt;VirtusLab&lt;/h4&gt; 
-&lt;p&gt;VirtusLab 負責許多 Scala 工具的核心開發：&lt;/p&gt; 
-&lt;ul&gt; 
- &lt;li&gt; &lt;p&gt;Metals 和 VSCode Metals 插件&lt;/p&gt; &lt;/li&gt; 
- &lt;li&gt; &lt;p&gt;Scala-CLI&lt;/p&gt; &lt;/li&gt; 
- &lt;li&gt; &lt;p&gt;Scala 3 LTS，Scala 的發佈流程和一般項目管理&lt;/p&gt; &lt;/li&gt; 
- &lt;li&gt; &lt;p&gt;Scalameta 組織內的工具&lt;/p&gt; &lt;/li&gt; 
-&lt;/ul&gt; 
-&lt;p&gt;如果您在使用 Metals 或 Scala-CLI 時遇到問題，並且想資助修復或改進，您應該聯繫 VirtusLab，郵箱地址為&amp;nbsp;scala@virtuslab.com.&lt;/p&gt; 
-&lt;h3&gt;代碼&lt;/h3&gt; 
-&lt;p&gt;Scala 生態系統的大部分內容都是開源的。這意味着您可以直接深入代碼，修復或改進您自己需要的部分：&lt;/p&gt; 
-&lt;ul&gt; 
- &lt;li&gt; &lt;p&gt;您可以自己修復 &lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fgithub.com%2Fscala%2Fscala3&quot; target=&quot;_blank&quot;&gt;Scala3&lt;/a&gt;、&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fgithub.com%2FJetBrains%2Fintellij-scala&quot; target=&quot;_blank&quot;&gt;IntelliJ&lt;/a&gt; 和 &lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fgithub.com%2Fscalameta%2Fmetals&quot; target=&quot;_blank&quot;&gt;Metals&lt;/a&gt; 中的錯誤。儘管代碼庫很大，但有人能夠深入其中並修復他們自己用例所需的錯誤並不罕見。&lt;/p&gt; &lt;/li&gt; 
- &lt;li&gt; &lt;p&gt;每 three 周都會進行一次 &lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fdocs.scala-lang.org%2Fcontribute%2F%23so-you-want-to-improve-the-scala-3-compiler&quot; target=&quot;_blank&quot;&gt;Compiler Spree&lt;/a&gt; 和 Tooling Spree。這些是遠程編碼會議，您可以與 Scala 語言和工具的核心貢獻者合作解決小規模的問題，並獲取技能和知識，以應對更具挑戰性的問題。&lt;/p&gt; &lt;/li&gt; 
-&lt;/ul&gt; 
-&lt;p&gt;向工具和基礎設施貢獻修復和改進並不容易，但這也不是不可能的。Scala 工具鏈的大部分都是開源的，並且在過去多次由個人和公司進行了一次的快速貢獻，他們只是需要修復某些問題。向這些項目提交拉取請求與任何專業軟件工程師每天已經做的工作沒有區別，並且可以幫助你定期改善使用 Scala 的體驗。&lt;/p&gt; 
-&lt;h3&gt;語言設計&lt;/h3&gt; 
-&lt;p&gt;&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fdocs.scala-lang.org%2Fsips%2F&quot; target=&quot;_blank&quot;&gt;Scala 改進流程&lt;/a&gt; 並不僅限於核心 Scala 貢獻者。任何人都可以提出一個，例如 &lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fgithub.com%2Fscala%2Fimprovement-proposals%2Fpull%2F40&quot; target=&quot;_blank&quot;&gt;SIP-42 二進制整數字面量&lt;/a&gt;，&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fgithub.com%2Fscala%2Fimprovement-proposals%2Fpull%2F78&quot; target=&quot;_blank&quot;&gt;SIP-61 為二進制兼容性@unroll 默認參數&lt;/a&gt;，&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fgithub.com%2Fscala%2Fimprovement-proposals%2Fpull%2F97&quot; target=&quot;_blank&quot;&gt;SIP-67 改進嚴格相等性&lt;/a&gt;。如果核心 Scala 團隊沒有優先考慮你想要的，你總是可以介入並提出自己對語言改進的建議。畢竟，沒有人比你更瞭解自己的需求！&lt;/p&gt; 
-&lt;p&gt;SIPs 進入語言並不容易。無法保證一個 SIP 會被接受。即使 SIP 成功通過，通常也需要數月甚至一年時間來完成整個審查、實施和實驗過程，最終才能進入 Scala 的發佈。相反，最初被拒絕的想法可能在經過數月或數年的額外實驗和改進後找到進入的方式。但我們需要更多的貢獻者提出更改，而不僅僅是限於 Martin Odersky 和 EPFL 的團隊。&lt;/p&gt; 
-&lt;p&gt;如果您有想法要提出，但需要幫助實施，並且有資金支付，請聯繫 [email&amp;nbsp;protected]，我們可以幫助找到合適的專家進行合作。&lt;/p&gt; 
-&lt;h2&gt;結論&lt;/h2&gt; 
-&lt;p&gt;語言發展是一個間接的過程。核心 Scala 團隊無法獨自構建下一個重大的 Scala 成功故事，這也不會一蹴而就。我們能做的就是從各個方面提升 Scala 的體驗：語言、工具和社區，並希望某處某個人會為一個新的項目選擇 Scala，使其成為「下一個大熱門」。&lt;/p&gt; 
-&lt;p&gt;我們認為 Scala 語言的核心吸引力在於其安全性與便利性的結合。強大的類型系統和編譯器可以防止錯誤，提供出色的運行時性能，而簡潔的語法和類型推斷則使其感覺像任何腳本語言一樣靈活和富有表現力。毫無疑問，其他語言也在追求相同的目標，我們認為 Scala 憑藉其獨特的混合函數式-面向對象的設計，可以在多個方面做得更好，從而吸引並留住用户。&lt;/p&gt; 
-&lt;p&gt;但 Scala 語言及其生態系統的細節將隨着時間的推移而演變，我們不應過度依賴我們已經習慣的偶然複雜性。正如 Scala 在 2.13 版本中極大地簡化了&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fwww.scala-lang.org%2Fblog%2F2018%2F06%2F13%2Fscala-213-collections.html&quot; target=&quot;_blank&quot;&gt;集合&lt;/a&gt;，並且用更簡單的&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fwww.scala-lang.org%2F2021%2F02%2F26%2Ftuples-bring-generic-programming-to-scala-3.html&quot; target=&quot;_blank&quot;&gt;泛型元組&lt;/a&gt;和其他&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fdocs.scala-lang.org%2Fscala3%2Freference%2Fnew-types%2Findex.html&quot; target=&quot;_blank&quot;&gt;類型系統特性&lt;/a&gt;取代了類型級別的體操一樣，我們期望繼續發現可以改進 Scala 的領域。始終會有關於向後兼容性、遷移和易學性的擔憂，但無論如何，Scala 需要不斷地、批判性地審視自己，並借鑑過去二十年其他語言所學到的東西來提升開發者體驗。&lt;/p&gt; 
-&lt;p&gt;Scala 一直是一個社區項目，我們需要社區的幫助來推動它向前發展：無論是通過資金支持、提交拉取請求，還是在語言設計方面。我們希望社區中的每個人都能以自己的方式做出貢獻，並推動語言的發展。&lt;/p&gt;
-                                                                                &lt;/div&gt;
-                                                                            </description>
-            <link>https://www.oschina.net/news/345137/evolving-scala</link>
-            <guid isPermaLink="false">https://www.oschina.net/news/345137/evolving-scala</guid>
-            <pubDate>Sun, 13 Apr 2025 10:12:00 GMT</pubDate>
-            <author>來源: OSCHINA</author>
-        </item>
-        <item>
-            <title>首個雲超算國標正式發佈：阿里雲、華為雲等聯合起草</title>
-            <description>&lt;div class=&quot;content&quot;&gt;
-                                                                                            &lt;p&gt;近日，國家市場監督管理總局、國家標準化管理委員會正式發佈首個雲超算國家標準 GB/T 45400-2025，將於今年 10 月實施。&lt;/p&gt; 
-&lt;p&gt;&lt;img alt=&quot;&quot; src=&quot;https://oscimg.oschina.net/oscnet/up-e500d685c371b785670bd445adca14e3947.png&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
-&lt;p&gt;該標準由阿里雲、華為雲、騰訊雲、中國電子技術標準化研究院等機構牽頭起草，為雲超算在更多高性能計算領域的大規模應用奠定基礎，推動我國算力基礎設施建設邁向標準化、智能化新階段。&lt;/p&gt; 
-&lt;p&gt;雲超算是一種新型的高性能計算（HPC），它基於雲基礎設施對外提供彈性可擴展的高性能計算服務。&lt;/p&gt; 
-&lt;p&gt;目前，傳統高性能計算在大模型訓練、自動駕駛、生命科學、工業製造、半導體芯片等領域展開應用，並逐漸向更多行業滲透。&lt;/p&gt; 
-&lt;p&gt;&lt;strong&gt;但傳統 HPC 往往架構複雜、擴展性不佳，並存在性能瓶頸、價格高昂等門檻，很多企業雖然想用，卻可能「不懂用」，或「用不好」、「用不起」。&lt;/strong&gt;&lt;/p&gt; 
-&lt;p&gt;開箱即用的雲超算成為高性能計算的新選擇，多家單位在此背景下聯合起草首個雲超算國家標準，對雲超算基礎架構、資源協同調度、全棧安全可信體系等關鍵技術指標作出權威性界定，內容囊括雲超算服務的設計研發、部署運維和效能評估全流程。&lt;/p&gt; 
-&lt;p&gt;新標準的出爐，相當於給各行各業提供了一份包含雲超算服務產品的設計、實現、應用和選型的科學指南。&lt;/p&gt;
-                                                                                &lt;/div&gt;
-                                                                            </description>
-            <link>https://www.oschina.net/news/345132</link>
-            <guid isPermaLink="false">https://www.oschina.net/news/345132</guid>
-            <pubDate>Sun, 13 Apr 2025 09:44:00 GMT</pubDate>
-            <author>來源: OSCHINA</author>
-        </item>
-        <item>
-            <title>黃仁勳：英偉達堅定不移服務中國市場，AI 將在每個行業引發顛覆性變革</title>
-            <description>&lt;div class=&quot;content&quot;&gt;
-                                                                                            &lt;p&gt;&lt;span style=&quot;color:#000000&quot;&gt;4 月 17 日，中國貿促會會長任鴻斌在北京與英偉達公司首席執行官黃仁勳舉行會談。這是黃仁勳時隔 3 個月再次到訪北京。黃仁勳在會談中表示，&lt;strong&gt;中國是英偉達非常重要的市場，希望繼續與中國合作。&lt;/strong&gt;&lt;/span&gt;&lt;/p&gt; 
-&lt;p&gt;&lt;img height=&quot;372&quot; src=&quot;https://oscimg.oschina.net/oscnet/up-1bf052320ee3587eb2eedcd683357c58a5d.png&quot; width=&quot;500&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
-&lt;p&gt;&lt;span style=&quot;color:#000000&quot;&gt;據央視財經，針對美國政府決定對英偉達對華出口的 H20 芯片，黃仁勳表示：&lt;/span&gt;&lt;/p&gt; 
-&lt;blockquote&gt; 
- &lt;p&gt;&lt;span style=&quot;color:#000000&quot;&gt;美國政府加強芯片出口管制已對英偉達業務產生重大影響，當前全球正掀起一場激烈的人工智能競賽，作為當代最具變革性的核心技術，AI 對各行業發展的推動前景廣闊，世界各國都在加速推進技術應用，研發創新與能力提升，這必將對包括中國在內的全球市場格局產生深遠影響。作為深耕中國市場三十載的企業，我們與中國市場共同成長、相互成就。中國不僅是全球最具規模的消費市場之一，其蓬勃發展的產業生態與領先的軟件實力，更成為我們持續創新的重要動力，在中國市場的成功經驗推動我們不斷加大研發投入，而與中國企業的深度合作，也使我們成長為更具競爭力的國際化企業。因此，&lt;strong&gt;我們將繼續不遺餘力優化符合監管要求的產品體系，堅定不移地服務中國市場。&lt;/strong&gt;&lt;/span&gt;&lt;/p&gt; 
-&lt;/blockquote&gt; 
-&lt;p&gt;&lt;span style=&quot;color:#000000&quot;&gt;黃仁勳還表示，AI 已經在諸多領域產生了重大影響，例如在軟件編程方面，如今幾乎所有的英偉達員工都會藉助 AI 進行輔助開發。人工智能正在深刻改變眾多行業的發展格局，但這僅僅是個開端，無論是醫療健康、金融服務、氣候科技還是製造業，每個行業都將迎來人工智能引發的顛覆性變革。&lt;/span&gt;&lt;/p&gt;
-                                                                                &lt;/div&gt;
-                                                                            </description>
-            <link>https://www.oschina.net/news/345130</link>
-            <guid isPermaLink="false">https://www.oschina.net/news/345130</guid>
-            <pubDate>Sun, 13 Apr 2025 09:40:00 GMT</pubDate>
-            <author>來源: OSCHINA</author>
-        </item>
-        <item>
-            <title>Vanna —— 基於 RAG 的自然語言生成 SQL 工具</title>
-            <description>&lt;div class=&quot;content&quot;&gt;
-                                                                                                                                                                                                                            &lt;p&gt;&lt;span style=&quot;background-color:#ffffff; color:#1f2328&quot;&gt;Vanna 是一個 MIT 許可的開源 Python RAG（檢索增強生成）框架，用於 SQL 生成和相關功能。&lt;/span&gt;&lt;/p&gt;
-
-&lt;h4&gt;&lt;strong&gt;工作原理&lt;/strong&gt;&lt;/h4&gt;
-
-&lt;p&gt;&lt;img height=&quot;357&quot; src=&quot;https://static.oschina.net/uploads/space/2025/0416/151133_1FdG_4252687.png&quot; width=&quot;500&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt;
-
-&lt;p style=&quot;text-align:start&quot;&gt;&lt;span&gt;&lt;span&gt;&lt;span style=&quot;color:#1f2328&quot;&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span style=&quot;background-color:#ffffff&quot;&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;Vanna 的工作分為兩個簡單的步驟 - 在你的數據上訓練 RAG「模型」，然後提出問題，這些問題將返回可設置為在你的數據庫上自動運行的 SQL 查詢。&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/p&gt;
-
-&lt;ol&gt;
-&lt;li&gt;&lt;strong&gt;在你的數據上訓練 RAG「模型」&lt;/strong&gt;。&lt;/li&gt;
-&lt;li&gt;&lt;strong&gt;提出問題&lt;/strong&gt;。&lt;/li&gt;
-&lt;/ol&gt;
-
-&lt;p&gt;&lt;img alt=&quot;&quot; height=&quot;500&quot; src=&quot;https://static.oschina.net/uploads/space/2025/0416/151158_TZIY_4252687.png&quot; width=&quot;500&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt;
-
-&lt;div style=&quot;text-align:start&quot;&gt;
-&lt;p&gt;&lt;strong&gt;Supported LLMs&lt;/strong&gt;&lt;/p&gt;
-&lt;/div&gt;
-
-&lt;ul&gt;
-&lt;li&gt;&lt;a href=&quot;https://github.com/vanna-ai/vanna/tree/main/src/vanna/openai&quot;&gt;OpenAI&lt;/a&gt;&lt;/li&gt;
-&lt;li&gt;&lt;a href=&quot;https://github.com/vanna-ai/vanna/tree/main/src/vanna/anthropic&quot;&gt;Anthropic&lt;/a&gt;&lt;/li&gt;
-&lt;li&gt;&lt;a href=&quot;https://github.com/vanna-ai/vanna/blob/main/src/vanna/google/gemini_chat.py&quot;&gt;Gemini&lt;/a&gt;&lt;/li&gt;
-&lt;li&gt;&lt;a href=&quot;https://github.com/vanna-ai/vanna/blob/main/src/vanna/hf/hf.py&quot;&gt;HuggingFace&lt;/a&gt;&lt;/li&gt;
-&lt;li&gt;&lt;a href=&quot;https://github.com/vanna-ai/vanna/tree/main/src/vanna/bedrock&quot;&gt;AWS Bedrock&lt;/a&gt;&lt;/li&gt;
-&lt;li&gt;&lt;a href=&quot;https://github.com/vanna-ai/vanna/tree/main/src/vanna/ollama&quot;&gt;Ollama&lt;/a&gt;&lt;/li&gt;
-&lt;li&gt;&lt;a href=&quot;https://github.com/vanna-ai/vanna/tree/main/src/vanna/qianwen&quot;&gt;Qianwen&lt;/a&gt;&lt;/li&gt;
-&lt;li&gt;&lt;a href=&quot;https://github.com/vanna-ai/vanna/tree/main/src/vanna/qianfan&quot;&gt;Qianfan&lt;/a&gt;&lt;/li&gt;
-&lt;li&gt;&lt;a href=&quot;https://github.com/vanna-ai/vanna/tree/main/src/vanna/ZhipuAI&quot;&gt;Zhipu&lt;/a&gt;&lt;/li&gt;
-&lt;/ul&gt;
-
-&lt;div style=&quot;text-align:start&quot;&gt;
-&lt;p&gt;&lt;strong&gt;Supported VectorStores&lt;/strong&gt;&lt;/p&gt;
-&lt;/div&gt;
-
-&lt;ul&gt;
-&lt;li&gt;&lt;a href=&quot;https://github.com/vanna-ai/vanna/tree/main/src/vanna/azuresearch&quot;&gt;AzureSearch&lt;/a&gt;&lt;/li&gt;
-&lt;li&gt;&lt;a href=&quot;https://github.com/vanna-ai/vanna/tree/main/src/vanna/opensearch&quot;&gt;Opensearch&lt;/a&gt;&lt;/li&gt;
-&lt;li&gt;&lt;a href=&quot;https://github.com/vanna-ai/vanna/tree/main/src/vanna/pgvector&quot;&gt;PgVector&lt;/a&gt;&lt;/li&gt;
-&lt;li&gt;&lt;a href=&quot;https://github.com/vanna-ai/vanna/tree/main/src/vanna/pinecone&quot;&gt;PineCone&lt;/a&gt;&lt;/li&gt;
-&lt;li&gt;&lt;a href=&quot;https://github.com/vanna-ai/vanna/tree/main/src/vanna/chromadb&quot;&gt;ChromaDB&lt;/a&gt;&lt;/li&gt;
-&lt;li&gt;&lt;a href=&quot;https://github.com/vanna-ai/vanna/tree/main/src/vanna/faiss&quot;&gt;FAISS&lt;/a&gt;&lt;/li&gt;
-&lt;li&gt;&lt;a href=&quot;https://github.com/vanna-ai/vanna/tree/main/src/vanna/marqo&quot;&gt;Marqo&lt;/a&gt;&lt;/li&gt;
-&lt;li&gt;&lt;a href=&quot;https://github.com/vanna-ai/vanna/tree/main/src/vanna/milvus&quot;&gt;Milvus&lt;/a&gt;&lt;/li&gt;
-&lt;li&gt;&lt;a href=&quot;https://github.com/vanna-ai/vanna/tree/main/src/vanna/qdrant&quot;&gt;Qdrant&lt;/a&gt;&lt;/li&gt;
-&lt;li&gt;&lt;a href=&quot;https://github.com/vanna-ai/vanna/tree/main/src/vanna/weaviate&quot;&gt;Weaviate&lt;/a&gt;&lt;/li&gt;
-&lt;li&gt;&lt;a href=&quot;https://github.com/vanna-ai/vanna/tree/main/src/vanna/oracle&quot;&gt;Oracle&lt;/a&gt;&lt;/li&gt;
-&lt;/ul&gt;
-
-&lt;div style=&quot;text-align:start&quot;&gt;
-&lt;p&gt;&lt;strong&gt;Supported Databases&lt;/strong&gt;&lt;/p&gt;
-&lt;/div&gt;
-
-&lt;ul&gt;
-&lt;li&gt;&lt;a href=&quot;https://www.postgresql.org/&quot;&gt;PostgreSQL&lt;/a&gt;&lt;/li&gt;
-&lt;li&gt;&lt;a href=&quot;https://www.mysql.com/&quot;&gt;MySQL&lt;/a&gt;&lt;/li&gt;
-&lt;li&gt;&lt;a href=&quot;https://prestodb.io/&quot;&gt;PrestoDB&lt;/a&gt;&lt;/li&gt;
-&lt;li&gt;&lt;a href=&quot;https://hive.apache.org/&quot;&gt;Apache Hive&lt;/a&gt;&lt;/li&gt;
-&lt;li&gt;&lt;a href=&quot;https://clickhouse.com/&quot;&gt;ClickHouse&lt;/a&gt;&lt;/li&gt;
-&lt;li&gt;&lt;a href=&quot;https://www.snowflake.com/en/&quot;&gt;Snowflake&lt;/a&gt;&lt;/li&gt;
-&lt;li&gt;&lt;a href=&quot;https://www.oracle.com/&quot;&gt;Oracle&lt;/a&gt;&lt;/li&gt;
-&lt;li&gt;&lt;a href=&quot;https://www.microsoft.com/en-us/sql-server/sql-server-downloads&quot;&gt;Microsoft SQL Server&lt;/a&gt;&lt;/li&gt;
-&lt;li&gt;&lt;a href=&quot;https://cloud.google.com/bigquery&quot;&gt;BigQuery&lt;/a&gt;&lt;/li&gt;
-&lt;li&gt;&lt;a href=&quot;https://www.sqlite.org/&quot;&gt;SQLite&lt;/a&gt;&lt;/li&gt;
-&lt;li&gt;&lt;a href=&quot;https://duckdb.org/&quot;&gt;DuckDB&lt;/a&gt;&lt;/li&gt;
-&lt;/ul&gt;
-
-                                                                    &lt;/div&gt;
-                                                                </description>
-            <link>https://www.oschina.net/p/vanna</link>
-            <guid isPermaLink="false">https://www.oschina.net/p/vanna</guid>
-            <pubDate>Sun, 13 Apr 2025 09:32:00 GMT</pubDate>
-        </item>
-        <item>
-            <title>CVE 基金會成立</title>
-            <description>&lt;div class=&quot;content&quot;&gt;
-                                                                                            &lt;p&gt;有 25 年曆史的 CVE 項目在漏洞管理中起到了舉足輕重的作用，它負責分配和管理漏洞的唯一 CVE ID 編號，確保在提及特定漏洞和補丁時針對的是同一個漏洞。&lt;/p&gt; 
-&lt;p&gt;非營利組織 MITRE 與美國國土安全部簽訂了運營 CVE 項目的合同，MITRE 週二確認，合同沒有續簽。這意味着從 4 月 16 日（星期三）起&lt;u&gt;&lt;a href=&quot;https://www.oschina.net/news/345038&quot;&gt;美國政府將停止資助 CVE&lt;/a&gt;&lt;/u&gt;。安全行業人士擔心在其他人接手前漏洞管理上將會出現巨大混亂。&lt;/p&gt; 
-&lt;p&gt;CVE Naming Authority 機構 VulnCheck 表示預留了 1000 個 1000 個 CVE 用於 2025 年的漏洞。MITRE 每月發佈 300-600 個 CVE，預留的編號只夠用 2-3 個月。&lt;/p&gt; 
-&lt;p&gt;為了應對危機，長期擔任 CVE 董事會成員的聯盟宣佈成立&amp;nbsp;&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fwww.thecvefoundation.org%2F&quot; target=&quot;_blank&quot;&gt;CVE 基金會&lt;/a&gt;，這是一個致力於確保漏洞識別系統持續運行的非營利組織。&lt;/p&gt; 
-&lt;p&gt;&lt;img height=&quot;700&quot; src=&quot;https://static.oschina.net/uploads/space/2025/0417/165002_yPMw_2720166.png&quot; width=&quot;1670&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
-&lt;p&gt;新成立的基金會官員肯特·蘭德菲爾德表示：「CVE 作為全球網絡安全生態系統的基石，其重要性不容忽視。全球網絡安全專業人員的日常工作——從安全工具和公告到威脅情報和響應——都依賴於 CVE 標識符和數據。如果沒有 CVE，防禦者在應對全球網絡威脅時將處於極其不利的地位。」&lt;/p&gt; 
-&lt;p&gt;CVE 計劃提供了一個標準化的系統，用於識別和分類所有軟件和硬件（包括 Apple 的 macOS、iOS、iPadOS 和其他產品）中的安全漏洞。當安全研究人員發現漏洞時，他們會被分配唯一的 CVE 標識符，以便 Apple 等公司協調補丁和更新。&lt;/p&gt; 
-&lt;p&gt;MITRE 公司與美國國土安全部簽訂了合同，負責管理該項目。該公司確認，政府資金已於 4 月 16 日到期。&lt;/p&gt; 
-&lt;p&gt;據路透社&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fwww.reuters.com%2Ftechnology%2Fus-funding-running-out-critical-cyber-vulnerability-database-manager-says-2025-04-15%2F&quot; target=&quot;_blank&quot;&gt;報道&lt;/a&gt;，該項目的到期可能與聯邦政府正在進行的大規模裁員有關，此次裁員的部分原因是政府效率部（DOGE）。&lt;/p&gt; 
-&lt;p&gt;受此次裁員影響的美國網絡安全和基礎設施安全局（CISA）表示，由於突然出現的資金缺口可能會擾亂全球漏洞管理，該局正在「緊急努力減輕影響」。&lt;/p&gt; 
-&lt;p&gt;安全專家警告稱，如果沒有 CVE，網絡安全工作將面臨「徹底混亂」，因為用於溝通漏洞的通用語言實際上將消失。一位研究人員將其比作「突然刪除所有詞典」。&lt;/p&gt; 
-&lt;p&gt;新成立的 CVE 基金會旨在將該項目轉型為不依賴單一政府資助的專門的非營利模式。基金會的組織者透露，他們過去一年一直在為這一可能性做準備。&lt;/p&gt; 
-&lt;p&gt;&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fwww.thecvefoundation.org%2F&quot; target=&quot;_blank&quot;&gt;該基金會在公告&lt;/a&gt;中表示：「對於國際網絡安全界來説，此舉代表着一個建立反映當今威脅形勢全球性的治理機制的機會。」&lt;/p&gt; 
-&lt;p&gt;資金削減還影響了相關的通用弱點枚舉 (CWE) 計劃，該計劃幫助蘋果等公司在潛在安全問題成為漏洞之前發現它們。&lt;/p&gt; 
-&lt;p&gt;CVE 基金會預計將在未來幾天公佈更多有關其架構和資金計劃的細節。蘋果和其他大型科技公司可能會在支持其成為網絡安全基礎設施關鍵組成部分方面發揮重要作用。&lt;/p&gt;
-                                                                                &lt;/div&gt;
-                                                                            </description>
-            <link>https://www.oschina.net/news/345117/the-cve-foundation</link>
-            <guid isPermaLink="false">https://www.oschina.net/news/345117/the-cve-foundation</guid>
-            <pubDate>Sun, 13 Apr 2025 08:55:00 GMT</pubDate>
-            <author>來源: OSCHINA</author>
-        </item>
-        <item>
-            <title>特朗普政府考慮在美國禁用 DeepSeek</title>
-            <description>&lt;div class=&quot;content&quot;&gt;
-                                                                                            &lt;p&gt;&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fwww.nytimes.com%2F2025%2F04%2F16%2Ftechnology%2Fnvidia-deepseek-china-ai-trump.html&quot; target=&quot;_blank&quot;&gt;《紐約時報》&lt;/a&gt;週三報道稱，特朗普政府正在考慮對中國人工智能實驗室 DeepSeek 實施新的限制，限制其購買英偉達的人工智能芯片，並可能禁止美國人訪問其人工智能服務。&lt;/p&gt; 
-&lt;p&gt;&lt;img alt=&quot;&quot; src=&quot;https://oscimg.oschina.net/oscnet/up-203442edacfcf58c37d7ea5f763fad361b4.png&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
-&lt;p&gt;這些限制是特朗普政府在人工智能領域與中國競爭的舉措之一。在 DeepSeek 震驚硅谷和華爾街數月後，美國官員似乎正在權衡多種方案，以限制中國獲取美國技術和消費者。&lt;/p&gt; 
-&lt;p&gt;週二，白宮採取行動限制更多英偉達人工智能芯片以及 AMD 的計算卡產品向中國銷售，加強拜登政府制定的規定。&lt;/p&gt; 
-&lt;p&gt;近幾個月來，DeepSeek 在美國人工智能開發者中的人氣飆升，這家初創公司具有競爭力的定價迫使硅谷以更低的成本提供前沿人工智能模型。&lt;/p&gt; 
-&lt;p&gt;此前，OpenAI 指控這家中國實驗室對其模型進行了篡改，違反了 OpenAI 的使用條款。&lt;/p&gt; 
-&lt;blockquote&gt; 
- &lt;p&gt;相關閲讀：&lt;/p&gt; 
- &lt;p&gt;&lt;a href=&quot;https://www.oschina.net/news/338735/openai-calls-deepseek-state-controlled&quot; target=&quot;news&quot;&gt;OpenAI 呼籲美國政府禁止 DeepSeek&lt;/a&gt;&lt;/p&gt; 
- &lt;p&gt;&lt;a href=&quot;https://www.oschina.net/news/344925&quot; target=&quot;news&quot;&gt;英偉達對華特供版 AI 芯片（H20 GPU）遭遇出口管制&lt;/a&gt;&lt;/p&gt; 
-&lt;/blockquote&gt;
-                                                                                &lt;/div&gt;
-                                                                            </description>
-            <link>https://www.oschina.net/news/345109/deepseek-china-ai-trump</link>
-            <guid isPermaLink="false">https://www.oschina.net/news/345109/deepseek-china-ai-trump</guid>
-            <pubDate>Sun, 13 Apr 2025 08:39:00 GMT</pubDate>
-            <author>來源: OSCHINA</author>
-        </item>
-        <item>
-            <title>字節跳動發佈視頻生成基礎大模型 Seaweed-7B</title>
-            <description>&lt;div class=&quot;content&quot;&gt;
-                                                                                            &lt;p&gt;字節跳動近日公佈了一個僅 70 億參數的視頻生成基礎大模型「Seaweed-7B」。&lt;/p&gt; 
-&lt;p&gt;&lt;img alt=&quot;&quot; src=&quot;https://oscimg.oschina.net/oscnet/up-4514fa3f8394e07ea2ee816465b6d9d857e.png&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
-&lt;p&gt;&lt;u&gt;&lt;em&gt;&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fseaweed.video%2F&quot; target=&quot;_blank&quot;&gt;https://seaweed.video/&lt;/a&gt;&lt;/em&gt;&lt;/u&gt;&lt;/p&gt; 
-&lt;p&gt;令人驚喜的是，該模型以 66.5 萬個 H100 GPU 小時訓練成本，在文本/圖像到視頻生成任務中全面超越 140 億參數的 Wan 2.1，具體來看：&lt;/p&gt; 
-&lt;ul&gt; 
- &lt;li&gt;Seaweed-7B Elo 評分為 1047，勝率 58%，而 Wan 2.1 僅有 53%，OpenAI 的 Sora 更是僅有 36%&lt;/li&gt; 
- &lt;li&gt;可實時生成分辨率為 1280×720、幀率為 24fps 的視頻，比同類模型快 62 倍&lt;/li&gt; 
- &lt;li&gt;40GB 顯存即可支持 1280×720 分辨率生成&lt;/li&gt; 
-&lt;/ul&gt; 
-&lt;p&gt;據官方介紹，Seaweed-7B 結合了變分自編碼器（VAE）和潛在擴散變換器（DiT）。其中，VAE 負責高效的訓練和推理，而 DiT 則通過擴散模型生成圖像和視頻，顯著提高了生成的質量與效率。&lt;/p&gt; 
-&lt;p&gt;另外，團隊為了提升 Seaweed-7B 的訓練效率，採用了多階段訓練策略和 GPU 資源的優化調配。預訓練階段通過低分辨率圖像開始，逐步引入高分辨率視頻訓練，提升了模型的泛化能力。此外，在後訓練階段，通過監督微調和基於人類反饋的強化學習（RLHF）進一步提高了生成視頻的美學質量和運動一致性。&lt;/p&gt; 
-&lt;p&gt;目前，Seaweed-7B 相關報告已公開：&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fseaweed.video%2Fseaweed.pdf&quot; target=&quot;_blank&quot;&gt;https://seaweed.video/seaweed.pdf&lt;/a&gt;&lt;/p&gt;
-                                                                                &lt;/div&gt;
-                                                                            </description>
-            <link>https://www.oschina.net/news/345103/bytedance-seaweed-video</link>
-            <guid isPermaLink="false">https://www.oschina.net/news/345103/bytedance-seaweed-video</guid>
-            <pubDate>Sun, 13 Apr 2025 08:20:00 GMT</pubDate>
-            <author>來源: OSCHINA</author>
-        </item>
-        <item>
-            <title>馬斯克：特斯拉將實現純 AI 自動駕駛，僅需攝像頭和 AI 芯片</title>
-            <description>&lt;div class=&quot;content&quot;&gt;
-                                                                                            &lt;p&gt;馬斯克近日在社交媒體發文稱，特斯拉即將實現一種通用的、純 AI 的全自動駕駛（FSD）解決方案。&lt;/p&gt; 
-&lt;p&gt;據其介紹，這一技術將完全依賴於攝像頭和特斯拉自主研發的 AI 芯片，並由特斯拉開發的 AI 軟件驅動。實際上，這一聲明與特斯拉長期以來堅持的僅靠視覺實現自動駕駛的願景相一致。&lt;/p&gt; 
-&lt;p&gt;&lt;img src=&quot;https://static.oschina.net/uploads/space/2025/0417/160721_YZPO_2720166.png&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
-&lt;p&gt;值得注意的是，特斯拉官方 X 賬號近日發佈視頻，稱特斯拉德克薩斯工廠現在使用 FSD 無監督技術將汽車從生產線末端運送到發貨物流區，同時宣佈無監督 FSD 系統已積累超 50000 英里（約 80467.22 公里）駕駛里程，全程無需人工幹預。&lt;/p&gt; 
-&lt;p&gt;在特斯拉工廠內部，新款 Model Y 和 Cybertruck 實現了從生產線到交付停車場的自動行駛。自動駕駛車輛運用最新 AI4 硬件（4.0 版），可應對交通標誌、工廠建設、行人和機械化交通等複雜道路環境，且車輛間能相互通信以避免碰撞。&lt;/p&gt; 
-&lt;p&gt;據悉，特斯拉無監督 FSD 公路測試計劃即將開啓，預計 6 月於奧斯汀率先開展。&lt;/p&gt; 
-&lt;blockquote&gt; 
- &lt;p&gt;相關閲讀：&lt;a href=&quot;https://www.oschina.net/news/340233&quot; target=&quot;news&quot;&gt;馬斯克：2024 年特斯拉 AI 投資約 100 億美元、FSD 安全水平將超過人類&lt;/a&gt;&lt;/p&gt; 
-&lt;/blockquote&gt;
-                                                                                &lt;/div&gt;
-                                                                            </description>
-            <link>https://www.oschina.net/news/345100</link>
-            <guid isPermaLink="false">https://www.oschina.net/news/345100</guid>
-            <pubDate>Sun, 13 Apr 2025 08:08:00 GMT</pubDate>
-            <author>來源: OSCHINA</author>
-        </item>
-        <item>
-            <title>Linux 6.16 主線內核將合併 Asahi UAPI，進一步優化支持蘋果 M1 / M2 圖形驅動</title>
-            <description>&lt;div class=&quot;content&quot;&gt;
-                                                                                            &lt;p&gt;&lt;u&gt;&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Flore.kernel.org%2Fdri-devel%2Fe147ff95-697b-4067-9e2e-7cbd424e162a%40linux.intel.com%2F&quot; target=&quot;_blank&quot;&gt;根據 Linux 內核郵件列表的消息&lt;/a&gt;&lt;/u&gt;，Asahi 驅動用户空間 API（UAPI）的頭文件已通過 DRM-Misc-Next，被提交至 DRM-Next 隊列，並計劃在 Linux 6.16 的合併窗口（預計為 6 月）正式納入主線內核。&lt;/p&gt; 
-&lt;p&gt;這一 UAPI 主要用於支持蘋果 M1 和 M2 系列芯片的 GPU，目標是實現 Linux 系統對這些硬件圖形功能的驅動。&lt;/p&gt; 
-&lt;p&gt;UAPI 的設計參考了其他現代 Vulkan 驅動程序（例如 Xe 和 Panthor），採用了顯式虛擬內存管理與同步機制，從而確保運行效率。開發者 Alyssa Rosenzweig 表示，此舉的目的是讓 Mesa 驅動能夠直接基於主線內核構建，減少對外部頭文件的依賴，從而提升系統的兼容性。&lt;/p&gt; 
-&lt;p&gt;儘管 UAPI 的頭文件已經提交，但完整的 Asahi 內核圖形驅動目前尚未完成開發。主要原因在於該驅動使用 Rust 語言編寫，而 Rust 在內核中的抽象支持仍需大量的上游工作。&lt;/p&gt; 
-&lt;p&gt;此外，作為一款生產級圖形驅動，Asahi 依賴許多尚未合併的 Rust 抽象層，因此短期內難以實現全面的上游整合。&lt;/p&gt; 
-&lt;p&gt;&lt;img alt=&quot;&quot; src=&quot;https://oscimg.oschina.net/oscnet/up-1dade207fb4a37d21fe204449acb7a922be.png&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
-&lt;p&gt;目前，Mesa 開源堆棧已驗證了 UAPI，並支持包括 OpenGL 4.6、OpenGL ES 3.2、OpenCL 3.0 以及 Vulkan 1.4 在內的多種標準。然而，由於用户空間與主線內核之間的對接尚未完全實現，實際應用仍然受到一定限制。&lt;/p&gt; 
-&lt;p&gt;Rosenzweig 進一步強調，提交 UAPI 頭文件的主要目的是為了接受社區的審查，以確保其穩定性，並在未來以向後兼容的方式進行演進，從而為後續驅動程序的全面落地奠定基礎。&lt;/p&gt;
-                                                                                &lt;/div&gt;
-                                                                            </description>
-            <link>https://www.oschina.net/news/345097/linux-6-16-ashai-uapi-header</link>
-            <guid isPermaLink="false">https://www.oschina.net/news/345097/linux-6-16-ashai-uapi-header</guid>
-            <pubDate>Sun, 13 Apr 2025 08:02:00 GMT</pubDate>
-            <author>來源: OSCHINA</author>
-        </item>
-        <item>
-            <title>豆包公佈 Seedream 3.0 文生圖模型技術報告</title>
-            <description>&lt;div class=&quot;content&quot;&gt;
-                                                                                            &lt;p&gt;字節跳動旗下「豆包大模型團隊」&lt;u&gt;&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fmp.weixin.qq.com%2Fs%2FmLRMHXq51HDBN_Vaylm_mw&quot; target=&quot;_blank&quot;&gt;發文表示&lt;/a&gt;&lt;/u&gt;，全新圖像生成基礎模型「Seedream 3.0」技術報告正式發佈。&lt;/p&gt; 
-&lt;p&gt;&lt;span&gt;Seedream 3.0 是一個原生高分辨率、支持中英雙語的圖像生成基礎模型，亮點如下：&lt;/span&gt;&lt;/p&gt; 
-&lt;ul&gt; 
- &lt;li&gt;原生 2K 直出，適配多比例場景：無需後處理可直接輸出 2K 分辨率圖像，從手機端到巨幅海報場景的視覺需求均可滿足；&lt;/li&gt; 
- &lt;li&gt;3 秒出圖，大幅提升創作效率：面向海報設計、視覺創意等需求，可實現 3 秒左右快速生成高品質圖像，實現「所想即所得」的實時創意交互；&lt;/li&gt; 
- &lt;li&gt;小字更準，文本排版效果增強：優化小字體高保真生成、多行文本語義排版等業界難題，讓 AI 具備商業級圖文設計能力；&lt;/li&gt; 
- &lt;li&gt;美感 &amp;amp; 結構提升，生成富有感染力：指令遵循進一步增強，人體和物體結構崩壞改善，且進一步弱化了出圖的 AI 感，實現從「看得清」到「有感染力」的審美提升。&lt;/li&gt; 
-&lt;/ul&gt; 
-&lt;p&gt;&lt;img src=&quot;https://static.oschina.net/uploads/space/2025/0417/155350_bNhq_2720166.png&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
-&lt;p&gt;值得一提的是，在權威競技場 Artificial Analysis 上，Seedream 3.0 與 GPT-4o、Imagen 3、Midjourney v6.1、FLUX 1.1 Pro、Ideogram 3.0 等文生圖模型同台競技，在近期打榜中，一度排名第一。&lt;/p&gt; 
-&lt;p&gt;&lt;img src=&quot;https://static.oschina.net/uploads/space/2025/0417/154909_oM7T_2720166.png&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;/p&gt; 
-&lt;p&gt;Seedream 3.0 已在本月正式上線，目前已在豆包、即夢等平台全量開放。&lt;/p&gt; 
-&lt;p&gt;另外，Seedream 3.0 的相關技術報告以及詳細內容也已經上架：&lt;/p&gt; 
-&lt;ul&gt; 
- &lt;li&gt;Arxiv：&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Farxiv.org%2Fabs%2F2504.11346&quot; target=&quot;_blank&quot;&gt;https://arxiv.org/abs/2504.11346&lt;/a&gt;&lt;/li&gt; 
- &lt;li&gt;技術呈現頁：&lt;a href=&quot;https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fteam.doubao.com%2Ftech%2Fseedream3_0&quot; target=&quot;_blank&quot;&gt;https://team.doubao.com/tech/seedream3_0&lt;/a&gt;&lt;/li&gt; 
-&lt;/ul&gt;
-                                                                                &lt;/div&gt;
-                                                                            </description>
-            <link>https://www.oschina.net/news/345096/seedream-3-0-technical-report</link>
-            <guid isPermaLink="false">https://www.oschina.net/news/345096/seedream-3-0-technical-report</guid>
-            <pubDate>Sun, 13 Apr 2025 07:51:00 GMT</pubDate>
+            <pubDate>Mon, 14 Apr 2025 02:02:00 GMT</pubDate>
             <author>來源: OSCHINA</author>
         </item>
     </channel>
