@@ -9,8 +9,132 @@
         <generator>RSSHub</generator>
         <webMaster>contact@rsshub.app (RSSHub)</webMaster>
         <language>en</language>
-        <lastBuildDate>Sun, 11 May 2025 09:43:13 GMT</lastBuildDate>
+        <lastBuildDate>Sun, 11 May 2025 12:37:44 GMT</lastBuildDate>
         <ttl>5</ttl>
+        <item>
+            <title>Java Solon-MCP 實現 MCP 實踐全解析：SSE 與 STDIO 通信模式詳解</title>
+            <description>&lt;div class=&quot;content&quot;&gt;
+                                                                    
+                                                        &lt;h2&gt;一、MCP 簡介&lt;/h2&gt; 
+&lt;p style=&quot;color:#24292e; text-align:start&quot;&gt;MCP（Model Context Protocol，模型上下文協議）是由 Anthropic 公司於 2024 年推出的開放標準，旨在統一 AI 模型與外部數據源、工具之間的通信方式。MCP 提供了一套規範化的接口，使大語言模型（LLM）能夠更便捷地與各類外部工具和資源進行交互。&lt;/p&gt; 
+&lt;p style=&quot;color:#24292e; text-align:start&quot;&gt;通俗點講是：&lt;/p&gt; 
+&lt;pre&gt;&lt;code class=&quot;language-java&quot;&gt;一個專屬的 RPC 協議
+&lt;/code&gt;&lt;/pre&gt; 
+&lt;p style=&quot;color:#24292e; text-align:start&quot;&gt;MCP 的核心價值在於：&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt;標準化接口：為 AI 模型提供統一的工具發現和使用接口&lt;/li&gt; 
+ &lt;li&gt;安全通信：定義了一套安全的模型與工具之間的通信協議&lt;/li&gt; 
+ &lt;li&gt;跨平台兼容：適用於不同 AI 提供商的模型&lt;/li&gt; 
+ &lt;li&gt;提升 AI 能力：讓 AI 能夠訪問最新數據和執行復雜操作&lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;h2&gt;二、Solon-MCP 簡介&lt;/h2&gt; 
+&lt;p style=&quot;color:#24292e; text-align:start&quot;&gt;Solon-MCP（全名 Solon-AI-MCP）是一個基於 Java 的高級框架，專為構建 MCP 服務器而設計。它極大簡化了 MCP 服務器的開發流程，讓開發者能夠以最小的代碼量創建功能強大的 MCP 服務器。&lt;/p&gt; 
+&lt;p style=&quot;color:#24292e; text-align:start&quot;&gt;Solon-MCP 的主要特點包括：&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt;簡潔的 API：通過裝飾器模式，簡化 MCP 服務器的創建&lt;/li&gt; 
+ &lt;li&gt;豐富的功能：支持工具（Tools）、資源（Resources）、提示模板（Prompts）等 MCP 核心元素&lt;/li&gt; 
+ &lt;li&gt;多種傳輸方式：支持 STDIO 和 SSE 等不同傳輸協議&lt;/li&gt; 
+ &lt;li&gt;類型安全：利用 Java 的類型提示，自動生成 MCP 協議所需的模式定義&lt;/li&gt; 
+ &lt;li&gt;內置圖像處理：支持圖像數據的自動格式轉換和處理&lt;/li&gt; 
+ &lt;li&gt;使用 Solon-MCP，開發者可以專注於業務邏輯，而不必過多關注底層協議細節。&lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;h2&gt;三、Java Solon-MCP 實現 STDIO 方式&lt;/h2&gt; 
+&lt;h3&gt;（1）基本示例&lt;/h3&gt; 
+&lt;p style=&quot;color:#24292e; text-align:start&quot;&gt;下面是一個使用 Solon-MCP 實現 STDIO 通信方式的基本示例，創建一個簡單的計算器工具 CalculatorTools：&lt;/p&gt; 
+&lt;pre&gt;&lt;code class=&quot;language-java&quot;&gt;&lt;span style=&quot;color:#4078f2&quot;&gt;@McpServerEndpoint(channel = McpChannel.STDIO)&lt;/span&gt;
+&lt;span style=&quot;color:#a626a4&quot;&gt;public&lt;/span&gt; &lt;span style=&quot;color:#a626a4&quot;&gt;class&lt;/span&gt; &lt;span style=&quot;color:#c18401&quot;&gt;CalculatorTools&lt;/span&gt; {
+    &lt;span style=&quot;color:#4078f2&quot;&gt;@ToolMapping(description = &quot;將兩個數字相加&quot;)&lt;/span&gt;
+    &lt;span style=&quot;color:#a626a4&quot;&gt;public&lt;/span&gt; &lt;span style=&quot;color:#986801&quot;&gt;int&lt;/span&gt; &lt;span style=&quot;color:#4078f2&quot;&gt;add&lt;/span&gt;&lt;span&gt;(&lt;span style=&quot;color:#4078f2&quot;&gt;@Param&lt;/span&gt; &lt;span style=&quot;color:#986801&quot;&gt;int&lt;/span&gt; a, &lt;span style=&quot;color:#4078f2&quot;&gt;@Param&lt;/span&gt; &lt;span style=&quot;color:#986801&quot;&gt;int&lt;/span&gt; b)&lt;/span&gt; {
+        &lt;span style=&quot;color:#a626a4&quot;&gt;return&lt;/span&gt; a + b;
+    }
+
+    &lt;span style=&quot;color:#4078f2&quot;&gt;@ToolMapping(description = &quot;從第一個數中減去第二個數&quot;)&lt;/span&gt;
+    &lt;span style=&quot;color:#a626a4&quot;&gt;public&lt;/span&gt; &lt;span style=&quot;color:#986801&quot;&gt;int&lt;/span&gt; &lt;span style=&quot;color:#4078f2&quot;&gt;subtract&lt;/span&gt;&lt;span&gt;(&lt;span style=&quot;color:#4078f2&quot;&gt;@Param&lt;/span&gt; &lt;span style=&quot;color:#986801&quot;&gt;int&lt;/span&gt; a, &lt;span style=&quot;color:#4078f2&quot;&gt;@Param&lt;/span&gt; &lt;span style=&quot;color:#986801&quot;&gt;int&lt;/span&gt; b)&lt;/span&gt; {
+        &lt;span style=&quot;color:#a626a4&quot;&gt;return&lt;/span&gt; a - b;
+    }
+
+    &lt;span style=&quot;color:#4078f2&quot;&gt;@ToolMapping(description = &quot;將兩個數相乘&quot;)&lt;/span&gt;
+    &lt;span style=&quot;color:#a626a4&quot;&gt;public&lt;/span&gt; &lt;span style=&quot;color:#986801&quot;&gt;int&lt;/span&gt; &lt;span style=&quot;color:#4078f2&quot;&gt;multiply&lt;/span&gt;&lt;span&gt;(&lt;span style=&quot;color:#4078f2&quot;&gt;@Param&lt;/span&gt; &lt;span style=&quot;color:#986801&quot;&gt;int&lt;/span&gt; a, &lt;span style=&quot;color:#4078f2&quot;&gt;@Param&lt;/span&gt; &lt;span style=&quot;color:#986801&quot;&gt;int&lt;/span&gt; b)&lt;/span&gt; {
+        &lt;span style=&quot;color:#a626a4&quot;&gt;return&lt;/span&gt; a * b;
+    }
+
+    &lt;span style=&quot;color:#4078f2&quot;&gt;@ToolMapping(description = &quot;將第一個數除以第二個數&quot;)&lt;/span&gt;
+    &lt;span style=&quot;color:#a626a4&quot;&gt;public&lt;/span&gt; &lt;span style=&quot;color:#986801&quot;&gt;float&lt;/span&gt; &lt;span style=&quot;color:#4078f2&quot;&gt;divide&lt;/span&gt;&lt;span&gt;(&lt;span style=&quot;color:#4078f2&quot;&gt;@Param&lt;/span&gt; &lt;span style=&quot;color:#986801&quot;&gt;float&lt;/span&gt; a, &lt;span style=&quot;color:#4078f2&quot;&gt;@Param&lt;/span&gt; &lt;span style=&quot;color:#986801&quot;&gt;float&lt;/span&gt; b)&lt;/span&gt; {
+        &lt;span style=&quot;color:#a626a4&quot;&gt;return&lt;/span&gt; a / b;
+    }
+}
+&lt;/code&gt;&lt;/pre&gt; 
+&lt;p style=&quot;color:#24292e; text-align:start&quot;&gt;在這個示例中，我們：&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt;創建了一個名為&lt;span&gt;&amp;nbsp;&lt;/span&gt;&lt;code&gt;CalculatorTools&lt;/code&gt;&lt;span&gt;&amp;nbsp;&lt;/span&gt;的 MCP 服務器實例&lt;/li&gt; 
+ &lt;li&gt;使用&lt;span&gt;&amp;nbsp;&lt;/span&gt;&lt;code&gt;@ToolMapping&lt;/code&gt;&lt;span&gt;&amp;nbsp;&lt;/span&gt;註解定義了四個計算工具&lt;/li&gt; 
+ &lt;li&gt;通過&lt;span&gt;&amp;nbsp;&lt;/span&gt;&lt;code&gt;@McpServerEndpoint(channel = McpChannel.STDIO)&lt;/code&gt;&lt;span&gt;&amp;nbsp;&lt;/span&gt;以 STDIO 模式啓動服務器&lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;h3&gt;4.2 運行和使用&lt;/h3&gt; 
+&lt;p style=&quot;color:#24292e; text-align:start&quot;&gt;（先打包成 jar 胖包）運行 STDIO 模式的 MCP 服務器：&lt;/p&gt; 
+&lt;pre&gt;&lt;code class=&quot;language-java&quot;&gt;java -jar demo.jar
+&lt;/code&gt;&lt;/pre&gt; 
+&lt;p style=&quot;color:#24292e; text-align:start&quot;&gt;在這種模式下，服務器將等待標準輸入上的請求，然後通過標準輸出返回響應。所有支持 STDIO 模式的 MCP 客戶端（或工具，或中間件），都可以連接使用。&lt;/p&gt; 
+&lt;h2&gt;五、Java Solon-MCP 實現 SSE 方式&lt;/h2&gt; 
+&lt;h3&gt;5.1 基本示例&lt;/h3&gt; 
+&lt;p style=&quot;color:#24292e; text-align:start&quot;&gt;下面是使用 Solon-MCP 實現 SSE 通信方式的示例，創建一個簡單的天氣服務：&lt;/p&gt; 
+&lt;pre&gt;&lt;code class=&quot;language-java&quot;&gt;&lt;span style=&quot;color:#4078f2&quot;&gt;@McpServerEndpoint(sseEndpoint = &quot;/mcp/sse&quot;)&lt;/span&gt;
+&lt;span style=&quot;color:#a626a4&quot;&gt;public&lt;/span&gt; &lt;span style=&quot;color:#a626a4&quot;&gt;class&lt;/span&gt; &lt;span style=&quot;color:#c18401&quot;&gt;WeatherTools&lt;/span&gt; {
+    &lt;span style=&quot;color:#4078f2&quot;&gt;@ToolMapping(description = &quot;獲取指定城市的當前天氣&quot;)&lt;/span&gt;
+    &lt;span style=&quot;color:#a626a4&quot;&gt;public&lt;/span&gt; String &lt;span style=&quot;color:#4078f2&quot;&gt;get_weather&lt;/span&gt;&lt;span&gt;(&lt;span style=&quot;color:#4078f2&quot;&gt;@Param&lt;/span&gt; String city)&lt;/span&gt; {
+        &lt;span style=&quot;color:#a626a4&quot;&gt;return&lt;/span&gt; &lt;span style=&quot;color:#50a14f&quot;&gt;&quot;{city: &#39;&quot;&lt;/span&gt; + city + &lt;span style=&quot;color:#50a14f&quot;&gt;&quot;&#39;, temperature:[10,25], condition:[&#39;sunny&#39;, &#39;clear&#39;, &#39;hot&#39;], unit:celsius}&quot;&lt;/span&gt;;
+    }
+
+    &lt;em&gt;//給前端用，需要嚴格的 json 格式&lt;/em&gt;
+    &lt;span style=&quot;color:#4078f2&quot;&gt;@Produces(MimeType.APPLICATION_JSON_VALUE)&lt;/span&gt;
+    &lt;span style=&quot;color:#4078f2&quot;&gt;@ResourceMapping(uri = &quot;weather://cities&quot;, description = &quot;獲取所有可用的城市列表&quot;)&lt;/span&gt;
+    &lt;span style=&quot;color:#a626a4&quot;&gt;public&lt;/span&gt; List&amp;lt;String&amp;gt; &lt;span style=&quot;color:#4078f2&quot;&gt;get_available_cities&lt;/span&gt;&lt;span&gt;()&lt;/span&gt; {
+        &lt;span style=&quot;color:#a626a4&quot;&gt;return&lt;/span&gt; Arrays.asList(&lt;span style=&quot;color:#50a14f&quot;&gt;&quot;Tokyo&quot;&lt;/span&gt;, &lt;span style=&quot;color:#50a14f&quot;&gt;&quot;Sydney&quot;&lt;/span&gt;, &lt;span style=&quot;color:#50a14f&quot;&gt;&quot;Tokyo&quot;&lt;/span&gt;);
+    }
+
+    &lt;span style=&quot;color:#4078f2&quot;&gt;@ResourceMapping(uri = &quot;weather://forecast/{city}&quot;, description = &quot;獲取指定城市的天氣預報資源&quot;)&lt;/span&gt;
+    &lt;span style=&quot;color:#a626a4&quot;&gt;public&lt;/span&gt; String &lt;span style=&quot;color:#4078f2&quot;&gt;get_forecast&lt;/span&gt;&lt;span&gt;(&lt;span style=&quot;color:#4078f2&quot;&gt;@Param&lt;/span&gt; String city)&lt;/span&gt; {
+         &lt;span style=&quot;color:#a626a4&quot;&gt;return&lt;/span&gt; &lt;span style=&quot;color:#50a14f&quot;&gt;&quot;{city: &#39;&quot;&lt;/span&gt; + city + &lt;span style=&quot;color:#50a14f&quot;&gt;&quot;&#39;, temperature:[10,25], condition:[&#39;sunny&#39;, &#39;clear&#39;, &#39;hot&#39;], unit:celsius}&quot;&lt;/span&gt;;
+    }
+}
+&lt;/code&gt;&lt;/pre&gt; 
+&lt;p style=&quot;color:#24292e; text-align:start&quot;&gt;在這個示例中：&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt;我們創建了一個名為 &quot;Weather Service&quot; 的 MCP 服務器&lt;/li&gt; 
+ &lt;li&gt;定義了一個 get_weather 工具函數，用於獲取城市的當前天氣&lt;/li&gt; 
+ &lt;li&gt;添加了兩個資源：一個返回所有可用城市的列表，另一個返回指定城市的天氣預報&lt;/li&gt; 
+ &lt;li&gt;通過指定&lt;span&gt;&amp;nbsp;&lt;/span&gt;&lt;code&gt;sseEndpoint&lt;/code&gt;&lt;span&gt;&amp;nbsp;&lt;/span&gt;以 SSE 模式啓動服務器&lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;h3&gt;5.2 運行和使用&lt;/h3&gt; 
+&lt;p style=&quot;color:#24292e; text-align:start&quot;&gt;運行 SSE 模式的 MCP 服務器：&lt;/p&gt; 
+&lt;pre&gt;&lt;code class=&quot;language-    &quot;&gt;java -jar demo.jar
+&lt;/code&gt;&lt;/pre&gt; 
+&lt;p style=&quot;color:#24292e; text-align:start&quot;&gt;服務器將在指定端口（默認為 8080）啓動，並監聽 HTTP 連接。您可以通過瀏覽器訪問：&lt;/p&gt; 
+&lt;pre&gt;&lt;code class=&quot;language-bash&quot;&gt;http://localhost:8080/mcp/sse
+&lt;/code&gt;&lt;/pre&gt; 
+&lt;p style=&quot;color:#24292e; text-align:start&quot;&gt;要與此服務器交互，可以使用支持 SSE 傳輸的 MCP 客戶端，或者使用如下 Java 代碼創建一個簡單的客戶端：&lt;/p&gt; 
+&lt;pre&gt;&lt;code class=&quot;language-java&quot;&gt;&lt;span style=&quot;color:#a626a4&quot;&gt;public&lt;/span&gt; &lt;span style=&quot;color:#a626a4&quot;&gt;void&lt;/span&gt; &lt;span style=&quot;color:#4078f2&quot;&gt;test&lt;/span&gt;&lt;span&gt;()&lt;/span&gt; {
+    &lt;span style=&quot;color:#986801&quot;&gt;McpClientProvider&lt;/span&gt; &lt;span style=&quot;color:#986801&quot;&gt;clientProvider&lt;/span&gt; &lt;span&gt;=&lt;/span&gt; McpClientProvider.builder()
+                .apiUrl(&lt;span style=&quot;color:#50a14f&quot;&gt;&quot;http://localhost:8080/mcp/sse&quot;&lt;/span&gt;)
+                .build();
+
+    &lt;span style=&quot;color:#986801&quot;&gt;String&lt;/span&gt; &lt;span style=&quot;color:#986801&quot;&gt;rst1&lt;/span&gt; &lt;span&gt;=&lt;/span&gt; clientProvider.callToolAsText(&lt;span style=&quot;color:#50a14f&quot;&gt;&quot;get_weather&quot;&lt;/span&gt;, Map.of(&lt;span style=&quot;color:#50a14f&quot;&gt;&quot;city&quot;&lt;/span&gt;, &lt;span style=&quot;color:#50a14f&quot;&gt;&quot;杭州&quot;&lt;/span&gt;))
+                                .getContent();
+                                   
+    &lt;span style=&quot;color:#986801&quot;&gt;String&lt;/span&gt; &lt;span style=&quot;color:#986801&quot;&gt;rst2&lt;/span&gt; &lt;span&gt;=&lt;/span&gt; clientProvider.readResourceAsText(&lt;span style=&quot;color:#50a14f&quot;&gt;&quot;weather://cities&quot;&lt;/span&gt;)
+                                .getContent();
+}
+&lt;/code&gt;&lt;/pre&gt; 
+&lt;h2&gt;六、總結&lt;/h2&gt; 
+&lt;p style=&quot;color:#24292e; text-align:start&quot;&gt;Java Solon-MCP 為開發者提供了一種簡單高效的方式來構建 MCP 服務器，無論是使用 STDIO 還是 SSE 傳輸方式。&lt;/p&gt; 
+&lt;p&gt;&amp;nbsp;&lt;/p&gt;
+                                                                                &lt;/div&gt;
+                                                                            </description>
+            <link>https://www.oschina.net/news/349284</link>
+            <guid isPermaLink="false">https://www.oschina.net/news/349284</guid>
+            <pubDate>Sun, 11 May 2025 10:07:00 GMT</pubDate>
+            <author>來源: 投稿</author>
+        </item>
         <item>
             <title>最新！AXUI 前端框架發佈 v3.1.7 版本，優化了移動終端適配，處理了部分 BUG</title>
             <description>&lt;div class=&quot;content&quot;&gt;
@@ -1589,50 +1713,6 @@ public class HelloReq {
             <link>https://www.oschina.net/news/348797/zentaopms-21-6-1-stable</link>
             <guid isPermaLink="false">https://www.oschina.net/news/348797/zentaopms-21-6-1-stable</guid>
             <pubDate>Thu, 08 May 2025 09:09:00 GMT</pubDate>
-            <author>來源: 投稿</author>
-        </item>
-        <item>
-            <title>BootstrapBlazor v9.6.1 已經發布，Bootstrap 樣式的 Blazor UI 組件庫</title>
-            <description>&lt;div class=&quot;content&quot;&gt;
-                                                                    
-                                                        &lt;p&gt;BootstrapBlazor v9.6.1 已經發布，Bootstrap 樣式的 Blazor UI 組件庫&lt;/p&gt; 
-&lt;p&gt;此版本更新內容包括：&lt;/p&gt; 
-&lt;h2&gt;Release 2025-5-8 V9.6.1&lt;/h2&gt; 
-&lt;h3&gt;Break changes&lt;/h3&gt; 
-&lt;h3&gt;Bugs&lt;/h3&gt; 
-&lt;h3&gt;Features&lt;/h3&gt; 
-&lt;ul&gt; 
- &lt;li&gt;feat(Utility): 增強 registerBootstrapBlazorModule 功能 by @ArgoZhang in &lt;a href=&quot;https://gitee.com/link?target=https%3A%2F%2Fgithub.com%2Fdotnetcore%2FBootstrapBlazor%2Fpull%2F5936&quot; target=&quot;_blank&quot;&gt;https://github.com/dotnetcore/BootstrapBlazor/pull/5936&lt;/a&gt;&lt;/li&gt; 
- &lt;li&gt;feat(Utility): 增加 &lt;code&gt;drawImage&lt;/code&gt; 方法用於將 &lt;code&gt;canvas&lt;/code&gt; 導出為圖片 by @ArgoZhang in &lt;a href=&quot;https://gitee.com/link?target=https%3A%2F%2Fgithub.com%2Fdotnetcore%2FBootstrapBlazor%2Fpull%2F5938&quot; target=&quot;_blank&quot;&gt;https://github.com/dotnetcore/BootstrapBlazor/pull/5938&lt;/a&gt;&lt;/li&gt; 
- &lt;li&gt;feat(IVideoDevice): 增加 &lt;code&gt;IVideoDevice&lt;/code&gt; 視頻服務可調用瀏覽器 api 實現攝像頭相關操作 by @ArgoZhang in &lt;a href=&quot;https://gitee.com/link?target=https%3A%2F%2Fgithub.com%2Fdotnetcore%2FBootstrapBlazor%2Fpull%2F5940&quot; target=&quot;_blank&quot;&gt;https://github.com/dotnetcore/BootstrapBlazor/pull/5940&lt;/a&gt;&lt;/li&gt; 
- &lt;li&gt;feat(ModalDialog): 增加 &lt;code&gt;FooterContentTemplate&lt;/code&gt; 參數用於彈窗 &lt;code&gt;Footer&lt;/code&gt; 自定義 by @ArgoZhang in &lt;a href=&quot;https://gitee.com/link?target=https%3A%2F%2Fgithub.com%2Fdotnetcore%2FBootstrapBlazor%2Fpull%2F5947&quot; target=&quot;_blank&quot;&gt;https://github.com/dotnetcore/BootstrapBlazor/pull/5947&lt;/a&gt;&lt;/li&gt; 
- &lt;li&gt;feat(Table): add &lt;code&gt;ToolbarTemplate&lt;/code&gt; 參數用於表格組件工具欄自定義 by @ArgoZhang in &lt;a href=&quot;https://gitee.com/link?target=https%3A%2F%2Fgithub.com%2Fdotnetcore%2FBootstrapBlazor%2Fpull%2F5951&quot; target=&quot;_blank&quot;&gt;https://github.com/dotnetcore/BootstrapBlazor/pull/5951&lt;/a&gt;&lt;/li&gt; 
- &lt;li&gt;feat(IAudioDevice): 增加 &lt;code&gt;IAudioDevice&lt;/code&gt; 音頻服務可以調用瀏覽器 api 實現錄音功能 by @ArgoZhang in &lt;a href=&quot;https://gitee.com/link?target=https%3A%2F%2Fgithub.com%2Fdotnetcore%2FBootstrapBlazor%2Fpull%2F5955&quot; target=&quot;_blank&quot;&gt;https://github.com/dotnetcore/BootstrapBlazor/pull/5955&lt;/a&gt;&lt;/li&gt; 
- &lt;li&gt;feat(Tab): 更新全屏按鈕樣式 by @ArgoZhang in &lt;a href=&quot;https://gitee.com/link?target=https%3A%2F%2Fgithub.com%2Fdotnetcore%2FBootstrapBlazor%2Fpull%2F5959&quot; target=&quot;_blank&quot;&gt;https://github.com/dotnetcore/BootstrapBlazor/pull/5959&lt;/a&gt;&lt;/li&gt; 
- &lt;li&gt;feat(IVideoDevice): 增加 &lt;code&gt;GetPreviewData&lt;/code&gt; 獲得預覽數據方法 by @ArgoZhang in &lt;a href=&quot;https://gitee.com/link?target=https%3A%2F%2Fgithub.com%2Fdotnetcore%2FBootstrapBlazor%2Fpull%2F5965&quot; target=&quot;_blank&quot;&gt;https://github.com/dotnetcore/BootstrapBlazor/pull/5965&lt;/a&gt;&lt;/li&gt; 
- &lt;li&gt;feat(IVideoDevice): 增加 &lt;code&gt;GetData&lt;/code&gt; 獲得數據流方法 by @ArgoZhang in &lt;a href=&quot;https://gitee.com/link?target=https%3A%2F%2Fgithub.com%2Fdotnetcore%2FBootstrapBlazor%2Fpull%2F5967&quot; target=&quot;_blank&quot;&gt;https://github.com/dotnetcore/BootstrapBlazor/pull/5967&lt;/a&gt;&lt;/li&gt; 
- &lt;li&gt;feat(Logout): 增加 &lt;code&gt;AvatarRadius&lt;/code&gt; 參數用於設置頭像圓角曲率 by @ArgoZhang in &lt;a href=&quot;https://gitee.com/link?target=https%3A%2F%2Fgithub.com%2Fdotnetcore%2FBootstrapBlazor%2Fpull%2F5969&quot; target=&quot;_blank&quot;&gt;https://github.com/dotnetcore/BootstrapBlazor/pull/5969&lt;/a&gt;&lt;/li&gt; 
- &lt;li&gt;feat(ExportPdfButton): 更新 &lt;code&gt;AutoDownload&lt;/code&gt; 默認值為 true by @ArgoZhang in &lt;a href=&quot;https://gitee.com/link?target=https%3A%2F%2Fgithub.com%2Fdotnetcore%2FBootstrapBlazor%2Fpull%2F5973&quot; target=&quot;_blank&quot;&gt;https://github.com/dotnetcore/BootstrapBlazor/pull/5973&lt;/a&gt;&lt;/li&gt; 
- &lt;li&gt;feat(Dialog): 增加 &lt;code&gt;Show&amp;lt;TComponent&amp;gt;&lt;/code&gt; 支持泛型擴展方法 by @ArgoZhang in &lt;a href=&quot;https://gitee.com/link?target=https%3A%2F%2Fgithub.com%2Fdotnetcore%2FBootstrapBlazor%2Fpull%2F5983&quot; target=&quot;_blank&quot;&gt;https://github.com/dotnetcore/BootstrapBlazor/pull/5983&lt;/a&gt;&lt;/li&gt; 
- &lt;li&gt;feat(DockView): 更新底層 &lt;code&gt;js&lt;/code&gt; 到最新 by @ArgoZhang in &lt;a href=&quot;https://gitee.com/link?target=https%3A%2F%2Fgithub.com%2Fdotnetcore%2FBootstrapBlazor%2Fpull%2F5985&quot; target=&quot;_blank&quot;&gt;https://github.com/dotnetcore/BootstrapBlazor/pull/5985&lt;/a&gt;&lt;/li&gt; 
- &lt;li&gt;feat(Table): 增加編輯刪除數據邏輯新增禁用後不可刪除編輯邏輯 by @AiYuZhen in &lt;a href=&quot;https://gitee.com/link?target=https%3A%2F%2Fgithub.com%2Fdotnetcore%2FBootstrapBlazor%2Fpull%2F5992&quot; target=&quot;_blank&quot;&gt;https://github.com/dotnetcore/BootstrapBlazor/pull/5992&lt;/a&gt;&lt;/li&gt; 
- &lt;li&gt;feat(Tab): 更新 &lt;code&gt;FullScreen&lt;/code&gt; 邏輯由原來的標籤頁全屏更改為頁面全屏保證彈窗等交互正常 by @ArgoZhang in &lt;a href=&quot;https://gitee.com/link?target=https%3A%2F%2Fgithub.com%2Fdotnetcore%2FBootstrapBlazor%2Fpull%2F5996&quot; target=&quot;_blank&quot;&gt;https://github.com/dotnetcore/BootstrapBlazor/pull/5996&lt;/a&gt;&lt;/li&gt; 
-&lt;/ul&gt; 
-&lt;h3&gt;Performance&lt;/h3&gt; 
-&lt;h2&gt;Documentation&lt;/h2&gt; 
-&lt;ul&gt; 
- &lt;li&gt;doc(QRCode): 增加 &lt;code&gt;QRCode&lt;/code&gt; 相關示例 by @ArgoZhang in &lt;a href=&quot;https://gitee.com/link?target=https%3A%2F%2Fgithub.com%2Fdotnetcore%2FBootstrapBlazor%2Fpull%2F5932&quot; target=&quot;_blank&quot;&gt;https://github.com/dotnetcore/BootstrapBlazor/pull/5932&lt;/a&gt;&lt;/li&gt; 
- &lt;li&gt;doc(ITotpService): 更新 &lt;code&gt;ITotpService&lt;/code&gt; 服務文檔 document by @ArgoZhang in &lt;a href=&quot;https://gitee.com/link?target=https%3A%2F%2Fgithub.com%2Fdotnetcore%2FBootstrapBlazor%2Fpull%2F5934&quot; target=&quot;_blank&quot;&gt;https://github.com/dotnetcore/BootstrapBlazor/pull/5934&lt;/a&gt;&lt;/li&gt; 
- &lt;li&gt;doc(MFA): 增加多因子認證實戰示例代碼 by @ArgoZhang in &lt;a href=&quot;https://gitee.com/link?target=https%3A%2F%2Fgithub.com%2Fdotnetcore%2FBootstrapBlazor%2Fpull%2F5975&quot; target=&quot;_blank&quot;&gt;https://github.com/dotnetcore/BootstrapBlazor/pull/5975&lt;/a&gt;&lt;/li&gt; 
-&lt;/ul&gt; 
-&lt;h2&gt;New Contributors&lt;/h2&gt; 
-&lt;p&gt;&lt;strong&gt;Full Changelog&lt;/strong&gt;: &lt;a href=&quot;https://gitee.com/link?target=https%3A%2F%2Fgithub.com%2Fdotnetcore%2FBootstrapBlazor%2Fcompare%2Fv9.6.0...v9.6.1&quot; target=&quot;_blank&quot;&gt;https://github.com/dotnetcore/BootstrapBlazor/compare/v9.6.0...v9.6.1&lt;/a&gt;&lt;/p&gt; 
-&lt;p&gt;詳情查看：&lt;a href=&quot;https://gitee.com/LongbowEnterprise/BootstrapBlazor/releases/v9.6.1&quot;&gt;https://gitee.com/LongbowEnterprise/BootstrapBlazor/releases/v9.6.1&lt;/a&gt;&lt;/p&gt;
-                                                                                &lt;/div&gt;
-                                                                            </description>
-            <link>https://www.oschina.net/news/348773/bootstrapblazor-9-6-1-released</link>
-            <guid isPermaLink="false">https://www.oschina.net/news/348773/bootstrapblazor-9-6-1-released</guid>
-            <pubDate>Thu, 08 May 2025 07:42:00 GMT</pubDate>
             <author>來源: 投稿</author>
         </item>
     </channel>
