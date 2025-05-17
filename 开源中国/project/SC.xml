@@ -7,8 +7,158 @@
     <generator>RSSHub</generator>
     <webMaster>contact@rsshub.app (RSSHub)</webMaster>
     <language>zh-cn</language>
-    <lastBuildDate>Fri, 16 May 2025 13:03:00 GMT</lastBuildDate>
+    <lastBuildDate>Sat, 17 May 2025 13:59:18 GMT</lastBuildDate>
     <ttl>5</ttl>
+    <item>
+      <title>基于 TCP 与领域事件的 kaka-rpc 2.0.0 正式发布</title>
+      <description>&lt;div class="content"&gt;
+                                                                    
+                                                        &lt;p style="color:#40485b; margin-left:0; margin-right:0; text-align:left"&gt;基于 Netty TCP 与 kaka-core 领域事件的轻量级 RPC 框架，相比其它使用各种繁杂设计模式的框架，本框架仅 10 多个类实现，可谓是极简编码。&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt;基础通信 
+  &lt;ul&gt; 
+   &lt;li&gt;事件驱动&lt;/li&gt; 
+   &lt;li&gt;自定义心跳协议或基于 rpc 调用的心跳处理&lt;/li&gt; 
+   &lt;li&gt;断线重连&lt;/li&gt; 
+   &lt;li&gt;同步、future 异步、callback 回调多种 rpc 调用模式&lt;/li&gt; 
+   &lt;li&gt;超时控制&lt;/li&gt; 
+   &lt;li&gt;自定义数据协议扩展领域事件&lt;/li&gt; 
+   &lt;li&gt;登录鉴权&lt;/li&gt; 
+   &lt;li&gt;基础数据类型在满足通信协议的要求下支持任意程序语言调用&lt;/li&gt; 
+  &lt;/ul&gt; &lt;/li&gt; 
+ &lt;li&gt;集群部署 
+  &lt;ul&gt; 
+   &lt;li&gt;方案一：Nginx 负载均衡&lt;/li&gt; 
+   &lt;li&gt;方案二：自定义负载均衡，基于一致性哈希算法，亦可使用心跳轮询基于连接量的动态权重负载均衡&lt;/li&gt; 
+  &lt;/ul&gt; &lt;/li&gt; 
+ &lt;li&gt;性能强劲 
+  &lt;ul&gt; 
+   &lt;li&gt;调用远程接口方法，顺序执行 1000000 次，耗时 78 秒，平均每秒 12800 次左右，相比其它基于 Http 协议的 RPC 框架，性能提升明显&lt;/li&gt; 
+   &lt;li&gt;异步回调模式，每秒 60000 次左右&lt;/li&gt; 
+   &lt;li&gt;以上性能数据均在 win11 i5-12400 16GB 内存 IDEA 下运行产生&lt;/li&gt; 
+  &lt;/ul&gt; &lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;p&gt;以下为部分示例程序，具体示例请参看源码 test 目录&lt;/p&gt; 
+&lt;pre&gt;&lt;code&gt;&lt;strong&gt;final&lt;/strong&gt; CountDownLatch latch = &lt;strong&gt;new&lt;/strong&gt; CountDownLatch(&lt;span style="color:#008080"&gt;1&lt;/span&gt;);
+InetSocketAddress address = &lt;strong&gt;new&lt;/strong&gt; InetSocketAddress(&lt;span style="color:#dd1144"&gt;"127.0.0.1"&lt;/span&gt;, &lt;span style="color:#008080"&gt;7777&lt;/span&gt;);
+NettyTcpClient client = &lt;strong&gt;new&lt;/strong&gt; NettyTcpClient(address, &lt;span style="color:#008080"&gt;3&lt;/span&gt;, &lt;span style="color:#008080"&gt;7&lt;/span&gt;, &lt;span style="color:#008080"&gt;2&lt;/span&gt;, &lt;span style="color:#008080"&gt;2&lt;/span&gt;) {
+
+    &lt;span&gt;@Override&lt;/span&gt;
+    &lt;span&gt;&lt;strong&gt;protected&lt;/strong&gt; &lt;strong&gt;void&lt;/strong&gt; &lt;strong&gt;ping&lt;/strong&gt;&lt;span&gt;()&lt;/span&gt; &lt;/span&gt;{
+        &lt;em&gt;//发送自定义心跳包&lt;/em&gt;
+        ChannelHandlerContext ctx = &lt;strong&gt;this&lt;/strong&gt;.getChannelHandlerContext();
+        &lt;strong&gt;if&lt;/strong&gt; (ctx == &lt;strong&gt;null&lt;/strong&gt;) &lt;strong&gt;return&lt;/strong&gt;;
+        ByteBuf buf = ctx.alloc().buffer(&lt;span style="color:#008080"&gt;4&lt;/span&gt;); &lt;em&gt;//标准包体结构 int 协议号+协议内容&lt;/em&gt;
+        buf.writeInt(Integer.parseInt(MyOpCode.heart_beat));
+        ctx.writeAndFlush(buf);
+&lt;em&gt;// //如下方式亦可，但服务器必须进行逻辑处理并返回数据，否则将造成 client 调用端数据积压，且积压数据仅能通过超时自动清除。&lt;/em&gt;
+&lt;em&gt;//                    //异步回调方式发送心跳包&lt;/em&gt;
+&lt;em&gt;//                    this.execRemotingLogic(MyOpCode.heart_beat, 4, (res, e) -&amp;gt; {&lt;/em&gt;
+&lt;em&gt;//                        if (e != null) {&lt;/em&gt;
+&lt;em&gt;//                            return;&lt;/em&gt;
+&lt;em&gt;//                        }&lt;/em&gt;
+&lt;em&gt;//                        System.out.println("异步获取心跳数据&amp;gt;&amp;gt;&amp;gt; " + res);&lt;/em&gt;
+&lt;em&gt;//                    });&lt;/em&gt;
+    }
+
+    &lt;span&gt;@Override&lt;/span&gt;
+    &lt;span&gt;&lt;strong&gt;protected&lt;/strong&gt; &lt;strong&gt;void&lt;/strong&gt; &lt;strong&gt;afterConnected&lt;/strong&gt;&lt;span&gt;()&lt;/span&gt; &lt;/span&gt;{
+        latch.countDown();
+    }
+
+    &lt;span&gt;@Override&lt;/span&gt;
+    &lt;span&gt;&lt;strong&gt;protected&lt;/strong&gt; &lt;strong&gt;void&lt;/strong&gt; &lt;strong&gt;afterDisconnect&lt;/strong&gt;&lt;span&gt;()&lt;/span&gt; &lt;/span&gt;{
+
+    }
+};
+client.connect();
+latch.await();
+
+&lt;em&gt;//RPC 远程领域事件处理，并同步获取执行结果，服务端请参看领域事件处理器 com.test.server.DemoLogic1Handler&lt;/em&gt;
+&lt;strong&gt;int&lt;/strong&gt; result = client.execRemotingLogic(&lt;span style="color:#dd1144"&gt;"demo_logic1"&lt;/span&gt;, &lt;span style="color:#008080"&gt;3&lt;/span&gt;, &lt;strong&gt;new&lt;/strong&gt; Object[]{&lt;span style="color:#008080"&gt;1&lt;/span&gt;, &lt;span style="color:#008080"&gt;2&lt;/span&gt;, &lt;span style="color:#008080"&gt;3&lt;/span&gt;});
+System.out.println(&lt;span style="color:#dd1144"&gt;"同步获取远程结果&amp;gt;&amp;gt;&amp;gt; "&lt;/span&gt;+result);
+&lt;em&gt;//RPC 远程领域事件处理，并异步回调获取结果，服务端请参看领域事件处理器 com.test.server.DemoLogic2Handler&lt;/em&gt;
+client.execRemotingLogic(&lt;span style="color:#dd1144"&gt;"demo_logic2"&lt;/span&gt;,(res, e) -&amp;gt;{
+    &lt;strong&gt;if&lt;/strong&gt;(e !=&lt;strong&gt;null&lt;/strong&gt;){
+        &lt;em&gt;//处理异常&lt;/em&gt;
+        &lt;strong&gt;return&lt;/strong&gt;;
+    }
+    System.out.println(&lt;span style="color:#dd1144"&gt;"异步回调获取结果&amp;gt;&amp;gt;&amp;gt; "&lt;/span&gt;+res);
+},&lt;span style="color:#008080"&gt;100&lt;/span&gt;);
+&lt;em&gt;//RPC 公共接口方法调用，服务端接口实现请参看 com.test.server.DemoServiceImpl&lt;/em&gt;
+DemoService testInterface = RpcClient.getRefInstance(DemoService&lt;span&gt;.&lt;strong&gt;class&lt;/strong&gt;, &lt;strong&gt;client&lt;/strong&gt;)&lt;/span&gt;;
+System.out.println(&lt;span style="color:#dd1144"&gt;"远程获取结果&amp;gt;&amp;gt;&amp;gt; "&lt;/span&gt;+testInterface.say(&lt;span style="color:#dd1144"&gt;"hello"&lt;/span&gt;));
+System.out.println(&lt;span style="color:#dd1144"&gt;"远程获取结果&amp;gt;&amp;gt;&amp;gt; "&lt;/span&gt;+testInterface.num(&lt;span style="color:#008080"&gt;3&lt;/span&gt;));
+System.out.println(&lt;span style="color:#dd1144"&gt;"远程计算两数之和&amp;gt;&amp;gt;&amp;gt; "&lt;/span&gt;+testInterface.calc(&lt;span style="color:#008080"&gt;3&lt;/span&gt;, &lt;span style="color:#008080"&gt;7&lt;/span&gt;));
+System.out.println(&lt;span style="color:#dd1144"&gt;"远程计算两数之间所有数的和&amp;gt;&amp;gt;&amp;gt; "&lt;/span&gt;+testInterface.sum(&lt;span style="color:#008080"&gt;1&lt;/span&gt;, &lt;span style="color:#008080"&gt;1000&lt;/span&gt;));&lt;/code&gt;
+&lt;/pre&gt;
+                                                                                &lt;/div&gt;
+                                                                            </description>
+      <link>https://www.oschina.net/news/350417/kaka-rpc-2-0-0-released</link>
+      <guid isPermaLink="false">https://www.oschina.net/news/350417/kaka-rpc-2-0-0-released</guid>
+      <pubDate>Sat, 17 May 2025 13:01:17 GMT</pubDate>
+      <author>来源: 投稿</author>
+    </item>
+    <item>
+      <title>宇连通 IM 之数据加密设计</title>
+      <description>&lt;div class="content"&gt;
+                                                                    
+                                                        &lt;p&gt;&lt;a href="https://gitee.com/ldh123/imapp"&gt;宇连通 IM&lt;/a&gt;的数据安全分传输安全和存储安全。&lt;/p&gt; 
+&lt;p&gt;传输安全是客户发起聊天时，数据在传输过程中是安全的。存储安全是数据保存在服务端和客户端也是安全的。&lt;/p&gt; 
+&lt;p&gt;传输安全从两个角度进行设计，一是使用 TLS/SSL 协议传输，二是对数据传输时还进行加密，如：对称加密和非对账加密。&lt;/p&gt; 
+&lt;p&gt;存储安全也从两个角度进行设计：一是对数据进行加密存储，如：对称加密和非对账加密。二是设置数据失效时间，失效的数据会被自动清理。&lt;br&gt; &amp;nbsp;&amp;nbsp;&lt;br&gt; &amp;nbsp; IM 的数据加密有如下几种方式：&lt;br&gt; &amp;nbsp; 1，不加密模式&lt;br&gt; &amp;nbsp; &amp;nbsp; 数据明文传输，明文存储。对聊天信息不非常重要的信息采用这种模式。&lt;br&gt; &amp;nbsp; 2，信任模式&lt;br&gt; &amp;nbsp; &amp;nbsp; 数据加密传输，加密存储。但是用户信任平台，平台存储会话的秘钥，这种模式还分一下几种小类：&lt;br&gt; &amp;nbsp;&amp;nbsp; &amp;nbsp;a, 对称加密通信，明文存储。&lt;br&gt; &amp;nbsp;&amp;nbsp; &amp;nbsp;b, 对称加密通信，对称加密存储。&lt;br&gt; &amp;nbsp;&amp;nbsp; &amp;nbsp;c, 非对称加密通信，非对称加密存储。&lt;br&gt; &amp;nbsp; 3, 自管理模式&lt;br&gt; &amp;nbsp; &amp;nbsp; 数据通信和存储都进行加密。但是用户需要自己管理秘钥的密码。&lt;br&gt; &amp;nbsp;&amp;nbsp; &amp;nbsp;可分以下几个模式：&lt;br&gt; &amp;nbsp;&amp;nbsp; &amp;nbsp;a, 秘钥授权。用户进行 p2p 聊天或群聊天，需要密码登录，登录后，彼此进行秘钥授权，授权成功才能进行发送消息以及查看消息，未得到授权秘钥用户无法查看对方的消息。&lt;br&gt; &amp;nbsp;&amp;nbsp; &amp;nbsp;b, 共建秘钥的密码模式。聊天用户都输入正确密码后，聊天功能才能使用，有一方密码不正确，聊天就无法进行并都无法进行解密。&lt;br&gt; &amp;nbsp;&amp;nbsp; &amp;nbsp;c, U 盾模式。聊天发起人建立一批 U 盾，并分发给其他用户，持有 U 盾用户才能进行通信和查看聊天信息。&lt;br&gt; &amp;nbsp;&amp;nbsp; &amp;nbsp;&lt;br&gt; &amp;nbsp;以上三种模式是都可以选择的，如 A，B 用户聊天可以建立 7 中通信会话， A，B 根据场景需要，选择其中任意一种进行聊天&lt;br&gt; &amp;nbsp;&amp;nbsp; &amp;nbsp;&lt;br&gt; &amp;nbsp; IM 的消息增加存储时效，有如下几种选择：&lt;br&gt; &amp;nbsp; &amp;nbsp;a, 客户端永久存储。但是客户可以主动发起删除&lt;br&gt; &amp;nbsp; &amp;nbsp;b, 对指定聊天会话增加存储失效时间：&lt;br&gt; &amp;nbsp; &amp;nbsp; &amp;nbsp;b0: 指定分钟（阅读即焚）&lt;br&gt; &amp;nbsp; &amp;nbsp; &amp;nbsp;b1: 指定小时（小于 24 小时）&lt;br&gt; &amp;nbsp;&amp;nbsp; &amp;nbsp; b2: 聊天会话期间存储，聊天软件关闭，自动清理会话消息。&lt;br&gt; &amp;nbsp;&amp;nbsp; &amp;nbsp; b3: 指定天数&lt;/p&gt;
+                                                                                &lt;/div&gt;
+                                                                            </description>
+      <link>https://www.oschina.net/news/349943</link>
+      <guid isPermaLink="false">https://www.oschina.net/news/349943</guid>
+      <pubDate>Wed, 14 May 2025 13:54:00 GMT</pubDate>
+      <author>来源: 投稿</author>
+    </item>
+    <item>
+      <title>又小又快截图软件：ScreenCapture（2.2.25）支持截长图</title>
+      <description>&lt;div class="content"&gt;
+                                                                    
+                                                        &lt;p&gt;&lt;img alt="" height="468" src="https://oscimg.oschina.net/oscnet//022b124220ead36d2a012eb7f97857ce.png" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p style="color:#333333; margin-left:0; margin-right:0; text-align:left"&gt;ScreenCapture&amp;nbsp;截图工具&amp;nbsp;&lt;strong&gt;体积小（8M 左右）&lt;/strong&gt;、仅一个可执行文件，无需安装，不依赖任何动态链接库。&lt;/p&gt; 
+&lt;p style="color:#333333; margin-left:0; margin-right:0; text-align:left"&gt;运行速度快、内存占用低、CPU 使用率低。&lt;/p&gt; 
+&lt;p style="color:#333333; margin-left:0; margin-right:0; text-align:left"&gt;开源地址：&lt;a href="https://gitee.com/horsejs_admin/ScreenCapture"&gt;https://gitee.com/horsejs_admin/ScreenCapture&lt;/a&gt;&lt;/p&gt; 
+&lt;hr&gt; 
+&lt;p&gt;近 9 个版本的更新内容如下：&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt;增强：改进绘制标号元素的用户体验： 
+  &lt;ul&gt; 
+   &lt;li&gt;鼠标按下即绘制一个默认大小的标号；&lt;/li&gt; 
+   &lt;li&gt;设置独立的移动标号元素的 Dragger（标号正中心）；&lt;/li&gt; 
+   &lt;li&gt;设置独立的改变大小的 Dragger；&lt;/li&gt; 
+   &lt;li&gt;设置独立的改变箭头位置的 Dragger；&lt;/li&gt; 
+  &lt;/ul&gt; &lt;/li&gt; 
+ &lt;li&gt;增强：允许通过命令行控制工具栏各个按钮的位置、是否显示等： 
+  &lt;ul&gt; 
+   &lt;li&gt;指令：--tool:"rect,ellipse,arrow,number,line,text,mosaic,eraser,|,undo,redo,|,pin,clipboard,save,close"&lt;/li&gt; 
+  &lt;/ul&gt; &lt;/li&gt; 
+ &lt;li&gt;增强：截长图/滚动截图指令：--cap:long&lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;p&gt;&lt;img height="592" src="https://oscimg.oschina.net/oscnet/up-48430184c33cb5918d43692c1d91214b88b.png" width="1016" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt;修复：跨屏截图在特殊情况下无法覆盖全屏区域的问题。&lt;/li&gt; 
+ &lt;li&gt;修复：工具栏按钮显示 tool tip 时，有时会导致 Hover 样式失效。&lt;/li&gt; 
+ &lt;li&gt;修复：&lt;span style="background-color:#ffffff; color:#1f2328"&gt;--tools 指令传入的按钮与实际所能控制的按钮不符时，导致按钮出现错乱的问题。&lt;/span&gt;&lt;/li&gt; 
+ &lt;li&gt;&lt;span style="background-color:#ffffff; color:#1f2328"&gt;修复：&lt;/span&gt;绘制标号①，再 undo 此标号，再绘制新的标号，标号数字应该还是①，不应该是②。&lt;/li&gt; 
+ &lt;li&gt;修复：undo 元素之后，再绘制新元素时应该先删除 undo 的元素。&lt;/li&gt; 
+ &lt;li&gt;修复：主工具条位于截图区域内部或截图区域顶部时，显示子工具条，子工具条位置不准确的问题。&lt;/li&gt; 
+ &lt;li&gt;修复：Ctrl+H 与 Ctrl+R 快捷键的行为搞反了的问题&lt;/li&gt; 
+ &lt;li&gt;修复：工具条位置不准的问题（工具条不会自动寻找剩余空间定位）。&lt;/li&gt; 
+ &lt;li&gt;修复：在 Win11 下无法通过命令行钉住剪切板内的图像的问题&lt;/li&gt; 
+ &lt;li&gt;优化：保存文件，点击文件保存对话框的取消按钮，应用不应退出。&lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;优化：绘制元素时优先使用红色。绘制箭头、标号元素时默认使用填充效果。&lt;/p&gt; &lt;/li&gt; 
+&lt;/ul&gt;
+                                                                                &lt;/div&gt;
+                                                                            </description>
+      <link>https://www.oschina.net/news/350353/screen-capture-2-2-25</link>
+      <guid isPermaLink="false">https://www.oschina.net/news/350353/screen-capture-2-2-25</guid>
+      <pubDate>Sun, 11 May 2025 02:28:00 GMT</pubDate>
+      <author>来源: 投稿</author>
+    </item>
     <item>
       <title>前端构建神器 Parcel 大「瘦身」：依赖项削减 25%，安装体积砍半！</title>
       <description>&lt;div class="content"&gt;
@@ -31,7 +181,7 @@
                                                                             </description>
       <link>https://www.oschina.net/news/350233/parceljs-2-5-0</link>
       <guid isPermaLink="false">https://www.oschina.net/news/350233/parceljs-2-5-0</guid>
-      <pubDate>Sun, 11 May 2025 07:24:00 GMT</pubDate>
+      <pubDate>Sat, 10 May 2025 07:24:00 GMT</pubDate>
       <author>来源: 投稿</author>
     </item>
     <item>
@@ -67,7 +217,7 @@
                                                                             </description>
       <link>https://www.oschina.net/news/350196/go-carbon-2-6-5</link>
       <guid isPermaLink="false">https://www.oschina.net/news/350196/go-carbon-2-6-5</guid>
-      <pubDate>Sun, 11 May 2025 04:21:00 GMT</pubDate>
+      <pubDate>Sat, 10 May 2025 04:21:00 GMT</pubDate>
       <author>来源: 投稿</author>
     </item>
     <item>
@@ -165,7 +315,7 @@
                                                                             </description>
       <link>https://www.oschina.net/news/350184/aiflowy-1-0-2-released</link>
       <guid isPermaLink="false">https://www.oschina.net/news/350184/aiflowy-1-0-2-released</guid>
-      <pubDate>Sun, 11 May 2025 03:29:00 GMT</pubDate>
+      <pubDate>Sat, 10 May 2025 03:29:00 GMT</pubDate>
       <author>来源: 投稿</author>
     </item>
     <item>
@@ -340,7 +490,7 @@
                                                                             </description>
       <link>https://www.oschina.net/news/350183/cherry-studio-1-3-3</link>
       <guid isPermaLink="false">https://www.oschina.net/news/350183/cherry-studio-1-3-3</guid>
-      <pubDate>Sun, 11 May 2025 03:27:00 GMT</pubDate>
+      <pubDate>Sat, 10 May 2025 03:27:00 GMT</pubDate>
       <author>来源: OSCHINA</author>
     </item>
     <item>
@@ -392,7 +542,7 @@
                                                                             </description>
       <link>https://www.oschina.net/news/350177/intellij-idea-2025-2-eap</link>
       <guid isPermaLink="false">https://www.oschina.net/news/350177/intellij-idea-2025-2-eap</guid>
-      <pubDate>Sun, 11 May 2025 03:12:00 GMT</pubDate>
+      <pubDate>Sat, 10 May 2025 03:12:00 GMT</pubDate>
       <author>来源: OSCHINA</author>
     </item>
     <item>
@@ -528,7 +678,7 @@
                                                                             </description>
       <link>https://www.oschina.net/news/350176/nocobase-updated</link>
       <guid isPermaLink="false">https://www.oschina.net/news/350176/nocobase-updated</guid>
-      <pubDate>Sun, 11 May 2025 03:11:00 GMT</pubDate>
+      <pubDate>Sat, 10 May 2025 03:11:00 GMT</pubDate>
       <author>来源: 投稿</author>
     </item>
     <item>
@@ -553,7 +703,7 @@
                                                                             </description>
       <link>https://www.oschina.net/news/350169/electron-36-2-1-released</link>
       <guid isPermaLink="false">https://www.oschina.net/news/350169/electron-36-2-1-released</guid>
-      <pubDate>Sun, 11 May 2025 02:53:00 GMT</pubDate>
+      <pubDate>Sat, 10 May 2025 02:53:00 GMT</pubDate>
       <author>来源: OSCHINA</author>
     </item>
     <item>
@@ -689,7 +839,7 @@
                                                                             </description>
       <link>https://www.oschina.net/news/350150/wow-5-13-5-released</link>
       <guid isPermaLink="false">https://www.oschina.net/news/350150/wow-5-13-5-released</guid>
-      <pubDate>Sun, 11 May 2025 01:45:00 GMT</pubDate>
+      <pubDate>Sat, 10 May 2025 01:45:00 GMT</pubDate>
       <author>来源: 投稿</author>
     </item>
     <item>
@@ -747,7 +897,7 @@
                                                                             </description>
       <link>https://www.oschina.net/news/350096/dwsurvey-updated</link>
       <guid isPermaLink="false">https://www.oschina.net/news/350096/dwsurvey-updated</guid>
-      <pubDate>Sat, 10 May 2025 11:44:00 GMT</pubDate>
+      <pubDate>Fri, 09 May 2025 11:44:00 GMT</pubDate>
       <author>来源: 投稿</author>
     </item>
     <item>
@@ -765,7 +915,7 @@
                                                                             </description>
       <link>https://www.oschina.net/news/350056</link>
       <guid isPermaLink="false">https://www.oschina.net/news/350056</guid>
-      <pubDate>Sat, 10 May 2025 09:10:00 GMT</pubDate>
+      <pubDate>Fri, 09 May 2025 09:10:00 GMT</pubDate>
       <author>来源: 投稿</author>
     </item>
     <item>
@@ -802,7 +952,7 @@
                                                                             </description>
       <link>https://www.oschina.net/news/350038</link>
       <guid isPermaLink="false">https://www.oschina.net/news/350038</guid>
-      <pubDate>Sat, 10 May 2025 08:19:00 GMT</pubDate>
+      <pubDate>Fri, 09 May 2025 08:19:00 GMT</pubDate>
       <author>来源: 投稿</author>
     </item>
     <item>
@@ -828,7 +978,7 @@
                                                                             </description>
       <link>https://www.oschina.net/news/350023/eclipse-vert-x-5-released</link>
       <guid isPermaLink="false">https://www.oschina.net/news/350023/eclipse-vert-x-5-released</guid>
-      <pubDate>Sat, 10 May 2025 07:06:00 GMT</pubDate>
+      <pubDate>Fri, 09 May 2025 07:06:00 GMT</pubDate>
       <author>来源: 投稿</author>
     </item>
     <item>
@@ -853,7 +1003,7 @@
                                                                             </description>
       <link>https://www.oschina.net/news/349990/inkscape-1-4-2-released</link>
       <guid isPermaLink="false">https://www.oschina.net/news/349990/inkscape-1-4-2-released</guid>
-      <pubDate>Sat, 10 May 2025 03:02:00 GMT</pubDate>
+      <pubDate>Fri, 09 May 2025 03:02:00 GMT</pubDate>
       <author>来源: OSCHINA</author>
     </item>
     <item>
@@ -882,7 +1032,7 @@
                                                                             </description>
       <link>https://www.oschina.net/news/349973/therouter-1-2-4-released</link>
       <guid isPermaLink="false">https://www.oschina.net/news/349973/therouter-1-2-4-released</guid>
-      <pubDate>Sat, 10 May 2025 02:04:00 GMT</pubDate>
+      <pubDate>Fri, 09 May 2025 02:04:00 GMT</pubDate>
       <author>来源: 投稿</author>
     </item>
     <item>
@@ -907,7 +1057,7 @@
                                                                             </description>
       <link>https://www.oschina.net/news/349969/crabc-3-2-released</link>
       <guid isPermaLink="false">https://www.oschina.net/news/349969/crabc-3-2-released</guid>
-      <pubDate>Sat, 10 May 2025 01:51:00 GMT</pubDate>
+      <pubDate>Fri, 09 May 2025 01:51:00 GMT</pubDate>
       <author>来源: 投稿</author>
     </item>
     <item>
@@ -927,7 +1077,7 @@
                                                                             </description>
       <link>https://www.oschina.net/news/349964/kom-0-2-39-released</link>
       <guid isPermaLink="false">https://www.oschina.net/news/349964/kom-0-2-39-released</guid>
-      <pubDate>Sat, 10 May 2025 01:11:00 GMT</pubDate>
+      <pubDate>Fri, 09 May 2025 01:11:00 GMT</pubDate>
       <author>来源: 投稿</author>
     </item>
     <item>
@@ -947,416 +1097,7 @@
                                                                             </description>
       <link>https://www.oschina.net/news/349963/k8m-0-0-111-released</link>
       <guid isPermaLink="false">https://www.oschina.net/news/349963/k8m-0-0-111-released</guid>
-      <pubDate>Sat, 10 May 2025 01:10:00 GMT</pubDate>
-      <author>来源: 投稿</author>
-    </item>
-    <item>
-      <title>宇连通 IM 之数据加密设计</title>
-      <description>&lt;div class="content"&gt;
-                                                                    
-                                                        &lt;p&gt;&lt;a href="https://gitee.com/ldh123/imapp"&gt;宇连通 IM&lt;/a&gt;的数据安全分传输安全和存储安全。&lt;/p&gt; 
-&lt;p&gt;传输安全是客户发起聊天时，数据在传输过程中是安全的。存储安全是数据保存在服务端和客户端也是安全的。&lt;/p&gt; 
-&lt;p&gt;传输安全从两个角度进行设计，一是使用 TLS/SSL 协议传输，二是对数据传输时还进行加密，如：对称加密和非对账加密。&lt;/p&gt; 
-&lt;p&gt;存储安全也从两个角度进行设计：一是对数据进行加密存储，如：对称加密和非对账加密。二是设置数据失效时间，失效的数据会被自动清理。&lt;br&gt; &amp;nbsp;&amp;nbsp;&lt;br&gt; &amp;nbsp; IM 的数据加密有如下几种方式：&lt;br&gt; &amp;nbsp; 1，不加密模式&lt;br&gt; &amp;nbsp; &amp;nbsp; 数据明文传输，明文存储。对聊天信息不非常重要的信息采用这种模式。&lt;br&gt; &amp;nbsp; 2，信任模式&lt;br&gt; &amp;nbsp; &amp;nbsp; 数据加密传输，加密存储。但是用户信任平台，平台存储会话的秘钥，这种模式还分一下几种小类：&lt;br&gt; &amp;nbsp;&amp;nbsp; &amp;nbsp;a, 对称加密通信，明文存储。&lt;br&gt; &amp;nbsp;&amp;nbsp; &amp;nbsp;b, 对称加密通信，对称加密存储。&lt;br&gt; &amp;nbsp;&amp;nbsp; &amp;nbsp;c, 非对称加密通信，非对称加密存储。&lt;br&gt; &amp;nbsp; 3, 自管理模式&lt;br&gt; &amp;nbsp; &amp;nbsp; 数据通信和存储都进行加密。但是用户需要自己管理秘钥的密码。&lt;br&gt; &amp;nbsp;&amp;nbsp; &amp;nbsp;可分以下几个模式：&lt;br&gt; &amp;nbsp;&amp;nbsp; &amp;nbsp;a, 秘钥授权。用户进行 p2p 聊天或群聊天，需要密码登录，登录后，彼此进行秘钥授权，授权成功才能进行发送消息以及查看消息，未得到授权秘钥用户无法查看对方的消息。&lt;br&gt; &amp;nbsp;&amp;nbsp; &amp;nbsp;b, 共建秘钥的密码模式。聊天用户都输入正确密码后，聊天功能才能使用，有一方密码不正确，聊天就无法进行并都无法进行解密。&lt;br&gt; &amp;nbsp;&amp;nbsp; &amp;nbsp;c, U 盾模式。聊天发起人建立一批 U 盾，并分发给其他用户，持有 U 盾用户才能进行通信和查看聊天信息。&lt;br&gt; &amp;nbsp;&amp;nbsp; &amp;nbsp;&lt;br&gt; &amp;nbsp;以上三种模式是都可以选择的，如 A，B 用户聊天可以建立 7 中通信会话， A，B 根据场景需要，选择其中任意一种进行聊天&lt;br&gt; &amp;nbsp;&amp;nbsp; &amp;nbsp;&lt;br&gt; &amp;nbsp; IM 的消息增加存储时效，有如下几种选择：&lt;br&gt; &amp;nbsp; &amp;nbsp;a, 客户端永久存储。但是客户可以主动发起删除&lt;br&gt; &amp;nbsp; &amp;nbsp;b, 对指定聊天会话增加存储失效时间：&lt;br&gt; &amp;nbsp; &amp;nbsp; &amp;nbsp;b0: 指定分钟（阅读即焚）&lt;br&gt; &amp;nbsp; &amp;nbsp; &amp;nbsp;b1: 指定小时（小于 24 小时）&lt;br&gt; &amp;nbsp;&amp;nbsp; &amp;nbsp; b2: 聊天会话期间存储，聊天软件关闭，自动清理会话消息。&lt;br&gt; &amp;nbsp;&amp;nbsp; &amp;nbsp; b3: 指定天数&lt;/p&gt;
-                                                                                &lt;/div&gt;
-                                                                            </description>
-      <link>https://www.oschina.net/news/349943</link>
-      <guid isPermaLink="false">https://www.oschina.net/news/349943</guid>
-      <pubDate>Fri, 09 May 2025 13:54:00 GMT</pubDate>
-      <author>来源: 投稿</author>
-    </item>
-    <item>
-      <title>微语 0.7.8 发布，支持全文+向量混合检索</title>
-      <description>&lt;div class="content"&gt;
-                                                                    
-                                                        &lt;p style="color:#40485b; margin-left:0; margin-right:0; text-align:left"&gt;企业级多租户团队协作工具，免费开源 8 件套：企业 IM、在线客服、企业知识库/帮助文档、客户之声、工单系统、AI 对话、工作流、项目管理。&lt;/p&gt; 
-&lt;h2&gt;语言&lt;/h2&gt; 
-&lt;ul&gt; 
- &lt;li&gt;&lt;a href="https://gitee.com/270580156/weiyu/blob/main/README.md"&gt;English&lt;/a&gt;&lt;/li&gt; 
- &lt;li&gt;&lt;a href="https://gitee.com/270580156/weiyu/blob/main/README.zh.md"&gt;中文&lt;/a&gt;&lt;/li&gt; 
-&lt;/ul&gt; 
-&lt;p style="color:#40485b; margin-left:0; margin-right:0; text-align:left"&gt;&lt;img alt="weiyu" src="https://oscimg.oschina.net/oscnet//dd775a511720295a5e0f6be56db7edc0.png" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;p style="color:#40485b; margin-left:0; margin-right:0; text-align:left"&gt;&lt;img alt="chat" src="https://oscimg.oschina.net/oscnet//adb5b8af0767623b2509c84fa7f073af.png" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;h2&gt;介绍&lt;/h2&gt; 
-&lt;h3&gt;&lt;a href="https://gitee.com/270580156/weiyu/blob/main/modules/team/readme.zh.md"&gt;企业 IM&lt;/a&gt;&lt;/h3&gt; 
-&lt;ul&gt; 
- &lt;li&gt;局域网即时通讯&lt;/li&gt; 
- &lt;li&gt;企业成员管理&lt;/li&gt; 
- &lt;li&gt;聊天记录监控&lt;/li&gt; 
- &lt;li&gt;...&lt;/li&gt; 
-&lt;/ul&gt; 
-&lt;h3&gt;&lt;a href="https://gitee.com/270580156/weiyu/blob/main/modules/service/readme.zh.md"&gt;全渠道客服&lt;/a&gt;&lt;/h3&gt; 
-&lt;ul&gt; 
- &lt;li&gt;多渠道接入&lt;/li&gt; 
- &lt;li&gt;人工客服&lt;/li&gt; 
- &lt;li&gt;客服 Agent 智能体，对接自有数据，自动执行操作&lt;/li&gt; 
- &lt;li&gt;...&lt;/li&gt; 
-&lt;/ul&gt; 
-&lt;h3&gt;&lt;a href="https://gitee.com/270580156/weiyu/blob/main/modules/kbase/readme.zh.md"&gt;知识库&lt;/a&gt;&lt;/h3&gt; 
-&lt;ul&gt; 
- &lt;li&gt;对接大模型&lt;/li&gt; 
- &lt;li&gt;自定义知识库&lt;/li&gt; 
- &lt;li&gt;Function Calling&lt;/li&gt; 
- &lt;li&gt;Mcp&lt;/li&gt; 
- &lt;li&gt;...&lt;/li&gt; 
-&lt;/ul&gt; 
-&lt;h3&gt;&lt;a href="https://gitee.com/270580156/weiyu/blob/main/modules/ticket/readme.zh.md"&gt;工单系统&lt;/a&gt;&lt;/h3&gt; 
-&lt;ul&gt; 
- &lt;li&gt;工单管理&lt;/li&gt; 
- &lt;li&gt;工单 SLA 管理&lt;/li&gt; 
- &lt;li&gt;工单统计和报表&lt;/li&gt; 
- &lt;li&gt;...&lt;/li&gt; 
-&lt;/ul&gt; 
-&lt;h3&gt;&lt;a href="https://gitee.com/270580156/weiyu/blob/main/modules/ai/readme.zh.md"&gt;AI Agent&lt;/a&gt;&lt;/h3&gt; 
-&lt;ul&gt; 
- &lt;li&gt;Ollama/DeepSeek/ZhipuAI/...&lt;/li&gt; 
- &lt;li&gt;智能体&lt;/li&gt; 
- &lt;li&gt;工作流&lt;/li&gt; 
- &lt;li&gt;...&lt;/li&gt; 
-&lt;/ul&gt; 
-&lt;h3&gt;&lt;a href="https://gitee.com/270580156/weiyu/blob/main/modules/voc/readme.zh.md"&gt;客户之声&lt;/a&gt;&lt;/h3&gt; 
-&lt;ul&gt; 
- &lt;li&gt;意见反馈&lt;/li&gt; 
- &lt;li&gt;服务投诉&lt;/li&gt; 
- &lt;li&gt;问卷调查&lt;/li&gt; 
- &lt;li&gt;...&lt;/li&gt; 
-&lt;/ul&gt; 
-&lt;h3&gt;&lt;a href="https://gitee.com/270580156/weiyu/blob/main/plugins/kanban/readme.zh.md"&gt;项目看板&lt;/a&gt;&lt;/h3&gt; 
-&lt;ul&gt; 
- &lt;li&gt;待办 todo 卡片&lt;/li&gt; 
- &lt;li&gt;日报/周报&lt;/li&gt; 
- &lt;li&gt;统计&lt;/li&gt; 
- &lt;li&gt;...&lt;/li&gt; 
-&lt;/ul&gt; 
-&lt;h3&gt;工作流&lt;/h3&gt; 
-&lt;ul&gt; 
- &lt;li&gt;自定义表单&lt;/li&gt; 
- &lt;li&gt;自定义流程&lt;/li&gt; 
- &lt;li&gt;工单流程可视化&lt;/li&gt; 
- &lt;li&gt;...&lt;/li&gt; 
-&lt;/ul&gt; 
-&lt;h3&gt;OpenManus&lt;/h3&gt; 
-&lt;ul&gt; 
- &lt;li&gt;浏览器自动化执行&lt;/li&gt; 
-&lt;/ul&gt; 
-&lt;h3&gt;视频会议&lt;/h3&gt; 
-&lt;ul&gt; 
- &lt;li&gt;集成 jitsi&lt;/li&gt; 
-&lt;/ul&gt; 
-&lt;h3&gt;&lt;a href="https://gitee.com/270580156/weiyu/blob/main/modules/social/readme.zh.md"&gt;社交群组&lt;/a&gt;&lt;/h3&gt; 
-&lt;ul&gt; 
- &lt;li&gt;类似 Discord&lt;/li&gt; 
- &lt;li&gt;...&lt;/li&gt; 
-&lt;/ul&gt; 
-&lt;h3&gt;多租户&lt;/h3&gt; 
-&lt;ul&gt; 
- &lt;li&gt;多租户管理&lt;/li&gt; 
- &lt;li&gt;租户隔离&lt;/li&gt; 
- &lt;li&gt;租户统计&lt;/li&gt; 
- &lt;li&gt;...&lt;/li&gt; 
-&lt;/ul&gt; 
-&lt;h2&gt;Docker 快速开始&lt;/h2&gt; 
-&lt;h3&gt;方法一：克隆项目并启动 docker compose 容器，需要另行安装 ollama，默认使用 qwen3:0.6b 模型&lt;/h3&gt; 
-&lt;div&gt; 
- &lt;pre&gt;&lt;code&gt;git &lt;span style="color:#0086b3"&gt;clone&lt;/span&gt; https://gitee.com/270580156/weiyu.git &amp;amp;&amp;amp; &lt;span style="color:#0086b3"&gt;cd&lt;/span&gt; weiyu/deploy/docker &amp;amp;&amp;amp; docker compose -p weiyu -f docker-compose.yaml up -d
-&lt;/code&gt;&lt;/pre&gt; 
- &lt;div&gt;
-  &amp;nbsp;
- &lt;/div&gt; 
-&lt;/div&gt; 
-&lt;h4&gt;因项目默认使用 ollama qwen3:0.6b 模型，所以需要提前拉取模型。配置文件中可以配置其他模型，如 deepseek-r1 等&lt;/h4&gt; 
-&lt;div&gt; 
- &lt;pre&gt;&lt;code&gt;&lt;em&gt;# 对话 Chat 模型&lt;/em&gt;
-ollama pull qwen3:0.6b
-&lt;em&gt;# 嵌入 Embedding 模型&lt;/em&gt;
-ollama pull bge-m3:latest
-&lt;em&gt;# 重新排序 Rerank 模型&lt;/em&gt;
-ollama pull linux6200/bge-reranker-v2-m3:latest
-&lt;em&gt;# 或者从 huggingface 下载模型&lt;/em&gt;
-&lt;em&gt;# ollama pull hf.co/&amp;lt;username&amp;gt;/&amp;lt;model-repository&amp;gt;&lt;/em&gt;
-&lt;/code&gt;&lt;/pre&gt; 
- &lt;div&gt;
-  &amp;nbsp;
- &lt;/div&gt; 
-&lt;/div&gt; 
-&lt;h3&gt;方法二：使用 docker compose ollama，默认安装 ollama，默认使用 qwen3:0.6b 模型&lt;/h3&gt; 
-&lt;div&gt; 
- &lt;pre&gt;&lt;code&gt;git &lt;span style="color:#0086b3"&gt;clone&lt;/span&gt; https://gitee.com/270580156/weiyu.git &amp;amp;&amp;amp; &lt;span style="color:#0086b3"&gt;cd&lt;/span&gt; weiyu/deploy/docker &amp;amp;&amp;amp; docker compose -p weiyu -f docker-compose-ollama.yaml up -d
-&lt;/code&gt;&lt;/pre&gt; 
- &lt;div&gt;
-  &amp;nbsp;
- &lt;/div&gt; 
-&lt;/div&gt; 
-&lt;h4&gt;docker 拉取 ollama 模型。配置文件中可以配置其他模型，如 deepseek-r1 等&lt;/h4&gt; 
-&lt;div&gt; 
- &lt;pre&gt;&lt;code&gt;&lt;em&gt;# 对话模型&lt;/em&gt;
-docker &lt;span style="color:#0086b3"&gt;exec&lt;/span&gt; ollama-bytedesk ollama pull qwen3:0.6b
-&lt;em&gt;# 嵌入模型&lt;/em&gt;
-docker &lt;span style="color:#0086b3"&gt;exec&lt;/span&gt; ollama-bytedesk ollama pull bge-m3:latest
-&lt;em&gt;# 重新排序 Rerank 模型&lt;/em&gt;
-docker &lt;span style="color:#0086b3"&gt;exec&lt;/span&gt; ollama-bytedesk ollama pull linux6200/bge-reranker-v2-m3:latest
-&lt;em&gt;# 或者从 huggingface 下载模型&lt;/em&gt;
-&lt;em&gt;# docker exec ollama-bytedesk ollama pull hf.co/&amp;lt;username&amp;gt;/&amp;lt;model-repository&amp;gt;&lt;/em&gt;
-&lt;/code&gt;&lt;/pre&gt; 
- &lt;div&gt;
-  &amp;nbsp;
- &lt;/div&gt; 
-&lt;/div&gt; 
-&lt;h4&gt;停止容器&lt;/h4&gt; 
-&lt;div&gt; 
- &lt;pre&gt;&lt;code&gt;docker compose -p weiyu -f docker-compose.yaml stop
-&lt;/code&gt;&lt;/pre&gt; 
- &lt;div&gt;
-  &amp;nbsp;
- &lt;/div&gt; 
-&lt;/div&gt; 
-&lt;h4&gt;修改配置，否则上传图片、文件和知识库无法正常显示&lt;/h4&gt; 
-&lt;ul&gt; 
- &lt;li&gt;修改&lt;span&gt;&amp;nbsp;&lt;/span&gt;&lt;code&gt;docker-compose.yaml&lt;/code&gt;&lt;span&gt;&amp;nbsp;&lt;/span&gt;文件，或&lt;span&gt;&amp;nbsp;&lt;/span&gt;&lt;code&gt;docker-compose-ollama.yaml&lt;/code&gt;&lt;span&gt;&amp;nbsp;&lt;/span&gt;文件，修改以下配置项：&lt;/li&gt; 
-&lt;/ul&gt; 
-&lt;div&gt; 
- &lt;pre&gt;&lt;code&gt;&lt;em&gt;# 请将服务器 127.0.0.1 替换为你的服务器 ip&lt;/em&gt;
-BYTEDESK_UPLOAD_URL: http://127.0.0.1:9003
-BYTEDESK_KBASE_API_URL: http://127.0.0.1:9003
-&lt;/code&gt;&lt;/pre&gt; 
- &lt;div&gt;
-  &amp;nbsp;
- &lt;/div&gt; 
-&lt;/div&gt; 
-&lt;h3&gt;方法三：宝塔面板&lt;/h3&gt; 
-&lt;ul&gt; 
- &lt;li&gt;&lt;a href="https://gitee.com/link?target=https%3A%2F%2Fwww.weiyuai.cn%2Fdocs%2Fzh-CN%2Fdocs%2Fdeploy%2Fbaota" target="_blank"&gt;宝塔面板部署&lt;/a&gt;&lt;/li&gt; 
-&lt;/ul&gt; 
-&lt;h3&gt;方法四：源码启动&lt;/h3&gt; 
-&lt;ul&gt; 
- &lt;li&gt;&lt;a href="https://gitee.com/link?target=https%3A%2F%2Fwww.weiyuai.cn%2Fdocs%2Fzh-CN%2Fdocs%2Fdeploy%2Fsource" target="_blank"&gt;源码启动&lt;/a&gt;&lt;/li&gt; 
-&lt;/ul&gt; 
-&lt;h2&gt;演示&lt;/h2&gt; 
-&lt;p style="color:#40485b; margin-left:0; margin-right:0; text-align:left"&gt;本地预览&lt;/p&gt; 
-&lt;div&gt; 
- &lt;pre&gt;&lt;code&gt;&lt;em&gt;# 请将 127.0.0.1 替换为你的服务器 ip&lt;/em&gt;
-http://127.0.0.1:9003/
-&lt;em&gt;# 开放端口：9003, 9885&lt;/em&gt;
-默认用户名: admin@email.com
-默认密码: admin
-&lt;/code&gt;&lt;/pre&gt; 
- &lt;div&gt;
-  &amp;nbsp;
- &lt;/div&gt; 
-&lt;/div&gt; 
-&lt;h2&gt;架构图&lt;/h2&gt; 
-&lt;ul&gt; 
- &lt;li&gt;&lt;a href="https://gitee.com/link?target=https%3A%2F%2Fwww.weiyuai.cn%2Farchitecture.html" target="_blank"&gt;架构图&lt;/a&gt;&lt;/li&gt; 
-&lt;/ul&gt; 
-&lt;h2&gt;开源客户端&lt;/h2&gt; 
-&lt;ul&gt; 
- &lt;li&gt;&lt;a href="https://gitee.com/link?target=https%3A%2F%2Fgithub.com%2FBytedesk%2Fbytedesk-desktop" target="_blank"&gt;桌面客户端&lt;/a&gt;&lt;/li&gt; 
- &lt;li&gt;&lt;a href="https://gitee.com/link?target=https%3A%2F%2Fgithub.com%2FBytedesk%2Fbytedesk-mobile" target="_blank"&gt;移动客户端&lt;/a&gt;&lt;/li&gt; 
-&lt;/ul&gt; 
-&lt;h2&gt;开源 Demo + SDK&lt;/h2&gt; 
-&lt;table cellspacing="0" style="-webkit-text-stroke-width:0px; background-color:#ffffff; border-collapse:collapse; border-spacing:0px; box-sizing:border-box; color:#40485b; display:block; font-family:-apple-system,&amp;quot;system-ui&amp;quot;,&amp;quot;Segoe UI&amp;quot;,Helvetica,Arial,&amp;quot;Apple Color Emoji&amp;quot;,&amp;quot;Segoe UI Emoji&amp;quot;,&amp;quot;Segoe UI Symbol&amp;quot;,&amp;quot;Liberation Sans&amp;quot;,&amp;quot;PingFang SC&amp;quot;,&amp;quot;Microsoft YaHei&amp;quot;,&amp;quot;Hiragino Sans GB&amp;quot;,&amp;quot;Wenquanyi Micro Hei&amp;quot;,&amp;quot;WenQuanYi Zen Hei&amp;quot;,&amp;quot;ST Heiti&amp;quot;,SimHei,SimSun,&amp;quot;WenQuanYi Zen Hei Sharp&amp;quot;,sans-serif; font-size:16px; font-style:normal; font-variant-caps:normal; font-variant-ligatures:normal; font-weight:400; letter-spacing:normal; margin-bottom:16px; margin-top:0px; orphans:2; overflow:auto; text-align:left; text-decoration-color:initial; text-decoration-style:initial; text-decoration-thickness:initial; text-transform:none; white-space:normal; widows:2; width:856px; word-break:initial; word-spacing:0px"&gt; 
- &lt;tbody&gt; 
-  &lt;tr&gt; 
-   &lt;th&gt;Project&lt;/th&gt; 
-   &lt;th&gt;Description&lt;/th&gt; 
-   &lt;th&gt;Forks&lt;/th&gt; 
-   &lt;th&gt;Stars&lt;/th&gt; 
-  &lt;/tr&gt; 
- &lt;/tbody&gt; 
- &lt;tbody&gt; 
-  &lt;tr&gt; 
-   &lt;td style="border-color:#dfe2e5; border-style:solid; border-width:1px"&gt;&lt;a href="https://gitee.com/link?target=https%3A%2F%2Fgithub.com%2Fbytedesk%2Fbytedesk-swift" target="_blank"&gt;iOS&lt;/a&gt;&lt;/td&gt; 
-   &lt;td style="border-color:#dfe2e5; border-style:solid; border-width:1px"&gt;iOS&lt;/td&gt; 
-   &lt;td style="border-color:#dfe2e5; border-style:solid; border-width:1px"&gt;&lt;img alt="GitHub forks" src="https://oscimg.oschina.net/oscnet//37a82cb0a1279f15e007c2ee53b41e14.jpg" referrerpolicy="no-referrer"&gt;&lt;/td&gt; 
-   &lt;td style="border-color:#dfe2e5; border-style:solid; border-width:1px"&gt;&lt;img alt="GitHub Repo stars" src="https://oscimg.oschina.net/oscnet//7b223728a27f17e42c52861c0542b043.jpg" referrerpolicy="no-referrer"&gt;&lt;/td&gt; 
-  &lt;/tr&gt; 
-  &lt;tr&gt; 
-   &lt;td style="border-color:#dfe2e5; border-style:solid; border-width:1px"&gt;&lt;a href="https://gitee.com/link?target=https%3A%2F%2Fgithub.com%2Fbytedesk%2Fbytedesk-android" target="_blank"&gt;Android&lt;/a&gt;&lt;/td&gt; 
-   &lt;td style="border-color:#dfe2e5; border-style:solid; border-width:1px"&gt;Android&lt;/td&gt; 
-   &lt;td style="border-color:#dfe2e5; border-style:solid; border-width:1px"&gt;&lt;img alt="GitHub forks" src="https://oscimg.oschina.net/oscnet//06a01e3dac4defca6711bfcafdce14fd.jpg" referrerpolicy="no-referrer"&gt;&lt;/td&gt; 
-   &lt;td style="border-color:#dfe2e5; border-style:solid; border-width:1px"&gt;&lt;img alt="GitHub Repo stars" src="https://oscimg.oschina.net/oscnet//c5ae4a2e9c269cfbbbd3ac52ef65881f.jpg" referrerpolicy="no-referrer"&gt;&lt;/td&gt; 
-  &lt;/tr&gt; 
-  &lt;tr&gt; 
-   &lt;td style="border-color:#dfe2e5; border-style:solid; border-width:1px"&gt;&lt;a href="https://gitee.com/link?target=https%3A%2F%2Fgithub.com%2Fbytedesk%2Fbytedesk-flutter" target="_blank"&gt;Flutter&lt;/a&gt;&lt;/td&gt; 
-   &lt;td style="border-color:#dfe2e5; border-style:solid; border-width:1px"&gt;Flutter&lt;/td&gt; 
-   &lt;td style="border-color:#dfe2e5; border-style:solid; border-width:1px"&gt;&lt;img alt="GitHub forks" src="https://oscimg.oschina.net/oscnet//e5eb1200dc4ff436a4d2533201ad8c79.jpg" referrerpolicy="no-referrer"&gt;&lt;/td&gt; 
-   &lt;td style="border-color:#dfe2e5; border-style:solid; border-width:1px"&gt;&lt;img alt="GitHub Repo stars" src="https://oscimg.oschina.net/oscnet//351dafde0e5fdab51f1faf5c10136c15.jpg" referrerpolicy="no-referrer"&gt;&lt;/td&gt; 
-  &lt;/tr&gt; 
-  &lt;tr&gt; 
-   &lt;td style="border-color:#dfe2e5; border-style:solid; border-width:1px"&gt;&lt;a href="https://gitee.com/link?target=https%3A%2F%2Fgithub.com%2Fbytedesk%2Fbytedesk-uniapp" target="_blank"&gt;UniApp&lt;/a&gt;&lt;/td&gt; 
-   &lt;td style="border-color:#dfe2e5; border-style:solid; border-width:1px"&gt;Uniapp&lt;/td&gt; 
-   &lt;td style="border-color:#dfe2e5; border-style:solid; border-width:1px"&gt;&lt;img alt="GitHub forks" src="https://oscimg.oschina.net/oscnet//d4483b2cebf12f03764de4fdcb0d7596.jpg" referrerpolicy="no-referrer"&gt;&lt;/td&gt; 
-   &lt;td style="border-color:#dfe2e5; border-style:solid; border-width:1px"&gt;&lt;img alt="GitHub Repo stars" src="https://oscimg.oschina.net/oscnet//08ccf1092ab46ea8b77cab5e8b1b4752.jpg" referrerpolicy="no-referrer"&gt;&lt;/td&gt; 
-  &lt;/tr&gt; 
-  &lt;tr&gt; 
-   &lt;td style="border-color:#dfe2e5; border-style:solid; border-width:1px"&gt;&lt;a href="https://gitee.com/link?target=https%3A%2F%2Fgithub.com%2Fbytedesk%2Fbytedesk-web" target="_blank"&gt;Web&lt;/a&gt;&lt;/td&gt; 
-   &lt;td style="border-color:#dfe2e5; border-style:solid; border-width:1px"&gt;Vue/React/Angular/Next.js/JQuery/...&lt;/td&gt; 
-   &lt;td style="border-color:#dfe2e5; border-style:solid; border-width:1px"&gt;&lt;img alt="GitHub forks" src="https://oscimg.oschina.net/oscnet//6b791da7853ac4e1b2b86c472bbf7580.jpg" referrerpolicy="no-referrer"&gt;&lt;/td&gt; 
-   &lt;td style="border-color:#dfe2e5; border-style:solid; border-width:1px"&gt;&lt;img alt="GitHub Repo stars" src="https://oscimg.oschina.net/oscnet//1709173731ce310b057270124679a0db.jpg" referrerpolicy="no-referrer"&gt;&lt;/td&gt; 
-  &lt;/tr&gt; 
-  &lt;tr&gt; 
-   &lt;td style="border-color:#dfe2e5; border-style:solid; border-width:1px"&gt;&lt;a href="https://gitee.com/link?target=https%3A%2F%2Fgithub.com%2Fbytedesk%2Fbytedesk-wordpress" target="_blank"&gt;Wordpress&lt;/a&gt;&lt;/td&gt; 
-   &lt;td style="border-color:#dfe2e5; border-style:solid; border-width:1px"&gt;Wordpress&lt;/td&gt; 
-   &lt;td style="border-color:#dfe2e5; border-style:solid; border-width:1px"&gt;&lt;img alt="GitHub forks" src="https://oscimg.oschina.net/oscnet//10085d957f233714c250099c1aa407b9.jpg" referrerpolicy="no-referrer"&gt;&lt;/td&gt; 
-   &lt;td style="border-color:#dfe2e5; border-style:solid; border-width:1px"&gt;&lt;img alt="GitHub Repo stars" src="https://oscimg.oschina.net/oscnet//e2859ef80b3037a263652d59a30c7bf7.jpg" referrerpolicy="no-referrer"&gt;&lt;/td&gt; 
-  &lt;/tr&gt; 
-  &lt;tr&gt; 
-   &lt;td style="border-color:#dfe2e5; border-style:solid; border-width:1px"&gt;&lt;a href="https://gitee.com/link?target=https%3A%2F%2Fgithub.com%2Fbytedesk%2Fbytedesk-woocommerce" target="_blank"&gt;Woocommerce&lt;/a&gt;&lt;/td&gt; 
-   &lt;td style="border-color:#dfe2e5; border-style:solid; border-width:1px"&gt;woocommerce&lt;/td&gt; 
-   &lt;td style="border-color:#dfe2e5; border-style:solid; border-width:1px"&gt;&lt;img alt="GitHub forks" src="https://oscimg.oschina.net/oscnet//b731a4ae50f6ea15229423772bf398a5.jpg" referrerpolicy="no-referrer"&gt;&lt;/td&gt; 
-   &lt;td style="border-color:#dfe2e5; border-style:solid; border-width:1px"&gt;&lt;img alt="GitHub Repo stars" src="https://oscimg.oschina.net/oscnet//86cdab79bd660599a6ebe600b73e9e18.jpg" referrerpolicy="no-referrer"&gt;&lt;/td&gt; 
-  &lt;/tr&gt; 
-  &lt;tr&gt; 
-   &lt;td style="border-color:#dfe2e5; border-style:solid; border-width:1px"&gt;&lt;a href="https://gitee.com/link?target=https%3A%2F%2Fgithub.com%2Fbytedesk%2Fbytedesk-magento" target="_blank"&gt;Magento&lt;/a&gt;&lt;/td&gt; 
-   &lt;td style="border-color:#dfe2e5; border-style:solid; border-width:1px"&gt;Magento&lt;/td&gt; 
-   &lt;td style="border-color:#dfe2e5; border-style:solid; border-width:1px"&gt;&lt;img alt="GitHub forks" src="https://oscimg.oschina.net/oscnet//67c37cb2b76b01a003891773f7c47488.jpg" referrerpolicy="no-referrer"&gt;&lt;/td&gt; 
-   &lt;td style="border-color:#dfe2e5; border-style:solid; border-width:1px"&gt;&lt;img alt="GitHub Repo stars" src="https://oscimg.oschina.net/oscnet//35646b27451caf6502f06ce12441d602.jpg" referrerpolicy="no-referrer"&gt;&lt;/td&gt; 
-  &lt;/tr&gt; 
-  &lt;tr&gt; 
-   &lt;td style="border-color:#dfe2e5; border-style:solid; border-width:1px"&gt;&lt;a href="https://gitee.com/link?target=https%3A%2F%2Fgithub.com%2Fbytedesk%2Fbytedesk-prestashop" target="_blank"&gt;Prestashop&lt;/a&gt;&lt;/td&gt; 
-   &lt;td style="border-color:#dfe2e5; border-style:solid; border-width:1px"&gt;Prestashop&lt;/td&gt; 
-   &lt;td style="border-color:#dfe2e5; border-style:solid; border-width:1px"&gt;&lt;img alt="GitHub forks" src="https://oscimg.oschina.net/oscnet//bcd77fe120367db4fd9bff9642e87796.jpg" referrerpolicy="no-referrer"&gt;&lt;/td&gt; 
-   &lt;td style="border-color:#dfe2e5; border-style:solid; border-width:1px"&gt;&lt;img alt="GitHub Repo stars" src="https://oscimg.oschina.net/oscnet//4dccd058c5ec71c1181c427ba8b1b7f8.jpg" referrerpolicy="no-referrer"&gt;&lt;/td&gt; 
-  &lt;/tr&gt; 
-  &lt;tr&gt; 
-   &lt;td style="border-color:#dfe2e5; border-style:solid; border-width:1px"&gt;&lt;a href="https://gitee.com/link?target=https%3A%2F%2Fgithub.com%2Fbytedesk%2Fbytedesk-shopify" target="_blank"&gt;Shopify&lt;/a&gt;&lt;/td&gt; 
-   &lt;td style="border-color:#dfe2e5; border-style:solid; border-width:1px"&gt;Shopify&lt;/td&gt; 
-   &lt;td style="border-color:#dfe2e5; border-style:solid; border-width:1px"&gt;&lt;img alt="GitHub forks" src="https://oscimg.oschina.net/oscnet//6556f8fec7762dd99518d398cbdddbcc.jpg" referrerpolicy="no-referrer"&gt;&lt;/td&gt; 
-   &lt;td style="border-color:#dfe2e5; border-style:solid; border-width:1px"&gt;&lt;img alt="GitHub Repo stars" src="https://oscimg.oschina.net/oscnet//be22e1c86df2b2eca35f0a940a64f5b5.jpg" referrerpolicy="no-referrer"&gt;&lt;/td&gt; 
-  &lt;/tr&gt; 
-  &lt;tr&gt; 
-   &lt;td style="border-color:#dfe2e5; border-style:solid; border-width:1px"&gt;&lt;a href="https://gitee.com/link?target=https%3A%2F%2Fgithub.com%2Fbytedesk%2Fbytedesk-opencart" target="_blank"&gt;Opencart&lt;/a&gt;&lt;/td&gt; 
-   &lt;td style="border-color:#dfe2e5; border-style:solid; border-width:1px"&gt;Opencart&lt;/td&gt; 
-   &lt;td style="border-color:#dfe2e5; border-style:solid; border-width:1px"&gt;&lt;img alt="GitHub forks" src="https://oscimg.oschina.net/oscnet//cd6bea6f91916b66f867170ab849ab37.jpg" referrerpolicy="no-referrer"&gt;&lt;/td&gt; 
-   &lt;td style="border-color:#dfe2e5; border-style:solid; border-width:1px"&gt;&lt;img alt="GitHub Repo stars" src="https://oscimg.oschina.net/oscnet//b07d2dbfb4bc203775fd6135e50c2f45.jpg" referrerpolicy="no-referrer"&gt;&lt;/td&gt; 
-  &lt;/tr&gt; 
-  &lt;tr&gt; 
-   &lt;td style="border-color:#dfe2e5; border-style:solid; border-width:1px"&gt;&lt;a href="https://gitee.com/link?target=https%3A%2F%2Fgithub.com%2Fbytedesk%2Fbytedesk-laravel" target="_blank"&gt;Laravel&lt;/a&gt;&lt;/td&gt; 
-   &lt;td style="border-color:#dfe2e5; border-style:solid; border-width:1px"&gt;Laravel&lt;/td&gt; 
-   &lt;td style="border-color:#dfe2e5; border-style:solid; border-width:1px"&gt;&lt;img alt="GitHub forks" src="https://oscimg.oschina.net/oscnet//dd402d97299ce0174a351ae250a9c186.jpg" referrerpolicy="no-referrer"&gt;&lt;/td&gt; 
-   &lt;td style="border-color:#dfe2e5; border-style:solid; border-width:1px"&gt;&lt;img alt="GitHub Repo stars" src="https://oscimg.oschina.net/oscnet//932da1a2057d5fec0c002029f3253114.jpg" referrerpolicy="no-referrer"&gt;&lt;/td&gt; 
-  &lt;/tr&gt; 
-  &lt;tr&gt; 
-   &lt;td style="border-color:#dfe2e5; border-style:solid; border-width:1px"&gt;&lt;a href="https://gitee.com/link?target=https%3A%2F%2Fgithub.com%2Fbytedesk%2Fbytedesk-django" target="_blank"&gt;Django&lt;/a&gt;&lt;/td&gt; 
-   &lt;td style="border-color:#dfe2e5; border-style:solid; border-width:1px"&gt;Django&lt;/td&gt; 
-   &lt;td style="border-color:#dfe2e5; border-style:solid; border-width:1px"&gt;&lt;img alt="GitHub forks" src="https://oscimg.oschina.net/oscnet//f70dc546eae01d972cb62f1f9c9759e3.jpg" referrerpolicy="no-referrer"&gt;&lt;/td&gt; 
-   &lt;td style="border-color:#dfe2e5; border-style:solid; border-width:1px"&gt;&lt;img alt="GitHub Repo stars" src="https://oscimg.oschina.net/oscnet//68e428f625ddd489803f5e8b49ba39eb.jpg" referrerpolicy="no-referrer"&gt;&lt;/td&gt; 
-  &lt;/tr&gt; 
- &lt;/tbody&gt; 
-&lt;/table&gt; 
-&lt;h2&gt;链接&lt;/h2&gt; 
-&lt;ul&gt; 
- &lt;li&gt;&lt;a href="https://gitee.com/link?target=https%3A%2F%2Fwww.weiyuai.cn%2Fdownload.html" target="_blank"&gt;下载&lt;/a&gt;&lt;/li&gt; 
- &lt;li&gt;&lt;a href="https://gitee.com/link?target=https%3A%2F%2Fwww.weiyuai.cn%2Fdocs%2Fzh-CN%2F" target="_blank"&gt;文档&lt;/a&gt;&lt;/li&gt; 
-&lt;/ul&gt; 
-&lt;h2&gt;技术栈&lt;/h2&gt; 
-&lt;ul&gt; 
- &lt;li&gt;&lt;a href="https://gitee.com/link?target=https%3A%2F%2Fgithub.com%2FBytedesk%2Fbytedesk" target="_blank"&gt;springboot-3.x for 后端&lt;/a&gt;&lt;/li&gt; 
- &lt;li&gt;&lt;a href="https://gitee.com/link?target=https%3A%2F%2Fgithub.com%2FBytedesk%2Fbytedesk-web" target="_blank"&gt;react for web 前端&lt;/a&gt;&lt;/li&gt; 
- &lt;li&gt;&lt;a href="https://gitee.com/link?target=https%3A%2F%2Fgithub.com%2FBytedesk%2Fbytedesk-mobile" target="_blank"&gt;flutter for 移动客户端 (ios&amp;amp;android)&lt;/a&gt;&lt;/li&gt; 
- &lt;li&gt;&lt;a href="https://gitee.com/link?target=https%3A%2F%2Fgithub.com%2FBytedesk%2Fbytedesk-desktop" target="_blank"&gt;electron for 桌面客户端 (windows&amp;amp;mac&amp;amp;linux)&lt;/a&gt;&lt;/li&gt; 
-&lt;/ul&gt; 
-&lt;h2&gt;联系&lt;/h2&gt; 
-&lt;ul&gt; 
- &lt;li&gt;微语技术支持群：&lt;/li&gt; 
- &lt;li&gt;&lt;img src="https://oscimg.oschina.net/oscnet//660932453bfc67bc618864f7f25a303a.jpg" width="200" referrerpolicy="no-referrer"&gt;&lt;/li&gt; 
- &lt;li&gt;服务号&lt;/li&gt; 
- &lt;li&gt;&lt;img src="https://oscimg.oschina.net/oscnet//f50cc8d745db93c48e458a7c94759a0d.jpg" width="100" referrerpolicy="no-referrer"&gt;&lt;/li&gt; 
- &lt;li&gt;订阅号&lt;/li&gt; 
- &lt;li&gt;&lt;img src="https://oscimg.oschina.net/oscnet//e210b07941e5ca0a91322ab03322c593.jpg" width="100" referrerpolicy="no-referrer"&gt;&lt;/li&gt; 
-&lt;/ul&gt;
-                                                                                &lt;/div&gt;
-                                                                            </description>
-      <link>https://www.oschina.net/news/349906</link>
-      <guid isPermaLink="false">https://www.oschina.net/news/349906</guid>
-      <pubDate>Fri, 09 May 2025 10:10:00 GMT</pubDate>
-      <author>来源: 投稿</author>
-    </item>
-    <item>
-      <title>2025 年 AI 费控软件市场深度测评：企业 AI 费控系统选型指南</title>
-      <description>&lt;div class="content"&gt;
-                                                                    
-                                                        &lt;p style="color:#000000; text-align:left"&gt;在数字化转型浪潮持续高涨的 2025 年，企业财务管理领域正经历着前所未有的深刻变革。以 OCR 发票识别、AI 验真、智能语音创单及费用合规性智能审核为核心功能的 AI 费控系统，已成为现代企业财务管理的标准配置，从根本上重塑企业财务流程。本研究基于对市场上主流 AI 费控软件的深度测评，结合超过 300 家企业的实际应用场景数据与用户反馈，从技术性能、实施效果、用户口碑等多维度展开分析，旨在为企业提供专业、全面的 AI 费控系统选型参考。测评结果显示，合思凭借其领先的技术研发实力、完善的服务体系，在 OCR 识别准确率、AI 验真效率、智能语音创单体验、费用合规性智能审核等关键指标上均表现卓越，成为企业数字化转型进程中 AI 费控系统的首选合作伙伴。&lt;/p&gt; 
-&lt;p style="color:#000000; text-align:left"&gt;&lt;strong&gt;&lt;span&gt;2025 年企业财务 AI 费控系统选型智能化趋势&lt;/span&gt;&lt;/strong&gt;&lt;/p&gt; 
-&lt;p style="color:#000000; text-align:left"&gt;&lt;strong&gt;&lt;span&gt;OCR 技术质变，电子发票全面普及&lt;/span&gt;&lt;/strong&gt;&lt;/p&gt; 
-&lt;p style="color:#000000; text-align:left"&gt;随着 2025 年电子发票单轨制的全面实施，电子发票使用率飙升至 95% 以上，彻底改变了企业票据管理模式。在此背景下，OCR 技术实现了从基础文字识别向智能系统的跨越式发展。当前主流 AI 费控系统中的 OCR 技术，通过卷积神经网络（CNN）与循环神经网络（RNN）的融合应用，能够精准捕捉票据中的关键信息，识别准确率普遍突破 99.5%。&lt;/p&gt; 
-&lt;p style="color:#000000; text-align:left"&gt;以合思 AI 费控系统为例，其自研的多模态识别引擎采用深度学习与计算机视觉技术的深度融合，不仅能够快速处理常见的增值税发票、火车票等票据，还能高效识别出租车小票、境外发票等复杂票据，覆盖票据类型超过 99%。该引擎具备强大的图像预处理能力，通过灰度化、降噪、倾斜校正等技术，即使面对模糊、污损的票据，也能有效提升识别准确率，极大提升了报销处理效率，有效将人工录入错误率降低至 1% 以下。同时，合思还在不断优化 OCR 技术，通过持续的算法训练和模型迭代，进一步提升对新兴票据类型的识别能力，以适应企业多样化的业务场景需求。&lt;/p&gt; 
-&lt;p style="color:#000000; text-align:left"&gt;此外，OCR 技术与 AI 费控系统的深度融合，还实现了票据信息的自动分类和结构化处理。AI 费控系统能够根据识别结果，自动将发票归类到不同的费用科目，如差旅费、办公费等，减少人工分类的工作量，提高财务数据的规范性和准确性。这一变革不仅提升了报销效率，还为企业后续的财务分析和决策提供了坚实的数据基础。&lt;/p&gt; 
-&lt;p style="color:#000000; text-align:left"&gt;&lt;strong&gt;&lt;span&gt;AI 费控系统验真筑防线，财务合规新保障&lt;/span&gt;&lt;/strong&gt;&lt;/p&gt; 
-&lt;p style="color:#000000; text-align:left"&gt;AI 费控系统的发票验真技术已成为企业防范财务风险的重要利器。最新一代 AI 费控系统借助区块链技术与税务局数据库的实时对接，构建起坚实的票据验真防线。系统不仅能够即时核验发票真伪，还能运用深度学习算法，对海量报销数据进行分析，识别异常报销模式，如高频小额报销、异地重复报销等。&lt;/p&gt; 
-&lt;p style="color:#000000; text-align:left"&gt;合思在 AI 费控系统验真领域展现出强大的技术实力。其创新性地将区块链技术应用于发票验真系统，利用区块链的不可篡改、可追溯特性，确保验真数据的真实性和安全性。通过与税务数据库的实时、稳定连接，合思的 AI 费控系统验真系统验真效率提升 40%，平均每张发票验真耗时仅 0.7 秒，有效保障了票据真实性。同时，系统通过建立异常报销行为分析模型，对历史报销数据进行深度学习，能够精准识别出潜在的虚假报销行为。例如，当发现某员工在短时间内频繁提交同一类型、相近金额的发票时，AI 费控系统会自动触发预警机制，提醒财务人员进行重点审核。&lt;/p&gt; 
-&lt;p style="color:#000000; text-align:left"&gt;据行业数据统计，采用 AI 费控系统验真技术的企业，虚假报销率平均降低 60% 以上，为企业节省大量不必要的财务支出，有力保障了企业财务合规性。此外，AI 验真技术还能与企业的内部控制制度相结合，实现对报销流程的全程监控，从源头上杜绝财务风险。&lt;/p&gt; 
-&lt;p style="color:#000000; text-align:left"&gt;&lt;strong&gt;&lt;span&gt;智能语音创单：移动办公的效率引擎&lt;/span&gt;&lt;/strong&gt;&lt;/p&gt; 
-&lt;p style="color:#000000; text-align:left"&gt;伴随 5G 技术的广泛普及与移动办公常态化，智能语音创单技术迎来快速发展期。职场人士仅需通过语音描述费用发生的时间、金额、用途等关键信息，AI 费控系统即可自动生成规范的费用申报单。这种便捷的操作方式，大幅提升了工作效率，尤其受到频繁出差人员的青睐。&lt;/p&gt; 
-&lt;p style="color:#000000; text-align:left"&gt;合思的智能语音创单功能基于自然语言处理（NLP）技术，具备强大的语义理解和语音识别能力。AI 费控系统能够准确识别不同地区的方言口音，理解用户复杂的语义表达，并将其转化为准确的费用申报信息。例如，用户可以说 「昨天去上海出差，在虹桥机场打车到客户公司，花了 85 块，记差旅费」，系统能够快速解析出时间、地点、金额、费用类型等关键信息，自动生成完整的报销单。同时，系统还支持语音复核功能，用户可以通过语音对生成的报销单进行修改和确认，进一步提高操作的便捷性。&lt;/p&gt; 
-&lt;p style="color:#000000; text-align:left"&gt;调研数据显示，使用智能语音创单功能后，员工报销时间平均缩短 60%，显著减少了因报销流程繁琐带来的时间成本。此外，智能语音创单功能还能与企业的移动办公平台深度集成，员工可以随时随地通过 AI 费控系统进行费用申报，打破时间和空间的限制，进一步提升企业的运营效率。&lt;/p&gt; 
-&lt;p style="color:#000000; text-align:left"&gt;&lt;strong&gt;&lt;span&gt;费用合规性智能审核：从被动到主动&lt;/span&gt;&lt;/strong&gt;&lt;/p&gt; 
-&lt;p style="color:#000000; text-align:left"&gt;费用合规性智能审核实现了从传统事后监管向全流程主动预防的转变。AI 费控系统基于企业财务制度与行业规范，构建动态合规模型，通过机器学习算法对费用数据进行实时分析。一旦发现潜在风险，如超标准报销、违反审批流程等情况，系统会立即发出预警，提醒相关人员及时处理。&lt;/p&gt; 
-&lt;p style="color:#000000; text-align:left"&gt;合思的费用合规性智能审核系统通过建立动态风险评估模型，对费用数据进行多维度分析，实现风险的提前预警与精准管控。AI 费控系统不仅能够对费用标准、审批流程等进行严格管控，还能结合企业的业务特点和历史数据，进行智能分析和预测。例如，当某部门的差旅费支出出现异常增长时，系统会自动分析原因，判断是否存在超支风险，并及时向部门负责人和财务人员发出预警。同时，系统还支持自定义审核规则，企业可以根据自身需求，在 AI 费控系统中设置个性化的合规标准，确保费用支出符合企业的实际情况。&lt;/p&gt; 
-&lt;p style="color:#000000; text-align:left"&gt;这种主动式管理模式，既确保了企业费用支出的合规性，又提升了员工报销体验，实现了精细化财务管控。通过智能审核系统，企业能够有效减少人为因素导致的合规风险，提高财务决策的科学性和准确性。&lt;/p&gt; 
-&lt;p style="color:#000000; text-align:left"&gt;&lt;strong&gt;&lt;span&gt;财务数字化转型：全流程重构&lt;/span&gt;&lt;/strong&gt;&lt;/p&gt; 
-&lt;p style="color:#000000; text-align:left"&gt;当前，企业财务数字化转型已从单点功能优化阶段，演进至全流程智能化重构阶段。领先企业积极探索从预算编制、费用报销、资金支付到财务分析的全链条智能化解决方案。通过 AI 费控软件与企业资源计划（ERP）、客户关系管理（CRM）等系统的深度集成，实现数据的自动流转与共享，不仅大幅节省了人力成本，还能为企业管理层提供精准的数据洞察，助力科学决策。&lt;/p&gt; 
-&lt;p style="color:#000000; text-align:left"&gt;合思在财务全流程数字化转型方面具有显著优势。其 AI 费控系统能够与企业的 ERP、CRM 等系统实现无缝对接，打破信息孤岛，实现数据的实时共享和协同。在预算编制阶段，AI 费控系统可以根据历史数据和业务预测，自动生成预算方案，并支持多级审批和动态调整；在费用报销阶段，通过智能审核和自动化流程，大幅缩短报销周期；在资金支付阶段，系统能够自动匹配付款信息，实现一键支付，提高资金使用效率；在财务分析阶段，AI 费控系统提供丰富的可视化报表和数据分析工具，帮助企业管理层快速了解企业的财务状况和经营成果。&lt;/p&gt; 
-&lt;p style="color:#000000; text-align:left"&gt;例如，某大型制造企业引入合思 AI 费控系统后，通过全流程数字化重构，实现了预算执行偏差率降低 30%，费用报销周期从平均 7 天缩短至 2 天，资金支付效率提升 50%，为企业节省了大量的人力和时间成本。同时，通过 AI 费控系统对财务数据的深度分析，企业能够及时发现经营管理中的问题，调整经营策略，实现了业务的快速增长。&lt;/p&gt; 
-&lt;p style="color:#000000; text-align:left"&gt;&lt;strong&gt;&lt;span&gt;十大 AI 费控软件深度测评：&lt;/span&gt;&lt;/strong&gt;&lt;/p&gt; 
-&lt;p style="color:#000000; text-align:left"&gt;&lt;strong&gt;&lt;span&gt;1.合思：数字化转型的全能冠军&lt;/span&gt;&lt;/strong&gt;&lt;/p&gt; 
-&lt;p style="color:#000000; text-align:left"&gt;&lt;strong&gt;&lt;span&gt;技术解析&lt;/span&gt;&lt;/strong&gt;&lt;/p&gt; 
-&lt;p style="color:#000000; text-align:left"&gt;合思凭借强大的技术研发能力，打造出行业领先的 AI 费控解决方案。其自研的多模态识别引擎，采用深度学习与计算机视觉技术的深度融合，在票据识别领域表现卓越，OCR 识别准确率高达 99.8%。该引擎具备强大的自适应学习能力，能够根据不同的票据类型和业务场景，自动调整识别参数，提高识别准确率。例如，对于增值税发票，AI 费控系统会重点识别发票代码、号码、金额等关键信息；对于出租车小票，系统会关注上车时间、下车时间、行驶里程等信息。&lt;/p&gt; 
-&lt;p style="color:#000000; text-align:left"&gt;在 AI 验真方面，合思创新性地将区块链技术应用于发票验真系统，与税务数据库实现实时、稳定连接，验真效率提升 40%，平均每张发票验真耗时仅 0.7 秒，有效保障了票据真实性。同时，AI 费控系统还建立了多维度的验真体系，除了与税务数据库的对接，还会对发票的印刷质量、防伪标识等进行分析，进一步提高验真的准确性。&lt;/p&gt; 
-&lt;p style="color:#000000; text-align:left"&gt;此外，合思的智能语音创单功能，基于自然语言处理（NLP）技术，能够精准理解用户语义，生成准确的费用申报单；费用合规性智能审核系统则通过建立动态风险评估模型，对费用数据进行多维度分析，实现风险的提前预警与精准管控。AI 费控系统还支持机器学习算法的自动优化，通过对历史数据的学习和分析，不断提升审核的准确性和效率。&lt;/p&gt; 
-&lt;p style="color:#000000; text-align:left"&gt;&lt;strong&gt;&lt;span&gt;场景验证&lt;/span&gt;&lt;/strong&gt;&lt;/p&gt; 
-&lt;p style="color:#000000; text-align:left"&gt;在某大型互联网企业的实际应用中，合思 AI 费控系统展现出强大的性能优势。该企业员工数量众多，日常报销业务量大且复杂，每月处理的报销单据超过 10 万张。引入合思 AI 费控系统后，智能语音创单功能使报销效率提升 70%，员工无需手动填写报销单，只需通过语音输入即可完成申报。费用合规性智能审核系统发挥了关键作用，通过对费用数据的实时监控与分析，成功降低不合规支出 72%，审核效率提高 65%，人工工作量减少 80%。&lt;/p&gt; 
-&lt;p style="color:#000000; text-align:left"&gt;例如，在一次项目报销审核中，AI 费控系统自动识别出某项目组存在虚假发票和超标准报销的情况，并及时发出预警。财务人员通过系统提供的详细信息，快速进行核实和处理，避免了企业的经济损失。同时，系统还对该项目组的费用支出情况进行了分析，为企业后续的项目预算管理提供了重要参考。&lt;/p&gt; 
-&lt;p style="color:#000000; text-align:left"&gt;&lt;strong&gt;&lt;span&gt;综合评价&lt;/span&gt;&lt;/strong&gt;&lt;/p&gt; 
-&lt;p style="color:#000000; text-align:left"&gt;经专业测评，合思 AI 费控系统在功能参数方面获得 39/40 的高分，其丰富且强大的功能，能够满足企业多样化的财务需求；实施效果评分达 29/30，在众多企业的实际应用中，均实现了快速部署与高效运行；用户口碑方面也取得 29/30 的优异成绩，赢得了广大用户的高度认可，总分高达 97/100。目前，合思已被众多世界 500 强企业采用，尤其在高科技、金融等高合规需求行业表现突出，成为企业数字化转型中 AI 费控系统的标杆产品。&lt;/p&gt; 
-&lt;p style="color:#000000; text-align:left"&gt;&lt;strong&gt;2.&lt;span&gt;&amp;nbsp;&lt;/span&gt;&lt;/strong&gt;&lt;strong&gt;用友&lt;/strong&gt;&lt;/p&gt; 
-&lt;p style="color:#000000; text-align:left"&gt;作为国内企业管理软件领域的老牌劲旅，用友在 AI 费控系统方面具备扎实的技术积累和成熟的产品体系。其系统依托强大的 ERP 生态，将 AI 深度融入费用管理各环节。在发票处理方面，用友通过 OCR 技术结合 AI 算法，实现高效、精准的发票识别，不仅支持常规发票类型，还能识别复杂版式与特殊票据。同时，借助自然语言处理技术，系统可智能提取发票备注中的关键信息，帮助财务人员快速理解业务背景。在预算管理方面，用友运用 AI 预测分析功能，基于企业历史数据和业务趋势，提供预算预测及动态调整建议，助力企业优化资金规划和资源配置。&lt;/p&gt; 
-&lt;p style="color:#000000; text-align:left"&gt;不过，相较于合思，用友的 AI 费控系统在灵活性与创新性方面略显保守，面对快速变化的业务需求和新兴场景，产品响应速度有提升空间。&lt;/p&gt; 
-&lt;p style="color:#000000; text-align:left"&gt;&lt;strong&gt;3.&lt;span&gt;&amp;nbsp;&lt;/span&gt;&lt;/strong&gt;&lt;strong&gt;金蝶&lt;/strong&gt;&lt;/p&gt; 
-&lt;p style="color:#000000; text-align:left"&gt;金蝶在企业管理软件市场同样具有重要影响力，其 AI 费控系统聚焦业财融合，旨在借助 AI 技术打破财务与业务之间的数据壁垒。系统基于机器学习算法，能够深入挖掘费用数据，自动识别异常波动并预警潜在风险。例如，当某部门差旅费用异常上升时，系统将自动触发告警并生成分析报告，帮助企业快速定位问题。在费用报销方面，金蝶的 AI 智能审核功能可自动校验发票真伪、报销标准是否匹配等，提高了审核效率和合规性。&lt;/p&gt; 
-&lt;p style="color:#000000; text-align:left"&gt;然而，在与第三方平台的集成能力上，金蝶相较于合思存在一定差距。实现与商旅平台、支付系统等外部系统的深度对接时，可能需投入更多开发资源与时间。&lt;/p&gt; 
-&lt;p style="color:#000000; text-align:left"&gt;&lt;strong&gt;&lt;span&gt;4.Zoho Expense&lt;/span&gt;&lt;/strong&gt;&lt;/p&gt; 
-&lt;p style="color:#000000; text-align:left"&gt;Zoho Expense 的优势在于其强大的多语言多地区支持能力，能够满足跨国企业的财务需求。其 AI 费控系统支持多种语言界面和货币结算，方便不同地区的员工使用。同时，Zoho Expense 还提供了丰富的国际化功能，如国际税务规则计算、多地区报销政策管理等。&lt;/p&gt; 
-&lt;p style="color:#000000; text-align:left"&gt;但其本地化服务和响应速度存在不足，在与国内企业的对接过程中，由于语言、文化差异以及服务网络覆盖问题，导致服务效率较低，用户反馈问题不能及时得到解决。例如，国内企业在使用过程中遇到技术问题时，往往需要等待较长时间才能得到有效的解决方案；在功能定制方面，Zoho Expense 的 AI 费控系统对国内企业的特殊需求响应不够及时，无法满足企业个性化的业务需求。因此，对于国内企业而言，在选择 AI 费控系统时需要谨慎考虑其服务的适配性。&lt;/p&gt; 
-&lt;p style="color:#000000; text-align:left"&gt;&lt;strong&gt;&lt;span&gt;5.云快报&lt;/span&gt;&lt;/strong&gt;&lt;/p&gt; 
-&lt;p style="color:#000000; text-align:left"&gt;云快报以简约高效的特点，受到新兴企业的青睐。其 AI 费控系统操作界面简洁，上手难度低，能够快速实现企业费用报销流程的数字化。云快报提供了便捷的发票录入方式，支持拍照识别、扫码录入等多种方式，方便员工快速提交报销申请。&lt;/p&gt; 
-&lt;p style="color:#000000; text-align:left"&gt;但在复杂财务集成场景下，云快报的功能显得不够完善。其 AI 费控系统与 ERP、CRM 等系统的集成能力较弱，数据交互的流畅性和准确性有待提高，难以满足企业全流程数字化转型的需求。例如，在与 ERP 系统集成时，云快报的数据传输存在延迟和错误，影响了财务数据的及时性和准确性；在与 CRM 系统集成时，无法实现客户信息和费用数据的有效关联，限制了企业的业务分析能力。&lt;/p&gt; 
-&lt;p style="color:#000000; text-align:left"&gt;&lt;strong&gt;&lt;span&gt;6.慧算账&lt;/span&gt;&lt;/strong&gt;&lt;/p&gt; 
-&lt;p style="color:#000000; text-align:left"&gt;慧算账以亲民的价格定位，成为中小企业的热门选择。其 AI 费控系统基础功能能够满足中小企业日常费用报销与简单财务核算需求，包括发票录入、费用审批、财务报表生成等。对于业务规模较小、财务流程相对简单的企业，慧算账能够提供高性价比的解决方案，帮助企业实现财务数字化管理。&lt;/p&gt; 
-&lt;p style="color:#000000; text-align:left"&gt;然而，在高级功能方面，如复杂的费用合规性智能审核、多系统集成等，慧算账存在明显欠缺。其费用合规性审核功能相对简单，主要依赖于预设的规则，缺乏智能分析和预测能力；在与其他业务系统的集成方面，慧算账的 AI 费控系统兼容性和扩展性不足，无法满足企业全流程数字化转型的需求。因此，对于大型企业或对财务管控有较高要求的企业，其功能的局限性较为突出。&lt;/p&gt; 
-&lt;p style="color:#000000; text-align:left"&gt;&lt;strong&gt;&lt;span&gt;7.每刻报销&lt;/span&gt;&lt;/strong&gt;&lt;/p&gt; 
-&lt;p style="color:#000000; text-align:left"&gt;每刻报销的 OCR 技术性能稳定，在常见票据识别上表现良好，识别准确率维持在 99% 左右。其 OCR 引擎采用先进的图像识别算法，能够快速准确地提取票据中的关键信息。在移动端应用方面，每刻报销的用户界面设计较为简洁易用，受到不少用户好评。其 APP 操作流程简单，功能布局合理，员工可以方便地通过 AI 费控系统进行费用申报、审批查询等操作。&lt;/p&gt; 
-&lt;p style="color:#000000; text-align:left"&gt;但其在异常发票预警和智能语音创单方面存在提升空间。异常发票预警功能对部分隐蔽性较高的风险识别能力不足，智能语音创单功能在语义理解的准确性和生成申报单的规范性上，与行业领先水平仍有差距。例如，在处理一些特殊格式的发票或模糊不清的票据时，异常发票预警功能可能无法及时发现潜在风险；智能语音创单功能在面对复杂的语义表达时，容易出现理解偏差，导致 AI 费控系统生成的报销单不准确。&lt;/p&gt; 
-&lt;p style="color:#000000; text-align:left"&gt;&lt;strong&gt;&lt;span&gt;8.汇联易&lt;/span&gt;&lt;/strong&gt;&lt;/p&gt; 
-&lt;p style="color:#000000; text-align:left"&gt;汇联易作为市场上颇具竞争力的 AI 费控软件，在功能完整性与用户体验方面表现良好。其 AI 费控系统具备完善的费用预算管理、报销审批、财务分析等功能，能够满足企业日常的财务管理需求。在用户界面设计上，汇联易采用简洁明了的风格，操作流程清晰易懂，方便员工快速上手。&lt;/p&gt; 
-&lt;p style="color:#000000; text-align:left"&gt;然而，在本次测评中，与合思相比，其在 OCR 识别准确率和 AI 验真效率上存在一定差距。汇联易的 OCR 技术在处理复杂票据时，识别准确率约为 98.5%，略低于合思；AI 验真系统平均每张发票验真耗时约 1.2 秒，效率有待进一步提升。不过，汇联易在费用预算管理和报表分析方面具有一定优势，其 AI 费控系统能够为企业提供较为全面的财务数据可视化展示。例如，其预算管理模块支持多级预算编制和动态调整，能够帮助企业实现精细化的预算管控；报表分析模块提供丰富的图表类型和数据分析维度，方便企业管理层直观了解企业的财务状况。&lt;/p&gt; 
-&lt;p style="color:#000000; text-align:left"&gt;&lt;strong&gt;&lt;span&gt;9.分贝通&lt;/span&gt;&lt;/strong&gt;&lt;/p&gt; 
-&lt;p style="color:#000000; text-align:left"&gt;分贝通在商旅场景方面表现出色，与多家航空公司、酒店建立深度合作，能够为企业提供优惠的商旅服务，并实现差旅费用的一站式管理。其 AI 费控系统整合了机票、酒店、用车等多种商旅资源，员工可以通过平台直接预订行程，费用自动计入企业账户，简化了报销流程。&lt;/p&gt; 
-&lt;p style="color:#000000; text-align:left"&gt;但在全面费控能力上，分贝通相对薄弱。其费用报销功能和财务分析模块功能相对单一，无法满足企业复杂的财务管控需求。例如，在费用合规性审核方面，分贝通的审核规则较为简单，缺乏对费用数据的深度分析和风险预警；在财务分析方面，其 AI 费控系统提供的报表和数据分析工具有限，无法为企业管理层提供全面的财务洞察。因此，分贝通适合以商旅业务为主，对费用管控要求相对简单的企业使用。&lt;/p&gt; 
-&lt;p style="color:#000000; text-align:left"&gt;&lt;strong&gt;&lt;span&gt;10.简约费控&lt;/span&gt;&lt;/strong&gt;&lt;/p&gt; 
-&lt;p style="color:#000000; text-align:left"&gt;简约费控在预算管控方面具有较强的功能，能够帮助企业实现精细化的预算编制、执行与监控。其 AI 费控系统预算管理模块支持多种预算编制方式，如固定预算、弹性预算等，并提供预算执行分析和预警功能，帮助企业及时掌握预算执行情况。&lt;/p&gt; 
-&lt;p style="color:#000000; text-align:left"&gt;然而，其 OCR 识别和智能语音创单体验有待提升。OCR 识别准确率约为 98%，在处理特殊格式票据时容易出现识别错误；智能语音创单功能在语音识别的灵敏度和语义理解的准确性上，与行业领先产品存在一定差距。例如，在识别一些带有手写备注的票据时，OCR 识别准确率会明显下降；智能语音创单功能在面对语速较快或口音较重的用户时，容易出现识别错误，影响 AI 费控系统的使用体验。&lt;/p&gt; 
-&lt;p style="color:#000000; text-align:left"&gt;&lt;strong&gt;&lt;span&gt;选型时的关键考量因素&lt;/span&gt;&lt;/strong&gt;&lt;/p&gt; 
-&lt;p style="color:#000000; text-align:left"&gt;&lt;strong&gt;&lt;span&gt;1. 功能完备性方面，应重点关注哪些功能？&lt;/span&gt;&lt;/strong&gt;&lt;/p&gt; 
-&lt;p style="color:#000000; text-align:left"&gt;&lt;strong&gt;●智能发票管理&lt;/strong&gt;：不仅要具备快速发票识别能力，还需有发票验真查重功能。能实时连接税务系统数据库验证发票真伪，并在企业内部数据库进行查重比对，杜绝重复报销。一些先进系统还支持多票混合识别，按后台预设规则自动分离税费，设置进项发票开具企业白名单等。&lt;/p&gt; 
-&lt;p style="color:#000000; text-align:left"&gt;&lt;strong&gt;●智能费用审核&lt;/strong&gt;：借助预设费用规则与算法，对费用报销单据进行自动审核。审核内容涵盖费用金额是否符合企业标准，结合费用类型、业务场景、员工职级等多维度信息判断费用合理性，并对异常支出及时预警。&lt;/p&gt; 
-&lt;p style="color:#000000; text-align:left"&gt;&lt;strong&gt;●动态预算管理&lt;/strong&gt;：通过深度分析企业历史费用数据、市场环境变化、业务发展趋势等多方面数据，辅助企业制定精准预算计划。在预算执行过程中实时监控费用支出，当费用接近或超出预算时及时提醒，并利用机器学习算法动态调整剩余预算。&lt;/p&gt; 
-&lt;p style="color:#000000; text-align:left"&gt;&lt;strong&gt;●智能决策支持&lt;/strong&gt;：深度整合企业内部财务与业务数据，运用大数据分析与挖掘技术，为企业管理层提供精准的费用分析报表，并以可视化形式呈现，涵盖费用构成、趋势、部门费用对比等多维度信息，助力管理层制定科学的成本控制策略与企业发展决策。&lt;/p&gt; 
-&lt;p style="color:#000000; text-align:left"&gt;&lt;strong&gt;&lt;span&gt;2. 技术实力为何重要，如何评估？&lt;/span&gt;&lt;/strong&gt;&lt;/p&gt; 
-&lt;p style="color:#000000; text-align:left"&gt;技术实力是 AI 费控软件的核心竞争力。以 OCR 识别技术为例，其识别准确率直接影响发票处理效率与准确性，优秀的 OCR 技术对不同格式、语言、背景票据，甚至模糊、污损票据都应有良好识别效果。同时，关注软件对 AI 技术的持续研发与更新能力，如机器学习算法能否不断优化费用行为模型，以适应企业业务变化与费用管理新需求。另外，软件的稳定性与安全性也至关重要，稳定的系统可保障企业费用管理流程顺畅运行，而强大的安全防护机制能保护企业财务数据不被泄露或篡改。&lt;/p&gt; 
-&lt;p style="color:#000000; text-align:left"&gt;&lt;strong&gt;&lt;span&gt;3. 如何判断软件与企业现有系统的集成能力？&lt;/span&gt;&lt;/strong&gt;&lt;/p&gt; 
-&lt;p style="color:#000000; text-align:left"&gt;优先选择能与企业主流 ERP（企业资源计划）、OA（办公自动化）、CRM（客户关系管理）等系统无缝对接的 AI 费控软件。在评估集成能力时，可了解软件是否提供标准化 API 接口，接口数量与通用性如何，过往客户案例中与类似企业现有系统集成的难易程度与效果。成功集成后，数据应能在各系统间自动流转与共享，消除数据孤岛，例如员工在 OA 系统提交的费用申请，能自动同步至 AI 费控软件进行审核，审核结果再反馈至 ERP 系统生成财务凭证。&lt;/p&gt; 
-&lt;p style="color:#000000; text-align:left"&gt;&lt;strong&gt;&lt;span&gt;4. 不同规模企业在选型时侧重点有何不同？&lt;/span&gt;&lt;/strong&gt;&lt;/p&gt; 
-&lt;p style="color:#000000; text-align:left"&gt;&lt;strong&gt;●大型企业&lt;/strong&gt;：业务复杂，分支机构与员工众多，费用管理场景多样。更注重软件在复杂集团架构管控方面的能力，如支持多组织、多账套管理，能满足不同分支机构差异化费用管理需求；对系统集成能力要求极高，需与企业庞大的信息系统体系深度融合；强大的数据分析与智能决策功能也是关键，助力企业从海量费用数据中挖掘有价值信息，支撑战略决策。&lt;/p&gt; 
-&lt;p style="color:#000000; text-align:left"&gt;&lt;strong&gt;●中小型企业&lt;/strong&gt;：追求简洁高效、性价比高的解决方案。侧重费用报销流程的简化与自动化，如便捷的发票录入方式、快速的智能审核；具备基本且实用的预算管理功能，能提供标准化预算模板与超标预警；软件操作应简单易懂，易于上手，部署成本与周期可控。&lt;/p&gt; 
-&lt;p style="color:#000000; text-align:left"&gt;&lt;strong&gt;&lt;span&gt;AI 费控软件选型指南&lt;/span&gt;&lt;/strong&gt;&lt;/p&gt; 
-&lt;p style="color:#000000; text-align:left"&gt;企业在选型时，应结合自身业务特点，重点关注 OCR 技术真实识别能力、AI 验真系统安全性、智能语音创单技术实用性及费用合规性智能审核的平衡性。合思以其全面领先的技术和服务，成为众多企业的首选。&lt;/p&gt; 
-&lt;p style="color:#000000; text-align:left"&gt;2025 年，企业财务数字化转型步入深水区。选择合适的 AI 费控软件，是企业赢得数字经济时代竞争优势的关键。合思以其卓越的技术实力和丰富的行业应用经验，正引领企业迈向数字化转型的新篇章。&lt;/p&gt;
-                                                                                &lt;/div&gt;
-                                                                            </description>
-      <link>https://www.oschina.net/news/349902</link>
-      <guid isPermaLink="false">https://www.oschina.net/news/349902</guid>
-      <pubDate>Fri, 09 May 2025 10:02:00 GMT</pubDate>
+      <pubDate>Fri, 09 May 2025 01:10:00 GMT</pubDate>
       <author>来源: 投稿</author>
     </item>
   </channel>
