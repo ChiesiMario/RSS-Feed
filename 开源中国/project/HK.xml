@@ -7,157 +7,69 @@
     <generator>RSSHub</generator>
     <webMaster>contact@rsshub.app (RSSHub)</webMaster>
     <language>zh-hk</language>
-    <lastBuildDate>Sat, 17 May 2025 13:59:18 GMT</lastBuildDate>
+    <lastBuildDate>Mon, 19 May 2025 03:29:28 GMT</lastBuildDate>
     <ttl>5</ttl>
     <item>
-      <title>基於 TCP 與領域事件的 kaka-rpc 2.0.0 正式發佈</title>
+      <title>Apache bRPC 1.13.0 發佈</title>
       <description>&lt;div class="content"&gt;
                                                                     
-                                                        &lt;p style="color:#40485b; margin-left:0; margin-right:0; text-align:left"&gt;基於 Netty TCP 與 kaka-core 領域事件的輕量級 RPC 框架，相比其它使用各種繁雜設計模式的框架，本框架僅 10 多個類實現，可謂是極簡編碼。&lt;/p&gt; 
+                                                        &lt;p&gt;Apache bRPC 1.13.0 版本現已&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fmp.weixin.qq.com%2Fs%2F-Use6F-ilCrwwfrVWn6vuw" target="_blank"&gt;發佈&lt;/a&gt;，包含許多新功能和問題修復。主要更新內容如下：&lt;/p&gt; 
+&lt;p&gt;&lt;strong&gt;新功能&lt;/strong&gt;&lt;/p&gt; 
 &lt;ul&gt; 
- &lt;li&gt;基礎通信 
-  &lt;ul&gt; 
-   &lt;li&gt;事件驅動&lt;/li&gt; 
-   &lt;li&gt;自定義心跳協議或基於 rpc 調用的心跳處理&lt;/li&gt; 
-   &lt;li&gt;斷線重連&lt;/li&gt; 
-   &lt;li&gt;同步、future 異步、callback 回調多種 rpc 調用模式&lt;/li&gt; 
-   &lt;li&gt;超時控制&lt;/li&gt; 
-   &lt;li&gt;自定義數據協議擴展領域事件&lt;/li&gt; 
-   &lt;li&gt;登錄鑑權&lt;/li&gt; 
-   &lt;li&gt;基礎數據類型在滿足通信協議的要求下支持任意程序語言調用&lt;/li&gt; 
-  &lt;/ul&gt; &lt;/li&gt; 
- &lt;li&gt;集羣部署 
-  &lt;ul&gt; 
-   &lt;li&gt;方案一：Nginx 負載均衡&lt;/li&gt; 
-   &lt;li&gt;方案二：自定義負載均衡，基於一致性哈希算法，亦可使用心跳輪詢基於連接量的動態權重負載均衡&lt;/li&gt; 
-  &lt;/ul&gt; &lt;/li&gt; 
- &lt;li&gt;性能強勁 
-  &lt;ul&gt; 
-   &lt;li&gt;調用遠程接口方法，順序執行 1000000 次，耗時 78 秒，平均每秒 12800 次左右，相比其它基於 Http 協議的 RPC 框架，性能提升明顯&lt;/li&gt; 
-   &lt;li&gt;異步回調模式，每秒 60000 次左右&lt;/li&gt; 
-   &lt;li&gt;以上性能數據均在 win11 i5-12400 16GB 內存 IDEA 下運行產生&lt;/li&gt; 
-  &lt;/ul&gt; &lt;/li&gt; 
+ &lt;li&gt;支持 ProtoJson 格式的 HTTP 請求體&lt;/li&gt; 
+ &lt;li&gt;支持動態更新方法併發度&lt;/li&gt; 
+ &lt;li&gt;支持 baidu-std 協議多種負載類型：JSON、ProtoJson 和 ProtoText&lt;/li&gt; 
+ &lt;li&gt;支持 AddressSanitizer 內存檢測工具&lt;/li&gt; 
+ &lt;li&gt;在 Redis 連接上下文中保留會話信息&lt;/li&gt; 
 &lt;/ul&gt; 
-&lt;p&gt;以下為部分示例程序，具體示例請參看源碼 test 目錄&lt;/p&gt; 
-&lt;pre&gt;&lt;code&gt;&lt;strong&gt;final&lt;/strong&gt; CountDownLatch latch = &lt;strong&gt;new&lt;/strong&gt; CountDownLatch(&lt;span style="color:#008080"&gt;1&lt;/span&gt;);
-InetSocketAddress address = &lt;strong&gt;new&lt;/strong&gt; InetSocketAddress(&lt;span style="color:#dd1144"&gt;"127.0.0.1"&lt;/span&gt;, &lt;span style="color:#008080"&gt;7777&lt;/span&gt;);
-NettyTcpClient client = &lt;strong&gt;new&lt;/strong&gt; NettyTcpClient(address, &lt;span style="color:#008080"&gt;3&lt;/span&gt;, &lt;span style="color:#008080"&gt;7&lt;/span&gt;, &lt;span style="color:#008080"&gt;2&lt;/span&gt;, &lt;span style="color:#008080"&gt;2&lt;/span&gt;) {
-
-    &lt;span&gt;@Override&lt;/span&gt;
-    &lt;span&gt;&lt;strong&gt;protected&lt;/strong&gt; &lt;strong&gt;void&lt;/strong&gt; &lt;strong&gt;ping&lt;/strong&gt;&lt;span&gt;()&lt;/span&gt; &lt;/span&gt;{
-        &lt;em&gt;//發送自定義心跳包&lt;/em&gt;
-        ChannelHandlerContext ctx = &lt;strong&gt;this&lt;/strong&gt;.getChannelHandlerContext();
-        &lt;strong&gt;if&lt;/strong&gt; (ctx == &lt;strong&gt;null&lt;/strong&gt;) &lt;strong&gt;return&lt;/strong&gt;;
-        ByteBuf buf = ctx.alloc().buffer(&lt;span style="color:#008080"&gt;4&lt;/span&gt;); &lt;em&gt;//標準包體結構 int 協議號+協議內容&lt;/em&gt;
-        buf.writeInt(Integer.parseInt(MyOpCode.heart_beat));
-        ctx.writeAndFlush(buf);
-&lt;em&gt;// //如下方式亦可，但服務器必須進行邏輯處理並返回數據，否則將造成 client 調用端數據積壓，且積壓數據僅能通過超時自動清除。&lt;/em&gt;
-&lt;em&gt;//                    //異步回調方式發送心跳包&lt;/em&gt;
-&lt;em&gt;//                    this.execRemotingLogic(MyOpCode.heart_beat, 4, (res, e) -&amp;gt; {&lt;/em&gt;
-&lt;em&gt;//                        if (e != null) {&lt;/em&gt;
-&lt;em&gt;//                            return;&lt;/em&gt;
-&lt;em&gt;//                        }&lt;/em&gt;
-&lt;em&gt;//                        System.out.println("異步獲取心跳數據&amp;gt;&amp;gt;&amp;gt; " + res);&lt;/em&gt;
-&lt;em&gt;//                    });&lt;/em&gt;
-    }
-
-    &lt;span&gt;@Override&lt;/span&gt;
-    &lt;span&gt;&lt;strong&gt;protected&lt;/strong&gt; &lt;strong&gt;void&lt;/strong&gt; &lt;strong&gt;afterConnected&lt;/strong&gt;&lt;span&gt;()&lt;/span&gt; &lt;/span&gt;{
-        latch.countDown();
-    }
-
-    &lt;span&gt;@Override&lt;/span&gt;
-    &lt;span&gt;&lt;strong&gt;protected&lt;/strong&gt; &lt;strong&gt;void&lt;/strong&gt; &lt;strong&gt;afterDisconnect&lt;/strong&gt;&lt;span&gt;()&lt;/span&gt; &lt;/span&gt;{
-
-    }
-};
-client.connect();
-latch.await();
-
-&lt;em&gt;//RPC 遠程領域事件處理，並同步獲取執行結果，服務端請參看領域事件處理器 com.test.server.DemoLogic1Handler&lt;/em&gt;
-&lt;strong&gt;int&lt;/strong&gt; result = client.execRemotingLogic(&lt;span style="color:#dd1144"&gt;"demo_logic1"&lt;/span&gt;, &lt;span style="color:#008080"&gt;3&lt;/span&gt;, &lt;strong&gt;new&lt;/strong&gt; Object[]{&lt;span style="color:#008080"&gt;1&lt;/span&gt;, &lt;span style="color:#008080"&gt;2&lt;/span&gt;, &lt;span style="color:#008080"&gt;3&lt;/span&gt;});
-System.out.println(&lt;span style="color:#dd1144"&gt;"同步獲取遠程結果&amp;gt;&amp;gt;&amp;gt; "&lt;/span&gt;+result);
-&lt;em&gt;//RPC 遠程領域事件處理，並異步回調獲取結果，服務端請參看領域事件處理器 com.test.server.DemoLogic2Handler&lt;/em&gt;
-client.execRemotingLogic(&lt;span style="color:#dd1144"&gt;"demo_logic2"&lt;/span&gt;,(res, e) -&amp;gt;{
-    &lt;strong&gt;if&lt;/strong&gt;(e !=&lt;strong&gt;null&lt;/strong&gt;){
-        &lt;em&gt;//處理異常&lt;/em&gt;
-        &lt;strong&gt;return&lt;/strong&gt;;
-    }
-    System.out.println(&lt;span style="color:#dd1144"&gt;"異步回調獲取結果&amp;gt;&amp;gt;&amp;gt; "&lt;/span&gt;+res);
-},&lt;span style="color:#008080"&gt;100&lt;/span&gt;);
-&lt;em&gt;//RPC 公共接口方法調用，服務端接口實現請參看 com.test.server.DemoServiceImpl&lt;/em&gt;
-DemoService testInterface = RpcClient.getRefInstance(DemoService&lt;span&gt;.&lt;strong&gt;class&lt;/strong&gt;, &lt;strong&gt;client&lt;/strong&gt;)&lt;/span&gt;;
-System.out.println(&lt;span style="color:#dd1144"&gt;"遠程獲取結果&amp;gt;&amp;gt;&amp;gt; "&lt;/span&gt;+testInterface.say(&lt;span style="color:#dd1144"&gt;"hello"&lt;/span&gt;));
-System.out.println(&lt;span style="color:#dd1144"&gt;"遠程獲取結果&amp;gt;&amp;gt;&amp;gt; "&lt;/span&gt;+testInterface.num(&lt;span style="color:#008080"&gt;3&lt;/span&gt;));
-System.out.println(&lt;span style="color:#dd1144"&gt;"遠程計算兩數之和&amp;gt;&amp;gt;&amp;gt; "&lt;/span&gt;+testInterface.calc(&lt;span style="color:#008080"&gt;3&lt;/span&gt;, &lt;span style="color:#008080"&gt;7&lt;/span&gt;));
-System.out.println(&lt;span style="color:#dd1144"&gt;"遠程計算兩數之間所有數的和&amp;gt;&amp;gt;&amp;gt; "&lt;/span&gt;+testInterface.sum(&lt;span style="color:#008080"&gt;1&lt;/span&gt;, &lt;span style="color:#008080"&gt;1000&lt;/span&gt;));&lt;/code&gt;
-&lt;/pre&gt;
-                                                                                &lt;/div&gt;
-                                                                            </description>
-      <link>https://www.oschina.net/news/350417/kaka-rpc-2-0-0-released</link>
-      <guid isPermaLink="false">https://www.oschina.net/news/350417/kaka-rpc-2-0-0-released</guid>
-      <pubDate>Sat, 17 May 2025 13:01:17 GMT</pubDate>
-      <author>來源: 投稿</author>
-    </item>
-    <item>
-      <title>宇連通 IM 之數據加密設計</title>
-      <description>&lt;div class="content"&gt;
-                                                                    
-                                                        &lt;p&gt;&lt;a href="https://gitee.com/ldh123/imapp"&gt;宇連通 IM&lt;/a&gt;的數據安全分傳輸安全和存儲安全。&lt;/p&gt; 
-&lt;p&gt;傳輸安全是客户發起聊天時，數據在傳輸過程中是安全的。存儲安全是數據保存在服務端和客户端也是安全的。&lt;/p&gt; 
-&lt;p&gt;傳輸安全從兩個角度進行設計，一是使用 TLS/SSL 協議傳輸，二是對數據傳輸時還進行加密，如：對稱加密和非對賬加密。&lt;/p&gt; 
-&lt;p&gt;存儲安全也從兩個角度進行設計：一是對數據進行加密存儲，如：對稱加密和非對賬加密。二是設置數據失效時間，失效的數據會被自動清理。&lt;br&gt; &amp;nbsp;&amp;nbsp;&lt;br&gt; &amp;nbsp; IM 的數據加密有如下幾種方式：&lt;br&gt; &amp;nbsp; 1，不加密模式&lt;br&gt; &amp;nbsp; &amp;nbsp; 數據明文傳輸，明文存儲。對聊天信息不非常重要的信息採用這種模式。&lt;br&gt; &amp;nbsp; 2，信任模式&lt;br&gt; &amp;nbsp; &amp;nbsp; 數據加密傳輸，加密存儲。但是用户信任平台，平台存儲會話的秘鑰，這種模式還分一下幾種小類：&lt;br&gt; &amp;nbsp;&amp;nbsp; &amp;nbsp;a, 對稱加密通信，明文存儲。&lt;br&gt; &amp;nbsp;&amp;nbsp; &amp;nbsp;b, 對稱加密通信，對稱加密存儲。&lt;br&gt; &amp;nbsp;&amp;nbsp; &amp;nbsp;c, 非對稱加密通信，非對稱加密存儲。&lt;br&gt; &amp;nbsp; 3, 自管理模式&lt;br&gt; &amp;nbsp; &amp;nbsp; 數據通信和存儲都進行加密。但是用户需要自己管理秘鑰的密碼。&lt;br&gt; &amp;nbsp;&amp;nbsp; &amp;nbsp;可分以下幾個模式：&lt;br&gt; &amp;nbsp;&amp;nbsp; &amp;nbsp;a, 秘鑰授權。用户進行 p2p 聊天或羣聊天，需要密碼登錄，登錄後，彼此進行秘鑰授權，授權成功才能進行發送消息以及查看消息，未得到授權秘鑰用户無法查看對方的消息。&lt;br&gt; &amp;nbsp;&amp;nbsp; &amp;nbsp;b, 共建秘鑰的密碼模式。聊天用户都輸入正確密碼後，聊天功能才能使用，有一方密碼不正確，聊天就無法進行並都無法進行解密。&lt;br&gt; &amp;nbsp;&amp;nbsp; &amp;nbsp;c, U 盾模式。聊天發起人建立一批 U 盾，並分發給其他用户，持有 U 盾用户才能進行通信和查看聊天信息。&lt;br&gt; &amp;nbsp;&amp;nbsp; &amp;nbsp;&lt;br&gt; &amp;nbsp;以上三種模式是都可以選擇的，如 A，B 用户聊天可以建立 7 中通信會話， A，B 根據場景需要，選擇其中任意一種進行聊天&lt;br&gt; &amp;nbsp;&amp;nbsp; &amp;nbsp;&lt;br&gt; &amp;nbsp; IM 的消息增加存儲時效，有如下幾種選擇：&lt;br&gt; &amp;nbsp; &amp;nbsp;a, 客户端永久存儲。但是客户可以主動發起刪除&lt;br&gt; &amp;nbsp; &amp;nbsp;b, 對指定聊天會話增加存儲失效時間：&lt;br&gt; &amp;nbsp; &amp;nbsp; &amp;nbsp;b0: 指定分鐘（閲讀即焚）&lt;br&gt; &amp;nbsp; &amp;nbsp; &amp;nbsp;b1: 指定小時（小於 24 小時）&lt;br&gt; &amp;nbsp;&amp;nbsp; &amp;nbsp; b2: 聊天會話期間存儲，聊天軟件關閉，自動清理會話消息。&lt;br&gt; &amp;nbsp;&amp;nbsp; &amp;nbsp; b3: 指定天數&lt;/p&gt;
-                                                                                &lt;/div&gt;
-                                                                            </description>
-      <link>https://www.oschina.net/news/349943</link>
-      <guid isPermaLink="false">https://www.oschina.net/news/349943</guid>
-      <pubDate>Wed, 14 May 2025 13:54:00 GMT</pubDate>
-      <author>來源: 投稿</author>
-    </item>
-    <item>
-      <title>又小又快截圖軟件：ScreenCapture（2.2.25）支持截長圖</title>
-      <description>&lt;div class="content"&gt;
-                                                                    
-                                                        &lt;p&gt;&lt;img alt="" height="468" src="https://oscimg.oschina.net/oscnet//022b124220ead36d2a012eb7f97857ce.png" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;p style="color:#333333; margin-left:0; margin-right:0; text-align:left"&gt;ScreenCapture&amp;nbsp;截圖工具&amp;nbsp;&lt;strong&gt;體積小（8M 左右）&lt;/strong&gt;、僅一個可執行文件，無需安裝，不依賴任何動態鏈接庫。&lt;/p&gt; 
-&lt;p style="color:#333333; margin-left:0; margin-right:0; text-align:left"&gt;運行速度快、內存佔用低、CPU 使用率低。&lt;/p&gt; 
-&lt;p style="color:#333333; margin-left:0; margin-right:0; text-align:left"&gt;開源地址：&lt;a href="https://gitee.com/horsejs_admin/ScreenCapture"&gt;https://gitee.com/horsejs_admin/ScreenCapture&lt;/a&gt;&lt;/p&gt; 
-&lt;hr&gt; 
-&lt;p&gt;近 9 個版本的更新內容如下：&lt;/p&gt; 
+&lt;p&gt;&lt;strong&gt;Bug 修復&lt;/strong&gt;&lt;/p&gt; 
 &lt;ul&gt; 
- &lt;li&gt;增強：改進繪製標號元素的用户體驗： 
-  &lt;ul&gt; 
-   &lt;li&gt;鼠標按下即繪製一個默認大小的標號；&lt;/li&gt; 
-   &lt;li&gt;設置獨立的移動標號元素的 Dragger（標號正中心）；&lt;/li&gt; 
-   &lt;li&gt;設置獨立的改變大小的 Dragger；&lt;/li&gt; 
-   &lt;li&gt;設置獨立的改變箭頭位置的 Dragger；&lt;/li&gt; 
-  &lt;/ul&gt; &lt;/li&gt; 
- &lt;li&gt;增強：允許通過命令行控制工具欄各個按鈕的位置、是否顯示等： 
-  &lt;ul&gt; 
-   &lt;li&gt;指令：--tool:"rect,ellipse,arrow,number,line,text,mosaic,eraser,|,undo,redo,|,pin,clipboard,save,close"&lt;/li&gt; 
-  &lt;/ul&gt; &lt;/li&gt; 
- &lt;li&gt;增強：截長圖/滾動截圖指令：--cap:long&lt;/li&gt; 
+ &lt;li&gt;修復內存泄漏問題&lt;/li&gt; 
+ &lt;li&gt;修復 Apple M1 芯片 MacOS 系統編譯問題&lt;/li&gt; 
+ &lt;li&gt;修正 VersionedRefWithId 的描述&lt;/li&gt; 
+ &lt;li&gt;修復 Prometheus 指標格式&lt;/li&gt; 
+ &lt;li&gt;修復 ParkingLot::signal 未修改_pending_signal 的問題&lt;/li&gt; 
+ &lt;li&gt;修復包含 glog 時的鏈接錯誤&lt;/li&gt; 
+ &lt;li&gt;修復 baidu-std 協議消息重複釋放問題&lt;/li&gt; 
+ &lt;li&gt;修復部分不穩定的單元測試&lt;/li&gt; 
+ &lt;li&gt;修復 AddressSanitizer 切換協程時棧信息錯誤&lt;/li&gt; 
+ &lt;li&gt;修復編譯器優化導致的線程局部變量訪問問題&lt;/li&gt; 
+ &lt;li&gt;適配 Protobuf v27+的類數據&lt;/li&gt; 
+ &lt;li&gt;使用 BAIDU_VOLATILE_THREAD_LOCAL 防止編譯器優化&lt;/li&gt; 
+ &lt;li&gt;修復 AgentCombiner 線程安全問題&lt;/li&gt; 
+ &lt;li&gt;修復批量創建流與 SetHostSocket 的線程安全問題&lt;/li&gt; 
+ &lt;li&gt;修復 Wrapper 的線程安全問題&lt;/li&gt; 
+ &lt;li&gt;修復 json2pb 編譯錯誤&lt;/li&gt; 
+ &lt;li&gt;修復 HttpResponseSenderAsDone 空消息運行問題&lt;/li&gt; 
+ &lt;li&gt;修復 WeightedRandomizedLoadBalancer 可能不會選中低權重 server 的問題&lt;/li&gt; 
+ &lt;li&gt;移除 RemoveServersInBatch 中的錯誤日誌&lt;/li&gt; 
+ &lt;li&gt;修正 bthread 標籤默認值&lt;/li&gt; 
 &lt;/ul&gt; 
-&lt;p&gt;&lt;img height="592" src="https://oscimg.oschina.net/oscnet/up-48430184c33cb5918d43692c1d91214b88b.png" width="1016" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;strong&gt;功能增強&lt;/strong&gt;&lt;/p&gt; 
 &lt;ul&gt; 
- &lt;li&gt;修復：跨屏截圖在特殊情況下無法覆蓋全屏區域的問題。&lt;/li&gt; 
- &lt;li&gt;修復：工具欄按鈕顯示 tool tip 時，有時會導致 Hover 樣式失效。&lt;/li&gt; 
- &lt;li&gt;修復：&lt;span style="background-color:#ffffff; color:#1f2328"&gt;--tools 指令傳入的按鈕與實際所能控制的按鈕不符時，導致按鈕出現錯亂的問題。&lt;/span&gt;&lt;/li&gt; 
- &lt;li&gt;&lt;span style="background-color:#ffffff; color:#1f2328"&gt;修復：&lt;/span&gt;繪製標號①，再 undo 此標號，再繪製新的標號，標號數字應該還是①，不應該是②。&lt;/li&gt; 
- &lt;li&gt;修復：undo 元素之後，再繪製新元素時應該先刪除 undo 的元素。&lt;/li&gt; 
- &lt;li&gt;修復：主工具條位於截圖區域內部或截圖區域頂部時，顯示子工具條，子工具條位置不準確的問題。&lt;/li&gt; 
- &lt;li&gt;修復：Ctrl+H 與 Ctrl+R 快捷鍵的行為搞反了的問題&lt;/li&gt; 
- &lt;li&gt;修復：工具條位置不準的問題（工具條不會自動尋找剩餘空間定位）。&lt;/li&gt; 
- &lt;li&gt;修復：在 Win11 下無法通過命令行釘住剪切板內的圖像的問題&lt;/li&gt; 
- &lt;li&gt;優化：保存文件，點擊文件保存對話框的取消按鈕，應用不應退出。&lt;/li&gt; 
- &lt;li&gt; &lt;p&gt;優化：繪製元素時優先使用紅色。繪製箭頭、標號元素時默認使用填充效果。&lt;/p&gt; &lt;/li&gt; 
-&lt;/ul&gt;
+ &lt;li&gt;自動分片處理大型 brpc 流式消息&lt;/li&gt; 
+ &lt;li&gt;支持 Bazel 構建 bthread tracer&lt;/li&gt; 
+ &lt;li&gt;為 iobuf 新增 reserve_aligned&lt;/li&gt; 
+ &lt;li&gt;DoublyBufferedData 支持更安全的讀取函數及可變參數&lt;/li&gt; 
+ &lt;li&gt;將 CI 環境從 Ubuntu 20.04 升級至 22.04&lt;/li&gt; 
+ &lt;li&gt;減少 ParkingLot 中 futex 的使用&lt;/li&gt; 
+ &lt;li&gt;記錄事件分發器延遲&lt;/li&gt; 
+ &lt;li&gt;優化服務端延遲&lt;/li&gt; 
+ &lt;li&gt;優化 HTTP 請求體的零拷貝性能&lt;/li&gt; 
+ &lt;li&gt;代碼細節優化&lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;p&gt;&lt;strong&gt;其他&lt;/strong&gt;&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt;啓用 GitHub Discussions 功能&lt;/li&gt; 
+ &lt;li&gt;文檔及細節改進&lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;p&gt;更新説明：&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fgithub.com%2Fapache%2Fbrpc%2Freleases%2Ftag%2F1.13.0" target="_blank"&gt;https://github.com/apache/brpc/releases/tag/1.13.0&lt;/a&gt;&lt;/p&gt;
                                                                                 &lt;/div&gt;
                                                                             </description>
-      <link>https://www.oschina.net/news/350353/screen-capture-2-2-25</link>
-      <guid isPermaLink="false">https://www.oschina.net/news/350353/screen-capture-2-2-25</guid>
-      <pubDate>Sun, 11 May 2025 02:28:00 GMT</pubDate>
-      <author>來源: 投稿</author>
+      <link>https://www.oschina.net/news/350572/brpc-1-13-0-released</link>
+      <guid isPermaLink="false">https://www.oschina.net/news/350572/brpc-1-13-0-released</guid>
+      <pubDate>Mon, 19 May 2025 03:10:25 GMT</pubDate>
+      <author>來源: OSCHINA</author>
     </item>
     <item>
       <title>前端構建神器 Parcel 大「瘦身」：依賴項削減 25%，安裝體積砍半！</title>
@@ -181,7 +93,7 @@ System.out.println(&lt;span style="color:#dd1144"&gt;"遠程計算兩數之間�
                                                                             </description>
       <link>https://www.oschina.net/news/350233/parceljs-2-5-0</link>
       <guid isPermaLink="false">https://www.oschina.net/news/350233/parceljs-2-5-0</guid>
-      <pubDate>Sat, 10 May 2025 07:24:00 GMT</pubDate>
+      <pubDate>Fri, 16 May 2025 07:24:00 GMT</pubDate>
       <author>來源: 投稿</author>
     </item>
     <item>
@@ -217,7 +129,7 @@ System.out.println(&lt;span style="color:#dd1144"&gt;"遠程計算兩數之間�
                                                                             </description>
       <link>https://www.oschina.net/news/350196/go-carbon-2-6-5</link>
       <guid isPermaLink="false">https://www.oschina.net/news/350196/go-carbon-2-6-5</guid>
-      <pubDate>Sat, 10 May 2025 04:21:00 GMT</pubDate>
+      <pubDate>Fri, 16 May 2025 04:21:00 GMT</pubDate>
       <author>來源: 投稿</author>
     </item>
     <item>
@@ -315,7 +227,7 @@ System.out.println(&lt;span style="color:#dd1144"&gt;"遠程計算兩數之間�
                                                                             </description>
       <link>https://www.oschina.net/news/350184/aiflowy-1-0-2-released</link>
       <guid isPermaLink="false">https://www.oschina.net/news/350184/aiflowy-1-0-2-released</guid>
-      <pubDate>Sat, 10 May 2025 03:29:00 GMT</pubDate>
+      <pubDate>Fri, 16 May 2025 03:29:00 GMT</pubDate>
       <author>來源: 投稿</author>
     </item>
     <item>
@@ -490,7 +402,7 @@ System.out.println(&lt;span style="color:#dd1144"&gt;"遠程計算兩數之間�
                                                                             </description>
       <link>https://www.oschina.net/news/350183/cherry-studio-1-3-3</link>
       <guid isPermaLink="false">https://www.oschina.net/news/350183/cherry-studio-1-3-3</guid>
-      <pubDate>Sat, 10 May 2025 03:27:00 GMT</pubDate>
+      <pubDate>Fri, 16 May 2025 03:27:00 GMT</pubDate>
       <author>來源: OSCHINA</author>
     </item>
     <item>
@@ -542,7 +454,7 @@ System.out.println(&lt;span style="color:#dd1144"&gt;"遠程計算兩數之間�
                                                                             </description>
       <link>https://www.oschina.net/news/350177/intellij-idea-2025-2-eap</link>
       <guid isPermaLink="false">https://www.oschina.net/news/350177/intellij-idea-2025-2-eap</guid>
-      <pubDate>Sat, 10 May 2025 03:12:00 GMT</pubDate>
+      <pubDate>Fri, 16 May 2025 03:12:00 GMT</pubDate>
       <author>來源: OSCHINA</author>
     </item>
     <item>
@@ -678,7 +590,7 @@ System.out.println(&lt;span style="color:#dd1144"&gt;"遠程計算兩數之間�
                                                                             </description>
       <link>https://www.oschina.net/news/350176/nocobase-updated</link>
       <guid isPermaLink="false">https://www.oschina.net/news/350176/nocobase-updated</guid>
-      <pubDate>Sat, 10 May 2025 03:11:00 GMT</pubDate>
+      <pubDate>Fri, 16 May 2025 03:11:00 GMT</pubDate>
       <author>來源: 投稿</author>
     </item>
     <item>
@@ -703,7 +615,7 @@ System.out.println(&lt;span style="color:#dd1144"&gt;"遠程計算兩數之間�
                                                                             </description>
       <link>https://www.oschina.net/news/350169/electron-36-2-1-released</link>
       <guid isPermaLink="false">https://www.oschina.net/news/350169/electron-36-2-1-released</guid>
-      <pubDate>Sat, 10 May 2025 02:53:00 GMT</pubDate>
+      <pubDate>Fri, 16 May 2025 02:53:00 GMT</pubDate>
       <author>來源: OSCHINA</author>
     </item>
     <item>
@@ -839,7 +751,7 @@ System.out.println(&lt;span style="color:#dd1144"&gt;"遠程計算兩數之間�
                                                                             </description>
       <link>https://www.oschina.net/news/350150/wow-5-13-5-released</link>
       <guid isPermaLink="false">https://www.oschina.net/news/350150/wow-5-13-5-released</guid>
-      <pubDate>Sat, 10 May 2025 01:45:00 GMT</pubDate>
+      <pubDate>Fri, 16 May 2025 01:45:00 GMT</pubDate>
       <author>來源: 投稿</author>
     </item>
     <item>
@@ -897,207 +809,816 @@ System.out.println(&lt;span style="color:#dd1144"&gt;"遠程計算兩數之間�
                                                                             </description>
       <link>https://www.oschina.net/news/350096/dwsurvey-updated</link>
       <guid isPermaLink="false">https://www.oschina.net/news/350096/dwsurvey-updated</guid>
-      <pubDate>Fri, 09 May 2025 11:44:00 GMT</pubDate>
+      <pubDate>Thu, 15 May 2025 11:44:00 GMT</pubDate>
       <author>來源: 投稿</author>
     </item>
     <item>
-      <title>Gitee 企業版 MCP 服務器 v0.1.5 發佈</title>
+      <title>Spring Data 2025.0.0 GA</title>
       <description>&lt;div class="content"&gt;
                                                                     
-                                                        &lt;p&gt;Gitee 企業版 MCP 服務器 v0.1.5 已經發布。&lt;/p&gt; 
-&lt;h2&gt;更新內容&lt;/h2&gt; 
+                                                        &lt;p&gt;&lt;span style="color:#000000"&gt;Spring Data 2025.0.0 現已正式發佈，此版本包含驅動程序升級以及各個 store 模塊的優化。&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;span style="color:#000000"&gt;一些更新亮點內容如下：&lt;/span&gt;&lt;/p&gt; 
 &lt;ul&gt; 
- &lt;li&gt;feat: add new repository tools Updated NPM version to 0.1.5 and added tools for getting file content and repository tree. &lt;a href="https://gitee.com/JJ-H" target="_blank"&gt;@JJ-H&lt;/a&gt;&lt;/li&gt; 
+ &lt;li&gt;&lt;span style="color:#000000"&gt;MongoDB 和 Apache Cassandra 中的向量類型和向量搜索支持&lt;/span&gt;&lt;/li&gt; 
+ &lt;li&gt;&lt;span style="color:#000000"&gt;Spring Data JPA 中 DTO Projections 的&amp;nbsp;Constructor Expression Derivation&lt;/span&gt;&lt;/li&gt; 
+ &lt;li&gt;&lt;span style="color:#000000"&gt;支持在 Spring Data JDBC 和 R2DBC 中使用序列生成標識符&lt;/span&gt;&lt;/li&gt; 
+ &lt;li&gt;&lt;span style="color:#000000"&gt;使用 Cassandra 5 存儲附加索引創建索引&lt;/span&gt;&lt;/li&gt; 
 &lt;/ul&gt; 
-&lt;p&gt;&lt;strong&gt;完整的更新日誌&lt;/strong&gt;: &lt;a href="https://gitee.com/oschina/mcp-gitee-ent/compare/v0.1.4...v0.1.5" target="_blank"&gt;https://gitee.com/oschina/mcp-gitee-ent/compare/v0.1.4...v0.1.5&lt;/a&gt;&lt;/p&gt; 
-&lt;p&gt;詳情查看：&lt;a href="https://gitee.com/oschina/mcp-gitee-ent/releases/v0.1.5"&gt;https://gitee.com/oschina/mcp-gitee-ent/releases/v0.1.5&lt;/a&gt;&lt;/p&gt;
-                                                                                &lt;/div&gt;
-                                                                            </description>
-      <link>https://www.oschina.net/news/350056</link>
-      <guid isPermaLink="false">https://www.oschina.net/news/350056</guid>
-      <pubDate>Fri, 09 May 2025 09:10:00 GMT</pubDate>
-      <author>來源: 投稿</author>
-    </item>
-    <item>
-      <title>AIFlowy v1.0.2 已經發布，一個 AI 產品的底座和基石</title>
-      <description>&lt;div class="content"&gt;
-                                                                    
-                                                        &lt;p&gt;AIFlowy v1.0.2 已經發布，一個 AI 產品的底座和基石&lt;/p&gt;
-&lt;p&gt;此版本更新內容包括：&lt;/p&gt;
+&lt;p style="margin-left:0; margin-right:0; text-align:start"&gt;&lt;span style="color:#000000"&gt;可參閲&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fgithub.com%2Fspring-projects%2Fspring-data-commons%2Fwiki%2FSpring-Data-2025.0-Release-Notes" target="_blank"&gt;發行説明&lt;/a&gt;以瞭解更多詳細信息。&lt;/span&gt;&lt;/p&gt; 
 &lt;ul&gt; 
- &lt;li&gt;新增：知識庫增加 excel 文件導入 close #IC6IY6&lt;/li&gt; 
- &lt;li&gt;新增：工作流獨立訪問頁面 close #IC63FS&lt;/li&gt; 
- &lt;li&gt;新增：工作流可通過 API 接口調用 close #IC3FNT&lt;/li&gt; 
- &lt;li&gt;新增：升級 Tinyflow、Agents-Flex 等到最新版本&lt;/li&gt; 
- &lt;li&gt;新增：工作流新增插件節點 close #IC5XEM close #IC3FO4&lt;/li&gt; 
- &lt;li&gt;優化：統一【Bot】 和 【workflow】 的插件選擇彈出框 close #212911&lt;/li&gt; 
- &lt;li&gt;優化：知識庫上傳文件成功後就不能再選向量模型進行配置&lt;/li&gt; 
- &lt;li&gt;優化：導出工作流改為從後端取數據&lt;/li&gt; 
- &lt;li&gt;優化：當系統提示詞沒設置時，設置一個默認的系統提示詞&lt;/li&gt; 
- &lt;li&gt;優化：插件工具名稱增加校驗,知識庫增加自定義向量模型進行向量化 close #IC6WAY&lt;/li&gt; 
- &lt;li&gt;優化：知識庫成功存入向量數據之後不允許再修改向量模型&lt;/li&gt; 
- &lt;li&gt;修復：修復機器人刪除對話記錄後報 botid 不能為空 close #IC78K1&lt;/li&gt; 
- &lt;li&gt;修復：解決執行加入大模型按鈕後不會變成已加入大模型&lt;/li&gt; 
- &lt;li&gt;修復：修復 OpenAi 的 llmExtraConfig 空指針問題 close #IC72VG&lt;/li&gt; 
- &lt;li&gt;修復：修復新建空白工作流時，知識庫/大模型節點選項為空的情況。 close #IC6OH4&lt;/li&gt; 
- &lt;li&gt;修復：修復知識庫上傳文件集合名稱不符合未報錯，增加集合名稱校驗提示 close #IC6LKZ&lt;/li&gt; 
- &lt;li&gt;修復：通過升級 Tinyflow 以修復 refType 不正確以及 Select 不能選擇父級下拉項的問題&lt;/li&gt; 
- &lt;li&gt;修復：修復 plugin_tool_id 在表 tb_ai_bot_plugins 中不存在，直接執行會報錯 close #IC7OHS&lt;/li&gt; 
- &lt;li&gt;文檔：文檔站點，添加點擊圖片放到的功能&lt;/li&gt; 
- &lt;li&gt;文檔：循環節點和插件節點的文檔。&lt;/li&gt; 
- &lt;li&gt;文檔：添加大模型文檔，工作流大模型節點文檔。&lt;/li&gt; 
+ &lt;li&gt;Spring Data Commons&amp;nbsp;&lt;code&gt;3.5&lt;/code&gt;&amp;nbsp;-&amp;nbsp;&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fdocs.spring.io%2Fspring-data%2Fcommons%2Fdocs%2F3.5.0%2Fapi%2F" target="_blank"&gt;Javadoc&lt;/a&gt;&amp;nbsp;-&amp;nbsp;&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fdocs.spring.io%2Fspring-data%2Fcommons%2Freference%2F3.5%2F" target="_blank"&gt;Documentation&lt;/a&gt;&amp;nbsp;-&amp;nbsp;&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fgithub.com%2Fspring-projects%2Fspring-data-commons%2Freleases%2Ftag%2F3.5.0" target="_blank"&gt;Changelog&lt;/a&gt;&lt;/li&gt; 
+ &lt;li&gt;Spring Data JPA&amp;nbsp;&lt;code&gt;3.5&lt;/code&gt;&amp;nbsp;-&amp;nbsp;&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fdocs.spring.io%2Fspring-data%2Fjpa%2Fdocs%2F3.5.0%2Fapi%2F" target="_blank"&gt;Javadoc&lt;/a&gt;&amp;nbsp;-&amp;nbsp;&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fdocs.spring.io%2Fspring-data%2Fjpa%2Freference%2F3.5%2F" target="_blank"&gt;Documentation&lt;/a&gt;&amp;nbsp;-&amp;nbsp;&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fgithub.com%2Fspring-projects%2Fspring-data-jpa%2Freleases%2Ftag%2F3.5.0" target="_blank"&gt;Changelog&lt;/a&gt;&lt;/li&gt; 
+ &lt;li&gt;Spring Data MongoDB&amp;nbsp;&lt;code&gt;4.5&lt;/code&gt;&amp;nbsp;-&amp;nbsp;&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fdocs.spring.io%2Fspring-data%2Fmongodb%2Fdocs%2F4.5.0%2Fapi%2F" target="_blank"&gt;Javadoc&lt;/a&gt;&amp;nbsp;-&amp;nbsp;&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fdocs.spring.io%2Fspring-data%2Fmongodb%2Freference%2F4.5%2F" target="_blank"&gt;Documentation&lt;/a&gt;&amp;nbsp;-&amp;nbsp;&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fgithub.com%2Fspring-projects%2Fspring-data-mongodb%2Freleases%2Ftag%2F4.5.0" target="_blank"&gt;Changelog&lt;/a&gt;&lt;/li&gt; 
+ &lt;li&gt;Spring Data Neo4j&amp;nbsp;&lt;code&gt;7.5&lt;/code&gt;&amp;nbsp;-&amp;nbsp;&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fdocs.spring.io%2Fspring-data%2Fneo4j%2Fdocs%2F7.5.0%2Fapi%2F" target="_blank"&gt;Javadoc&lt;/a&gt;&amp;nbsp;-&amp;nbsp;&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fdocs.spring.io%2Fspring-data%2Fneo4j%2Freference%2F7.5%2F" target="_blank"&gt;Documentation&lt;/a&gt;&amp;nbsp;-&amp;nbsp;&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fgithub.com%2Fspring-projects%2Fspring-data-neo4j%2Freleases%2Ftag%2F7.5.0" target="_blank"&gt;Changelog&lt;/a&gt;&lt;/li&gt; 
+ &lt;li&gt;Spring Data for Apache Cassandra&amp;nbsp;&lt;code&gt;4.5&lt;/code&gt;&amp;nbsp;-&amp;nbsp;&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fdocs.spring.io%2Fspring-data%2Fcassandra%2Fdocs%2F4.5.0%2Fapi%2F" target="_blank"&gt;Javadoc&lt;/a&gt;&amp;nbsp;-&amp;nbsp;&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fdocs.spring.io%2Fspring-data%2Fcassandra%2Freference%2F4.5%2F" target="_blank"&gt;Documentation&lt;/a&gt;&amp;nbsp;-&amp;nbsp;&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fgithub.com%2Fspring-projects%2Fspring-data-cassandra%2Freleases%2Ftag%2F4.5.0" target="_blank"&gt;Changelog&lt;/a&gt;&lt;/li&gt; 
+ &lt;li&gt;Spring Data KeyValue&amp;nbsp;&lt;code&gt;3.5&lt;/code&gt;&amp;nbsp;-&amp;nbsp;&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fdocs.spring.io%2Fspring-data%2Fkeyvalue%2Fdocs%2F3.5.0%2Fapi%2F" target="_blank"&gt;Javadoc&lt;/a&gt;&amp;nbsp;-&amp;nbsp;&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fdocs.spring.io%2Fspring-data%2Fkeyvalue%2Freference%2F3.5%2F" target="_blank"&gt;Documentation&lt;/a&gt;&amp;nbsp;-&amp;nbsp;&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fgithub.com%2Fspring-projects%2Fspring-data-keyvalue%2Freleases%2Ftag%2F3.5.0" target="_blank"&gt;Changelog&lt;/a&gt;&lt;/li&gt; 
+ &lt;li&gt;Spring Data LDAP&amp;nbsp;&lt;code&gt;3.5&lt;/code&gt;&amp;nbsp;-&amp;nbsp;&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fdocs.spring.io%2Fspring-data%2Fldap%2Fdocs%2F3.5.0%2Fapi%2F" target="_blank"&gt;Javadoc&lt;/a&gt;&amp;nbsp;-&amp;nbsp;&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fdocs.spring.io%2Fspring-data%2Fldap%2Freference%2F3.5%2F" target="_blank"&gt;Documentation&lt;/a&gt;&amp;nbsp;-&amp;nbsp;&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fgithub.com%2Fspring-projects%2Fspring-data-ldap%2Freleases%2Ftag%2F3.5.0" target="_blank"&gt;Changelog&lt;/a&gt;&lt;/li&gt; 
+ &lt;li&gt;Spring Data REST&amp;nbsp;&lt;code&gt;4.5&lt;/code&gt;&amp;nbsp;-&amp;nbsp;&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fdocs.spring.io%2Fspring-data%2Frest%2Fdocs%2F4.5.0%2Fapi%2F" target="_blank"&gt;Javadoc&lt;/a&gt;&amp;nbsp;-&amp;nbsp;&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fdocs.spring.io%2Fspring-data%2Frest%2Freference%2F4.5%2F" target="_blank"&gt;Documentation&lt;/a&gt;&amp;nbsp;-&amp;nbsp;&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fgithub.com%2Fspring-projects%2Fspring-data-rest%2Freleases%2Ftag%2F4.5.0" target="_blank"&gt;Changelog&lt;/a&gt;&lt;/li&gt; 
+ &lt;li&gt;Spring Data Redis&amp;nbsp;&lt;code&gt;3.5&lt;/code&gt;&amp;nbsp;-&amp;nbsp;&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fdocs.spring.io%2Fspring-data%2Fredis%2Fdocs%2F3.5.0%2Fapi%2F" target="_blank"&gt;Javadoc&lt;/a&gt;&amp;nbsp;-&amp;nbsp;&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fdocs.spring.io%2Fspring-data%2Fredis%2Freference%2F3.5%2F" target="_blank"&gt;Documentation&lt;/a&gt;&amp;nbsp;-&amp;nbsp;&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fgithub.com%2Fspring-projects%2Fspring-data-redis%2Freleases%2Ftag%2F3.5.0" target="_blank"&gt;Changelog&lt;/a&gt;&lt;/li&gt; 
+ &lt;li&gt;Spring Data Elasticsearch&amp;nbsp;&lt;code&gt;5.5&lt;/code&gt;&amp;nbsp;-&amp;nbsp;&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fdocs.spring.io%2Fspring-data%2Felasticsearch%2Fdocs%2F5.5.0%2Fapi%2F" target="_blank"&gt;Javadoc&lt;/a&gt;&amp;nbsp;-&amp;nbsp;&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fdocs.spring.io%2Fspring-data%2Felasticsearch%2Freference%2F5.5%2F" target="_blank"&gt;Documentation&lt;/a&gt;&amp;nbsp;-&amp;nbsp;&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fgithub.com%2Fspring-projects%2Fspring-data-elasticsearch%2Freleases%2Ftag%2F5.5.0" target="_blank"&gt;Changelog&lt;/a&gt;&lt;/li&gt; 
+ &lt;li&gt;Spring Data Couchbase&amp;nbsp;&lt;code&gt;5.5&lt;/code&gt;&amp;nbsp;-&amp;nbsp;&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fdocs.spring.io%2Fspring-data%2Fcouchbase%2Fdocs%2F5.5.0%2Fapi%2F" target="_blank"&gt;Javadoc&lt;/a&gt;&amp;nbsp;-&amp;nbsp;&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fdocs.spring.io%2Fspring-data%2Fcouchbase%2Freference%2F5.5%2F" target="_blank"&gt;Documentation&lt;/a&gt;&amp;nbsp;-&amp;nbsp;&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fgithub.com%2Fspring-projects%2Fspring-data-couchbase%2Freleases%2Ftag%2F5.5.0" target="_blank"&gt;Changelog&lt;/a&gt;&lt;/li&gt; 
+ &lt;li&gt;Spring Data Relational&amp;nbsp;&lt;code&gt;3.5&lt;/code&gt;&amp;nbsp;-&amp;nbsp;&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fdocs.spring.io%2Fspring-data%2Frelational%2Fdocs%2F3.5.0%2Fapi%2F" target="_blank"&gt;Javadoc&lt;/a&gt;&amp;nbsp;-&amp;nbsp;&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fdocs.spring.io%2Fspring-data%2Frelational%2Freference%2F3.5%2F" target="_blank"&gt;Documentation&lt;/a&gt;&amp;nbsp;-&amp;nbsp;&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fgithub.com%2Fspring-projects%2Fspring-data-relational%2Freleases%2Ftag%2F3.5.0" target="_blank"&gt;Changelog&lt;/a&gt;&lt;/li&gt; 
 &lt;/ul&gt;
-&lt;p&gt;詳情查看：&lt;a href="https://gitee.com/aiflowy/aiflowy/releases/v1.0.2" rel="nofollow"&gt;https://gitee.com/aiflowy/aiflowy/releases/v1.0.2&lt;/a&gt;&lt;/p&gt;
                                                                                 &lt;/div&gt;
                                                                             </description>
-      <link>https://www.oschina.net/news/350038</link>
-      <guid isPermaLink="false">https://www.oschina.net/news/350038</guid>
-      <pubDate>Fri, 09 May 2025 08:19:00 GMT</pubDate>
-      <author>來源: 投稿</author>
-    </item>
-    <item>
-      <title>Eclipse Vert.x 5 發佈！</title>
-      <description>&lt;div class="content"&gt;
-                                                                    
-                                                        &lt;p&gt;我們非常高興地宣佈 Vert.x 5 的發佈。&lt;/p&gt; 
-&lt;h2&gt;Vert.x 5 有哪些新功能？&lt;/h2&gt; 
-&lt;p&gt;Vert.x 5 是 Vert.x 4.x 系列的進化版本，為 Vert.x 帶來了&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fvertx.io%2Fblog%2Fwhats-new-in-vert-x-5%2F" target="_blank"&gt;重要功能&lt;/a&gt;。&lt;/p&gt; 
-&lt;h2&gt;從 Vert.x 4 到 Vert.x 5 升級&lt;/h2&gt; 
-&lt;p&gt;Vert.x 5 在 Vert.x 4 的基礎上添加了一系列新功能，同時提供了與 Vert.x 4 一致的使用體驗：Vert.x 4 的用户在使用 Vert.x 5 時會感到非常熟悉。&lt;/p&gt; 
-&lt;p&gt;你可以瞭解更多關於從 &lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fvertx.io%2Fblog%2Ffrom-vert-x-4-to-vert-x-5%2F" target="_blank"&gt;Vert.x 4 遷移到 Vert.x 5&lt;/a&gt; 的信息。&lt;/p&gt; 
-&lt;h2&gt;沒有社區，我們一無所有&lt;/h2&gt; 
-&lt;p&gt;正是&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fvertx.io%2Fcommunity%2F" target="_blank"&gt;社區&lt;/a&gt;的努力，讓 Vert.x 5 成為了現實。&lt;/p&gt; 
-&lt;p&gt;特別感謝 &lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fmichelkraemer.com%2F" target="_blank"&gt;Michel Krämer&lt;/a&gt;，他是這個令人驚歎的網站的創建者。&lt;/p&gt; 
-&lt;h2&gt;最後&lt;/h2&gt; 
-&lt;p&gt;5.0.0 的&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fgithub.com%2Fvert-x3%2Fwiki%2Fwiki%2F5.0.0-Release-Notes" target="_blank"&gt;發行説明&lt;/a&gt;以及&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fgithub.com%2Fvert-x3%2Fwiki%2Fwiki%2F5.0.0-Deprecations-and-breaking-changes" target="_blank"&gt;廢棄和重大更改的信息&lt;/a&gt;可以在 wiki 中找到。&lt;/p&gt; 
-&lt;p&gt;你可以使用 &lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fstart.vertx.io%2F" target="_blank"&gt;start.vertx.io&lt;/a&gt; 來啓動一個 Vert.x 5 項目。&lt;/p&gt; 
-&lt;p&gt;發佈的構件已經部署到了 &lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fsearch.maven.org%2Fsearch%3Fq%3Dg%3Aio.vertx%2520AND%2520v%3A5.0.0" target="_blank"&gt;Maven Central&lt;/a&gt;。&lt;/p&gt; 
-&lt;p&gt;&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fwww.npmjs.com%2Fpackage%2F%40vertx%2Feventbus-bridge-client.js" target="_blank"&gt;Vert.x 4 的事件總線 JavaScript 客户端庫&lt;/a&gt;現在可以在一個單一的位置獲取，並且它現在可以單獨使用，也可以輕鬆集成到任何前端構建工具中。&lt;/p&gt; 
-&lt;p&gt;就這些！祝你編碼愉快，並期待在我們的&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fvertx.io%2Fchannels" target="_blank"&gt;用户或開發者頻道&lt;/a&gt;中很快見到你。&lt;/p&gt;
-                                                                                &lt;/div&gt;
-                                                                            </description>
-      <link>https://www.oschina.net/news/350023/eclipse-vert-x-5-released</link>
-      <guid isPermaLink="false">https://www.oschina.net/news/350023/eclipse-vert-x-5-released</guid>
-      <pubDate>Fri, 09 May 2025 07:06:00 GMT</pubDate>
-      <author>來源: 投稿</author>
-    </item>
-    <item>
-      <title>二合一版本，Inkscape 1.4.2 發佈</title>
-      <description>&lt;div class="content"&gt;
-                                                                    
-                                                        &lt;p&gt;&lt;span style="color:#000000"&gt;Inkscape 是一個免費的開源矢量圖形編輯器，適用於 Linux、Windows 和 macOS。它提供了豐富的功能，廣泛用於藝術和技術插圖。它使用矢量圖形允許以無限分辨率進行清晰的輸出和渲染。Inkscape 使用標準化的 SVG 文件格式作為其主要格式。它可以導入和導出各種文件格式，包括 SVG、AI、EPS、PDF、PS 和 PNG。&lt;/span&gt;&lt;/p&gt; 
-&lt;p&gt;&lt;span style="color:#000000"&gt;Inkscape 1.4 以來的第一個次要版本&amp;nbsp;Inkscape 1.4.2 現已&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Finkscape.org%2Fnews%2F2025%2F05%2F12%2F2-in-1-release-inkscape-142-is-out%2F" target="_blank"&gt;發佈&lt;/a&gt;。由於在計劃發佈前不久才發現的一個重大錯誤，因此開發團隊將 1.4.1 與 1.4.2 進行了合併。&lt;/span&gt;&lt;/p&gt; 
-&lt;p&gt;&lt;span style="color:#000000"&gt;&lt;img alt="" height="235" src="https://oscimg.oschina.net/oscnet/up-6863114bc95b19bef5c60841d9234cfaedf.png" width="500" referrerpolicy="no-referrer"&gt;&lt;/span&gt;&lt;/p&gt; 
-&lt;p&gt;&lt;span style="color:#000000"&gt;以下是對新版本預期內容的總結：&lt;/span&gt;&lt;/p&gt; 
-&lt;ul&gt; 
- &lt;li&gt;&lt;span style="color:#000000"&gt;新的&amp;nbsp;&lt;strong&gt;splash screen&lt;/strong&gt;，在 Inkscape 在後台加載時提供視覺提示&lt;/span&gt;&lt;/li&gt; 
- &lt;li&gt;&lt;span style="color:#000000"&gt;初步支持導入&amp;nbsp;&lt;strong&gt;Vectornator / Linearity Curve&amp;nbsp;&lt;/strong&gt;文件&lt;/span&gt;&lt;/li&gt; 
- &lt;li&gt;&lt;span style="color:#000000"&gt;&lt;strong&gt;清理路徑&lt;/strong&gt;的新擴展&lt;/span&gt;&lt;/li&gt; 
- &lt;li&gt;&lt;span style="color:#000000"&gt;大幅&lt;strong&gt;改進了 Affinity Designer 文件 (.afdesign) 導入&lt;/strong&gt;&lt;/span&gt;&lt;/li&gt; 
- &lt;li&gt;&lt;span style="color:#000000"&gt;&lt;strong&gt;修復了 20 個 crash/freeze 問題&lt;/strong&gt;，其中許多影響了 PDF 導入&lt;/span&gt;&lt;/li&gt; 
- &lt;li&gt;&lt;span style="color:#000000"&gt;&lt;strong&gt;超過 50 個其他錯誤修復和小改進&lt;/strong&gt;，包括對 Boolean 運算、圖層選擇、最小窗口寬度的改進以及噴塗工具按鈕功能的恢復&lt;/span&gt;&lt;/li&gt; 
- &lt;li&gt;&lt;span style="color:#000000"&gt;以及&lt;strong&gt;15 個更新的翻譯&lt;/strong&gt;&lt;/span&gt;&lt;/li&gt; 
-&lt;/ul&gt; 
-&lt;p&gt;&lt;span style="color:#000000"&gt;有關 1.4.2 版變化的更多詳細信息，可&lt;/span&gt;&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Finkscape.org%2Fdoc%2Frelease_notes%2F1.4.2%2FInkscape_1.4.2.html" target="_blank"&gt;參閲發行説明&lt;/a&gt;。&lt;/p&gt;
-                                                                                &lt;/div&gt;
-                                                                            </description>
-      <link>https://www.oschina.net/news/349990/inkscape-1-4-2-released</link>
-      <guid isPermaLink="false">https://www.oschina.net/news/349990/inkscape-1-4-2-released</guid>
-      <pubDate>Fri, 09 May 2025 03:02:00 GMT</pubDate>
+      <link>https://www.oschina.net/news/350562/spring-data-2025-0-ga</link>
+      <guid isPermaLink="false">https://www.oschina.net/news/350562/spring-data-2025-0-ga</guid>
+      <pubDate>Sun, 11 May 2025 02:27:00 GMT</pubDate>
       <author>來源: OSCHINA</author>
     </item>
     <item>
-      <title>TheRouter 1.2.4 版本發佈，業界領先移動端路由框架</title>
+      <title>NumPy 2.2.6 發佈</title>
       <description>&lt;div class="content"&gt;
                                                                     
-                                                        &lt;p&gt;&lt;span style="background-color:#ffffff; color:#333333"&gt;TheRouter 是由貨拉拉技術開源的，可同時用於 Android/iOS/HarmonyOS 模塊化開發的一整套解決方案框架。Android 支持 KSP、支持 AGP8，iOS 支持 OC/Swift，不僅能對常規的模塊依賴解耦、頁面跳轉，同時提供了模塊化過程中常見問題的解決辦法。&lt;/span&gt;&lt;span style="background-color:#ffffff; color:#212529"&gt;例如：完美解決了模塊化開發後由於組件內無法獲取 Application 生命週期與業務流程，造成每次初始化與關聯依賴調用都需要跨模塊修改代碼的問題，是目前業界最領先的移動端路由框架。&amp;nbsp;&lt;/span&gt;&lt;/p&gt; 
-&lt;p&gt;TheRouter 目前已經支持鴻蒙路由，具體使用可參考官網&lt;span style="background-color:#ffffff; color:#212529"&gt;：&lt;/span&gt;&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Ftherouter.cn%2Fdocs%2F2022%2F08%2F26%2F01" target="_blank"&gt;https://therouter.cn&lt;/a&gt;&lt;/p&gt; 
-&lt;p style="color:#1f2328; text-align:start"&gt;&lt;strong&gt;整合 1.2.4 各個 rc 版本改動，總改動如下：&lt;/strong&gt;&lt;/p&gt; 
+                                                        &lt;p&gt;&lt;span style="color:#1f2328"&gt;NumPy 2.2.6 是一個補丁版本，修復了 2.2.5 版本之後發現的錯誤。它包含一些的類型修復 / 改進，以及常規的錯誤修復和一些 CI 維護。&lt;/span&gt;&lt;/p&gt; 
+&lt;p style="color:#333333; margin-left:0; margin-right:0; text-align:start"&gt;&lt;span style="color:#000000"&gt;此版本共合併了 11 個拉取請求：&lt;/span&gt;&lt;/p&gt; 
 &lt;ul&gt; 
- &lt;li&gt;feature:&lt;span&gt;&amp;nbsp;&lt;/span&gt;&lt;code&gt;debug&lt;/code&gt;環境加入耗時過久的異步任務檢查&lt;/li&gt; 
- &lt;li&gt;feature: 優化&lt;code&gt;AGP8&lt;/code&gt;的&lt;code&gt;debug&lt;/code&gt;環境編譯邏輯&lt;/li&gt; 
- &lt;li&gt;fix: 修復動畫設置錯誤問題&lt;/li&gt; 
- &lt;li&gt;fix: 修復線程池共用時偶現&lt;code&gt;ANR&lt;/code&gt;問題&lt;/li&gt; 
- &lt;li&gt;fix: 修復&lt;code&gt;debug&lt;/code&gt;環境下，修改類名後原類名緩存依然存在的問題&lt;span&gt;&amp;nbsp;&lt;/span&gt;&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fgithub.com%2FHuolalaTech%2Fhll-wp-therouter-android%2Fissues%2F220" target="_blank"&gt;#220&lt;/a&gt;&lt;/li&gt; 
- &lt;li&gt;fix: 修復&lt;span&gt;&amp;nbsp;&lt;/span&gt;&lt;code&gt;plugin&lt;/code&gt;&lt;span&gt;&amp;nbsp;&lt;/span&gt;中&lt;span&gt;&amp;nbsp;&lt;/span&gt;&lt;code&gt;debug&lt;/code&gt;&lt;span&gt;&amp;nbsp;&lt;/span&gt;開關對&lt;code&gt;agp8&lt;/code&gt;失效問題&lt;/li&gt; 
- &lt;li&gt;fix: 修復&lt;code&gt;debug&lt;/code&gt;環境下線程安全問題&lt;/li&gt; 
- &lt;li&gt;fix: 修復&lt;code&gt;@Autowired&lt;/code&gt;中的&lt;code&gt;required&lt;/code&gt;為&lt;code&gt;true&lt;/code&gt;時並未生效問題&lt;span&gt;&amp;nbsp;&lt;/span&gt;&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fgithub.com%2FHuolalaTech%2Fhll-wp-therouter-android%2Fissues%2F196" target="_blank"&gt;#196&lt;/a&gt;&lt;/li&gt; 
- &lt;li&gt;fix: 修復&lt;code&gt;KSP&lt;/code&gt;編譯路字符過長時編譯失敗問題&lt;span&gt;&amp;nbsp;&lt;/span&gt;&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fgithub.com%2FHuolalaTech%2Fhll-wp-therouter-android%2Fissues%2F162" target="_blank"&gt;#162&lt;/a&gt;&lt;/li&gt; 
- &lt;li&gt;fix: 修復&lt;code&gt;KAPT&lt;/code&gt;編譯期路由表過長造成的編譯失敗問題&lt;/li&gt; 
- &lt;li&gt;fix: 修復&lt;code&gt;UI 線程&lt;/code&gt;加鎖可能造成的&lt;code&gt;ANR&lt;/code&gt;問題&lt;/li&gt; 
- &lt;li&gt;fix: 修復&lt;code&gt;agp4&lt;/code&gt;編譯時內部類讀取失敗可能造成的編譯失敗&lt;/li&gt; 
- &lt;li&gt;fix: 修復&lt;code&gt;debug&lt;/code&gt;環境下&lt;code&gt;TheRouter.inject()&lt;/code&gt;對繼承類注入錯誤問題&lt;/li&gt; 
+ &lt;li&gt;&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fgithub.com%2Fnumpy%2Fnumpy%2Fpull%2F28778" target="_blank"&gt;#28778&lt;/a&gt;：MAINT：為進一步開發 2.2.x 做準備&lt;/li&gt; 
+ &lt;li&gt;&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fgithub.com%2Fnumpy%2Fnumpy%2Fpull%2F28851" target="_blank"&gt;#28851&lt;/a&gt;：BLD：更新 vendor-meson 以修復 module_feature 衝突參數……&lt;/li&gt; 
+ &lt;li&gt;&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fgithub.com%2Fnumpy%2Fnumpy%2Fpull%2F28852" target="_blank"&gt;#28852&lt;/a&gt;：BUG：修復 np.strings.find 中的堆緩衝區溢出&lt;/li&gt; 
+ &lt;li&gt;&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fgithub.com%2Fnumpy%2Fnumpy%2Fpull%2F28853" target="_blank"&gt;#28853&lt;/a&gt;：TYP：修復&lt;code&gt;NDArray[floating] + float&lt;/code&gt;返回類型&lt;/li&gt; 
+ &lt;li&gt;&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fgithub.com%2Fnumpy%2Fnumpy%2Fpull%2F28864" target="_blank"&gt;#28864&lt;/a&gt;：BUG：修復 stringdtype 單例線程安全&lt;/li&gt; 
+ &lt;li&gt;&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fgithub.com%2Fnumpy%2Fnumpy%2Fpull%2F28865" target="_blank"&gt;#28865&lt;/a&gt;：MAINT：使用 OpenBLAS 0.3.29&lt;/li&gt; 
+ &lt;li&gt;&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fgithub.com%2Fnumpy%2Fnumpy%2Fpull%2F28889" target="_blank"&gt;#28889&lt;/a&gt;：MAINT：from_dlpack 線程安全修復&lt;/li&gt; 
+ &lt;li&gt;&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fgithub.com%2Fnumpy%2Fnumpy%2Fpull%2F28913" target="_blank"&gt;#28913&lt;/a&gt;：TYP：修復&lt;code&gt;ndarray.setfield&lt;/code&gt;中不存在的&lt;code&gt;CanIndex&lt;/code&gt;註釋&lt;/li&gt; 
+ &lt;li&gt;&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fgithub.com%2Fnumpy%2Fnumpy%2Fpull%2F28915" target="_blank"&gt;#28915&lt;/a&gt;：MAINT：避免 dereferencing/strict&amp;nbsp;別名警告&lt;/li&gt; 
+ &lt;li&gt;&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fgithub.com%2Fnumpy%2Fnumpy%2Fpull%2F28916" target="_blank"&gt;#28916&lt;/a&gt;：BUG：修復 _pyarray_correlate 中缺少對 PyErr_Occurred() 的檢查。&lt;/li&gt; 
+ &lt;li&gt;&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fgithub.com%2Fnumpy%2Fnumpy%2Fpull%2F28966" target="_blank"&gt;#28966&lt;/a&gt;：TYP：拒絕 ndarray.__ifloordiv__ 中的複雜 scalar 類型&lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;p&gt;更新説明：&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fgithub.com%2Fnumpy%2Fnumpy%2Freleases%2Ftag%2Fv2.2.6" target="_blank"&gt;https://github.com/numpy/numpy/releases/tag/v2.2.6&lt;/a&gt;&lt;/p&gt;
+                                                                                &lt;/div&gt;
+                                                                            </description>
+      <link>https://www.oschina.net/news/350561/numpy-2-2-6-released</link>
+      <guid isPermaLink="false">https://www.oschina.net/news/350561/numpy-2-2-6-released</guid>
+      <pubDate>Sun, 11 May 2025 02:23:00 GMT</pubDate>
+      <author>來源: OSCHINA</author>
+    </item>
+    <item>
+      <title>禪道開源版 21.7 發佈！瀑布、融合瀑布支持批量維護父子階段，客户端支持消息合併轉發</title>
+      <description>&lt;div class="content"&gt;
+                                                                    
+                                                        &lt;p style="color:#39485d; margin-left:0; margin-right:0; text-align:start"&gt;大家好，&lt;span&gt;&amp;nbsp;&lt;/span&gt;&lt;strong&gt;禪道 21.7 發佈啦！&lt;/strong&gt;本次發佈中&lt;span&gt;&amp;nbsp;&lt;/span&gt;&lt;strong&gt;瀑布、融合瀑布支持批量維護父子階段，&lt;/strong&gt;節省維護時間，操作更便捷。優化部分功能細節，如&lt;span&gt;&amp;nbsp;&lt;/span&gt;&lt;strong&gt;父任務支持刪除後同步刪除子任務；任務、用例批量操作頁面增加「同上」等功能，&lt;/strong&gt;提升用户交互體驗！&lt;/p&gt; 
+&lt;p style="color:#39485d; margin-left:0; margin-right:0; text-align:start"&gt;&lt;strong&gt;客户端支持批量選擇消息後合併轉發，&lt;/strong&gt;以全新的消息體形式進行發送，讓溝通更加高效和便捷，此外還&lt;span&gt;&amp;nbsp;&lt;/span&gt;&lt;strong&gt;對會議響鈴邏輯進行了調整，&lt;/strong&gt;避免響鈴過長造成幹擾。&lt;/p&gt; 
+&lt;p style="color:#39485d; margin-left:0; margin-right:0; text-align:start"&gt;新版本將為用户帶來更好的使用體驗和更高的工作效率，感謝大家一直以來的支持和反饋，我們將繼續努力提供更優秀的產品和服務！&lt;/p&gt; 
+&lt;p style="color:#39485d; margin-left:0; margin-right:0; text-align:start"&gt;&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fstatic.zentao.net%2Fweb%2Fdata%2Fupload%2Fzentao%2F202505%2Ff_8ba4af6d9ede991b0d4c78abad04e42c.webp" target="_blank"&gt;&lt;img alt="" src="https://oscimg.oschina.net/oscnet//2c50ca9322747349ca90491c6ded634c.webp" referrerpolicy="no-referrer"&gt;&lt;/a&gt;&lt;/p&gt; 
+&lt;h2&gt;新增功能點&lt;/h2&gt; 
+&lt;h3&gt;項目：&lt;/h3&gt; 
+&lt;ul&gt; 
+ &lt;li&gt;瀑布、融合瀑布支持批量維護父子階段&lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;h3&gt;任務：&lt;/h3&gt; 
+&lt;ul&gt; 
+ &lt;li&gt;父任務支持刪除，刪除後子任務同步刪除&lt;/li&gt; 
+ &lt;li&gt;任務批量維護頁面中優先級和預計增加「同上」&lt;/li&gt; 
+ &lt;li&gt;需求刪除後，關聯的任務的詳情頁增加「&lt;span&gt;已刪除&lt;/span&gt;」標識&lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;h3&gt;測試：&lt;/h3&gt; 
+&lt;ul&gt; 
+ &lt;li&gt;用例批量編輯時，研發需求可以選擇「同上」&lt;/li&gt; 
+ &lt;li&gt;生成測試報告時，如果超過測試單時間仍有執行記錄，增加提示&lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;p style="color:#39485d; margin-left:0; margin-right:0; text-align:start"&gt;&lt;strong&gt;禪道本次發佈數據如下：&lt;/strong&gt;&lt;/p&gt; 
+&lt;p style="color:#39485d; margin-left:0; margin-right:0; text-align:start"&gt;&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fstatic.zentao.net%2Fweb%2Fdata%2Fupload%2Fzentao%2F202505%2Ff_b5921cbe3c08a02be36cb192813647f9.webp" target="_blank"&gt;&lt;img alt="" src="https://oscimg.oschina.net/oscnet//9ad9ee079bad7eff8743b6b36de88a66.webp" referrerpolicy="no-referrer"&gt;&lt;/a&gt;&lt;/p&gt; 
+&lt;p style="color:#39485d; margin-left:0; margin-right:0; text-align:start"&gt;&lt;strong&gt;本期優化的全部需求和 Bug：&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fgithub.com%2Feasysoft%2Fzentaopms%2Fblob%2Fzentaopms_21.7_20250516%2Fdoc%2FCHANGELOG" target="_blank"&gt;&lt;span style="color:#007aff"&gt;請點擊查看&lt;/span&gt;&lt;/a&gt;&lt;/strong&gt;&lt;/p&gt; 
+&lt;p style="color:#39485d; margin-left:0; margin-right:0; text-align:start"&gt;▼瀑布、融合瀑布支持批量維護父子階段，節省維護時間，操作更便捷。&lt;/p&gt; 
+&lt;p style="color:#39485d; margin-left:0; margin-right:0; text-align:start"&gt;&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fstatic.zentao.net%2Fweb%2Fdata%2Fupload%2Fzentao%2F202505%2Ff_960b17c379d005fa0144d8c13e997f06.webp" target="_blank"&gt;&lt;img alt="" src="https://oscimg.oschina.net/oscnet//767347302d4989fe656c2ed92fdc36d8.webp" referrerpolicy="no-referrer"&gt;&lt;/a&gt;&lt;/p&gt; 
+&lt;p style="color:#39485d; margin-left:0; margin-right:0; text-align:start"&gt;▼父任務支持刪除，刪除後子任務同步刪除。&lt;/p&gt; 
+&lt;p style="color:#39485d; margin-left:0; margin-right:0; text-align:start"&gt;&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fstatic.zentao.net%2Fweb%2Fdata%2Fupload%2Fzentao%2F202505%2Ff_83c056d6e7466b65cb40934a698eff35.webp" target="_blank"&gt;&lt;img alt="" src="https://oscimg.oschina.net/oscnet//b4f4f7efd595d44e3de6e3a1652f08fe.webp" referrerpolicy="no-referrer"&gt;&lt;/a&gt;&lt;/p&gt; 
+&lt;p style="color:#39485d; margin-left:0; margin-right:0; text-align:start"&gt;▼生成測試報告時，如果超過測試單時間仍有執行記錄，增加提示。&lt;/p&gt; 
+&lt;p style="color:#39485d; margin-left:0; margin-right:0; text-align:start"&gt;&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fstatic.zentao.net%2Fweb%2Fdata%2Fupload%2Fzentao%2F202505%2Ff_3399c3c41ba2b52515a893c88e154799.webp" target="_blank"&gt;&lt;img alt="" src="https://oscimg.oschina.net/oscnet//4da18d2ed2737aecd8a9c6821a488704.webp" referrerpolicy="no-referrer"&gt;&lt;/a&gt;&lt;/p&gt; 
+&lt;p style="color:#39485d; margin-left:0; margin-right:0; text-align:start"&gt;▼客户端支持消息合併轉發，以全新的消息體形式進行發送、查看，讓溝通更加高效和便捷。&lt;/p&gt; 
+&lt;p style="color:#39485d; margin-left:0; margin-right:0; text-align:start"&gt;&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fstatic.zentao.net%2Fweb%2Fdata%2Fupload%2Fzentao%2F202505%2Ff_821f442d46ab8745b633c2234bf46b63.webp" target="_blank"&gt;&lt;img alt="" src="https://oscimg.oschina.net/oscnet//877740bad4bdce36448073142c956135.webp" referrerpolicy="no-referrer"&gt;&lt;/a&gt;&lt;/p&gt; 
+&lt;p style="color:#39485d; margin-left:0; margin-right:0; text-align:start"&gt;&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fstatic.zentao.net%2Fweb%2Fdata%2Fupload%2Fzentao%2F202505%2Ff_996e1e9d1458d1f2a2c58f0beaa4899e.webp" target="_blank"&gt;&lt;img alt="" src="https://oscimg.oschina.net/oscnet//ce003dfcfed18ca83aa5696c7f700158.webp" referrerpolicy="no-referrer"&gt;&lt;/a&gt;&lt;/p&gt; 
+&lt;p style="color:#39485d; margin-left:0; margin-right:0; text-align:start"&gt;&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fstatic.zentao.net%2Fweb%2Fdata%2Fupload%2Fzentao%2F202505%2Ff_a81c474c0498ffecc8b63adcb1848f4a.webp" target="_blank"&gt;&lt;img alt="" src="https://oscimg.oschina.net/oscnet//08a892a026bce82a2596ce4e283087fe.webp" referrerpolicy="no-referrer"&gt;&lt;/a&gt;&lt;/p&gt; 
+&lt;p style="color:#39485d; margin-left:0; margin-right:0; text-align:start"&gt;&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fstatic.zentao.net%2Fweb%2Fdata%2Fupload%2Fzentao%2F202505%2Ff_373412d665bf27addab250c83b49d4bf.webp" target="_blank"&gt;&lt;img alt="" src="https://oscimg.oschina.net/oscnet//48d6f231ae8eb4c40f8b2bdddb8a5290.webp" referrerpolicy="no-referrer"&gt;&lt;/a&gt;&lt;/p&gt; 
+&lt;p&gt;&amp;nbsp;&lt;/p&gt; 
+&lt;h2&gt;下載鏈接&lt;/h2&gt; 
+&lt;table cellspacing="0" style="-webkit-text-stroke-width:0px; background-color:#ffffff; border-collapse:collapse; border-spacing:0px; box-sizing:border-box; color:#39485d; font-family:&amp;quot;Source Han Sans SC&amp;quot;,&amp;quot;Microsoft YaHei&amp;quot;,&amp;quot;PingFang SC&amp;quot;; font-size:13px; font-style:normal; font-variant-caps:normal; font-variant-ligatures:normal; font-weight:400; letter-spacing:normal; max-width:100%; orphans:2; scrollbar-color:#c1c1c1 #f1f1f1; scrollbar-width:thin; text-align:start; text-decoration-color:initial; text-decoration-style:initial; text-decoration-thickness:initial; text-transform:none; white-space:normal; widows:2; width:1214.4px; word-break:break-all; word-spacing:0px"&gt; 
+ &lt;tbody&gt; 
+  &lt;tr&gt; 
+   &lt;td style="border-color:#dddddd; border-style:solid; border-width:1px"&gt;&lt;span&gt;Windows 一鍵安裝包&lt;/span&gt;&lt;/td&gt; 
+   &lt;td style="border-color:#dddddd; border-style:solid; border-width:1px"&gt;&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fwww.zentao.net%2Fdl%2Fzentao%2F21.7%2FZenTaoPMS-21.7-zbox.win64.exe" target="_blank"&gt;&lt;span&gt;&lt;span&gt;64 位&lt;/span&gt;&lt;/span&gt;&lt;/a&gt;&lt;/td&gt; 
+  &lt;/tr&gt; 
+  &lt;tr&gt; 
+   &lt;td style="border-color:#dddddd; border-style:solid; border-width:1px"&gt; &lt;p style="margin-left:0; margin-right:0"&gt;&lt;span&gt;Linux 一鍵安裝包&lt;/span&gt;&lt;/p&gt; &lt;/td&gt; 
+   &lt;td style="border-color:#dddddd; border-style:solid; border-width:1px"&gt;&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fwww.zentao.net%2Fdl%2Fzentao%2F21.7%2FZenTaoPMS-21.7-zbox_amd64.tar.gz" target="_blank"&gt;&lt;span&gt;amd64 位&lt;/span&gt;&lt;/a&gt;&lt;span&gt;&amp;nbsp;&lt;/span&gt;&lt;br&gt; &lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fwww.zentao.net%2Fdl%2Fzentao%2F21.7%2FZenTaoPMS-21.7-zbox_arm64.tar.gz" target="_blank"&gt;&lt;span&gt;arm64 位&lt;/span&gt;&lt;/a&gt;&lt;/td&gt; 
+   &lt;td style="border-color:#dddddd; border-style:solid; border-width:1px; vertical-align:middle"&gt;&lt;span style="color:#e53333"&gt;注：Linux 一鍵安裝包必須直接解壓到 /opt 目錄下。&lt;/span&gt;&lt;/td&gt; 
+  &lt;/tr&gt; 
+  &lt;tr&gt; 
+   &lt;td style="border-color:#dddddd; border-style:solid; border-width:1px"&gt;&lt;span&gt;源碼包下載（tar.xz）： 可以通過 tar 命令或者解壓工具解壓&lt;/span&gt;&lt;/td&gt; 
+   &lt;td style="border-color:#dddddd; border-style:solid; border-width:1px"&gt;&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fwww.zentao.net%2Fdl%2Fzentao%2F21.7%2FZenTaoPMS-21.7-php7.0.tar.xz" target="_blank"&gt;&lt;span&gt;php7.0&lt;/span&gt;&lt;/a&gt;&lt;span&gt;&amp;nbsp; &amp;nbsp;&amp;nbsp;&lt;/span&gt;&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fwww.zentao.net%2Fdl%2Fzentao%2F21.7%2FZenTaoPMS-21.7-php7.1.tar.xz" target="_blank"&gt;&lt;span&gt;php7.1&lt;/span&gt;&lt;/a&gt;&lt;span&gt;&amp;nbsp; &amp;nbsp;&amp;nbsp;&lt;/span&gt;&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fwww.zentao.net%2Fdl%2Fzentao%2F21.7%2FZenTaoPMS-21.7-php7.2_7.4.tar.xz" target="_blank"&gt;&lt;span&gt;php7.2_7.4&lt;/span&gt;&lt;/a&gt;&lt;span&gt;&amp;nbsp; &amp;nbsp;&amp;nbsp;&lt;/span&gt;&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fwww.zentao.net%2Fdl%2Fzentao%2F21.7%2FZenTaoPMS-21.7-php8.1.tar.xz" target="_blank"&gt;&lt;span&gt;php8.1&lt;/span&gt;&lt;/a&gt;&lt;/td&gt; 
+  &lt;/tr&gt; 
+  &lt;tr&gt; 
+   &lt;td style="border-color:#dddddd; border-style:solid; border-width:1px"&gt;&lt;span&gt;源碼包下載（zip）&lt;/span&gt;&lt;/td&gt; 
+   &lt;td style="border-color:#dddddd; border-style:solid; border-width:1px"&gt;&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fwww.zentao.net%2Fdl%2Fzentao%2F21.7%2FZenTaoPMS-21.7-php7.0.zip" target="_blank"&gt;&lt;span&gt;php7.0&lt;/span&gt;&lt;/a&gt;&lt;span&gt;&amp;nbsp; &amp;nbsp;&amp;nbsp;&lt;/span&gt;&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fwww.zentao.net%2Fdl%2Fzentao%2F21.7%2FZenTaoPMS-21.7-php7.1.zip" target="_blank"&gt;&lt;span&gt;php7.1&lt;/span&gt;&lt;/a&gt;&lt;span&gt;&amp;nbsp; &amp;nbsp;&amp;nbsp;&lt;/span&gt;&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fwww.zentao.net%2Fdl%2Fzentao%2F21.7%2FZenTaoPMS-21.7-php7.2_7.4.zip" target="_blank"&gt;&lt;span&gt;php7.2_7.4&lt;/span&gt;&lt;/a&gt;&lt;span&gt;&amp;nbsp; &amp;nbsp;&amp;nbsp;&lt;/span&gt;&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fwww.zentao.net%2Fdl%2Fzentao%2F21.7%2FZenTaoPMS-21.7-php8.1.zip" target="_blank"&gt;&lt;span&gt;php8.1&lt;/span&gt;&lt;/a&gt;&lt;/td&gt; 
+  &lt;/tr&gt; 
+  &lt;tr&gt; 
+   &lt;td style="border-color:#dddddd; border-style:solid; border-width:1px"&gt;&lt;span&gt;DEB 包下載：可以通過 dpkg 包管理器在 Ubuntu 和 Debian 系統下安裝&lt;/span&gt;&lt;/td&gt; 
+   &lt;td style="border-color:#dddddd; border-style:solid; border-width:1px"&gt;&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fwww.zentao.net%2Fdl%2Fzentao%2F21.7%2FZenTaoPMS_21.7-php7.0-1_all.deb" target="_blank"&gt;&lt;span&gt;php7.0&lt;/span&gt;&lt;/a&gt;&lt;span&gt;&amp;nbsp; &amp;nbsp;&amp;nbsp;&lt;/span&gt;&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fwww.zentao.net%2Fdl%2Fzentao%2F21.7%2FZenTaoPMS_21.7-php7.1-1_all.deb" target="_blank"&gt;&lt;span&gt;php7.1&lt;/span&gt;&lt;/a&gt;&lt;span&gt;&amp;nbsp; &amp;nbsp;&amp;nbsp;&lt;/span&gt;&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fwww.zentao.net%2Fdl%2Fzentao%2F21.7%2FZenTaoPMS_21.7-php7.2_7.4-1_all.deb" target="_blank"&gt;&lt;span&gt;php7.2_7.4&lt;/span&gt;&lt;/a&gt;&lt;span&gt;&amp;nbsp; &amp;nbsp;&amp;nbsp;&lt;/span&gt;&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fwww.zentao.net%2Fdl%2Fzentao%2F21.7%2FZenTaoPMS_21.7-php8.1-1_all.deb" target="_blank"&gt;&lt;span&gt;php8.1&lt;/span&gt;&lt;/a&gt;&lt;/td&gt; 
+  &lt;/tr&gt; 
+  &lt;tr&gt; 
+   &lt;td style="border-color:#dddddd; border-style:solid; border-width:1px"&gt;&lt;span&gt;RPM 包下載：可以通過 rpm 包管理器在 Centos 系統下安裝&lt;/span&gt;&lt;/td&gt; 
+   &lt;td style="border-color:#dddddd; border-style:solid; border-width:1px"&gt;&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fwww.zentao.net%2Fdl%2Fzentao%2F21.7%2FZenTaoPMS-21.7-php7.0-1.noarch.rpm" target="_blank"&gt;&lt;span&gt;php7.0&lt;/span&gt;&lt;/a&gt;&lt;span&gt;&amp;nbsp; &amp;nbsp;&amp;nbsp;&lt;/span&gt;&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fwww.zentao.net%2Fdl%2Fzentao%2F21.7%2FZenTaoPMS-21.7-php7.1-1.noarch.rpm" target="_blank"&gt;&lt;span&gt;php7.1&lt;/span&gt;&lt;/a&gt;&lt;span&gt;&amp;nbsp; &amp;nbsp;&amp;nbsp;&lt;/span&gt;&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fwww.zentao.net%2Fdl%2Fzentao%2F21.7%2FZenTaoPMS-21.7-php7.2_7.4-1.noarch.rpm" target="_blank"&gt;&lt;span&gt;php7.2_7.4&lt;/span&gt;&lt;/a&gt;&lt;span&gt;&amp;nbsp; &amp;nbsp;&amp;nbsp;&lt;/span&gt;&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fwww.zentao.net%2Fdl%2Fzentao%2F21.7%2FZenTaoPMS-21.7-php8.1-1.noarch.rpm" target="_blank"&gt;&lt;span&gt;php8.1&lt;/span&gt;&lt;/a&gt;&lt;/td&gt; 
+  &lt;/tr&gt; 
+  &lt;tr&gt; 
+   &lt;td style="border-color:#dddddd; border-style:solid; border-width:1px; vertical-align:middle"&gt;&lt;span&gt;最新版禪道客户端下載鏈接&lt;/span&gt;&lt;/td&gt; 
+   &lt;td style="border-color:#dddddd; border-style:solid; border-width:1px"&gt;&lt;span&gt;Windows10+&lt;/span&gt;&lt;/td&gt; 
+   &lt;td style="border-color:#dddddd; border-style:solid; border-width:1px"&gt;&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fwww.zentao.net%2Fdl%2Fzentaoclient%2F9.3%2Fzentaoclient.win64.setup.exe" target="_blank"&gt;&lt;span&gt;安裝包&lt;/span&gt;&lt;/a&gt;&lt;span&gt;&amp;nbsp; &amp;nbsp;&amp;nbsp;&lt;/span&gt;&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fwww.zentao.net%2Fdl%2Fzentaoclient%2F9.3%2Fzentaoclient.win64.zip" target="_blank"&gt;&lt;span&gt;壓縮包&lt;/span&gt;&lt;/a&gt;&lt;/td&gt; 
+  &lt;/tr&gt; 
+  &lt;tr&gt; 
+   &lt;td style="border-color:#dddddd; border-style:solid; border-width:1px"&gt;&lt;span&gt;Linux&lt;/span&gt;&lt;/td&gt; 
+   &lt;td style="border-color:#dddddd; border-style:solid; border-width:1px"&gt;&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fwww.zentao.net%2Fdl%2Fzentaoclient%2F9.3%2Fzentaoclient.linux64.deb" target="_blank"&gt;&lt;span&gt;安裝包&lt;/span&gt;&lt;/a&gt;&lt;span&gt;&amp;nbsp; &amp;nbsp;&amp;nbsp;&lt;/span&gt;&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fwww.zentao.net%2Fdl%2Fzentaoclient%2F9.3%2Fzentaoclient.linux64.tar.gz" target="_blank"&gt;&lt;span&gt;壓縮包 (.tar.gz)&lt;/span&gt;&lt;/a&gt;&lt;span&gt;&amp;nbsp; &amp;nbsp;&amp;nbsp;&lt;/span&gt;&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fwww.zentao.net%2Fdl%2Fzentaoclient%2F9.3%2Fzentaoclient.linux64.zip" target="_blank"&gt;&lt;span&gt;壓縮包 (.zip)&lt;/span&gt;&lt;/a&gt;&lt;span&gt;&amp;nbsp; &amp;nbsp;&amp;nbsp;&lt;/span&gt;&lt;/td&gt; 
+  &lt;/tr&gt; 
+  &lt;tr&gt; 
+   &lt;td style="border-color:#dddddd; border-style:solid; border-width:1px"&gt;&lt;span&gt;macOS&lt;/span&gt;&lt;/td&gt; 
+   &lt;td style="border-color:#dddddd; border-style:solid; border-width:1px; width:360px"&gt;&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fwww.zentao.net%2Fdl%2Fzentaoclient%2F9.3%2Fzentaoclient.mac.dmg" target="_blank"&gt;&lt;span&gt;安裝包 (Intel)&lt;/span&gt;&lt;/a&gt;&lt;span&gt;&amp;nbsp; &amp;nbsp;&amp;nbsp;&lt;/span&gt;&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fwww.zentao.net%2Fdl%2Fzentaoclient%2F9.3%2Fzentaoclient.mac.m1.dmg" target="_blank"&gt;&lt;span&gt;安裝包 (Apple Silicon)&lt;/span&gt;&lt;/a&gt;&lt;span&gt;&amp;nbsp; &amp;nbsp;&amp;nbsp;&lt;/span&gt;&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fwww.zentao.net%2Fdl%2Fzentaoclient%2F9.3%2Fzentaoclient.mac64.zip" target="_blank"&gt;&lt;span&gt;壓縮包&lt;/span&gt;&lt;/a&gt;&lt;/td&gt; 
+  &lt;/tr&gt; 
+  &lt;tr&gt; 
+  &lt;/tr&gt; 
+  &lt;tr&gt; 
+  &lt;/tr&gt; 
+  &lt;tr&gt; 
+   &lt;td style="border-color:#dddddd; border-style:solid; border-width:1px"&gt;&lt;span&gt;最新版禪道客户端服務器下載鏈接&lt;/span&gt;&lt;/td&gt; 
+   &lt;td style="border-color:#dddddd; border-style:solid; border-width:1px"&gt;&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fwww.zentao.net%2Fdl%2Fzentaoclient%2F9.3%2Fxxd.9.3.win64.zip" target="_blank"&gt;&lt;span&gt;Windows&lt;/span&gt;&lt;/a&gt;&lt;span&gt;&amp;nbsp; &amp;nbsp;&amp;nbsp;&lt;/span&gt;&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fwww.zentao.net%2Fdl%2Fzentaoclient%2F9.3%2Fxxd.9.3.linux.x64.tar.gz" target="_blank"&gt;&lt;span&gt;Linux&lt;/span&gt;&lt;/a&gt;&lt;span&gt;&amp;nbsp; &amp;nbsp;&amp;nbsp;&lt;/span&gt;&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fwww.zentao.net%2Fdl%2Fzentaoclient%2F9.3%2Fxxd.9.3.mac.tar.gz" target="_blank"&gt;&lt;span&gt;macOS&lt;/span&gt;&lt;/a&gt;&lt;/td&gt; 
+  &lt;/tr&gt; 
+  &lt;tr&gt; 
+   &lt;td style="border-color:#dddddd; border-style:solid; border-width:1px"&gt;&lt;span&gt;禪道 Gogs 安裝包下載鏈接&lt;/span&gt;&lt;/td&gt; 
+   &lt;td style="border-color:#dddddd; border-style:solid; border-width:1px"&gt;&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fwww.zentao.net%2Fdl%2Fgogs%2F0.12%2Fgogs_darwin_amd64" target="_blank"&gt;&lt;span&gt;macOS amd64&lt;/span&gt;&lt;/a&gt;&lt;span&gt;&amp;nbsp; &amp;nbsp;&amp;nbsp;&lt;/span&gt;&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fwww.zentao.net%2Fdl%2Fgogs%2F0.12%2Fgogs_linux_amd64" target="_blank"&gt;&lt;span&gt;Linux amd64&lt;/span&gt;&lt;/a&gt;&lt;span&gt;&amp;nbsp; &amp;nbsp;&amp;nbsp;&lt;/span&gt;&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fwww.zentao.net%2Fdl%2Fgogs%2F0.12%2Fgogs_windows_amd64.exe" target="_blank"&gt;&lt;span&gt;Windows amd64&lt;/span&gt;&lt;/a&gt;&lt;span&gt;&amp;nbsp; &amp;nbsp;&amp;nbsp;&lt;/span&gt;&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fwww.zentao.net%2Fdl%2Fgogs%2F0.12%2Fgogs_darwin_arm64" target="_blank"&gt;&lt;span&gt;macOS arm64&lt;/span&gt;&lt;/a&gt;&lt;span&gt;&amp;nbsp; &amp;nbsp;&amp;nbsp;&lt;/span&gt;&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fwww.zentao.net%2Fdl%2Fgogs%2F0.12%2Fgogs_linux_arm64" target="_blank"&gt;&lt;span&gt;Linux arm64&lt;/span&gt;&lt;/a&gt;&lt;/td&gt; 
+  &lt;/tr&gt; 
+ &lt;/tbody&gt; 
+&lt;/table&gt; 
+&lt;h4&gt;Docker 鏡像:&lt;span style="color:#337fe5"&gt;&amp;nbsp;&lt;/span&gt;&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fhub.docker.com%2Fr%2Feasysoft%2Fzentao%2Ftags" target="_blank"&gt;&lt;span style="color:#337fe5"&gt;點擊這裏&lt;/span&gt;&lt;/a&gt;&lt;/h4&gt; 
+&lt;h2&gt;幫助手冊&lt;/h2&gt; 
+&lt;ul&gt; 
+ &lt;li style="color: rgb(57, 72, 93); margin-left: 0px; margin-right: 0px; text-align: start;"&gt;&lt;strong&gt;安裝文檔：&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fwww.zentao.net%2Fbook%2Fzentaopms%2F455.html" target="_blank"&gt;&lt;span style="color:#3498db"&gt;https://www.zentao.net/book/zentaopms/455.html&lt;/span&gt;&lt;/a&gt;&lt;/strong&gt;&lt;/li&gt; 
+ &lt;li style="color: rgb(57, 72, 93); margin-left: 0px; margin-right: 0px; text-align: start;"&gt;&lt;strong&gt;升級文檔：&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fwww.zentao.net%2Fbook%2Fzentaopms%2F460.html" target="_blank"&gt;&lt;span style="color:#3498db"&gt;https://www.zentao.net/book/zentaopms/460.html&lt;/span&gt;&lt;/a&gt;&lt;/strong&gt;&lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;p style="color:#39485d; margin-left:0; margin-right:0; text-align:start"&gt;&lt;strong&gt;持續優化，定期更新，禪道一直在路上。&lt;/strong&gt;&lt;/p&gt;
+                                                                                &lt;/div&gt;
+                                                                            </description>
+      <link>https://www.oschina.net/news/350555/zentaopms-21-7-released</link>
+      <guid isPermaLink="false">https://www.oschina.net/news/350555/zentaopms-21-7-released</guid>
+      <pubDate>Sun, 11 May 2025 01:54:00 GMT</pubDate>
+      <author>來源: 投稿</author>
+    </item>
+    <item>
+      <title>sqltoy-orm 5.6.45.RC3 已經發布，ORM 框架</title>
+      <description>&lt;div class="content"&gt;
+                                                                    
+                                                        &lt;p&gt;sqltoy-orm 5.6.45.RC3 已經發布，ORM 框架&lt;/p&gt;
+&lt;p&gt;此版本更新內容包括：&lt;/p&gt;
+&lt;p&gt;1、增加@secure-loop 和 @secure-loop-full 非注入循環&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt;secure-loop 自動去除循環中的 null 記錄，secure-loop-full 則不去除 null 記錄&lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;div class="markdown-code-block"&gt; 
+ &lt;pre class="sql"&gt;&lt;code&gt;selet * from table t1
+where 1=1 #[(@secure-loop(:nameList ,' t1.name like :nameList[i] ',' or '))]
+&lt;/code&gt;&lt;/pre&gt; 
+ &lt;div class="markdown-code-block-copy-btn"&gt;&lt;/div&gt; 
+&lt;/div&gt; 
+&lt;ul&gt; 
+ &lt;li&gt;secure-loop 跟@value(:name) 以及 valid-sqlInjection 組合完全替代之前 loop 拼接 (原則上能不用@value 儘量不用)&lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;div class="markdown-code-block"&gt; 
+ &lt;pre class="sql"&gt;&lt;code&gt;String sql = """
+selet * from table t1
+where 1=1 #[@secure-loop(:nameList ,' t1.name like @value(:nameList[i]) and t.status=:status',' or ')]
+""";
+&lt;/code&gt;&lt;/pre&gt; 
+ &lt;div class="markdown-code-block-copy-btn"&gt;&lt;/div&gt; 
+&lt;/div&gt; 
+&lt;p&gt;2、增加了對 sql 中參數進行 sql 注入校驗功能&lt;/p&gt; 
+&lt;div class="markdown-code-block"&gt; 
+ &lt;pre class="xml"&gt;&lt;code&gt;&amp;lt;sql id="show_case"&amp;gt;
+&amp;lt;filters&amp;gt;
+    &amp;lt;!-- 一般針對@loop(:paramList)、@value(:paramName) 中涉及到的參數進行 sql 注入校驗：
+    level 分 3 種:
+    STRICT_WORD 數字字符下劃線；
+    RELAXED_WORD：寬鬆形式的單詞 (允許點號、@、#、中文等非危險性符號)；
+    SQL_KEYWORD sql 關鍵詞 (select\drop\limit\delete\sleep\group by\order by\ or/and x=x 等)  --&amp;gt;
+    &amp;lt;valid-sqlInjection params="productIds" level="STRICT_WORD"/&amp;gt;
+&amp;lt;/filters&amp;gt;
+
+&amp;lt;/sql&amp;gt;
+&lt;/code&gt;&lt;/pre&gt; 
+ &lt;div class="markdown-code-block-copy-btn"&gt;&lt;/div&gt; 
+&lt;/div&gt; 
+&lt;h1&gt;sql 關鍵詞可以通過參數自定義:數組形式，定義正則表達式&lt;/h1&gt; 
+&lt;div class="markdown-code-block"&gt; 
+ &lt;pre class="properties"&gt;&lt;code&gt;spring.sqltoy.sqlInjectionRegexes[0]=xxxx
+spring.sqltoy.sqlInjectionRegexes[0]=xxxx
+
+&lt;/code&gt;&lt;/pre&gt; 
+ &lt;div class="markdown-code-block-copy-btn"&gt;&lt;/div&gt; 
+&lt;/div&gt;
+&lt;p&gt;詳情查看：&lt;a href="https://gitee.com/sagacity/sagacity-sqltoy/releases/5.6.45.RC3" rel="nofollow"&gt;https://gitee.com/sagacity/sagacity-sqltoy/releases/5.6.45.RC3&lt;/a&gt;&lt;/p&gt;
+                                                                                &lt;/div&gt;
+                                                                            </description>
+      <link>https://www.oschina.net/news/350553</link>
+      <guid isPermaLink="false">https://www.oschina.net/news/350553</guid>
+      <pubDate>Sun, 11 May 2025 01:46:00 GMT</pubDate>
+      <author>來源: 投稿</author>
+    </item>
+    <item>
+      <title>《燈燈》多租户快速開發平台 5.2.0 發佈，新增開放平台能力</title>
+      <description>&lt;div class="content"&gt;
+                                                                    
+                                                        &lt;h1&gt;升級日誌&lt;/h1&gt; 
+&lt;ul&gt; 
+ &lt;li&gt;feat(lamp-thirdparty): 新增第三方接口服務，專門用於提供接口給第三方調用&lt;/li&gt; 
+ &lt;li&gt;feat(lamp-sop-admin): 新增開放平台管理服務，專門用於提供第三方平台管理端接口&lt;/li&gt; 
+ &lt;li&gt;feat(lamp-sop-admin): 新增 【開放平台】 - 【開放接口】 相關功能&lt;/li&gt; 
+ &lt;li&gt;feat(lamp-sop-admin): 新增 【開放平台】 - 【文檔配置】 相關功能&lt;/li&gt; 
+ &lt;li&gt;feat(lamp-sop-admin): 新增 【開放平台】 - 【文檔管理】 相關功能&lt;/li&gt; 
+ &lt;li&gt;feat(lamp-sop-admin): 新增 【開放平台】 - 【開放應用】 相關功能&lt;/li&gt; 
+ &lt;li&gt;feat(lamp-sop-admin): 新增 【開放平台】 - 【應用分組】 相關功能&lt;/li&gt; 
+ &lt;li&gt;feat(lamp-sop-admin): 新增 【開放 API】 - 【應用申請】 相關功能&lt;/li&gt; 
+ &lt;li&gt;feat(lamp-sop-admin): 新增 【開放 API】 - 【文檔列表】 相關功能&lt;/li&gt; 
+ &lt;li&gt;feat(lamp-sop-admin): 新增 【開放文檔】 相關功能&lt;/li&gt; 
+ &lt;li&gt;faet(lamp-generator): 代碼生成器支持 vben5 版前端的主從模式&lt;/li&gt; 
+ &lt;li&gt;feat(lamp-web-max-vben): 新增 DocLayout 佈局&lt;/li&gt; 
+ &lt;li&gt;fix(lamp-log-starter): 修復記錄操作日誌時， 無法記錄完整的 traceId、userid 等參數&lt;/li&gt; 
+ &lt;li&gt;fix(lamp-system/lamp-oauth): 用户回顯接口移動到 system 服務，修復不能正常調用 DefUserFacade 接口的 bug&lt;/li&gt; 
+ &lt;li&gt;fix(lamp-gererator): 代碼生成器，生成項目或服務時， 服務名，支持攜帶 - 號&lt;/li&gt; 
+ &lt;li&gt;fix(lamp-web-max-vben): 註冊頁面無法正常訪問&lt;/li&gt; 
+ &lt;li&gt;fix(lamp-web-max-vben): 【資源維護】微服務模式，配置接口時，多了一個/&lt;/li&gt; 
+ &lt;li&gt;fix(lamp-web-max-vben): 【角色管理】首次進入角色頁面時，僅查詢該企業擁有的應用和資源&lt;/li&gt; 
+ &lt;li&gt;fix(lamp-web-max-vben): 修復應用授權，勾選應用觸發全選數據時，無法正確獲取勾選的資源數據&lt;/li&gt; 
+ &lt;li&gt;fix(lamp-web-max-vben): 應用資源授權成功後路由跳轉時，指定了錯誤的 name 導致跳轉頁面後出現空白&lt;/li&gt; 
+ &lt;li&gt;refactor: 菜單名變更。 
+  &lt;ul&gt; 
+   &lt;li&gt;一級菜單： 租户管理 -&amp;gt; 租户中心&lt;/li&gt; 
+   &lt;li&gt;二級菜單：員工維護 -&amp;gt; 員工管理、崗位維護 -&amp;gt; 崗位管理、角色授權維護 -&amp;gt; 角色管理、數據源維護 -&amp;gt; 數據源管理、租户維護 -&amp;gt; 租户管理、應用維護-&amp;gt;應用列表、資源維護-&amp;gt;資源管理、字典維護-&amp;gt;字典列表、參數維護 -&amp;gt; 參數管理、地區維護 -&amp;gt; 地區管理、客户端維護 -&amp;gt; 客户端管理、字典項維護 -&amp;gt; 字典項管理、應用資源維護 -&amp;gt; 應用資源管理&lt;/li&gt; 
+  &lt;/ul&gt; &lt;/li&gt; 
+ &lt;li&gt;refactor(nacos): 修改 nacos 中的配置文件，重新遞增排列各個服務的端口號&lt;/li&gt; 
+ &lt;li&gt;refactor(lamp-system): 優化字典的主從模式修改和複製接口邏輯&lt;/li&gt; 
+ &lt;li&gt;refactor(lamp-generator): 根據 javadoc 規範來優化代碼生成模版&lt;/li&gt; 
+ &lt;li&gt;refactor(lamp-generator): 優化代碼生成時，字段的 swagger 註釋截取字符變更為「換行符」&lt;/li&gt; 
+ &lt;li&gt;refactor(lamp-core): 完善 Tree 工具類&lt;/li&gt; 
+ &lt;li&gt;refactor(lamp-web-max-vben): 菜單紅點默認改成，紅色&lt;/li&gt; 
+ &lt;li&gt;refactor(lamp-web-max-vben): 按鈕權限編碼從枚舉類調整為 json 類&lt;/li&gt; 
+ &lt;li&gt;refactor(lamp-web-max-vben): 【資源維護】-選擇接口時，支持搜索&lt;/li&gt; 
+ &lt;li&gt;refactor(lamp-web-max-vben): 取消【應用資源授權】-續期時，資源樹的級聯選擇&lt;/li&gt; 
+ &lt;li&gt;refactor(lamp-web-max-vben): 優化 BasicTitle、ApiSelect 等組件&lt;/li&gt; 
+ &lt;li&gt;refactor(lamp-web-max-vben): 優化 fast-crud 配置，統一處理查看頁面組件回顯問題&lt;/li&gt; 
+ &lt;li&gt;refactor(lamp-web-max-vben): 優化應用資源授權時，若無勾選某個應用下的任意資源，視為該應用無需修改權限&lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;h1&gt;體驗網址&lt;/h1&gt; 
+&lt;table border="1" cellpadding="1" cellspacing="0" style="-webkit-text-stroke-width:0px; background-color:#ffffff; border-collapse:collapse; border-spacing:1px; border:none; box-sizing:border-box; color:#444444; display:block; font-family:-apple-system,&amp;quot;system-ui&amp;quot;,&amp;quot;Apple Color Emoji&amp;quot;,&amp;quot;Segoe UI Emoji&amp;quot;,&amp;quot;Segoe UI Symbol&amp;quot;,&amp;quot;Segoe UI&amp;quot;,&amp;quot;PingFang SC&amp;quot;,&amp;quot;Hiragino Sans GB&amp;quot;,&amp;quot;Microsoft YaHei&amp;quot;,&amp;quot;Helvetica Neue&amp;quot;,Helvetica,Arial,sans-serif; font-size:14px; font-style:normal; font-variant-caps:normal; font-variant-ligatures:normal; font-weight:400; letter-spacing:normal; line-height:inherit; margin:0px 0px 20px; max-width:100%; orphans:2; overflow:auto; text-align:left; text-decoration-color:initial; text-decoration-style:initial; text-decoration-thickness:initial; text-transform:none; white-space:normal; widows:2; width:500px; word-break:keep-all; word-spacing:0px"&gt; 
+ &lt;tbody&gt; 
+  &lt;tr&gt; 
+   &lt;td style="border-color:#dddddd; border-style:solid; border-width:1px"&gt; &lt;p style="margin-left:0; margin-right:0"&gt;&amp;nbsp;&lt;/p&gt; &lt;/td&gt; 
+   &lt;td style="border-color:#dddddd; border-style:solid; border-width:1px"&gt;vben2 版&lt;/td&gt; 
+   &lt;td style="border-color:#dddddd; border-style:solid; border-width:1px"&gt;vben5 版&lt;/td&gt; 
+   &lt;td style="border-color:#dddddd; border-style:solid; border-width:1px"&gt;soybean 版&lt;/td&gt; 
+  &lt;/tr&gt; 
+  &lt;tr&gt; 
+   &lt;td style="border-color:#dddddd; border-style:solid; border-width:1px"&gt;數據源模式&lt;/td&gt; 
+   &lt;td style="border-color:#dddddd; border-style:solid; border-width:1px"&gt;&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fdatasource.tangyh.top" target="_blank"&gt;點我體驗&lt;/a&gt;&lt;/td&gt; 
+   &lt;td style="border-color:#dddddd; border-style:solid; border-width:1px"&gt;&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fmax-datasource.tangyh.top" target="_blank"&gt;點我體驗&lt;/a&gt;&lt;/td&gt; 
+   &lt;td style="border-color:#dddddd; border-style:solid; border-width:1px"&gt;&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fsoy-datasource.tangyh.top" target="_blank"&gt;點我體驗&lt;/a&gt;&lt;/td&gt; 
+  &lt;/tr&gt; 
+  &lt;tr&gt; 
+   &lt;td style="border-color:#dddddd; border-style:solid; border-width:1px"&gt;字段模式&lt;/td&gt; 
+   &lt;td style="border-color:#dddddd; border-style:solid; border-width:1px"&gt;&lt;a href="https://www.oschina.net/action/GoToLink?url=http%3A%2F%2Fcolumn.tangyh.top" target="_blank"&gt;點我體驗&lt;/a&gt;&lt;/td&gt; 
+   &lt;td style="border-color:#dddddd; border-style:solid; border-width:1px"&gt;&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fmax-column.tangyh.top" target="_blank"&gt;點我體驗&lt;/a&gt;&lt;/td&gt; 
+   &lt;td style="border-color:#dddddd; border-style:solid; border-width:1px"&gt;&lt;a href="https://www.oschina.net/action/GoToLink?url=http%3A%2F%2Fsoy-column.tangyh.top" target="_blank"&gt;點我體驗&lt;/a&gt;&lt;/td&gt; 
+  &lt;/tr&gt; 
+ &lt;/tbody&gt; 
+&lt;/table&gt; 
+&lt;h1&gt;本次升級功能預覽&lt;/h1&gt; 
+&lt;p&gt;1. 開放文檔首頁&lt;/p&gt; 
+&lt;p&gt;&lt;img height="1438" src="https://oscimg.oschina.net/oscnet/up-54204e526ab5f816514ed276b6122fb4493.png" width="2838" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p&gt;2. 開放文檔&lt;/p&gt; 
+&lt;p&gt;&lt;img height="1494" src="https://oscimg.oschina.net/oscnet/up-a474f9c254668c0d0093515efeb8666b65a.png" width="3058" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p&gt;3. 全局響應碼&lt;/p&gt; 
+&lt;p&gt;&lt;img height="1554" src="https://oscimg.oschina.net/oscnet/up-cfe59ff7fb299e1a50de4f1a62274d52a5e.png" width="3068" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p&gt;4. 應用申請&lt;/p&gt; 
+&lt;p&gt;&lt;img height="1168" src="https://oscimg.oschina.net/oscnet/up-c4bfab0f5f19a0ffe765876720329e0295d.png" width="3060" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p style="margin-left:0px; margin-right:0px; text-align:left"&gt;5. 開放接口&lt;/p&gt; 
+&lt;p&gt;&lt;img height="1262" src="https://oscimg.oschina.net/oscnet/up-4ebbe2323fe730b4e2090eb38a898350bd0.png" width="3082" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p style="margin-left:0px; margin-right:0px; text-align:left"&gt;6. 文檔配置&lt;/p&gt; 
+&lt;p&gt;&lt;img height="1352" src="https://oscimg.oschina.net/oscnet/up-48b0b4baf11eabc6822a0ea475b59407bd8.png" width="3044" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p&gt;7、 文檔管理&lt;/p&gt; 
+&lt;p&gt;&lt;img height="1406" src="https://oscimg.oschina.net/oscnet/up-0d040e172d091c88ec02fd4c512fb549855.png" width="3094" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p&gt;8. 開放應用&lt;/p&gt; 
+&lt;p&gt;&lt;img height="1320" src="https://oscimg.oschina.net/oscnet/up-e4473d76f32651252945bc8ae44410df5bb.png" width="3084" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p&gt;9. 應用分組&lt;/p&gt; 
+&lt;p&gt;&lt;img height="1512" src="https://oscimg.oschina.net/oscnet/up-01f6042ae02a75b82a1395d2b1b77ba5522.png" width="3094" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p&gt;&amp;nbsp;&lt;/p&gt; 
+&lt;h1&gt;&lt;span&gt;關於 lamp&lt;/span&gt;&lt;/h1&gt; 
+&lt;p style="color:#222222; margin-left:0; margin-right:0; text-align:justify"&gt;&lt;code&gt;燈燈&lt;/code&gt;&lt;span&gt;&amp;nbsp;&lt;/span&gt;(簡稱燈，&amp;nbsp;英文名：lamp)，她是一個項目集，為滿足高內聚低耦合設計原則，將一個&lt;strong&gt;大項目&lt;/strong&gt;拆解為以下幾個子項目：&lt;/p&gt; 
+&lt;ol&gt; 
+ &lt;li&gt; &lt;p style="margin-left:0; margin-right:0"&gt;lamp-util：後端工具集&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p style="margin-left:0; margin-right:0"&gt;&lt;strong&gt;lamp-cloud&lt;/strong&gt;：基於 Spring Cloud 實現的後台&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p style="margin-left:0; margin-right:0"&gt;lamp-boot：基於 Spring Boot 實現的後台&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p style="margin-left:0; margin-right:0"&gt;lamp-job：基於 xxl-job 集成本項目的分佈式定時任務&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p style="margin-left:0; margin-right:0"&gt;lamp-generator：代碼生成器&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p style="margin-left:0; margin-right:0"&gt;lamp-web：前端&lt;/p&gt; &lt;/li&gt; 
+&lt;/ol&gt; 
+&lt;h1&gt;&lt;span&gt;lamp-cloud&amp;nbsp;簡介&lt;/span&gt;&lt;/h1&gt; 
+&lt;p style="color:#222222; margin-left:0; margin-right:0; text-align:justify"&gt;&lt;code&gt;lamp-cloud&lt;/code&gt;&lt;span&gt;是基於&lt;/span&gt;&lt;code&gt;SpringCloudAlibaba、&lt;/code&gt;&lt;span&gt;&amp;nbsp;&lt;/span&gt;&lt;code&gt;SpringCloud、&lt;/code&gt;&lt;span&gt;&amp;nbsp;&lt;/span&gt;&lt;code&gt;SpringBoot&lt;/code&gt;&lt;span&gt;&lt;span&gt;&amp;nbsp;開發的微服務中後台快速開發平台，支持&lt;/span&gt;&lt;span&gt;&lt;span&gt;&amp;nbsp;&lt;/span&gt;jdk17、&lt;/span&gt;&lt;code&gt;&lt;span&gt;jdk11 和 jdk8，&lt;/span&gt;&lt;/code&gt;&lt;span&gt;專注於多租户 (SaaS 架構) 解決方案，亦可作為普通項目（非 SaaS 架構）的基礎開發框架使用，目前已實現&amp;nbsp;&lt;/span&gt;&lt;/span&gt;&lt;strong&gt;數據庫隔離&lt;/strong&gt;&lt;span&gt;、&lt;/span&gt;&lt;strong&gt;字段隔離&lt;/strong&gt;&lt;span&gt;&amp;nbsp;等租户隔離方案以及非租户隔離的解決方案。&lt;/span&gt;&lt;/p&gt; 
+&lt;p style="color:#222222; margin-left:0; margin-right:0; text-align:justify"&gt;她擁有自研 RBAC（基於租户應用的角色權限控制體系）、網關統一鑑權、數據權限、優雅緩存解決方案、防緩存擊穿、前後端統一表單校驗、字典數據自動回顯、可視化前後端代碼生成器、支持多種文件存儲、支持多種短信郵件發送接口、灰度發佈、防 XSS 攻擊、防 SQL 注入、分佈式事務、分佈式定時任務等功能；支持多業務系統並行開發，&amp;nbsp;支持多服務並行開發，是中後台系統開發腳手架的最佳選擇。&lt;/p&gt; 
+&lt;p style="color:#222222; margin-left:0; margin-right:0; text-align:justify"&gt;lamp-cloud 代碼簡潔，註釋齊全，架構清晰，非常適合個人學習以及中小企業作為基礎框架使用。採用 Spring Cloud Alibaba、SpringBoot、Mybatis、Seata、Sentinel、RabbitMQ、FastDFS/MinIO、SkyWalking 等主要框架和中間件。本項目旨在實現基礎框架能力，不涉及具體業務。&lt;/p&gt; 
+&lt;h1&gt;&lt;span&gt;關注項目&lt;/span&gt;&lt;/h1&gt; 
+&lt;ul&gt; 
+ &lt;li&gt; &lt;p style="margin-left:0; margin-right:0"&gt;官網：https://tangyh.top&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p style="margin-left:0; margin-right:0"&gt;源碼：https://github.com/dromara/lamp-cloud&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p style="margin-left:0; margin-right:0"&gt;&lt;span&gt;源碼：https://gitee.com/dromara/lamp-cloud&lt;/span&gt;&lt;/p&gt; &lt;/li&gt; 
 &lt;/ul&gt;
                                                                                 &lt;/div&gt;
                                                                             </description>
-      <link>https://www.oschina.net/news/349973/therouter-1-2-4-released</link>
-      <guid isPermaLink="false">https://www.oschina.net/news/349973/therouter-1-2-4-released</guid>
-      <pubDate>Fri, 09 May 2025 02:04:00 GMT</pubDate>
+      <link>https://www.oschina.net/news/350550</link>
+      <guid isPermaLink="false">https://www.oschina.net/news/350550</guid>
+      <pubDate>Sun, 11 May 2025 01:41:00 GMT</pubDate>
       <author>來源: 投稿</author>
     </item>
     <item>
-      <title>API 接口開放平台 Crabc 3.2 發佈</title>
+      <title>Wow v5.15.2 發佈，微服務開發框架</title>
       <description>&lt;div class="content"&gt;
                                                                     
-                                                        &lt;p&gt;&lt;span style="background-color:#ffffff; color:#333333"&gt;Crabc 是一款 API 接口開發平台，企業級接口管理、SQL2API 平台。支持動態數據源、動態 SQL 和標籤，&amp;nbsp;支持接入（mysql、oracle、達夢、TiDB、hive、es 和 mongodb）等 SQL 或 NoSQL 數據源，在線可視化編寫 SQL 快速發佈接口，支持一鍵上下線、接口管理、代理轉發、鑑權、限流、熔斷和監控告警等一站式 API 數據服務。&lt;/span&gt;&lt;/p&gt; 
-&lt;p&gt;&lt;img src="https://oscimg.oschina.net/oscnet/up-e7a9c7e29df466e3a171cc4aa2eba7ba81e.png" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;p&gt;&lt;img height="852" src="https://oscimg.oschina.net/oscnet/up-65152f1ea794671e0b904b37aed6f68f08b.png" width="2232" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;h3&gt;v3.1&amp;nbsp;更新內容&lt;/h3&gt; 
-&lt;p style="color:#333333; margin-left:0; margin-right:0; text-align:left"&gt;&lt;strong&gt;優化&lt;/strong&gt;：&lt;/p&gt; 
-&lt;p style="color:#333333; margin-left:0; margin-right:0; text-align:left"&gt;1、詳情頁面接口地址新增顯示 hostname&amp;nbsp;&lt;/p&gt; 
-&lt;p style="color:#333333; margin-left:0; margin-right:0; text-align:left"&gt;2、必填參數新增多選多和多選一選項&lt;/p&gt; 
-&lt;p style="color:#333333; margin-left:0; margin-right:0; text-align:left"&gt;3、優化參數檢驗邏輯&lt;/p&gt; 
-&lt;p style="color:#333333; margin-left:0; margin-right:0; text-align:left"&gt;4、優化示例數據生成判斷&lt;/p&gt; 
-&lt;p style="color:#333333; margin-left:0; margin-right:0; text-align:left"&gt;5、優化申請按鈕顯示邏輯&lt;br&gt; &lt;strong&gt;優化&lt;/strong&gt;：&lt;/p&gt; 
-&lt;p style="color:#333333; margin-left:0; margin-right:0; text-align:left"&gt;1、優化頁面 logo 顯示&lt;/p&gt; 
-&lt;p style="color:#333333; margin-left:0; margin-right:0; text-align:left"&gt;2、優化頁面圖標與樣式&lt;/p&gt; 
-&lt;p style="color:#333333; margin-left:0; margin-right:0; text-align:left"&gt;&lt;strong&gt;官網地址:&amp;nbsp;&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fpingapi.cn%2F" target="_blank"&gt;crabc&lt;/a&gt;&lt;/strong&gt;&lt;/p&gt; 
-&lt;p style="color:#333333; margin-left:0; margin-right:0; text-align:left"&gt;&lt;strong&gt;開源地址:&amp;nbsp;&lt;a href="https://gitee.com/linebyte/crabc"&gt;crabc-api&lt;/a&gt;&lt;/strong&gt;&lt;/p&gt;
-                                                                                &lt;/div&gt;
-                                                                            </description>
-      <link>https://www.oschina.net/news/349969/crabc-3-2-released</link>
-      <guid isPermaLink="false">https://www.oschina.net/news/349969/crabc-3-2-released</guid>
-      <pubDate>Fri, 09 May 2025 01:51:00 GMT</pubDate>
-      <author>來源: 投稿</author>
-    </item>
-    <item>
-      <title>kom v0.2.39 已經發布，Kubernetes 操作工具</title>
-      <description>&lt;div class="content"&gt;
-                                                                    
-                                                        &lt;p&gt;kom v0.2.39 已經發布，Kubernetes 操作工具&lt;/p&gt; 
-&lt;p&gt;此版本更新內容包括：&lt;/p&gt; 
-&lt;h2&gt;更新內容&lt;/h2&gt; 
+                                                        &lt;p&gt;Wow v5.15.2 已經發布，微服務開發框架。&lt;/p&gt; 
+&lt;h1&gt;v5.15.2 里程碑更新 —— 聚合查詢革命 &amp;amp; 開發者體驗新高度&lt;/h1&gt; 
+&lt;h2&gt;新特性重磅登場&lt;/h2&gt; 
+&lt;h3&gt;創新聚合查詢體系&lt;/h3&gt; 
 &lt;ul&gt; 
- &lt;li&gt;暴露獲取 MCPServer 的方法，用户可自定義增加 Tools&lt;/li&gt; 
- &lt;li&gt;refactor(callbacks): 將日誌級別從 Info 調整為 Verbose&lt;/li&gt; 
+ &lt;li&gt;&lt;strong&gt;全場景覆蓋&lt;/strong&gt;：新增 &lt;code&gt;AggregatedListQuery&lt;/code&gt;/&lt;code&gt;AggregatedPagedQuery&lt;/code&gt;/&lt;code&gt;SingleQuery&lt;/code&gt; 多場景支持&lt;/li&gt; 
+ &lt;li&gt;&lt;strong&gt;超強解析引擎&lt;/strong&gt;：字段路徑解析機制增強 300%，支持深度嵌套結構&lt;/li&gt; 
+ &lt;li&gt;&lt;strong&gt;智能 Schema 生成&lt;/strong&gt;：JSON schema 自動生成能力現可識別複雜聚合條件&lt;/li&gt; 
 &lt;/ul&gt; 
-&lt;p&gt;&lt;strong&gt;完整的更新日誌&lt;/strong&gt;: &lt;a href="https://gitee.com/weibaohui/kom/compare/v0.2.37...v0.2.39" target="_blank"&gt;https://gitee.com/weibaohui/kom/compare/v0.2.37...v0.2.39&lt;/a&gt;&lt;/p&gt; 
-&lt;p&gt;詳情查看：&lt;a href="https://gitee.com/weibaohui/kom/releases/v0.2.39"&gt;https://gitee.com/weibaohui/kom/releases/v0.2.39&lt;/a&gt;&lt;/p&gt;
+&lt;h3&gt;OpenAPI 生態升級&lt;/h3&gt; 
+&lt;ul&gt; 
+ &lt;li&gt;支持 12 種擴展 OpenAPI 格式值&lt;/li&gt; 
+ &lt;li&gt;深度集成 Jackson &lt;code&gt;@JsonIgnore&lt;/code&gt; 註解&lt;/li&gt; 
+ &lt;li&gt;多態類型支持驚豔亮相&lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;h2&gt;架構革命&lt;/h2&gt; 
+&lt;ul&gt; 
+ &lt;li&gt;&lt;strong&gt;標準化接口&lt;/strong&gt;：全新 &lt;code&gt;ICondition&lt;/code&gt; 接口重構條件體系&lt;/li&gt; 
+ &lt;li&gt;&lt;strong&gt;智能判空&lt;/strong&gt;：&lt;code&gt;Projection.isEmpty()&lt;/code&gt; 擴展函數助力空值檢查&lt;/li&gt; 
+ &lt;li&gt;&lt;strong&gt;公共字段沉澱&lt;/strong&gt;：&lt;code&gt;OrderAggregated&lt;/code&gt; 查詢公共字段標準化&lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;h2&gt;性能飛躍&lt;/h2&gt; 
+&lt;ul&gt; 
+ &lt;li&gt;&lt;code&gt;OpenTelemetry&lt;/code&gt; 組件升級至 &lt;a href="https://gitee.com/link?target=https%3A%2F%2Fopentelemetry.io%2F" target="_blank"&gt;v2.16.0&lt;/a&gt;&lt;/li&gt; 
+ &lt;li&gt;&lt;code&gt;Angular&lt;/code&gt; 框架更新至 &lt;a href="https://gitee.com/link?target=https%3A%2F%2Fangular.io%2F" target="_blank"&gt;v19.2.11&lt;/a&gt; 最新穩定版&lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;h2&gt;精準修復&lt;/h2&gt; 
+&lt;ul&gt; 
+ &lt;li&gt;徹底解決 OpenAPI 查詢組件 schema 分配異常問題&lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;h2&gt;測試進化論&lt;/h2&gt; 
+&lt;ul&gt; 
+ &lt;li&gt;斷言邏輯複雜度直降 40%&lt;/li&gt; 
+ &lt;li&gt;轉賬示例測試可讀性提升 65%&lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;p&gt;詳情查看：&lt;a href="https://gitee.com/AhooWang/Wow/releases/v5.15.2"&gt;https://gitee.com/AhooWang/Wow/releases/v5.15.2&lt;/a&gt;&lt;/p&gt;
                                                                                 &lt;/div&gt;
                                                                             </description>
-      <link>https://www.oschina.net/news/349964/kom-0-2-39-released</link>
-      <guid isPermaLink="false">https://www.oschina.net/news/349964/kom-0-2-39-released</guid>
-      <pubDate>Fri, 09 May 2025 01:11:00 GMT</pubDate>
+      <link>https://www.oschina.net/news/350549</link>
+      <guid isPermaLink="false">https://www.oschina.net/news/350549</guid>
+      <pubDate>Sun, 11 May 2025 01:37:00 GMT</pubDate>
       <author>來源: 投稿</author>
     </item>
     <item>
-      <title>k8m v0.0.111 已經發布，輕量級的 Kubernetes 儀錶板</title>
+      <title>Skyeye 雲智能製造辦公系統 v3.16.4 發佈</title>
       <description>&lt;div class="content"&gt;
                                                                     
-                                                        &lt;p&gt;k8m v0.0.111 已經發布，輕量級的 Kubernetes 儀錶板&lt;/p&gt; 
-&lt;p&gt;此版本更新內容包括：&lt;/p&gt; 
-&lt;h2&gt;更新內容&lt;/h2&gt; 
+                                                        &lt;p style="color:#333333; margin-left:0; margin-right:0; text-align:left"&gt;&lt;span style="background-color:#ffffff; color:#6a737d"&gt;&lt;span&gt;Skyeye 雲智能製造，採用&lt;span&gt;&amp;nbsp;&lt;/span&gt;&lt;/span&gt;Springboot (微服務) + Layui + UNI-APP + Ant Design Vue&lt;/span&gt;&lt;span style="background-color:#ffffff; color:#6a737d"&gt;&lt;span&gt;&lt;span&gt;&amp;nbsp;&lt;/span&gt;的低代碼平台。包含 30 多個應用模塊、50 多種電子流程，CRM、PM、ERP、MES、ADM、EHR、筆記、知識庫、項目、門店、商城、財務、多班次考勤、薪資、招聘、雲售後、論壇、公告、問卷、報表設計、工作流、日程、雲盤等全面管理，實現智能製造行業一體化管理。實現管理流程 「客户關係 -&amp;gt; 線上 / 線下報價 -&amp;gt; 銷售報價 -&amp;gt; 銷售合同 -&amp;gt; 生產計劃 -&amp;gt; 商品設計 -&amp;gt; 採購 -&amp;gt; 加工製造 -&amp;gt; 入庫 -&amp;gt; 發貨 -&amp;gt; 售後服務」 的高效運作，同時實現企業員工的管理以及內部運作的流程操作，完善了員工從 「入職 -&amp;gt; 培訓 -&amp;gt; 轉正 -&amp;gt; 辦公 -&amp;gt; 離職」 等多項功能。&lt;/span&gt;&lt;/span&gt;&lt;/p&gt; 
+&lt;p style="color:#333333; margin-left:0; margin-right:0; text-align:left"&gt;&lt;strong&gt;&lt;a href="https://gitee.com/dromara/skyeye/blob/company_server/%E5%B8%B8%E8%A7%81%E9%97%AE%E9%A2%98.md"&gt;常見問題&lt;/a&gt;&lt;/strong&gt;&lt;span style="background-color:#ffffff; color:#333333"&gt;&amp;nbsp; &amp;nbsp; &amp;nbsp;&lt;/span&gt;&lt;strong&gt;&lt;a href="https://gitee.com/link?target=https%3A%2F%2Farticles.zsxq.com%2Fid_xi3xhacte72g.html" target="_blank"&gt;開發文檔&lt;/a&gt;&amp;nbsp; &amp;nbsp; &amp;nbsp;&amp;nbsp;&lt;a href="https://gitee.com/link?target=https%3A%2F%2Fspace.bilibili.com%2F87396008%2Fchannel%2Fseries" target="_blank"&gt;視頻教程&lt;/a&gt;&amp;nbsp; &amp;nbsp; &amp;nbsp;&lt;/strong&gt;&lt;strong&gt;&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fdocs.qq.com%2Fsheet%2FDYUtPdWhTbVBITlpL%3Ftab%3D000001" target="_blank"&gt;功能點&lt;/a&gt;&lt;/strong&gt;&lt;/p&gt; 
+&lt;p style="color:#333333; margin-left:0; margin-right:0; text-align:left"&gt;&lt;strong&gt;&lt;span&gt;&lt;span&gt;Skyeye&lt;/span&gt;&lt;span&gt;&lt;span&gt;&amp;nbsp;&lt;/span&gt;雲【源代碼】針對 {星球用户} 開源。拿到源碼後可進行學習、畢設、企業等使用。&lt;/span&gt;&lt;/span&gt;&lt;/strong&gt;&lt;/p&gt; 
+&lt;p style="color:#333333; margin-left:0; margin-right:0; text-align:left"&gt;&lt;span&gt;Skyeye 雲智能製造 v3.16.4 發佈 ，發佈內容如下：&lt;/span&gt;&lt;/p&gt; 
 &lt;ul&gt; 
- &lt;li&gt;feat(mcp): 添加保存 Yaml 模板的工具和處理函數。&lt;/li&gt; 
+ &lt;li&gt;&lt;strong&gt;&lt;span&gt;Skyeye 雲已加入 Dromara 社區&lt;/span&gt;&lt;/strong&gt;&lt;/li&gt; 
+ &lt;li&gt;雲校園 
+  &lt;ul&gt; 
+   &lt;li&gt;成績管理完善，支持成績的自定義以及佔比的自定義功能&lt;/li&gt; 
+   &lt;li&gt;表白牆模塊內容完善，支持分享，通知等內容&lt;/li&gt; 
+  &lt;/ul&gt; &lt;/li&gt; 
+ &lt;li&gt;VUE 版報表設計 
+  &lt;ul&gt; 
+   &lt;li&gt;支持文字模版&lt;/li&gt; 
+   &lt;li&gt;支持背景圖&lt;/li&gt; 
+   &lt;li&gt;支持數據源配置&lt;/li&gt; 
+  &lt;/ul&gt; &lt;/li&gt; 
+ &lt;li&gt;VUE 重構 
+  &lt;ul&gt; 
+   &lt;li&gt;財務明細賬功能&lt;/li&gt; 
+   &lt;li&gt;憑證管理&lt;/li&gt; 
+   &lt;li&gt;個人主頁&lt;/li&gt; 
+   &lt;li&gt;門店優惠券&lt;/li&gt; 
+   &lt;li&gt;新增打印模版功能，目前完成度 60%&lt;/li&gt; 
+  &lt;/ul&gt; &lt;/li&gt; 
+ &lt;li&gt;Saas 模式 
+  &lt;ul&gt; 
+   &lt;li&gt;Layui 多租户適配&lt;/li&gt; 
+   &lt;li&gt;Vue 多租户適配&lt;/li&gt; 
+   &lt;li&gt;移動端多租户適配&lt;/li&gt; 
+  &lt;/ul&gt; &lt;/li&gt; 
+ &lt;li&gt;&lt;strong&gt;&lt;span&gt;源代碼對星球用户開放&lt;/span&gt;&lt;/strong&gt;&lt;/li&gt; 
+ &lt;li&gt; &lt;p style="margin-left:0; margin-right:0"&gt;&lt;span&gt;解決若干問題。&lt;/span&gt;&lt;/p&gt; &lt;/li&gt; 
 &lt;/ul&gt; 
-&lt;p&gt;可通過大模型對話聊天形式保存 yaml 模板，後續可以直接在界面上使用該模板。&lt;/p&gt; 
-&lt;p&gt;&lt;strong&gt;完整的更新日誌&lt;/strong&gt;: &lt;a href="https://gitee.com/weibaohui/k8m/compare/v0.0.110...v0.0.111" target="_blank"&gt;https://gitee.com/weibaohui/k8m/compare/v0.0.110...v0.0.111&lt;/a&gt;&lt;/p&gt; 
-&lt;p&gt;詳情查看：&lt;a href="https://gitee.com/weibaohui/k8m/releases/v0.0.111"&gt;https://gitee.com/weibaohui/k8m/releases/v0.0.111&lt;/a&gt;&lt;/p&gt;
+&lt;p style="color:#333333; margin-left:0; margin-right:0; text-align:left"&gt;&lt;span&gt;Skyeye 具備&lt;/span&gt;&lt;strong&gt;&lt;span&gt;低代碼、快捷開發、可視化設計、微服務&lt;/span&gt;&lt;/strong&gt;&lt;span&gt;等特點，方便客户二次開發，極大的提高了開發效率。&lt;/span&gt;&lt;/p&gt; 
+&lt;p style="color:#333333; margin-left:0; margin-right:0; text-align:left"&gt;&lt;span&gt;erp：&amp;nbsp;&lt;/span&gt;&lt;span&gt;https://gitee.com/doc_wei01/skyeye&lt;/span&gt;&lt;/p&gt; 
+&lt;p style="color:#333333; margin-left:0; margin-right:0; text-align:left"&gt;&lt;span&gt;OA：&amp;nbsp;&lt;/span&gt;&lt;span&gt;https://gitee.com/dromara/skyeye&lt;/span&gt;&lt;/p&gt; 
+&lt;p style="color:#333333; margin-left:0; margin-right:0; text-align:left"&gt;&lt;span&gt;報表：&lt;/span&gt;&lt;span&gt;https://gitee.com/doc_wei01/skyeye-report&lt;/span&gt;&lt;span&gt;&amp;nbsp; 有問題可以聯繫作者，詳情請看開發計劃。&lt;/span&gt;&lt;/p&gt; 
+&lt;p style="color:#333333; margin-left:0; margin-right:0; text-align:left"&gt;&lt;strong&gt;PC 端效果圖&lt;/strong&gt;&lt;/p&gt; 
+&lt;table cellspacing="0" style="--darkreader-inline-bgcolor:#181a1b; --darkreader-inline-border-bottom:currentcolor; --darkreader-inline-border-left:currentcolor; --darkreader-inline-border-right:currentcolor; --darkreader-inline-border-top:currentcolor; --darkreader-inline-color:#bdb7af; -webkit-text-stroke-width:0px; background-color:#ffffff; border-collapse:collapse; border-spacing:1px; border:medium none; box-sizing:border-box; color:#444444; display:block; font-family:-apple-system,BlinkMacSystemFont,&amp;quot;Apple Color Emoji&amp;quot;,&amp;quot;Segoe UI Emoji&amp;quot;,&amp;quot;Segoe UI Symbol&amp;quot;,&amp;quot;Segoe UI&amp;quot;,&amp;quot;PingFang SC&amp;quot;,&amp;quot;Hiragino Sans GB&amp;quot;,&amp;quot;Microsoft YaHei&amp;quot;,&amp;quot;Helvetica Neue&amp;quot;,Helvetica,Arial,sans-serif; font-size:14px; font-style:normal; font-variant-caps:normal; font-variant-ligatures:normal; font-weight:400; letter-spacing:normal; line-height:inherit; margin:0px; max-width:100%; orphans:2; overflow:auto; text-align:left; text-decoration-color:initial; text-decoration-style:initial; text-decoration-thickness:initial; text-transform:none; white-space:normal; widows:2; width:776px; word-break:keep-all; word-spacing:0px"&gt; 
+ &lt;tbody&gt; 
+  &lt;tr&gt; 
+   &lt;th style="text-align:center"&gt;效果圖&lt;/th&gt; 
+   &lt;th style="text-align:center"&gt;效果圖&lt;/th&gt; 
+  &lt;/tr&gt; 
+ &lt;/tbody&gt; 
+ &lt;tbody&gt; 
+  &lt;tr&gt; 
+   &lt;td style="border-color:#dddddd; border-style:solid; border-width:1px"&gt; &lt;p style="margin-left:0; margin-right:0"&gt;&lt;img height="919" src="https://oscimg.oschina.net/oscnet/up-35a653b1c873ab9501f7187b0901a27cc64.png" width="1920" referrerpolicy="no-referrer"&gt;&lt;/p&gt; &lt;/td&gt; 
+   &lt;td style="border-color:#dddddd; border-style:solid; border-width:1px"&gt; &lt;p style="margin-left:0; margin-right:0"&gt;&lt;img height="919" src="https://oscimg.oschina.net/oscnet/up-a8f7c658a21594b2787c667fc1214c673b1.png" width="1920" referrerpolicy="no-referrer"&gt;&lt;/p&gt; &lt;/td&gt; 
+  &lt;/tr&gt; 
+  &lt;tr&gt; 
+   &lt;td style="border-color:#dddddd; border-style:solid; border-width:1px"&gt; &lt;p style="margin-left:0; margin-right:0"&gt;&lt;img height="919" src="https://oscimg.oschina.net/oscnet/up-50138b38c37d750b93db5b37493f71bf4ca.png" width="1920" referrerpolicy="no-referrer"&gt;&lt;/p&gt; &lt;/td&gt; 
+   &lt;td style="border-color:#dddddd; border-style:solid; border-width:1px"&gt; &lt;p style="margin-left:0; margin-right:0"&gt;&lt;img height="919" src="https://oscimg.oschina.net/oscnet/up-00fd5dbd8a44f8d815ecf77d93d37062616.png" width="1920" referrerpolicy="no-referrer"&gt;&lt;/p&gt; &lt;/td&gt; 
+  &lt;/tr&gt; 
+  &lt;tr&gt; 
+   &lt;td style="border-color:#dddddd; border-style:solid; border-width:1px"&gt; &lt;p style="margin-left:0; margin-right:0"&gt;&lt;img height="919" src="https://oscimg.oschina.net/oscnet/up-6499d74ddcfe9a99997d8c797aae7b7f0b0.png" width="1920" referrerpolicy="no-referrer"&gt;&lt;/p&gt; &lt;/td&gt; 
+   &lt;td style="border-color:#dddddd; border-style:solid; border-width:1px"&gt; &lt;p style="margin-left:0; margin-right:0"&gt;&lt;img height="919" src="https://oscimg.oschina.net/oscnet/up-e97af4a2caccb199b76d906ecbb339a7575.png" width="1920" referrerpolicy="no-referrer"&gt;&lt;/p&gt; &lt;/td&gt; 
+  &lt;/tr&gt; 
+  &lt;tr&gt; 
+   &lt;td style="border-color:#dddddd; border-style:solid; border-width:1px"&gt; &lt;p style="margin-left:0; margin-right:0"&gt;&lt;img height="919" src="https://oscimg.oschina.net/oscnet/up-a58e6cb3e687de2a468cb095516951f077c.png" width="1920" referrerpolicy="no-referrer"&gt;&lt;/p&gt; &lt;/td&gt; 
+   &lt;td style="border-color:#dddddd; border-style:solid; border-width:1px"&gt; &lt;p style="margin-left:0; margin-right:0"&gt;&lt;img height="919" src="https://oscimg.oschina.net/oscnet/up-9eb76f53a99358fdf1ce532dc711baec41a.png" width="1920" referrerpolicy="no-referrer"&gt;&lt;/p&gt; &lt;/td&gt; 
+  &lt;/tr&gt; 
+  &lt;tr&gt; 
+   &lt;td style="border-color:#dddddd; border-style:solid; border-width:1px"&gt; &lt;p style="margin-left:0; margin-right:0"&gt;&lt;img height="919" src="https://oscimg.oschina.net/oscnet/up-ce7c58e9fe940d58b2cb9cec441176b3481.png" width="1920" referrerpolicy="no-referrer"&gt;&lt;/p&gt; &lt;/td&gt; 
+   &lt;td style="border-color:#dddddd; border-style:solid; border-width:1px"&gt; &lt;p style="margin-left:0; margin-right:0"&gt;&lt;img height="919" src="https://oscimg.oschina.net/oscnet/up-ca685ab278a861067f5850e12470e155e59.png" width="1920" referrerpolicy="no-referrer"&gt;&lt;/p&gt; &lt;/td&gt; 
+  &lt;/tr&gt; 
+  &lt;tr&gt; 
+   &lt;td style="border-color:#dddddd; border-style:solid; border-width:1px"&gt; &lt;p style="margin-left:0; margin-right:0"&gt;&lt;img height="1837" src="https://oscimg.oschina.net/oscnet/up-270d853e879bc14cf6632d67e0168c656c0.png" width="3839" referrerpolicy="no-referrer"&gt;&lt;/p&gt; &lt;/td&gt; 
+   &lt;td style="border-color:#dddddd; border-style:solid; border-width:1px"&gt; &lt;p style="margin-left:0; margin-right:0"&gt;&lt;img height="1837" src="https://oscimg.oschina.net/oscnet/up-0bebb255d3c79c13a69bfa0fbb7fcd80836.png" width="3839" referrerpolicy="no-referrer"&gt;&lt;/p&gt; &lt;/td&gt; 
+  &lt;/tr&gt; 
+  &lt;tr&gt; 
+   &lt;td style="border-color:#dddddd; border-style:solid; border-width:1px"&gt; &lt;p style="margin-left:0; margin-right:0"&gt;&lt;img height="1837" src="https://oscimg.oschina.net/oscnet/up-90cde5042c0effeea9e85761ff8dc7283d5.png" width="3839" referrerpolicy="no-referrer"&gt;&lt;/p&gt; &lt;/td&gt; 
+   &lt;td style="border-color:#dddddd; border-style:solid; border-width:1px"&gt; &lt;p style="margin-left:0; margin-right:0"&gt;&lt;img height="1837" src="https://oscimg.oschina.net/oscnet/up-47ccf76ab671effc6142727caf066d67071.png" width="3839" referrerpolicy="no-referrer"&gt;&lt;/p&gt; &lt;/td&gt; 
+  &lt;/tr&gt; 
+ &lt;/tbody&gt; 
+&lt;/table&gt; 
+&lt;p style="color:#333333; margin-left:0; margin-right:0; text-align:left"&gt;&lt;strong&gt;移動端效果圖&lt;/strong&gt;&lt;/p&gt; 
+&lt;table border="1" cellpadding="1" cellspacing="0" style="-webkit-text-stroke-width:0px; background-color:#ffffff; border-collapse:collapse; border-spacing:1px; border:none; box-sizing:border-box; color:#444444; display:block; font-family:-apple-system,BlinkMacSystemFont,&amp;quot;Apple Color Emoji&amp;quot;,&amp;quot;Segoe UI Emoji&amp;quot;,&amp;quot;Segoe UI Symbol&amp;quot;,&amp;quot;Segoe UI&amp;quot;,&amp;quot;PingFang SC&amp;quot;,&amp;quot;Hiragino Sans GB&amp;quot;,&amp;quot;Microsoft YaHei&amp;quot;,&amp;quot;Helvetica Neue&amp;quot;,Helvetica,Arial,sans-serif; font-size:14px; font-style:normal; font-variant-caps:normal; font-variant-ligatures:normal; font-weight:400; letter-spacing:normal; line-height:inherit; margin:0px; max-width:100%; orphans:2; overflow:auto; text-align:left; text-decoration-color:initial; text-decoration-style:initial; text-decoration-thickness:initial; text-transform:none; white-space:normal; widows:2; width:776px; word-break:keep-all; word-spacing:0px"&gt; 
+ &lt;tbody&gt; 
+  &lt;tr&gt; 
+   &lt;td style="border-color:#dddddd; border-style:solid; border-width:1px"&gt;&lt;strong&gt;效果圖&lt;/strong&gt;&lt;/td&gt; 
+   &lt;td style="border-color:#dddddd; border-style:solid; border-width:1px"&gt;&lt;strong&gt;效果圖&lt;/strong&gt;&lt;/td&gt; 
+   &lt;td style="border-color:#dddddd; border-style:solid; border-width:1px"&gt;&lt;strong&gt;效果圖&lt;/strong&gt;&lt;/td&gt; 
+   &lt;td style="border-color:#dddddd; border-style:solid; border-width:1px"&gt;&lt;strong&gt;效果圖&lt;/strong&gt;&lt;/td&gt; 
+  &lt;/tr&gt; 
+  &lt;tr&gt; 
+   &lt;td style="border-color:#dddddd; border-style:solid; border-width:1px"&gt; &lt;p style="margin-left:0; margin-right:0"&gt;&lt;img height="1637" src="https://oscimg.oschina.net/oscnet/up-6850576a0a01188e6b2a9d1ecce58ed7455.png" width="755" referrerpolicy="no-referrer"&gt;&lt;/p&gt; &lt;/td&gt; 
+   &lt;td style="border-color:#dddddd; border-style:solid; border-width:1px"&gt; &lt;p style="margin-left:0; margin-right:0"&gt;&lt;img height="1637" src="https://oscimg.oschina.net/oscnet/up-770416ac656e0b41097dc917b2b404e62f2.png" width="755" referrerpolicy="no-referrer"&gt;&lt;/p&gt; &lt;/td&gt; 
+   &lt;td style="border-color:#dddddd; border-style:solid; border-width:1px"&gt; &lt;p style="margin-left:0; margin-right:0"&gt;&lt;img height="1637" src="https://oscimg.oschina.net/oscnet/up-754034f48dd04fd9ee1e6618db0e37f6ecb.png" width="755" referrerpolicy="no-referrer"&gt;&lt;/p&gt; &lt;/td&gt; 
+   &lt;td style="border-color:#dddddd; border-style:solid; border-width:1px"&gt; &lt;p style="margin-left:0; margin-right:0"&gt;&lt;img height="1637" src="https://oscimg.oschina.net/oscnet/up-d7707ebc67ddf3842adbb54fdc0c062a2a1.png" width="755" referrerpolicy="no-referrer"&gt;&lt;/p&gt; &lt;/td&gt; 
+  &lt;/tr&gt; 
+ &lt;/tbody&gt; 
+&lt;/table&gt; 
+&lt;p&gt;&amp;nbsp;&lt;/p&gt;
                                                                                 &lt;/div&gt;
                                                                             </description>
-      <link>https://www.oschina.net/news/349963/k8m-0-0-111-released</link>
-      <guid isPermaLink="false">https://www.oschina.net/news/349963/k8m-0-0-111-released</guid>
-      <pubDate>Fri, 09 May 2025 01:10:00 GMT</pubDate>
+      <link>https://www.oschina.net/news/350543</link>
+      <guid isPermaLink="false">https://www.oschina.net/news/350543</guid>
+      <pubDate>Sun, 11 May 2025 00:35:00 GMT</pubDate>
+      <author>來源: 投稿</author>
+    </item>
+    <item>
+      <title>SnailJob 1.5.0 發佈，分佈式任務調度平台</title>
+      <description>&lt;div class="content"&gt;
+                                                                    
+                                                        &lt;p style="color:#141212; margin-left:0; margin-right:0; text-align:left"&gt;🔥🔥🔥 靈活，可靠和快速的分佈式任務重試和分佈式任務調度平台&lt;/p&gt; 
+&lt;blockquote&gt; 
+ &lt;p style="color:#000000; margin-left:0; margin-right:0; text-align:left"&gt;✅️ 可重放，可管控、為提高分佈式業務系統一致性的分佈式任務重試平台&lt;/p&gt; 
+ &lt;p style="color:#000000; margin-left:0; margin-right:0; text-align:left"&gt;✅️ 支持秒級、可中斷、可編排的高性能分佈式任務調度平台&lt;/p&gt; 
+&lt;/blockquote&gt; 
+&lt;h1&gt;&lt;strong&gt;項目特性&lt;/strong&gt;&lt;/h1&gt; 
+&lt;ul&gt; 
+ &lt;li&gt; &lt;p style="margin-left:0; margin-right:0"&gt;&lt;strong&gt;易用性&lt;/strong&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&amp;nbsp;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;業務接入成本小。避免依賴研發人員的技術水平，保障穩定性&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p style="margin-left:0; margin-right:0"&gt;&lt;strong&gt;靈活性&lt;/strong&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&amp;nbsp;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;能夠動態調整配置，啓動 / 停止任務，以及終止運行中的任務&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p style="margin-left:0; margin-right:0"&gt;&lt;strong&gt;操作簡單&lt;/strong&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&amp;nbsp;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;分鐘上手，支持 WEB 頁面對任務數據 CRUD 操作。&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p style="margin-left:0; margin-right:0"&gt;&lt;strong&gt;數據大盤&lt;/strong&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&amp;nbsp;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;實時管控系統任務數據&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p style="margin-left:0; margin-right:0"&gt;&lt;strong&gt;分佈式重試任務&lt;/strong&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&amp;nbsp;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;支持多樣化退避策略、多樣化重試類型、流量管控等&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p style="margin-left:0; margin-right:0"&gt;&lt;strong&gt;分佈式調度任務&lt;/strong&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&amp;nbsp;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;提供豐富的任務觸發策略、任務分片、停止恢復、失敗重試等&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p style="margin-left:0; margin-right:0"&gt;&lt;strong&gt;工作流任務編排&lt;/strong&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&amp;nbsp;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;仿釘釘設計的流程編排引擎，支持複雜的功能編排、失敗重試、告警等&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p style="margin-left:0; margin-right:0"&gt;&lt;strong&gt;任務數據管理&lt;/strong&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&amp;nbsp;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;可以做到數據不丟失、數據一鍵回放&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p style="margin-left:0; margin-right:0"&gt;&lt;strong&gt;容器化部署&lt;/strong&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&amp;nbsp;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;服務端支持 docker 容器部署&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p style="margin-left:0; margin-right:0"&gt;&lt;strong&gt;高性能調度平台&lt;/strong&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&amp;nbsp;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;支持服務端節點動態擴容和縮容&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p style="margin-left:0; margin-right:0"&gt;&lt;strong&gt;支持多樣化的告警方式&lt;/strong&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&amp;nbsp;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;郵箱、企業微信、釘釘、飛書、自定義告警&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p style="margin-left:0; margin-right:0"&gt;&lt;strong&gt;支持多種流行數據庫&lt;/strong&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&amp;nbsp;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;mysql、mariadb、sqlserver、oracle、postgres 數據庫&lt;/p&gt; &lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;h1&gt;&lt;strong&gt;開源組件對比&lt;/strong&gt;&lt;/h1&gt; 
+&lt;table cellspacing="0" style="-webkit-text-stroke-width:0px; background-color:#ffffff; border-collapse:collapse; border-spacing:1px; border:none; box-sizing:border-box; color:#000000; cursor:pointer; display:table; font-family:-apple-system,&amp;quot;system-ui&amp;quot;,&amp;quot;Apple Color Emoji&amp;quot;,&amp;quot;Segoe UI Emoji&amp;quot;,&amp;quot;Segoe UI Symbol&amp;quot;,&amp;quot;Segoe UI&amp;quot;,&amp;quot;PingFang SC&amp;quot;,&amp;quot;Hiragino Sans GB&amp;quot;,&amp;quot;Microsoft YaHei&amp;quot;,&amp;quot;Helvetica Neue&amp;quot;,Helvetica,Arial,sans-serif; font-size:14px; font-style:normal; font-variant-caps:normal; font-variant-ligatures:normal; font-weight:400; letter-spacing:normal; line-height:inherit; margin:0px 0px 20px; max-width:100%; orphans:2; overflow:auto; text-align:left; text-decoration-color:initial; text-decoration-style:initial; text-decoration-thickness:initial; text-transform:none; white-space:normal; widows:2; width:803px; word-break:keep-all; word-spacing:0px"&gt; 
+ &lt;tbody&gt; 
+  &lt;tr&gt; 
+   &lt;th style="height:auto; text-align:left; width:auto"&gt;&lt;strong&gt;項目&lt;/strong&gt;&lt;/th&gt; 
+   &lt;th style="height:auto; text-align:left; width:auto"&gt;&lt;strong&gt;Quartz&lt;/strong&gt;&lt;/th&gt; 
+   &lt;th style="height:auto; text-align:left; width:auto"&gt;&lt;strong&gt;Elastic-Job&lt;/strong&gt;&lt;/th&gt; 
+   &lt;th style="height:auto; text-align:left; width:auto"&gt;&lt;strong&gt;XXL-JOB&lt;/strong&gt;&lt;/th&gt; 
+   &lt;th style="height:auto; text-align:left; width:auto"&gt;&lt;strong&gt;PowerJob&lt;/strong&gt;&lt;/th&gt; 
+   &lt;th style="height:auto; text-align:left; width:auto"&gt;&lt;strong&gt;Snail Job&lt;/strong&gt;&lt;/th&gt; 
+  &lt;/tr&gt; 
+ &lt;/tbody&gt; 
+ &lt;tbody&gt; 
+  &lt;tr&gt; 
+   &lt;td style="border-color:rgba(204, 204, 204, 0.4); border-radius:0px; border-style:solid; border-width:1px; height:auto"&gt;跨語言能力&lt;/td&gt; 
+   &lt;td style="border-color:rgba(204, 204, 204, 0.4); border-radius:0px; border-style:solid; border-width:1px; height:auto"&gt;不支持&lt;/td&gt; 
+   &lt;td style="border-color:rgba(204, 204, 204, 0.4); border-radius:0px; border-style:solid; border-width:1px; height:auto"&gt;不支持&lt;/td&gt; 
+   &lt;td style="border-color:rgba(204, 204, 204, 0.4); border-radius:0px; border-style:solid; border-width:1px; height:auto"&gt;不支持&lt;/td&gt; 
+   &lt;td style="border-color:rgba(204, 204, 204, 0.4); border-radius:0px; border-style:solid; border-width:1px; height:auto"&gt;不支持&lt;/td&gt; 
+   &lt;td style="border-color:rgba(204, 204, 204, 0.4); border-radius:0px; border-style:solid; border-width:1px; height:auto"&gt;支持 java (1.8/17)、Python、Go 客户端 (開發中)&lt;/td&gt; 
+  &lt;/tr&gt; 
+  &lt;tr&gt; 
+   &lt;td style="border-color:rgba(204, 204, 204, 0.4); border-radius:0px; border-style:solid; border-width:1px; height:auto"&gt;定時調度&lt;/td&gt; 
+   &lt;td style="border-color:rgba(204, 204, 204, 0.4); border-radius:0px; border-style:solid; border-width:1px; height:auto"&gt;Cron&lt;/td&gt; 
+   &lt;td style="border-color:rgba(204, 204, 204, 0.4); border-radius:0px; border-style:solid; border-width:1px; height:auto"&gt;Cron&lt;/td&gt; 
+   &lt;td style="border-color:rgba(204, 204, 204, 0.4); border-radius:0px; border-style:solid; border-width:1px; height:auto"&gt;Cron&lt;/td&gt; 
+   &lt;td style="border-color:rgba(204, 204, 204, 0.4); border-radius:0px; border-style:solid; border-width:1px; height:auto"&gt;CRON、固定頻率、固定延遲、OpenAPI&lt;/td&gt; 
+   &lt;td style="border-color:rgba(204, 204, 204, 0.4); border-radius:0px; border-style:solid; border-width:1px; height:auto"&gt;1. 定時任務 2. 秒級任務 (無需依賴外部中間件) 3. 固定頻率 4.OpenAPI&lt;/td&gt; 
+  &lt;/tr&gt; 
+  &lt;tr&gt; 
+   &lt;td style="border-color:rgba(204, 204, 204, 0.4); border-radius:0px; border-style:solid; border-width:1px; height:auto"&gt;重試任務&lt;/td&gt; 
+   &lt;td style="border-color:rgba(204, 204, 204, 0.4); border-radius:0px; border-style:solid; border-width:1px; height:auto"&gt;不支持&lt;/td&gt; 
+   &lt;td style="border-color:rgba(204, 204, 204, 0.4); border-radius:0px; border-style:solid; border-width:1px; height:auto"&gt;不支持&lt;/td&gt; 
+   &lt;td style="border-color:rgba(204, 204, 204, 0.4); border-radius:0px; border-style:solid; border-width:1px; height:auto"&gt;不支持&lt;/td&gt; 
+   &lt;td style="border-color:rgba(204, 204, 204, 0.4); border-radius:0px; border-style:solid; border-width:1px; height:auto"&gt;不支持&lt;/td&gt; 
+   &lt;td style="border-color:rgba(204, 204, 204, 0.4); border-radius:0px; border-style:solid; border-width:1px; height:auto"&gt;1. 支持本地 &amp;amp; 遠程重試模式 2. 支持各種常用組件的重試，比如 dubbo/feign 3. 支持多種退避策略 4. 豐富的重試風暴管控手段 ......&lt;/td&gt; 
+  &lt;/tr&gt; 
+  &lt;tr&gt; 
+   &lt;td style="border-color:rgba(204, 204, 204, 0.4); border-radius:0px; border-style:solid; border-width:1px; height:auto"&gt;任務編排&lt;/td&gt; 
+   &lt;td style="border-color:rgba(204, 204, 204, 0.4); border-radius:0px; border-style:solid; border-width:1px; height:auto"&gt;不支持&lt;/td&gt; 
+   &lt;td style="border-color:rgba(204, 204, 204, 0.4); border-radius:0px; border-style:solid; border-width:1px; height:auto"&gt;不支持&lt;/td&gt; 
+   &lt;td style="border-color:rgba(204, 204, 204, 0.4); border-radius:0px; border-style:solid; border-width:1px; height:auto"&gt;不支持&lt;/td&gt; 
+   &lt;td style="border-color:rgba(204, 204, 204, 0.4); border-radius:0px; border-style:solid; border-width:1px; height:auto"&gt;支持&lt;/td&gt; 
+   &lt;td style="border-color:rgba(204, 204, 204, 0.4); border-radius:0px; border-style:solid; border-width:1px; height:auto"&gt;仿釘釘工作流設計，顏值高、體驗好&lt;/td&gt; 
+  &lt;/tr&gt; 
+  &lt;tr&gt; 
+   &lt;td style="border-color:rgba(204, 204, 204, 0.4); border-radius:0px; border-style:solid; border-width:1px; height:auto"&gt;分佈式計算&lt;/td&gt; 
+   &lt;td style="border-color:rgba(204, 204, 204, 0.4); border-radius:0px; border-style:solid; border-width:1px; height:auto"&gt;不支持&lt;/td&gt; 
+   &lt;td style="border-color:rgba(204, 204, 204, 0.4); border-radius:0px; border-style:solid; border-width:1px; height:auto"&gt;靜態分片&lt;/td&gt; 
+   &lt;td style="border-color:rgba(204, 204, 204, 0.4); border-radius:0px; border-style:solid; border-width:1px; height:auto"&gt;廣播&lt;/td&gt; 
+   &lt;td style="border-color:rgba(204, 204, 204, 0.4); border-radius:0px; border-style:solid; border-width:1px; height:auto"&gt;支持&lt;/td&gt; 
+   &lt;td style="border-color:rgba(204, 204, 204, 0.4); border-radius:0px; border-style:solid; border-width:1px; height:auto"&gt;1. 廣播執行 2. 集羣執行 3. 靜態分片 4. 動態分片&lt;/td&gt; 
+  &lt;/tr&gt; 
+  &lt;tr&gt; 
+   &lt;td style="border-color:rgba(204, 204, 204, 0.4); border-radius:0px; border-style:solid; border-width:1px; height:auto"&gt;多語言&lt;/td&gt; 
+   &lt;td style="border-color:rgba(204, 204, 204, 0.4); border-radius:0px; border-style:solid; border-width:1px; height:auto"&gt;Java&lt;/td&gt; 
+   &lt;td style="border-color:rgba(204, 204, 204, 0.4); border-radius:0px; border-style:solid; border-width:1px; height:auto"&gt;1. Java 2. 腳本任務&lt;/td&gt; 
+   &lt;td style="border-color:rgba(204, 204, 204, 0.4); border-radius:0px; border-style:solid; border-width:1px; height:auto"&gt;1. Java 2. 腳本任務&lt;/td&gt; 
+   &lt;td style="border-color:rgba(204, 204, 204, 0.4); border-radius:0px; border-style:solid; border-width:1px; height:auto"&gt;支持&lt;/td&gt; 
+   &lt;td style="border-color:rgba(204, 204, 204, 0.4); border-radius:0px; border-style:solid; border-width:1px; height:auto"&gt;1. Java 2. CMD (本地腳本、遠程腳本、參數傳人) 3. PowerShell (本地腳本、遠程腳本、參數傳人) 3. Shell (本地腳本、遠程腳本、參數傳人) 4. HTTP 任務&lt;/td&gt; 
+  &lt;/tr&gt; 
+  &lt;tr&gt; 
+   &lt;td style="border-color:rgba(204, 204, 204, 0.4); border-radius:0px; border-style:solid; border-width:1px; height:auto"&gt;用户管理&lt;/td&gt; 
+   &lt;td style="border-color:rgba(204, 204, 204, 0.4); border-radius:0px; border-style:solid; border-width:1px; height:auto"&gt;不支持&lt;/td&gt; 
+   &lt;td style="border-color:rgba(204, 204, 204, 0.4); border-radius:0px; border-style:solid; border-width:1px; height:auto"&gt;支持&lt;/td&gt; 
+   &lt;td style="border-color:rgba(204, 204, 204, 0.4); border-radius:0px; border-style:solid; border-width:1px; height:auto"&gt;支持&lt;/td&gt; 
+   &lt;td style="border-color:rgba(204, 204, 204, 0.4); border-radius:0px; border-style:solid; border-width:1px; height:auto"&gt;不支持&lt;/td&gt; 
+   &lt;td style="border-color:rgba(204, 204, 204, 0.4); border-radius:0px; border-style:solid; border-width:1px; height:auto"&gt;完備的用户管理和權限管理&lt;/td&gt; 
+  &lt;/tr&gt; 
+  &lt;tr&gt; 
+   &lt;td style="border-color:rgba(204, 204, 204, 0.4); border-radius:0px; border-style:solid; border-width:1px; height:auto"&gt;安全 Token&lt;/td&gt; 
+   &lt;td style="border-color:rgba(204, 204, 204, 0.4); border-radius:0px; border-style:solid; border-width:1px; height:auto"&gt;不支持&lt;/td&gt; 
+   &lt;td style="border-color:rgba(204, 204, 204, 0.4); border-radius:0px; border-style:solid; border-width:1px; height:auto"&gt;不支持&lt;/td&gt; 
+   &lt;td style="border-color:rgba(204, 204, 204, 0.4); border-radius:0px; border-style:solid; border-width:1px; height:auto"&gt;支持&lt;/td&gt; 
+   &lt;td style="border-color:rgba(204, 204, 204, 0.4); border-radius:0px; border-style:solid; border-width:1px; height:auto"&gt;不支持&lt;/td&gt; 
+   &lt;td style="border-color:rgba(204, 204, 204, 0.4); border-radius:0px; border-style:solid; border-width:1px; height:auto"&gt;支持&lt;/td&gt; 
+  &lt;/tr&gt; 
+  &lt;tr&gt; 
+   &lt;td style="border-color:rgba(204, 204, 204, 0.4); border-radius:0px; border-style:solid; border-width:1px; height:auto"&gt;可視化&lt;/td&gt; 
+   &lt;td style="border-color:rgba(204, 204, 204, 0.4); border-radius:0px; border-style:solid; border-width:1px; height:auto"&gt;無&lt;/td&gt; 
+   &lt;td style="border-color:rgba(204, 204, 204, 0.4); border-radius:0px; border-style:solid; border-width:1px; height:auto"&gt;弱&lt;/td&gt; 
+   &lt;td style="border-color:rgba(204, 204, 204, 0.4); border-radius:0px; border-style:solid; border-width:1px; height:auto"&gt;1. 歷史記錄 2. 運行日誌（不支持存儲）3. 監控大盤&lt;/td&gt; 
+   &lt;td style="border-color:rgba(204, 204, 204, 0.4); border-radius:0px; border-style:solid; border-width:1px; height:auto"&gt;支持&lt;/td&gt; 
+   &lt;td style="border-color:rgba(204, 204, 204, 0.4); border-radius:0px; border-style:solid; border-width:1px; height:auto"&gt;1. 歷史記錄 2. 實時日誌 (支持持久化、可視化) 3. 監控大盤 (實時調度數據展示) 4. 失敗調度排名 5. 在線集羣查看等&lt;/td&gt; 
+  &lt;/tr&gt; 
+  &lt;tr&gt; 
+   &lt;td style="border-color:rgba(204, 204, 204, 0.4); border-radius:0px; border-style:solid; border-width:1px; height:auto"&gt;可運維&lt;/td&gt; 
+   &lt;td style="border-color:rgba(204, 204, 204, 0.4); border-radius:0px; border-style:solid; border-width:1px; height:auto"&gt;無&lt;/td&gt; 
+   &lt;td style="border-color:rgba(204, 204, 204, 0.4); border-radius:0px; border-style:solid; border-width:1px; height:auto"&gt;啓用、禁用任務&lt;/td&gt; 
+   &lt;td style="border-color:rgba(204, 204, 204, 0.4); border-radius:0px; border-style:solid; border-width:1px; height:auto"&gt;1. 啓用、禁用任務 2. 手動運行任務 3. 停止任務&lt;/td&gt; 
+   &lt;td style="border-color:rgba(204, 204, 204, 0.4); border-radius:0px; border-style:solid; border-width:1px; height:auto"&gt;支持&lt;/td&gt; 
+   &lt;td style="border-color:rgba(204, 204, 204, 0.4); border-radius:0px; border-style:solid; border-width:1px; height:auto"&gt;1. 啓用、禁用任務 2. 手動運行任務 3. 停止任務 4、手動重試&lt;/td&gt; 
+  &lt;/tr&gt; 
+  &lt;tr&gt; 
+   &lt;td style="border-color:rgba(204, 204, 204, 0.4); border-radius:0px; border-style:solid; border-width:1px; height:auto"&gt;報警監控&lt;/td&gt; 
+   &lt;td style="border-color:rgba(204, 204, 204, 0.4); border-radius:0px; border-style:solid; border-width:1px; height:auto"&gt;無&lt;/td&gt; 
+   &lt;td style="border-color:rgba(204, 204, 204, 0.4); border-radius:0px; border-style:solid; border-width:1px; height:auto"&gt;郵件&lt;/td&gt; 
+   &lt;td style="border-color:rgba(204, 204, 204, 0.4); border-radius:0px; border-style:solid; border-width:1px; height:auto"&gt;郵件&lt;/td&gt; 
+   &lt;td style="border-color:rgba(204, 204, 204, 0.4); border-radius:0px; border-style:solid; border-width:1px; height:auto"&gt;郵件&lt;/td&gt; 
+   &lt;td style="border-color:rgba(204, 204, 204, 0.4); border-radius:0px; border-style:solid; border-width:1px; height:auto"&gt;支持配置多種告警場景，通知方式支持: 1. 郵件 2. 釘釘 3. 企微 4. 飛書 5、Webhook&lt;/td&gt; 
+  &lt;/tr&gt; 
+  &lt;tr&gt; 
+   &lt;td style="border-color:rgba(204, 204, 204, 0.4); border-radius:0px; border-style:solid; border-width:1px; height:auto"&gt;性能&lt;/td&gt; 
+   &lt;td style="border-color:rgba(204, 204, 204, 0.4); border-radius:0px; border-style:solid; border-width:1px; height:auto"&gt;每次調度通過 DB 搶鎖，對 DB 壓力大&lt;/td&gt; 
+   &lt;td style="border-color:rgba(204, 204, 204, 0.4); border-radius:0px; border-style:solid; border-width:1px; height:auto"&gt;ZooKeeper 是性能瓶頸&lt;/td&gt; 
+   &lt;td style="border-color:rgba(204, 204, 204, 0.4); border-radius:0px; border-style:solid; border-width:1px; height:auto"&gt;採用 Master 節點調度，Master 節點壓力大&lt;/td&gt; 
+   &lt;td style="border-color:rgba(204, 204, 204, 0.4); border-radius:0px; border-style:solid; border-width:1px; height:auto"&gt;無鎖化設計&lt;/td&gt; 
+   &lt;td style="border-color:rgba(204, 204, 204, 0.4); border-radius:0px; border-style:solid; border-width:1px; height:auto"&gt;系統採用多 bucket 模式，藉助負載均衡算法，確保每個節點能夠均衡處理任務，同時支持無限水平擴展，輕鬆應對海量任務調度&lt;/td&gt; 
+  &lt;/tr&gt; 
+  &lt;tr&gt; 
+   &lt;td style="border-color:rgba(204, 204, 204, 0.4); border-radius:0px; border-style:solid; border-width:1px; height:auto"&gt;接入成本&lt;/td&gt; 
+   &lt;td style="border-color:rgba(204, 204, 204, 0.4); border-radius:0px; border-style:solid; border-width:1px; height:auto"&gt;只依賴 DB 接入成本低&lt;/td&gt; 
+   &lt;td style="border-color:rgba(204, 204, 204, 0.4); border-radius:0px; border-style:solid; border-width:1px; height:auto"&gt;需引入 Zookeeper 增加系統複雜性和維護成本&lt;/td&gt; 
+   &lt;td style="border-color:rgba(204, 204, 204, 0.4); border-radius:0px; border-style:solid; border-width:1px; height:auto"&gt;只依賴 DB 接入成本低&lt;/td&gt; 
+   &lt;td style="border-color:rgba(204, 204, 204, 0.4); border-radius:0px; border-style:solid; border-width:1px; height:auto"&gt;依賴 DB 接入成本低&lt;/td&gt; 
+   &lt;td style="border-color:rgba(204, 204, 204, 0.4); border-radius:0px; border-style:solid; border-width:1px; height:auto"&gt;只依賴 DB 接入成本低&lt;/td&gt; 
+  &lt;/tr&gt; 
+ &lt;/tbody&gt; 
+&lt;/table&gt; 
+&lt;h1&gt;&lt;strong&gt;更新日誌&lt;/strong&gt;&lt;/h1&gt; 
+&lt;p&gt;&lt;span style="color:#e74c3c"&gt;&lt;strong&gt;包含 v1.5.0-beta1 所有功能&lt;/strong&gt;&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;1. 修復 Grpc 客户端重連問題【BUG】&lt;br&gt; 2. Job 清理日誌減少事務範圍【優化】&lt;br&gt; 3. 組管理修改時描述字段未賦值【BUG】&lt;br&gt; 4. 停/啓用任務後負責人為空 【BUG】&lt;br&gt; 5. 調整 SyncRemoteConfig 初始化順序、調整 ClientRegister 初始化順序 【優化】&lt;br&gt; 6. 調整 AbstractHttpExecutor 參數初始化 【優化】&lt;br&gt; 7. 新增 GO 任務類型【新增】&lt;br&gt; 8. 優化腳本執行器工作目錄初始化 【優化】&lt;br&gt; &amp;nbsp;&lt;/p&gt; 
+&lt;p&gt;&amp;nbsp;&lt;/p&gt; 
+&lt;p style="color:#333333; margin-left:0; margin-right:0; text-align:left"&gt;&amp;nbsp;&lt;/p&gt; 
+&lt;div&gt; 
+ &lt;h1&gt;&lt;strong&gt;項目地址&lt;/strong&gt;&lt;/h1&gt; 
+ &lt;ul&gt; 
+  &lt;li&gt; &lt;p style="color:#141212; margin-left:0; margin-right:0; text-align:left"&gt;官網:&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&amp;nbsp;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fsnailjob.opensnail.com%2F" target="_blank"&gt;http://snailjob.aizuda.com/&lt;/a&gt;&lt;/p&gt; &lt;/li&gt; 
+  &lt;li&gt; &lt;p style="color:#141212; margin-left:0; margin-right:0; text-align:left"&gt;gitee:&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&amp;nbsp;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;a href="https://gitee.com/aizuda/snail-job"&gt;https://gitee.com/aizuda/snail-job&lt;/a&gt;&lt;/p&gt; &lt;/li&gt; 
+  &lt;li&gt; &lt;p style="color:#141212; margin-left:0; margin-right:0; text-align:left"&gt;github：&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fgithub.com%2Faizuda%2Fsnail-job" target="_blank"&gt;https://github.com/aizuda/snail-job&lt;/a&gt;&lt;/p&gt; &lt;/li&gt; 
+  &lt;li&gt; &lt;p style="color:#141212; margin-left:0; margin-right:0; text-align:left"&gt;體驗地址：&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fsnailjob.opensnail.com%2Fdocs%2Fpreview.html" target="_blank"&gt;http://snailjob.aizuda.com/docs/preview.html&lt;/a&gt;&lt;/p&gt; &lt;/li&gt; 
+ &lt;/ul&gt; 
+ &lt;p style="color:#141212; margin-left:0; margin-right:0; text-align:left"&gt;&lt;strong&gt;方便的話給項目一個 star，你的支持是我們前進的動力！&lt;/strong&gt;&lt;/p&gt; 
+ &lt;h1&gt;&lt;strong&gt;先睹為快&lt;/strong&gt;&lt;/h1&gt; 
+ &lt;p style="color:#333333; margin-left:0; margin-right:0; text-align:left"&gt;&lt;img height="934" src="https://oscimg.oschina.net/oscnet/up-14e6a8b356b5af81ef5d29c5f11f409ec8e.png" width="1920" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+ &lt;p style="color:#333333; margin-left:0; margin-right:0; text-align:left"&gt;&lt;img height="934" src="https://oscimg.oschina.net/oscnet/up-c211e2ed8bb50b0b5a98a80c66a6b1c22eb.jpg" width="1920" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+ &lt;p style="color:#333333; margin-left:0; margin-right:0; text-align:left"&gt;&lt;img height="934" src="https://oscimg.oschina.net/oscnet/up-7f89940ef3ca77fcbc7c59a5ef1b7ee2f32.jpg" width="1920" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+ &lt;p style="color:#333333; margin-left:0; margin-right:0; text-align:left"&gt;&lt;img height="934" src="https://oscimg.oschina.net/oscnet/up-aaffbff80000f50760580f5c1b9eb129326.jpg" width="1920" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+ &lt;p style="color:#333333; margin-left:0; margin-right:0; text-align:left"&gt;&lt;img height="934" src="https://oscimg.oschina.net/oscnet/up-d22af7154271453ef9e474480b365de7fe8.jpg" width="1920" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+ &lt;p style="color:#333333; margin-left:0; margin-right:0; text-align:left"&gt;&lt;img height="934" src="https://oscimg.oschina.net/oscnet/up-b3960db7ec76046317a437129983d1b0fdb.jpg" width="1920" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+ &lt;p style="color:#333333; margin-left:0; margin-right:0; text-align:left"&gt;&lt;img height="934" src="https://oscimg.oschina.net/oscnet/up-c30f296734992f54c595489070242d5bedb.jpg" width="1920" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+ &lt;p style="color:#333333; margin-left:0; margin-right:0; text-align:left"&gt;&lt;img height="934" src="https://oscimg.oschina.net/oscnet/up-9ce9d14406c04e4a174fdb261f7a3dbb3c4.jpg" width="1920" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+ &lt;p style="color:#333333; margin-left:0; margin-right:0; text-align:left"&gt;&lt;img height="934" src="https://oscimg.oschina.net/oscnet/up-251bcb5854c6b194d572a2c9f749dcfa88c.jpg" width="1920" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+ &lt;p style="color:#333333; margin-left:0; margin-right:0; text-align:left"&gt;&lt;img height="934" src="https://oscimg.oschina.net/oscnet/up-fb4cc7f4d4c63d268cbc5d1b899ba0890cb.jpg" width="1920" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+ &lt;p style="color:#333333; margin-left:0; margin-right:0; text-align:left"&gt;&lt;img height="934" src="https://oscimg.oschina.net/oscnet/up-779062ece3bf7fbd7b815316043a9a81b17.jpg" width="1920" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+ &lt;p style="color:#333333; margin-left:0; margin-right:0; text-align:left"&gt;&lt;img height="934" src="https://oscimg.oschina.net/oscnet/up-fd2cbb9b59710fb961bee83ade1acea0ee2.jpg" width="1920" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+ &lt;p style="color:#333333; margin-left:0; margin-right:0; text-align:left"&gt;&lt;img height="934" src="https://oscimg.oschina.net/oscnet/up-e2a4fb0f130d1f3eceb5c05b0913074d12f.jpg" width="1920" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;/div&gt;
+                                                                                &lt;/div&gt;
+                                                                            </description>
+      <link>https://www.oschina.net/news/350528</link>
+      <guid isPermaLink="false">https://www.oschina.net/news/350528</guid>
+      <pubDate>Sat, 10 May 2025 14:57:00 GMT</pubDate>
+      <author>來源: 投稿</author>
+    </item>
+    <item>
+      <title>基於 TCP 與領域事件的 kaka-rpc 2.0.0 正式發佈</title>
+      <description>&lt;div class="content"&gt;
+                                                                    
+                                                        &lt;p style="color:#40485b; margin-left:0; margin-right:0; text-align:left"&gt;基於 Netty TCP 與 kaka-core 領域事件的輕量級 RPC 框架，相比其它使用各種繁雜設計模式的框架，本框架僅 10 多個類實現，可謂是極簡編碼。&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt;基礎通信 
+  &lt;ul&gt; 
+   &lt;li&gt;事件驅動&lt;/li&gt; 
+   &lt;li&gt;自定義心跳協議或基於 rpc 調用的心跳處理&lt;/li&gt; 
+   &lt;li&gt;斷線重連&lt;/li&gt; 
+   &lt;li&gt;同步、future 異步、callback 回調多種 rpc 調用模式&lt;/li&gt; 
+   &lt;li&gt;超時控制&lt;/li&gt; 
+   &lt;li&gt;自定義數據協議擴展領域事件&lt;/li&gt; 
+   &lt;li&gt;登錄鑑權&lt;/li&gt; 
+   &lt;li&gt;基礎數據類型在滿足通信協議的要求下支持任意程序語言調用&lt;/li&gt; 
+  &lt;/ul&gt; &lt;/li&gt; 
+ &lt;li&gt;集羣部署 
+  &lt;ul&gt; 
+   &lt;li&gt;方案一：Nginx 負載均衡&lt;/li&gt; 
+   &lt;li&gt;方案二：自定義負載均衡，基於一致性哈希算法，亦可使用心跳輪詢基於連接量的動態權重負載均衡&lt;/li&gt; 
+  &lt;/ul&gt; &lt;/li&gt; 
+ &lt;li&gt;性能強勁 
+  &lt;ul&gt; 
+   &lt;li&gt;調用遠程接口方法，順序執行 1000000 次，耗時 78 秒，平均每秒 12800 次左右，相比其它基於 Http 協議的 RPC 框架，性能提升明顯&lt;/li&gt; 
+   &lt;li&gt;異步回調模式，每秒 60000 次左右&lt;/li&gt; 
+   &lt;li&gt;以上性能數據均在 win11 i5-12400 16GB 內存 IDEA 下運行產生&lt;/li&gt; 
+  &lt;/ul&gt; &lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;p&gt;以下為部分示例程序，具體示例請參看源碼 test 目錄&lt;/p&gt; 
+&lt;pre&gt;&lt;code&gt;&lt;strong&gt;final&lt;/strong&gt; CountDownLatch latch = &lt;strong&gt;new&lt;/strong&gt; CountDownLatch(&lt;span style="color:#008080"&gt;1&lt;/span&gt;);
+InetSocketAddress address = &lt;strong&gt;new&lt;/strong&gt; InetSocketAddress(&lt;span style="color:#dd1144"&gt;"127.0.0.1"&lt;/span&gt;, &lt;span style="color:#008080"&gt;7777&lt;/span&gt;);
+NettyTcpClient client = &lt;strong&gt;new&lt;/strong&gt; NettyTcpClient(address, &lt;span style="color:#008080"&gt;3&lt;/span&gt;, &lt;span style="color:#008080"&gt;7&lt;/span&gt;, &lt;span style="color:#008080"&gt;2&lt;/span&gt;, &lt;span style="color:#008080"&gt;2&lt;/span&gt;) {
+
+    &lt;span&gt;@Override&lt;/span&gt;
+    &lt;span&gt;&lt;strong&gt;protected&lt;/strong&gt; &lt;strong&gt;void&lt;/strong&gt; &lt;strong&gt;ping&lt;/strong&gt;&lt;span&gt;()&lt;/span&gt; &lt;/span&gt;{
+        &lt;em&gt;//發送自定義心跳包&lt;/em&gt;
+        ChannelHandlerContext ctx = &lt;strong&gt;this&lt;/strong&gt;.getChannelHandlerContext();
+        &lt;strong&gt;if&lt;/strong&gt; (ctx == &lt;strong&gt;null&lt;/strong&gt;) &lt;strong&gt;return&lt;/strong&gt;;
+        ByteBuf buf = ctx.alloc().buffer(&lt;span style="color:#008080"&gt;4&lt;/span&gt;); &lt;em&gt;//標準包體結構 int 協議號+協議內容&lt;/em&gt;
+        buf.writeInt(Integer.parseInt(MyOpCode.heart_beat));
+        ctx.writeAndFlush(buf);
+&lt;em&gt;// //如下方式亦可，但服務器必須進行邏輯處理並返回數據，否則將造成 client 調用端數據積壓，且積壓數據僅能通過超時自動清除。&lt;/em&gt;
+&lt;em&gt;//                    //異步回調方式發送心跳包&lt;/em&gt;
+&lt;em&gt;//                    this.execRemotingLogic(MyOpCode.heart_beat, 4, (res, e) -&amp;gt; {&lt;/em&gt;
+&lt;em&gt;//                        if (e != null) {&lt;/em&gt;
+&lt;em&gt;//                            return;&lt;/em&gt;
+&lt;em&gt;//                        }&lt;/em&gt;
+&lt;em&gt;//                        System.out.println("異步獲取心跳數據&amp;gt;&amp;gt;&amp;gt; " + res);&lt;/em&gt;
+&lt;em&gt;//                    });&lt;/em&gt;
+    }
+
+    &lt;span&gt;@Override&lt;/span&gt;
+    &lt;span&gt;&lt;strong&gt;protected&lt;/strong&gt; &lt;strong&gt;void&lt;/strong&gt; &lt;strong&gt;afterConnected&lt;/strong&gt;&lt;span&gt;()&lt;/span&gt; &lt;/span&gt;{
+        latch.countDown();
+    }
+
+    &lt;span&gt;@Override&lt;/span&gt;
+    &lt;span&gt;&lt;strong&gt;protected&lt;/strong&gt; &lt;strong&gt;void&lt;/strong&gt; &lt;strong&gt;afterDisconnect&lt;/strong&gt;&lt;span&gt;()&lt;/span&gt; &lt;/span&gt;{
+
+    }
+};
+client.connect();
+latch.await();
+
+&lt;em&gt;//RPC 遠程領域事件處理，並同步獲取執行結果，服務端請參看領域事件處理器 com.test.server.DemoLogic1Handler&lt;/em&gt;
+&lt;strong&gt;int&lt;/strong&gt; result = client.execRemotingLogic(&lt;span style="color:#dd1144"&gt;"demo_logic1"&lt;/span&gt;, &lt;span style="color:#008080"&gt;3&lt;/span&gt;, &lt;strong&gt;new&lt;/strong&gt; Object[]{&lt;span style="color:#008080"&gt;1&lt;/span&gt;, &lt;span style="color:#008080"&gt;2&lt;/span&gt;, &lt;span style="color:#008080"&gt;3&lt;/span&gt;});
+System.out.println(&lt;span style="color:#dd1144"&gt;"同步獲取遠程結果&amp;gt;&amp;gt;&amp;gt; "&lt;/span&gt;+result);
+&lt;em&gt;//RPC 遠程領域事件處理，並異步回調獲取結果，服務端請參看領域事件處理器 com.test.server.DemoLogic2Handler&lt;/em&gt;
+client.execRemotingLogic(&lt;span style="color:#dd1144"&gt;"demo_logic2"&lt;/span&gt;,(res, e) -&amp;gt;{
+    &lt;strong&gt;if&lt;/strong&gt;(e !=&lt;strong&gt;null&lt;/strong&gt;){
+        &lt;em&gt;//處理異常&lt;/em&gt;
+        &lt;strong&gt;return&lt;/strong&gt;;
+    }
+    System.out.println(&lt;span style="color:#dd1144"&gt;"異步回調獲取結果&amp;gt;&amp;gt;&amp;gt; "&lt;/span&gt;+res);
+},&lt;span style="color:#008080"&gt;100&lt;/span&gt;);
+&lt;em&gt;//RPC 公共接口方法調用，服務端接口實現請參看 com.test.server.DemoServiceImpl&lt;/em&gt;
+DemoService testInterface = RpcClient.getRefInstance(DemoService&lt;span&gt;.&lt;strong&gt;class&lt;/strong&gt;, &lt;strong&gt;client&lt;/strong&gt;)&lt;/span&gt;;
+System.out.println(&lt;span style="color:#dd1144"&gt;"遠程獲取結果&amp;gt;&amp;gt;&amp;gt; "&lt;/span&gt;+testInterface.say(&lt;span style="color:#dd1144"&gt;"hello"&lt;/span&gt;));
+System.out.println(&lt;span style="color:#dd1144"&gt;"遠程獲取結果&amp;gt;&amp;gt;&amp;gt; "&lt;/span&gt;+testInterface.num(&lt;span style="color:#008080"&gt;3&lt;/span&gt;));
+System.out.println(&lt;span style="color:#dd1144"&gt;"遠程計算兩數之和&amp;gt;&amp;gt;&amp;gt; "&lt;/span&gt;+testInterface.calc(&lt;span style="color:#008080"&gt;3&lt;/span&gt;, &lt;span style="color:#008080"&gt;7&lt;/span&gt;));
+System.out.println(&lt;span style="color:#dd1144"&gt;"遠程計算兩數之間所有數的和&amp;gt;&amp;gt;&amp;gt; "&lt;/span&gt;+testInterface.sum(&lt;span style="color:#008080"&gt;1&lt;/span&gt;, &lt;span style="color:#008080"&gt;1000&lt;/span&gt;));&lt;/code&gt;
+&lt;/pre&gt;
+                                                                                &lt;/div&gt;
+                                                                            </description>
+      <link>https://www.oschina.net/news/350417/kaka-rpc-2-0-0-released</link>
+      <guid isPermaLink="false">https://www.oschina.net/news/350417/kaka-rpc-2-0-0-released</guid>
+      <pubDate>Fri, 09 May 2025 13:00:00 GMT</pubDate>
+      <author>來源: 投稿</author>
+    </item>
+    <item>
+      <title>又小又快截圖軟件：ScreenCapture（2.2.25）支持截長圖</title>
+      <description>&lt;div class="content"&gt;
+                                                                    
+                                                        &lt;p&gt;&lt;img alt="" height="468" src="https://oscimg.oschina.net/oscnet//022b124220ead36d2a012eb7f97857ce.png" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p style="color:#333333; margin-left:0; margin-right:0; text-align:left"&gt;ScreenCapture&amp;nbsp;截圖工具&amp;nbsp;&lt;strong&gt;體積小（8M 左右）&lt;/strong&gt;、僅一個可執行文件，無需安裝，不依賴任何動態鏈接庫。&lt;/p&gt; 
+&lt;p style="color:#333333; margin-left:0; margin-right:0; text-align:left"&gt;運行速度快、內存佔用低、CPU 使用率低。&lt;/p&gt; 
+&lt;p style="color:#333333; margin-left:0; margin-right:0; text-align:left"&gt;開源地址：&lt;a href="https://gitee.com/horsejs_admin/ScreenCapture"&gt;https://gitee.com/horsejs_admin/ScreenCapture&lt;/a&gt;&lt;/p&gt; 
+&lt;hr&gt; 
+&lt;p&gt;近 9 個版本的更新內容如下：&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt;增強：改進繪製標號元素的用户體驗： 
+  &lt;ul&gt; 
+   &lt;li&gt;鼠標按下即繪製一個默認大小的標號；&lt;/li&gt; 
+   &lt;li&gt;設置獨立的移動標號元素的 Dragger（標號正中心）；&lt;/li&gt; 
+   &lt;li&gt;設置獨立的改變大小的 Dragger；&lt;/li&gt; 
+   &lt;li&gt;設置獨立的改變箭頭位置的 Dragger；&lt;/li&gt; 
+  &lt;/ul&gt; &lt;/li&gt; 
+ &lt;li&gt;增強：允許通過命令行控制工具欄各個按鈕的位置、是否顯示等： 
+  &lt;ul&gt; 
+   &lt;li&gt;指令：--tool:"rect,ellipse,arrow,number,line,text,mosaic,eraser,|,undo,redo,|,pin,clipboard,save,close"&lt;/li&gt; 
+  &lt;/ul&gt; &lt;/li&gt; 
+ &lt;li&gt;增強：截長圖/滾動截圖指令：--cap:long&lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;p&gt;&lt;img height="592" src="https://oscimg.oschina.net/oscnet/up-48430184c33cb5918d43692c1d91214b88b.png" width="1016" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt;修復：跨屏截圖在特殊情況下無法覆蓋全屏區域的問題。&lt;/li&gt; 
+ &lt;li&gt;修復：工具欄按鈕顯示 tool tip 時，有時會導致 Hover 樣式失效。&lt;/li&gt; 
+ &lt;li&gt;修復：&lt;span style="background-color:#ffffff; color:#1f2328"&gt;--tools 指令傳入的按鈕與實際所能控制的按鈕不符時，導致按鈕出現錯亂的問題。&lt;/span&gt;&lt;/li&gt; 
+ &lt;li&gt;&lt;span style="background-color:#ffffff; color:#1f2328"&gt;修復：&lt;/span&gt;繪製標號①，再 undo 此標號，再繪製新的標號，標號數字應該還是①，不應該是②。&lt;/li&gt; 
+ &lt;li&gt;修復：undo 元素之後，再繪製新元素時應該先刪除 undo 的元素。&lt;/li&gt; 
+ &lt;li&gt;修復：主工具條位於截圖區域內部或截圖區域頂部時，顯示子工具條，子工具條位置不準確的問題。&lt;/li&gt; 
+ &lt;li&gt;修復：Ctrl+H 與 Ctrl+R 快捷鍵的行為搞反了的問題&lt;/li&gt; 
+ &lt;li&gt;修復：工具條位置不準的問題（工具條不會自動尋找剩餘空間定位）。&lt;/li&gt; 
+ &lt;li&gt;修復：在 Win11 下無法通過命令行釘住剪切板內的圖像的問題&lt;/li&gt; 
+ &lt;li&gt;優化：保存文件，點擊文件保存對話框的取消按鈕，應用不應退出。&lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;優化：繪製元素時優先使用紅色。繪製箭頭、標號元素時默認使用填充效果。&lt;/p&gt; &lt;/li&gt; 
+&lt;/ul&gt;
+                                                                                &lt;/div&gt;
+                                                                            </description>
+      <link>https://www.oschina.net/news/350353/screen-capture-2-2-25</link>
+      <guid isPermaLink="false">https://www.oschina.net/news/350353/screen-capture-2-2-25</guid>
+      <pubDate>Fri, 09 May 2025 02:28:00 GMT</pubDate>
       <author>來源: 投稿</author>
     </item>
   </channel>
