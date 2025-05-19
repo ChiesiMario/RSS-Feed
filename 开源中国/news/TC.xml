@@ -7,52 +7,348 @@
     <generator>RSSHub</generator>
     <webMaster>contact@rsshub.app (RSSHub)</webMaster>
     <language>zh-tw</language>
-    <lastBuildDate>Sat, 17 May 2025 14:00:03 GMT</lastBuildDate>
+    <lastBuildDate>Mon, 19 May 2025 03:30:07 GMT</lastBuildDate>
     <ttl>5</ttl>
     <item>
-      <title>又小又快截圖軟件：ScreenCapture（2.2.25）支持截長圖</title>
+      <title>Rust 1.87.0 正式發佈 &amp; Rust 1.0 十週年紀念日</title>
       <description>&lt;div class="content"&gt;
                                                                     
-                                                        &lt;p&gt;&lt;img alt="" height="468" src="https://oscimg.oschina.net/oscnet//022b124220ead36d2a012eb7f97857ce.png" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;p style="color:#333333; margin-left:0; margin-right:0; text-align:left"&gt;ScreenCapture&amp;nbsp;截圖工具&amp;nbsp;&lt;strong&gt;體積小（8M 左右）&lt;/strong&gt;、僅一個可執行文件，無需安裝，不依賴任何動態鏈接庫。&lt;/p&gt; 
-&lt;p style="color:#333333; margin-left:0; margin-right:0; text-align:left"&gt;運行速度快、內存佔用低、CPU 使用率低。&lt;/p&gt; 
-&lt;p style="color:#333333; margin-left:0; margin-right:0; text-align:left"&gt;開源地址：&lt;a href="https://gitee.com/horsejs_admin/ScreenCapture"&gt;https://gitee.com/horsejs_admin/ScreenCapture&lt;/a&gt;&lt;/p&gt; 
-&lt;hr&gt; 
-&lt;p&gt;近 9 個版本的更新內容如下：&lt;/p&gt; 
+                                                        &lt;p&gt;5 月 15 日是 Rust 1.0 &lt;u&gt;&lt;a href="https://www.oschina.net/news/62486/rust-1-0-final"&gt;發佈&lt;/a&gt;&lt;/u&gt;十週年紀念日，Rust 項目開發者在荷蘭的 Utrecht 舉辦了&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Frustweek.org%2Fcelebration%2F" target="_blank"&gt;「Rust 十週年」&lt;/a&gt;慶祝活動，並在當天發佈&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fblog.rust-lang.org%2F2025%2F05%2F15%2FRust-1.87.0%2F" target="_blank"&gt;新版本&amp;nbsp;1.87.0&lt;/a&gt;。&lt;/p&gt; 
+&lt;p&gt;&lt;img alt="" src="https://oscimg.oschina.net/oscnet/up-f95c0686e2cd287a0f1cb9b0d0723cd86ec.png" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p&gt;新版本的主要新特性包括：&lt;/p&gt; 
 &lt;ul&gt; 
- &lt;li&gt;增強：改進繪製標號元素的用戶體驗： 
-  &lt;ul&gt; 
-   &lt;li&gt;鼠標按下即繪製一個默認大小的標號；&lt;/li&gt; 
-   &lt;li&gt;設置獨立的移動標號元素的 Dragger（標號正中心）；&lt;/li&gt; 
-   &lt;li&gt;設置獨立的改變大小的 Dragger；&lt;/li&gt; 
-   &lt;li&gt;設置獨立的改變箭頭位置的 Dragger；&lt;/li&gt; 
-  &lt;/ul&gt; &lt;/li&gt; 
- &lt;li&gt;增強：允許通過命令行控制工具欄各個按鈕的位置、是否顯示等： 
-  &lt;ul&gt; 
-   &lt;li&gt;指令：--tool:"rect,ellipse,arrow,number,line,text,mosaic,eraser,|,undo,redo,|,pin,clipboard,save,close"&lt;/li&gt; 
-  &lt;/ul&gt; &lt;/li&gt; 
- &lt;li&gt;增強：截長圖/滾動截圖指令：--cap:long&lt;/li&gt; 
+ &lt;li&gt;標準庫加入匿名管道（Anonymous Pipes）&lt;/li&gt; 
 &lt;/ul&gt; 
-&lt;p&gt;&lt;img height="592" src="https://oscimg.oschina.net/oscnet/up-48430184c33cb5918d43692c1d91214b88b.png" width="1016" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;pre&gt;&lt;code&gt;use std::io::Read;
+
+let (mut recv, send) = std::io::pipe()?;
+
+let mut command = Command::new("path/to/bin")
+    // Both stdout and stderr will write to the same pipe, combining the two.
+    .stdout(send.try_clone()?)
+    .stderr(send)
+    .spawn()?;
+
+let mut output = Vec::new();
+recv.read_to_end(&amp;amp;mut output)?;
+
+// It's important that we read from the pipe before the process exits, to avoid
+// filling the OS buffers if the program emits too much output.
+assert!(command.wait()?.success());&lt;/code&gt;&lt;/pre&gt; 
 &lt;ul&gt; 
- &lt;li&gt;修復：跨屏截圖在特殊情況下無法覆蓋全屏區域的問題。&lt;/li&gt; 
- &lt;li&gt;修復：工具欄按鈕顯示 tool tip 時，有時會導致 Hover 樣式失效。&lt;/li&gt; 
- &lt;li&gt;修復：&lt;span style="background-color:#ffffff; color:#1f2328"&gt;--tools 指令傳入的按鈕與實際所能控制的按鈕不符時，導致按鈕出現錯亂的問題。&lt;/span&gt;&lt;/li&gt; 
- &lt;li&gt;&lt;span style="background-color:#ffffff; color:#1f2328"&gt;修復：&lt;/span&gt;繪製標號①，再 undo 此標號，再繪製新的標號，標號數字應該還是①，不應該是②。&lt;/li&gt; 
- &lt;li&gt;修復：undo 元素之後，再繪製新元素時應該先刪除 undo 的元素。&lt;/li&gt; 
- &lt;li&gt;修復：主工具條位於截圖區域內部或截圖區域頂部時，顯示子工具條，子工具條位置不準確的問題。&lt;/li&gt; 
- &lt;li&gt;修復：Ctrl+H 與 Ctrl+R 快捷鍵的行為搞反了的問題&lt;/li&gt; 
- &lt;li&gt;修復：工具條位置不準的問題（工具條不會自動尋找剩餘空間定位）。&lt;/li&gt; 
- &lt;li&gt;修復：在 Win11 下無法通過命令行釘住剪切板內的圖像的問題&lt;/li&gt; 
- &lt;li&gt;優化：保存文件，點擊文件保存對話框的取消按鈕，應用不應退出。&lt;/li&gt; 
- &lt;li&gt; &lt;p&gt;優化：繪製元素時優先使用紅色。繪製箭頭、標號元素時默認使用填充效果。&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt;安全架構 intrinsics&lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;pre&gt;&lt;code&gt;#![forbid(unsafe_op_in_unsafe_fn)]
+
+use std::arch::x86_64::*;
+
+fn sum(slice: &amp;amp;[u32]) -&amp;gt; u32 {
+    #[cfg(target_arch = "x86_64")]
+    {
+        if is_x86_feature_detected!("avx2") {
+            // SAFETY: We have detected the feature is enabled at runtime,
+            // so it's safe to call this function.
+            return unsafe { sum_avx2(slice) };
+        }
+    }
+
+    slice.iter().sum()
+}
+
+#[target_feature(enable = "avx2")]
+#[cfg(target_arch = "x86_64")]
+fn sum_avx2(slice: &amp;amp;[u32]) -&amp;gt; u32 {
+    // SAFETY: __m256i and u32 have the same validity.
+    let (prefix, middle, tail) = unsafe { slice.align_to::&amp;lt;__m256i&amp;gt;() };
+    
+    let mut sum = prefix.iter().sum::&amp;lt;u32&amp;gt;();
+    sum += tail.iter().sum::&amp;lt;u32&amp;gt;();
+    
+    // Core loop is now fully safe code in 1.87, because the intrinsics require
+    // matching target features (avx2) to the function definition.
+    let mut base = _mm256_setzero_si256();
+    for e in middle.iter() {
+        base = _mm256_add_epi32(base, *e);
+    }
+    
+    // SAFETY: __m256i and u32 have the same validity.
+    let base: [u32; 8] = unsafe { std::mem::transmute(base) };
+    sum += base.iter().sum::&amp;lt;u32&amp;gt;();
+    
+    sum
+}&lt;/code&gt;&lt;/pre&gt; 
+&lt;ul&gt; 
+ &lt;li&gt;通過&lt;code&gt;asm!&lt;/code&gt;內聯彙編可跳轉到 Rust 代碼中的標記塊&lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;pre&gt;&lt;code&gt;unsafe {
+    asm!(
+        "jmp {}",
+        label {
+            println!("Jumped from asm!");
+        }
+    );
+}&lt;/code&gt;&lt;/pre&gt; 
+&lt;ul&gt; 
+ &lt;li&gt;穩定 API 等等&lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;hr&gt; 
+&lt;p&gt;為慶祝 Rust 1.0 穩定版發佈十週年，Rust 作者 Graydon Hoare 寫了一篇&lt;em&gt;&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Frustfoundation.org%2Fmedia%2F10-years-of-stable-rust-an-infrastructure-story%2F" target="_blank"&gt;《10 Years of Stable Rust: An Infrastructure Story》&lt;/a&gt;&lt;/em&gt;長文進行回顧，他在文章提到了一組數據：&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt; &lt;p&gt;1.0 之前，Rust 代碼庫累計了 4 萬次提交；此後又新增了 24.6 萬次提交。換算下來，過去 10 年幾乎是每小時合併 2.8 次提交。&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;貢獻者從 1.0 時不足 1000 人，擴展到現在約 6700 人。&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;項目已關閉超過 4.7 萬個 issue，合併了 14 萬多個 PR。&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;1.0 時共計約 1100 份 RFC（用於語言演進的提案），如今累計達到了 3772 份。&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;發佈了 87 個正式版本，大多數都按六週節奏準時發佈。&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;推出過 3 個 Edition（版本變更打包，兼容舊代碼），用於引入需要 opt-in 的非兼容變更。&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;每個版本的兼容性測試範圍從 2500 個 crate 增長到了現在的 58.7 萬個。&lt;/p&gt; &lt;/li&gt; 
 &lt;/ul&gt;
                                                                                 &lt;/div&gt;
                                                                             </description>
-      <link>https://www.oschina.net/news/350353/screen-capture-2-2-25</link>
-      <guid isPermaLink="false">https://www.oschina.net/news/350353/screen-capture-2-2-25</guid>
-      <pubDate>Sun, 11 May 2025 02:28:00 GMT</pubDate>
-      <author>來源: 投稿</author>
+      <link>https://www.oschina.net/news/350577/rust-1-87-0</link>
+      <guid isPermaLink="false">https://www.oschina.net/news/350577/rust-1-87-0</guid>
+      <pubDate>Mon, 19 May 2025 03:27:07 GMT</pubDate>
+      <author>來源: OSCHINA</author>
+    </item>
+    <item>
+      <title>張朝陽：如果晚生 30 年，自己也會捲入到 AI 裏面</title>
+      <description>&lt;div class="content"&gt;
+                                                                    
+                                                        &lt;p&gt;&lt;span style="color:#000000"&gt;在最近召開的 2025 搜狐科技年度論壇上，搜狐創始人、董事局主席兼首席執行官張朝陽，與清華大學講席教授張亞勤及獵豹移動董事長兼 CEO 傅盛等三位不同領域人士，圍繞人工智能（AI）、人形機器人和腦科學等前沿科技展開了深入的討論。&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;span style="color:#000000"&gt;&lt;img height="333" src="https://oscimg.oschina.net/oscnet/up-d1f6ff151f11d7f2624bff8dbdb8b1e473d.png" width="500" referrerpolicy="no-referrer"&gt;&lt;/span&gt;&lt;/p&gt; 
+&lt;p style="color:#242424; margin-left:0; margin-right:0; text-align:left"&gt;&lt;span style="color:#000000"&gt;張朝陽在討論中表示，&lt;strong&gt;如果晚生 30 年，自己也會捲入到 AI 裏面，包括人形機器人，腦科學&lt;/strong&gt;。他認為，目前正是一個比特與分子、原子交匯的時代，物理世界和生物世界的融合為年輕人提供了追逐新興風口的機會。在他的視角中，年輕人可以在這一時代中大膽嘗試，而年長者則更傾向於優化現有的商業模式。&lt;/span&gt;&lt;/p&gt; 
+&lt;p style="color:#242424; margin-left:0; margin-right:0; text-align:left"&gt;&lt;span style="color:#000000"&gt;在談及中美之間的 AI 差距時，傅盛強調了中國在工程化和應用創新方面的潛力，特別是在智能體等貼近實際應用的領域中，中國有望超越對手。張亞勤則指出，人才的積累是核心競爭力，並提到年輕人在人工智能領域的進展速度令人矚目，清華大學的相關研究成果是美國的五倍左右。他認為，人工智能最大的創新發生在過去五年，未來五年也將是一個關鍵期。&lt;/span&gt;&lt;/p&gt; 
+&lt;p style="color:#242424; margin-left:0; margin-right:0; text-align:left"&gt;&lt;span style="color:#000000"&gt;張朝陽總結道，中國在 AI 和科技領域的競爭力源於人們的聰明才智和勤奮工作，加上龐大的人口基數，這種競爭環境推動了中國在各個科技領域的追趕與超越，包括芯片技術和算力問題的解決。他對中國在人工智能領域的未來充滿信心，認為我們正處於一個充滿機遇的時代。&lt;/span&gt;&lt;/p&gt;
+                                                                                &lt;/div&gt;
+                                                                            </description>
+      <link>https://www.oschina.net/news/350569</link>
+      <guid isPermaLink="false">https://www.oschina.net/news/350569</guid>
+      <pubDate>Mon, 19 May 2025 02:53:40 GMT</pubDate>
+      <author>來源: OSCHINA</author>
+    </item>
+    <item>
+      <title>StarRocks MCP Server 開源發佈：為 AI 應用提供強大分析中樞</title>
+      <description>&lt;div class="content"&gt;
+                                                                                                                                                                                                                                        &lt;p&gt;過去，開發者要讓大模型（LLM）使用數據庫查詢數據，往往需要開發專屬插件、設計複雜的接口或手動構建 Prompt，這不僅費時費力，而且很難在不同模型之間複用。StarRocks MCP Server 提供了一個「通用適配器」接口，讓各種 LLM（如 Claude、OpenAI、Gemini）都能標準化地訪問 StarRocks，使得模型能夠直接執行 SQL 查詢並探索數據庫內容，無需複雜的配置或集成。&lt;/p&gt; 
+&lt;p&gt;這意味着：&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt; &lt;p&gt;無需開發專用 Agent 插件&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;模型自動發現和調用 StarRocks 暴露的查詢/分析工具&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;構建數據問答、智能分析、自動報表等應用變得更簡單&lt;/p&gt; &lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;p&gt;👉🏻 項目地址：https://github.com/StarRocks/mcp-server-starrocks&lt;/p&gt; 
+&lt;span id="OSC_h2_1"&gt;&lt;/span&gt; 
+&lt;h2&gt;什麼是 MCP？&lt;/h2&gt; 
+&lt;p&gt;首先，我們來瞭解什麼是 MCP。&lt;strong&gt;MCP（Model Context Protocol）&lt;/strong&gt; 是一種用於規範模型與上下文交互的通信協議，旨在標準化模型輸入輸出的數據結構、元信息傳遞及上下文管理機制。它通過定義統一的接口協議（如請求/響應格式、狀態跟蹤、多輪對話標識等），確保模型在複雜應用場景（如多模態交互、長上下文推理）中高效處理上下文依賴關係，同時支持動態上下文更新與歷史信息檢索。典型應用包括大語言模型（LLM）的對話系統、知識增強推理等。&lt;/p&gt; 
+&lt;p&gt;通俗的來説，MCP 就像 AI 世界的「USB 接口」，它提供了一種通用標準，讓各種 AI 模型和智能代理（agents）能夠無縫連接、交換信息，就像 USB 讓不同品牌的設備（鼠標、鍵盤、硬盤等）都能即插即用一樣。通過 MCP，不同 AI 組件可以像樂高積木一樣自由組合，使 AI 變得更加智能、靈活和協作高效。&lt;/p&gt; 
+&lt;p&gt;&lt;img alt="" height="719" src="https://oscimg.oschina.net/oscnet/up-90681374f708b3497f242a553ae2aa52a2a.jpg" width="1280" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p&gt;（MCP 架構示意圖）&lt;/p&gt; 
+&lt;span id="OSC_h2_2"&gt;&lt;/span&gt; 
+&lt;h2&gt;MCP 核心組件&lt;/h2&gt; 
+&lt;p&gt;MCP 的核心是一個簡單但強大的客戶端-服務器架構，用於將語言模型與現實世界的功能連接起來。&lt;/p&gt; 
+&lt;p&gt;你可以把它想象成一個智能家居中控系統：&lt;/p&gt; 
+&lt;p&gt;MCP Host（宿主） = 智能助手（如小愛同學、Alexa）&lt;/p&gt; 
+&lt;p&gt;MCP Client （客戶端）= 控制中樞&lt;/p&gt; 
+&lt;p&gt;MCP Server （服務器）= 各種設備（燈、空調、門鎖等）&lt;/p&gt; 
+&lt;p&gt;你對智能助手説「打開空調」，你不需要知道空調的品牌、遙控器協議或者哪個網關。系統會通過統一協議找到正確的設備、下發正確的指令。在 MCP 裏，LLM 也是這樣發起一個請求，比如「獲取銷售報表」，Client 就會找到對應的數據源 Server，並返回數據。&lt;/p&gt; 
+&lt;p&gt;這三大組件的作用如下：&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt; &lt;p&gt;&lt;strong&gt;MCP Host：&lt;/strong&gt;基於 LLM 的應用程序，如 Claude Desktop 或未來集成 AI 的 IDE，用戶通過它提出問題或發起操作。&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;&lt;strong&gt;MCP Client：&lt;/strong&gt;處理連接邏輯。每個客戶端與一個服務器建立連接，負責通信和協調。&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;&lt;strong&gt;MCP Server：&lt;/strong&gt;暴露具體能力，如文件訪問、天氣 API 等。每個服務器通過標準接口提供一組特定的工具、資源或提示。&lt;/p&gt; &lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;p&gt;MCP Server 提供三類核心能力：&lt;/p&gt; 
+&lt;ol&gt; 
+ &lt;li&gt; &lt;p&gt;&lt;strong&gt;工具（Tools）&lt;/strong&gt;：模型可以調用的可執行函數，如「獲取天氣預報」或「運行 shell 命令」。模型可自行決定何時使用。&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;&lt;strong&gt;資源（Resources）&lt;/strong&gt;：如文件、日誌或 API 響應等。這些是模型可以讀取但不能修改的上下文信息。客戶端負責決定何時展示哪些資源。&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;&lt;strong&gt;提示詞（Prompts）&lt;/strong&gt;：預設的模板，引導模型如何互動。例如生成提交信息、進行調試指導。通常由用戶選擇，而非模型自行決定。&lt;/p&gt; &lt;/li&gt; 
+&lt;/ol&gt; 
+&lt;span id="OSC_h2_3"&gt;&lt;/span&gt; 
+&lt;h2&gt;StarRocks MCP 功能介紹&lt;/h2&gt; 
+&lt;p&gt;StarRocks MCP Server 充分利用了 MCP 的核心能力，為大語言模型提供了與 StarRocks 數據庫進行深度交互的強大工具集和豐富的上下文資源。具體來説，它實現了以下功能：&lt;/p&gt; 
+&lt;ol&gt; 
+ &lt;li&gt; &lt;p&gt;&lt;strong&gt;工具 (Tools)&lt;/strong&gt;：這些是模型可以按需調用的「技能」，使其能夠主動與 StarRocks 交互：&lt;/p&gt; &lt;/li&gt; 
+&lt;/ol&gt; 
+&lt;ul&gt; 
+ &lt;li&gt; &lt;p&gt;&lt;strong&gt;&lt;code&gt;db_overview&lt;/code&gt;&lt;/strong&gt;：獲取指定數據庫中所有表的概覽信息。模型可以提供數據庫名（若未提供且配置了默認數據庫，則使用默認庫）。此工具會遍歷庫中所有表，併為每張表調用 &lt;code&gt;table_overview&lt;/code&gt; 的邏輯獲取其詳情。同樣支持緩存和強制刷新。&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;&lt;strong&gt;&lt;code&gt;table_overview&lt;/code&gt;&lt;/strong&gt;：快速獲取指定表的概覽信息。模型只需提供表名（可包含數據庫名，如 &lt;code&gt;db_name.table_name&lt;/code&gt;；若未指定數據庫名且配置了默認數據庫，則使用默認庫）。此工具會返回表的列定義 (&lt;code&gt;DESCRIBE table&lt;/code&gt;)、總行數 (&lt;code&gt;COUNT(*)&lt;/code&gt;) 以及少量樣本數據 (&lt;code&gt;SELECT * FROM table LIMIT 3&lt;/code&gt;)。為了提高效率，該信息會被緩存，並可通過 &lt;code&gt;refresh=true&lt;/code&gt; 參數強制刷新。&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;&lt;strong&gt;&lt;code&gt;read_query&lt;/code&gt;&lt;/strong&gt;：執行只讀的 SQL 查詢（如 &lt;code&gt;SELECT&lt;/code&gt; 語句），並以 CSV 格式返回結果集，包含列名和數據行。這使得模型可以直接獲取和分析數據。&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;&lt;strong&gt;&lt;code&gt;write_query&lt;/code&gt;&lt;/strong&gt;：執行數據定義語言 (DDL) 或數據操作語言 (DML) 等寫操作，如 &lt;code&gt;CREATE TABLE&lt;/code&gt;, &lt;code&gt;INSERT&lt;/code&gt;, &lt;code&gt;UPDATE&lt;/code&gt;, &lt;code&gt;DELETE&lt;/code&gt;，並返回操作結果（如影響行數、執行時間）。&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;&lt;strong&gt;&lt;code&gt;query_and_plotly_chart&lt;/code&gt;&lt;/strong&gt;：一個強大的分析工具，它首先執行用戶提供的 SQL 查詢從 StarRocks 獲取數據，然後利用該數據和用戶指定的 Plotly Express 表達式（一個 Python 函數調用字符串）動態生成圖表。圖表最終以 Base64 編碼的圖片形式返回給模型，極大增強了數據洞察的可視化能力。&lt;/p&gt; &lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;p&gt;&amp;nbsp;&lt;/p&gt; 
+&lt;ol&gt; 
+ &lt;li&gt; &lt;p&gt;&lt;strong&gt;資源 (Resources)&lt;/strong&gt;：這些是模型可以讀取的上下文信息，幫助模型理解 StarRocks 的結構和狀態：&lt;/p&gt; &lt;/li&gt; 
+&lt;/ol&gt; 
+&lt;ul&gt; 
+ &lt;li&gt; &lt;p&gt;&lt;strong&gt;&lt;code&gt;starrocks:///databases&lt;/code&gt;&lt;/strong&gt;：列出 StarRocks 集羣中的所有數據庫名稱。&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;&lt;strong&gt;&lt;code&gt;starrocks:///{db}/tables&lt;/code&gt;&lt;/strong&gt;：列出指定數據庫 (&lt;code&gt;{db}&lt;/code&gt;) 中的所有表名。&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;&lt;strong&gt;&lt;code&gt;starrocks:///{db}/{table}/schema&lt;/code&gt;&lt;/strong&gt;：獲取指定數據庫 (&lt;code&gt;{db}&lt;/code&gt;) 中特定表 (&lt;code&gt;{table}&lt;/code&gt;) 的創建語句 (&lt;code&gt;SHOW CREATE TABLE {db}.{table}&lt;/code&gt; 的結果），詳細展示表的結構信息。&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;&lt;strong&gt;&lt;code&gt;proc:///{+path}&lt;/code&gt;&lt;/strong&gt;：訪問 StarRocks 內部的 &lt;code&gt;/proc&lt;/code&gt; 路徑（如 &lt;code&gt;/proc/backends&lt;/code&gt;, &lt;code&gt;/proc/dbs/{db_id}&lt;/code&gt;），獲取集羣、節點、數據庫、表、事務、作業等詳細的運行時狀態和元數據信息，類似於 Linux 的 &lt;code&gt;/proc&lt;/code&gt; 文件系統。這為模型提供了深入瞭解 StarRocks 內部運作的窗口。&lt;/p&gt; &lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;p&gt;&amp;nbsp;&lt;/p&gt; 
+&lt;ol&gt; 
+ &lt;li&gt; &lt;p&gt;&lt;strong&gt;提示詞 (Prompts)&lt;/strong&gt;：目前 StarRocks MCP Server 暫未定義特定的預設提示詞。MCP 的設計允許未來根據場景需求靈活添加，以更好地引導模型與 StarRocks 進行特定類型的交互。&lt;/p&gt; &lt;/li&gt; 
+&lt;/ol&gt; 
+&lt;p&gt;通過這些精心設計的工具和資源，StarRocks MCP Server 使大語言模型能夠像經驗豐富的數據分析師一樣，自主地探索數據、執行分析任務，並以多樣化的形式（文本、圖表）呈現結果，從而將 StarRocks 的強大 OLAP 能力無縫對接到 AI 應用中。&lt;/p&gt; 
+&lt;span id="OSC_h2_4"&gt;&lt;/span&gt; 
+&lt;h2&gt;StarRocks MCP Server 應用場景&lt;/h2&gt; 
+&lt;p&gt;瞭解了什麼是 MCP 之後，來瞭解一下 StarRocks MCP Server 能應用在哪些場景中：&lt;/p&gt; 
+&lt;p&gt;&lt;strong&gt;1.實時數據分析與 AI 增強決策&lt;/strong&gt;&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt; &lt;p&gt;&lt;strong&gt;目標&lt;/strong&gt;：讓 AI 模型（如 LLM）能夠實時查詢 StarRocks 中的業務數據，並結合歷史上下文生成更精準的分析報告或建議。&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;&lt;strong&gt;場景&lt;/strong&gt;：&lt;/p&gt; &lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;p&gt;&lt;strong&gt;金融風控&lt;/strong&gt;：AI 結合 StarRocks 的實時交易數據，動態評估風險並生成預警。&lt;/p&gt; 
+&lt;p&gt;&lt;strong&gt;電商推薦&lt;/strong&gt;：基於用戶實時行為（如瀏覽、加購）和 StarRocks 的 OLAP 分析，優化個性化推薦策略。&lt;/p&gt; 
+&lt;p&gt;&lt;strong&gt;2.自動化數據報表與 BI 增強&lt;/strong&gt;&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt; &lt;p&gt;&lt;strong&gt;目標&lt;/strong&gt;：通過 MCP 協議，讓 AI 自動生成 SQL 查詢、執行聚合計算，並返回可視化報表，減少人工幹預。&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;&lt;strong&gt;場景&lt;/strong&gt;：&lt;/p&gt; &lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;p&gt;&lt;strong&gt;廣告投放分析&lt;/strong&gt;：AI 自動查詢 StarRocks 的廣告曝光、點擊數據，生成優化建議。&lt;/p&gt; 
+&lt;p&gt;&lt;strong&gt;運營駕駛艙&lt;/strong&gt;：結合自然語言交互（如「顯示最近 7 天銷售額趨勢」），自動從 StarRocks 拉取數據並生成 Dashboard。&lt;/p&gt; 
+&lt;p&gt;&lt;strong&gt;3.複雜查詢的 AI 優化與加速&lt;/strong&gt;&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt; &lt;p&gt;&lt;strong&gt;目標&lt;/strong&gt;：利用 MCP 管理查詢上下文，讓 AI 輔助優化 StarRocks 的多表 JOIN、聚合計算等複雜操作。&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;&lt;strong&gt;場景&lt;/strong&gt;：&lt;/p&gt; &lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;p&gt;&lt;strong&gt;用戶畫像分析&lt;/strong&gt;：AI 自動構建 Roaring Bitmap 查詢，計算用戶留存、漏斗分析。&lt;/p&gt; 
+&lt;p&gt;&lt;strong&gt;跨業務分析&lt;/strong&gt;：AI 解析業務需求，自動生成高效 StarRocks SQL，避免全表掃描。&lt;/p&gt; 
+&lt;p&gt;&lt;strong&gt;4.統一數據湖與 AI 增強查詢&lt;/strong&gt;&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt; &lt;p&gt;&lt;strong&gt;目標&lt;/strong&gt;：通過 MCP 讓 AI 同時訪問 StarRocks 和外部數據源（如 Hive、Elasticsearch），實現聯邦查詢。&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;&lt;strong&gt;場景&lt;/strong&gt;：&lt;/p&gt; &lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;p&gt;&lt;strong&gt;混合分析&lt;/strong&gt;：AI 自動組合 StarRocks 的聚合數據和 Hive 的原始日誌，生成完整業務洞察。&lt;/p&gt; 
+&lt;p&gt;&lt;strong&gt;知識增強&lt;/strong&gt;：AI 查詢 StarRocks 的業務數據 + 外部知識庫（如論文、行業報告），生成深度分析。&lt;/p&gt; 
+&lt;span id="OSC_h3_5"&gt;&lt;/span&gt; 
+&lt;h3&gt;StarRocks x MCP 快速上手&lt;/h3&gt; 
+&lt;p&gt;StarRocks 是首批通過內置 MCP Server 原生集成 MCP 協議的引擎之一。這使得 StarRocks 不再只是一個高性能查詢引擎，而是升級為一個專為智能 Agent 交互優化的分析執行環境。&lt;/p&gt; 
+&lt;p&gt;這一切都構建在 StarRocks 現代化的執行引擎之上——向量化、高併發、C++ 編寫，自設計之初就面向低延遲和高併發場景。&lt;/p&gt; 
+&lt;p&gt;通過將面向 Agent 的標準協議（MCP）與面向現代工作負載的執行引擎結合，StarRocks 為從探索到生產部署的 Agent 驅動分析工作流提供了直接路徑。你無需重新設計架構，就可以立即開始構建智能分析應用。&lt;/p&gt; 
+&lt;p&gt;&lt;strong&gt;1.部署 StarRocks 集羣，準備數據&lt;/strong&gt;&lt;/p&gt; 
+&lt;pre&gt;&lt;code&gt;部署 Starrocks 集羣，假設部署到本地 localhost
+
+導入 quickstart 中的 crashdata 數據
+https://docs.starrocks.io/docs/quick_start/shared-nothing/#new-york-city-crash-data
+
+CREATE TABLE IF NOT EXISTS crashdata (
+    CRASH_DATE DATETIME,
+    BOROUGH STRING,
+    ZIP_CODE STRING,
+    LATITUDE INT,
+    LONGITUDE INT,
+    LOCATION STRING,
+    ON_STREET_NAME STRING,
+    CROSS_STREET_NAME STRING,
+    OFF_STREET_NAME STRING,
+    CONTRIBUTING_FACTOR_VEHICLE_1 STRING,
+    CONTRIBUTING_FACTOR_VEHICLE_2 STRING,
+    COLLISION_ID INT,
+    VEHICLE_TYPE_CODE_1 STRING,
+    VEHICLE_TYPE_CODE_2 STRING
+);
+
+curl --location-trusted -u root             \
+    -T ./NYPD_Crash_Data.csv                \
+    -H "label:crashdata-0"                  \
+    -H "column_separator:,"                 \
+    -H "skip_header:1"                      \
+    -H "enclose:\""                         \
+    -H "max_filter_ratio:1"                 \
+    -H "columns:tmp_CRASH_DATE, tmp_CRASH_TIME, CRASH_DATE=str_to_date(concat_ws(' ', tmp_CRASH_DATE, tmp_CRASH_TIME), '%m/%d/%Y %H:%i'),BOROUGH,ZIP_CODE,LATITUDE,LONGITUDE,LOCATION,ON_STREET_NAME,CROSS_STREET_NAME,OFF_STREET_NAME,NUMBER_OF_PERSONS_INJURED,NUMBER_OF_PERSONS_KILLED,NUMBER_OF_PEDESTRIANS_INJURED,NUMBER_OF_PEDESTRIANS_KILLED,NUMBER_OF_CYCLIST_INJURED,NUMBER_OF_CYCLIST_KILLED,NUMBER_OF_MOTORIST_INJURED,NUMBER_OF_MOTORIST_KILLED,CONTRIBUTING_FACTOR_VEHICLE_1,CONTRIBUTING_FACTOR_VEHICLE_2,CONTRIBUTING_FACTOR_VEHICLE_3,CONTRIBUTING_FACTOR_VEHICLE_4,CONTRIBUTING_FACTOR_VEHICLE_5,COLLISION_ID,VEHICLE_TYPE_CODE_1,VEHICLE_TYPE_CODE_2,VEHICLE_TYPE_CODE_3,VEHICLE_TYPE_CODE_4,VEHICLE_TYPE_CODE_5" \
+    -XPUT http://localhost:8030/api/quickstart/crashdata/_stream_load
+    &lt;/code&gt;&lt;/pre&gt; 
+&lt;p&gt;&lt;strong&gt;2.啓動 MCP Client&lt;/strong&gt;&lt;/p&gt; 
+&lt;p&gt;2.1 配置客戶端添加 mcp-server-starrocks，客戶端使用的是 DeepChat&lt;/p&gt; 
+&lt;p&gt;大家可以使用這個優化過的版本：&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fgithub.com%2Fdecster%2Fdeepchat" target="_blank"&gt;https://github.com/decster/deepchat&lt;/a&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;img alt="" height="890" src="https://oscimg.oschina.net/oscnet/up-c56f1c9bcdcd53827339f3ed235c5884640.png" width="1280" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;img alt="" height="890" src="https://oscimg.oschina.net/oscnet/up-86469cacb7fd6f7c162e6ae3b9310861b86.png" width="1280" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;img alt="" height="890" src="https://oscimg.oschina.net/oscnet/up-27900bd2f64691dd1af2f7ae19b109d82a8.png" width="1280" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p&gt;2.2 配置成功後在對話選項中可以添加使用 mcpserver&lt;/p&gt; 
+&lt;p&gt;&lt;img alt="" height="890" src="https://oscimg.oschina.net/oscnet/up-9c20710df0b7cb55fa3b54c2f22b6ba6fba.png" width="1280" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;blockquote&gt; 
+ &lt;p&gt;補充説明：在本次 Demo 中，我們使用的是 DeepChat 作為 MCP Client。除此之外，市面上還有如 Claude Desktop、Cline 等主流客戶端，用戶可根據個人偏好進行配置。需要注意的是，由於我們期望返回結果包含表格和圖片，部分客戶端可能不支持圖片顯示，選擇時建議將此因素一併考慮。&lt;/p&gt; 
+&lt;/blockquote&gt; 
+&lt;ol&gt; 
+ &lt;li&gt; &lt;p&gt;&lt;strong&gt;Demo 演示&lt;/strong&gt;&lt;/p&gt; &lt;/li&gt; 
+&lt;/ol&gt; 
+&lt;p&gt;下面的視頻中演示瞭如何以對話形式對 StarRocks 中的數據集進行可視化分析&lt;/p&gt; 
+&lt;p&gt;&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fwww.bilibili.com%2Fvideo%2FBV195EizWEFT%2F%3Fvd_source%3D1cb452610138142d1300dd37a6162a88" target="_blank"&gt;https://www.bilibili.com/video/BV195EizWEFT/?vd_source=1cb452610138142d1300dd37a6162a88&lt;/a&gt;&lt;/p&gt; 
+&lt;p&gt;最後，我們總結一下 StarRocks MCP server 的核心價值：&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt; &lt;p&gt;讓 AI 具備實時 OLAP 能力，減少人工 SQL 編寫和數據分析成本。&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;增強決策智能，結合歷史數據和實時計算，提供更精準的業務建議。&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;統一數據訪問層，讓 AI 無縫對接結構化數據（StarRocks）與非結構化數據（文檔、日誌）。&lt;/p&gt; &lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;p&gt;未來，隨着 MCP 生態的擴展（如支持更多數據庫、BI 工具），這種結合將在，金融、電商、IoT、醫療，等領域發揮更大作用。StarRocks 的朋友們，快來開啓更多智能應用！&lt;/p&gt;
+                                                                                    &lt;/div&gt;
+                                                                            </description>
+      <link>https://my.oschina.net/u/5658056/blog/18414667</link>
+      <guid isPermaLink="false">https://my.oschina.net/u/5658056/blog/18414667</guid>
+      <pubDate>Mon, 19 May 2025 02:45:40 GMT</pubDate>
+      <author>原創</author>
+    </item>
+    <item>
+      <title>超擬人 AI 老師、因材施教 AI 輔導，大模型技術在教育中能做好哪些事？</title>
+      <description>&lt;div class="content"&gt;
+                                                                                                                                                                                                                                        &lt;p style="text-align:justify"&gt;&lt;span style="display:none"&gt;&amp;nbsp;&lt;/span&gt;在生成式人工智能重塑各行業版圖的當下，教育領域也正經歷着一場靜水深流的技術變革。&lt;/p&gt; 
+&lt;p style="margin-left:0.0001pt; margin-right:0px; text-align:left"&gt;大模型不再只是實驗室裏的概念驗證，而是逐步滲透進作業批改、個性化輔導、學情分析等教育核心場景，推動着"千人千面"教育理想的落地。在這場技術與教育的雙向奔赴中，如何平衡技術創新與教育本質？如何讓 AI 真正成為教育公平的推進器而非技術泡沫？我們與深耕 AI 教育應用多年的專家丁小晶展開對話。作為百度小度教育技術負責人，他帶領團隊打造的 AI 教師系統已成為行業標杆，其團隊在教育大模型應用層面積累的實戰經驗與冷思考，或許能幫助我們更清晰地看到技術賦能教育的可行路徑。&lt;/p&gt; 
+&lt;blockquote&gt; 
+ &lt;p style="margin-left:0.0001pt; margin-right:0px; text-align:left"&gt;&lt;em&gt;&lt;em&gt;丁小晶 &lt;/em&gt;&lt;/em&gt;&lt;/p&gt; 
+ &lt;p style="margin-left:0.0001pt; margin-right:0px; text-align:left"&gt;&lt;em&gt;&lt;em&gt;百度資深工程師/小度教育技術負責人/大模型應用技術專家&lt;/em&gt;&lt;/em&gt;&lt;/p&gt; 
+ &lt;p style="margin-left:0.0001pt; margin-right:0px; text-align:left"&gt;&lt;em&gt;&lt;em&gt;資深大模型 AI 應用技術專家與管理者，技術創新與項目管理的複合型人才，致力於 AI 大模型應用創新。碩士畢業於中國科學院計算技術研究所，從事高性能計算技術研究。先後在百度、三星等世界知名企業工作，並有多年旅日工作經歷。&lt;/em&gt;&lt;/em&gt;&lt;/p&gt; 
+ &lt;p style="margin-left:0.0001pt; margin-right:0px; text-align:left"&gt;&lt;em&gt;&lt;em&gt;擁有超過 15 年的計算機及 AI 領域經驗、10 年 AI 及 5 年團隊管理經驗，精通大模型技術及多語言編程，屢獲榮譽，持多項專利。目前作為小度教育業務技術負責人，研究基於大模型 AI 教育產品創新，引領小度教育成為行業先鋒。&lt;/em&gt;&lt;/em&gt;&lt;/p&gt; 
+ &lt;p style="margin-left:0.0001pt; margin-right:0px; text-align:left"&gt;丁小晶、崔遠，編著《&lt;strong&gt;深度剖析 DeepSeek 大模型： 原理、開發與優化部署&lt;/strong&gt;》&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fitem.m.jd.com%2Fproduct%2F14401797.html" rel="nofollow" target="_blank"&gt;https://item.m.jd.com/product/14401797.html&lt;/a&gt;&lt;/p&gt; 
+&lt;/blockquote&gt; 
+&lt;p style="margin-left:0.0001pt; margin-right:0px; text-align:left"&gt;&lt;span style="color:#27ae60"&gt;&lt;strong&gt;問：目前大模型在教育領域的主要應用場景有哪些？能否結合具體案例説明其效果？&lt;/strong&gt;&lt;/span&gt;&lt;/p&gt; 
+&lt;p style="margin-left:0.0001pt; margin-right:0px; text-align:left"&gt;&lt;strong&gt;答：&lt;/strong&gt;目前大模型技術對教育行業進行深入重構，今年 4 月份的 2025 年教育裝備展上明顯能看到，教育從業公司都在往大模型應用方向轉型。個性化 AI 老師是一個主流趨勢。藉助大模型技術，可以實現個性化 1v1 的授業、答疑、解惑，大幅降低教育成本，解決教育資源分佈不均衡的問題。&lt;/p&gt; 
+&lt;p style="margin-left:0.0001pt; margin-right:0px; text-align:left"&gt;比如 AI 作業批改和 AI 講題答疑的效果提升，在目前的 AI 自習室行業已經大面積使用，通過 AI 老師逐步降低學生對真人老師的依賴，還可以培養自主學習的習慣，已經逐步在顛覆傳統教培行業。&lt;/p&gt; 
+&lt;p style="margin-left:0.0001pt; margin-right:0px; text-align:left"&gt;&amp;nbsp;&lt;/p&gt; 
+&lt;p style="margin-left:0.0001pt; margin-right:0px; text-align:left"&gt;&lt;span style="color:#27ae60"&gt;&lt;strong&gt;問：多模態技術在教育中的應用進展如何？&lt;/strong&gt;&lt;/span&gt;&lt;/p&gt; 
+&lt;p style="margin-left:0.0001pt; margin-right:0px; text-align:left"&gt;&lt;strong&gt;答：&lt;/strong&gt;多模態技術非常重要，甚至可以説，沒有多模態技術效果的快速提升，教育行業不可能如此迅猛發展。比如在前面提到的 AI 作業批改和 AI 講題答疑方向，完全靠純文本大模型是無法滿足需求的，非常依賴對大模型的圖片理解能力。還比如超擬人 AI 老師，語音情感大模型就起來非常關鍵的作用。&lt;/p&gt; 
+&lt;p style="margin-left:0.0001pt; margin-right:0px; text-align:left"&gt;&amp;nbsp;&lt;/p&gt; 
+&lt;p style="margin-left:0.0001pt; margin-right:0px; text-align:left"&gt;&lt;span style="color:#27ae60"&gt;&lt;strong&gt;問：大模型存在幻覺，在教育中，這是否會導致輸出一些錯誤知識，如錯誤公式推導等，如何避免這種情況，或者是否可以「自主糾錯機制」？&lt;/strong&gt;&lt;/span&gt;&lt;/p&gt; 
+&lt;p style="margin-left:0.0001pt; margin-right:0px; text-align:left"&gt;&lt;strong&gt;答：&lt;/strong&gt;確實目前即使最好的大模型也還會存在一定的幻覺，比如數學上的一些邏輯計算問題，解決大模型幻覺一直是教育行業的難點。但是在這方面我們還是做了很多創新，比如 SFT 微調、Prompt 約束、Fewshot 規範以及 Tools 校驗等技術手段，目前來看效果還是很不錯的，也獲得用戶的認可。&lt;/p&gt; 
+&lt;p style="margin-left:0.0001pt; margin-right:0px; text-align:left"&gt;&amp;nbsp;&lt;/p&gt; 
+&lt;p style="margin-left:0.0001pt; margin-right:0px; text-align:left"&gt;&lt;span style="color:#27ae60"&gt;&lt;strong&gt;問：教育大模型需持續吸收新知識，但傳統微調易導致舊知識遺忘。在模型動態更新過程中，如何平衡知識擴展與核心能力穩定性？&lt;/strong&gt;&lt;/span&gt;&lt;/p&gt; 
+&lt;p style="margin-left:0.0001pt; margin-right:0px; text-align:left"&gt;&lt;strong&gt;答：&lt;/strong&gt;這個確實是一個難點。我們自己的經驗來看，分兩個階段：24 年 Q4 之前，各家大模型的基座能力確實在教育垂類應用上，受限於沒有大量教育優質數據，無論是知識擴展和核心能力都還有欠缺，需要我們進行不斷 SFT。但是從 24 年 Q4 往後，特別是 DeepSeek 出來之後，大模型的基座能力提升非常明顯。我們對於微調的使用比較謹慎，更傾向於微調非核心能力，比如微調 AI 老師的講題範式，微調 AI 老師的擬人風格等。在知識擴展方面，我們更傾向於 Agent 架構思想，通過 RAG，More&amp;nbsp;Tools，MCP 等手段來擴展，而不是大模型的微調。&lt;/p&gt; 
+&lt;p style="margin-left:0.0001pt; margin-right:0px; text-align:left"&gt;&amp;nbsp;&lt;/p&gt; 
+&lt;p style="margin-left:0.0001pt; margin-right:0px; text-align:left"&gt;&lt;span style="color:#27ae60"&gt;&lt;strong&gt;問：基座大模型的很多訓練數據來自英語，可能導致文化偏見。在中文教育場景中，這是否會影響教育結果？是否有解決機制？&lt;/strong&gt;&lt;/span&gt;&lt;/p&gt; 
+&lt;p style="margin-left:0.0001pt; margin-right:0px; text-align:left"&gt;&lt;strong&gt;答：&lt;/strong&gt;我們沒有這方面問題。我們主要用的是百度文心大模型，很擅長中文。&lt;/p&gt; 
+&lt;p style="margin-left:0.0001pt; margin-right:0px; text-align:left"&gt;&amp;nbsp;&lt;/p&gt; 
+&lt;p style="margin-left:0.0001pt; margin-right:0px; text-align:left"&gt;&lt;span style="color:#27ae60"&gt;&lt;strong&gt;問：教育大模型是否解決傳統教育中的「因材施教」難題？&lt;/strong&gt;&lt;/span&gt;&lt;/p&gt; 
+&lt;p style="margin-left:0.0001pt; margin-right:0px; text-align:justify"&gt;&lt;strong&gt;答：&lt;/strong&gt;大模型技術是解決傳統教育「因材施教」難題的最佳方法。&lt;/p&gt; 
+&lt;p style="margin-left:0.0001pt; margin-right:0px; text-align:justify"&gt;首先，通過大模型能夠更加懂學生。我們的 AI 老師是覆蓋家庭教育全場景的，從薄弱項診斷、家長反饋、學習規劃到作業輔導，持續更新學生的學習情況。比如在智能作業批改場景，傳統 AI 只能判斷對錯，但是基於大模型我們現在能過做到歸因分析，每一步錯在哪裏都能診斷出來。例如是漏了題目條件，還是對基礎概念的理解有誤，都能診斷出來。&lt;/p&gt; 
+&lt;p style="margin-left:0.0001pt; margin-right:0px; text-align:justify"&gt;&lt;span&gt;&lt;span&gt;其次，只有大模型才能實現真正的 1v1 教學。以為題目答疑為例，傳統 AI 對所有學生，都只能有文字解析，或者是一個講題視頻，讓學生去看，至於懂不懂，懂多少，那就不知道了。但是基於大模型技術的 AI 老師可以和學生進行交互，在交互中識別孩子們是否真的懂了，進而根據理解的多與少，可以調整講題思路，一步一步的引導，讓孩子真正的理解題目，而這都是傳統 AI 無法實現的。&lt;/span&gt;&lt;/span&gt;&lt;/p&gt; 
+&lt;p style="margin-left:0.0001pt; margin-right:0px; text-align:justify"&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;我們做 AI 老師的初衷，就是為了能夠復刻名師，通過大模型技術，我們有機會，讓每個家庭、每個孩子都能有一個 AI 名師，即使是在偏遠貧困的山區，也能有一個清華北大的 AI 私教。&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/p&gt; 
+&lt;p style="margin-left:0.0001pt; margin-right:0px; text-align:left"&gt;&amp;nbsp;&lt;/p&gt; 
+&lt;p style="margin-left:0.0001pt; margin-right:0px; text-align:left"&gt;&lt;span style="color:#27ae60"&gt;&lt;strong&gt;問：當大模型能自動生成個性化習題、教案甚至虛擬實驗時，傳統教師的角色將如何演變？是轉型為「AI 訓練師」專注設計提示詞，還是強化人類獨有的元認知培養能力？這類變革對師範教育體系會產生何種衝擊？&lt;/strong&gt;&lt;/span&gt;&lt;/p&gt; 
+&lt;p style="margin-left:0.0001pt; margin-right:0px; text-align:left"&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;strong&gt;答：&lt;/strong&gt;我和很多老師交流，他們都有這個焦慮。但是我感覺這個問題不僅僅是教育行業存在的，其他行業都會有，比如&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;Midjourney&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;我們的 UI 工程師就很焦慮，還有 C&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;oursor&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;也讓很多程序員也很焦慮。&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/p&gt; 
+&lt;p style="margin-left:0.0001pt; margin-right:0px; text-align:left"&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;我可以談幾點我對這個問題的幾點思考：&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt; &lt;p&gt;&lt;span&gt;&lt;span&gt;老師們也要快速擁抱大模型。大模型短時間內還是不會替代真人老師的，但是善於使用大模型工具的老師一定會更有競爭力，因為他們的效率更高。所以壓力不是來自於大模型，而是會使用大模型的同事們。&lt;/span&gt;&lt;/span&gt;&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;&lt;span&gt;&lt;span&gt;對大模型來説，傳統的教育經驗是非常有價值的。目前所有的大模型都還是在復刻老師。復刻的方法都是在學習老師的教育經驗，沒有這些教育經驗，大模型還是難以替代真人的。我們目前遇到的一個難題是，如何將不同老師的個性化的教育經驗，抽象歸納成一套教育方法論，並且能數據化輸入給大模型，目前還很難，可能對一些懂大模型的老師是一個機會。&lt;/span&gt;&lt;/span&gt;&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;&lt;span&gt;&lt;span&gt;真人老師除了傳道授業解惑之外，言傳身教會對學生人生觀、價值觀也會深深影響，畢竟人是有社會屬性的，這種面對面的情感價值，至少是目前的大模型技術還沒有辦法替代的。&lt;/span&gt;&lt;/span&gt;&lt;/p&gt; &lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;p style="margin-left:0.0001pt; margin-right:0px; text-align:left"&gt;&amp;nbsp;&lt;/p&gt; 
+&lt;p style="margin-left:0.0001pt; margin-right:0px; text-align:left"&gt;&lt;span style="color:#27ae60"&gt;&lt;strong&gt;問：作為小度教育的技術負責人，您帶領團隊做了哪些 AI 教育產品的創新？&lt;/strong&gt;&lt;/span&gt;&lt;/p&gt; 
+&lt;p style="margin-left:0.0001pt; margin-right:0px; text-align:left"&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;strong&gt;答：&lt;/strong&gt;大模型技術起來之前，我們小度教育就一直在做 AI&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;+&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;教育的創新，那個時候也是圍繞作業批改和講題答疑來做的，但是效果一直比較受限。隨着大模型技術的快速發展，我們的 AI 能力效果已經做到了行業頂尖水平。特別是我們 2&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;4&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;年發佈的 AI 老師，是行業內首創推出超擬人 AI 老師，圍繞&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;家庭最普遍的日常學習和作業場景，&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;模擬真人家&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;教輔導&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;的核心&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;流程&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;從&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;診斷、反饋、規劃&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;到&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;個性化&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;1v&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;1&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;輔導學習，系統化的實現了家庭教育場景和大模型技術的深度融合。目前 AI 老師已經成為學習機行業標杆，引領了行業發展。&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/p&gt; 
+&lt;p style="margin-left:0.0001pt; margin-right:0px; text-align:left"&gt;&amp;nbsp;&lt;/p&gt; 
+&lt;p style="margin-left:0.0001pt; margin-right:0px; text-align:left"&gt;&lt;span style="color:#27ae60"&gt;&lt;strong&gt;問：對 AI 從業者而言，面對技術迭代加速的「百模大戰」，哪些核心能力將成為競爭壁壘？您會建議青年開發者深耕哪些技術方向？&lt;/strong&gt;&lt;/span&gt;&lt;/p&gt; 
+&lt;p style="margin-left:0.0001pt; margin-right:0px; text-align:justify"&gt;&lt;span style="color:#27ae60"&gt;&lt;strong&gt;答：&lt;/strong&gt;&lt;/span&gt;這個問題就比較寬泛了，仁者見仁，智者見智。我只能從 AI 應用創新從業者的視角來看，識別大模型的能力邊界是個很重要的核心能力。大模型能幹什麼？不能幹什麼？能幹到什麼程度？你只有非常清楚，才能做好產品創新。把握的好就是事半功倍，把握的不好那就是事倍功半。而且大模型的能力邊界是在持續變化的，要動態的看這個問題，而不是靜態的，要對未來有預見性和判斷力。&lt;/p&gt; 
+&lt;p style="margin-left:0.0001pt; margin-right:0px; text-align:justify"&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;建議就不太好給了，我也是青年哈，我只能談幾點我自己正在看的幾個方向：&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/p&gt; 
+&lt;p style="margin-left:0.0001pt; margin-right:0px; text-align:justify"&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;第一、多模態大模型（特別是視覺大模型）還在快速升級。很多應用場景都需要多模態的支持；&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/p&gt; 
+&lt;p style="margin-left:0.0001pt; margin-right:0px; text-align:justify"&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;第二、Agent 架構迭代很快。比如年初的 Manus，還有最近的 MCP 協議等都在加速智能體架構的發展；&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/p&gt; 
+&lt;p style="margin-left:0.0001pt; margin-right:0px; text-align:justify"&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;第三、端側大模型不可忽視。隨着 iPhone 的引領，端側大模型會成為手機行業標配，那也會催生端側大模型應用爆發。預計今年設備端有希望能跑 1&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;0&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;B 小模型了，從能力角度看，已經可以幹很多事情了。&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;span style="display:none"&gt;&amp;nbsp;&lt;/span&gt;&lt;/p&gt; 
+&lt;p style="margin-left:0.0001pt; margin-right:0px; text-align:justify"&gt;&amp;nbsp;&lt;/p&gt; 
+&lt;p style="margin-left:0.0001pt; margin-right:0px; text-align:justify"&gt;&amp;nbsp;&lt;/p&gt;
+                                                                                    &lt;/div&gt;
+                                                                            </description>
+      <link>https://my.oschina.net/u/4489239/blog/18426743</link>
+      <guid isPermaLink="false">https://my.oschina.net/u/4489239/blog/18426743</guid>
+      <pubDate>Mon, 19 May 2025 02:38:40 GMT</pubDate>
+      <author>原創</author>
     </item>
     <item>
       <title>微軟裁員風暴：軟件工程崗成為 AI 衝擊的重災區</title>
@@ -71,7 +367,7 @@
                                                                             </description>
       <link>https://www.oschina.net/news/350287</link>
       <guid isPermaLink="false">https://www.oschina.net/news/350287</guid>
-      <pubDate>Sat, 10 May 2025 11:20:00 GMT</pubDate>
+      <pubDate>Fri, 16 May 2025 11:20:00 GMT</pubDate>
       <author>來源: OSCHINA</author>
     </item>
     <item>
@@ -134,7 +430,7 @@
                                                                             </description>
       <link>https://www.oschina.net/news/350255</link>
       <guid isPermaLink="false">https://www.oschina.net/news/350255</guid>
-      <pubDate>Sat, 10 May 2025 08:21:00 GMT</pubDate>
+      <pubDate>Fri, 16 May 2025 08:21:00 GMT</pubDate>
       <author>來源: 投稿</author>
     </item>
     <item>
@@ -159,7 +455,7 @@
                                                                             </description>
       <link>https://www.oschina.net/news/350233/parceljs-2-5-0</link>
       <guid isPermaLink="false">https://www.oschina.net/news/350233/parceljs-2-5-0</guid>
-      <pubDate>Sat, 10 May 2025 07:24:00 GMT</pubDate>
+      <pubDate>Fri, 16 May 2025 07:24:00 GMT</pubDate>
       <author>來源: 投稿</author>
     </item>
     <item>
@@ -207,7 +503,7 @@
                                                                             </description>
       <link>https://www.oschina.net/news/350219</link>
       <guid isPermaLink="false">https://www.oschina.net/news/350219</guid>
-      <pubDate>Sat, 10 May 2025 06:35:00 GMT</pubDate>
+      <pubDate>Fri, 16 May 2025 06:35:00 GMT</pubDate>
       <author>來源: OSCHINA</author>
     </item>
     <item>
@@ -253,7 +549,7 @@
                                                                             </description>
       <link>https://www.oschina.net/news/350214/50-million-developers-the-journey-of-visual-studio-and-vscode</link>
       <guid isPermaLink="false">https://www.oschina.net/news/350214/50-million-developers-the-journey-of-visual-studio-and-vscode</guid>
-      <pubDate>Sat, 10 May 2025 06:05:00 GMT</pubDate>
+      <pubDate>Fri, 16 May 2025 06:05:00 GMT</pubDate>
       <author>來源: OSCHINA</author>
     </item>
     <item>
@@ -273,7 +569,7 @@
                                                                             </description>
       <link>https://www.oschina.net/news/350213/bing-web-search-api-retired</link>
       <guid isPermaLink="false">https://www.oschina.net/news/350213/bing-web-search-api-retired</guid>
-      <pubDate>Sat, 10 May 2025 05:59:00 GMT</pubDate>
+      <pubDate>Fri, 16 May 2025 05:59:00 GMT</pubDate>
       <author>來源: OSCHINA</author>
     </item>
     <item>
@@ -304,7 +600,7 @@
                                                                             </description>
       <link>https://www.oschina.net/news/350209</link>
       <guid isPermaLink="false">https://www.oschina.net/news/350209</guid>
-      <pubDate>Sat, 10 May 2025 05:48:00 GMT</pubDate>
+      <pubDate>Fri, 16 May 2025 05:48:00 GMT</pubDate>
       <author>來源: OSCHINA</author>
     </item>
     <item>
@@ -328,7 +624,7 @@
                                                                             </description>
       <link>https://www.oschina.net/news/350207/windsurf-wave-9-swe-1</link>
       <guid isPermaLink="false">https://www.oschina.net/news/350207/windsurf-wave-9-swe-1</guid>
-      <pubDate>Sat, 10 May 2025 05:41:00 GMT</pubDate>
+      <pubDate>Fri, 16 May 2025 05:41:00 GMT</pubDate>
       <author>來源: OSCHINA</author>
     </item>
     <item>
@@ -451,7 +747,7 @@
                                                                             </description>
       <link>https://my.oschina.net/u/9297178/blog/18398047</link>
       <guid isPermaLink="false">https://my.oschina.net/u/9297178/blog/18398047</guid>
-      <pubDate>Sat, 10 May 2025 05:07:00 GMT</pubDate>
+      <pubDate>Fri, 16 May 2025 05:07:00 GMT</pubDate>
       <author>原創</author>
     </item>
     <item>
@@ -555,7 +851,7 @@
                                                                             </description>
       <link>https://my.oschina.net/u/4169309/blog/18403236</link>
       <guid isPermaLink="false">https://my.oschina.net/u/4169309/blog/18403236</guid>
-      <pubDate>Sat, 10 May 2025 03:53:00 GMT</pubDate>
+      <pubDate>Fri, 16 May 2025 03:53:00 GMT</pubDate>
       <author>原創</author>
     </item>
     <item>
@@ -574,481 +870,315 @@
                                                                             </description>
       <link>https://www.oschina.net/news/350188/huggingface-transformers-model-definition</link>
       <guid isPermaLink="false">https://www.oschina.net/news/350188/huggingface-transformers-model-definition</guid>
-      <pubDate>Sat, 10 May 2025 03:44:00 GMT</pubDate>
+      <pubDate>Fri, 16 May 2025 03:44:00 GMT</pubDate>
       <author>來源: OSCHINA</author>
     </item>
     <item>
-      <title>得物自研 DSearch3.0 搜索核心引擎升級之路</title>
+      <title>Spring Data 2025.0.0 GA</title>
       <description>&lt;div class="content"&gt;
-                                                                                                                                                                                                                                        &lt;h1&gt;&lt;span&gt;&lt;strong&gt;一、背景&lt;/strong&gt;&lt;/span&gt;&lt;/h1&gt; 
-&lt;p style="text-align: left"&gt;&lt;span&gt;隨着交易和社區搜索業務穩步快跑，基建側引擎越來越複雜，之前搜索底層索引查詢結構已經存在較為嚴重的性能瓶頸。成本和運維難度越來越高。在開發效率上和引擎的穩定性上，也暴露出了很多需要解決的運維穩定性和開發效率短板。而在引擎的業務層部分也需要逐步升級，來解決當前引擎中召回層和業務層中各個模塊強耦合，難維護，迭代效率低下等問題。&lt;/span&gt;&lt;/p&gt; 
-&lt;div style="text-align:left"&gt; 
- &lt;img src="https://p3-sign.toutiaoimg.com/tos-cn-i-6w9my0ksvp/de1274b479a3468eb2c8c9732f943b6d~tplv-obj.image?lk3s=ef143cfe&amp;amp;traceid=2025051410200631E315502D38AE1F6DD8&amp;amp;x-expires=2147483647&amp;amp;x-signature=yG8v2qkQHq9NYLqIZ%2Bfln4tsbMw%3D" data-align="left" referrerpolicy="no-referrer"&gt; 
-&lt;/div&gt; 
-&lt;h1 style="text-align: left" class="pgc-p"&gt;&lt;span&gt;&lt;strong&gt;二、引擎開發技術方案&lt;/strong&gt;&lt;/span&gt;&lt;/h1&gt; 
-&lt;h2 style="text-align: left" class="pgc-p"&gt;&lt;span&gt;&lt;strong&gt;DSearch1.0 索引層整體結構&lt;/strong&gt;&lt;/span&gt;&lt;/h2&gt; 
-&lt;p&gt;&lt;span&gt;DSearch1.0 的索引結構比較特殊一些，總體上使用了全局 rcu 的設計思想，整體架構上單寫多讀，所以實現了併發高性能無鎖讀，內部數據結構都是無鎖數據結構，所以查詢性能高。在寫操作上因為 rcu 機制實現寫入無鎖。整體上優點讀性能高，沒有傳統段合併操作帶來的磁盤抖動。缺點是索引地址和操作系統強相關，運維複雜，熱更新受限。全局地址分配難以並行寫入，構建瓶頸明顯。無法對浪費的內存進行回收導致內存空間利用率低，索引空間佔用大。總體結構如圖所示：&lt;/span&gt;&lt;/p&gt; 
-&lt;div style="text-align:left"&gt; 
- &lt;img src="https://p3-sign.toutiaoimg.com/tos-cn-i-6w9my0ksvp/90b13bdb5afb4c739e88babf772c494b~tplv-obj.image?lk3s=ef143cfe&amp;amp;traceid=2025051410200631E315502D38AE1F6DD8&amp;amp;x-expires=2147483647&amp;amp;x-signature=sBcaXhhCtFSFO6CLTcQ7Ldypf5o%3D" data-align="left" referrerpolicy="no-referrer"&gt; 
-&lt;/div&gt; 
-&lt;h2 style="text-align: left"&gt;&lt;span&gt;&lt;strong&gt;DSearch2.0 的索引升級&lt;/strong&gt;&lt;/span&gt;&lt;/h2&gt; 
-&lt;p style="line-height: 2; text-align: left"&gt;&lt;span&gt;&lt;strong&gt;DSearch2.0 分段索引整體設計&lt;/strong&gt;&lt;/span&gt;&lt;/p&gt; 
-&lt;p&gt;&lt;span&gt;引擎 2.0 索引升級採用經典段合併架構，除了繼承了段合併中優異的高性能寫入性能和查詢已經索引合併等優勢外，針對段合併中頻繁的正排字段更新等帶來的高 IO 缺點。我們設計了新的正排字段原地更新索引，使新的 DSearch2.0 引擎擁有 Redis 的高性能寫入和查詢，也擁有 lucene 的緊湊索引和索引合併帶來的內存空間節省的優勢。&lt;/span&gt;&lt;/p&gt; 
-&lt;p style="line-height: 2; text-align: left"&gt;&lt;span&gt;&lt;strong&gt;&lt;u&gt;※ 索引段結構&lt;/u&gt;&lt;/strong&gt;&lt;/span&gt;&lt;/p&gt; 
-&lt;ol&gt; 
- &lt;li&gt;&lt;p&gt;&lt;span style="font-size: 0.882em"&gt;每個索引段包含了文檔文件，用於緊湊存放 document 中的各個字段的詳細信息。字符串池文件是對 document 中所有的字符串進行統一順序存儲，同時&lt;strong&gt;對字符串進行 ID 化&lt;/strong&gt;，每個字符串 ID 就是對應於字符串池中的&lt;strong&gt;offset 偏移&lt;/strong&gt;。&lt;/span&gt;&lt;/p&gt;&lt;/li&gt; 
- &lt;li&gt;&lt;p&gt;&lt;span style="font-size: 0.882em"&gt;可變數組文件是專門存放數組類型的數據，緊湊型連續存放，當字段更新的時候採用文件追加 append 進行寫。最終內存回收通過段&lt;strong&gt;之間的 compaction 進行&lt;/strong&gt;。FST 索引文件是專門存放 document 中全部字符串索引。每個 fst 的 node 節點存放了該字符串在字符串池中的偏移 offset。而通過字符串的 offset，能夠快速在倒排 termoffset 數組上二分查找定位到 term 的倒排鏈。&lt;/span&gt;&lt;/p&gt;&lt;/li&gt; 
- &lt;li&gt;&lt;p&gt;&lt;span style="font-size: 0.882em"&gt;倒排文件是專門存放倒排 docid，詞頻信息、位置信息等倒排信息，其中 docid 倒排鏈數據結構會根據生成段的時候計算 docid 和總 doc 數的密度來做具體判斷，&lt;strong&gt;如果密度高於一定閾值就會使用 bitmap 數據結構，如果小於一定閾值會使用 array 的數據結構&lt;/strong&gt;。&lt;/span&gt;&lt;/p&gt;&lt;/li&gt; 
- &lt;li&gt;&lt;p&gt;&lt;span style="font-size: 0.882em"&gt;標記刪除 delete 鏈主要是用於記錄段中被刪除的 document，刪除操作是軟刪除，在最後查詢邏輯操作的時候進行最後的過濾。&lt;/span&gt;&lt;/p&gt;&lt;/li&gt; 
- &lt;li&gt;&lt;p&gt;&lt;span style="font-size: 0.882em"&gt;實時增量的 trie 樹結構，實時增量段中的前綴檢索和靜態段中的前綴檢索數據結構不一樣，trie 因為能夠進行實時更新所以在內存中使用 trie 樹。&lt;/span&gt;&lt;/p&gt;&lt;/li&gt; 
- &lt;li&gt;&lt;p&gt;&lt;span style="font-size: 0.882em"&gt;段中的 metadata 文件，metadata 文件是記錄每個段中的核心數據的地方，主要記錄段內 doc 數量，段內 delete 文檔比例，實時段的 metadata 會記錄 kafka 的 offset 等核心數據。&lt;/span&gt;&lt;/p&gt;&lt;/li&gt; 
-&lt;/ol&gt; 
-&lt;div style="text-align:left"&gt; 
- &lt;img src="https://p3-sign.toutiaoimg.com/tos-cn-i-6w9my0ksvp/24c940a2b35e4d15a162fe3ebf200d0f~tplv-obj.image?lk3s=ef143cfe&amp;amp;traceid=2025051410200631E315502D38AE1F6DD8&amp;amp;x-expires=2147483647&amp;amp;x-signature=%2BYmQsxTR%2FExv2AC40UdCJ0azAwA%3D" data-align="left" referrerpolicy="no-referrer"&gt; 
-&lt;/div&gt; 
-&lt;p style="line-height: 2; text-align: left"&gt;&lt;span&gt;&lt;strong&gt;Document 文檔和索引結構&lt;/strong&gt;&lt;/span&gt;&lt;/p&gt; 
-&lt;p style="line-height: 2; text-align: left"&gt;&lt;span&gt;&lt;strong&gt;&lt;u&gt;※ Document 文檔數據結構&lt;/u&gt;&lt;/strong&gt;&lt;/span&gt;&lt;/p&gt; 
-&lt;ol&gt; 
- &lt;li&gt;&lt;p&gt;&lt;span style="font-size: 0.882em"&gt;Document 文檔使用緊湊型存儲，其中 array 和字符串類型單獨存放，其他字段連續存放，string 和 array 字段存放。&lt;/span&gt;&lt;/p&gt;&lt;/li&gt; 
- &lt;li&gt;&lt;p&gt;&lt;span style="font-size: 0.882em"&gt;array 字段類型數據直接存放在可變數組文件區，連續追加寫。&lt;/span&gt;&lt;/p&gt;&lt;/li&gt; 
- &lt;li&gt;&lt;p&gt;&lt;span style="font-size: 0.882em"&gt;string 字符串池對所有字符串進行連續存放，多個 doc 中同一個字符串引用同一個字符串地址，節省大量字符串存放空間。&lt;/span&gt;&lt;/p&gt;&lt;/li&gt; 
-&lt;/ol&gt; 
-&lt;p style="line-height: 2; text-align: left"&gt;&lt;span&gt;&lt;strong&gt;&lt;u&gt;※ 倒排索引文件結構&lt;/u&gt;&lt;/strong&gt;&lt;/span&gt;&lt;/p&gt; 
-&lt;ol&gt; 
- &lt;li&gt;&lt;p&gt;&lt;span style="font-size: 0.882em"&gt;倒排索引文件存放 docid 倒排和 Tf 以及位置 position 數據。其中內存實時段中的倒排索引數據結構是固定一種類型 array 類型。而內存實時段固化為靜態段的時候，倒排數據結構會根據 docid 中的密度進行選擇 array 和 bitmap 存儲。當 docid 密度大於一定閾值是 bitmap，反之是 array 結構。&lt;/span&gt;&lt;/p&gt;&lt;/li&gt; 
- &lt;li&gt;&lt;p&gt;&lt;span style="font-size: 0.882em"&gt;Tf 數據結構是一個 uint16 的數組，數組長度和 docid 的數組長度一致，所以當確定了某個 docid 時候，也隨即確定了它的 tf 信息。&lt;/span&gt;&lt;/p&gt;&lt;/li&gt; 
- &lt;li&gt;&lt;p&gt;&lt;span style="font-size: 0.882em"&gt;postion 信息存儲是一個二維數組的格式，第一層數組存放的是對應於 term 的在字符串池的 offset，因為 term 在字符串池中已經 ID 化，所以 offset 可以表示唯一 term。第二層數組是該 term 在字段中多次出現的位置，使用 uint16 存儲。&lt;/span&gt;&lt;/p&gt;&lt;/li&gt; 
-&lt;/ol&gt; 
-&lt;p style="line-height: 2; text-align: left"&gt;&lt;span&gt;&lt;strong&gt;&lt;u&gt;※ 前綴檢索文件&lt;/u&gt;&lt;/strong&gt;&lt;/span&gt;&lt;/p&gt; 
-&lt;ol&gt; 
- &lt;li&gt;&lt;p&gt;&lt;span style="font-size: 0.882em"&gt;FST 靜態段文件&lt;/span&gt;&lt;/p&gt;&lt;/li&gt; 
-&lt;/ol&gt; 
-&lt;p&gt;&lt;span style="font-size: 0.882em"&gt;a. 靜態段中前綴是 fst 的數據結構，因為 fst 一旦建立是不能夠進行修改的，所以在段合併的時候需要對所有 term 進行排序然後再構建 fst 結構。&lt;/span&gt;&lt;/p&gt; 
-&lt;p&gt;&lt;span style="font-size: 0.882em"&gt;b. fst 的 node 節點存放了對應於 term 的字符串池的 offset。當需要查詢一個 term 的倒排結構時候，需要先查詢該 term 的字符串池的 offset，然後拿該 offset 去倒排的 termoffset 文件中二分查找找到對應的倒排 positionlist 結構拿到對應倒排。所以一次 term 到倒排的查詢需要查詢一次 fst+一次二分查詢。&lt;/span&gt;&lt;/p&gt; 
-&lt;p&gt;&lt;span style="font-size: 0.882em"&gt;c. term 到倒排的查詢一次 fst+一次二分查找效率不高，所以針對 term 到倒排查詢，新增了第二種 HashMap 索引，直接通過 term 到倒排的 offset 索引，這個選項在建表的時候可以配置。&lt;/span&gt;&lt;/p&gt; 
-&lt;ol start="2"&gt; 
- &lt;li&gt;&lt;p&gt;&lt;span style="font-size: 0.882em"&gt;實時段 RcuTrie 樹索引&lt;/span&gt;&lt;/p&gt;&lt;/li&gt; 
-&lt;/ol&gt; 
-&lt;p&gt;&lt;span style="font-size: 0.882em"&gt;a. 實時段中需要支持邊寫邊讀，前綴檢索需要支持併發讀寫。引擎中 trie 樹是 rcu 實現，單線程更新，多線程併發讀，trie 樹寫更新節點內存延遲迴收。&lt;/span&gt;&lt;/p&gt; 
-&lt;div style="text-align:left"&gt; 
- &lt;img src="https://p3-sign.toutiaoimg.com/tos-cn-i-6w9my0ksvp/1a4ee53847174e60b8ac7df104a5d5b6~tplv-obj.image?lk3s=ef143cfe&amp;amp;traceid=2025051410200631E315502D38AE1F6DD8&amp;amp;x-expires=2147483647&amp;amp;x-signature=HOQHf%2Fr42ewivfi%2BZbf2pws0nLo%3D" data-align="left" referrerpolicy="no-referrer"&gt; 
-&lt;/div&gt; 
-&lt;p style="line-height: 2; text-align: left"&gt;&lt;span&gt;&lt;strong&gt;倒排索引和查詢樹邏輯&lt;/strong&gt;&lt;/span&gt;&lt;/p&gt; 
-&lt;p style="line-height: 2; text-align: left"&gt;&lt;span&gt;&lt;strong&gt;&lt;u&gt;※ 倒排鏈優化&lt;/u&gt;&lt;/strong&gt;&lt;/span&gt;&lt;/p&gt; 
-&lt;ol&gt; 
- &lt;li&gt;&lt;p&gt;&lt;span style="font-size: 0.882em"&gt;DSearch1.0 的 roaringbimap 倒排索引在低密度數據量上存在一些瓶頸，比如對於倒排鏈比較短的情況下，roaringbitmap 的 container 大部分都是 array 結構，在倒排鏈查詢和合並都會進行一次二分查找，在大面積的倒排鏈合併中是個相當大的性能瓶頸。&lt;/span&gt;&lt;/p&gt;&lt;/li&gt; 
- &lt;li&gt;&lt;p&gt;&lt;span style="font-size: 0.882em"&gt;針對上面所説的情況對 roaringbitmap 進行了精簡，只存 array 或者 bitmap 合併的時候不需要查找，直接鏈式合併。&lt;/span&gt;&lt;/p&gt;&lt;/li&gt; 
-&lt;/ol&gt; 
-&lt;p style="line-height: 2; text-align: left"&gt;&lt;span&gt;&lt;strong&gt;&lt;u&gt;※ 邏輯樹合併優化&lt;/u&gt;&lt;/strong&gt;&lt;/span&gt;&lt;/p&gt; 
-&lt;ol&gt; 
- &lt;li&gt;&lt;p&gt;&lt;span style="font-size: 0.882em"&gt;DSearch2.0 重點從邏輯語法樹和倒排入手，優化語法樹，減少合併樹高，從二叉樹合併變成單層合併。&lt;/span&gt;&lt;/p&gt;&lt;/li&gt; 
- &lt;li&gt;&lt;p&gt;&lt;span style="font-size: 0.882em"&gt;優化倒排鏈合併方式，採用原地倒排鏈合併，消除倒排合併臨時對象，同時引入多線程並行合併，減少長尾提高性能。&lt;/span&gt;&lt;/p&gt;&lt;/li&gt; 
-&lt;/ol&gt; 
-&lt;div style="text-align:left"&gt; 
- &lt;img src="https://p3-sign.toutiaoimg.com/tos-cn-i-6w9my0ksvp/a324c1263d7045f6a4346f99c7f97124~tplv-obj.image?lk3s=ef143cfe&amp;amp;traceid=2025051410200631E315502D38AE1F6DD8&amp;amp;x-expires=2147483647&amp;amp;x-signature=DxtCm2sohwPSMuxM%2Flr5%2BTSP4kg%3D" data-align="left" referrerpolicy="no-referrer"&gt; 
-&lt;/div&gt; 
-&lt;p style="line-height: 2; text-align: left"&gt;&lt;span&gt;&lt;strong&gt;增量更新邏輯&lt;/strong&gt;&lt;/span&gt;&lt;/p&gt; 
-&lt;p style="line-height: 2; text-align: left"&gt;&lt;span&gt;&lt;strong&gt;&lt;u&gt;※ 增量實時寫入邏輯&lt;/u&gt;&lt;/strong&gt;&lt;/span&gt;&lt;/p&gt; 
-&lt;ol&gt; 
- &lt;li&gt;&lt;p&gt;&lt;span style="font-size: 0.882em"&gt;引擎支持多個併發實時段，這個由配置文件通過配置來進行配置。多個實時段能夠提升併發寫入的性能。&lt;/span&gt;&lt;/p&gt;&lt;/li&gt; 
- &lt;li&gt;&lt;p&gt;&lt;span style="font-size: 0.882em"&gt;每個實時段對應一個寫入隊列，提高併發寫入吞吐。&lt;/span&gt;&lt;/p&gt;&lt;/li&gt; 
- &lt;li&gt;&lt;p&gt;&lt;span style="font-size: 0.882em"&gt;每個段真實寫入一條信息會同步原子更新消費的 kafka 的 offset，用於對後面進程重啓等恢復數據做準備。&lt;/span&gt;&lt;/p&gt;&lt;/li&gt; 
- &lt;li&gt;&lt;p&gt;&lt;span style="font-size: 0.882em"&gt;當進程重啓或者異常退出時候，會讀取 metadata 文件中的最後一條 kafka offset 進行重新消費增量在內存中重新構建新的正排、文檔和倒排等信息，完成數據的恢復。&lt;/span&gt;&lt;/p&gt;&lt;/li&gt; 
-&lt;/ol&gt; 
-&lt;div style="text-align:left"&gt; 
- &lt;img src="https://p26-sign.toutiaoimg.com/tos-cn-i-6w9my0ksvp/4a6eba83cdd74c1587d9aa76bf35ddbd~tplv-obj.image?lk3s=ef143cfe&amp;amp;traceid=2025051410200631E315502D38AE1F6DD8&amp;amp;x-expires=2147483647&amp;amp;x-signature=okNAsDWIX8ozfo9pqhZbj2DF39Q%3D" data-align="left" referrerpolicy="no-referrer"&gt; 
-&lt;/div&gt; 
-&lt;p style="line-height: 2; text-align: left"&gt;&lt;span&gt;&lt;strong&gt;實時段固化和段合併策略&lt;/strong&gt;&lt;/span&gt;&lt;/p&gt; 
-&lt;p style="line-height: 2; text-align: left"&gt;&lt;span&gt;&lt;strong&gt;&lt;u&gt;※ 實時段固化邏輯：&lt;/u&gt;&lt;/strong&gt;&lt;/span&gt;&lt;/p&gt; 
-&lt;ol&gt; 
- &lt;li&gt;&lt;p&gt;&lt;span style="font-size: 0.882em"&gt;當實時段內隨着增量寫，doc 文件大小超過 128M 時候會進行內存實時段固化操作。&lt;/span&gt;&lt;/p&gt;&lt;/li&gt; 
- &lt;li&gt;&lt;p&gt;&lt;span style="font-size: 0.882em"&gt;固化操作開始時，會先生成新的內存實時段，老的內存實時段會變成只讀內存段。&lt;/span&gt;&lt;/p&gt;&lt;/li&gt; 
- &lt;li&gt;&lt;p&gt;&lt;span style="font-size: 0.882em"&gt;遍歷按整個只讀內存段，構建新的索引和新的正排結構生成新的靜態段。&lt;/span&gt;&lt;/p&gt;&lt;/li&gt; 
-&lt;/ol&gt; 
-&lt;p style="line-height: 2; text-align: left"&gt;&lt;span&gt;&lt;strong&gt;&lt;u&gt;※ 段合併策略：&lt;/u&gt;&lt;/strong&gt;&lt;/span&gt;&lt;/p&gt; 
-&lt;ol&gt; 
- &lt;li&gt;&lt;p&gt;&lt;span style="font-size: 0.882em"&gt;實時段固化的小靜態段因為大小比較小，會優先和之前固化後的小段進行合併，按照 1，2，4，8 進行合併，逐步合併成靜態段最大的上限。&lt;/span&gt;&lt;/p&gt;&lt;/li&gt; 
- &lt;li&gt;&lt;p&gt;&lt;span style="font-size: 0.882em"&gt;靜態段的合併觸發策略是當靜態段中 delete 的 doc 比例超過了 30% 會觸發靜態段之間的合併，合併會按照近鄰合併原則，從左右近鄰中選取一個最小 doc 數的段進行合併，進而新生成一個新的段。&lt;/span&gt;&lt;/p&gt;&lt;/li&gt; 
-&lt;/ol&gt; 
-&lt;div style="text-align:left"&gt; 
- &lt;img src="https://p3-sign.toutiaoimg.com/tos-cn-i-6w9my0ksvp/08582c715cbd47d0b298435e57bac25f~tplv-obj.image?lk3s=ef143cfe&amp;amp;traceid=2025051410200631E315502D38AE1F6DD8&amp;amp;x-expires=2147483647&amp;amp;x-signature=40FqkO626yUPY%2BI3uTtsbA1Ihwo%3D" data-align="left" referrerpolicy="no-referrer"&gt; 
-&lt;/div&gt; 
-&lt;p style="line-height: 2; text-align: left"&gt;&lt;span&gt;&lt;strong&gt;查詢和更新中的併發控制&lt;/strong&gt;&lt;/span&gt;&lt;/p&gt; 
-&lt;p style="line-height: 2; text-align: left"&gt;&lt;span&gt;&lt;strong&gt;&lt;u&gt;※ 查詢流程&lt;/u&gt;&lt;/strong&gt;&lt;/span&gt;&lt;/p&gt; 
-&lt;p&gt;&lt;span&gt;引擎查詢時候，先遍歷查詢實時段，然後再查詢靜態段。實時段查詢存在最大增量查詢截斷，當實時段查詢到最大增量截斷時實時段停止查詢。&lt;/span&gt;&lt;/p&gt; 
-&lt;p&gt;&lt;span&gt;實時段查詢後，查詢靜態段。靜態段中包含了全量構建索引的全量最大 offset 記錄同時全量的 doc 是通過質量分進行排序，所以在全量段查詢的時候，先遍歷質量分最大的全量段，逐步往後面靜態段查詢，直到查詢到全量截斷。&lt;/span&gt;&lt;/p&gt; 
-&lt;p&gt;&lt;span&gt;實時段查詢和靜態段查詢結果進行 merge 作為最終的查詢結果。&lt;/span&gt;&lt;/p&gt; 
-&lt;p style="line-height: 2; text-align: left"&gt;&lt;/p&gt; 
-&lt;p style="line-height: 2; text-align: left"&gt;&lt;span&gt;&lt;strong&gt;&lt;u&gt;※ 更新併發控制&lt;/u&gt;&lt;/strong&gt;&lt;/span&gt;&lt;/p&gt; 
-&lt;p&gt;&lt;span&gt;因為 DSearch2.0 的索引更新是直接在實時段或者靜態段進行更新，所以存在多線程讀寫問題。尤其是正排字段更新寫入量大更新頻繁。同時更新涉及到所有的實時段和靜態段，較為複雜。&lt;/span&gt;&lt;/p&gt; 
-&lt;p&gt;&lt;span&gt;為瞭解決正排字段和倒排的更新問題，新版本引擎引入了 document 文檔鎖池，對每個 doc 進行 hash 計算落到鎖池中具體一個鎖上來減少鎖衝突，當前鎖池內有多個個文檔鎖。文檔鎖在文檔進行拷貝和更新的時候會進行鎖住。&lt;/span&gt;&lt;/p&gt; 
-&lt;h2 style="text-align: left"&gt;&lt;span&gt;&lt;strong&gt;DSearch3.0 搜索核心升級&lt;/strong&gt;&lt;/span&gt;&lt;/h2&gt; 
-&lt;p style="line-height: 2; text-align: left"&gt;&lt;span&gt;&lt;strong&gt;異步非阻塞圖調度框架&lt;/strong&gt;&lt;/span&gt;&lt;/p&gt; 
-&lt;div style="text-align:left"&gt; 
- &lt;img src="https://p3-sign.toutiaoimg.com/tos-cn-i-6w9my0ksvp/7e1821341e54416a99384f4ae1016048~tplv-obj.image?lk3s=ef143cfe&amp;amp;traceid=2025051410200631E315502D38AE1F6DD8&amp;amp;x-expires=2147483647&amp;amp;x-signature=Ugikrdj%2Fc%2FMZkAFTUtc7L9JVcG0%3D" data-align="left" referrerpolicy="no-referrer"&gt; 
-&lt;/div&gt; 
-&lt;p style="line-height: 2; text-align: left"&gt;&lt;span&gt;&lt;strong&gt;&lt;u&gt;※ &lt;/u&gt;引擎主要改造：&lt;/strong&gt;&lt;/span&gt;&lt;/p&gt; 
-&lt;ol&gt; 
- &lt;li&gt;&lt;p&gt;&lt;span style="color: rgb(62, 62, 62)"&gt;&lt;strong&gt;圖框架支持 RPC 異步非阻塞請求：&lt;/strong&gt;&lt;/span&gt;&lt;span style="font-size: 0.882em"&gt;引擎圖框架 RpcServer 服務使用 brpc 的異步處理無需同步阻塞等待調度完成，只需框架調度完算子返回結果，不阻塞 RpcServer 線程，例如：當前引擎調用 neuron 服務是同步調用，當 neuron 服務負載高阻塞時，同步調用會導致拖住引擎 RpcServer 處理線程，新的異步非阻塞模式引擎 client 在調用引擎後已經返回，等待引擎 RpcServer 中異步調度框架中 remote 異步算子回調，減少外部服務影響引擎。&lt;/span&gt;&lt;/p&gt;&lt;/li&gt; 
- &lt;li&gt;&lt;p&gt;&lt;span style="font-size: 0.882em"&gt;&lt;strong&gt;減少線程切換：&lt;/strong&gt;圖框架調度器會優先調度當前運行線程，同時使用 M:N 類型的 bthread 線程池，線程切換會更小，執行效率高。&lt;/span&gt;&lt;/p&gt;&lt;/li&gt; 
- &lt;li&gt;&lt;p&gt;&lt;span style="font-size: 0.882em"&gt;&lt;strong&gt;RPC 服務和框架算子獨立：&lt;/strong&gt;引擎 RPC 服務和框架算子完全解耦，跨集羣部署算子服務無需任何改造，實現算子脫離運行環境。&lt;/span&gt;&lt;/p&gt;&lt;/li&gt; 
- &lt;li&gt;&lt;p&gt;&lt;span style="font-size: 0.882em"&gt;&lt;strong&gt;高效的算子異常處理和超時機制：&lt;/strong&gt;每個算子維護自己的運行超時時間和請求到算子調度執行的超時時間，對整個請求流程中各算子執行更加精準。&lt;/span&gt;&lt;/p&gt;&lt;/li&gt; 
- &lt;li&gt;&lt;p&gt;&lt;span style="font-size: 0.882em"&gt;&lt;strong&gt;動態圖支持：&lt;/strong&gt;圖框架支持靜態圖和動態圖業務組合式調用。支持靜態子圖和動態子圖調用等複雜業務組合。&lt;/span&gt;&lt;/p&gt;&lt;/li&gt; 
- &lt;li&gt;&lt;p&gt;&lt;span style="font-size: 0.882em"&gt;&lt;strong&gt;複雜子圖支持：&lt;/strong&gt;圖框架支持嵌套子圖，支持自調用模型，可以實現複雜單節點多功能調用。&lt;/span&gt;&lt;/p&gt;&lt;/li&gt; 
-&lt;/ol&gt; 
-&lt;p style="line-height: 2; text-align: left"&gt;&lt;span&gt;&lt;strong&gt;算子間數據交換 Table 設計&lt;/strong&gt;&lt;/span&gt;&lt;/p&gt; 
-&lt;div style="text-align:left"&gt; 
- &lt;img src="https://p3-sign.toutiaoimg.com/tos-cn-i-6w9my0ksvp/3bf931610dd74d5da3be98d3395310ab~tplv-obj.image?lk3s=ef143cfe&amp;amp;traceid=2025051410200631E315502D38AE1F6DD8&amp;amp;x-expires=2147483647&amp;amp;x-signature=n4lk8KDSCTKVPt6uIgyIxo9v%2FPw%3D" data-align="left" referrerpolicy="no-referrer"&gt; 
-&lt;/div&gt; 
-&lt;p style="line-height: 2; text-align: left"&gt;&lt;span&gt;&lt;strong&gt;&lt;u&gt;※ &lt;/u&gt;引擎主要改造：&lt;/strong&gt;&lt;/span&gt;&lt;/p&gt; 
-&lt;ol&gt; 
- &lt;li&gt;&lt;p&gt;&lt;span style="font-size: 0.882em"&gt;&lt;strong&gt;列式數據共享優化：&lt;/strong&gt;算子交換數據全部存放在 Table 列中，Table 中全部共享列式數據，省去大面積數據拷貝，大幅提升引擎業務執行性能。&lt;/span&gt;&lt;/p&gt;&lt;/li&gt; 
- &lt;li&gt;&lt;p&gt;&lt;span style="font-size: 0.882em"&gt;&lt;strong&gt;兼容引擎索引中 doc 數據：&lt;/strong&gt;引擎索引中 doc 行式存儲有很多優點，比如多字段訪問效率高等，Table 設計中考慮了行式存儲優點，不僅存高頻的列字段也儲存了引擎內部的 doc*以及對應 FieldDef*，能直接方便訪問索引數據，接口統一，易於迭代。&lt;/span&gt;&lt;/p&gt;&lt;/li&gt; 
- &lt;li&gt;&lt;p&gt;&lt;span style="font-size: 0.882em"&gt;&lt;strong&gt;打通 FlatBuffer 序列化協議：&lt;/strong&gt;當前引擎 FlatBuffer 序列化傳輸協議和引擎內部數據出口需要多次遍歷轉換，需要拷貝很多數據，新 Table 的設計內部數據列和 FlatBuffer 內部的數據列互轉互通，節省大量內部拷貝同時避免了字段兼容等問題。&lt;/span&gt;&lt;/p&gt;&lt;/li&gt; 
- &lt;li&gt;&lt;p&gt;&lt;span style="font-size: 0.882em"&gt;&lt;strong&gt;支持原地排序和標記刪除：&lt;/strong&gt;Table 數據表，支持原地 sort 操作和標記刪除操作，節省數據排序時大量數據的拷貝和刪除操作中導致的數據重排等拷貝操作，提升性能。&lt;/span&gt;&lt;/p&gt;&lt;/li&gt; 
-&lt;/ol&gt; 
-&lt;p style="line-height: 2; text-align: left"&gt;&lt;span&gt;&lt;strong&gt;算子間數據交換 Table 設計&lt;/strong&gt;&lt;/span&gt;&lt;/p&gt; 
-&lt;div style="text-align:left"&gt; 
- &lt;img src="https://p3-sign.toutiaoimg.com/tos-cn-i-6w9my0ksvp/a96224208f0d46f2b9abffe520367ac1~tplv-obj.image?lk3s=ef143cfe&amp;amp;traceid=2025051410200631E315502D38AE1F6DD8&amp;amp;x-expires=2147483647&amp;amp;x-signature=zR%2B1sBPOMWcKSWcnoqSS3HtpR%2Bo%3D" data-align="left" referrerpolicy="no-referrer"&gt; 
-&lt;/div&gt; 
-&lt;p style="line-height: 2; text-align: left"&gt;&lt;span&gt;&lt;strong&gt;&lt;u&gt;※ &lt;/u&gt;引擎主要改造：&lt;/strong&gt;&lt;/span&gt;&lt;/p&gt; 
-&lt;ol&gt; 
- &lt;li&gt;&lt;p&gt;&lt;span style="font-size: 0.882em"&gt;&lt;strong&gt;動態圖支持：&lt;/strong&gt;DSsearch3.0 支持動態圖編排，主要通過業務方通過動態編排請求來組織對應的算子編排邏輯，實現業務方自主編排調度邏輯，方便整體業務開發。&lt;/span&gt;&lt;/p&gt;&lt;/li&gt; 
- &lt;li&gt;&lt;p&gt;&lt;span style="font-size: 0.882em"&gt;&lt;strong&gt;Remote 遠程調用支持：&lt;/strong&gt;通過開發遠程異步調用算子，支持 DSearch3.0 跨集羣調用，實現多機算子化互聯互通。提高引擎的整體縱向拓展能力。&lt;/span&gt;&lt;/p&gt;&lt;/li&gt; 
- &lt;li&gt;&lt;p&gt;&lt;span style="font-size: 0.882em"&gt;&lt;strong&gt;引擎算子庫複用：&lt;/strong&gt;通過設計統一的算子接口，開發基礎的可複用框架算子，支持配置化組合運行圖，實現業務邏輯快速複用和開發，提高整體引擎開發效率。&lt;/span&gt;&lt;/p&gt;&lt;/li&gt; 
-&lt;/ol&gt; 
-&lt;h1&gt;&lt;span&gt;&lt;strong&gt;三、性能和效果提升&lt;/strong&gt;&lt;/span&gt;&lt;/h1&gt; 
-&lt;p&gt;&lt;span&gt;DSearch 在 2024 年 Q1 季度索引升級開發完成後逐步推全到交易和社區等各個主場景業務中，最後拿到了很多超預期結果：&lt;/span&gt;&lt;/p&gt; 
-&lt;p&gt;&lt;span&gt;&lt;strong&gt;索引內存優化超出預期：&lt;/strong&gt;社區搜索和交易搜索總索引單分片優化 60%。&lt;/span&gt;&lt;/p&gt; 
-&lt;p&gt;&lt;span&gt;&lt;strong&gt;構建和寫入性能優化超出預期：&lt;/strong&gt;社區搜索和交易搜索主表寫入性能提升 10 倍。&lt;/span&gt;&lt;/p&gt; 
-&lt;p&gt;&lt;span&gt;&lt;strong&gt;索引更新優化超預期：&lt;/strong&gt;社區和交易主表更新時間提升接近 10 倍。&lt;/span&gt;&lt;/p&gt; 
-&lt;p&gt;&lt;span&gt;&lt;strong&gt;性能優化符合預期：&lt;/strong&gt;社區搜索平均 rt 降低一倍，P99 晚高峯降低 2 倍。&lt;/span&gt;&lt;/p&gt; 
-&lt;h1&gt;&lt;span&gt;&lt;strong&gt;四、總結&lt;/strong&gt;&lt;/span&gt;&lt;/h1&gt; 
-&lt;p&gt;&lt;span&gt;DSearch 引擎從開始的 DSearch1.0 的搜索引擎逐步經歷了 DSearch2.0 的分段式索引改造升級，又經歷了 DSearch3.0 的全圖化引擎升級。逐步將 DSearch 引擎升級到業界較為領先的支持內存型、磁盤型多段式搜索引擎，為支持得物業務的發展做出了重要的貢獻，後續 DSearch 會圍繞着通用化、自迭代、高性能等多個方向繼續升級，將 DSearch 引擎迭代到業界領先的引擎。&lt;/span&gt;&lt;/p&gt; 
-&lt;p&gt;&lt;span style="font-size: 0.882em"&gt;&lt;strong&gt;算法團隊大量 HC，歡迎加入我們：&lt;/strong&gt;得物技術大量算法崗位多地上線，「職」等你來！&lt;/span&gt;&lt;/p&gt; 
-&lt;p&gt;&lt;span&gt;&lt;strong&gt;往期回顧&lt;/strong&gt;&lt;/span&gt;&lt;/p&gt; 
-&lt;p style="line-height: 2"&gt;&lt;span&gt;1. 以細節詮釋專業，用成長定義價值——對話@孟同學 ｜得物技術&lt;/span&gt;&lt;/p&gt; 
-&lt;p style="line-height: 2"&gt;&lt;span&gt;2. 最近爆火的 MCP 究竟有多大魅力？MCP 開發初體驗｜得物技術&lt;/span&gt;&lt;/p&gt; 
-&lt;p style="line-height: 2"&gt;&lt;span&gt;3. 得物可觀測平台架構升級：基於 GreptimeDB 的全新監控體系實踐&lt;/span&gt;&lt;/p&gt; 
-&lt;p style="line-height: 2"&gt;&lt;span&gt;4. 得物自研 DGraph4.0 推薦核心引擎升級之路&lt;/span&gt;&lt;/p&gt; 
-&lt;p style="line-height: 2"&gt;&lt;span&gt;5. 大語言模型的訓練後量化算法綜述 | 得物技術&lt;/span&gt;&lt;/p&gt; 
-&lt;p style="text-align: center"&gt;&lt;span&gt;文 / 蘇黎&lt;/span&gt;&lt;/p&gt; 
-&lt;p style="text-align: center"&gt;&lt;span&gt;關注得物技術，每週更新技術乾貨&lt;/span&gt;&lt;/p&gt; 
-&lt;p style="text-align: center"&gt;&lt;span&gt;要是覺得文章對你有幫助的話，歡迎評論轉發點贊～&lt;/span&gt;&lt;/p&gt; 
-&lt;p style="text-align: center"&gt;&lt;span&gt;未經得物技術許可嚴禁轉載，否則依法追究法律責任。&lt;/span&gt;&lt;/p&gt;
+                                                                    
+                                                        &lt;p&gt;&lt;span style="color:#000000"&gt;Spring Data 2025.0.0 現已正式發佈，此版本包含驅動程序升級以及各個 store 模塊的優化。&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;span style="color:#000000"&gt;一些更新亮點內容如下：&lt;/span&gt;&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt;&lt;span style="color:#000000"&gt;MongoDB 和 Apache Cassandra 中的向量類型和向量搜索支持&lt;/span&gt;&lt;/li&gt; 
+ &lt;li&gt;&lt;span style="color:#000000"&gt;Spring Data JPA 中 DTO Projections 的&amp;nbsp;Constructor Expression Derivation&lt;/span&gt;&lt;/li&gt; 
+ &lt;li&gt;&lt;span style="color:#000000"&gt;支持在 Spring Data JDBC 和 R2DBC 中使用序列生成標識符&lt;/span&gt;&lt;/li&gt; 
+ &lt;li&gt;&lt;span style="color:#000000"&gt;使用 Cassandra 5 存儲附加索引創建索引&lt;/span&gt;&lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;p style="margin-left:0; margin-right:0; text-align:start"&gt;&lt;span style="color:#000000"&gt;可參閲&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fgithub.com%2Fspring-projects%2Fspring-data-commons%2Fwiki%2FSpring-Data-2025.0-Release-Notes" target="_blank"&gt;發行説明&lt;/a&gt;以瞭解更多詳細信息。&lt;/span&gt;&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt;Spring Data Commons&amp;nbsp;&lt;code&gt;3.5&lt;/code&gt;&amp;nbsp;-&amp;nbsp;&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fdocs.spring.io%2Fspring-data%2Fcommons%2Fdocs%2F3.5.0%2Fapi%2F" target="_blank"&gt;Javadoc&lt;/a&gt;&amp;nbsp;-&amp;nbsp;&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fdocs.spring.io%2Fspring-data%2Fcommons%2Freference%2F3.5%2F" target="_blank"&gt;Documentation&lt;/a&gt;&amp;nbsp;-&amp;nbsp;&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fgithub.com%2Fspring-projects%2Fspring-data-commons%2Freleases%2Ftag%2F3.5.0" target="_blank"&gt;Changelog&lt;/a&gt;&lt;/li&gt; 
+ &lt;li&gt;Spring Data JPA&amp;nbsp;&lt;code&gt;3.5&lt;/code&gt;&amp;nbsp;-&amp;nbsp;&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fdocs.spring.io%2Fspring-data%2Fjpa%2Fdocs%2F3.5.0%2Fapi%2F" target="_blank"&gt;Javadoc&lt;/a&gt;&amp;nbsp;-&amp;nbsp;&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fdocs.spring.io%2Fspring-data%2Fjpa%2Freference%2F3.5%2F" target="_blank"&gt;Documentation&lt;/a&gt;&amp;nbsp;-&amp;nbsp;&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fgithub.com%2Fspring-projects%2Fspring-data-jpa%2Freleases%2Ftag%2F3.5.0" target="_blank"&gt;Changelog&lt;/a&gt;&lt;/li&gt; 
+ &lt;li&gt;Spring Data MongoDB&amp;nbsp;&lt;code&gt;4.5&lt;/code&gt;&amp;nbsp;-&amp;nbsp;&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fdocs.spring.io%2Fspring-data%2Fmongodb%2Fdocs%2F4.5.0%2Fapi%2F" target="_blank"&gt;Javadoc&lt;/a&gt;&amp;nbsp;-&amp;nbsp;&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fdocs.spring.io%2Fspring-data%2Fmongodb%2Freference%2F4.5%2F" target="_blank"&gt;Documentation&lt;/a&gt;&amp;nbsp;-&amp;nbsp;&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fgithub.com%2Fspring-projects%2Fspring-data-mongodb%2Freleases%2Ftag%2F4.5.0" target="_blank"&gt;Changelog&lt;/a&gt;&lt;/li&gt; 
+ &lt;li&gt;Spring Data Neo4j&amp;nbsp;&lt;code&gt;7.5&lt;/code&gt;&amp;nbsp;-&amp;nbsp;&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fdocs.spring.io%2Fspring-data%2Fneo4j%2Fdocs%2F7.5.0%2Fapi%2F" target="_blank"&gt;Javadoc&lt;/a&gt;&amp;nbsp;-&amp;nbsp;&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fdocs.spring.io%2Fspring-data%2Fneo4j%2Freference%2F7.5%2F" target="_blank"&gt;Documentation&lt;/a&gt;&amp;nbsp;-&amp;nbsp;&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fgithub.com%2Fspring-projects%2Fspring-data-neo4j%2Freleases%2Ftag%2F7.5.0" target="_blank"&gt;Changelog&lt;/a&gt;&lt;/li&gt; 
+ &lt;li&gt;Spring Data for Apache Cassandra&amp;nbsp;&lt;code&gt;4.5&lt;/code&gt;&amp;nbsp;-&amp;nbsp;&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fdocs.spring.io%2Fspring-data%2Fcassandra%2Fdocs%2F4.5.0%2Fapi%2F" target="_blank"&gt;Javadoc&lt;/a&gt;&amp;nbsp;-&amp;nbsp;&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fdocs.spring.io%2Fspring-data%2Fcassandra%2Freference%2F4.5%2F" target="_blank"&gt;Documentation&lt;/a&gt;&amp;nbsp;-&amp;nbsp;&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fgithub.com%2Fspring-projects%2Fspring-data-cassandra%2Freleases%2Ftag%2F4.5.0" target="_blank"&gt;Changelog&lt;/a&gt;&lt;/li&gt; 
+ &lt;li&gt;Spring Data KeyValue&amp;nbsp;&lt;code&gt;3.5&lt;/code&gt;&amp;nbsp;-&amp;nbsp;&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fdocs.spring.io%2Fspring-data%2Fkeyvalue%2Fdocs%2F3.5.0%2Fapi%2F" target="_blank"&gt;Javadoc&lt;/a&gt;&amp;nbsp;-&amp;nbsp;&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fdocs.spring.io%2Fspring-data%2Fkeyvalue%2Freference%2F3.5%2F" target="_blank"&gt;Documentation&lt;/a&gt;&amp;nbsp;-&amp;nbsp;&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fgithub.com%2Fspring-projects%2Fspring-data-keyvalue%2Freleases%2Ftag%2F3.5.0" target="_blank"&gt;Changelog&lt;/a&gt;&lt;/li&gt; 
+ &lt;li&gt;Spring Data LDAP&amp;nbsp;&lt;code&gt;3.5&lt;/code&gt;&amp;nbsp;-&amp;nbsp;&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fdocs.spring.io%2Fspring-data%2Fldap%2Fdocs%2F3.5.0%2Fapi%2F" target="_blank"&gt;Javadoc&lt;/a&gt;&amp;nbsp;-&amp;nbsp;&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fdocs.spring.io%2Fspring-data%2Fldap%2Freference%2F3.5%2F" target="_blank"&gt;Documentation&lt;/a&gt;&amp;nbsp;-&amp;nbsp;&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fgithub.com%2Fspring-projects%2Fspring-data-ldap%2Freleases%2Ftag%2F3.5.0" target="_blank"&gt;Changelog&lt;/a&gt;&lt;/li&gt; 
+ &lt;li&gt;Spring Data REST&amp;nbsp;&lt;code&gt;4.5&lt;/code&gt;&amp;nbsp;-&amp;nbsp;&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fdocs.spring.io%2Fspring-data%2Frest%2Fdocs%2F4.5.0%2Fapi%2F" target="_blank"&gt;Javadoc&lt;/a&gt;&amp;nbsp;-&amp;nbsp;&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fdocs.spring.io%2Fspring-data%2Frest%2Freference%2F4.5%2F" target="_blank"&gt;Documentation&lt;/a&gt;&amp;nbsp;-&amp;nbsp;&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fgithub.com%2Fspring-projects%2Fspring-data-rest%2Freleases%2Ftag%2F4.5.0" target="_blank"&gt;Changelog&lt;/a&gt;&lt;/li&gt; 
+ &lt;li&gt;Spring Data Redis&amp;nbsp;&lt;code&gt;3.5&lt;/code&gt;&amp;nbsp;-&amp;nbsp;&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fdocs.spring.io%2Fspring-data%2Fredis%2Fdocs%2F3.5.0%2Fapi%2F" target="_blank"&gt;Javadoc&lt;/a&gt;&amp;nbsp;-&amp;nbsp;&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fdocs.spring.io%2Fspring-data%2Fredis%2Freference%2F3.5%2F" target="_blank"&gt;Documentation&lt;/a&gt;&amp;nbsp;-&amp;nbsp;&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fgithub.com%2Fspring-projects%2Fspring-data-redis%2Freleases%2Ftag%2F3.5.0" target="_blank"&gt;Changelog&lt;/a&gt;&lt;/li&gt; 
+ &lt;li&gt;Spring Data Elasticsearch&amp;nbsp;&lt;code&gt;5.5&lt;/code&gt;&amp;nbsp;-&amp;nbsp;&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fdocs.spring.io%2Fspring-data%2Felasticsearch%2Fdocs%2F5.5.0%2Fapi%2F" target="_blank"&gt;Javadoc&lt;/a&gt;&amp;nbsp;-&amp;nbsp;&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fdocs.spring.io%2Fspring-data%2Felasticsearch%2Freference%2F5.5%2F" target="_blank"&gt;Documentation&lt;/a&gt;&amp;nbsp;-&amp;nbsp;&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fgithub.com%2Fspring-projects%2Fspring-data-elasticsearch%2Freleases%2Ftag%2F5.5.0" target="_blank"&gt;Changelog&lt;/a&gt;&lt;/li&gt; 
+ &lt;li&gt;Spring Data Couchbase&amp;nbsp;&lt;code&gt;5.5&lt;/code&gt;&amp;nbsp;-&amp;nbsp;&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fdocs.spring.io%2Fspring-data%2Fcouchbase%2Fdocs%2F5.5.0%2Fapi%2F" target="_blank"&gt;Javadoc&lt;/a&gt;&amp;nbsp;-&amp;nbsp;&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fdocs.spring.io%2Fspring-data%2Fcouchbase%2Freference%2F5.5%2F" target="_blank"&gt;Documentation&lt;/a&gt;&amp;nbsp;-&amp;nbsp;&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fgithub.com%2Fspring-projects%2Fspring-data-couchbase%2Freleases%2Ftag%2F5.5.0" target="_blank"&gt;Changelog&lt;/a&gt;&lt;/li&gt; 
+ &lt;li&gt;Spring Data Relational&amp;nbsp;&lt;code&gt;3.5&lt;/code&gt;&amp;nbsp;-&amp;nbsp;&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fdocs.spring.io%2Fspring-data%2Frelational%2Fdocs%2F3.5.0%2Fapi%2F" target="_blank"&gt;Javadoc&lt;/a&gt;&amp;nbsp;-&amp;nbsp;&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fdocs.spring.io%2Fspring-data%2Frelational%2Freference%2F3.5%2F" target="_blank"&gt;Documentation&lt;/a&gt;&amp;nbsp;-&amp;nbsp;&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fgithub.com%2Fspring-projects%2Fspring-data-relational%2Freleases%2Ftag%2F3.5.0" target="_blank"&gt;Changelog&lt;/a&gt;&lt;/li&gt; 
+&lt;/ul&gt;
+                                                                                &lt;/div&gt;
+                                                                            </description>
+      <link>https://www.oschina.net/news/350562/spring-data-2025-0-ga</link>
+      <guid isPermaLink="false">https://www.oschina.net/news/350562/spring-data-2025-0-ga</guid>
+      <pubDate>Sun, 11 May 2025 02:27:00 GMT</pubDate>
+      <author>來源: OSCHINA</author>
+    </item>
+    <item>
+      <title>2030 年我國數據產業規模將達 7.5 萬億元</title>
+      <description>&lt;div class="content"&gt;
+                                                                    
+                                                        &lt;p&gt;&lt;span style="color:#000000"&gt;2025 數據安全發展大會上介紹，我國將培育壯大一批數據要素產業鏈上下游企業，預計到 2030 年，我國數據產業規模將達到 7.5 萬億元。&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;span style="color:#000000"&gt;作為全球首個將數據納入生產要素的國家，我國已初步構建起門類齊全的數據產業鏈。數據顯示，2024 年我國年度數據生產總量達 41.06 澤字節，同比增長 25%。&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;span style="color:#000000"&gt;截至目前，我國數據領域相關企業超 19 萬家，數據產業規模超 2 萬億元。按照 20% 以上的年均增長率測算，2030 年我國數據產業規模將達 7.5 萬億元。&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;img height="291" src="https://oscimg.oschina.net/oscnet/up-8974708623b157a8be63e50fae982623dce.png" width="500" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;span style="color:#000000"&gt;國家數據局局長劉烈宏表示：探索適應數據特徵的產權配置、流通模式和安全治理機制，培育壯大一批數據要素產業鏈上下游企業。當前我們正謀劃構建橫向聯通、縱向貫通，協調有力的數據基礎設施體系，到 2029 年要基本建成國家數據基礎設施主體結構。&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;span style="color:#000000"&gt;公共數據開放共享成為數據要素市場化的重要突破口。2024 年全國地市級以上的地方公共數據開放平台數量增長 7.5%，開放數據量增長 7.1%，高質量數據集數量同比增長 27.4%。在數據要素與產業融合方面，國家正加快打通公共數據共享開放壁壘，推動公共數據與企業數據深度融合，激活海量「沉睡數據」。&lt;/span&gt;&lt;/p&gt;
+                                                                                &lt;/div&gt;
+                                                                            </description>
+      <link>https://www.oschina.net/news/350559</link>
+      <guid isPermaLink="false">https://www.oschina.net/news/350559</guid>
+      <pubDate>Sun, 11 May 2025 02:17:00 GMT</pubDate>
+      <author>來源: OSCHINA</author>
+    </item>
+    <item>
+      <title>如何用好 「對話式編程」？牢記這十二條策略</title>
+      <description>&lt;div class="content"&gt;
+                                                                                                                                                                                                                                        &lt;blockquote&gt; 
+ &lt;p&gt;&lt;strong&gt;編者按：&lt;/strong&gt; 如何有效利用大語言模型（LLMs）生成高質量代碼？這是當下開發者們比較關心的一個問題。在生成代碼的過程中，提示詞的設計是否精確，直接決定了模型輸出的質量。&lt;/p&gt; 
+ &lt;p&gt;本文深入探討了提示詞優化的 12 條策略，給出了清晰的操作指南和示範案例，讀者可以瞭解到如何通過精準編寫提示詞引導模型生成性能優越、符合實際需求的代碼。&lt;/p&gt; 
+&lt;/blockquote&gt; 
+&lt;p&gt;&lt;strong&gt;作者 | Ayush Thakur@Potpie&lt;/strong&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;strong&gt;(&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fgithub.com%2Fpotpie-ai%2Fpotpie" target="_blank"&gt;https://github.com/potpie-ai/potpie&lt;/a&gt;)&lt;/strong&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;strong&gt;編譯 | 嶽揚&lt;/strong&gt;&lt;/p&gt; 
+&lt;p&gt;大語言模型（LLMs）已經徹底改變了代碼生成領域，但要想獲得高質量、有用的輸出結果，編寫有效的提示詞至關重要。LLMs 生成代碼的質量高度依賴於所提供提示詞的質量。&lt;strong&gt;一句表述不當的提示詞可能導致不完整、不正確或雖然正確但不具備針對性的響應，而邏輯性、完整性和易讀性良好的提示詞則能最大化發揮模型的潛力。&lt;/strong&gt; 本文將探討編寫有效提示詞的高級策略，以便使用 LLMs 生成高質量的代碼。&lt;/p&gt; 
+&lt;h1&gt;&lt;strong&gt;01 提供詳細的上下文&lt;/strong&gt;&lt;/h1&gt; 
+&lt;p&gt;在與 LLMs 進行交互生成代碼時，所提供上下文的深度和質量直接影響模型輸出的相關程度和準確程度。&lt;/p&gt; 
+&lt;p&gt;上下文需要包含的關鍵要素有：&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt;Specific problem domain（譯者注：指的是你試圖解決的問題所在的特定專業或技術領域。例如，如果你正在開發一個系統來處理金融交易，那麼你的問題領域就是金融科技（FinTech）。）&lt;/li&gt; 
+ &lt;li&gt;Existing codebase characteristics（譯者注：指的是當前項目中已有代碼的特點、風格和結構等信息。）&lt;/li&gt; 
+ &lt;li&gt;Implementation constraints（譯者注：在實現解決方案時必須遵守的各種限制條件，如只能使用某些技術棧等。）&lt;/li&gt; 
+ &lt;li&gt;Performance requirements（譯者注：指的是系統或應用程序需要達到的性能標準。）&lt;/li&gt; 
+ &lt;li&gt;Architectural patterns already in use（譯者注：指的是在當前項目或組織中已經採用的軟件架構模式。架構模式是一種通用的、可重複的設計模板，用於解決軟件架構中的常見問題。例如，微服務架構、分層架構（n-tier architecture）或是事件驅動架構等。）&lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;p&gt;此外，你可以使用 &lt;a href="https://my.oschina.net/references"&gt;@references&lt;/a&gt; 指向特定文件或函數（譯者注：大部分「對話式編程」 Apps 都支持該功能），使你的請求更加精準。與其用文字描述某個函數，不如直接引用它。&lt;/p&gt; 
+&lt;blockquote&gt; 
+ &lt;p&gt;❌ 欠佳的提示詞：創建一個用戶身份驗證系統。&lt;/p&gt; 
+ &lt;p&gt;✅ 更好的提示詞：為我們的 Node.js Express API 創建一個基於 JWT 的身份驗證系統，該系統需要與 MongoDB 的 user 集合集成。該系統應使用 bcrypt 處理密碼哈希，簽發有效期為 24 小時的令牌，並實現刷新令牌（refresh token）輪換機制增強安全性。現有的中間件模式採用 async/await 語法。請參考 @authMiddleware.js 的中間件結構和 @userModel.js 的 user 集合結構。&lt;/p&gt; 
+&lt;/blockquote&gt; 
+&lt;p&gt;通過使用 @authMiddleware.js 和 @userModel.js，可以確保生成的代碼與現有架構保持一致，減少一些集成問題和手動調整工作量。&lt;/p&gt; 
+&lt;h1&gt;&lt;strong&gt;02 將問題分解為多個步驟&lt;/strong&gt;&lt;/h1&gt; 
+&lt;p&gt;複雜的編碼任務需要系統性地拆解為可管理單元。該方法論的實施路徑如下：&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt;&lt;strong&gt;從明確的功能需求出發&lt;/strong&gt;&lt;/li&gt; 
+ &lt;li&gt;&lt;strong&gt;分析目錄結構和代碼組織方式&lt;/strong&gt;&lt;/li&gt; 
+ &lt;li&gt;&lt;strong&gt;引導 LLM 按照邏輯步驟實現目標功能，同時遵循既定的架構邊界和設計模式。&lt;/strong&gt;&lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;p&gt;例如，在實現一個數據處理 pipeline 時，首先需明確輸入的數據結構、轉換邏輯、錯誤處理的相關要求及預期的輸出格式。隨後分析目錄結構，並確定新功能的實現位置。&lt;/p&gt; 
+&lt;p&gt;需要綜合考量代碼之間的依賴關係（dependency relationships）、模塊的職責劃分與隔離（module boundaries）以及代碼的目錄結構與命名規範（code organization principles）。這一步驟可確保生成的代碼能無縫集成到現有代碼庫中。&lt;/p&gt; 
+&lt;h1&gt;&lt;strong&gt;03 選擇合適的模型完成任務&lt;/strong&gt;&lt;/h1&gt; 
+&lt;p&gt;不同 LLM 在代碼生成任務中展現出的優勢不同。&lt;strong&gt;某模型可能擅長理解複雜需求並生成邏輯一致性強的代碼，而另一模型可能在特定編程語言或框架上具有優勢。&lt;/strong&gt; 在評估使用哪種 LLM 時，需着重關注以下技術因素：&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt;上下文窗口大小（處理大型代碼庫時至關重要）&lt;/li&gt; 
+ &lt;li&gt;對編程語言/技術框架的掌握程度&lt;/li&gt; 
+ &lt;li&gt;特定領域的專業知識&lt;/li&gt; 
+ &lt;li&gt;多輪交互的穩定性&lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;p&gt;對比示例：&lt;/p&gt; 
+&lt;table&gt; 
+ &lt;thead&gt; 
+  &lt;tr&gt; 
+   &lt;th&gt;&lt;strong&gt;任務類型&lt;/strong&gt;&lt;/th&gt; 
+   &lt;th&gt;&lt;strong&gt;模型選擇考量因素&lt;/strong&gt;&lt;/th&gt; 
+  &lt;/tr&gt; 
+ &lt;/thead&gt; 
+ &lt;tbody&gt; 
+  &lt;tr&gt; 
+   &lt;td&gt;複雜的企業級架構&lt;/td&gt; 
+   &lt;td&gt;更大的上下文窗口大小有助於在大型代碼庫中保持多輪交互的穩定性&lt;/td&gt; 
+  &lt;/tr&gt; 
+  &lt;tr&gt; 
+   &lt;td&gt;機器學習 pipeline&lt;/td&gt; 
+   &lt;td&gt;數學基礎紮實且經過數據科學專項訓練的模型更具優勢&lt;/td&gt; 
+  &lt;/tr&gt; 
+  &lt;tr&gt; 
+   &lt;td&gt;前端組件&lt;/td&gt; 
+   &lt;td&gt;採用新近框架數據訓練的模型，可輸出符合業界最新標準的代碼模式&lt;/td&gt; 
+  &lt;/tr&gt; 
+ &lt;/tbody&gt; 
+&lt;/table&gt; 
+&lt;h1&gt;&lt;strong&gt;04 具體參照現有的代碼實現模式&lt;/strong&gt;&lt;/h1&gt; 
+&lt;p&gt;&lt;strong&gt;在提示詞中明確具體細節能大大提升代碼生成的質量。&lt;/strong&gt; 技術細節需明確指向代碼庫中的既有實現範式，而非籠統要求通用方案。例如：&lt;/p&gt; 
+&lt;blockquote&gt; 
+ &lt;p&gt;❌ 欠佳的提示詞： 「寫一個處理用戶數據的函數」&lt;/p&gt; 
+ &lt;p&gt;✅ 更優的提示詞：「在 UserProcessor 類 (src/services/UserProcessor.js) 中創建一個新方法，沿用 transformPaymentData 方法的函數式編程風格實現用戶數據的轉換。因採用異步機制，實現時應以可讀性為第一準則，性能次之。」&lt;/p&gt; 
+&lt;/blockquote&gt; 
+&lt;p&gt;該方法也同樣適用於命名規範、編碼標準和架構模式。需明確説明採用函數式或面向對象範式，指定設計模式類型，並澄清性能與代碼可讀性的優先級。&lt;/p&gt; 
+&lt;h1&gt;&lt;strong&gt;05 請重新生成而非回滾&lt;/strong&gt;&lt;/h1&gt; 
+&lt;p&gt;&lt;strong&gt;當生成的代碼出現問題時，重新生成有問題的模塊通常比逐步去修復代碼中的問題效果更好。&lt;/strong&gt; 此方法源於大語言模型理解上下文和生成模型響應的機制。&lt;/p&gt; 
+&lt;p&gt;為何重新生成效果更好？&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt;脫離原有錯誤實現方式的思維定式&lt;/li&gt; 
+ &lt;li&gt;防止舊代碼中的錯誤代碼邏輯污染新的代碼實現&lt;/li&gt; 
+ &lt;li&gt;支持加入新的約束條件&lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;p&gt;這種方法對解決一些算法難題或實現複雜的代碼邏輯特別有效，因為在這些場景下一點細微的錯誤都可能影響整體解決方案。&lt;/p&gt; 
+&lt;p&gt;示例：&lt;/p&gt; 
+&lt;blockquote&gt; 
+ &lt;p&gt;「請嘗試用不同的方法實現排序算法。當前版本的時間複雜度為 O(n²)，無法滿足數據集規模要求，請基於我們其他的數據處理函數使用的歸併排序模式，重新生成 O(n log n) 時間複雜度的解決方案」&lt;/p&gt; 
+&lt;/blockquote&gt; 
+&lt;h1&gt;&lt;strong&gt;06 決策前請生成多套方案進行對比&lt;/strong&gt;&lt;/h1&gt; 
+&lt;p&gt;利用大語言模型能夠生成多套解決方案的能力，通過對比分析提升代碼質量。首先，要求模型生成 2-3 種不同的實現策略，每種策略需包含對該方案優缺點的分析。&lt;/p&gt; 
+&lt;p&gt;生成多套方案後，引導模型分析時間複雜度、空間複雜度、代碼可讀性和可維護性等因素，並分析如何權衡這些因素。這一反思（reflection）過程使模型能根據具體需求選擇並完善最合適的解決方案。&lt;/p&gt; 
+&lt;p&gt;示例：&lt;/p&gt; 
+&lt;blockquote&gt; 
+ &lt;p&gt;「請為 API 響應緩存系統（caching system for our API responses）提供三套實現方案：&lt;/p&gt; 
+ &lt;ol&gt; 
+  &lt;li&gt; &lt;p&gt;基於自定義數據結構的 LRU 內存緩存方案&lt;/p&gt; &lt;/li&gt; 
+  &lt;li&gt; &lt;p&gt;基於 Redis 的分佈式緩存方案&lt;/p&gt; &lt;/li&gt; 
+  &lt;li&gt; &lt;p&gt;支持 TTL 的本地文件系統緩存&lt;/p&gt; &lt;/li&gt; 
+ &lt;/ol&gt; 
+&lt;/blockquote&gt; 
+&lt;p&gt;請分別分析各方案的時間複雜度、內存佔用、多服務器擴展能力和實現複雜度」&lt;/p&gt; 
+&lt;h1&gt;&lt;strong&gt;07 實施自我審查機制&lt;/strong&gt;&lt;/h1&gt; 
+&lt;p&gt;Self-review prompting 可通過引導大語言模型對其生成的代碼進行系統化評估來提升代碼質量。具體實施時需明確要求模型在完成代碼生成後交叉檢查其生成的代碼。自我審查（Self-review）應評估以下這幾個方面：&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt;代碼正確性（是否有邏輯錯誤）&lt;/li&gt; 
+ &lt;li&gt;效率（是否存在性能問題）&lt;/li&gt; 
+ &lt;li&gt;邊界情況的處理情況&lt;/li&gt; 
+ &lt;li&gt;安全漏洞&lt;/li&gt; 
+ &lt;li&gt;是否嚴格滿足需求&lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;p&gt;在自我審查過程中，模型可識別潛在問題，例如併發代碼中的競態條件漏洞（譯者注：一種常見安全漏洞，源於系統或程序在處理併發操作時因時序問題導致的邏輯錯誤。）、資源管理中的內存泄漏，或直接影響系統安全的核心邏輯中的漏洞風險點。發現問題後，模型可立即優化代碼實現來解決問題。此方法對應成熟的軟件工程實踐（如代碼審查和靜態分析），但將其置於同一 prompt-response 週期內執行，大大提升了初始的代碼生成質量。&lt;/p&gt; 
+&lt;h1&gt;&lt;strong&gt;08 為模型賦予技術人設或給出參考框架&lt;/strong&gt;&lt;/h1&gt; 
+&lt;p&gt;為大語言模型分配技術人設，可確保其代碼生成保持統一的專業視角。當要求模型以"精通分佈式系統的高級後端工程師"的思維模式運作時，其生成的代碼會優先考慮可擴展性、容錯性和性能優化。同理，若賦予"安全專家"人設，其生成的代碼會重點強化內容輸入區的驗證、規範認證流程，並預先規避潛在的漏洞風險。&lt;/p&gt; 
+&lt;p&gt;技術參考框架需與任務需求相匹配。&lt;/p&gt; 
+&lt;p&gt;根據不同任務選擇不同的專業人設：&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt;後端系統："具備分佈式系統專業知識的高級後端工程師"&lt;/li&gt; 
+ &lt;li&gt;安全模塊："熟悉 OWASP 規範的安全架構師"&lt;/li&gt; 
+ &lt;li&gt;基礎設施："專攻雲原生解決方案的 DevOps 工程師"&lt;/li&gt; 
+ &lt;li&gt;前端開發："關注用戶體驗且具有無障礙化開發經驗的前端工程師"&lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;p&gt;這種方法利用模型模仿領域專家的能力，使生成的代碼更精準體現特定技術領域的行業最佳實踐。&lt;/p&gt; 
+&lt;p&gt;示例：&lt;/p&gt; 
+&lt;blockquote&gt; 
+ &lt;p&gt;「扮演高級安全工程師進行代碼審查。用 Python/Django 創建用戶註冊系統，需實現合規的密碼處理、輸入驗證功能，並防禦常見 Web 漏洞。」&lt;/p&gt; 
+&lt;/blockquote&gt; 
+&lt;h1&gt;&lt;strong&gt;09 明確編程語言、開發框架或第三方庫的限制條件&lt;/strong&gt;&lt;/h1&gt; 
+&lt;p&gt;明確説明技術限制條件，才能確保代碼與運行環境完美兼容。首先應清晰説明編程語言版本（例如 Python 3.9、TypeScript 4.5），確保生成的代碼所使用的語言特性在生產環境中可用。同時需指定框架版本及其特定規範，例如"使用 Pydantic v2 模型的 FastAPI 0.95 進行數據驗證"。&lt;/p&gt; 
+&lt;p&gt;此外，還要交代清楚：用哪些第三方庫、具體怎麼接入。例如，在請求生成數據庫交互代碼時，應指定使用 SQLAlchemy 等 ORM 還是原始的 SQL queries，並明確數據庫連接的處理要求。摳到這種細節程度，才可以避免生成依賴了不可用的組件或版本不兼容的代碼。&lt;/p&gt; 
+&lt;p&gt;示例：&lt;/p&gt; 
+&lt;blockquote&gt; 
+ &lt;p&gt;「請使用以下技術棧開發 REST API 接口：&lt;/p&gt; 
+ &lt;ul&gt; 
+  &lt;li&gt;Python 3.9&lt;/li&gt; 
+  &lt;li&gt;搭載 Pydantic v2 模型的 FastAPI 0.95 框架&lt;/li&gt; 
+  &lt;li&gt;使用 SQLAlchemy 2.0 執行數據庫操作&lt;/li&gt; 
+  &lt;li&gt;通過 auth_utils.py 文件中現有 AuthManager 實現 JWT 身份認證&lt;/li&gt; 
+  &lt;li&gt;必須兼容 PostgreSQL 13 數據庫」&lt;/li&gt; 
+ &lt;/ul&gt; 
+&lt;/blockquote&gt; 
+&lt;h1&gt;&lt;strong&gt;10 實施思維鏈這一提示詞工程技術&lt;/strong&gt;&lt;/h1&gt; 
+&lt;p&gt;思維鏈（Chain of thought prompting）通過引導大語言模型進行邏輯推理，可以大大提升代碼生成質量。這個方法的精髓是：讓 AI 先拆解問題再寫代碼。&lt;/p&gt; 
+&lt;p&gt;要求模型按這個順序分步思考：&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt;&lt;strong&gt;用大白話解釋實現思路&lt;/strong&gt;&lt;/li&gt; 
+ &lt;li&gt;&lt;strong&gt;搭建解決方案的偽代碼框架&lt;/strong&gt;&lt;/li&gt; 
+ &lt;li&gt;&lt;strong&gt;每個模塊的具體實現邏輯&lt;/strong&gt;&lt;/li&gt; 
+ &lt;li&gt;&lt;strong&gt;最終完整可運行的代碼成品&lt;/strong&gt;&lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;p&gt;思維鏈技術對於包含複雜邏輯或數據轉換的算法特別有效。這種方法可以減少邏輯錯誤，提高代碼的一致性，並可視化模型的推理過程，便於在最終代碼生成前進行修正。&lt;/p&gt; 
+&lt;p&gt;與側重任務分解的"分步執行"方法不同，思維鏈技術着重於顯性化模型的推理路徑，確保在確認最終方案前保持邏輯的嚴謹性。&lt;/p&gt; 
+&lt;h1&gt;&lt;strong&gt;11 針對不同大語言模型（LLM）的特長設計專屬的提示詞策略，以最大化發揮其優勢&lt;/strong&gt;&lt;/h1&gt; 
+&lt;p&gt;不同的大語言模型具備各自獨特的優勢，通過針對性的提示詞技巧可以充分發揮它們的潛能。&lt;/p&gt; 
+&lt;p&gt;提示詞策略如下：&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt;針對上下文窗口有限的模型：聚焦分步算法指導&lt;/li&gt; 
+ &lt;li&gt;針對擅長函數式編程的模型：使用函數式思維提問&lt;/li&gt; 
+ &lt;li&gt;針對精通某一特定開發框架的模型：直接使用該框架的核心 API、類名或設計模式等特定術語提問，減少解釋成本。&lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;p&gt;&lt;strong&gt;瞭解模型在訓練過程中接觸的數據集特點是優化提示詞的關鍵。&lt;/strong&gt; 不同的模型因其訓練數據分佈不同，往往只對特定編程範式或語言有更強的理解力。例如，若某模型在訓練中接觸了大量函數式編程內容，那麼當問題本身適合使用函數式編程解決時，用函數式編程術語構建提示詞，將獲得更精準的響應。&lt;/p&gt; 
+&lt;h1&gt;&lt;strong&gt;12 指定邊界情況和約束條件&lt;/strong&gt;&lt;/h1&gt; 
+&lt;p&gt;全面覆蓋邊界場景能大幅提升代碼健壯性 &amp;nbsp;。技術領域的邊界情況因場景而異，但通常包含臨界值（譯者注：如數值溢出、空輸入）、資源限制（譯者注：如內存耗盡、超時）和異常狀態（譯者注：如網絡中斷、併發衝突）。在向模型發送請求生成代碼時，應明確列出這些要素，例如説明數據處理函數應如何處理空輸入、格式錯誤的數據或超出預期範圍的值。&lt;/p&gt; 
+&lt;p&gt;通過預先考慮這些約束條件，生成的代碼可包含與指定限制條件相匹配的驗證邏輯、錯誤處理機制和性能優化方案。&lt;/p&gt; 
+&lt;p&gt;示例：&lt;/p&gt; 
+&lt;blockquote&gt; 
+ &lt;p&gt;「實現一個能處理以下情況的文件處理函數：&lt;/p&gt; 
+ &lt;ul&gt; 
+  &lt;li&gt;空文件（返回空結果）&lt;/li&gt; 
+  &lt;li&gt;超過 1GB 的文件（分塊讀取處理）&lt;/li&gt; 
+  &lt;li&gt;格式錯誤的 CSV 數據（記錄錯誤並跳過錯誤行，繼續處理後續有效行）&lt;/li&gt; 
+  &lt;li&gt;多進程/線程同時操作同一文件（需加鎖（如文件鎖、數據庫鎖）避免數據競爭）&lt;/li&gt; 
+  &lt;li&gt;網絡中斷（需支持斷點續傳）」&lt;/li&gt; 
+ &lt;/ul&gt; 
+&lt;/blockquote&gt; 
+&lt;p&gt;掌握代碼生成的提示詞工程既是一門藝術，也是一門科學，它能大幅提升開發效率。通過運用這些策略方法，開發者可以將大語言模型（LLM）從簡單的代碼生成工具升級為智能開發助手，從而打造出更健壯、高效且易於維護的軟件系統。&lt;/p&gt; 
+&lt;p&gt;&lt;em&gt;&lt;strong&gt;About the author&lt;/strong&gt;&lt;/em&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;em&gt;&lt;strong&gt;Ayush Thakur&lt;/strong&gt;&lt;/em&gt;&lt;/p&gt; 
+&lt;p&gt;Developer Advocate | Community Manager | Technical Writer&lt;/p&gt; 
+&lt;p&gt;&lt;strong&gt;END&lt;/strong&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;strong&gt;本期互動內容 🍻&lt;/strong&gt;&lt;/p&gt; 
+&lt;p&gt;❓&lt;strong&gt;文中提到「重新生成代碼優於修復 Bugs」，你在實際使用「對話式編程」時有這種感受嗎？&lt;/strong&gt; &lt;strong&gt;歡迎在評論區分享~&lt;/strong&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;strong&gt;本文經原作者授權，由&lt;/strong&gt; &lt;strong&gt;Baihai IDP&lt;/strong&gt; &lt;strong&gt;編譯。如需轉載譯文，請聯繫獲取授權。&lt;/strong&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;strong&gt;原文鏈接：&lt;/strong&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fgithub.com%2Fpotpie-ai%2Fpotpie%2Fwiki%2FHow-to-write-good-prompts-for-generating-code-from-LLMs" target="_blank"&gt;https://github.com/potpie-ai/potpie/wiki/How-to-write-good-prompts-for-generating-code-from-LLMs&lt;/a&gt;&lt;/p&gt;
                                                                                     &lt;/div&gt;
                                                                             </description>
-      <link>https://my.oschina.net/u/5783135/blog/18387813</link>
-      <guid isPermaLink="false">https://my.oschina.net/u/5783135/blog/18387813</guid>
-      <pubDate>Sat, 10 May 2025 03:36:00 GMT</pubDate>
+      <link>https://my.oschina.net/IDP/blog/18426598</link>
+      <guid isPermaLink="false">https://my.oschina.net/IDP/blog/18426598</guid>
+      <pubDate>Sun, 11 May 2025 02:10:00 GMT</pubDate>
       <author>原創</author>
     </item>
     <item>
-      <title>開源 AI 客戶端 Cherry Studio v1.3.3 正式發佈</title>
+      <title>OpenAI 發佈編程 Agent「Codex」</title>
       <description>&lt;div class="content"&gt;
                                                                     
-                                                        &lt;p&gt;Cherry Studio 是一款支持多個大語言模型（LLM）服務商的開源桌面客戶端，兼容 Windows、Mac 和 Linux 系統。&lt;/p&gt; 
-&lt;p&gt;&lt;img alt="" src="https://oscimg.oschina.net/oscnet/up-23dab8c50bfcc8126ab84229b00dbc2115c.png" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;p&gt;該項目近日發佈新版本 v1.3.0，包含了大量變更。&lt;/p&gt; 
-&lt;p&gt;&lt;strong&gt;一、新增功能亮點&lt;/strong&gt;&lt;/p&gt; 
-&lt;p&gt;v1.3.0 在模型支持、核心體驗及界面交互等方面均有顯著增強：&lt;/p&gt; 
-&lt;ol&gt; 
- &lt;li&gt; &lt;p&gt;&lt;strong&gt;模型與服務商拓展：&lt;/strong&gt;&lt;/p&gt; 
-  &lt;ul&gt; 
-   &lt;li&gt; &lt;p&gt;新增&amp;nbsp;&lt;strong&gt;Grok / X&lt;/strong&gt;&amp;nbsp;（#5706）。&lt;/p&gt; &lt;/li&gt; 
-   &lt;li&gt; &lt;p&gt;新增&amp;nbsp;&lt;strong&gt;n8n&lt;/strong&gt;&amp;nbsp;（含 Logo 及 URL） （#5776）。&lt;/p&gt; &lt;/li&gt; 
-   &lt;li&gt; &lt;p&gt;支持用戶&lt;strong&gt;自定義 Mini App&lt;/strong&gt;（#5731）。&lt;/p&gt; &lt;/li&gt; 
-   &lt;li&gt; &lt;p&gt;支持&lt;strong&gt;圖像編輯功能（&lt;/strong&gt;#5469）。&lt;/p&gt; &lt;/li&gt; 
-   &lt;li&gt; &lt;p&gt;支持 OpenAI 最新的&amp;nbsp;&lt;strong&gt;Responses API&lt;/strong&gt;&amp;nbsp;（#5621）。&lt;/p&gt; &lt;/li&gt; 
-   &lt;li&gt; &lt;p&gt;增強了 OpenRouter 中 Token 預算的計算邏輯 （#5625）。&lt;/p&gt; &lt;/li&gt; 
-   &lt;li&gt; &lt;p&gt;&lt;strong&gt;新增 Qwen3 系列模型支持&lt;/strong&gt;&amp;nbsp;（#5533）: 緊跟模型發展趨勢，集成最新的 Qwen3 系列大語言模型，為您提供更多先進模型選擇。&lt;/p&gt; &lt;/li&gt; 
-   &lt;li&gt; &lt;p&gt;&lt;strong&gt;新增 AI Hub Mix 繪畫服務商&lt;/strong&gt;&amp;nbsp;（#4503）: 繪畫功能再添新翼，集成 &lt;a href="https://www.oschina.net/action/GoToLink?url=http%3A%2F%2Fideogram.ai" target="_blank"&gt;ideogram.ai&lt;/a&gt; 的商用級別模型，並有繪圖，放大，混合等不同生圖模式。&lt;/p&gt; &lt;/li&gt; 
-   &lt;li&gt; &lt;p&gt;&lt;strong&gt;新增 Bocha 網頁搜索服務商&lt;/strong&gt;&amp;nbsp;（#5608）: 引入 Bocha 作為新的網頁搜索選項，沒錯，就是 DeepSeek 官網背後的搜索提供商。&lt;/p&gt; &lt;/li&gt; 
-   &lt;li&gt; &lt;p&gt;&lt;strong&gt;支持 DashScope Reranker&lt;/strong&gt;&amp;nbsp;（#5725）: 集成 DashScope Reranker，提升搜索結果與知識匹配的相關性。後已進一步整合為通用 Reranker （#5818）。&lt;/p&gt; &lt;/li&gt; 
-   &lt;li&gt; &lt;p&gt;&lt;strong&gt;OpenAI 服務商增強&lt;/strong&gt;：&lt;/p&gt; &lt;/li&gt; 
-   &lt;li&gt; &lt;p&gt;&lt;strong&gt;Claude 模型支持網頁搜索&lt;/strong&gt;&amp;nbsp;（#5771）: 為 Claude 打通了網絡搜索能力，確實又快又準。&lt;/p&gt; &lt;/li&gt; 
-   &lt;li&gt; &lt;p&gt;&lt;strong&gt;Gemini 安全設置調整&lt;/strong&gt;： Gemini 安全設置默認調整為關閉 （OFF），並升級了&amp;nbsp;@google/genai&amp;nbsp;依賴包 （#5763）。&lt;/p&gt; &lt;/li&gt; 
-   &lt;li&gt; &lt;p&gt;&lt;strong&gt;MiniApps 生態擴展&lt;/strong&gt;：&lt;/p&gt; &lt;/li&gt; 
-  &lt;/ul&gt; &lt;/li&gt; 
- &lt;li&gt; &lt;p&gt;&lt;strong&gt;核心交互與功能增強：&lt;/strong&gt;&lt;/p&gt; 
-  &lt;ul&gt; 
-   &lt;li&gt; &lt;p&gt;Cherry Studio 將有可能成為第一個同時支持&lt;strong&gt;函數調用 （Function Calling）&lt;/strong&gt;&amp;nbsp;和&lt;strong&gt;系統提示詞 （System Prompt）&lt;/strong&gt;&amp;nbsp;（#5499）的 MCP 工具！&lt;/p&gt; &lt;/li&gt; 
-   &lt;li&gt; &lt;p&gt;MCP 實現&lt;strong&gt;登錄 Shell 環境檢索&lt;/strong&gt;&amp;nbsp;（#5739），增強了與本地環境的交互能力。&lt;/p&gt; &lt;/li&gt; 
-   &lt;li&gt; &lt;p&gt;更新 MCP 自動安裝服務名稱及服務註冊邏輯 （#5751）。&lt;/p&gt; &lt;/li&gt; 
-   &lt;li&gt; &lt;p&gt;標準存儲協議：FTP，HTTP，SFTP，WebDAV 等&lt;/p&gt; &lt;/li&gt; 
-   &lt;li&gt; &lt;p&gt;對象存儲服務：azblob，gcs，obs，oss，s3 等&lt;/p&gt; &lt;/li&gt; 
-   &lt;li&gt; &lt;p&gt;文件存儲服務：fs， azdfs，hdfs，webhdfs， ipfs 等&lt;/p&gt; &lt;/li&gt; 
-   &lt;li&gt; &lt;p&gt;消費級存儲服務（網盤）：Google Drive，OneDrive，Dropbox 等&lt;/p&gt; &lt;/li&gt; 
-   &lt;li&gt; &lt;p&gt;Key Value 存儲服務：Memory，Redis，Rocksdb 等&lt;/p&gt; &lt;/li&gt; 
-   &lt;li&gt; &lt;p&gt;緩存服務：Ghac，Memcached 等&lt;/p&gt; &lt;/li&gt; 
-   &lt;li&gt; &lt;p&gt;優化知識庫內容提取邏輯 （#5470） 和識別 （#5707）。&lt;/p&gt; &lt;/li&gt; 
-   &lt;li&gt; &lt;p&gt;增強搜索功能，支持配置可選的 HTTP 選項 （#5765）。&lt;/p&gt; &lt;/li&gt; 
-   &lt;li&gt; &lt;p&gt;網頁搜索按鈕新增「禁用網頁搜索」選項 （#5717）。&lt;/p&gt; &lt;/li&gt; 
-   &lt;li&gt; &lt;p&gt;新增「**導出助手 （Agent）」**功能 （#5789），方便用戶分享和遷移個性化配置的助手。&lt;/p&gt; &lt;/li&gt; 
-   &lt;li&gt; &lt;p&gt;助手 （Agent） 支持配置「&lt;strong&gt;常用語」 （Regular Phrases）&lt;/strong&gt;&amp;nbsp;（#5775），並且這些常用語可以隨助手一同導出 （#5836）。&lt;/p&gt; &lt;/li&gt; 
-   &lt;li&gt; &lt;p&gt;&lt;strong&gt;對話主題自動重命名&lt;/strong&gt;&amp;nbsp;（#5504）: MessageThunk 集成此功能，可根據助手的回答智能更新當前對話的主題名稱，方便後續查找與管理。&lt;/p&gt; &lt;/li&gt; 
-   &lt;li&gt; &lt;p&gt;&lt;strong&gt;助手 （Agent） 能力提升&lt;/strong&gt;：&lt;/p&gt; &lt;/li&gt; 
-   &lt;li&gt; &lt;p&gt;&lt;strong&gt;知識庫與搜索優化&lt;/strong&gt;：&lt;/p&gt; &lt;/li&gt; 
-   &lt;li&gt; &lt;p&gt;&lt;strong&gt;遠程存儲方案&lt;/strong&gt;：新增基於&amp;nbsp;&lt;strong&gt;OpenDAL 的遠程存儲類&lt;/strong&gt;&amp;nbsp;（#2700），為數據備份與同步提供了更強大和靈活的基礎設施。以下方式都將成為可能：&lt;/p&gt; &lt;/li&gt; 
-   &lt;li&gt; &lt;p&gt;&lt;strong&gt;MCP （Model Control Program） 工具增強&lt;/strong&gt;：&lt;/p&gt; &lt;/li&gt; 
-   &lt;li&gt; &lt;p&gt;&lt;strong&gt;Prompt 顯示控制&lt;/strong&gt;&amp;nbsp;（#5439）: 新增選項，允許用戶控制是否在界面中顯示完整的 Prompt 內容。&lt;/p&gt; &lt;/li&gt; 
-   &lt;li&gt; &lt;p&gt;&lt;strong&gt;消息翻譯功能增強&lt;/strong&gt;&amp;nbsp;（#5684）: 翻譯後的消息旁新增了「複製」和「關閉」按鈕，操作更便捷。&lt;/p&gt; &lt;/li&gt; 
-   &lt;li&gt; &lt;p&gt;&lt;strong&gt;模型健康檢查支持流式響應&lt;/strong&gt;&amp;nbsp;（#5546）: 提升了檢查效率和用戶感知。&lt;/p&gt; &lt;/li&gt; 
-   &lt;li&gt; &lt;p&gt;&lt;strong&gt;多窗口數據同步&lt;/strong&gt;&amp;nbsp;（#5592）: 實現跨窗口狀態同步，例如自定義 CSS （#5596），確保多窗口體驗一致性。&lt;strong&gt;（劃重點！！！多窗口！！！！！可以發揮想象了）&lt;/strong&gt;&lt;/p&gt; &lt;/li&gt; 
-  &lt;/ul&gt; &lt;/li&gt; 
- &lt;li&gt; &lt;p&gt;&lt;strong&gt;界面與視覺體驗改進：&lt;/strong&gt;&lt;/p&gt; 
-  &lt;ul&gt; 
-   &lt;li&gt;&lt;strong&gt;新增界面縮放比例設置&lt;/strong&gt;&amp;nbsp;（#5665）: 用戶可根據屏幕和偏好調整整體界面顯示大小，同時提供本地化支持。&lt;/li&gt; 
-   &lt;li&gt;&lt;strong&gt;引入 Motion 動畫庫&lt;/strong&gt;&amp;nbsp;（#5869）: 為加載指示器 （Spinner）、消息塊等元素加入平滑動畫效果，提升視覺反饋的細膩度。&lt;/li&gt; 
-   &lt;li&gt;&lt;strong&gt;右鍵菜單新增「檢查元素」選項&lt;/strong&gt;&amp;nbsp;（#5807）: 並支持本地化，方便開發者和高級用戶調試。&lt;/li&gt; 
-   &lt;li&gt;&lt;strong&gt;引用列表樣式調整&lt;/strong&gt;&amp;nbsp;（#5516）: 對引用信息的展示樣式進行了優化。&lt;/li&gt; 
-   &lt;li&gt;&lt;strong&gt;工具調用結果展示樣式優化&lt;/strong&gt;&amp;nbsp;（#5758）:&amp;nbsp;的結果顯示更加清晰易讀。&lt;/li&gt; 
-  &lt;/ul&gt; &lt;/li&gt; 
- &lt;li&gt; &lt;p&gt;&lt;strong&gt;開發者與高級用戶選項：&lt;/strong&gt;&lt;/p&gt; 
-  &lt;ul&gt; 
-   &lt;li&gt;&lt;strong&gt;支持自定義助手地址&lt;/strong&gt;&amp;nbsp;（#5540）: 允許用戶指定私有或第三方助手服務的 API 地址。&lt;/li&gt; 
-   &lt;li&gt;&lt;strong&gt;新增開發文檔&lt;/strong&gt;&amp;nbsp;（#5476）: 添加了&amp;nbsp;messageBlock、messageThunk&amp;nbsp;和&amp;nbsp;useMessageOperations&amp;nbsp;的使用指南，方便二次開發或插件貢獻者。&lt;/li&gt; 
-   &lt;li&gt;&lt;strong&gt;主窗口監視器&lt;/strong&gt;&amp;nbsp;（#5532）: WindowService 新增了對渲染進程事件的主窗口監視器功能。&lt;/li&gt; 
-   &lt;li&gt;&lt;strong&gt;消息完成事件&lt;/strong&gt;&amp;nbsp;（#5696）: 現在會在消息處理完成時發出事件，供其他模塊或插件監聽。&lt;/li&gt; 
-  &lt;/ul&gt; &lt;/li&gt; 
-&lt;/ol&gt; 
-&lt;p&gt;&lt;strong&gt;二、重要優化與重構&lt;/strong&gt;&lt;/p&gt; 
-&lt;p&gt;為了提升應用的整體性能和可維護性，我們進行了多項底層重構和專項優化：&lt;/p&gt; 
-&lt;ol&gt; 
- &lt;li&gt; &lt;p&gt;&lt;strong&gt;網絡搜索模塊重構&lt;/strong&gt;&amp;nbsp;（#5291）: 全面重構了網絡搜索模塊，顯著提升了其易用性和穩定性，並支持通過快捷菜單快速切換搜索引擎。&lt;/p&gt; &lt;/li&gt; 
- &lt;li&gt; &lt;p&gt;&lt;strong&gt;消息塊 （Message Block） 結構與渲染優化&lt;/strong&gt;🎉&lt;/p&gt; &lt;p&gt;&lt;strong&gt;大活兒敲黑板！！&lt;/strong&gt;！Message Block 重構將為 MCP 調用，workflow/agent 運行，帶來更強的擴展性，大家可以猜 Cherry Studio 接下來的方向了！&lt;/p&gt; 
-  &lt;ul&gt; 
-   &lt;li&gt;對消息塊結構進行了重構 （#4660，&amp;nbsp;#5536），使其更加清晰和易於擴展。&lt;/li&gt; 
-   &lt;li&gt;優化了消息塊的渲染性能，例如通過&amp;nbsp;useMemo&amp;nbsp;緩存圖像塊組，減少不必要的重複渲染 （#5722）。&lt;/li&gt; 
-   &lt;li&gt;增強了圖片塊的渲染邏輯和樣式 （#5567）。&lt;/li&gt; 
-   &lt;li&gt;優化主文本塊 （MainTextBlock） 內容處理，如忽略&amp;nbsp;tool_use&amp;nbsp;標記以改善特定場景的顯示 （#5483）。&lt;/li&gt; 
-  &lt;/ul&gt; &lt;/li&gt; 
- &lt;li&gt; &lt;p&gt;&lt;strong&gt;性能提升專項&lt;/strong&gt;：&lt;/p&gt; 
-  &lt;ul&gt; 
-   &lt;li&gt;優化&amp;nbsp;標籤的顯示性能 （#5489）。&lt;/li&gt; 
-   &lt;li&gt;改進輸入框長文本粘貼性能 （#5580） 及按鈕狀態記憶 （#5577）。&lt;/li&gt; 
-   &lt;li&gt;為快捷面板 （Quick Panel） 和模型選擇彈窗 （SelectModelPopup） 引入&lt;strong&gt;虛擬列表 （Virtual List）&lt;/strong&gt; （#5594），大幅提升了在項目或模型數量較多時的加載和滾動性能。&lt;/li&gt; 
-  &lt;/ul&gt; &lt;/li&gt; 
- &lt;li&gt; &lt;p&gt;&lt;strong&gt;架構與代碼質量&lt;/strong&gt;：&lt;/p&gt; 
-  &lt;ul&gt; 
-   &lt;li&gt;&lt;strong&gt;窗口管理優化&lt;/strong&gt;： 分離 MiniWindow 與 MainWindow 的加載邏輯 （#5581）；優化 WindowService 中右鍵菜單的設置 （#5589） 和標題欄樣式及主題切換邏輯 （#5633）。&lt;/li&gt; 
-   &lt;li&gt;&lt;strong&gt;文本處理中間件&lt;/strong&gt;： 新增&amp;nbsp;extractReasoningMiddleware&amp;nbsp;（#5637） 以增強對文本中推理過程的提取與處理。&lt;/li&gt; 
-   &lt;li&gt;&lt;strong&gt;代碼清理&lt;/strong&gt;： 移除了未使用的選擇窗口 （#5586）、冗餘的局部變量 （#5654）、調試日誌 （#5722） 及無用文檔 （#5740），精簡了代碼庫。&lt;/li&gt; 
-   &lt;li&gt;&lt;strong&gt;自定義 CSS 功能簡化&lt;/strong&gt;： 通過新引入的跨窗口狀態同步機制，簡化了自定義 CSS 的實現 （#5596）。&lt;/li&gt; 
-   &lt;li&gt;&lt;strong&gt;模型列表樣式優化&lt;/strong&gt;： 改進了模型列表的視覺樣式和分組邏輯 （#5674）。&lt;/li&gt; 
-   &lt;li&gt;&lt;strong&gt;API/模型檢查邏輯優化&lt;/strong&gt;： 在檢查 API 或模型可用性時，優先嚐試啓用流式傳輸的檢查方式 （#5857）。&lt;/li&gt; 
-  &lt;/ul&gt; &lt;/li&gt; 
-&lt;/ol&gt; 
-&lt;p&gt;&lt;strong&gt;三、關鍵問題修復&lt;/strong&gt;&lt;/p&gt; 
-&lt;p&gt;我們細緻排查並修復了大量用戶反饋及內部測試發現的問題，以下列舉部分代表性修復：&lt;/p&gt; 
+                                                        &lt;p&gt;OpenAI 正式發佈編程 Agent 產品「Codex」。&lt;/p&gt; 
+&lt;p&gt;&lt;img alt="" src="https://oscimg.oschina.net/oscnet/up-0e12276316926445f454385b24aee64ca00.png" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p&gt;據介紹，Codex 是一款支持並行處理多個任務的雲端編程 Agent，能夠提供如編程功能、回答代碼庫的問題、修復錯誤等功能。&lt;/p&gt; 
+&lt;p&gt;&lt;img height="750" src="https://static.oschina.net/uploads/space/2025/0519/100634_jTO9_2720166.png" width="1336" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;img height="1578" src="https://static.oschina.net/uploads/space/2025/0519/100843_qXsH_2720166.png" width="1190" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p&gt;Codex 基於 codex-1 模型驅動，OpenAI 方面表示這一模型由 o3 模型針對編程進行優化而得來。codex-1 通過強化學習在各種環境中，對現實世界的編碼任務進行訓練，從而能夠生成接近人類風格和 PR 偏好的代碼。&lt;/p&gt; 
+&lt;p&gt;在 OpenAI 自己的代碼評估和內部基準測試中，codex-1 即使沒有 AGENTS.md 文件或自定義腳手架（custom scaffolding）也表現出色。&lt;/p&gt; 
+&lt;p&gt;目前，Codex 提供的是研究預覽版。使用方面，OpenAI 將會優先為 ChatGPT Pro 用戶、企業或團隊用戶提供 Codex，Plus 用戶和教育用戶也即將能體驗到。&lt;/p&gt; 
+&lt;p&gt;另外，OpenAI 還同時公佈了 codex-1 的小號版本，基於專為 Codex CLI 設計的 o4-mini 打造。模型型號為「codex-mini-latest」，API 定價為每百萬輸入 token 1.5 美元，每百萬輸出 token 6 美元。&lt;/p&gt; 
+&lt;p&gt;&lt;strong&gt;更多詳細內容查看 Codex 技術報告：&lt;/strong&gt;&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fopenai.com%2Findex%2Fintroducing-codex%2F" target="_blank"&gt;https://openai.com/index/introducing-codex/&lt;/a&gt;&lt;/p&gt;
+                                                                                &lt;/div&gt;
+                                                                            </description>
+      <link>https://www.oschina.net/news/350557/openai-codex</link>
+      <guid isPermaLink="false">https://www.oschina.net/news/350557/openai-codex</guid>
+      <pubDate>Sun, 11 May 2025 02:00:00 GMT</pubDate>
+      <author>來源: OSCHINA</author>
+    </item>
+    <item>
+      <title>又小又快截圖軟件：ScreenCapture（2.2.25）支持截長圖</title>
+      <description>&lt;div class="content"&gt;
+                                                                    
+                                                        &lt;p&gt;&lt;img alt="" height="468" src="https://oscimg.oschina.net/oscnet//022b124220ead36d2a012eb7f97857ce.png" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p style="color:#333333; margin-left:0; margin-right:0; text-align:left"&gt;ScreenCapture&amp;nbsp;截圖工具&amp;nbsp;&lt;strong&gt;體積小（8M 左右）&lt;/strong&gt;、僅一個可執行文件，無需安裝，不依賴任何動態鏈接庫。&lt;/p&gt; 
+&lt;p style="color:#333333; margin-left:0; margin-right:0; text-align:left"&gt;運行速度快、內存佔用低、CPU 使用率低。&lt;/p&gt; 
+&lt;p style="color:#333333; margin-left:0; margin-right:0; text-align:left"&gt;開源地址：&lt;a href="https://gitee.com/horsejs_admin/ScreenCapture"&gt;https://gitee.com/horsejs_admin/ScreenCapture&lt;/a&gt;&lt;/p&gt; 
+&lt;hr&gt; 
+&lt;p&gt;近 9 個版本的更新內容如下：&lt;/p&gt; 
 &lt;ul&gt; 
- &lt;li&gt;&lt;strong&gt;消息與知識庫&lt;/strong&gt;： 
+ &lt;li&gt;增強：改進繪製標號元素的用戶體驗： 
   &lt;ul&gt; 
-   &lt;li&gt;修復了消息在特定情況下未使用到知識庫內容的問題 （#5485）。&lt;/li&gt; 
-   &lt;li&gt;修復了知識庫 URL 錯誤 （#5735） 和引用列表加載相關問題 （#5742）。&lt;/li&gt; 
+   &lt;li&gt;鼠標按下即繪製一個默認大小的標號；&lt;/li&gt; 
+   &lt;li&gt;設置獨立的移動標號元素的 Dragger（標號正中心）；&lt;/li&gt; 
+   &lt;li&gt;設置獨立的改變大小的 Dragger；&lt;/li&gt; 
+   &lt;li&gt;設置獨立的改變箭頭位置的 Dragger；&lt;/li&gt; 
   &lt;/ul&gt; &lt;/li&gt; 
- &lt;li&gt;&lt;strong&gt;MCP 與工具調用&lt;/strong&gt;： 
+ &lt;li&gt;增強：允許通過命令行控制工具欄各個按鈕的位置、是否顯示等： 
   &lt;ul&gt; 
-   &lt;li&gt;修復了 MCP 調用失敗時，錯誤類型無法正確顯示的問題 （#5492）。&lt;/li&gt; 
-   &lt;li&gt;改進了 MCP 工具錯誤消息的格式化和響應處理 （#5565）。&lt;/li&gt; 
-   &lt;li&gt;修復了連接 OAuth MCP 服務器失敗的問題 （#5709）。&lt;/li&gt; 
-   &lt;li&gt;修正了&amp;nbsp;MessageTools&amp;nbsp;中輸入 schema 引用的問題，確保工具定義準確性 （#5804）。&lt;/li&gt; 
+   &lt;li&gt;指令：--tool:"rect,ellipse,arrow,number,line,text,mosaic,eraser,|,undo,redo,|,pin,clipboard,save,close"&lt;/li&gt; 
   &lt;/ul&gt; &lt;/li&gt; 
- &lt;li&gt;&lt;strong&gt;模型與服務商相關&lt;/strong&gt;： 
-  &lt;ul&gt; 
-   &lt;li&gt;修復了 Gemini 畫圖功能，並調整了默認圖片高度 （#5585，&amp;nbsp;#5658）。&lt;/li&gt; 
-   &lt;li&gt;修復了 Qwen3 模型檢查邏輯 （#5811） 和思考模式切換的相關問題 （#5781&amp;nbsp;的補充修復）。&lt;/li&gt; 
-   &lt;li&gt;修復了 OpenAI Provider 超時參數非整數的問題 （#5681）。&lt;/li&gt; 
-   &lt;li&gt;處理了 Anthropic 服務商中 Base64 文件通過 IPC 和文件管理的問題 （#5595）。&lt;/li&gt; 
-   &lt;li&gt;修復 Jina Embedding 錯誤 （#5839）。&lt;/li&gt; 
-  &lt;/ul&gt; &lt;/li&gt; 
- &lt;li&gt;&lt;strong&gt;界面與交互&lt;/strong&gt;： 
-  &lt;ul&gt; 
-   &lt;li&gt;修復了 TopicsTab 中使用&amp;nbsp;onMouseEnter&amp;nbsp;可能導致的問題，改為&amp;nbsp;onContextMenu&amp;nbsp;（#5459）。&lt;/li&gt; 
-   &lt;li&gt;修復了中止操作時意外覆蓋 Block 狀態的問題 （#5547）。&lt;/li&gt; 
-   &lt;li&gt;修復了流式響應中&amp;nbsp;thinking&amp;nbsp;狀態刷新不及時的問題 （#5557），以及&amp;nbsp;resetHasReasoningContent&amp;nbsp;的邏輯 （#5563）。&lt;/li&gt; 
-   &lt;li&gt;確保&amp;nbsp;messageThunk&amp;nbsp;中只有在響應中不存在用量信息時才估算用量 （#5553）。&lt;/li&gt; 
-   &lt;li&gt;修復了暗黑主題下引用列表顯示問題及 URL 重複請求的問題 （#5752）。&lt;/li&gt; 
-   &lt;li&gt;修復了文件頁面滾動條異常 （#5619， 對應 #5618）。&lt;/li&gt; 
-   &lt;li&gt;修復了代碼塊不必要的邊框和圓角 （#5773）。&lt;/li&gt; 
-   &lt;li&gt;修復了輸入框在特定情況下&amp;nbsp;isComposing&amp;nbsp;狀態判斷不準 （#5848） 及焦點獲取 （#5860）、選區重置的問題 （#5866）。&lt;/li&gt; 
-   &lt;li&gt;修復了 SelectModelPopup 中列表吸頂 （#5795） 和滾動行為 （#5812）。&lt;/li&gt; 
-   &lt;li&gt;修復了條件性顯示「加載更多」微調器 （spinner） 的邏輯 （#5670） 和無限滾動佈局 （#5671）。&lt;/li&gt; 
-  &lt;/ul&gt; &lt;/li&gt; 
- &lt;li&gt;&lt;strong&gt;功能性修復&lt;/strong&gt;： 
-  &lt;ul&gt; 
-   &lt;li&gt;修復了&amp;nbsp;messageThunk&amp;nbsp;中重置消息邏輯，確保包含模型信息 （#5632）。&lt;/li&gt; 
-   &lt;li&gt;修復了 WebDAV 本地備份文件存儲路徑錯誤的問題 （#5643）。&lt;/li&gt; 
-   &lt;li&gt;規範化模型 ID 為小寫，確保一致性 （#5642）。&lt;/li&gt; 
-   &lt;li&gt;修復了「網頁搜索」和「清除上下文」在某些情況下不工作的問題 （#5677）。&lt;/li&gt; 
-   &lt;li&gt;修復了&amp;nbsp;StoreSyncService&amp;nbsp;在註冊 IPC 處理器時設置標誌的 bug （#5715）。&lt;/li&gt; 
-   &lt;li&gt;修復了聊天消息翻譯的問題 （#5682）。&lt;/li&gt; 
-   &lt;li&gt;確保在創建消息塊時包含&amp;nbsp;thinking_millsec&amp;nbsp;（#5685）。&lt;/li&gt; 
-   &lt;li&gt;修復了記憶助手時未同時記憶所選模型的問題 （#5701）。&lt;/li&gt; 
-   &lt;li&gt;修復了 MCP 服務器類型判斷邏輯 （#5769）。&lt;/li&gt; 
-   &lt;li&gt;修復了從 MCP 響應中顯示圖片的問題 （#5780）。&lt;/li&gt; 
-   &lt;li&gt;修復了用戶消息用量統計錯誤 （#5657）。&lt;/li&gt; 
-   &lt;li&gt;修復了一系列下一版本（指 1.3.0）發佈前的各類小問題 （#5801）。&lt;/li&gt; 
-  &lt;/ul&gt; &lt;/li&gt; 
+ &lt;li&gt;增強：截長圖/滾動截圖指令：--cap:long&lt;/li&gt; 
 &lt;/ul&gt; 
-&lt;p&gt;&lt;strong&gt;四、其他更新&lt;/strong&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;img height="592" src="https://oscimg.oschina.net/oscnet/up-48430184c33cb5918d43692c1d91214b88b.png" width="1016" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
 &lt;ul&gt; 
- &lt;li&gt;&lt;strong&gt;國際化 （i18n）&lt;/strong&gt;: 
-  &lt;ul&gt; 
-   &lt;li&gt;補充了俄語缺失的翻譯 （#5631）。&lt;/li&gt; 
-   &lt;li&gt;更新了多語言機器翻譯文本，採用 Qwen3 236B 模型進行翻譯 （#5840）。&lt;/li&gt; 
-  &lt;/ul&gt; &lt;/li&gt; 
- &lt;li&gt;&lt;strong&gt;依賴更新&lt;/strong&gt;： 
-  &lt;ul&gt; 
-   &lt;li&gt;升級&amp;nbsp;electron-updater&amp;nbsp;至 v6.6.4 並移除了相關補丁 （#5650）。&lt;/li&gt; 
-   &lt;li&gt;升級&amp;nbsp;electron-builder&amp;nbsp;至 v26.0.15 （#5651）。&lt;/li&gt; 
-   &lt;li&gt;這些更新有助於提升應用的底層穩定性和打包效率。&lt;/li&gt; 
-  &lt;/ul&gt; &lt;/li&gt; 
- &lt;li&gt;&lt;strong&gt;文檔&lt;/strong&gt;： 
-  &lt;ul&gt; 
-   &lt;li&gt;新增了項目**架構概覽文檔** （#5824）。&lt;/li&gt; 
-  &lt;/ul&gt; &lt;/li&gt; 
-&lt;/ul&gt; 
-&lt;p&gt;Cherry Studio v1.3.0 是一次包含了大量改進的綜合性版本更新，不僅致力於新的功能，更持續投入前瞻的技術路線，並積極修復各類已知問題。都旨在提供一個更加先進，穩定，高效且易於使用的 AI 交互與管理平台。&lt;/p&gt; 
-&lt;p&gt;下載地址：&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fgithub.com%2FCherryHQ%2Fcherry-studio%2Freleases%2Ftag%2Fv1.3.3" target="_blank"&gt;https://github.com/CherryHQ/cherry-studio/releases/tag/v1.3.3&lt;/a&gt;&lt;/p&gt;
+ &lt;li&gt;修復：跨屏截圖在特殊情況下無法覆蓋全屏區域的問題。&lt;/li&gt; 
+ &lt;li&gt;修復：工具欄按鈕顯示 tool tip 時，有時會導致 Hover 樣式失效。&lt;/li&gt; 
+ &lt;li&gt;修復：&lt;span style="background-color:#ffffff; color:#1f2328"&gt;--tools 指令傳入的按鈕與實際所能控制的按鈕不符時，導致按鈕出現錯亂的問題。&lt;/span&gt;&lt;/li&gt; 
+ &lt;li&gt;&lt;span style="background-color:#ffffff; color:#1f2328"&gt;修復：&lt;/span&gt;繪製標號①，再 undo 此標號，再繪製新的標號，標號數字應該還是①，不應該是②。&lt;/li&gt; 
+ &lt;li&gt;修復：undo 元素之後，再繪製新元素時應該先刪除 undo 的元素。&lt;/li&gt; 
+ &lt;li&gt;修復：主工具條位於截圖區域內部或截圖區域頂部時，顯示子工具條，子工具條位置不準確的問題。&lt;/li&gt; 
+ &lt;li&gt;修復：Ctrl+H 與 Ctrl+R 快捷鍵的行為搞反了的問題&lt;/li&gt; 
+ &lt;li&gt;修復：工具條位置不準的問題（工具條不會自動尋找剩餘空間定位）。&lt;/li&gt; 
+ &lt;li&gt;修復：在 Win11 下無法通過命令行釘住剪切板內的圖像的問題&lt;/li&gt; 
+ &lt;li&gt;優化：保存文件，點擊文件保存對話框的取消按鈕，應用不應退出。&lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;優化：繪製元素時優先使用紅色。繪製箭頭、標號元素時默認使用填充效果。&lt;/p&gt; &lt;/li&gt; 
+&lt;/ul&gt;
                                                                                 &lt;/div&gt;
                                                                             </description>
-      <link>https://www.oschina.net/news/350183/cherry-studio-1-3-3</link>
-      <guid isPermaLink="false">https://www.oschina.net/news/350183/cherry-studio-1-3-3</guid>
-      <pubDate>Sat, 10 May 2025 03:27:00 GMT</pubDate>
-      <author>來源: OSCHINA</author>
-    </item>
-    <item>
-      <title>Dify.AI 開源兩週年更新品牌形象，堅持「讓每一個想法變成 AI Agent」的使命</title>
-      <description>&lt;div class="content"&gt;
-                                                                    
-                                                        &lt;p&gt;開源 AI 應用開發平台 Dify.AI &lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fdify.ai%2Fblog%2Four-vision-takes-shape-imagine-if" target="_blank"&gt;迎來了兩週年&lt;/a&gt;。在慶祝之際，Dify 發佈了全新的品牌形象和外觀。&lt;/p&gt; 
-&lt;p&gt;&lt;img src="https://static.oschina.net/uploads/space/2025/0516/111845_qi60_2720166.png" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;p&gt;&lt;img alt="" src="https://oscimg.oschina.net/oscnet/up-a96b9b86bb6e4f0894313ba038203e4ef27.png" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;p&gt;Dify 的使命保持不變，即讓每一個想法都能變成 AI Agent。新的品牌口號強調&lt;strong&gt;「如果」你能想到，通過 Dify 你就能構建它&lt;/strong&gt;。&lt;/p&gt; 
-&lt;p&gt;&lt;img src="https://static.oschina.net/uploads/space/2025/0516/111557_HOat_2720166.png" referrerpolicy="no-referrer"&gt;&lt;/p&gt;
-                                                                                &lt;/div&gt;
-                                                                            </description>
-      <link>https://www.oschina.net/news/350181</link>
-      <guid isPermaLink="false">https://www.oschina.net/news/350181</guid>
-      <pubDate>Sat, 10 May 2025 03:19:00 GMT</pubDate>
-      <author>來源: OSCHINA</author>
-    </item>
-    <item>
-      <title>Ollama 發佈 v0.7.0，增強多模態能力並引入多項優化</title>
-      <description>&lt;div class="content"&gt;
-                                                                    
-                                                        &lt;p&gt;Ollama v0.7.0 已發佈，帶來了顯著的功能增強和性能優化，引入了新引擎支持多模態模型，並支持 WebP 圖像作為輸入。&lt;/p&gt; 
-&lt;ul&gt; 
- &lt;li&gt;&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Follama.com%2Flibrary%2Fllama4" target="_blank"&gt;Meta Llama 4&lt;/a&gt;&lt;/li&gt; 
- &lt;li&gt;&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Follama.com%2Flibrary%2Fgemma3" target="_blank"&gt;Google Gemma 3&lt;/a&gt;&lt;/li&gt; 
- &lt;li&gt;&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Follama.com%2Flibrary%2Fqwen2.5vl" target="_blank"&gt;Qwen 2.5 VL&lt;/a&gt;&lt;/li&gt; 
- &lt;li&gt;&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Follama.com%2Flibrary%2Fmistral-small3.1" target="_blank"&gt;Mistral Small 3.1&lt;/a&gt;&lt;/li&gt; 
- &lt;li&gt;&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Follama.com%2Fsearch%3Fc%3Dvision" target="_blank"&gt;以及更多視覺模型&lt;/a&gt;&lt;/li&gt; 
-&lt;/ul&gt; 
-&lt;p&gt;&lt;img alt="" src="https://oscimg.oschina.net/oscnet/up-1544228c9bc0e0796a2f5bdf0b0f977cc61.png" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;p&gt;其他更新內容包括：&lt;/p&gt; 
-&lt;ul&gt; 
- &lt;li&gt;修復 Windows 上運行模型出現的空白終端窗口&lt;/li&gt; 
- &lt;li&gt;修復&amp;nbsp;&lt;code&gt;NVIDIA GPU&lt;/code&gt;&amp;nbsp;運行&amp;nbsp;&lt;code&gt;Llama 4&lt;/code&gt;&amp;nbsp;的錯誤&lt;/li&gt; 
- &lt;li&gt;優化&amp;nbsp;&lt;code&gt;ollama run&lt;/code&gt;&amp;nbsp;發送圖片時去除引號&lt;/li&gt; 
- &lt;li&gt;提升&amp;nbsp;&lt;code&gt;ollama create&lt;/code&gt;&amp;nbsp;導入&amp;nbsp;&lt;code&gt;safetensors&lt;/code&gt;&amp;nbsp;模型性能&lt;/li&gt; 
- &lt;li&gt;提升&amp;nbsp;&lt;code&gt;Qwen3 MoE&lt;/code&gt;&amp;nbsp;在&amp;nbsp;&lt;code&gt;macOS&lt;/code&gt;&amp;nbsp;上的提示處理速度&lt;/li&gt; 
- &lt;li&gt;修復結構化輸出請求中大型&amp;nbsp;&lt;code&gt;JSON&lt;/code&gt;&amp;nbsp;模式導致錯誤&lt;/li&gt; 
- &lt;li&gt;API 對不允許方法返回&amp;nbsp;&lt;code&gt;405&lt;/code&gt;&amp;nbsp;錯誤碼&lt;/li&gt; 
- &lt;li&gt;以及修復模型卸載後進程持續運行的問題&lt;/li&gt; 
-&lt;/ul&gt; 
-&lt;blockquote&gt; 
- &lt;p style="margin-left:0; margin-right:0"&gt;Ollama 是一個開源的本地大語言模型運行框架，簡化了利用 llama.cpp 後端運行各種 LLM 以及與其他桌面軟件方便集成的過程，為普通用戶提供簡單易用的大語言模型（LLM）的本地部署和管理。&lt;/p&gt; 
- &lt;p style="margin-left:0; margin-right:0"&gt;它支持多種先進的模型，如 LLaMA、DeepSeek、Mistral 等，並提供簡單易用的界面和 API。Ollama 的特點包括輕量級設計、跨平台支持（Windows、Linux、macOS）、模型微調與自定義功能，以及高效的推理性能。&lt;/p&gt; 
- &lt;p style="margin-left:0; margin-right:0"&gt;由於其便捷性和開源特性，Ollama 獲得了大量用戶的青睞，被廣泛用於本地部署 DeepSeek 等大模型。&lt;/p&gt; 
- &lt;p style="margin-left:0; margin-right:0"&gt;&lt;img alt="" src="https://static.oschina.net/uploads/space/2025/0304/120325_4P9T_2720166.png" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;/blockquote&gt; 
-&lt;p&gt;下載地址：&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fgithub.com%2Follama%2Follama%2Freleases%2Ftag%2Fv0.7.0" target="_blank"&gt;https://github.com/ollama/ollama/releases/tag/v0.7.0&lt;/a&gt;&lt;/p&gt;
-                                                                                &lt;/div&gt;
-                                                                            </description>
-      <link>https://www.oschina.net/news/350178/ollama-0-7-0</link>
-      <guid isPermaLink="false">https://www.oschina.net/news/350178/ollama-0-7-0</guid>
-      <pubDate>Sat, 10 May 2025 03:12:00 GMT</pubDate>
-      <author>來源: OSCHINA</author>
-    </item>
-    <item>
-      <title>Meta 推遲發佈旗艦級 AI 模型 Behemoth</title>
-      <description>&lt;div class="content"&gt;
-                                                                    
-                                                        &lt;p style="color:#31424e; margin-left:0; margin-right:0; text-align:start"&gt;&lt;u&gt;&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fwww.reddit.com%2Fr%2FLocalLLaMA%2Fcomments%2F1knh1yd%2Fmeta_delaying_the_release_of_behemoth%2F" target="_blank"&gt;根據《華爾街日報》的獨家報道&lt;/a&gt;&lt;/u&gt;，Meta 推遲了其旗艦級 AI 模型 Behemoth 的發佈計劃，因為擔心它可能不足以超越之前的模型。&lt;/p&gt; 
-&lt;p style="color:#31424e; margin-left:0; margin-right:0; text-align:start"&gt;&lt;img height="728" src="https://static.oschina.net/uploads/space/2025/0516/110114_Pa6U_2720166.png" width="1264" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;p&gt;報道稱，《Behemoth》預計將於秋季甚至更晚發佈。它原定於上個月與 Meta 的 Llamacon 活動同時發佈，後來被推遲到六月。該公司也有可能加快 Behemoth 的有限發佈速度。&lt;/p&gt; 
-&lt;p&gt;&lt;img alt="" src="https://oscimg.oschina.net/oscnet/up-723de3325b3806234d8d9a1c426f8427caf.png" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;p&gt;Meta 在其人工智能項目上投入了數百億美元，直到最近，它才取得了快速進展，趕上了谷歌和 OpenAI 等競爭對手。Meta 的失望反映了人工智能行業內部更廣泛的擔憂，即依賴於擴大模型的進步可能會陷入停滯。&lt;/p&gt; 
-&lt;p style="color:#31424e; margin-left:0; margin-right:0; text-align:start"&gt;OpenAI 在推出 GPT 4.0 之後的一體化下一代大型模型方面面臨着諸多障礙。因此，這家 ChatGPT 開發者推出了一系列獨立的模型，其中一些專注於推理，另一些專注於編碼和技術工作。據報道，谷歌和 Anthropic 在最近訓練最大模型的努力中也遇到了挫折。&lt;/p&gt;
-                                                                                &lt;/div&gt;
-                                                                            </description>
-      <link>https://www.oschina.net/news/350173/meta-is-delaying-release-its-behemoth-ai-model</link>
-      <guid isPermaLink="false">https://www.oschina.net/news/350173/meta-is-delaying-release-its-behemoth-ai-model</guid>
-      <pubDate>Sat, 10 May 2025 03:02:00 GMT</pubDate>
-      <author>來源: OSCHINA</author>
-    </item>
-    <item>
-      <title>阿里：AI 將通過雲端涉及各行各業</title>
-      <description>&lt;div class="content"&gt;
-                                                                    
-                                                        &lt;p&gt;5 月 15 日，阿里巴巴集團公佈 2025 財年第四季度及全年業績。 &amp;nbsp; &amp;nbsp;&lt;/p&gt; 
-&lt;p&gt;&lt;img src="https://static.oschina.net/uploads/space/2025/0516/104842_qqHa_2720166.png" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;p&gt;根據財報，截至 2025 年 3 月 31 日止季度，收入為人民幣 2364.54 億元（325.84 億美元），同比增長 7%。經營利潤為人民幣 284.65 億元（39.23 億美元），同比增長 93%；歸屬於普通股股東的淨利潤為人民幣 123.82 億元（17.06 億美元）；淨利潤為人民幣 119.73 億元（16.50 億美元），同比增長 1203%。&lt;/p&gt; 
-&lt;p&gt;截至 2025 年 3 月 31 日止財務年度，收入為人民幣 9963.47 億元（1373.00 億美元），同比增長 6%；經營利潤為人民幣 1,409.05 億元（194.17 億美元），同比增長 24%；歸屬於普通股股東的淨利潤為人民幣 1294.70 億元（178.41 億美元）；淨利潤為人民幣 1259.76 億元（173.60 億美元），同比增長 77%。2025 財年的非公認會計準則淨利潤為人民幣 1581.22 億元（217.90 億美元），相較於 2024 財年的人民幣 1574.79 億元保持平穩。&lt;/p&gt; 
-&lt;p&gt;其中阿里雲表現突出：&lt;/p&gt; 
-&lt;blockquote&gt; 
- &lt;p&gt;截至 2025 年 3 月 31 日止的季度，阿里雲收入 301.27 億元同比增長 18%，AI 相關收入連續七個季度三位數增長。&lt;/p&gt; 
-&lt;/blockquote&gt; 
-&lt;p&gt;阿里方面表示，&lt;strong&gt;這一增長勢頭主要由更快的公共雲收入增長帶動，包括 AI 相關產品的採用增加&lt;/strong&gt;。AI 相關產品在眾多的行業垂直領域獲得更廣泛應用，包括互聯網、零售、製造業和媒體，並越來越側重於增值應用。&lt;/p&gt; 
-&lt;p&gt;而在隨後的財報分析師電話會上，阿里雲表示，目前仍有很多中小企業或者個人商戶需要應用 AI，但本地佈局成本較高，隨着 AI 的強大動力搬遷至雲端，像養殖業、製造業，甚至是義烏小商品城，都能夠通過雲端進行 AI 佈局從而幫助自身。&lt;/p&gt; 
-&lt;p&gt;阿里進一步表示，未來幾個季度阿里雲的營收增速還在處於一個上升通道。其認為，基於傳統的 CPU 的計算在轉向 AI 計算，就現在看到的情況而言，阿里雲對未來幾個季度阿里雲的營收增速還在處於一個上升通道，還是抱有一個比較強的信心。&lt;/p&gt; 
-&lt;p&gt;值得一提的是，今年 2 月阿里巴巴集團 CEO 吳泳銘宣佈，未來三年，阿里將投入超過 3,800 億元，用於建設雲和 AI 硬件基礎設施，總額超過去十年總和。&lt;/p&gt; 
-&lt;p&gt;阿里雲方面也強調，&lt;strong&gt;其正以 AI 為中心，全面重構底層硬件、計算、存儲、大數據等各方面，並與 AI 場景有機適配、融合，加速模型的開發和應用，打造一個 AI 時代的最強 AI 基建&lt;/strong&gt;。&lt;/p&gt;
-                                                                                &lt;/div&gt;
-                                                                            </description>
-      <link>https://www.oschina.net/news/350167</link>
-      <guid isPermaLink="false">https://www.oschina.net/news/350167</guid>
-      <pubDate>Sat, 10 May 2025 02:50:00 GMT</pubDate>
-      <author>來源: OSCHINA</author>
-    </item>
-    <item>
-      <title>微軟 Copilot 應用開始支持「Hey Copilot」語音喚醒詞</title>
-      <description>&lt;div class="content"&gt;
-                                                                    
-                                                        &lt;p&gt;微軟於 5 月 14 日&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fblogs.windows.com%2Fwindows-insider%2F2025%2F05%2F14%2Fcopilot-on-windows-hey-copilot-begins-rolling-out-to-windows-insiders%2F" target="_blank"&gt;發佈博文&lt;/a&gt;，邀請 Windows Insider 項目成員測試新版 Microsoft Copilot 應用程序（版本 1.25051.10.0 及以上）。&lt;/p&gt; 
-&lt;p&gt;&lt;img alt="" src="https://oscimg.oschina.net/oscnet/up-5a34382c61b9b7b18278a027534f39f7e0d.png" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;p&gt;用戶在新版 Copilot 應用中啓用相關選項後，可通過「Hey Copilot」喚醒詞，在 PC 解鎖且功能開啓時、喚醒 Copilot 開啓 AI 聊天，無需點擊或輸入。微軟表示，用戶在工作或思考時無需手動操作，即可獲得幫助。&lt;/p&gt; 
-&lt;p&gt;提問時，屏幕會顯示 Copilot 麥克風圖標，並伴隨提示音，表明 Copilot 正在傾聽。結束對話可點擊 X 按鈕，或在幾秒無交互後自動結束，併發出確認音。&lt;/p&gt; 
-&lt;p&gt;微軟強調，設備僅在本地識別喚醒詞，採用 10 秒內存音頻緩衝區，不錄音或本地存儲數據。一旦識別到喚醒詞，Copilot Voice 浮動界面將出現，隨後音頻會傳輸至雲端處理用戶請求。&lt;/p&gt;
-                                                                                &lt;/div&gt;
-                                                                            </description>
-      <link>https://www.oschina.net/news/350160/copilot-on-windows-hey-copilot</link>
-      <guid isPermaLink="false">https://www.oschina.net/news/350160/copilot-on-windows-hey-copilot</guid>
-      <pubDate>Sat, 10 May 2025 02:17:00 GMT</pubDate>
-      <author>來源: OSCHINA</author>
-    </item>
-    <item>
-      <title>雷軍：小米自研手機 SoC 芯片「玄戒 O1」將於 5 月下旬發佈</title>
-      <description>&lt;div class="content"&gt;
-                                                                    
-                                                        &lt;p&gt;&lt;span style="color:#000000"&gt;小米集團創始人雷軍發佈微博透露，造芯十年，小米自主研發設計的手機 SoC 芯片名字叫「玄戒 O1」，將在 5 月下旬發佈。&lt;/span&gt;&lt;/p&gt; 
-&lt;blockquote&gt; 
- &lt;p&gt;&lt;span style="color:#000000"&gt;和大家分享一條消息：&lt;/span&gt;&lt;/p&gt; 
- &lt;p&gt;&lt;span style="color:#000000"&gt;小米自主研發設計的手機 SoC 芯片，名字叫，玄戒 O1，即將在 5 月下旬發佈。&lt;/span&gt;&lt;/p&gt; 
- &lt;p&gt;&lt;span style="color:#000000"&gt;感謝大家支持！&lt;/span&gt;&lt;/p&gt; 
-&lt;/blockquote&gt; 
-&lt;p&gt;&lt;span style="color:#000000"&gt;&lt;img height="266" src="https://oscimg.oschina.net/oscnet/up-a36d75d9b55368c7956744282be4ebb4cec.png" width="500" referrerpolicy="no-referrer"&gt;&lt;/span&gt;&lt;/p&gt; 
-&lt;p&gt;&lt;span style="color:#000000"&gt;&lt;img height="274" src="https://oscimg.oschina.net/oscnet/up-4d662277ff9587e8953da3929f020383f21.png" width="500" referrerpolicy="no-referrer"&gt;&lt;/span&gt;&lt;/p&gt; 
-&lt;p&gt;&lt;span style="color:#000000"&gt;對此，人民網也發文點評稱：「最近一年，小米在新能源汽車、國產芯片等領域接連帶來突破創新。這證明瞭，只要堅定實幹，就沒有不可逾越的高山；只要奮起直追，後來者永遠有機會。」&lt;/span&gt;&lt;/p&gt; 
-&lt;p&gt;&lt;span style="color:#000000"&gt;&lt;img height="332" src="https://oscimg.oschina.net/oscnet/up-5bd8371176fd6755e7b2635cd8c858f5fce.png" width="500" referrerpolicy="no-referrer"&gt;&amp;nbsp;&lt;/span&gt;&lt;/p&gt;
-                                                                                &lt;/div&gt;
-                                                                            </description>
-      <link>https://www.oschina.net/news/350157</link>
-      <guid isPermaLink="false">https://www.oschina.net/news/350157</guid>
-      <pubDate>Sat, 10 May 2025 02:13:00 GMT</pubDate>
-      <author>來源: OSCHINA</author>
+      <link>https://www.oschina.net/news/350353/screen-capture-2-2-25</link>
+      <guid isPermaLink="false">https://www.oschina.net/news/350353/screen-capture-2-2-25</guid>
+      <pubDate>Fri, 09 May 2025 02:28:00 GMT</pubDate>
+      <author>來源: 投稿</author>
     </item>
   </channel>
 </rss>
