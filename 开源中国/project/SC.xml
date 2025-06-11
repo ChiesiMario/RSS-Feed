@@ -7,8 +7,632 @@
     <generator>RSSHub</generator>
     <webMaster>contact@rsshub.app (RSSHub)</webMaster>
     <language>zh-cn</language>
-    <lastBuildDate>Wed, 11 Jun 2025 02:43:08 GMT</lastBuildDate>
+    <lastBuildDate>Wed, 11 Jun 2025 07:42:50 GMT</lastBuildDate>
     <ttl>5</ttl>
+    <item>
+      <title>轻量级 ioc 框架 loveqq，支持接口上传 jar 格式的 starter 启动器并支持热加载其中的 bean</title>
+      <description>&lt;div class="content"&gt;
+                                                                    
+                                                        &lt;p&gt;热加载 starter 启动器代码示例：&lt;/p&gt; 
+&lt;pre&gt;&lt;code class="language-java"&gt;package com.kfyty.demo;
+
+import com.kfyty.loveqq.framework.boot.K;
+import com.kfyty.loveqq.framework.boot.context.ContextRefresher;
+import com.kfyty.loveqq.framework.core.autoconfig.annotation.Autowired;
+import com.kfyty.loveqq.framework.core.autoconfig.annotation.BootApplication;
+import com.kfyty.loveqq.framework.core.autoconfig.annotation.Component;
+import com.kfyty.loveqq.framework.core.autoconfig.condition.annotation.ConditionalOnMissingBean;
+import com.kfyty.loveqq.framework.core.lang.JarIndexClassLoader;
+import com.kfyty.loveqq.framework.core.utils.IOC;
+import com.kfyty.loveqq.framework.web.core.annotation.GetMapping;
+import com.kfyty.loveqq.framework.web.core.annotation.RequestMapping;
+import com.kfyty.loveqq.framework.web.core.annotation.RestController;
+import com.kfyty.loveqq.framework.web.core.autoconfig.annotation.EnableWebMvc;
+import com.kfyty.loveqq.framework.web.core.multipart.MultipartFile;
+import lombok.extern.slf4j.Slf4j;
+
+import java.io.File;
+import java.io.IOException;
+import java.io.OutputStream;
+import java.security.cert.Extension;
+import java.util.Collections;
+import java.util.UUID;
+import java.util.jar.JarFile;
+
+@Slf4j
+@EnableWebMvc
+@RestController
+@BootApplication
+@RequestMapping(expose = true)                  // 自动暴露 public 方法为 POST http 接口
+public class Main {
+    @Autowired
+    private Extension extension;
+
+    /**
+     * 测试接口
+     */
+    @GetMapping
+    public String sayHello() {
+        return extension.getId();
+    }
+
+    /**
+     * 加载插件
+     *
+     * @param jar jar 包，启动器
+     * @return 上传后的 jar 包绝对路径，卸载启动器时需要提供该返回值
+     */
+    public String loadPlugin(MultipartFile jar) throws Exception {
+        // 保存到本地
+        String filePath = "D:\\temp\\jar\\" + UUID.randomUUID().toString().replace("-", "") + "\\" + jar.getOriginalFilename();
+        File jarFile = new File(filePath);
+        jar.transferTo(jarFile);
+
+        // 添加到框架 ClassLoader
+        JarIndexClassLoader classLoader = (JarIndexClassLoader) IOC.class.getClassLoader();
+        classLoader.addJarIndex(Collections.singletonList(new JarFile(jarFile)));
+
+        // 刷新上下文
+        ContextRefresher.refresh(IOC.getApplicationContext());
+
+        return jarFile.getAbsolutePath();
+    }
+
+    /**
+     * 卸载启动器
+     *
+     * @param jarPath {@link #loadPlugin(MultipartFile)} 的返回值
+     */
+    public String unloadPlugin(String jarPath) throws Exception {
+        // 构建 File 对象
+        File jarFile = new File(jarPath);
+
+        // 从框架 ClassLoader 移除
+        JarIndexClassLoader classLoader = (JarIndexClassLoader) IOC.class.getClassLoader();
+        classLoader.removeJarIndex(Collections.singletonList(new JarFile(jarFile)));
+
+        // 刷新上下文
+        ContextRefresher.refresh(IOC.getApplicationContext());
+
+        return "ok";
+    }
+
+    public static void main(String[] args) throws Exception {
+        K.run(Main.class, args);
+    }
+
+    /**
+     * 默认实现
+     */
+    @Component
+    @ConditionalOnMissingBean(Extension.class)
+    public static class DefaultExtension implements Extension {
+
+        @Override
+        public String getId() {
+            return "default";
+        }
+
+        @Override
+        public boolean isCritical() {
+            return false;
+        }
+
+        @Override
+        public byte[] getValue() {
+            return new byte[0];
+        }
+
+        @Override
+        public void encode(OutputStream out) throws IOException {
+
+        }
+    }
+
+}
+&lt;/code&gt;&lt;/pre&gt; 
+&lt;p&gt;然后，新建一个项目，添加如下类：&lt;/p&gt; 
+&lt;pre&gt;&lt;code class="language-java"&gt;package com.kfyty.graal.example;
+
+import com.kfyty.loveqq.framework.core.autoconfig.annotation.Component;
+
+import java.io.IOException;
+import java.io.OutputStream;
+import java.security.cert.Extension;
+
+/**
+ * 动态加载示例实现
+ */
+@Component
+public class ExampleExtension implements Extension {
+
+    @Override
+    public String getId() {
+        return "example";
+    }
+
+    @Override
+    public boolean isCritical() {
+        return false;
+    }
+
+    @Override
+    public byte[] getValue() {
+        return new byte[0];
+    }
+
+    @Override
+    public void encode(OutputStream out) throws IOException {
+
+    }
+}
+&lt;/code&gt;&lt;/pre&gt; 
+&lt;p&gt;并在&amp;nbsp;k.factories 中添加：&lt;/p&gt; 
+&lt;pre&gt;&lt;code class="language-bash"&gt;com.kfyty.loveqq.framework.core.autoconfig.annotation.EnableAutoConfiguration=com.kfyty.graal.example.ExampleExtension
+&lt;/code&gt;&lt;/pre&gt; 
+&lt;p&gt;然后打成 jar 包，就是一个启动器了。&lt;/p&gt; 
+&lt;p&gt;接着启动第一段代码的 main 方法后：&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt;先访问：http://localhost:8080/sayHello，将返回 default&lt;/li&gt; 
+ &lt;li&gt;然后使用 postman 上传启动器 jar 包：http://127.0.0.1:8080/loadPlugin，此时将动态加载上传的启动器，并刷新 ioc 容器&lt;/li&gt; 
+ &lt;li&gt;然后再访问：http://localhost:8080/sayHello，将返回 example，原因是加载了新的启动器，条件注解生效，实现类变化了！&lt;/li&gt; 
+ &lt;li&gt;然后再访问：http://127.0.0.1:8080/unloadPlugin，将第二步的返回值作为入参传入，此时将卸载启动器，并刷新 ioc 容器&lt;/li&gt; 
+ &lt;li&gt;然后再访问：http://localhost:8080/sayHello，将返回 default，原因是卸载了之前加载的启动器，条件注解生效，实现类又变化了！&lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;p&gt;从而实现了启动器的热加载，感兴趣的同学可以试一下。&lt;/p&gt;
+                                                                                &lt;/div&gt;
+                                                                            </description>
+      <link>https://www.oschina.net/news/354807</link>
+      <guid isPermaLink="false">https://www.oschina.net/news/354807</guid>
+      <pubDate>Sun, 11 May 2025 06:11:00 GMT</pubDate>
+      <author>来源: 投稿</author>
+    </item>
+    <item>
+      <title>CrateDB 5.10.8 发布，分布式 SQL 数据库</title>
+      <description>&lt;div class="content"&gt;
+                                                                    
+                                                        &lt;p&gt;&lt;span style="color:#000000"&gt;CrateDB 是一个分布式的 SQL 数据库，使得实时存储和分析大量的机器数据变得简单。CrateDB 提供了通常与 NoSQL 数据库相关的可扩展性和灵活性，最小的 CrateDB 集群可以轻松地每秒摄取数万条记录。这些数据可以在整个集群中实时地、临时地、并行地进行查询。&lt;/span&gt;&lt;/p&gt; 
+&lt;p style="color:#333333; margin-left:0; margin-right:0; text-align:left"&gt;&lt;span style="color:#000000"&gt;CrateDB 5.10.8 现已正式发布，该版本更新内容如下：&lt;/span&gt;&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt;&lt;span&gt;&lt;span&gt;修复了当需要该节点的查询即将在另一个节点上启动时，节点断开连接可能导致内存泄漏的竞争条件。&lt;/span&gt;&lt;/span&gt;&lt;/li&gt; 
+ &lt;li&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;修复了&lt;/span&gt;&lt;/span&gt;&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fcratedb.com%2Fdocs%2Fcrate%2Freference%2Fen%2Flatest%2Fappendices%2Frelease-notes%2F5.6.0.html%23version-5-6-0" target="_blank"&gt;&lt;span&gt;&lt;span&gt;版本 5.6.0&lt;/span&gt;&lt;/span&gt;&lt;/a&gt;&amp;nbsp;中引入的回归问题，该问题导致在 publisher source table 包含一些 non-active primary shards 时（例如在重启节点时），逻辑复制会停止。建议先升级 subscriber cluster&amp;nbsp;，然后再升级 publisher cluster，以便正确应用此修复。此修复仅在 publisher 和 subscriber clusters 均运行&amp;nbsp;&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fcratedb.com%2Fdocs%2Fcrate%2Freference%2Fen%2Flatest%2Fappendices%2Frelease-notes%2F5.10.8.html%23version-5-10-8" target="_blank"&gt;&lt;span&gt;&lt;span&gt;5.10.8&lt;/span&gt;&lt;/span&gt;&lt;/a&gt;&amp;nbsp;或更高版本时有效。&lt;/span&gt;&lt;/span&gt;&lt;/li&gt; 
+ &lt;li&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;修复&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;了一个问题，即在 &lt;span&gt;&lt;span&gt;&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fcratedb.com%2Fdocs%2Fcrate%2Freference%2Fen%2Flatest%2Fadmin%2Fsystem-information.html%23sys-repositories" target="_blank"&gt;&lt;span&gt;&lt;span&gt;sys.repositories&lt;/span&gt;&lt;/span&gt;&lt;/a&gt;&lt;/span&gt;&lt;/span&gt; 表中，&lt;span&gt;&lt;span&gt;&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fcratedb.com%2Fdocs%2Fcrate%2Freference%2Fen%2Flatest%2Fsql%2Fstatements%2Fcreate-repository.html%23sql-create-repo-azure" target="_blank"&gt;&lt;span&gt;&lt;span&gt;Azure 存储库&lt;/span&gt;&lt;/span&gt;&lt;/a&gt;&lt;/span&gt;&lt;/span&gt;的&lt;span&gt;&lt;span&gt;&lt;code&gt;&lt;span&gt;&lt;span&gt;sas_token&lt;/span&gt;&lt;/span&gt;&lt;/code&gt;&lt;/span&gt;&lt;/span&gt;和&lt;span&gt;&lt;span&gt;&lt;code&gt;&lt;span&gt;&lt;span&gt;key&lt;/span&gt;&lt;/span&gt;&lt;/code&gt;&lt;/span&gt;&lt;/span&gt;设置以未屏蔽设置的形式暴露。&lt;/li&gt; 
+ &lt;li&gt;&lt;span&gt;&lt;span&gt;修复了在构建结果集时抛出导&lt;code&gt;&lt;span&gt;&lt;span&gt;CircuitBreakerException&lt;/span&gt;&lt;/span&gt;&lt;/code&gt;致查询无法完成并返回的问题。&lt;/span&gt;&lt;/span&gt;&lt;/li&gt; 
+ &lt;li&gt;&lt;span&gt;&lt;span&gt;修复了导致中断的批量操作无法从&amp;nbsp;&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fcratedb.com%2Fdocs%2Fcrate%2Freference%2Fen%2Flatest%2Fadmin%2Fsystem-information.html%23sys-jobs" target="_blank"&gt;&lt;span&gt;&lt;span&gt;sys.jobs&lt;/span&gt;&lt;/span&gt;&lt;/a&gt;&amp;nbsp;表中清除的问题。&lt;/span&gt;&lt;/span&gt;&lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;p&gt;&lt;span style="background-color:#ffffff; color:#333333"&gt;详情可&lt;/span&gt;&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fcratedb.com%2Fdocs%2Fcrate%2Freference%2Fen%2Flatest%2Fappendices%2Frelease-notes%2F5.10.8.html" target="_blank"&gt;查看更新说明&lt;/a&gt;&lt;span style="background-color:#ffffff; color:#333333"&gt;。&lt;/span&gt;&lt;/p&gt;
+                                                                                &lt;/div&gt;
+                                                                            </description>
+      <link>https://www.oschina.net/news/354801/cratedb-5-10-8-released</link>
+      <guid isPermaLink="false">https://www.oschina.net/news/354801/cratedb-5-10-8-released</guid>
+      <pubDate>Sun, 11 May 2025 05:47:00 GMT</pubDate>
+      <author>来源: OSCHINA</author>
+    </item>
+    <item>
+      <title>TickIt：基于 LLM 的自动化 Oncall 升级</title>
+      <description>&lt;div class="content"&gt;
+                                                                    
+                                                        &lt;div&gt; 
+ &lt;div&gt;
+  资料来源：
+  &lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fdeveloper.volcengine.com%2F" target="_blank"&gt;火山引擎-开发者社区&lt;/a&gt;
+ &lt;/div&gt; 
+ &lt;div&gt;
+  &amp;nbsp;
+ &lt;/div&gt; 
+ &lt;div&gt;
+  软件工程领域顶级学术会议之一 FSE 2025（The ACM International Conference on the Foundations of Software Engineering）预计将在 2025 年 6 月于挪威特隆赫姆举行，字节跳动 ByteBrain 团队的论文《TickIt: Leveraging Large Language Models for Automated Ticket Escalation》成功入选
+ &lt;/div&gt; 
+ &lt;div&gt;
+  （https://arxiv.org/abs/2504.08475）。
+ &lt;/div&gt; 
+ &lt;div&gt;
+  &amp;nbsp;
+ &lt;/div&gt; 
+ &lt;div&gt;
+  背景
+ &lt;/div&gt; 
+ &lt;div&gt;
+  &amp;nbsp;
+ &lt;/div&gt; 
+ &lt;div&gt;
+  在云计算技术蓬勃发展的当下，对于火山引擎来说，工单/Oncall 成为了客户与技术支持&amp;amp;SRE 团队沟通的关键桥梁。随着云服务规模的不断扩大，每日会产生数以千计的 Oncall。这些 Oncall 通常以自然语言的形式，涵盖了使用咨询、功能需求，系统故障等各类复杂问题。
+ &lt;/div&gt; 
+ &lt;div&gt;
+  &amp;nbsp;
+ &lt;/div&gt; 
+ &lt;div&gt;
+  在传统的手动升级模式下，Oncall 值班人依赖个人经验判断工单是否严重，进而决定是否应该进一步升级。这一过程很依赖值班人员的经验判断，也难以形成统一标准。在过往的案例研究与故障覆盘中，我们发现由于人为疏漏，部分严重问题没有及时升级处理，从而导致了稳定性下降的风险，这也可能对火山引擎的客户满意度造成负面影响。
+ &lt;/div&gt; 
+ &lt;div&gt;
+  &amp;nbsp;
+ &lt;/div&gt; 
+ &lt;div&gt;
+  如何在面对紧急问题时，及时识别并升级这些 Oncall，成为了提升客户满意度和保障服务质量的关键所在。针对这一问题，我们提出了 TickIt，旨在识别紧急的、报告严重问题的 Oncall，并及时地将其升级给产研/稳定性/故障应急等团队。
+ &lt;/div&gt; 
+ &lt;div&gt;
+  &amp;nbsp;
+ &lt;/div&gt; 
+ &lt;div&gt;
+  挑战
+ &lt;/div&gt; 
+ &lt;div&gt;
+  &amp;nbsp;
+ &lt;/div&gt; 
+ &lt;div&gt;
+  Oncall 问题具有显著的多样性，不同类型的问题需由不同专业背景的人员进行处理。例如，系统故障需要产研&amp;amp; SRE 迅速定位并修复，以减少服务中断时间；客户投诉以及负面情绪则需要客户经理及时安抚客户并解决问题，进而提升客户满意度。进一步来说，Oncall 问题还可进一步细分，例如判断其影响面大小、是否对业务有损等。
+ &lt;/div&gt; 
+ &lt;div&gt;
+  &amp;nbsp;
+ &lt;/div&gt; 
+ &lt;div&gt;
+  现有的基于特征工程的分析方法，对 Oncall 内容的语义理解能力也较为有限，在实际应用中难以准确识别关键问题，致使重要 Oncall 无法及时升级处理。此外，Oncall 的严重程度也可能在对话过程中被（动态地）逐步澄清，而一些现有方法仅进行一次性分类，忽略了对话中不断更新的信息，无法在线及时识别到需要升级的情况。
+ &lt;/div&gt; 
+ &lt;div&gt;
+  此外，挖掘 Oncall 之间的关系同样重要。当一个问题影响多个客户时，会产生多个相似的 Oncall。如果能及时捕获分析这些 Oncall 之间的关系，有助于更全面地评估问题的严重性与影响范围，而对于产研来说，可以合并这些 Oncall 共同处理，从而更加聚焦地解决问题。
+ &lt;/div&gt; 
+ &lt;div&gt;
+  得益于大语言模型（LLM）在自然语言理解方面的强大能力，我们将其用于辅助理解 Oncall 中的文本信息，但是简单使用 LLM 并不能真正有效的解决上述挑战。在本文中，我们提出了基于 LLM 的 Oncall 分析方法 —— TickIt，该方法可以动态追踪 Oncall 中的信息，还能借助 LLM 深入理解 Oncall 对话的语义内容，及时识别严重问题并升级。同时，TickIt 还能挖掘不同 Oncall 问题现象之间的语义关联，识别潜在的共性问题，实现更高效的问题处理。
+ &lt;/div&gt; 
+ &lt;div&gt;
+  TickIt
+ &lt;/div&gt; 
+ &lt;div&gt;
+  &amp;nbsp;
+ &lt;/div&gt; 
+ &lt;div&gt;
+  TickIt 使用了字节的豆包（doubao）模型，旨在借助大语言模型（LLM）强大的自然语言处理能力，实现高效、准确的 Oncall 升级任务。该框架主要包含基于多分类的 Oncall 升级（Multi-class escalation）、重复 Oncall 分析 (Escalation deduplication) 和基于类别引导的微调（Category-guided fine-tuning）这三个核心功能模块。
+ &lt;/div&gt; 
+ &lt;div&gt;
+  基于多分类的 Oncall 升级
+ &lt;/div&gt; 
+ &lt;div&gt;
+  &amp;nbsp;
+ &lt;/div&gt; 
+ &lt;div&gt;
+  &lt;img src="https://oscimg.oschina.net/oscnet//a38b4514cb694357dbd5a996f44a3ba2.jpg" referrerpolicy="no-referrer"&gt;
+ &lt;/div&gt; 
+ &lt;div&gt;
+  &amp;nbsp;
+ &lt;/div&gt; 
+ &lt;div&gt;
+  在 Oncall 升级功能中，TickIt 将 Oncall 升级问题视作多分类任务。依据产研&amp;amp; SRE &amp;amp;客户关系的不同职责和关注重点，预先定义了系统故障、客户投诉、资产损失等多种主题类别。而对于普通 Oncall，统一归为 「其他」 类别（无需升级处理）。为使大语言模型更好地完成 Oncall 多分类任务，TickIt 也在 System Prompt 中采用了一些技术来提升其分类表现，例如赋予其任务角色、思维链（COT）等。例如，在判断一个 Oncall 是否属于系统故障时，模型会分析对话内容中提到的故障现象、影响范围等因素，并逐步解释做出该分类决策的原因。这种方式增强了分类结果的逻辑性和可解释性，让人们更易理解和信任模型的判断。此外，TickIt 通过 Few-shot learning，辅助模型理解不同的 Oncall 类别。这些示例特别对易混淆的场景进行了举例示范，从而帮助模型更准确地区分各类 Oncall 的特征。
+ &lt;/div&gt; 
+ &lt;div&gt;
+  &amp;nbsp;
+ &lt;/div&gt; 
+ &lt;div&gt;
+  TickIt 采用在升级任务中所采用的 System Prompt 格式如下图所示：
+ &lt;/div&gt; 
+ &lt;div&gt;
+  &amp;nbsp;
+ &lt;/div&gt; 
+ &lt;div&gt;
+  &lt;img src="https://oscimg.oschina.net/oscnet//a83ba70159b8a333261baa7c65e4b07e.jpg" referrerpolicy="no-referrer"&gt;
+ &lt;/div&gt; 
+ &lt;div&gt;
+  &amp;nbsp;
+ &lt;/div&gt; 
+ &lt;div&gt;
+  重复 Oncall 分析
+ &lt;/div&gt; 
+ &lt;div&gt;
+  &lt;img src="https://oscimg.oschina.net/oscnet//3ded1921020057de79c7cfbcfdbb01bd.jpg" referrerpolicy="no-referrer"&gt;
+ &lt;/div&gt; 
+ &lt;div&gt;
+  &amp;nbsp;
+ &lt;/div&gt; 
+ &lt;div&gt;
+  重复 Oncall 分析是 TickIt 的另一个功能。当一个 Oncall 被判定需要升级时，TickIt 会对所有处于「Pending」状态的 Oncall 进行检查，以确定是否有类似问题已被升级。为此，TickIt 将 Oncall 在其生命周期中的状态抽象为有限状态机。当客户提交 Oncall 工单并被接受后，该 Oncall 对象进入 「Active」 状态。每当 Oncall 中有新的对话内容时，最新的对话记录会触发 TickIt 启动新一轮分析，此时将其设置为进入 「Analyzing」 状态。TickIt 会运用上述的基于多分类的升级方法，判断当前 Oncall 是否需要升级。如果被分类为 「其他」，则其状态返回 「Active」，等待下一轮对话交互；若被分类为预设好的严重问题类型中，则进入 「Pending」 状态，此时 TickIt 会检查是否有相似的 Oncall 已经被升级。
+ &lt;/div&gt; 
+ &lt;div&gt;
+  &amp;nbsp;
+ &lt;/div&gt; 
+ &lt;div&gt;
+  在判断 Oncall 是否重复时，TickIt 首先利用大语言模型提取 Oncall 中的问题描述，并借助 doubao-embedding model 将这些问题描述转化为向量表示。通过 consine similarity 来计算向量之间的相似度，并通过一个阈值参数 𝜃 来判断当前 Oncall 与已升级的 Oncall 是否相似（𝜃 通过参数选择实验确认，在本方法中 𝜃=0.88）。对于 TicketIt 判定当前需要升级的 Oncall，如果历史已有升级且相似的 Oncall，则会将当前 Oncall 与对应的历史 Oncall 进行关联，并不再重复告警（仅在关联工单中体现）。同时，TickIt 会将当前 Oncall 与已重复会利用大语言模型重写问题描述，从语义上更全面地归纳该类问题的共性特征，避免因个别 Oncall 工单描述的局限性而导致对问题的理解偏差。
+ &lt;/div&gt; 
+ &lt;div&gt;
+  &amp;nbsp;
+ &lt;/div&gt; 
+ &lt;div&gt;
+  基于类别引导的微调
+ &lt;/div&gt; 
+ &lt;div&gt;
+  &amp;nbsp;
+ &lt;/div&gt; 
+ &lt;div&gt;
+  &lt;img src="https://oscimg.oschina.net/oscnet//9a20ab7d348eaba17524ba79b94e8374.jpg" referrerpolicy="no-referrer"&gt;
+ &lt;/div&gt; 
+ &lt;div&gt;
+  &amp;nbsp;
+ &lt;/div&gt; 
+ &lt;div&gt;
+  类别引导的微调是 TickIt 不断优化准确率的关键机制。当一个 Oncall 按照上述的流程被升级后，TickIt 会发送包含 Oncall 问题摘要的提醒通知卡片。通知卡片中有三个交互按钮，其中两个分别用于点赞或点踩；第三个按钮则是一个 Oncall 跳转链接，点击后可直接跳转到相关的聊天群中。TickIt 则会记录下这些通知卡片的交互行为作为自动升级的反馈数据。
+ &lt;/div&gt; 
+ &lt;div&gt;
+  &amp;nbsp;
+ &lt;/div&gt; 
+ &lt;div&gt;
+  &lt;img src="https://oscimg.oschina.net/oscnet//74dd763b0ca8e181846e69dffbc00e72.jpg" referrerpolicy="no-referrer"&gt;
+ &lt;/div&gt; 
+ &lt;div&gt;
+  &amp;nbsp;
+ &lt;/div&gt; 
+ &lt;div&gt;
+  在处理这些反馈数据时，TickIt 采用监督微调（SFT）方法，一条典型的 SFT 数据同时包含「对话内容」（Oncall 原始信息），「LLM 思考过程与类别判断」（LLM 的输出）。并按照 TickIt 用于 Oncall 升级任务的 System Prompt 来进行组织成数据集。
+ &lt;/div&gt; 
+ &lt;div&gt;
+  &amp;nbsp;
+ &lt;/div&gt; 
+ &lt;div&gt;
+  我们对四种反馈动作设置了不同的优先级，以避免同一 Oncall 下存在冲突的反馈。其中直接反馈（点赞、点踩）都会被纳入 SFT 的数据集中。根据我们的观察，相较于正面反馈（点赞）人们通常会在 Oncall 升级错误时更倾向提供一些负面反馈（点踩）。因此，点赞的数量要远小于点踩，也正是出于此原因，我们将点赞的优先级设置为最高（至少有一个人认为该告警是有帮助的）。而对于点踩的反馈来说，通常是认为误告警，因此则将其目标类别设置为「其它」（如无指定类别说明）。在该情况下，由于仅仅知道目标类别，而缺乏 COT 所需要的推理步骤，TickIt 则利用大语言模型完成目标分类下思维链步骤的补充。考虑到思维步骤的多样性，TickIt 会对每个 Oncall 进行三次可能思维链步骤的采样，以丰富数据集。
+ &lt;/div&gt; 
+ &lt;div&gt;
+  &amp;nbsp;
+ &lt;/div&gt; 
+ &lt;div&gt;
+  通过这种方式，TickIt 能够处理用户反馈，并基于类别引导进行数据增强，最终构建出一个高质量的标注数据集。当积累了足够数量的标注数据后，TickIt 会运用 SFT 方法对模型进行离线优化，然后更新在线模型，从而不断提升模型在升级分类任务上的性能表现。
+ &lt;/div&gt; 
+ &lt;div&gt;
+  &amp;nbsp;
+ &lt;/div&gt; 
+ &lt;div&gt;
+  TickIt 的实验验证
+ &lt;/div&gt; 
+ &lt;div&gt;
+  &amp;nbsp;
+ &lt;/div&gt; 
+ &lt;div&gt;
+  TickIt 在火山引擎的线上进行了全面部署，并取得了显著成效。在此期间，TickIt 共处理了数以万计的 Oncall。在收到的反馈中，约 81% 的反馈表明 TickIt 的升级决策是准确的，这也证明了 TickIt 在实际应用中的有效性和可靠性。
+ &lt;/div&gt; 
+ &lt;div&gt;
+  &amp;nbsp;
+ &lt;/div&gt; 
+ &lt;div&gt;
+  在进一步的 Oncall 升级性能评估方面，我们还对比了基于小语言模型（SLM）和大语言模型（LLM）的多种方法。小语言模型受限于参数规模，其语言理解能力相较 LLM 有较大差距，且部分非端到端的方法设计在信息传递过程中易出现信息丢失的情况。而基于 LLM 的方法则展现出了良好的准确率。我们通过消融实验验证了不同框架设计对模型性能的影。使用 CoT 的 LLM 方法，准确率和召回率均能达到 82% 左右。在此基础上，结合反思（Reflection）提示，模型能够对自身的推理和输出进行自我纠正，精度略微提升至 82.8%。但由于 CoT 提示已经使模型在得出结论前进行了充分的推理，在反思阶段模型难以获取新的关键信息来进一步提高输出的准确性和洞察力，因此反思技术对实验结果的提升效果并不显著。引入上下文学习（ICL）提示后，模型的召回率大幅提升至 89.2%，尽管精度略有下降，但这一结果充分体现了 LLM 方法强大的泛化能力。
+ &lt;/div&gt; 
+ &lt;div&gt;
+  &amp;nbsp;
+ &lt;/div&gt; 
+ &lt;div&gt;
+  &lt;img src="https://oscimg.oschina.net/oscnet//8b040985eb15eb72e4893c729c56be70.jpg" referrerpolicy="no-referrer"&gt;
+ &lt;/div&gt; 
+ &lt;div&gt;
+  &amp;nbsp;
+ &lt;/div&gt; 
+ &lt;div&gt;
+  在不同方法设计下的 Oncall 升级比较
+ &lt;/div&gt; 
+ &lt;div&gt;
+  &amp;nbsp;
+ &lt;/div&gt; 
+ &lt;div&gt;
+  进一步对 LLM 进行监督微调（SFT）后，模型性能得到了显著提升。以 CoT 提示为例，微调后的召回率从 82.1% 大幅提高到 91.2%，同时保持了 81.8% 的较高精度，F1 分数达到了 86.2%，在所有对比方法中表现最佳。这一结果有力地证明了 SFT 在利用 LLM 能力提升 Oncall 升级任务性能方面的有效性。然而，当 SFT 与其他基于提示的方法（如 Reflection 和 ICL）结合时，性能出现了轻微下降。这可能是因为 SFT 过程中使用了 ICL 中的一些样本或与训练数据分布相似的数据，使得模型在离线微调时已经学习了相应内容，从而在结合使用时产生了一定的冲突。
+ &lt;/div&gt; 
+ &lt;div&gt;
+  &amp;nbsp;
+ &lt;/div&gt; 
+ &lt;div&gt;
+  在重复 Oncall 分析的实验中，通过调整相似度阈值来探寻最合适的参数，该参数在 0.86 - 0.95 之间时，F1 分数会随着参数的升高先上升后下降。当其设置过高时，严格的相似度约束可能会导致相似问题被错误分类到不同类别，使得评估结果中升级 Oncall 的数量相较于真实情况出现偏差，且该偏差与阈值并非单调关系。此外，基于问题现象的去重方法本身存在一定局限性，对于表现相同但根因不同的 Oncall，可能会出现错误去重的情况。而在针对 Oncall 问题重写的设计中，我们也进行了消融实验。实验结果表明，开启重写功能的 TickIt 相较于未开启该功能的实验设置来说，F1 分数提升了 1.7%。进一步对数据集进行分析，仅保留包含多个关联 Oncall 的升级进行实验，结果显示 TickIt 中的重写设计使得其 F1 分数从 0.706 提升至 0.749，提升幅度达到 6.1%。
+ &lt;/div&gt; 
+ &lt;div&gt;
+  &amp;nbsp;
+ &lt;/div&gt; 
+ &lt;div&gt;
+  &lt;img src="https://oscimg.oschina.net/oscnet//f44da441270f9c510f3972871725a119.jpg" referrerpolicy="no-referrer"&gt;
+ &lt;/div&gt; 
+ &lt;div&gt;
+  &amp;nbsp;
+ &lt;/div&gt; 
+ &lt;div&gt;
+  重复 Oncall 识别下的参数选择实验
+ &lt;/div&gt; 
+ &lt;div&gt;
+  &amp;nbsp;
+ &lt;/div&gt; 
+ &lt;div&gt;
+  &lt;img src="https://oscimg.oschina.net/oscnet//685b195201866bfe500add599463e6ee.jpg" referrerpolicy="no-referrer"&gt;
+ &lt;/div&gt; 
+ &lt;div&gt;
+  &amp;nbsp;
+ &lt;/div&gt; 
+ &lt;div&gt;
+  &amp;nbsp;
+ &lt;/div&gt; 
+ &lt;div&gt;
+  Ticket 在重复 Oncall 识别下的问题重写消融实验
+ &lt;/div&gt; 
+ &lt;div&gt;
+  &amp;nbsp;
+ &lt;/div&gt; 
+ &lt;div&gt;
+  总结与局限性分析
+ &lt;/div&gt; 
+ &lt;div&gt;
+  &amp;nbsp;
+ &lt;/div&gt; 
+ &lt;div&gt;
+  TickIt 借助大语言模型实现了高效的自动化 Oncall 升级，为火山引擎带来了显著的效率提升。它从「帮助人们及时介入严重 Oncall」的角度，帮助火山引擎缩短了严重问题的响应时间，使得整体的 MTTR 降低了约 26%，并节约了人力投入成本。同时，TickIt 也得到了使用者的广泛认可。
+ &lt;/div&gt; 
+ &lt;div&gt;
+  &amp;nbsp;
+ &lt;/div&gt; 
+ &lt;div&gt;
+  然而，TickIt 在实际应用中也暴露出一些局限性。对话中（个性化的）表达方式可能会对大语言模型的判断产生影响。例如，部分使用者可能会夸大问题的影响，导致不必要的升级；而有人也可能对严重问题描述过于平淡，使得 TickIt 未能及时识别出需要升级的情况。此外，如果 Oncall 所关联的云服务产品不够具体，相似的问题描述可能会因涉及不同的云服务产品而具有不同的严重程度，这容易导致大语言模型的误判，进而出现错误的升级。我们在后续的工作中会进一步优化 TickIt 的实际效果，助力火山引擎的稳定性工作。
+ &lt;/div&gt; 
+ &lt;div&gt;
+  &amp;nbsp;
+ &lt;/div&gt; 
+ &lt;div&gt;
+  作者团队： 我们来自字节跳动的 ByteBrain 团队，我们致力于用 AI 技术，为各种基础架构与系统（数据库、云原生、大数据、网络等）降本增效、提升稳定性。
+ &lt;/div&gt; 
+&lt;/div&gt;
+                                                                                &lt;/div&gt;
+                                                                            </description>
+      <link>https://www.oschina.net/news/354786</link>
+      <guid isPermaLink="false">https://www.oschina.net/news/354786</guid>
+      <pubDate>Sun, 11 May 2025 03:46:00 GMT</pubDate>
+      <author>来源: 投稿</author>
+    </item>
+    <item>
+      <title>界面控件 Kendo UI 在实战应用 —— 打通数据链路，重塑业务效率</title>
+      <description>&lt;div class="content"&gt;
+                                                                    
+                                                        &lt;div&gt;
+ &lt;img alt="界面控件 Kendo UI 在制造与供应链行业应用——打通数据链路，重塑业务效率" src="https://oscimg.oschina.net/oscnet//009b6caaeed5461884780886e08eac09.jpg" referrerpolicy="no-referrer"&gt;
+&lt;/div&gt; 
+&lt;div&gt;
+ &amp;nbsp;
+&lt;/div&gt; 
+&lt;div&gt;
+ 在制造与供应链行业中，企业通常面对「信息孤岛」、「任务难协同」、「实时数据难可视」等挑战。
+ &lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fwww.evget.com%2Fproduct%2F3438" target="_blank"&gt;Kendo UI&lt;/a&gt;作为一套成熟的 Web 界面控件解决方案，凭借其丰富的组件库与卓越的数据交互能力，已成为制造系统中构建高效、清晰、可操作用户界面的有力工具。
+&lt;/div&gt; 
+&lt;p style="color:#333333; text-align:justify"&gt;&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fwww.evget.com%2Fproduct%2F3438" target="_blank"&gt;Kendo UI&lt;/a&gt;是带有 jQuery、Angular、React 和 Vue 库的 JavaScript UI 组件的最终集合，无论选择哪种 JavaScript 框架，都可以快速构建高性能响应式 Web 应用程序。通过可自定义的 UI 组件，Kendo UI 可以创建数据丰富的桌面、平板和移动 Web 应用程序。通过响应式的布局、强大的数据绑定、跨浏览器兼容性和即时使用的主题，Kendo UI 将开发时间加快了 50%。&lt;/p&gt; 
+&lt;p&gt;&lt;strong&gt;行业关键痛点与挑战&lt;/strong&gt;&lt;/p&gt; 
+&lt;p style="color:#333333; text-align:justify"&gt;&lt;strong&gt;1. 生产排程混乱，难以动态调整&lt;/strong&gt;&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt;排产表手工维护，任务依赖关系不清晰；&lt;/li&gt; 
+ &lt;li&gt;一旦生产任务调整，工序安排需人工同步，极易出错。&lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;p style="color:#333333; text-align:justify"&gt;&lt;strong&gt;2. 物料与库存信息分散，数据透明度低&lt;/strong&gt;&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt;原材料、在制品、半成品和成品数据分布于不同系统；&lt;/li&gt; 
+ &lt;li&gt;缺乏统一视图，容易导致缺料、积压或发错货。&lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;p style="color:#333333; text-align:justify"&gt;&lt;strong&gt;3. 设备利用率、产能瓶颈难以量化&lt;/strong&gt;&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt;设备运转状态、停机时间、工单完成率难以直观掌握；&lt;/li&gt; 
+ &lt;li&gt;管理层缺乏实时运营看板支撑决策。&lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;p style="color:#333333; text-align:justify"&gt;&lt;strong&gt;4. 多角色协同效率低&lt;/strong&gt;&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt;采购、仓储、生产、质检等部门使用界面风格不一致；&lt;/li&gt; 
+ &lt;li&gt;操作体验差，培训成本高，数据流转阻断。&lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;p&gt;&lt;strong&gt;Kendo UI 提供的关键解决方案&lt;/strong&gt;&lt;/p&gt; 
+&lt;p style="color:#333333; text-align:justify"&gt;&lt;strong&gt;1. 精准的生产排程与任务可视化&lt;/strong&gt;&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt;&lt;strong&gt;Gantt Chart 控件&lt;/strong&gt;：可视化呈现排程计划，支持任务依赖、拖拽重排、进度条展示，帮助排程人员动态优化排产逻辑。&lt;/li&gt; 
+ &lt;li&gt;&lt;strong&gt;Scheduler 日历控件&lt;/strong&gt;：用于设备维护排程或产线预约，支持多资源并发视图。&lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;p style="color:#333333; text-align:justify"&gt;&lt;strong&gt;2. 统一的库存数据展示与交互操作&lt;/strong&gt;&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt;&lt;strong&gt;Data Grid + 分组 + 分页 + 导出功能&lt;/strong&gt;：构建灵活的物料清单、库存看板，支持层级显示与动态筛选。&lt;/li&gt; 
+ &lt;li&gt;&lt;strong&gt;TreeView + PanelBar&lt;/strong&gt;：适用于多仓库、多区域的库存结构导航。&lt;/li&gt; 
+ &lt;li&gt;&lt;strong&gt;AutoComplete / MultiSelect&lt;/strong&gt;：提升物料录入与搜索效率，防止错录错查。&lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;p style="color:#333333; text-align:justify"&gt;&lt;strong&gt;3. 实时可视化的运营监控&lt;/strong&gt;&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt;&lt;strong&gt;Charts 图表组件（柱状图、折线图、圆环图等）：展&lt;/strong&gt;示各产线设备的稼动率、生产效率、工单完成情况等关键指标。&lt;/li&gt; 
+ &lt;li&gt;&lt;strong&gt;Sparkline 小型趋势图&lt;/strong&gt;：适用于嵌入表格单元格中，轻量快速展现某项指标走势。&lt;/li&gt; 
+ &lt;li&gt;&lt;strong&gt;ProgressBar + KPI 指标块组合&lt;/strong&gt;：适合构建实时工厂大屏或车间电子看板。&lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;p style="color:#333333; text-align:justify"&gt;&lt;strong&gt;4. 多端一致的界面交互体验&lt;/strong&gt;&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt;&lt;strong&gt;响应式布局组件（ResponsivePanel / Drawer / TabStrip）：&lt;/strong&gt;适配桌面与平板设备，统一各角色使用体验。&lt;/li&gt; 
+ &lt;li&gt;&lt;strong&gt;Upload + Dialog + Tooltip + Notification&lt;/strong&gt;：用于上传质检报告、操作提示与反馈，提升人机交互流畅度。&lt;/li&gt; 
+ &lt;li&gt;&lt;strong&gt;丰富的表单验证机制&lt;/strong&gt;：确保关键业务数据录入安全、准确。&lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;p&gt;&lt;strong&gt;应用场景示例&lt;/strong&gt;&lt;/p&gt; 
+&lt;div&gt;
+ &lt;img alt="界面控件 Kendo UI 在制造与供应链行业应用——打通数据链路，重塑业务效率" src="https://oscimg.oschina.net/oscnet//181f48127f99e600559a7997cf56e624.png" referrerpolicy="no-referrer"&gt;
+&lt;/div&gt; 
+&lt;p&gt;&lt;strong&gt;结语&lt;/strong&gt;&lt;/p&gt; 
+&lt;p style="color:#333333; text-align:justify"&gt;在数字化制造转型的背景下，&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fwww.evget.com%2Fproduct%2F3438" target="_blank"&gt;Kendo UI&lt;/a&gt;不仅是「界面构建工具」，更是连接业务流程与数据决策的桥梁。它以高可定制、高性能的前端控件能力，为制造与供应链行业提供了稳定、高效、专业的用户交互解决方案。从排程到仓储、从设备监控到多角色协同，Kendo UI 为企业打造真正可视、可控、可运营的管理界面，助力制造企业迈向数字化高质量发展。&lt;/p&gt;
+                                                                                &lt;/div&gt;
+                                                                            </description>
+      <link>https://www.oschina.net/news/354778</link>
+      <guid isPermaLink="false">https://www.oschina.net/news/354778</guid>
+      <pubDate>Sun, 11 May 2025 03:25:00 GMT</pubDate>
+      <author>来源: 投稿</author>
+    </item>
+    <item>
+      <title>BootstrapBlazor v9.7.1 已经发布，Bootstrap 样式的 Blazor UI 组件库</title>
+      <description>&lt;div class="content"&gt;
+                                                                    
+                                                        &lt;p&gt;BootstrapBlazor v9.7.1 已经发布，Bootstrap 样式的 Blazor UI 组件库&lt;/p&gt; 
+&lt;p&gt;此版本更新内容包括：&lt;/p&gt; 
+&lt;h2&gt;Release 2025-6-11 V9.7.1&lt;/h2&gt; 
+&lt;h3&gt;Break changes&lt;/h3&gt; 
+&lt;ul&gt; 
+ &lt;li&gt;feat(Upload): 重新设计 &lt;code&gt;Upload&lt;/code&gt; 组件支持剪贴板与拖拽 by @ArgoZhang in &lt;a href="https://gitee.com/link?target=https%3A%2F%2Fgithub.com%2Fdotnetcore%2FBootstrapBlazor%2Fpull%2F6049" target="_blank"&gt;https://github.com/dotnetcore/BootstrapBlazor/pull/6049&lt;/a&gt;&lt;/li&gt; 
+ &lt;li&gt;feat(Select): 重新设计 &lt;code&gt;OnBeforeSelectedItemChange&lt;/code&gt; 与 &lt;code&gt;ShowSwal&lt;/code&gt; 逻辑 &lt;code&gt;ShowSwal&lt;/code&gt; 由原来的默认值 &lt;code&gt;true&lt;/code&gt; 更改为 &lt;code&gt;false&lt;/code&gt; by @ArgoZhang in &lt;a href="https://gitee.com/link?target=https%3A%2F%2Fgithub.com%2Fdotnetcore%2FBootstrapBlazor%2Fpull%2F6199" target="_blank"&gt;https://github.com/dotnetcore/BootstrapBlazor/pull/6199&lt;/a&gt;&lt;/li&gt; 
+ &lt;li&gt;feat(Stack): 重命名样式 &lt;code&gt;bb_stack&lt;/code&gt; 为 &lt;code&gt;bb-stack&lt;/code&gt; by @ArgoZhang in &lt;a href="https://gitee.com/link?target=https%3A%2F%2Fgithub.com%2Fdotnetcore%2FBootstrapBlazor%2Fpull%2F6189" target="_blank"&gt;https://github.com/dotnetcore/BootstrapBlazor/pull/6189&lt;/a&gt;&lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;h3&gt;Bugs&lt;/h3&gt; 
+&lt;ul&gt; 
+ &lt;li&gt;fix(BootstrapBlazorErrorBoundary): 更新 &lt;code&gt;BuildRenderTree&lt;/code&gt; 逻辑增加渲染异常回落机制 by @flyliononline in &lt;a href="https://gitee.com/link?target=https%3A%2F%2Fgithub.com%2Fdotnetcore%2FBootstrapBlazor%2Fpull%2F6114" target="_blank"&gt;https://github.com/dotnetcore/BootstrapBlazor/pull/6114&lt;/a&gt;&lt;/li&gt; 
+ &lt;li&gt;fix(Select): 修复 &lt;code&gt;SearchIcon&lt;/code&gt; 在 &lt;code&gt;BI&lt;/code&gt; 主题下不垂直居中问题 by @ArgoZhang in &lt;a href="https://gitee.com/link?target=https%3A%2F%2Fgithub.com%2Fdotnetcore%2FBootstrapBlazor%2Fpull%2F6173" target="_blank"&gt;https://github.com/dotnetcore/BootstrapBlazor/pull/6173&lt;/a&gt;&lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;h3&gt;Features&lt;/h3&gt; 
+&lt;ul&gt; 
+ &lt;li&gt;feat(BootstrapBlazorOptions): 增加 &lt;code&gt;ShowErrorLoggerToast&lt;/code&gt; 参数全局配置异常处理是否弹出 &lt;code&gt;Toast&lt;/code&gt; 对话框 by @ArgoZhang in &lt;a href="https://gitee.com/link?target=https%3A%2F%2Fgithub.com%2Fdotnetcore%2FBootstrapBlazor%2Fpull%2F6117" target="_blank"&gt;https://github.com/dotnetcore/BootstrapBlazor/pull/6117&lt;/a&gt;&lt;/li&gt; 
+ &lt;li&gt;feat(Layout): 重构内部逻辑支持 &lt;code&gt;ErrorLogger&lt;/code&gt; 组件处理子组件或者页面生命周期内异常 by @ArgoZhang in &lt;a href="https://gitee.com/link?target=https%3A%2F%2Fgithub.com%2Fdotnetcore%2FBootstrapBlazor%2Fpull%2F6119" target="_blank"&gt;https://github.com/dotnetcore/BootstrapBlazor/pull/6119&lt;/a&gt;&lt;/li&gt; 
+ &lt;li&gt;feat(SelectGeneric): 更新重置逻辑 &lt;code&gt;TextConvertToValueCallback&lt;/code&gt; 逻辑更新 by @ArgoZhang in &lt;a href="https://gitee.com/link?target=https%3A%2F%2Fgithub.com%2Fdotnetcore%2FBootstrapBlazor%2Fpull%2F6123" target="_blank"&gt;https://github.com/dotnetcore/BootstrapBlazor/pull/6123&lt;/a&gt;&lt;/li&gt; 
+ &lt;li&gt;feat(TabItem): 增加 &lt;code&gt;Id&lt;/code&gt; 参数方便二开人员脚本获得标签页 by @ArgoZhang in &lt;a href="https://gitee.com/link?target=https%3A%2F%2Fgithub.com%2Fdotnetcore%2FBootstrapBlazor%2Fpull%2F6124" target="_blank"&gt;https://github.com/dotnetcore/BootstrapBlazor/pull/6124&lt;/a&gt;&lt;/li&gt; 
+ &lt;li&gt;feat(ImageViewer): 增加 &lt;code&gt;ZoomSpeed&lt;/code&gt; 参数适配超大显示器滚轮控制缩放速度 by @h2ls in &lt;a href="https://gitee.com/link?target=https%3A%2F%2Fgithub.com%2Fdotnetcore%2FBootstrapBlazor%2Fpull%2F6145" target="_blank"&gt;https://github.com/dotnetcore/BootstrapBlazor/pull/6145&lt;/a&gt;&lt;/li&gt; 
+ &lt;li&gt;feat(TabItem): 实现 &lt;code&gt;IHandlerException&lt;/code&gt; 接口支持 &lt;code&gt;ErrorLogger&lt;/code&gt; 全局异常处理组件 @ArgoZhang in &lt;a href="https://gitee.com/link?target=https%3A%2F%2Fgithub.com%2Fdotnetcore%2FBootstrapBlazor%2Fpull%2F6148" target="_blank"&gt;https://github.com/dotnetcore/BootstrapBlazor/pull/6148&lt;/a&gt;&lt;/li&gt; 
+ &lt;li&gt;feat(IErrorLogger): 增加生产模式下仅显示异常消息不显示堆栈信息功能 by @ArgoZhang in &lt;a href="https://gitee.com/link?target=https%3A%2F%2Fgithub.com%2Fdotnetcore%2FBootstrapBlazor%2Fpull%2F6152" target="_blank"&gt;https://github.com/dotnetcore/BootstrapBlazor/pull/6152&lt;/a&gt;&lt;/li&gt; 
+ &lt;li&gt;feat(SelectTree): 增加 &lt;code&gt;CanExpandWhenDisabled&lt;/code&gt; 参数 by @WilliamLiu1997 in &lt;a href="https://gitee.com/link?target=https%3A%2F%2Fgithub.com%2Fdotnetcore%2FBootstrapBlazor%2Fpull%2F6128" target="_blank"&gt;https://github.com/dotnetcore/BootstrapBlazor/pull/6128&lt;/a&gt;&lt;/li&gt; 
+ &lt;li&gt;feat(IFrame): 支持 &lt;code&gt;Html&lt;/code&gt; 原生属性标签 by @ArgoZhang in &lt;a href="https://gitee.com/link?target=https%3A%2F%2Fgithub.com%2Fdotnetcore%2FBootstrapBlazor%2Fpull%2F6160" target="_blank"&gt;https://github.com/dotnetcore/BootstrapBlazor/pull/6160&lt;/a&gt;&lt;/li&gt; 
+ &lt;li&gt;feat(PdfViewer): 新增 &lt;code&gt;PdfViewer&lt;/code&gt; 组件使用浏览器原生 api 预览 &lt;code&gt;Pdf&lt;/code&gt; 不依赖 &lt;code&gt;JavaScript&lt;/code&gt; 库 by @ArgoZhang in &lt;a href="https://gitee.com/link?target=https%3A%2F%2Fgithub.com%2Fdotnetcore%2FBootstrapBlazor%2Fpull%2F6164" target="_blank"&gt;https://github.com/dotnetcore/BootstrapBlazor/pull/6164&lt;/a&gt;&lt;/li&gt; 
+ &lt;li&gt;feat(PdfViewer): 增加 &lt;code&gt;UseGoogleDocs&lt;/code&gt; 参数使用 &lt;code&gt;Google Docs&lt;/code&gt; 预览 &lt;code&gt;Pdf&lt;/code&gt; 文档 by @ArgoZhang in &lt;a href="https://gitee.com/link?target=https%3A%2F%2Fgithub.com%2Fdotnetcore%2FBootstrapBlazor%2Fpull%2F6170" target="_blank"&gt;https://github.com/dotnetcore/BootstrapBlazor/pull/6170&lt;/a&gt;&lt;/li&gt; 
+ &lt;li&gt;feat(ImageCorpper): 更新 &lt;code&gt;AspectRatio&lt;/code&gt; 类型为 &lt;code&gt;float&lt;/code&gt; 支持 &lt;code&gt;16:9&lt;/code&gt; 等任意比例 by @ArgoZhang in &lt;a href="https://gitee.com/link?target=https%3A%2F%2Fgithub.com%2Fdotnetcore%2FBootstrapBlazor%2Fpull%2F6175" target="_blank"&gt;https://github.com/dotnetcore/BootstrapBlazor/pull/6175&lt;/a&gt;&lt;/li&gt; 
+ &lt;li&gt;feat(ImageCropper): 增加 &lt;code&gt;Preview&lt;/code&gt; 参数内置支持预览 by @ArgoZhang in &lt;a href="https://gitee.com/link?target=https%3A%2F%2Fgithub.com%2Fdotnetcore%2FBootstrapBlazor%2Fpull%2F6177" target="_blank"&gt;https://github.com/dotnetcore/BootstrapBlazor/pull/6177&lt;/a&gt;&lt;/li&gt; 
+ &lt;li&gt;feat(ImageCropper): 增加 &lt;code&gt;OnCropChangedAsync&lt;/code&gt; 回调方法 by @ArgoZhang in &lt;a href="https://gitee.com/link?target=https%3A%2F%2Fgithub.com%2Fdotnetcore%2FBootstrapBlazor%2Fpull%2F6179" target="_blank"&gt;https://github.com/dotnetcore/BootstrapBlazor/pull/6179&lt;/a&gt;&lt;/li&gt; 
+ &lt;li&gt;feat(Bootstrap): &lt;code&gt;bootstrap&lt;/code&gt; 样式脚本更新到最新 &lt;code&gt;5.3.6&lt;/code&gt; by @ArgoZhang in &lt;a href="https://gitee.com/link?target=https%3A%2F%2Fgithub.com%2Fdotnetcore%2FBootstrapBlazor%2Fpull%2F6191" target="_blank"&gt;https://github.com/dotnetcore/BootstrapBlazor/pull/6191&lt;/a&gt;&lt;/li&gt; 
+ &lt;li&gt;feat(BootstrapServiceBase): 更新错误提示信息增加中文提示信息（眼瞎党福音） by @ArgoZhang in &lt;a href="https://gitee.com/link?target=https%3A%2F%2Fgithub.com%2Fdotnetcore%2FBootstrapBlazor%2Fpull%2F6197" target="_blank"&gt;https://github.com/dotnetcore/BootstrapBlazor/pull/6197&lt;/a&gt;&lt;/li&gt; 
+ &lt;li&gt;feat(Bootstrap): 支持脚本模块动态加载 BB 组件库步骤可不引用 &lt;code&gt;Bootstrap&lt;/code&gt; &lt;code&gt;JavaScript&lt;/code&gt; 脚本 by @ArgoZhang in &lt;a href="https://gitee.com/link?target=https%3A%2F%2Fgithub.com%2Fdotnetcore%2FBootstrapBlazor%2Fpull%2F6201" target="_blank"&gt;https://github.com/dotnetcore/BootstrapBlazor/pull/6201&lt;/a&gt;&lt;/li&gt; 
+ &lt;li&gt;feat(Print): 弹窗打印支持 &lt;code&gt;cavas&lt;/code&gt; 元素 by @ArgoZhang in &lt;a href="https://gitee.com/link?target=https%3A%2F%2Fgithub.com%2Fdotnetcore%2FBootstrapBlazor%2Fpull%2F6203" target="_blank"&gt;https://github.com/dotnetcore/BootstrapBlazor/pull/6203&lt;/a&gt;&lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;h3&gt;Performance&lt;/h3&gt; 
+&lt;ul&gt; 
+ &lt;li&gt;feat(Upload): 使用本地浏览器预览替换上传后用 &lt;code&gt;base64&lt;/code&gt; 数据格式预览 by @ArgoZhang in &lt;a href="https://gitee.com/link?target=https%3A%2F%2Fgithub.com%2Fdotnetcore%2FBootstrapBlazor%2Fpull%2F6157" target="_blank"&gt;https://github.com/dotnetcore/BootstrapBlazor/pull/6157&lt;/a&gt;&lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;h2&gt;Documentation&lt;/h2&gt; 
+&lt;ul&gt; 
+ &lt;li&gt;doc(SelectGeneric): 更新 &lt;code&gt;IsEditable&lt;/code&gt; 参数示例文档 by @ArgoZhang in &lt;a href="https://gitee.com/link?target=https%3A%2F%2Fgithub.com%2Fdotnetcore%2FBootstrapBlazor%2Fpull%2F6135" target="_blank"&gt;https://github.com/dotnetcore/BootstrapBlazor/pull/6135&lt;/a&gt;&lt;/li&gt; 
+ &lt;li&gt;doc(Bootstrap): 开发模式加载未混淆 &lt;code&gt;Bootstrap&lt;/code&gt; 脚本源码方便调试 by @ArgoZhang in &lt;a href="https://gitee.com/link?target=https%3A%2F%2Fgithub.com%2Fdotnetcore%2FBootstrapBlazor%2Fpull%2F6137" target="_blank"&gt;https://github.com/dotnetcore/BootstrapBlazor/pull/6137&lt;/a&gt;&lt;/li&gt; 
+ &lt;li&gt;doc(Icon): 重新排序内置图标菜单 by @ArgoZhang in &lt;a href="https://gitee.com/link?target=https%3A%2F%2Fgithub.com%2Fdotnetcore%2FBootstrapBlazor%2Fpull%2F6155" target="_blank"&gt;https://github.com/dotnetcore/BootstrapBlazor/pull/6155&lt;/a&gt;&lt;/li&gt; 
+ &lt;li&gt;doc(Login): 增加微软登录界面模板 by @h2ls in &lt;a href="https://gitee.com/link?target=https%3A%2F%2Fgithub.com%2Fdotnetcore%2FBootstrapBlazor%2Fpull%2F6162" target="_blank"&gt;https://github.com/dotnetcore/BootstrapBlazor/pull/6162&lt;/a&gt;&lt;/li&gt; 
+ &lt;li&gt;doc(PdfViewer): 增加 &lt;code&gt;OnLoaded&lt;/code&gt; 回调方法示例文档 by @ArgoZhang in &lt;a href="https://gitee.com/link?target=https%3A%2F%2Fgithub.com%2Fdotnetcore%2FBootstrapBlazor%2Fpull%2F6166" target="_blank"&gt;https://github.com/dotnetcore/BootstrapBlazor/pull/6166&lt;/a&gt;&lt;/li&gt; 
+ &lt;li&gt;doc(Upload): 更新 &lt;code&gt;Upload&lt;/code&gt; 组件文档（全部更新移除掉原 upload 网页拆分成 5 个组件独立文档） by @ArgoZhang in &lt;a href="https://gitee.com/link?target=https%3A%2F%2Fgithub.com%2Fdotnetcore%2FBootstrapBlazor%2Fpull%2F6193" target="_blank"&gt;https://github.com/dotnetcore/BootstrapBlazor/pull/6193&lt;/a&gt;&lt;/li&gt; 
+ &lt;li&gt;doc(BootstrapBlazorRoot): 更新 &lt;code&gt;BootstrapBlazorRoot&lt;/code&gt; 组件使用文档 by @ArgoZhang in &lt;a href="https://gitee.com/link?target=https%3A%2F%2Fgithub.com%2Fdotnetcore%2FBootstrapBlazor%2Fpull%2F6195" target="_blank"&gt;https://github.com/dotnetcore/BootstrapBlazor/pull/6195&lt;/a&gt;&lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;h2&gt;New Contributors&lt;/h2&gt; 
+&lt;ul&gt; 
+ &lt;li&gt;@flyliononline made their first contribution in &lt;a href="https://gitee.com/link?target=https%3A%2F%2Fgithub.com%2Fdotnetcore%2FBootstrapBlazor%2Fpull%2F6114" target="_blank"&gt;https://github.com/dotnetcore/BootstrapBlazor/pull/6114&lt;/a&gt;&lt;/li&gt; 
+ &lt;li&gt;@WilliamLiu1997 made their first contribution in &lt;a href="https://gitee.com/link?target=https%3A%2F%2Fgithub.com%2Fdotnetcore%2FBootstrapBlazor%2Fpull%2F6128" target="_blank"&gt;https://github.com/dotnetcore/BootstrapBlazor/pull/6128&lt;/a&gt;&lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;p&gt;&lt;strong&gt;Full Changelog&lt;/strong&gt;: &lt;a href="https://gitee.com/link?target=https%3A%2F%2Fgithub.com%2Fdotnetcore%2FBootstrapBlazor%2Fcompare%2Fv9.7.0...v9.7.1" target="_blank"&gt;https://github.com/dotnetcore/BootstrapBlazor/compare/v9.7.0...v9.7.1&lt;/a&gt;&lt;/p&gt; 
+&lt;p&gt;详情查看：&lt;a href="https://gitee.com/LongbowEnterprise/BootstrapBlazor/releases/v9.7.1"&gt;https://gitee.com/LongbowEnterprise/BootstrapBlazor/releases/v9.7.1&lt;/a&gt;&lt;/p&gt;
+                                                                                &lt;/div&gt;
+                                                                            </description>
+      <link>https://www.oschina.net/news/354776/bootstrapblazor-9-7-1-released</link>
+      <guid isPermaLink="false">https://www.oschina.net/news/354776/bootstrapblazor-9-7-1-released</guid>
+      <pubDate>Sun, 11 May 2025 03:08:00 GMT</pubDate>
+      <author>来源: 投稿</author>
+    </item>
+    <item>
+      <title>Ant Design 5.26.0 发布，企业级 UI 设计语言和 React 实现</title>
+      <description>&lt;div class="content"&gt;
+                                                                    
+                                                        &lt;p&gt;&lt;span style="color:#000000"&gt;Ant Design 5.26.0&amp;nbsp;现已发布，主要更新内容如下：&lt;/span&gt;&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt;Upload&amp;nbsp;&lt;code&gt;progress&lt;/code&gt;&amp;nbsp;属性现在可以覆盖进度条类型。&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fgithub.com%2Fant-design%2Fant-design%2Fpull%2F53972" target="_blank"&gt;#53972&lt;/a&gt;&lt;/li&gt; 
+ &lt;li&gt;Table&amp;nbsp;&lt;code&gt;expandable&lt;/code&gt;&amp;nbsp;增加&amp;nbsp;&lt;code&gt;expandedRowOffset&lt;/code&gt;&amp;nbsp;以支持展开行的偏移列数。&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fgithub.com%2Fant-design%2Fant-design%2Fpull%2F53926" target="_blank"&gt;#53926&lt;/a&gt;&lt;/li&gt; 
+ &lt;li&gt;修复 ConfigProvider 多层嵌套后&amp;nbsp;&lt;code&gt;motion&lt;/code&gt;&amp;nbsp;失效的问题。&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fgithub.com%2Fant-design%2Fant-design%2Fpull%2F53902" target="_blank"&gt;#53902&lt;/a&gt;&lt;/li&gt; 
+ &lt;li&gt;修复 Modal hooks 的&amp;nbsp;&lt;code&gt;update&lt;/code&gt;&amp;nbsp;不支持更新函数的问题。&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fgithub.com%2Fant-design%2Fant-design%2Fpull%2F53994" target="_blank"&gt;#53994&lt;/a&gt;&lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;p&gt;更新说明：&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fgithub.com%2Fant-design%2Fant-design%2Freleases%2Ftag%2F5.26.0" target="_blank"&gt;https://github.com/ant-design/ant-design/releases/tag/5.26.0&lt;/a&gt;&lt;/p&gt;
+                                                                                &lt;/div&gt;
+                                                                            </description>
+      <link>https://www.oschina.net/news/354771/ant-design-5-26-0-released</link>
+      <guid isPermaLink="false">https://www.oschina.net/news/354771/ant-design-5-26-0-released</guid>
+      <pubDate>Sun, 11 May 2025 02:54:00 GMT</pubDate>
+      <author>来源: OSCHINA</author>
+    </item>
     <item>
       <title>Firefox 139.0.4 发布</title>
       <description>&lt;div class="content"&gt;
@@ -27,8 +651,63 @@
                                                                             </description>
       <link>https://www.oschina.net/news/354763/firefox-139-0-4-released</link>
       <guid isPermaLink="false">https://www.oschina.net/news/354763/firefox-139-0-4-released</guid>
-      <pubDate>Wed, 11 Jun 2025 02:39:05 GMT</pubDate>
+      <pubDate>Sun, 11 May 2025 02:38:00 GMT</pubDate>
       <author>来源: OSCHINA</author>
+    </item>
+    <item>
+      <title>界面控件 DevExpress WPF v24.2 新版亮点：报表等组件功能升级</title>
+      <description>&lt;div class="content"&gt;
+                                                                    
+                                                        &lt;p style="color:#333333; text-align:justify"&gt;DevExpress WPF 拥有 120+个控件和库，将帮助您交付满足甚至超出企业需求的高性能业务应用程序。通过 DevExpress WPF 能创建有着强大互动功能的 XAML 基础应用程序，这些应用程序专注于当代客户的需求和构建未来新一代支持触摸的解决方案。&lt;/p&gt; 
+&lt;p style="color:#333333; text-align:justify"&gt;&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fwww.evget.com%2Fproduct%2F2346" target="_blank"&gt;DevExpress WPF&lt;/a&gt;控件近期全新发布 v24.2，此版本进一步升级了网格、报表、地图等组件的功能，欢迎下载最新版体验！&lt;/p&gt; 
+&lt;div&gt;
+ &lt;strong&gt;&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fwww.evget.com%2Fproduct%2F2346%2Fdownload" target="_blank"&gt;DevExpress WPF v24.2 正式版下载&lt;/a&gt;&lt;/strong&gt;
+&lt;/div&gt; 
+&lt;p&gt;&lt;span style="color:#ff6600"&gt;&lt;strong&gt;Grid（网格）控件&lt;/strong&gt;&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;多单元格编辑&lt;/p&gt; 
+&lt;p style="color:#333333; text-align:justify"&gt;Microsoft Excel 允许您选择多个单元格并通过按 Ctrl + Enter（替代 Enter）应用文本更改，DevExpress WPF Grid 控件中添加了一个类似的特性，允许用户同时对多个单元格应用相同的值。要启用此功能，将&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fdocs.devexpress.com%2FWPF%2FDevExpress.Xpf.Grid.DataControlBase.SelectionMode" target="_blank"&gt;GridControl.SelectionMode&lt;/a&gt;设置为 Cell，将&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fdocs.devexpress.com%2FWPF%2FDevExpress.Xpf.Grid.TableView.MultiCellEditMode%3Fv%3D24.2" target="_blank"&gt;GridControl.MultiCellEditMode&lt;/a&gt;设置为 FocusedColumn/AllColumns。&lt;/p&gt; 
+&lt;div&gt;
+ &lt;img alt="DevExpress WPF v24.2 产品图集" src="https://oscimg.oschina.net/oscnet//a590e16b5907853d6c754e5c5bc46b88.gif" referrerpolicy="no-referrer"&gt;
+&lt;/div&gt; 
+&lt;p&gt;&lt;span style="color:#ff6600"&gt;&lt;strong&gt;PDF Viewer&lt;/strong&gt;&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;strong&gt;获取在页面缩略图面板中选择的页面&lt;/strong&gt;&lt;/p&gt; 
+&lt;p style="color:#333333; text-align:justify"&gt;新的&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fdocs.devexpress.com%2FWPF%2FDevExpress.Xpf.PdfViewer.PdfThumbnailsViewerSettings.GetSelectedThumbnailPageIndexes%3Fv%3D24.2" target="_blank"&gt;PdfViewer.GetSelectedThumbnailPageIndexes&lt;/a&gt;方法允许您获得在 Page Thumbnails 面板中所选页面的索引，可以在 DevExpress PDF Viewer 中提取、删除或导出选定的页面。&lt;/p&gt; 
+&lt;p style="color:#333333; text-align:justify"&gt;使用&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fdocs.devexpress.com%2FWPF%2FDevExpress.Xpf.PdfViewer.PdfViewerControl.ActualThumbnailsViewerSettings%3Fv%3D24.2" target="_blank"&gt;PdfViewerControl.ActualThumbnailsViewer&lt;/a&gt;属性来访问实际的缩略图查看器设置，并调用&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fdocs.devexpress.com%2FWPF%2FDevExpress.Xpf.PdfViewer.PdfThumbnailsViewerSettings.GetSelectedThumbnailPageIndexes%3Fv%3D24.2" target="_blank"&gt;GetSelectedThumbnailPageIndexes&lt;/a&gt;方法来获取页面索引。&lt;/p&gt; 
+&lt;p style="color:#333333; text-align:justify"&gt;下面的示例将在页面缩略图面板中选择的 PDF 文档的页面保存为图像：&lt;/p&gt; 
+&lt;p style="color:#333333; text-align:justify"&gt;&lt;strong&gt;&lt;em&gt;C#&lt;/em&gt;&lt;/strong&gt;&lt;/p&gt; 
+&lt;pre&gt;using System.Windows.Media.Imaging;
+using System.IO;
+// ...
+private void simpleButton_Click(object sender, RoutedEventArgs e) {
+// Obtains the selected page indexes.
+var pages = viewer.ActualThumbnailsViewerSettings.GetSelectedThumbnailPageIndexes();
+// Saves each page from the collection to an image.
+foreach (var i in pages) {
+BitmapSource image = viewer.CreateBitmap(i, 1000);
+PngBitmapEncoder encoder = new PngBitmapEncoder();
+encoder.Frames.Add(BitmapFrame.Create(image));
+using (var fileStream = new FileStream($"..\\MyBitmap{i + 1}.bmp", FileMode.Create)) {
+encoder.Save(fileStream);
+}
+}
+}&lt;/pre&gt; 
+&lt;p&gt;&lt;span style="color:#ff6600"&gt;&lt;strong&gt;Reporting（报表）&lt;/strong&gt;&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;strong&gt;WPF 报表设计器 - 维度符号&lt;/strong&gt;&lt;/p&gt; 
+&lt;p style="color:#333333; text-align:justify"&gt;为了简化报表设计过程，此更新在&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fwww.evget.com%2Fproduct%2F2346" target="_blank"&gt;DevExpress WPF&lt;/a&gt;报表设计器中引入了维度符号。当您调整控件的大小时，设计器会提供精确的视觉反馈，并根据指定的 ReportUnit 属性值（如英寸、厘米或像素）显示维度符号。&lt;/p&gt; 
+&lt;div&gt;
+ &lt;img alt="DevExpress WPF v24.2 产品图集" src="https://oscimg.oschina.net/oscnet//b1ccdc0e972820bc31dddac86cddd3d6.png" referrerpolicy="no-referrer"&gt;
+&lt;/div&gt; 
+&lt;p style="color:#333333; text-align:justify"&gt;要管理符号的可见性，请使用&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fdocs.devexpress.com%2FXtraReports%2FDevExpress.XtraReports.Configuration.UserDesignerOptions.ShowDimensionNotations%3Fv%3D24.2" target="_blank"&gt;UserDesignerOptions.ShowDimensionNotations&lt;/a&gt;属性。&lt;/p&gt; 
+&lt;p&gt;&lt;span style="color:#ff6600"&gt;&lt;strong&gt;地图组件&lt;/strong&gt;&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;strong&gt;支持 Azure 地图&lt;/strong&gt;&lt;/p&gt; 
+&lt;p style="color:#333333; text-align:justify"&gt;DevExpress WPF MapControl 现在可以显示 Microsoft Azure 地图数据，使用 AzureMapDataProvider 提供程序获取光栅图像磁贴。&lt;/p&gt; 
+&lt;p style="color:#333333; text-align:justify"&gt;&lt;strong&gt;注意&lt;/strong&gt;：在使用 Azure Maps 时，您必须阅读并理解 Microsoft 的使用条款：&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fazure.microsoft.com%2Fen-us%2Fpricing%2Fdetails%2Fazure-maps%2F" target="_blank"&gt;https://azure.microsoft.com/en-us/pricing/details/azure-maps/&lt;/a&gt;。&lt;/p&gt;
+                                                                                &lt;/div&gt;
+                                                                            </description>
+      <link>https://www.oschina.net/news/354762</link>
+      <guid isPermaLink="false">https://www.oschina.net/news/354762</guid>
+      <pubDate>Sun, 11 May 2025 02:36:00 GMT</pubDate>
+      <author>来源: 投稿</author>
     </item>
     <item>
       <title>物联网卡管理平台 loTLink V2.2.1【2025 高考版)</title>
@@ -835,224 +1514,6 @@ public class Main {
       <link>https://www.oschina.net/news/354631/1panel-v2-released</link>
       <guid isPermaLink="false">https://www.oschina.net/news/354631/1panel-v2-released</guid>
       <pubDate>Sat, 10 May 2025 08:23:00 GMT</pubDate>
-      <author>来源: 投稿</author>
-    </item>
-    <item>
-      <title>gRPC 1.73.0 发布，跨语言 RPC 框架</title>
-      <description>&lt;div class="content"&gt;
-                                                                    
-                                                        &lt;p&gt;&lt;span style="background-color:#ffffff; color:#333333"&gt;gRPC 是可以在任何环境中运行的现代开源高性能 RPC 框架。gRPC 1.73.0 现已发布，包含了一些完善、改进和错误修复；具体更新内容如下：&lt;/span&gt;&lt;/p&gt; 
-&lt;p&gt;&lt;strong style="color:#333333"&gt;Core&lt;/strong&gt;&lt;/p&gt; 
-&lt;p style="text-align:start"&gt;&lt;span&gt;&lt;span&gt;&lt;span style="color:#1f2328"&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span style="background-color:#ffffff"&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;从此版本开始，MacOS 和 iOS 上的 gRPC 将利用 Abseil 的同步功能，使其与其他平台保持一致。如果你因此更新遇到任何问题，可以通过启用 GPR_DISABLE_ABSEIL_SYNC 来禁用它。&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/p&gt; 
-&lt;ul&gt; 
- &lt;li&gt;[Dep] 将 Protobuf 更新至 v31.0。 (&amp;nbsp;&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fgithub.com%2Fgrpc%2Fgrpc%2Fpull%2F39392" target="_blank"&gt;#39392&lt;/a&gt;&amp;nbsp;)&lt;/li&gt; 
- &lt;li&gt;[Core] 新增了 GPR_DISABLE_ABSEIL_SYNC。(&amp;nbsp;&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fgithub.com%2Fgrpc%2Fgrpc%2Fpull%2F39562" target="_blank"&gt;#39562&lt;/a&gt;&amp;nbsp;)&lt;/li&gt; 
- &lt;li&gt;[xds_override_host] 创建 subchannels 时传递每个端点的参数。（&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fgithub.com%2Fgrpc%2Fgrpc%2Fpull%2F39532" target="_blank"&gt;#39532&lt;/a&gt;）&lt;/li&gt; 
- &lt;li&gt;公开 GRPC_OPENSSL_CLEANUP_TIMEOUT 来控制 shutdown grace period。（&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fgithub.com%2Fgrpc%2Fgrpc%2Fpull%2F39297" target="_blank"&gt;#39297&lt;/a&gt;）&lt;/li&gt; 
- &lt;li&gt;[URI] 修复代理设置中 user_info 的解析。（&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fgithub.com%2Fgrpc%2Fgrpc%2Fpull%2F39004" target="_blank"&gt;#39004&lt;/a&gt;）&lt;/li&gt; 
- &lt;li&gt;[EventEngine] 修复关闭时线程池中的 busy loop。(&amp;nbsp;&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fgithub.com%2Fgrpc%2Fgrpc%2Fpull%2F39258" target="_blank"&gt;#39258&lt;/a&gt;&amp;nbsp;)&lt;/li&gt; 
- &lt;li&gt;[Dep] 添加了使用&lt;code&gt;openssl&lt;/code&gt;而不是&lt;code&gt;boringssl&lt;/code&gt;进行构建的标志。（&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fgithub.com%2Fgrpc%2Fgrpc%2Fpull%2F39188" target="_blank"&gt;#39188&lt;/a&gt;）&lt;/li&gt; 
- &lt;li&gt;[EventEngine] 清理：EventEngine 客户端、监听器和 DNS 实验在所有平台上默认开启。(&amp;nbsp;&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fgithub.com%2Fgrpc%2Fgrpc%2Fpull%2F39079" target="_blank"&gt;#39079&lt;/a&gt;&amp;nbsp;)&lt;/li&gt; 
-&lt;/ul&gt; 
-&lt;p style="text-align:start"&gt;&lt;strong&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span style="color:#1f2328"&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span style="background-color:#ffffff"&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;C++&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/strong&gt;&lt;/p&gt; 
-&lt;ul&gt; 
- &lt;li&gt; &lt;p&gt;[OpenCensus] 将 OpenCensus 及其相关 API 标记为已弃用。(&amp;nbsp;&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fgithub.com%2Fgrpc%2Fgrpc%2Fpull%2F39554" target="_blank"&gt;#39554&lt;/a&gt;&amp;nbsp;)&lt;/p&gt; &lt;/li&gt; 
-&lt;/ul&gt; 
-&lt;p style="text-align:start"&gt;&lt;strong&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span style="color:#1f2328"&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span style="background-color:#ffffff"&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;Python&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/strong&gt;&lt;/p&gt; 
-&lt;ul&gt; 
- &lt;li&gt;[Python] 将 Cython 升级到 3.1.1。(&amp;nbsp;&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fgithub.com%2Fgrpc%2Fgrpc%2Fpull%2F39609" target="_blank"&gt;#39609&lt;/a&gt;&amp;nbsp;)&lt;/li&gt; 
- &lt;li&gt;[Python] grpc_tools：rpc_tools：让 PythonGrpcGenerator 像&amp;nbsp;native&amp;nbsp;Generator/PyiGenerator 一样处理 proto 路径中的 &lt;span style="background-color:#ffffff; color:#1f2328"&gt;dot&lt;span&gt;&amp;nbsp;&lt;/span&gt;&lt;/span&gt;&lt;code&gt;.&lt;/code&gt;(&amp;nbsp;&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fgithub.com%2Fgrpc%2Fgrpc%2Fpull%2F39586" target="_blank"&gt;#39586&lt;/a&gt;&amp;nbsp;)&lt;/li&gt; 
-&lt;/ul&gt; 
-&lt;p style="text-align:start"&gt;&lt;strong&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span style="color:#1f2328"&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span style="background-color:#ffffff"&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;Ruby&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/strong&gt;&lt;/p&gt; 
-&lt;ul&gt; 
- &lt;li&gt;[Ruby] 将 remove_unused_artifacts 添加到 opt build 中。（&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fgithub.com%2Fgrpc%2Fgrpc%2Fpull%2F39593" target="_blank"&gt;#39593&lt;/a&gt;）&lt;/li&gt; 
-&lt;/ul&gt; 
-&lt;p&gt;更新说明：&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fgithub.com%2Fgrpc%2Fgrpc%2Freleases%2Ftag%2Fv1.73.0" target="_blank"&gt;https://github.com/grpc/grpc/releases/tag/v1.73.0&lt;/a&gt;&lt;/p&gt;
-                                                                                &lt;/div&gt;
-                                                                            </description>
-      <link>https://www.oschina.net/news/354599/grpc-1-73-0-released</link>
-      <guid isPermaLink="false">https://www.oschina.net/news/354599/grpc-1-73-0-released</guid>
-      <pubDate>Sat, 10 May 2025 06:08:00 GMT</pubDate>
-      <author>来源: OSCHINA</author>
-    </item>
-    <item>
-      <title>Netty 4.2.2.Final 发布，Java 网络应用框架</title>
-      <description>&lt;div class="content"&gt;
-                                                                    
-                                                        &lt;p&gt;&lt;span style="color:#000000"&gt;Netty 是一个异步事件驱动的网络应用框架，主要用于可维护的高性能协议服务器和客户端的快速开发。&lt;/span&gt;&lt;/p&gt; 
-&lt;p style="color:#333333; margin-left:0; margin-right:0; text-align:left"&gt;&lt;span style="color:#000000"&gt;Netty 4.2.2.Final 现已发布，这是 4.2 系列的第二个版本，包含错误修复、性能提升和新功能。一些更新要点包括：&lt;/span&gt;&lt;/p&gt; 
-&lt;ul&gt; 
- &lt;li&gt;从孵化状态毕业的 HTTP/3（&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fgithub.com%2Fnetty%2Fnetty%2Fpull%2F15048" target="_blank"&gt;#15048&lt;/a&gt;）&lt;/li&gt; 
- &lt;li&gt;允许超时手动运行任务（以 ns 为单位）（&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fgithub.com%2Fnetty%2Fnetty%2Fpull%2F15124" target="_blank"&gt;#15124&lt;/a&gt;）&lt;/li&gt; 
- &lt;li&gt;修复自适应分配器中的并发 ByteBuf write access 错误（&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fgithub.com%2Fnetty%2Fnetty%2Fpull%2F15131" target="_blank"&gt;#15131&lt;/a&gt;）&lt;/li&gt; 
- &lt;li&gt;IoUring：允许用户明确启用 RECVSEND_BUNDLE 支持（&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fgithub.com%2Fnetty%2Fnetty%2Fpull%2F15135" target="_blank"&gt;#15135&lt;/a&gt;）&lt;/li&gt; 
- &lt;li&gt;使 EmbeddedChannel 代码可配置（&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fgithub.com%2Fnetty%2Fnetty%2Fpull%2F15141" target="_blank"&gt;#15141&lt;/a&gt;）&lt;/li&gt; 
- &lt;li&gt;IoUring：不要依赖于 ByteBuf.memoryAddress() 是否有效（&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fgithub.com%2Fnetty%2Fnetty%2Fpull%2F15142" target="_blank"&gt;#15142&lt;/a&gt;）&lt;/li&gt; 
- &lt;li&gt;即使 sun.misc.Unsafe 不可用，也始终正确计算 ByteBuf 的内存地址（&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fgithub.com%2Fnetty%2Fnetty%2Fpull%2F15143" target="_blank"&gt;#15143&lt;/a&gt;）&lt;/li&gt; 
- &lt;li&gt;升级 lz4 依赖项，因为旧版本无法正确处理 arrayOffset &amp;gt; 0 的 ByteBuffer（&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fgithub.com%2Fnetty%2Fnetty%2Fpull%2F15146" target="_blank"&gt;#15146&lt;/a&gt;）&lt;/li&gt; 
- &lt;li&gt;Kqueue：修复 fd 重用时注册失败的问题（&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fgithub.com%2Fnetty%2Fnetty%2Fpull%2F15150" target="_blank"&gt;#15150&lt;/a&gt;）&lt;/li&gt; 
- &lt;li&gt;修复 SingleThreadIoEventLoop 构造函数的错误分配（&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fgithub.com%2Fnetty%2Fnetty%2Fpull%2F15155" target="_blank"&gt;#15155&lt;/a&gt;）&lt;/li&gt; 
- &lt;li&gt;修复 CertificateBuilder 中使用 ML-DSA 签署密钥的问题（&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fgithub.com%2Fnetty%2Fnetty%2Fpull%2F15156" target="_blank"&gt;#15156&lt;/a&gt;）&lt;/li&gt; 
- &lt;li&gt;针对自适应分配器优化 ByteBuf.setCharSequence (&amp;nbsp;&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fgithub.com%2Fnetty%2Fnetty%2Fpull%2F15165" target="_blank"&gt;#15165&lt;/a&gt;&amp;nbsp;)&lt;/li&gt; 
- &lt;li&gt;IoUring：为 IoUring 提供 Unix 域套接字支持（&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fgithub.com%2Fnetty%2Fnetty%2Fpull%2F15210" target="_blank"&gt;#15210&lt;/a&gt;）&lt;/li&gt; 
- &lt;li&gt;确保 OpenSsl.availableJavaCipherSuites 不包含空值（&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fgithub.com%2Fnetty%2Fnetty%2Fpull%2F15215" target="_blank"&gt;#15215&lt;/a&gt;）&lt;/li&gt; 
- &lt;li&gt;使 JdkZlibEncoder 接受 Deflater.DEFAULT_COMPRESSION 作为 level（&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fgithub.com%2Fnetty%2Fnetty%2Fpull%2F15217" target="_blank"&gt;#15217&lt;/a&gt;）&lt;/li&gt; 
- &lt;li&gt;引入 ByteBuf.readString 方法 (&amp;nbsp;&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fgithub.com%2Fnetty%2Fnetty%2Fpull%2F15224" target="_blank"&gt;#15224&lt;/a&gt;&amp;nbsp;)&lt;/li&gt; 
- &lt;li&gt;添加对从 MemorySegments 创建直接 ByteBuffers 的支持 (&amp;nbsp;&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fgithub.com%2Fnetty%2Fnetty%2Fpull%2F15231" target="_blank"&gt;#15231&lt;/a&gt;&amp;nbsp;)&lt;/li&gt; 
- &lt;li&gt;如果没有明确禁用，则始终优先使用池分配器的直接缓冲区（&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fgithub.com%2Fnetty%2Fnetty%2Fpull%2F15232" target="_blank"&gt;#15232&lt;/a&gt;）&lt;/li&gt; 
- &lt;li&gt;更新至 netty-tcnative 2.0.72.Final（&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fgithub.com%2Fnetty%2Fnetty%2Fpull%2F15240" target="_blank"&gt;#15240&lt;/a&gt;）&lt;/li&gt; 
- &lt;li&gt;IoUring：正确处理 splice 中的 ERRNO_ECANCELED_NEGATIVE（&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fgithub.com%2Fnetty%2Fnetty%2Fpull%2F15250" target="_blank"&gt;#15250&lt;/a&gt;）&lt;/li&gt; 
- &lt;li&gt;修复 netty-buffer OSGi 元数据（&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fgithub.com%2Fnetty%2Fnetty%2Fpull%2F15274" target="_blank"&gt;#15274&lt;/a&gt;）&lt;/li&gt; 
- &lt;li&gt;Kqueue：延迟从 registration map 中移除以修复噪声警告（&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fgithub.com%2Fnetty%2Fnetty%2Fpull%2F15279" target="_blank"&gt;#15279&lt;/a&gt;）&lt;/li&gt; 
- &lt;li&gt;当设置 auto-ack 被禁用时，StreamBufferingEncoder 不起作用（&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fgithub.com%2Fnetty%2Fnetty%2Fpull%2F15301" target="_blank"&gt;#15301&lt;/a&gt;）&lt;/li&gt; 
- &lt;li&gt;将 SETTINGS_ENABLE_CONNECT_PROTOCOL 添加到默认 HTTP/2 设置（&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fgithub.com%2Fnetty%2Fnetty%2Fpull%2F15312" target="_blank"&gt;#15312&lt;/a&gt;）&lt;/li&gt; 
-&lt;/ul&gt; 
-&lt;p&gt;详情可查看发布公告：&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fnetty.io%2Fnews%2F2025%2F06%2F05%2F4-2-2.html" target="_blank"&gt;https://netty.io/news/2025/06/05/4-2-2.html&lt;/a&gt;&lt;/p&gt;
-                                                                                &lt;/div&gt;
-                                                                            </description>
-      <link>https://www.oschina.net/news/354575/netty-4-2-2-released</link>
-      <guid isPermaLink="false">https://www.oschina.net/news/354575/netty-4-2-2-released</guid>
-      <pubDate>Sat, 10 May 2025 03:30:00 GMT</pubDate>
-      <author>来源: OSCHINA</author>
-    </item>
-    <item>
-      <title>企业级数据网格方案 AG Grid v33.3 发布，进一步增加性能和稳定性！</title>
-      <description>&lt;div class="content"&gt;
-                                                                    
-                                                        &lt;p style="color:#333333; text-align:center"&gt;&lt;img align="" alt="" height="450" src="https://oscimg.oschina.net/oscnet//059f7e6694b0ab81f4af5760c9399279.png" width="800" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;p style="color:#333333; text-align:justify"&gt;&lt;strong&gt;&lt;u&gt;&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fwww.evget.com%2Fvendor%2F589" target="_blank"&gt;AG Grid&lt;/a&gt;&lt;/u&gt;&lt;/strong&gt;&lt;span&gt;成立于英国，致力于提供优秀的企业级数据表格及图表解决方案。&lt;/span&gt;&lt;/p&gt; 
-&lt;p style="color:#333333"&gt;&lt;strong&gt;&lt;u&gt;&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fwww.evget.com%2Fproduct%2F4427" target="_blank"&gt;AG Grid&lt;/a&gt;&lt;/u&gt;&lt;/strong&gt;及&lt;strong&gt;&lt;u&gt;&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fwww.evget.com%2Fproduct%2F4428" target="_blank"&gt;AG Charts&lt;/a&gt;&lt;/u&gt;&lt;/strong&gt;是其两大主要的高性能企业级 JavaScript 数据表格及图表解决方案，被全球开发者广泛采用。凭借其卓越的性能、丰富的功能与高度可定制性，成为构建复杂数据驱动型应用的优选工具库。&lt;/p&gt; 
-&lt;p style="color:#333333"&gt;近日，AG Grid Enterprise 发布 33.3 版本，这是一个小版本更新，&lt;span&gt;它增加了重要的新功能并增强了现有功能，从而提高了性能和稳定性。&lt;/span&gt;&lt;/p&gt; 
-&lt;p style="color:#475467; text-align:justify"&gt;&lt;span&gt;具体来说，它增加了许多新功能：&lt;/span&gt;&lt;br&gt; &lt;span&gt;&lt;strong&gt;1.&amp;nbsp;&lt;/strong&gt;&lt;/span&gt;&lt;strong&gt;行固定&lt;/strong&gt;&lt;br&gt; &lt;span&gt;&lt;strong&gt;2.&lt;/strong&gt;&lt;/span&gt;&lt;strong&gt;行高调整&lt;/strong&gt;&lt;br&gt; &lt;span&gt;&lt;strong&gt;3.&lt;/strong&gt;&lt;/span&gt;&lt;strong&gt;总计行固定&lt;/strong&gt;&lt;br&gt; &lt;span&gt;&lt;strong&gt;4.&lt;/strong&gt;&lt;/span&gt;&lt;strong&gt;将列滚动到视图中&lt;/strong&gt;&lt;br&gt; &lt;span&gt;&lt;strong&gt;5. 性能改进&lt;/strong&gt;&lt;/span&gt;&lt;/p&gt; 
-&lt;h2&gt;&lt;span&gt;&lt;strong&gt;行固定&lt;/strong&gt;&lt;/span&gt;&lt;/h2&gt; 
-&lt;p style="color:#475467; text-align:justify"&gt;&lt;span&gt;&lt;u&gt;&lt;strong&gt;&lt;a href="https://www.oschina.net/action/GoToLink?url=http%3A%2F%2Fwww.evget.com%2Fvendor%2F589" target="_blank"&gt;AG Grid&lt;/a&gt;&lt;/strong&gt;&lt;/u&gt; 33.3 新增了&lt;/span&gt;行固定功能，&lt;span&gt;最终用户可以使用上下文菜单和 API 进行行固定。这允许用户将行固定在网格视口的顶部或底部，以便稍后快速访问。&lt;/span&gt;&lt;/p&gt; 
-&lt;p style="color:#475467; text-align:justify"&gt;&lt;span&gt;固定行支持与未固定行一样的全部功能 - 它们支持网格状态，并且可以根据当前应用的列排序和过滤条件进行选择、排序和过滤。&lt;/span&gt;&lt;/p&gt; 
-&lt;p style="color:#475467; text-align:justify"&gt;&lt;img alt="" src="https://oscimg.oschina.net/oscnet//eaec0d2bbca3d23a19922c4528e0bf42.png" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;h2&gt;&lt;span&gt;&lt;strong&gt;调整行高&lt;/strong&gt;&lt;/span&gt;&lt;/h2&gt; 
-&lt;p style="color:#475467; text-align:justify"&gt;&lt;span&gt;&lt;a href="https://www.oschina.net/action/GoToLink?url=http%3A%2F%2Fwww.evget.com%2Fvendor%2F589" target="_blank"&gt;&lt;u&gt;&lt;strong&gt;AG Grid&lt;/strong&gt;&lt;/u&gt;&lt;/a&gt; 33.3 支持最终用户&lt;/span&gt;调整行高&lt;span&gt;。这项新功能允许用户根据网格中显示的数据或特定用例调整行高。这使得网格行渲染更加灵活，更容易适应各种场景。&lt;/span&gt;&lt;/p&gt; 
-&lt;h2&gt;&lt;span&gt;&lt;strong&gt;总计行固定&lt;/strong&gt;&lt;/span&gt;&lt;/h2&gt; 
-&lt;p style="color:#475467; text-align:justify"&gt;&lt;span&gt;&lt;a href="https://www.oschina.net/action/GoToLink?url=http%3A%2F%2Fwww.evget.com%2Fvendor%2F589" target="_blank"&gt;&lt;u&gt;&lt;strong&gt;AG Grid&lt;/strong&gt;&lt;/u&gt;&lt;/a&gt; 33.3 支持&lt;/span&gt;固定总计行&lt;span&gt;。这样，您可以根据用例需求，以最符合需求的方式呈现总计行。例如，您可以将其显示为已固定，并允许最终用户选择是否取消固定。&lt;/span&gt;&lt;/p&gt; 
-&lt;h2&gt;&lt;span&gt;&lt;strong&gt;将列滚动到视图中&lt;/strong&gt;&lt;/span&gt;&lt;/h2&gt; 
-&lt;p style="color:#475467; text-align:justify"&gt;&lt;span&gt;&lt;a href="https://www.oschina.net/action/GoToLink?url=http%3A%2F%2Fwww.evget.com%2Fvendor%2F589" target="_blank"&gt;&lt;u&gt;&lt;strong&gt;AG Grid &lt;/strong&gt;&lt;/u&gt;&lt;/a&gt;33.3 改进了&lt;/span&gt;列工具面板&lt;span&gt;功能，允许用户在非枢轴模式下将任何可见且未折叠的列滚动到视图中。当网格显示水平滚动条并显示多列时，这使得最终用户能够轻松地将所需的列滚动到视图中。&lt;/span&gt;&lt;/p&gt; 
-&lt;h2&gt;&lt;span&gt;&lt;strong&gt;性能改进&lt;/strong&gt;&lt;/span&gt;&lt;/h2&gt; 
-&lt;p style="color:#475467; text-align:justify"&gt;&lt;span&gt;&lt;a href="https://www.oschina.net/action/GoToLink?url=http%3A%2F%2Fwww.evget.com%2Fvendor%2F589" target="_blank"&gt;&lt;u&gt;&lt;strong&gt;AG Grid&lt;/strong&gt;&lt;/u&gt;&lt;/a&gt; 33.3 显著加快了列生成速度。这在&lt;/span&gt;数据透视&lt;span&gt;时尤其重要，因为可以根据透视列中的不同值生成大量数据透视列。具体而言，在添加、重新排序或删除数据透视列和聚合列，或更改某些与数据透视相关的网格选项（导致数据透视列重新生成）后，新列的生成速度会显著加快。&lt;/span&gt;&lt;/p&gt; 
-&lt;p style="color:#475467; text-align:justify"&gt;&lt;span&gt;&lt;a href="https://www.oschina.net/action/GoToLink?url=http%3A%2F%2Fwww.evget.com%2Fvendor%2F589" target="_blank"&gt;&lt;u&gt;&lt;strong&gt;AG Grid&lt;/strong&gt;&lt;/u&gt;&lt;/a&gt; 33.3 还改进了数据更新后&lt;/span&gt;单元刷新&lt;span&gt;的性能。这使得电网能够通过单元刷新支持更大的交易量。&lt;/span&gt;提高渲染性能和 UI 响应能力，使用户能够与网格中更多的记录进行交互。&lt;/p&gt; 
-&lt;h2&gt;&lt;span&gt;&lt;strong&gt;概括&lt;/strong&gt;&lt;/span&gt;&lt;/h2&gt; 
-&lt;p style="color:#475467; text-align:justify"&gt;&lt;span&gt;&lt;a href="https://www.oschina.net/action/GoToLink?url=http%3A%2F%2Fwww.evget.com%2Fvendor%2F589" target="_blank"&gt;&lt;u&gt;&lt;strong&gt;AG Grid&lt;/strong&gt;&lt;/u&gt;&lt;/a&gt; 33.3 是一个重要的小版本更新，它增加了关键的最终用户功能，并提升了性能和稳定性。&lt;/span&gt;&lt;/p&gt;
-                                                                                &lt;/div&gt;
-                                                                            </description>
-      <link>https://www.oschina.net/news/354568/aggrid-33-3-released</link>
-      <guid isPermaLink="false">https://www.oschina.net/news/354568/aggrid-33-3-released</guid>
-      <pubDate>Sat, 10 May 2025 03:04:00 GMT</pubDate>
-      <author>来源: 投稿</author>
-    </item>
-    <item>
-      <title>源雀 Scrm 开源版：AI 客服会话总结，功能发布</title>
-      <description>&lt;div class="content"&gt;
-                                                                    
-                                                        &lt;h1&gt;&lt;strong&gt;1.AI 客服回话总结&lt;/strong&gt;&lt;/h1&gt; 
-&lt;p&gt;本功能通过 AI 大模型分析企微客服客户之间的对话记录，生成简明扼要的总结报告，帮助管理人员快速把握服务要点，提升服务质量与效率。&lt;/p&gt; 
-&lt;h3&gt;&lt;strong&gt;核心价值&lt;/strong&gt;&lt;/h3&gt; 
-&lt;p&gt;&amp;nbsp;&amp;nbsp;1.&amp;nbsp;&lt;strong&gt;效率提升&lt;/strong&gt;：将冗长的对话浓缩为关键信息，节省 80% 以上的阅读时间&lt;/p&gt; 
-&lt;p&gt;&amp;nbsp;&amp;nbsp;2.&amp;nbsp;&lt;strong&gt;质量监控&lt;/strong&gt;：自动识别服务过程中的关键节点和问题点&lt;/p&gt; 
-&lt;p&gt;&amp;nbsp;&amp;nbsp;3.&amp;nbsp;&lt;strong&gt;知识沉淀&lt;/strong&gt;：形成可追溯的服务案例库，支持新人培训&lt;/p&gt; 
-&lt;p&gt;&amp;nbsp;&amp;nbsp;4.&amp;nbsp;&lt;strong&gt;智能分析&lt;/strong&gt;：发现服务流程中的优化机会和常见问题模式&lt;/p&gt; 
-&lt;p&gt;&lt;img height="665" src="https://oscimg.oschina.net/oscnet/up-eea56f746aaf946aea9a81190a4a340c0a5.png" width="1280" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;h1&gt;&lt;strong&gt;2.客户群发&lt;/strong&gt;&lt;/h1&gt; 
-&lt;p&gt;&lt;strong&gt;基于企微可方 API 接口实现，多种内容客户群发。&lt;/strong&gt;&lt;/p&gt; 
-&lt;p&gt;&lt;img height="639" src="https://oscimg.oschina.net/oscnet/up-489e5478dede93968c2b79d450474724119.png" width="1280" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;p&gt;&lt;span&gt;&lt;/span&gt;&lt;/p&gt; 
-&lt;h1&gt;&lt;strong&gt;3.客户列表&lt;/strong&gt;&lt;/h1&gt; 
-&lt;p&gt;&lt;strong&gt;支持同步企微客户,未群发等功能提供基础数据,便于后续客户跟进管理等功能的拓展。&lt;/strong&gt;&lt;/p&gt; 
-&lt;p&gt;&lt;img height="665" src="https://oscimg.oschina.net/oscnet/up-a56af449efdfde699d858560cbff95acb62.png" width="1280" referrerpolicy="no-referrer"&gt;&lt;/p&gt;
-                                                                                &lt;/div&gt;
-                                                                            </description>
-      <link>https://www.oschina.net/news/354450/iyquecode-updated</link>
-      <guid isPermaLink="false">https://www.oschina.net/news/354450/iyquecode-updated</guid>
-      <pubDate>Fri, 09 May 2025 10:53:00 GMT</pubDate>
-      <author>来源: 投稿</author>
-    </item>
-    <item>
-      <title>Aspose.Words 25.5 发布，新增六大功能与性能深度优化</title>
-      <description>&lt;div class="content"&gt;
-                                                                    
-                                                        &lt;p style="color:#333333; text-align:justify"&gt;&lt;span&gt;&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fwww.evget.com%2Fproduct%2F4446" target="_blank"&gt;&lt;strong&gt;Aspose.Words&lt;/strong&gt;&lt;/a&gt;&amp;nbsp;25.5 版本已经正式发布，这一版本带来了 84 项改进和修复，涵盖了从新功能的添加到现有功能的优化，为开发者提供了更强大的文档处理能力。&lt;/span&gt;&lt;/p&gt; 
-&lt;p style="color:#333333; text-align:center"&gt;&lt;span&gt;&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fwww.evget.com%2Fproduct%2F4446%2Fdownload" target="_blank"&gt;&lt;span&gt;Aspose.Words 25.5 正版试用下载&lt;/span&gt;&lt;/a&gt;&lt;/span&gt;&lt;/p&gt; 
-&lt;h3&gt;&lt;span&gt;&lt;strong&gt;&lt;span&gt;一、新增功&lt;/span&gt;&lt;/strong&gt;&lt;strong&gt;&lt;span&gt;能&lt;/span&gt;&lt;/strong&gt;&lt;/span&gt;&lt;/h3&gt; 
-&lt;p&gt;&lt;span style="background-color:#ffffff; color:#666666"&gt;&lt;strong&gt;1. 图表样式设&lt;/strong&gt;&lt;strong&gt;置&lt;/strong&gt;&lt;/span&gt;&lt;br&gt; &lt;span style="background-color:#ffffff; color:#666666"&gt;&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fwww.evget.com%2Fproduct%2F4446" target="_blank"&gt;Aspose.Words&lt;span&gt;&amp;nbsp;&lt;/span&gt;&lt;/a&gt;新增了图表样式的设置功能。通过实现 ChartStyle 枚举类型，用户可以指定预定义的图表样式，如默认样式、柔和颜色样式、饱和颜色样式、阴影数据点样式等。此外，DocumentBuilder 类新增了两个方法，允许在插入新图表时指定样式，而 Chart 类也新增了 Style 属性，用于设置现有图表的样式。&lt;/span&gt;&lt;/p&gt; 
-&lt;div&gt;
- &lt;img alt="documentbuilder" src="https://oscimg.oschina.net/oscnet//b45a407f430a6d0bdf613626011b1e7f.png" referrerpolicy="no-referrer"&gt;
-&lt;/div&gt; 
-&lt;p&gt;&lt;span style="background-color:#ffffff; color:#666666"&gt;&lt;strong&gt;2. Markdown 导出控&lt;/strong&gt;&lt;strong&gt;制&lt;/strong&gt;&lt;/span&gt;&lt;br&gt; &lt;span style="background-color:#ffffff; color:#666666"&gt;该版本还增加了对 Markdown 导出的控制，允许用户控制空段落如何导出到 Markdown。这为需要将文档内容导出为 Markdown 格式的用户提供了更灵活的选项，确保导出结果符合预期。&lt;/span&gt;&lt;/p&gt; 
-&lt;div&gt;
- &lt;img alt="markdown" src="https://oscimg.oschina.net/oscnet//bb75347a6a0fafed39b186cd3d497b2b.png" referrerpolicy="no-referrer"&gt;
-&lt;/div&gt; 
-&lt;p&gt;&lt;span style="background-color:#ffffff; color:#666666"&gt;&lt;strong&gt;3. 基 64 图像表示换行选&lt;/strong&gt;&lt;strong&gt;项&lt;/strong&gt;&lt;/span&gt;&lt;br&gt; &lt;span style="background-color:#ffffff; color:#666666"&gt;&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fwww.evget.com%2Fproduct%2F4446" target="_blank"&gt;Aspose.Words 25.5&lt;/a&gt;提供了一个选项，可以在基 64 图像表示中每 76 个字符后插入换行符。这对于需要在特定格式下处理图像数据的用户来说是一个实用的功能。&lt;/span&gt;&lt;br&gt; &lt;span style="background-color:#ffffff; color:#666666"&gt;&lt;strong&gt;4. 文本框内容标&lt;/strong&gt;&lt;strong&gt;记&lt;/strong&gt;&lt;/span&gt;&lt;br&gt; &lt;span style="background-color:#ffffff; color:#666666"&gt;新增了将文本框内容标记为文本框标签的功能。这有助于在处理文本框时更好地识别和操作其中的内容，提高了文档处理的准确性。&lt;/span&gt;&lt;br&gt; &lt;span style="background-color:#ffffff; color:#666666"&gt;&lt;strong&gt;5. 瀑布图渲染支&lt;/strong&gt;&lt;strong&gt;持&lt;/strong&gt;&lt;/span&gt;&lt;br&gt; &lt;span style="background-color:#ffffff; color:#666666"&gt;该版本支持瀑布图的渲染，这使得 Aspose.Words 能够处理更复杂的图表类型，满足用户在文档中插入和显示瀑布图的需求。&lt;/span&gt;&lt;br&gt; &lt;span style="background-color:#ffffff; color:#666666"&gt;&lt;strong&gt;6. MSO 属性支&lt;/strong&gt;&lt;strong&gt;持&lt;/strong&gt;&lt;/span&gt;&lt;br&gt; &lt;span style="background-color:#ffffff; color:#666666"&gt;在导入段落和文本时，&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fwww.evget.com%2Fproduct%2F4446" target="_blank"&gt;Aspose.Words&amp;nbsp; 25.5&lt;/a&gt;支持 MSO 属性。这有助于更好地兼容 Microsoft Office 文档的格式和样式，确保导入后的文档与原始文档保持一致。&lt;/span&gt;&lt;/p&gt; 
-&lt;h3&gt;&lt;span&gt;&lt;strong&gt;&lt;span&gt;二、性能优化与改&lt;/span&gt;&lt;/strong&gt;&lt;strong&gt;&lt;span&gt;进&lt;/span&gt;&lt;/strong&gt;&lt;/span&gt;&lt;/h3&gt; 
-&lt;p&gt;&lt;span style="background-color:#ffffff; color:#666666"&gt;&lt;strong&gt;1. 移除对 Microsoft.Win32.Registry 的依&lt;/strong&gt;&lt;strong&gt;赖&lt;/strong&gt;&lt;/span&gt;&lt;br&gt; &lt;span style="background-color:#ffffff; color:#666666"&gt;对于.NET 6 及更高版本，Aspose.Words 移除了对 Microsoft.Win32.Registry 的依赖。这一改进有助于减少对特定.NET 框架组件的依赖，提高代码的兼容性和可移植性。&lt;/span&gt;&lt;br&gt; &lt;span style="background-color:#ffffff; color:#666666"&gt;&lt;strong&gt;2. 图表默认设置优&lt;/strong&gt;&lt;strong&gt;化&lt;/strong&gt;&lt;/span&gt;&lt;br&gt; &lt;span style="background-color:#ffffff; color:#666666"&gt;对图表的默认设置进行了优化，使得在没有明确指定样式的情况下，图表的显示效果更加符合用户的预期。&lt;/span&gt;&lt;br&gt; &lt;span style="background-color:#ffffff; color:#666666"&gt;&lt;strong&gt;3. 低代码类中支持图像输&lt;/strong&gt;&lt;strong&gt;入&lt;/strong&gt;&lt;/span&gt;&lt;br&gt; &lt;span style="background-color:#ffffff; color:#666666"&gt;允许在低代码类中使用图像作为输入，这为低代码开发提供了更多的灵活性，使得开发者能够更方便地处理图像相关的文档操作。&lt;/span&gt;&lt;/p&gt; 
-&lt;h3&gt;&lt;span&gt;&lt;strong&gt;&lt;span&gt;三、Bug 修&lt;/span&gt;&lt;/strong&gt;&lt;strong&gt;&lt;span&gt;复&lt;/span&gt;&lt;/strong&gt;&lt;/span&gt;&lt;/h3&gt; 
-&lt;p&gt;&lt;span style="background-color:#ffffff; color:#666666"&gt;&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fwww.evget.com%2Fproduct%2F4446" target="_blank"&gt;Aspose.Words 25.5&lt;/a&gt;修复了一些 Bug：&lt;/span&gt;&lt;/p&gt; 
-&lt;ul&gt; 
- &lt;li&gt;&lt;span&gt;修复了 PDF 保存选项中的线性化属性问题，确保生成的 PDF 文件能够正确支持快速 Web 查看；&lt;/span&gt;&lt;/li&gt; 
- &lt;li&gt;&lt;span&gt;修复了在更新字段后索引中的页码不正确的问题，以及在更新字段后引用字段值不显示的问题；&lt;/span&gt;&lt;/li&gt; 
- &lt;li&gt;&lt;span&gt;修复了在将特定 RTF 文件转换为 PDF 时布局错误的问题，以及在加载 PDF 文档时可能引发的 StackOverflowException。&lt;/span&gt;&lt;/li&gt; 
-&lt;/ul&gt; 
-&lt;h3&gt;&lt;span&gt;&lt;strong&gt;&lt;span&gt;四、公共 API 和向后不兼容的更&lt;/span&gt;&lt;/strong&gt;&lt;strong&gt;&lt;span&gt;改&lt;/span&gt;&lt;/strong&gt;&lt;/span&gt;&lt;/h3&gt; 
-&lt;p&gt;&lt;span style="background-color:#ffffff; color:#666666"&gt;Aspose.Words 25.5 引入了一些公共 API 的更改，这些更改可能会影响现有代码的行为。例如，新增的 ChartStyle 枚举类型和相关方法，以及对 Chart 类的 Style 属性的添加，都为图表的样式设置提供了新的方式。开发者在升级到 25.5 版本时，需要注意这些 API 的更改，并根据需要调整现有代码。&lt;/span&gt;&lt;/p&gt; 
-&lt;h3&gt;&lt;span&gt;&lt;strong&gt;&lt;span&gt;五、总&lt;/span&gt;&lt;/strong&gt;&lt;strong&gt;&lt;span&gt;结&lt;/span&gt;&lt;/strong&gt;&lt;/span&gt;&lt;/h3&gt; 
-&lt;p&gt;&lt;span style="background-color:#ffffff; color:#666666"&gt;&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fwww.evget.com%2Fproduct%2F4446" target="_blank"&gt;&lt;strong&gt;Aspose.Words 25.5&lt;/strong&gt;&lt;/a&gt;版本的发布，为开发者带来了更多的功能和更好的性能。无论是新增的图表样式设置、Markdown 导出控制，还是对 MSO 属性的支持和性能优化，都使得 Aspose.Words 在文档处理领域更加出色。同时，大量 Bug 的修复也提高了软件的稳定性和可靠性。对于使用&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fwww.evget.com%2Fproduct%2F4446" target="_blank"&gt;&lt;strong&gt;Aspose.Words&lt;span&gt;&amp;nbsp;&lt;/span&gt;&lt;/strong&gt;&lt;/a&gt;的开发者来说，升级到 25.5 版本将是一个不错的选择，它将帮助你更高效地处理文档相关的需求。&lt;/span&gt;&lt;/p&gt;
-                                                                                &lt;/div&gt;
-                                                                            </description>
-      <link>https://www.oschina.net/news/354422/aspose-words-25-5-released</link>
-      <guid isPermaLink="false">https://www.oschina.net/news/354422/aspose-words-25-5-released</guid>
-      <pubDate>Fri, 09 May 2025 09:25:00 GMT</pubDate>
-      <author>来源: 投稿</author>
-    </item>
-    <item>
-      <title>NumPy 2.3.0 发布</title>
-      <description>&lt;div class="content"&gt;
-                                                                    
-                                                        &lt;p&gt;&lt;span style="color:#000000"&gt;NumPy 2.3.0 现已&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fnumpy.org%2Fnews%2F" target="_blank"&gt;发布&lt;/a&gt;。该版本改进了自由线程 Python 支持和注释，并修复了一系列常见的错误。此次更新在已过期的弃用代码、代码现代化和样式清理方面数量异常丰富。&lt;/span&gt;&lt;/p&gt; 
-&lt;p style="text-align:start"&gt;&lt;span style="color:#000000"&gt;以及将版本从 manylinux2014 升级到了 manylinux_2_28。此外，在配备 M4 CPU 的 Mac 上运行的用户可能会看到各种关于无效值等的警告，这些警告是 Accelerate 的一个已知问题，并无大碍。苹果公司已经承诺将进行修复。&lt;/span&gt;&lt;/p&gt; 
-&lt;p style="text-align:start"&gt;&lt;span style="color:#000000"&gt;一些更新亮点如下：&lt;/span&gt;&lt;/p&gt; 
-&lt;ul&gt; 
- &lt;li&gt;&lt;span style="color:#000000"&gt;NumPy 文档中的交互式示例。&lt;/span&gt;&lt;/li&gt; 
- &lt;li&gt;&lt;span style="color:#000000"&gt;使用 OpenMP 并行化构建 NumPy。&lt;/span&gt;&lt;/li&gt; 
- &lt;li&gt;&lt;span style="color:#000000"&gt;初步支持 Windows on ARM。&lt;/span&gt;&lt;/li&gt; 
- &lt;li&gt;&lt;span style="color:#000000"&gt;改进了对自由线程 Python 的支持。&lt;/span&gt;&lt;/li&gt; 
- &lt;li&gt;&lt;span style="color:#000000"&gt;改进的注释。&lt;/span&gt;&lt;/li&gt; 
-&lt;/ul&gt; 
-&lt;p style="text-align:start"&gt;&lt;span style="color:#000000"&gt;此版本支持 Python 3.11-3.13 版本，Python 3.14 发布后也将支持。&lt;/span&gt;&lt;/p&gt; 
-&lt;p style="text-align:start"&gt;&lt;span style="color:#000000"&gt;详情可查看更新说明：&lt;/span&gt;&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fgithub.com%2Fnumpy%2Fnumpy%2Freleases%2Ftag%2Fv2.3.0" target="_blank"&gt;https://github.com/numpy/numpy/releases/tag/v2.3.0&lt;/a&gt;&lt;/p&gt;
-                                                                                &lt;/div&gt;
-                                                                            </description>
-      <link>https://www.oschina.net/news/354406/numpy-2-3-0-released</link>
-      <guid isPermaLink="false">https://www.oschina.net/news/354406/numpy-2-3-0-released</guid>
-      <pubDate>Fri, 09 May 2025 08:28:00 GMT</pubDate>
-      <author>来源: OSCHINA</author>
-    </item>
-    <item>
-      <title>恶意软件无处逃！国内版「Manus」AiPy 开发 Windows 沙箱工具，进程行为+网络传输层级监控！</title>
-      <description>&lt;div class="content"&gt;
-                                                                    
-                                                        &lt;h2&gt;一、背景&lt;/h2&gt; 
-&lt;p style="color:#212529; text-align:start"&gt;NImplant.exe 一款后渗透测试工具，属于其 Beacon 植入程序的一种，主要用于在目标系统中建立持久化控制，实现对目标主机的远程管理与渗透测试。在功能上，它能够通过命令行或图形界面接收并执行攻击者的指令，完成文件操作、进程管理、网络信息收集等远程控制任务；通过修改注册表、服务启动项等方式实现持久化驻留，确保目标系统重启后仍能保持连接；还能作为跳板机，横向移动至目标网络中的其他主机，扩展渗透范围，并获取目标系统的敏感信息，如密码哈希、文件内容等，回传至攻击者控制的服务器。&lt;/p&gt; 
-&lt;p style="color:#212529; text-align:start"&gt;他的优点十分明显：采用无文件落地技术，可加载到内存中运行，极大减少被传统杀毒软件检测到的概率，且通信流量经过加密处理，还支持模拟正常网络流量，难以被防火墙或入侵检测系统识别，隐蔽性极强。在功能上，其支持插件扩展，可使用 PowerShell 脚本、自定义命令模块等，灵活适配不同渗透场景，同时具备丰富的内置功能，涵盖端口扫描、键盘记录、屏幕截图、权限提升等。此外，它与 Cobalt Strike 主控端深度集成，攻击者能通过图形化界面直观管理多个植入节点，实现批量操作，且支持多种通信方式，能适应复杂网络环境，部分版本还可支持 Linux、macOS 等系统，具备跨平台兼容性。&lt;/p&gt; 
-&lt;p style="color:#212529; text-align:start"&gt;然而，NImplant.exe 也存在诸多缺点。在使用环境上，它在启用 Windows Defender Application Guard 或严格的内存保护机制的系统中运行受限，对低权限用户账户的功能也有限，需配合提权操作才能完全发挥作用。随着安全技术的发展，部分杀毒软件已能通过行为分析或内存特征检测到其活动，网络层异常流量模式也可能触发安全设备告警，导致其被检测的风险增加。并且，初次使用时需手动配置监听端口、通信协议、加密密钥等参数，对新手不够友好，一旦通信服务器被封禁或 IP 暴露，整个植入程序就会失效 。&lt;/p&gt; 
-&lt;p style="color:#212529; text-align:start"&gt;因此我们希望通过 aipy 能开发一个 windows 沙箱工具对文件进行直接的分析。&lt;/p&gt; 
-&lt;h2&gt;二、过程&lt;/h2&gt; 
-&lt;p style="margin-left:0px; margin-right:0px; text-align:start"&gt;提示词：帮我写一个沙箱工具，在 windows10 中，分析桌面上的 nimplant.exe，包括他的进程行为、网络连接信息、文件控制信息等，尤其是网络部分，做传输层级别的监控，包括他可能发送的 tcp 连接请求以及具体指向的 ip 或域名，如果可以，也请做程序运行的沙箱截图。&lt;/p&gt; 
-&lt;p style="margin-left:0px; margin-right:0px; text-align:start"&gt;&lt;img alt="" src="https://oscimg.oschina.net/oscnet//0db7c9955dfebbc21986ab5185628077.jpg" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;p style="margin-left:0px; margin-right:0px; text-align:start"&gt;任务拆解&lt;/p&gt; 
-&lt;p style="margin-left:0px; margin-right:0px; text-align:start"&gt;&lt;img alt="" src="https://oscimg.oschina.net/oscnet//a6aaadf30ed45fccb440693e0508cba3.jpg" referrerpolicy="no-referrer"&gt;&lt;img alt="" height="561" src="https://oscimg.oschina.net/oscnet/up-babfca5b90d97a00d97b05d9bdeaac732be.png" width="894" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;p style="margin-left:0px; margin-right:0px; text-align:start"&gt;任务完成&lt;/p&gt; 
-&lt;p style="margin-left:0px; margin-right:0px; text-align:start"&gt;&lt;img alt="" src="https://oscimg.oschina.net/oscnet//06ea5bc3cfca685a82313c923dfde8c2.jpg" referrerpolicy="no-referrer"&gt;&lt;img alt="" height="520" src="https://oscimg.oschina.net/oscnet/up-ee337e5226f18e49652644f88b3f5d0e8f1.png" width="701" referrerpolicy="no-referrer"&gt;&lt;br&gt; 结果展示&lt;br&gt; &lt;img alt="" src="https://oscimg.oschina.net/oscnet//b96e22b73cd159c9ca27ac76ec6b07a6.jpg" referrerpolicy="no-referrer"&gt;&lt;img alt="" src="https://oscimg.oschina.net/oscnet/up-664a61c892fbeeb2fb1d940403ea187b121.png" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;p style="margin-left:0px; margin-right:0px; text-align:start"&gt;我们能看到 aipy 在整个过程中耗费很短的时间，任务响应和执行的时间都很快，生成的报告简洁明了，涵盖了所有我要求的信息，并且通过表格的形式对应呈现，对眼睛很友好哈哈哈。&lt;/p&gt;
-                                                                                &lt;/div&gt;
-                                                                            </description>
-      <link>https://www.oschina.net/news/354398</link>
-      <guid isPermaLink="false">https://www.oschina.net/news/354398</guid>
-      <pubDate>Fri, 09 May 2025 08:16:00 GMT</pubDate>
       <author>来源: 投稿</author>
     </item>
   </channel>
