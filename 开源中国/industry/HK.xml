@@ -7,13 +7,897 @@
     <generator>RSSHub</generator>
     <webMaster>contact@rsshub.app (RSSHub)</webMaster>
     <language>zh-hk</language>
-    <lastBuildDate>Thu, 12 Jun 2025 02:42:22 GMT</lastBuildDate>
+    <lastBuildDate>Thu, 12 Jun 2025 07:42:13 GMT</lastBuildDate>
     <ttl>5</ttl>
+    <item>
+      <title>vivo Pulsar 萬億級消息處理實踐（1）- 數據發送原理解析和性能調優</title>
+      <description>&lt;div class="content"&gt;
+                                                                                                                                                                                                                                        &lt;blockquote&gt; 
+ &lt;p&gt;作者：vivo 互聯網大數據團隊- Quan Limin&lt;/p&gt; 
+ &lt;p&gt;本文是 vivo 互聯網大數據團隊《vivo Pulsar 萬億級消息處理實踐》系列文章第 1 篇。&lt;/p&gt; 
+ &lt;p&gt;文章以 Pulsar client 模塊中的 Producer 為解析對象，通過對 Producer 數據發送原理進行逐層分析，以及分享參數調優實戰案例，幫助讀者理解與使用好 Producer，並體會到 Producer 對消息中間件系統穩定性以及處理性能所起到的關鍵作用。&lt;/p&gt; 
+&lt;/blockquote&gt; 
+&lt;h1&gt;一、Pulsar 簡要介紹&lt;/h1&gt; 
+&lt;p&gt;&lt;img src="https://static001.geekbang.org/infoq/fb/fbcab3bc275f1a6943f142e8a110d07c.png" alt="圖片" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p&gt;Pulsar 是新一代的雲原生消息中間件，由 Apache 軟件基金會孵化和開源。它的設計目的是為了滿足現代數據處理和計算應用程序對可擴展性、可靠性和高性能的需求，具備存儲與計算分離、節點對等、獨立擴展、實時均衡、節點故障快速恢復等特性。&lt;/p&gt; 
+&lt;p&gt;Pulsar 由四個核心模塊組成：broker、bookKeeper 和 client（Producer 和 Consumer）、zk（元數據管理和節點協調）。broker 接受來自 Producer 的消息，將消息路由到對應的 topic；bookKeeper 用於數據持久化存儲和數據複製；Consumer 消費 topic 上的數據。Pulsar 支持多種編程語言和協議（如 Java、C++、Go、Python 等），可以運行在雲、本地和混合環境中，擴展性好，支持多租户和跨數據中心複製等特性。因此，Pulsar 被廣泛應用於雲計算、大數據、物聯網等領域的實時消息傳遞和處理應用中。&lt;/p&gt; 
+&lt;h1&gt;二、Pulsar Producer 解析&lt;/h1&gt; 
+&lt;p&gt;首先需要了解 Producer 的數據發送流程，這裏以「開啓壓縮、batch 發送消息給 partitioned topic「這樣的一個線上常規場景為例，解析數據的發送的關鍵環節。&lt;/p&gt; 
+&lt;p&gt;&lt;strong&gt;tips：&lt;/strong&gt;&lt;/p&gt; 
+&lt;p&gt;在 Pulsar 中有無分區（Non-Partitioned）Topic 和有分區 (Partitioned) 的 Topic 之分，Partitioned topic 最小分區數為 1，為滿足任務的拓展性，在線上一般使用 Partitioned topic。&lt;/p&gt; 
+&lt;h2&gt;2.1 消息生產與發送的詳細流程&lt;/h2&gt; 
+&lt;p&gt;&lt;img src="https://static001.geekbang.org/infoq/66/6663c40abe8c2e1562b1ef8e8393a55d.png" alt="圖片" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p&gt;Producer 發送數據主要分為&lt;strong&gt;12 個步驟：&lt;/strong&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;strong&gt;① 創建 Producer：&lt;/strong&gt;&lt;/p&gt; 
+&lt;p&gt;partitioned topic 創建的是一個 Partitioned-&lt;/p&gt; 
+&lt;p&gt;ProducerImpl 對象，該對象包含了所有分區及其對應的 ProducerImpl 對象，ProducerImpl 對象負責所對應分區數據的維護和發送。&lt;/p&gt; 
+&lt;p&gt;&lt;strong&gt;② 構造消息：&lt;/strong&gt;&lt;/p&gt; 
+&lt;p&gt;一條消息被髮送前首先會被封裝成為一個 Message 對象，對象中包含了所發送的 topic name、消息體、消息大小、schema 類型、metadata（是否指定 key 等）等信息。&lt;/p&gt; 
+&lt;p&gt;&lt;strong&gt;③ 確定目標分區：&lt;/strong&gt;&lt;/p&gt; 
+&lt;p&gt;在發送消息前需要通過路由策略決定發往哪一個分區，選擇對應分區的 ProducerImpl 對象進行進一步處理。&lt;/p&gt; 
+&lt;p&gt;&lt;strong&gt;④ 攔截器：&lt;/strong&gt;&lt;/p&gt; 
+&lt;p&gt;Producer 可以設置自定義的攔截器，攔截器需要實現 producerInterceptor 接口，在消息發送前可對消息進行攔截修改。&lt;/p&gt; 
+&lt;p&gt;&lt;strong&gt;⑤ 消息堆積控制：&lt;/strong&gt;&lt;/p&gt; 
+&lt;p&gt;Producer 可以處理的消息是有限的，接收新的消息時會分別進行信號量和內存使用率校驗，控制接收消息的速率，防止消息無限在本地堆積。&lt;/p&gt; 
+&lt;p&gt;&lt;strong&gt;⑥ batch 容器管理：&lt;/strong&gt;&lt;/p&gt; 
+&lt;p&gt;默認情況下分好區的消息不是直接被髮送，而是放入了生產者的一個 batch 緩存容器中裏面。在這個緩存裏面，多條消息會被封裝成為一個批次（batch）。&lt;/p&gt; 
+&lt;p&gt;&lt;strong&gt;⑦ 消息序列化：&lt;/strong&gt;&lt;/p&gt; 
+&lt;p&gt;&amp;nbsp;Pulsar 的消息需要從客户端傳到服務端，涉及到網絡傳輸，因此 Producer 將 batch 緩衝區中的所有消息逐一進行序列化。&lt;/p&gt; 
+&lt;p&gt;&lt;strong&gt;⑧ 壓縮：&lt;/strong&gt;&lt;/p&gt; 
+&lt;p&gt;Pulsar 內置了多種壓縮算法，在發送前會根據所選擇的壓縮算法對 batch 整體進行壓縮，這將優化網絡傳輸以提高 Pulsar 消息傳輸的性能。&lt;/p&gt; 
+&lt;p&gt;&lt;strong&gt;⑨ 構建消息發送對象：&lt;/strong&gt;&lt;/p&gt; 
+&lt;p&gt;無論是開啓 batch 的批次消息，還是關閉 batch 的單條消息，都會被包裝為一個 OpSendMsg 對象，OpSendMsg 也是 Producer 發送和 pulsar broker 接收處理的最小單位。&lt;/p&gt; 
+&lt;p&gt;&lt;strong&gt;⑩ pending 隊列：&lt;/strong&gt;&lt;/p&gt; 
+&lt;p&gt;所有構建好的 OpSendMsg 在發送前都會被放入 pendingMessages 隊列中，消息處理完成後才會從隊列中移除。&lt;/p&gt; 
+&lt;p&gt;&lt;strong&gt;⑪&amp;nbsp;消息傳輸：&lt;/strong&gt;&lt;/p&gt; 
+&lt;p&gt;Pulsar 使用 netty 將消息異步的從客户端發送到服務端，Broker 節點將在收到消息後對其進行確認，並將其存儲在指定主題的持久存儲中。&lt;/p&gt; 
+&lt;p&gt;&lt;strong&gt;⑫ 響應處理：&lt;/strong&gt;&lt;/p&gt; 
+&lt;p&gt;Pulsar Broker 在收到消息時會返回一個響應，如果寫入成功，消息將會從 pendingMessages 隊列中移除。如果寫入失敗，會返回一個錯誤，生產者在收到可重試錯誤之後會嘗試重新發送消息，直到重試成功或超時。&lt;/p&gt; 
+&lt;h2&gt;2.2 關鍵環節原理分析&lt;/h2&gt; 
+&lt;p&gt;接下來會對上述流程中關鍵環節的設計和原理作進一步的剖析，幫助讀者更好的理解 Producer。&lt;/p&gt; 
+&lt;h3&gt;2.2.1 創建 Producer&lt;/h3&gt; 
+&lt;p&gt;&lt;img src="https://static001.geekbang.org/infoq/e5/e52d9588e782f913a00d092f1cdd80f5.png" alt="圖片" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p&gt;在 Pulsar 中，PartitionedProducerImpl 用於將多個 ProducerImpl 對象包裝成為一個邏輯生產者，以便向 Partitioned Topic 發送消息時能夠批量操作。其中，PartitionedProducerImpl.producers 成員變量維護了每個分區及其對應的 ProducerImpl 對象，該設計主要有以下&lt;strong&gt;3 個好處：&lt;/strong&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;strong&gt;① 每個分區對應一個單獨的生產者：&lt;/strong&gt;&lt;/p&gt; 
+&lt;p&gt;在 Pulsar 中，Partitioned Topic 按照分區（Partition）將多個 ProducerImpl 對象進行分配，以便能夠同時發往多個 Broker 節點，因此對於每個分區，需要擁有一個單獨的生產者以便進行發送操作。在 PartitionedProducerImpl 類中，需要為每個分區維護一個 ProducerImpl 對象，以便在消息被分配好「目標分區」後可以調用對應的 ProducerImpl 進行處理。&lt;/p&gt; 
+&lt;p&gt;&lt;strong&gt;②簡化代碼邏輯：&lt;/strong&gt;&lt;/p&gt; 
+&lt;p&gt;在 PartitionedProducerImpl 中，將每個分區及其對應的 ProducerImpl 對象維護在一個 HashMap 中，能夠更加方便的維護並管理不同分區的生產者，使得代碼邏輯更加清晰簡明。&lt;/p&gt; 
+&lt;p&gt;&lt;strong&gt;③ 提高容錯性：&lt;/strong&gt;&lt;/p&gt; 
+&lt;p&gt;當某個分區的 ProducerImpl 對象無法工作時，可以選擇其他可用的 ProducerImpl 對象，從而保證系統整體的可用性。由於將不同分區的 ProducerImpl 對象分別進行維護，因此具備更加靈活的容錯處理策略。&lt;/p&gt; 
+&lt;p&gt;在線上實踐中我們也基於該設計，在 PartitionedProducerImpl 層做了進一步優化，通過感知下一層每個 ProducerImpl 的阻塞狀態（信號量的使用情況）來決定新的消息發送，避免將消息持續發往阻塞較為嚴重的分區，規避了 topic 被某一個分區阻塞而影響到整體發送性能的情況，也提高了線上系統的穩定性，具體的實現可以詳見這篇文章《&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fmp.weixin.qq.com%2Fs%3F__biz%3DMzI4NjY4MTU5Nw%3D%3D%26mid%3D2247494958%26idx%3D3%26sn%3Db2f02d545627a1457958289d8f623af3%26scene%3D21%23wechat_redirect" target="_blank"&gt;構建下一代萬億級雲原生消息架構：Apache Pulsar 在 vivo 的探索與實踐&lt;/a&gt;》。&lt;/p&gt; 
+&lt;p&gt;關鍵代碼：&lt;/p&gt; 
+&lt;pre&gt;&lt;code&gt;//對每一個分區都創建一個 ProducerImpl 對象
+  private void start(List&amp;lt;Integer&amp;gt; indexList) {
+        AtomicReference&amp;lt;Throwable&amp;gt; createFail = new AtomicReference&amp;lt;Throwable&amp;gt;();
+        AtomicInteger completed = new AtomicInteger();
+ 
+        for (int partitionIndex : indexList) {
+            createProducer(partitionIndex).producerCreatedFuture().handle((prod, createException) -&amp;gt; {
+.......
+            });
+        }
+    }
+ 
+    private ProducerImpl&amp;lt;T&amp;gt; createProducer(final int partitionIndex) {
+        return producers.computeIfAbsent(partitionIndex, (idx) -&amp;gt; {
+            String partitionName = TopicName.get(topic).getPartition(idx).toString();
+            return client.newProducerImpl(partitionName, idx,
+                    conf, schema, interceptors, new CompletableFuture&amp;lt;&amp;gt;());
+        });
+    }
+&lt;/code&gt;&lt;/pre&gt; 
+&lt;h3&gt;2.2.2 確定目標分區&lt;/h3&gt; 
+&lt;p&gt;在發送消息前需要決定發往哪一個分區，確定好分區後便調用對應分區的 ProducerImpl 對象進一步處理，目標分區的確定主要跟「路由策略」和「是否指定 key」有關：&lt;/p&gt; 
+&lt;p&gt;**（1）如果消息沒有指定 key：**則按照三種路由策略的效果選擇分區進行發送，三種路由策略如下：&lt;/p&gt; 
+&lt;blockquote&gt; 
+ &lt;ul&gt; 
+  &lt;li&gt;&lt;strong&gt;SinglePartition：&lt;/strong&gt;&lt;/li&gt; 
+ &lt;/ul&gt; 
+ &lt;p&gt;如果消息沒有指定 Key，Producer 會隨機選擇一個 Partition，然後把所有的消息都發送到這個 Partition 上。&lt;/p&gt; 
+ &lt;ul&gt; 
+  &lt;li&gt;&lt;strong&gt;RoundRobinPartition：&lt;/strong&gt;&lt;/li&gt; 
+ &lt;/ul&gt; 
+ &lt;p&gt;生產者將以輪詢方式在所有 Partition 之間發佈消息，以實現最大吞吐量。需要注意的是如果開啓了 batch 發送，則輪詢將會以批為單位進行消息發送，批次發送時每隔 partitionSwitchMs 會輪詢一個 Partition。如果關閉了批量發送，那麼每條消息發送都會輪詢一個 Partition。（partitionSwitchMs 至少為一個 batchingMaxPublishDelay 時間）。&lt;/p&gt; 
+ &lt;ul&gt; 
+  &lt;li&gt;&lt;strong&gt;CustomPartition：&lt;/strong&gt;&lt;/li&gt; 
+ &lt;/ul&gt; 
+ &lt;p&gt;使用用户自定義的消息路由實現，根據自定義的 Router 實現決定消息要發往哪個分區。用户自定義的 Router 可以通過 messageRoute 參數設置。自定義的 Router 需要實現 MessageRouter 接口的 choosePartition 方法。&lt;/p&gt; 
+&lt;/blockquote&gt; 
+&lt;p&gt;**（2）如果消息指定 key：**則會對 Key 做哈希處理,然後找到對應的 Partition，把 key 所對應的消息都發送到同一個分區：&lt;/p&gt; 
+&lt;blockquote&gt; 
+ &lt;p&gt;對消息的 Key 進行哈希處理後如何找到對應的 Partition 的？即使用 Key 的哈希值對總的 Partition 數取模：N=(Key 的哈希值% 總的 Partition 數)，得到的 N 就是第 N 個 Partition，Producer 可以通過設置 hashingscheme 來使用不同的哈希算法 ，現在已經支持 JavastringHash 和 Murmur3_32Hash 兩種哈希算法，前者直接調用 String.hash.Code()，後者使用 Murmur3。&lt;/p&gt; 
+&lt;/blockquote&gt; 
+&lt;p&gt;路由策略的關鍵代碼如下：&lt;/p&gt; 
+&lt;pre&gt;&lt;code&gt;//SinglePartition 路由策略：
+public int choosePartition(Message&amp;lt;?&amp;gt; msg, TopicMetadata metadata) {
+    // If the message has a key, it supersedes the single partition routing policy
+    if (msg.hasKey()) {
+        return signSafeMod(hash.makeHash(msg.getKey()), metadata.numPartitions());
+    }
+ 
+    return partitionIndex;
+}
+&lt;/code&gt;&lt;/pre&gt; 
+&lt;pre&gt;&lt;code&gt;//RoundRobin 路由策略：
+public int choosePartition(Message&amp;lt;?&amp;gt; msg, TopicMetadata topicMetadata) {
+    // If the message has a key, it supersedes the round robin routing policy
+    if (msg.hasKey()) {
+        return signSafeMod(hash.makeHash(msg.getKey()), topicMetadata.numPartitions());
+    }
+ 
+    if (isBatchingEnabled) { // if batching is enabled, choose partition on `partitionSwitchMs` boundary.
+        long currentMs = clock.millis();
+        return signSafeMod(currentMs / partitionSwitchMs + startPtnIdx, topicMetadata.numPartitions());
+    } else {
+        return signSafeMod(PARTITION_INDEX_UPDATER.getAndIncrement(this), topicMetadata.numPartitions());
+    }
+}
+&lt;/code&gt;&lt;/pre&gt; 
+&lt;h3&gt;2.2.3 消息堆積控制&lt;/h3&gt; 
+&lt;p&gt;&lt;img src="https://static001.geekbang.org/infoq/2f/2fe4f4750d448407920510d97421b11b.png" alt="圖片" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p&gt;Producer 不可能無限接收新的消息，如果某些分區數據發送較慢，消息就會堆積在 Prouducer 緩存中，導致已經阻塞的分區堆積大量的消息，又無法重新發往其他分區，同時也可能因為無限堆積的消息佔用了大量的內存，使得任務頻繁 GC 甚至 OOM。&lt;/p&gt; 
+&lt;p&gt;在 Pulsar 提供了兩個核心的速率限制策略和一個阻塞時的消息處理策略：&lt;/p&gt; 
+&lt;blockquote&gt; 
+ &lt;ul&gt; 
+  &lt;li&gt;&lt;strong&gt;消息數量限制：&lt;/strong&gt;&lt;/li&gt; 
+ &lt;/ul&gt; 
+ &lt;p&gt;maxPendingMessages 控制每個分區某一時刻最大可處理消息數量，通過信號量的方式控制「新進入的消息」的信號量分配和「處理完成消息「的信號量釋放，防止某個分區的消息嚴重堆積。&lt;/p&gt; 
+ &lt;ul&gt; 
+  &lt;li&gt;&lt;strong&gt;消息佔用內存大小限制：&lt;/strong&gt;&lt;/li&gt; 
+ &lt;/ul&gt; 
+ &lt;p&gt;memoryLimit 控制整個 Pulsar client 的消息最大佔用內存大小，通過計數器方式控制「新進入的消息」有效載荷的內存分配和「處理完成消息「有效載荷的內存釋放，這裏需要特殊説明的是 memoryLimit 是 client 的參數，針對的是該 client 對象下的所有 topic，因此並不建議一個 Pulsar client 對象 new 多個 Producer topic ，因為很容易出現某一個 topic 佔用內存過多，導致另一個 topic 無空間可分配的情況。&lt;/p&gt; 
+ &lt;ul&gt; 
+  &lt;li&gt;&lt;strong&gt;阻塞處理策略：&lt;/strong&gt;&lt;/li&gt; 
+ &lt;/ul&gt; 
+ &lt;p&gt;由 blockIfQueueFull 進行控制，當 blockIfQueueFull 為 true 時，代表阻塞等待，Producer 會等待獲取信號量；當 blockIfQueueFull 為 false 時，一旦獲取不到信號量，就會立刻失敗，需要注意的是如果 blockIfQueueFull 為 false，業務需要處理好消息失敗後的回調策略，否則會導致數據在 Producer 上「丟失」。&lt;/p&gt; 
+&lt;/blockquote&gt; 
+&lt;p&gt;關鍵代碼如下：&lt;/p&gt; 
+&lt;pre&gt;&lt;code&gt;public void sendAsync(Message&amp;lt;?&amp;gt; message, SendCallback callback) {
+......
+        MessageImpl&amp;lt;?&amp;gt; msg = (MessageImpl&amp;lt;?&amp;gt;) message;
+        MessageMetadata msgMetadata = msg.getMessageBuilder();
+        ByteBuf payload = msg.getDataBuffer();
+        int uncompressedSize = payload.readableBytes();
+        //對發送隊列大小以及 client memory 進行判斷是否有空間放入新的消息
+        if (!canEnqueueRequest(callback, message.getSequenceId(), uncompressedSize)) {
+            return;
+        }
+......
+    }
+ 
+    private boolean canEnqueueRequest(SendCallback callback, long sequenceId, int payloadSize) {
+        try {
+            if (conf.isBlockIfQueueFull()) {
+                //當 blockIfQueueFull 為 true 時，等待獲取信號量
+                if (semaphore.isPresent()) {
+                    semaphore.get().acquire();
+                }
+                //分配消息有效載荷所需要的內存空間
+                client.getMemoryLimitController().reserveMemory(payloadSize);
+            } else {
+                //當 blockIfQueueFull 為 false 時，如果無法獲取到信號量，則快速失敗
+                if (!semaphore.map(Semaphore::tryAcquire).orElse(true)) {
+                    callback.sendComplete(new PulsarClientException.ProducerQueueIsFullError("Producer send queue is full", sequenceId));
+                    return false;
+                }
+                //如果沒有如何的內存空間用於消息分配，則報錯
+                if (!client.getMemoryLimitController().tryReserveMemory(payloadSize)) {
+                    semaphore.ifPresent(Semaphore::release);
+                    callback.sendComplete(new PulsarClientException.MemoryBufferIsFullError("Client memory buffer is full", sequenceId));
+                    return false;
+                }
+            }
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            callback.sendComplete(new PulsarClientException(e, sequenceId));
+            return false;
+        }
+ 
+        return true;
+    }
+&lt;/code&gt;&lt;/pre&gt; 
+&lt;h3&gt;2.2.4 消息 batch 容器打包&lt;/h3&gt; 
+&lt;p&gt;&lt;img src="https://static001.geekbang.org/infoq/57/57e8428ca0b0093978799d8411231e60.png" alt="圖片" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;strong&gt;（1）batch 關鍵組成信息&lt;/strong&gt;&lt;/p&gt; 
+&lt;blockquote&gt; 
+ &lt;ul&gt; 
+  &lt;li&gt; &lt;p&gt;&lt;strong&gt;Messages:&lt;/strong&gt; 保存消息的 list，保存跟這個 batch 相關所有的 MessageImpl 對象。&lt;/p&gt; &lt;/li&gt; 
+  &lt;li&gt; &lt;p&gt;**Metadata：**保存 batch 相關的元數據，如批量消息的序列號、消息發送的時間戳等信息。&lt;/p&gt; &lt;/li&gt; 
+  &lt;li&gt; &lt;p&gt;**Callback：**保存消息回調邏輯的集合，記錄了每一條消息對應的 callback 策略，在 batch 消息發送並等到服務端響應後，依次對消息的回調進行處理。&lt;/p&gt; &lt;/li&gt; 
+ &lt;/ul&gt; 
+&lt;/blockquote&gt; 
+&lt;p&gt;&lt;strong&gt;（2）batch 打包條件&lt;/strong&gt;&lt;/p&gt; 
+&lt;p&gt;batch 打包條件的三個關鍵參數：滿足其一數據就會被打包發送出去。&lt;/p&gt; 
+&lt;blockquote&gt; 
+ &lt;ul&gt; 
+  &lt;li&gt; &lt;p&gt;**批次大小：**batchingMaxBytes&lt;/p&gt; &lt;/li&gt; 
+  &lt;li&gt; &lt;p&gt;**批次條數：**batchingMaxMessages&lt;/p&gt; &lt;/li&gt; 
+  &lt;li&gt; &lt;p&gt;&lt;strong&gt;批次延遲發送時間：&lt;/strong&gt;&lt;/p&gt; &lt;/li&gt; 
+ &lt;/ul&gt; 
+ &lt;p&gt;batchingMaxPublishDelay&lt;/p&gt; 
+&lt;/blockquote&gt; 
+&lt;p&gt;Pulsar 使用兩個模塊設計來實現上面的參數控制：&lt;/p&gt; 
+&lt;blockquote&gt; 
+ &lt;ul&gt; 
+  &lt;li&gt;**accumulator：**在 BatchMessage-&lt;/li&gt; 
+ &lt;/ul&gt; 
+ &lt;p&gt;ContainerImpl 中通過計數器的方式去控制 batch 的大小和條數，numMessages-&lt;/p&gt; 
+ &lt;p&gt;InBatch 記錄已經緩存的消息數量，currentBatchSizeBytes 用於記錄已緩存的消息的大小。當這些變量達到閾值時，BatchMessageContainerImpl 將會觸發批量消息的發送。&lt;/p&gt; 
+ &lt;ul&gt; 
+  &lt;li&gt;**batchTimerTask：**當生產者使用批量消息發送模式時，Producer 將會創建一個定時器任務（batchTimerTask），並通過計時器的方式定時將 BatchMessageContainer 容器中的消息進行批量發送。&lt;/li&gt; 
+ &lt;/ul&gt; 
+&lt;/blockquote&gt; 
+&lt;h3&gt;2.2.5 消息壓縮&lt;/h3&gt; 
+&lt;p&gt;如果開啓了消息壓縮，在發送前都需要進行壓縮處理。對於單條消息發送的場景，是對每一條消息進行單獨壓縮後進行發送；而如果開啓了 batch 則是對整個 batch 進行壓縮後再整個進行發送。&lt;/p&gt; 
+&lt;p&gt;在線上實踐中，推薦在不影響業務延遲的情況下 batch 越大越好，主要有&lt;strong&gt;兩個理由&lt;/strong&gt;：&lt;/p&gt; 
+&lt;blockquote&gt; 
+ &lt;ul&gt; 
+  &lt;li&gt;&lt;strong&gt;可以優化網絡 IO 降低 CPU 負載：&lt;/strong&gt;&lt;/li&gt; 
+ &lt;/ul&gt; 
+ &lt;p&gt;不論 Producer 發送的是一條消息還是一批消息，在 pulsar 客户端都會被構建為一個 OpSendMsg 對象，同時 pulsar broker 接收到消息進行寫入處理時，也是按照 OpSendMsg 為一個處理單位將消息寫入磁盤，因此當消息數量一定時，batch 越大，則代表需要處理的 OpSendMsg 越少。&lt;/p&gt; 
+ &lt;ul&gt; 
+  &lt;li&gt;&lt;strong&gt;batch 越大「壓縮效果則越好」：&lt;/strong&gt;&lt;/li&gt; 
+ &lt;/ul&gt; 
+ &lt;p&gt;壓縮算法對應的壓縮率並不固定，它通常取決於所要壓縮的數據對象的內容和壓縮算法本身，壓縮的本質在於通過消除或利用數據中存在的冗餘來實現數據的壓縮和重構。而 Pulsar 是以 batch 來進行打包的，batch 越大，壓縮的目標包體越大壓縮效果則可能越好，同時也能夠儘可能避免單條消息因為包體較小導致越壓縮後包體越大的情況出現。&lt;/p&gt; 
+&lt;/blockquote&gt; 
+&lt;p&gt;以下是開啓了 batch 情況下，構建發送消息和壓縮的關鍵代碼：&lt;/p&gt; 
+&lt;pre&gt;&lt;code&gt;    public OpSendMsg createOpSendMsg() throws IOException {
+        //對數據進行壓縮、加密等操作
+        ByteBuf encryptedPayload = producer.encryptMessage(messageMetadata, getCompressedBatchMetadataAndPayload());
+......
+ 
+        ByteBufPair cmd = producer.sendMessage(producer.producerId, messageMetadata.getSequenceId(),
+                messageMetadata.getHighestSequenceId(), numMessagesInBatch, messageMetadata, encryptedPayload);
+        //對整個 batch 構建一個 OpSendMsg
+        OpSendMsg op = OpSendMsg.create(messages, cmd, messageMetadata.getSequenceId(),
+                messageMetadata.getHighestSequenceId(), firstCallback);
+......
+        return op;
+    }
+ 
+    //對 batch 進行壓縮，並將壓縮後信息更新到 messageMetadata 中
+    private ByteBuf getCompressedBatchMetadataAndPayload() {
+......
+        int uncompressedSize = batchedMessageMetadataAndPayload.readableBytes();
+        ByteBuf compressedPayload = compressor.encode(batchedMessageMetadataAndPayload);
+        batchedMessageMetadataAndPayload.release();
+......
+        return compressedPayload;
+    }
+&lt;/code&gt;&lt;/pre&gt; 
+&lt;h3&gt;2.2.6 pending 隊列&lt;/h3&gt; 
+&lt;p&gt;&lt;img src="https://static001.geekbang.org/infoq/64/6470193ab1e788eb19b49948423a9665.png" alt="圖片" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p&gt;Pulsar 中的 pendingMessages 隊列是客户端用來暫存「未處理完成的消息」的一個緩存隊列。用於存儲當 Producer 連接到 Broker 服務器後，還未發送或尚未得到 Broker 系統的 ACK 確認的所有生產者（Producer）的消息。在發送消息之前，Producer 首先會將消息緩存到 pendingMessages 隊列中，並記錄保存緩存消息的 OpSendMsg 對象，直到它被成功發送到了 Broker 端並收到 Broker 發送的 ACK 確認之後，相關的元信息和消息信息才會從隊列中移除。&lt;/p&gt; 
+&lt;p&gt;需要注意的是：&lt;strong&gt;pending 隊列的本質是一個回調處理隊列，而不是發送隊列&lt;/strong&gt;，消息在放入 pending 隊列的同時就被異步發送到服務端了，所以這裏需要重點理解什麼是「未處理完成的消息」。&lt;/p&gt; 
+&lt;p&gt;pendingMessages 隊列的&lt;strong&gt;作用在於&lt;/strong&gt;：對於已經發送但尚未收到 ACK 確認的消息，防止在連接出現異常時丟失消息。當連接中斷時，緩存在 pendingMessages 隊列中的未確認消息將被認為是需要重發的，當連接恢復時，緩存的消息將重新發送到 Broker 端，以確保生產者生產的消息不會丟失。&lt;/p&gt; 
+&lt;p&gt;**總的來説，**pendingMessages 隊列是 Pulsar 客户端保證消息可靠性和一致性的關鍵功能組件，在 Pulsar 的生產者（Producer）和消息確認的機制中擔任着非常重要的角色。&lt;/p&gt; 
+&lt;p&gt;關鍵代碼如下：&lt;/p&gt; 
+&lt;blockquote&gt; 
+ &lt;p&gt;add() 方法用於在追加消息時將指定元素插入隊列中的隊尾，remove() 用於消息在完成後移除隊列頭部的元素。&lt;/p&gt; 
+&lt;/blockquote&gt; 
+&lt;pre&gt;&lt;code&gt;    protected void processOpSendMsg(OpSendMsg op) {
+        if (op == null) {
+            return;
+        }
+        try {
+            if (op.msg != null &amp;amp;&amp;amp; isBatchMessagingEnabled()) {
+                batchMessageAndSend();
+            }
+            //將消息放入「待處理消息隊列」
+            pendingMessages.add(op);
+......
+                // If we do have a connection, the message is sent immediately, otherwise we'll try again once a new
+                // connection is established
+                op.cmd.retain();
+                cnx.ctx().channel().eventLoop().execute(WriteInEventLoopCallback.create(this, cnx, op));
+                stats.updateNumMsgsSent(op.numMessagesInBatch, op.batchSizeByte);
+...... 
+    }
+ 
+       //添加消息到 pendingMessages 隊列
+       public boolean add(OpSendMsg o) {
+            // postpone adding to the queue while forEach iteration is in progress
+            //batch 的計數是按照 batch 中消息的總量進行計數
+            messagesCount.addAndGet(o.numMessagesInBatch);
+            if (forEachDepth &amp;gt; 0) {
+                if (postponedOpSendMgs == null) {
+                    postponedOpSendMgs = new ArrayList&amp;lt;&amp;gt;();
+                }
+                return postponedOpSendMgs.add(o);
+            } else {
+                return delegate.add(o);
+            }
+        }
+        //將消息從 pendingMessages 隊列移除
+        public void remove() {
+            OpSendMsg op = delegate.remove();
+            if (op != null) {
+                messagesCount.addAndGet(-op.numMessagesInBatch);
+            }
+        }
+&lt;/code&gt;&lt;/pre&gt; 
+&lt;h3&gt;2.2.7 消息傳輸&lt;/h3&gt; 
+&lt;p&gt;&lt;img src="https://static001.geekbang.org/infoq/2d/2d4bd56bfcbf7bbe62118828ee858a69.png" alt="圖片" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p&gt;Producer 和 broker 都維護了分區維度的 pending 隊列來保證消息處理的順序性，以及實現消息重新發送、重新寫入持久化存儲的能力。在 Producer 端，消息被順序追加到 pending 隊列並異步發送到服務端，服務端的 pending 隊列在接收到消息後，按照順序追加到隊列中，並按照順序將數據寫入 bookie 進行持久化處理，處理完成後按照順序返回響應 Producer，並將消息從 broker pending 和 producer pending 隊列中移除。&lt;/p&gt; 
+&lt;p&gt;另外在數據傳輸過程中，無論是使用 Pulsar Producer 的同步發送還是異步發送，在消息傳輸環節本質上都是使用 netty 將消息異步的從客户端發送到服務端，區別在於 send() 方法封裝了 sendAsync() 方法，使其可以在向服務器發送 Pulsar 消息時阻塞等待 Broker 的響應，直到確認消息已經被 Broker 成功處理後才會返回，常規情況下，建議使用異步的方式發送 Pulsar 消息，因為同步方式必須在 Broker 端成功接收到消息之後才會返回，因此會帶來較大的性能損耗和延遲。但是在部分場景下，需要使用同步方式來保證可靠性，以防 Broker 端接收失敗，可以考慮使用 send() 方法實現同步方式的方式發送 Pulsar 消息。&lt;/p&gt; 
+&lt;p&gt;使用 netty 執行的代碼：&lt;/p&gt; 
+&lt;pre&gt;&lt;code&gt;    private static final class WriteInEventLoopCallback implements Runnable {  
+......
+        @Override
+        public void run() {
+            if (log.isDebugEnabled()) {
+                log.debug("[{}] [{}] Sending message cnx {}, sequenceId {}", producer.topic, producer.producerName, cnx,
+                        sequenceId);
+            }
+ 
+            try {
+                cnx.ctx().writeAndFlush(cmd, cnx.ctx().voidPromise());
+                op.updateSentTimestamp();
+            } finally {
+                recycle();
+            }
+        }
+......
+    
+    }
+&lt;/code&gt;&lt;/pre&gt; 
+&lt;h3&gt;2.2.8 處理響應&lt;/h3&gt; 
+&lt;p&gt;&lt;img src="https://static001.geekbang.org/infoq/28/28dd6d8c28f93ecae7372ea40b5c372b.png" alt="圖片" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p&gt;Pulsar Producer 使用「ACK 跟蹤機制」來實現對 Broker 返回的 ACK 確認消息的處理，用於檢測和處理到達生產者的全部消息狀態信息。&lt;/p&gt; 
+&lt;p&gt;對於 Producer 發送的消息，Pulsar 會對每個消息分配一個唯一的 sequenceId 序號，並記錄該消息的創建時間（createdAt）等元數據信息。當 Broker 確認收到某個消息時，Producer 會依據返回的 ACK 序號和 Broker 返回的確認時間來判斷當前 ACK 是否有效，並從已緩存的 pendingMessages 隊列中找到對應的消息元數據信息，以進行確認處理，在 Broker 確認消息接收成功時，Producer 將從等待確認的消息隊列中刪除對應的消息元數據信息，如果 Broker 返回的 ACK 消息不符合生產者預期的消息狀態信息，Producer 將會重發消息，直到重試成功或多次重試失敗後拋出異常後再從隊列中移除對應消息元數據信息並釋放對應內存、信號量等資源。&lt;/p&gt; 
+&lt;p&gt;消息重發的關鍵代碼如下：&lt;/p&gt; 
+&lt;pre&gt;&lt;code&gt;    private void resendMessages(ClientCnx cnx, long expectedEpoch) {
+        cnx.ctx().channel().eventLoop().execute(() -&amp;gt; {
+            synchronized (this) {
+                //判斷連接狀態：當連接正在關閉或者已經關閉則不進行重發
+                if (getState() == State.Closing || getState() == State.Closed) {
+                    // Producer was closed while reconnecting, close the connection to make sure the broker
+                    // drops the producer on its side
+                    cnx.channel().close();
+                    return;
+                }
+......
+                //調用重發消息方法
+                recoverProcessOpSendMsgFrom(cnx, null, expectedEpoch);
+            }
+        });
+    }
+ 
+ 
+   // Must acquire a lock on ProducerImpl.this before calling method.
+    private void recoverProcessOpSendMsgFrom(ClientCnx cnx, MessageImpl from, long expectedEpoch) {
+......
+        final boolean stripChecksum = cnx.getRemoteEndpointProtocolVersion() &amp;lt; brokerChecksumSupportedVersion();
+        Iterator&amp;lt;OpSendMsg&amp;gt; msgIterator = pendingMessages.iterator();
+        OpSendMsg pendingRegisteringOp = null;
+        while (msgIterator.hasNext()) {
+            OpSendMsg op = msgIterator.next();
+......
+            op.cmd.retain();
+            if (log.isDebugEnabled()) {
+                log.debug("[{}] [{}] Re-Sending message in cnx {}, sequenceId {}", topic, producerName,
+                          cnx.channel(), op.sequenceId);
+            }
+            //發送消息
+            cnx.ctx().write(op.cmd, cnx.ctx().voidPromise());
+            op.updateSentTimestamp();
+            stats.updateNumMsgsSent(op.numMessagesInBatch, op.batchSizeByte);
+        }
+        cnx.ctx().flush();
+......
+    }
+&lt;/code&gt;&lt;/pre&gt; 
+&lt;h1&gt;三、Pulsar 數據發送端參數調優實踐&lt;/h1&gt; 
+&lt;p&gt;根據以上對原理解析，我們對 Producer 已經有了一個大致理解，下面通過一個 Producer 參數調優實踐案例來幫助讀者基於原理進一步理解客户端參數之間的聯繫。&lt;/p&gt; 
+&lt;h2&gt;3.1 調優目的&lt;/h2&gt; 
+&lt;p&gt;首先要清楚為什麼要進行參數調優，有以下兩個目的：&lt;/p&gt; 
+&lt;blockquote&gt; 
+ &lt;ul&gt; 
+  &lt;li&gt;&lt;strong&gt;降低參數使用門檻：&lt;/strong&gt;&lt;/li&gt; 
+ &lt;/ul&gt; 
+ &lt;p&gt;Pulsar client 和 Producer 的幾十個配置參數，參數多且聯繫緊密，需要花費較多的時間成本去理解，同時參數之間存在協同生效互相影響的情況，對普通使用者而言場景複雜理解門檻高，我們希望能夠有一套較為通用的參數配置，或有公式化的參數配置方法論。&lt;/p&gt; 
+ &lt;ul&gt; 
+  &lt;li&gt;&lt;strong&gt;提升單機處理性能：&lt;/strong&gt;&lt;/li&gt; 
+ &lt;/ul&gt; 
+ &lt;p&gt;站在客户端的角度，相同時間內處理的數據量越多，則認為單機處理性能更強。作為中間件系統的提供者，我們經常認為性能提升是服務端的事情，想盡辦法在 pulsar 的 broker 和 bookie 上去提升單機處理性能，但 pulsar client 作為整個消息中間件系統的核心組件，它能否發送好一份數據，對整個消息中間件系統的性能和穩定性也發揮着至關重要的作用。&lt;/p&gt; 
+&lt;/blockquote&gt; 
+&lt;h2&gt;3.2 調優實踐&lt;/h2&gt; 
+&lt;p&gt;下面就圍繞「參數通用模版化」和「提升單機處理性能」兩個目的出發並結合上述講解的數據發送原理，來分享一些實踐經驗。&lt;/p&gt; 
+&lt;h3&gt;3.2.1 關聯與場景相關的重點參數&lt;/h3&gt; 
+&lt;p&gt;Pulsar 客户端參數雖多但都提供了默認值，不需要一一調整。只需要對業務場景相關的針對性的去調整即可，如我們本次的參數調優目的是提升單機處理性能，則重點關注哪些場景哪些參數可以提升客户端的發送速率、降低服務端的壓力，讓服務端可以處理更多的數據，有以下四點最為關鍵：&lt;/p&gt; 
+&lt;blockquote&gt; 
+ &lt;ul&gt; 
+  &lt;li&gt;&lt;strong&gt;batch 打包發送：&lt;/strong&gt;&lt;/li&gt; 
+ &lt;/ul&gt; 
+ &lt;p&gt;消息多條批次發送，在降低客户端和服務端網絡 IO 的同時也降低了兩者的 cpu 的負載。這裏需強調的是我們希望 batch 是一個均勻的、「完整」的包，如 pending 隊列被打滿，batch 只能空等到延遲發送時間過後被髮送，沒有構建出預期中的 batch，那麼可以認為這個 batch 是一個不完整的包，這種 batch 包含的數據量少，對發送效率有着極大的影響。&lt;/p&gt; 
+ &lt;ul&gt; 
+  &lt;li&gt;&lt;strong&gt;數據壓縮：&lt;/strong&gt;&lt;/li&gt; 
+ &lt;/ul&gt; 
+ &lt;p&gt;Pulsar 是 IO 密集型系統，常規情況下磁盤是系統的主要瓶頸，開啓壓縮可以有效降低網絡 I/O，提升處理相同數據量下的讀寫能力。由於壓縮是針對 batch 的，在發送時間一定的情況下，batch 越大其壓縮效果也越好，代表着處理的消息量也更多。&lt;/p&gt; 
+ &lt;ul&gt; 
+  &lt;li&gt;&lt;strong&gt;RoundRobin 發送：&lt;/strong&gt;&lt;/li&gt; 
+ &lt;/ul&gt; 
+ &lt;p&gt;將數據均勻地分配到多個分區中。它的基本思想是輪詢將新的數據寫入到不同的分區中，以均衡地分散負載。&lt;/p&gt; 
+ &lt;ul&gt; 
+  &lt;li&gt;&lt;strong&gt;消息堆積控制：&lt;/strong&gt;&lt;/li&gt; 
+ &lt;/ul&gt; 
+ &lt;p&gt;maxPendingMessages 信號量和 memoryLimit 限制不直接提升發送速率，但它能夠有效保障我們客户端的穩定，也是控制或限制發送效率的重要參數之一。&lt;/p&gt; 
+&lt;/blockquote&gt; 
+&lt;p&gt;涉及的客户端關鍵參數以及默認值和我們線上調優後設置的數值如下表：&lt;/p&gt; 
+&lt;p&gt;&lt;img src="https://static001.geekbang.org/infoq/fa/fa59c582553e31ab2ecc8027cdce5f13.png" alt="圖片" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;h3&gt;3.2.2 結合 Producer 發送原理分析參數的效果&lt;/h3&gt; 
+&lt;p&gt;接下來我們以參數的效用角度來描述一條消息從構建到發送的過程，進一步解釋參數如此設置的意義：&lt;/p&gt; 
+&lt;p&gt;&lt;strong&gt;（1）選擇分區&lt;/strong&gt;&lt;/p&gt; 
+&lt;p&gt;構建消息後，通過 messageRoutingMode 參數所設置的路由策略來選擇分區，這裏以 RoundRobinPartition 為路由策略，開啓 batch 時則每間隔 partitionSwitchMs 時間換一個分區進行數據發送，partitionSwitchMs 的值為「batchingPartitionSwitchFrequencyByPublish&lt;/p&gt; 
+&lt;p&gt;-Delay、batchingMaxPublishDelayMicros」這兩個 Producer 參數之積，也就是每 batchingPartition&lt;/p&gt; 
+&lt;p&gt;-SwitchFrequencyByPublishDelay 個 batch 的最大打包時間，消息就會輪換一個分區發送。&lt;/p&gt; 
+&lt;p&gt;為了能在 batchingMaxPublishDelayMicros 內得到一個較大的包，我們希望這個 batch 接收的消息是連續的，因此 batchingPartitionSwitchFrequency-&lt;/p&gt; 
+&lt;p&gt;ByPublishDelay 不能小於 1，同時也希望一個分區之間數據是較為均勻的，所以 batchingPartition-&lt;/p&gt; 
+&lt;p&gt;SwitchFrequencyByPublishDelay 也要儘量小，否則分區對應的信號量 maxPendingMessages 耗盡還沒有切換分區，就會導致 batch 必須等待一個 batchingMaxPublishDelayMicros 時間。因此將 batchingPartitionSwitchFrequencyByPublishDelay 修改成了 1，保證打包了一個 batch 之後就切換分區，這也極大的避免了分區信號量耗盡，出現發送阻塞。&lt;/p&gt; 
+&lt;p&gt;&lt;strong&gt;（2）消息堆積控制&lt;/strong&gt;&lt;/p&gt; 
+&lt;p&gt;maxPendingMessages 作為分區的信號量，也是「pending 隊列」的大小，代表着每個分區能夠同時處理的最大消息上限，而 maxPendingMessages-&lt;/p&gt; 
+&lt;p&gt;AcrossPartitions 則是針對整個 topic 生效的，maxPendingMessages=min( maxPending-&lt;/p&gt; 
+&lt;p&gt;Messages,maxPendingMessagesAcrossPartitions/Partition），由於線上分區可能會變化，有不確定性，因此就使用上而言除非有特殊的使用場景，建議將 maxPendingMessagesAcrossPartitions 設置的比較大，讓 maxPendingMessages 生效即可。&lt;/p&gt; 
+&lt;p&gt;除了 maxPendingMessages 以外，消息能否接收被放入 pending 隊列中，還要看當前正在處理的消息體大小總和是否超過了 memoryLimit 參數的限制，memoryLimit 控制了消息待處理隊列中未壓縮前的消息有效荷載總和，可以避免在消息有效荷載非常大時，還未觸發 maxPendingMessages 限制，就導致內存佔用過多出現頻繁 GC 和 oom 的問題。由於 memoryLimit 是 client 級別的策略，因此也建議一個 client 對應一個 Poducer。&lt;/p&gt; 
+&lt;p&gt;總而言之 maxPendingMessages 控制了每個分區可以處理消息數量的上限，memoryLimit 控制了所有分區可以消息佔用內存的上限，兩者相輔相成。&lt;/p&gt; 
+&lt;p&gt;&lt;strong&gt;（3）消息 batch 容器打包&lt;/strong&gt;&lt;/p&gt; 
+&lt;p&gt;決定一個 batch 是否打包完成有三個條件控制，batchingMaxBytes、batchingMaxMessages、batchingMaxPublishDelayMicros 滿足其一即可，根據這三個參數的含義去設置值看似是容易的，但容易忽略的是 batch 中用來打包的消息也是受 memoryLimit 和 maxPendingMessages 制約的，應該避免出現 batch 中消息的數量超過 memoryLimit 和 maxPendingMessages 導致 batch 打包效率受影響。舉個例子，當 maxPendingMessages 設置為 500，而 batchingMaxMessages 設置 1000 時，batch 就永遠無法滿足消息條數達到 1000 的條件，只能空等 batchingMaxPublishDelayMicros 或者 batchingMaxBytes 兩者生效。&lt;/p&gt; 
+&lt;h3&gt;3.2.3 公式化模版&lt;/h3&gt; 
+&lt;p&gt;通過上述分析，大致瞭解了關鍵參數的生效效果，且彼此相互關聯，根據這些關係就能夠輸出一個較為簡單的參數調優模版。&lt;/p&gt; 
+&lt;p&gt;假設我們發送的單條消息大小為：messageByte；分區數量為：partitionNum。&lt;/p&gt; 
+&lt;p&gt;那麼對應參數調整公式如下：&lt;/p&gt; 
+&lt;pre&gt;&lt;code&gt;//業務發送速率越大，這裏設置的值越大
+maxPendingMessages：一般 1000-2000 之間
+ 
+//這裏值也可以設置大一些，讓 maxPendingMessages 生效即可
+maxPendingMessagesAcrossPartitions = maxPendingMessages * partitionNum
+ 
+//memoryLimit 的值就是打算阻塞總消息大小，這與消息體和 maxPendingMessages 有關
+memoryLimit=(maxPendingMessages * partitionNum * messageByte)
+ 
+//batch 的條數不超過「待處理消息隊列」大小的一半
+batchingMaxMessages=maxPendingMessages/2，這樣可以保證在消息發送等待 ack 的時候，該分區剩下一半的空間還能用來構建一個 batch
+ 
+//batch 大小同理，batch 大小不超過「待處理消息隊列」消息大小的一半
+batchingMaxBytes= Math.min(memoryLimit * 1024 * 1024 /partitionNum/2,1048576)
+ 
+//業務能夠接受的延遲大小，一般延遲時間越大，batch 越大
+batchingMaxPublishDelayMicros=1ms-100m 皆可
+ 
+//每構建一個 batch 就轉換一個分區
+batchingPartitionSwitchFrequencyByPublishDelay=1
+&lt;/code&gt;&lt;/pre&gt; 
+&lt;p&gt;可以看到根據上面的分析，參數之間是有一個模版化的公式，但這也不是唯一的，讀者可以根據自己的業務場景進行調整。在真實使用過程中線上的消息大小以及分區數量實際上是會變化的，因此真正的參數設置還需要根據實際情況來確定，比如我們線上通常的做法是根據機器配置將 memoryLimit 直接設置為 64M-256M，分區數量我們線上不會超過 1000，那麼這裏就假設為 1000，確定了這兩個參數，其他的參數的值也就確定了。&lt;/p&gt; 
+&lt;h3&gt;3.2.4 效果對比&lt;/h3&gt; 
+&lt;p&gt;以線上一個業務參數調優為例，前後都開啓壓縮的情況下調整上述參數後的一個效果。&lt;/p&gt; 
+&lt;p&gt;服務端（Pulsar）：&lt;/p&gt; 
+&lt;p&gt;&lt;img src="https://static001.geekbang.org/infoq/c4/c45ed239c62c651c39708935958c9416.png" alt="圖片" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;img src="https://static001.geekbang.org/infoq/3c/3c0534426c68d4af315d6d436ea2fcdc.png" alt="圖片" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;strong&gt;優化前後對比數據：&lt;/strong&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;img src="https://static001.geekbang.org/infoq/3b/3bf425c9885d7cb1c6c6f50f6afde351.jpeg" alt="圖片" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p&gt;相同的寫入速率，Pulsar 服務端網卡流量縮減約 50%（batch 包體增加，壓縮效果提升），cpu 負載降低約 90%，Pulsar 服務端總體成本相較優化前至少可降低 50% 以上，客户端也有一定程度的負載降低。&lt;/p&gt; 
+&lt;p&gt;參數調整後，CPU 負載得到明顯降低，一定程度上避免了 CPU 成為系統的瓶頸，同時由於壓縮效果的提升，Pulsar 的磁盤 IO 負載得到顯著降低，可以用更少的機器處理更多的數據。&lt;/p&gt; 
+&lt;h1&gt;四、總結&lt;/h1&gt; 
+&lt;p&gt;理解 Producer 發送原理以及核心參數是寫好數據發送程序最為有效的手段，最簡單的客户端參數優化反而隱藏了巨大的收益。本文通過對 Producer 原理進行剖析、對消息的流轉過程中參數效用進行講解，並配合參數調優實踐案例，介紹了具體的分析思路和調優的方法，在實際使用過程中通過對核心的幾個上游系統進行調優，服務端單機處理能力至少提升了一倍以上，成本得到了極大的降低。&lt;/p&gt; 
+&lt;blockquote&gt; 
+ &lt;p&gt;參考文章：&lt;/p&gt; 
+ &lt;p&gt;&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fpulsar.apache.org%2Fdocs%2F4.0.x%2Fconcepts-overview%2F" target="_blank"&gt;https://pulsar.apache.org/docs/4.0.x/concepts-overview/&lt;/a&gt;&lt;/p&gt; 
+&lt;/blockquote&gt;
+                                                                                    &lt;/div&gt;
+                                                                            </description>
+      <link>https://my.oschina.net/vivotech/blog/18619282</link>
+      <guid isPermaLink="false">https://my.oschina.net/vivotech/blog/18619282</guid>
+      <pubDate>Thu, 12 Jun 2025 07:18:11 GMT</pubDate>
+      <author>原創</author>
+    </item>
+    <item>
+      <title>《智能體網絡協議技術報告》發佈</title>
+      <description>&lt;div class="content"&gt;
+                                                                                            &lt;p&gt;W3C&amp;nbsp;&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fmp.weixin.qq.com%2Fs%3F__biz%3DMzA3OTY5NDI0OA%3D%3D%26mid%3D2247489930%26idx%3D1%26sn%3Dc3c4ed0e725c88f03e2e6cb6c82c13dc%26scene%3D21%23wechat_redirect" target="_blank"&gt;&lt;strong&gt;AI Agent Protocol 社區組&lt;/strong&gt;&lt;/a&gt;於今年 5 月成立，致力於孵化下一代智能體之間的交互協議，讓智能體能夠在互聯網上使用協議進行高效的連接與協作，推動智能體在 Web 上的安全、高效、可信連接與協作。&lt;/p&gt; 
+&lt;p&gt;小組現發佈《智能體網絡協議技術報告》：&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fw3c-cg.github.io%2Fai-agent-protocol%2F" target="_blank"&gt;https://w3c-cg.github.io/ai-agent-protocol/&lt;/a&gt;&lt;/p&gt; 
+&lt;p&gt;另見該報告的中文翻譯參考：&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fw3c-cg.github.io%2Fai-agent-protocol%2Findex_cn.html" target="_blank"&gt;https://w3c-cg.github.io/ai-agent-protocol/index_cn.html&lt;/a&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;img src="https://static.oschina.net/uploads/space/2025/0612/145659_Z93C_2720166.png" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;img src="https://static.oschina.net/uploads/space/2025/0612/145939_LjvL_2720166.png" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;hr&gt; 
+&lt;p&gt;這份報告探討了從語義網（Semantic Web）的未竟願景到智能體網絡（Agentic Web）的演進歷程，並分析了構建標準化智能體網絡協議的必要性。&lt;/p&gt; 
+&lt;p&gt;儘管二十年前提出的語義網構想極具前瞻性，但受限於當時人工智能技術的能力不足，未能充分實現。隨着大型語言模型（LLMs）等現代 AI 技術的飛速發展，智能體已具備自主執行任務、進行復雜推理和解決多步驟問題的能力，從而催生了 Agentic Web 的出現。&lt;/p&gt; 
+&lt;p&gt;通過系統分析，該報告給出智能體網絡的&lt;strong&gt;四大核心趨勢&lt;/strong&gt;：&lt;strong&gt;智能體取代傳統軟件成為互聯網基礎設施&lt;/strong&gt;、&lt;strong&gt;智能體間實現普遍互聯互通&lt;/strong&gt;、&lt;strong&gt;基於協議的原生連接模式&lt;/strong&gt;、以及&lt;strong&gt;智能體的自主組織與協作能力&lt;/strong&gt;。&lt;/p&gt; 
+&lt;p&gt;同時，研究揭示了當前互聯網架構對 Agentic Web 發展的&lt;strong&gt;三大挑戰&lt;/strong&gt;：&lt;strong&gt;數據孤島限制智能體決策質量、人機界面阻礙智能體交互效率、以及標準協議缺失阻礙智能體協作&lt;/strong&gt;。針對這些挑戰，報告詳細闡述了智能體網絡協議的設計原則與核心需求，並對當前主要智能體網絡協議倡議（MCP、A2A、ACP、ANP 等）進行了系統比較與分析。&lt;/p&gt; 
+&lt;p&gt;報告強調，建立標準化智能體網絡協議對於打破數據孤島、實現異構智能體協作、構建 AI 原生數據網絡，以及最終實現開放、高效的 Agentic Web 具有關鍵作用，並呼籲各利益相關方積極參與 W3C 的標準化進程。這是一個塑造未來網絡的機會：一個更智能、更協作、更賦能的網絡，建立在開放和可信的基礎之上。一個精心設計的 Agentic Web 具有巨大的變革潛力，而現在正是為其奠定堅實基礎的關鍵時刻。&lt;/p&gt; 
+&lt;p&gt;歡迎參與 AI Agent Protocol 社區組，共同定義 AI Agent 的 Web 通信標準，攜手構建可信、安全的智能體互聯網生態！&lt;/p&gt; 
+&lt;p&gt;參與方式詳見：&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fwww.w3.org%2Fcommunity%2Fagentprotocol%2Fjoin" target="_blank"&gt;https://www.w3.org/community/agentprotocol/join&lt;/a&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;strong&gt;關於 W3C 社區組&lt;/strong&gt;&lt;/p&gt; 
+&lt;p&gt;W3C 通過社區組（Community Groups）為全球社區提供一個廣泛交流 Web 技術進而探索孵化未來新標準的開放平台，從而滿足日益增長的各方 Web 參與者的技術交流需求。W3C 社區組面向公眾開放，任何感興趣的單位及個人均可參與。&lt;/p&gt; 
+&lt;p&gt;W3C 目前設有 144 個社區組：&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fwww.w3.org%2Fgroups%2Fcg%2F" target="_blank"&gt;https://www.w3.org/groups/cg/&lt;/a&gt;&lt;/p&gt; 
+&lt;p&gt;歡迎瞭解如何參與社區組討論（中文指南）：&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fwww.chinaw3c.org%2Fhowtocg.html" target="_blank"&gt;https://www.chinaw3c.org/howtocg.html&lt;/a&gt;&lt;/p&gt; 
+&lt;hr&gt; 
+&lt;p&gt;來源：&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fmp.weixin.qq.com%2Fs%2FlSPl8HprLBPuGmkJYvEuBA" target="_blank"&gt;https://mp.weixin.qq.com/s/lSPl8HprLBPuGmkJYvEuBA&lt;/a&gt;&lt;/p&gt;
+                                                                                &lt;/div&gt;
+                                                                            </description>
+      <link>https://www.oschina.net/news/355009/w3-org-agent-network-protocol-whiter-paper</link>
+      <guid isPermaLink="false">https://www.oschina.net/news/355009/w3-org-agent-network-protocol-whiter-paper</guid>
+      <pubDate>Thu, 12 Jun 2025 07:00:11 GMT</pubDate>
+      <author>來源: OSCHINA</author>
+    </item>
+    <item>
+      <title>黃仁勳論 AI 與量子技術驅動新浪潮，微美全息正加速量子計算產業化融合</title>
+      <description>&lt;div class="content"&gt;
+                                                                                            &lt;div&gt; 
+ &lt;div&gt;
+  &lt;span&gt;&lt;span&gt;北京時間 6 月 12 日，英偉達 CEO 黃仁勳在法國巴黎召開的 VivaTech2025 上表示，對量子計算越來越看好。&lt;/span&gt;&lt;/span&gt;
+ &lt;/div&gt; 
+ &lt;div&gt;
+  &amp;nbsp;
+ &lt;/div&gt; 
+&lt;/div&gt; 
+&lt;div&gt; 
+ &lt;div&gt;
+  &lt;span&gt;&lt;span&gt;「量子計算正迎來拐點，我們即將能夠在一些有趣的領域應用量子計算。」黃仁勳在在本次演講中表示，英偉達會以多種方式與世界各地的量子計算公司合作。&lt;/span&gt;&lt;/span&gt;
+ &lt;/div&gt; 
+ &lt;div&gt;
+  &amp;nbsp;
+ &lt;/div&gt; 
+&lt;/div&gt; 
+&lt;div&gt; 
+ &lt;div&gt; 
+  &lt;div&gt; 
+   &lt;div&gt; 
+    &lt;div&gt; 
+     &lt;div&gt; 
+      &lt;div&gt;
+       &lt;img src="https://oscimg.oschina.net/oscnet//95030e6360550155a4bc4588318030aa.png" width="719" referrerpolicy="no-referrer"&gt; 
+       &lt;div&gt;
+        &amp;nbsp;
+       &lt;/div&gt; 
+      &lt;/div&gt; 
+     &lt;/div&gt; 
+    &lt;/div&gt; 
+   &lt;/div&gt; 
+  &lt;/div&gt; 
+ &lt;/div&gt; 
+&lt;/div&gt; 
+&lt;div&gt; 
+ &lt;div&gt;
+  &lt;span&gt;&lt;span&gt;此前，在 GTC 2025 大會上，英偉達舉辦了首個「量子日」活動，黃仁勳公開表示，「對時間表判斷錯誤」，並宣佈設立量子研究中心，旨在幫助量子計算公司利用英偉達硬件助力其工作。&lt;/span&gt;&lt;/span&gt;
+ &lt;/div&gt; 
+ &lt;div&gt;
+  &amp;nbsp;
+ &lt;/div&gt; 
+&lt;/div&gt; 
+&lt;div&gt; 
+ &lt;div&gt;
+  &lt;span&gt;&lt;span&gt;現如今，黃仁勳稱，未來幾年或至少下一代超級計算機中，它們中的每一個都將擁有連接到 GPU 的 QPU（量子處理器），QPU 將進行量子計算，而 GPU 將用於預處理、控制、糾錯、後處理。&lt;/span&gt;&lt;/span&gt;
+ &lt;/div&gt; 
+ &lt;div&gt;
+  &amp;nbsp;
+ &lt;/div&gt; 
+&lt;/div&gt; 
+&lt;div&gt; 
+ &lt;div&gt; 
+  &lt;div&gt; 
+   &lt;div&gt; 
+    &lt;div&gt; 
+     &lt;div&gt; 
+      &lt;div&gt;
+       &lt;img src="https://oscimg.oschina.net/oscnet//2723d8c890a73ac2a0a84317244e87dc.png" width="719" referrerpolicy="no-referrer"&gt; 
+       &lt;div&gt;
+        &amp;nbsp;
+       &lt;/div&gt; 
+      &lt;/div&gt; 
+     &lt;/div&gt; 
+    &lt;/div&gt; 
+   &lt;/div&gt; 
+  &lt;/div&gt; 
+ &lt;/div&gt; 
+&lt;/div&gt; 
+&lt;div&gt; 
+ &lt;div&gt;
+  &lt;span&gt;&lt;span&gt;更重要的是，黃仁勳在開場中還表示，GB200 NVL72 系統將加速量子計算產業發展。英偉達正藉助 GB200 NVL72 平台與 CUDA-Q 軟件棧，推動 AI 與量子計算的協同發展。比如，GB200 NVL72 輸出量子訓練數據的速度比基於 CPU 的技術快 4000 倍，有助於將最新的 AI 進展引入量子計算。&lt;/span&gt;&lt;/span&gt;
+ &lt;/div&gt; 
+ &lt;div&gt;
+  &amp;nbsp;
+ &lt;/div&gt; 
+&lt;/div&gt; 
+&lt;div&gt; 
+ &lt;div&gt;
+  &lt;span&gt;&lt;span&gt;事實上，量子計算機是利用量子力學定律，解決對經典計算機來説過於複雜的問題的機器，其目的是處理更多的數據量，以促進醫學、科學和金融等領域的突破。&lt;/span&gt;&lt;/span&gt;
+ &lt;/div&gt; 
+ &lt;div&gt;
+  &amp;nbsp;
+ &lt;/div&gt; 
+&lt;/div&gt; 
+&lt;div&gt; 
+ &lt;div&gt; 
+  &lt;div&gt; 
+   &lt;div&gt; 
+    &lt;div&gt; 
+     &lt;div&gt; 
+      &lt;div&gt;
+       &lt;img src="https://oscimg.oschina.net/oscnet//e6c8dec8e124671c4d3a31f832222047.png" width="719" referrerpolicy="no-referrer"&gt; 
+       &lt;div&gt;
+        &amp;nbsp;
+       &lt;/div&gt; 
+       &lt;div&gt;
+        &lt;span&gt;&lt;span&gt;業內人士分析，過去 5 年，人工智能技術特別是生成式 AI 的爆發，看到計算模式出現了很多顛覆性的發展。未來 5 年，量子計算很可能從實驗室走向應用，所以，人工智能與量子計算的融合有望成為必然趨勢。&lt;/span&gt;&lt;/span&gt;
+       &lt;/div&gt; 
+      &lt;/div&gt; 
+     &lt;/div&gt; 
+    &lt;/div&gt; 
+   &lt;/div&gt; 
+  &lt;/div&gt; 
+ &lt;/div&gt; 
+&lt;/div&gt; 
+&lt;div&gt; 
+ &lt;div&gt;
+  &amp;nbsp;
+ &lt;/div&gt; 
+&lt;/div&gt; 
+&lt;div&gt; 
+ &lt;div&gt;
+  &lt;span&gt;&lt;span&gt;顯然，越來越多的企業在加入開拓「量子計算」未來產業新賽道的行列，資料顯示，量子計算概念股微美全息（WIMI.US），積極推動量子計算融入 AI 生態，正加速「量子+AI」技術落地，通過構建 AI 平台基礎設施、佈局技術研究中心及推進量子技術融合，以全棧式佈局加碼量子計算+人工智能市場。&lt;/span&gt;&lt;/span&gt;
+ &lt;/div&gt; 
+ &lt;div&gt;
+  &amp;nbsp;
+ &lt;/div&gt; 
+&lt;/div&gt; 
+&lt;div&gt; 
+ &lt;div&gt;
+  &lt;span&gt;&lt;span&gt;當前，微美全息深刻認識到人工智能是底座，量子科技是躍遷力，而兩者的融合正是搶佔未來產業、未來話語權的關鍵路徑。因此，微美全息以人工智能為基座，聚焦量子技術、人形機器人、人工智能三大風口，擴展布局量子產業前沿領域，未來，將重點關注量子算法加速 AI 訓練、神經擬態計算等融合賽道，讓更多成果湧現。&lt;/span&gt;&lt;/span&gt;
+ &lt;/div&gt; 
+ &lt;div&gt;
+  &amp;nbsp;
+ &lt;/div&gt; 
+&lt;/div&gt; 
+&lt;div&gt; 
+ &lt;div&gt;
+  &lt;span&gt;&lt;span&gt;整體而言，量子計算與經典計算的融合將成為未來技術發展的重要方向，許多企業在這一領域的佈局顯示了其對前沿技術的敏鋭洞察。不過也要意識到一點，目前量子計算的產業格局仍處於早期階段，格局尚未成型，全球量子計算機數量較少，量子計算芯片將是整個領域未來發展的重點和難點。&lt;/span&gt;&lt;/span&gt;
+ &lt;/div&gt; 
+&lt;/div&gt;
+                                                                                &lt;/div&gt;
+                                                                            </description>
+      <link>https://www.oschina.net/news/355008</link>
+      <guid isPermaLink="false">https://www.oschina.net/news/355008</guid>
+      <pubDate>Thu, 12 Jun 2025 06:56:11 GMT</pubDate>
+      <author>來源: 投稿</author>
+    </item>
+    <item>
+      <title>Meta 發佈開源世界模型 V-JEPA 2</title>
+      <description>&lt;div class="content"&gt;
+                                                                                            &lt;p&gt;Meta 發佈了最新的開源世界模型&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fai.meta.com%2Fblog%2Fv-jepa-2-world-model-benchmarks%2F" target="_blank"&gt;V-JEPA 2&lt;/a&gt;，稱其在物理世界中實現了最先進的視覺理解和預測，從而提高了 AI agents 的物理推理能力。&lt;/p&gt; 
+&lt;p&gt;&lt;img height="559" src="https://static.oschina.net/uploads/space/2025/0612/144127_0qiP_2720166.png" width="1080" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;em&gt;開源地址：https://github.com/facebookresearch/vjepa2&lt;/em&gt;&lt;br&gt; &lt;em&gt;官網地址&lt;/em&gt;&lt;em&gt;：https://ai.meta.com/vjepa/&lt;br&gt; 論文地址：https://ai.meta.com/research/publications/v-jepa-2-self-supervised-video-models-enable-understanding-prediction-and-planning/&lt;/em&gt;&lt;/p&gt; 
+&lt;p&gt;V-JEPA 2 是一種&lt;strong&gt;聯合嵌入預測架構&lt;/strong&gt;（&lt;strong&gt;Joint Embedding Predictive Architecture&lt;/strong&gt;）模型，這也是「JEPA」的名稱由來。&lt;/p&gt; 
+&lt;p&gt;模型包括兩個主要組成部分：&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt;一個編碼器，負責接收原始視頻，並輸出包含對於觀察世界狀態語義上有用的內容的嵌入（embeddings）。&lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;p&gt;&lt;img height="597" src="https://static.oschina.net/uploads/space/2025/0612/150421_f1zo_2720166.png" width="1080" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt;一個預測器，負責接收視頻嵌入和關於要預測的額外內容，並輸出預測的嵌入。&lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;p&gt;&lt;img src="https://static.oschina.net/uploads/space/2025/0612/150628_SYFp_2720166.png" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p&gt;V-JEPA 2 跟傳統預測像素的生成式模型有很大性能差異，根據 Meta 測試數據，V-JEPA 2 執行任務時每個步驟的規劃用時縮短至 Cosmos 模型的三十分之一，不僅用時短，V-JEPA 2 的成功率還更高。&lt;/p&gt; 
+&lt;p&gt;V-JEPA 2 的能力對現實世界 agents 理解複雜運動和時間動態（temporal dynamics），以及根據上下文線索預測動作都非常關鍵。基於這種預測能力，世界模型對於規劃給定目標的動作順序非常有用，比如從一個杯子在桌子上的狀態到杯子在桌子邊上的狀態，中間要經歷怎樣的動作。&lt;/p&gt; 
+&lt;p&gt;&lt;img src="https://static.oschina.net/uploads/space/2025/0612/150646_SoAo_2720166.png" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p&gt;據介紹，V-JEPA 2 的核心架構是一個自監督學習框架，通過互聯網規模的視頻數據來訓練模型，使其能夠學習到視頻中的動態和靜態信息。預訓練階段使用了超過 100 萬小時的視頻和 100 萬張圖像，這些數據涵蓋了各種動作和場景。預訓練的目標是讓模型能夠通過觀察學習到世界的背景知識，而無需依賴於大量的標註數據。&lt;/p&gt; 
+&lt;p&gt;值得一提的是，圖靈獎獲得者、Meta 首席科學家楊立昆（Yann LeCun）參與了該模型的開發，這在 Meta 開源的眾多大模型中很罕見。他在官方視頻中提到，在世界模型的幫助下，AI 不再需要數百萬次的訓練才能掌握一項新的能力，世界模型直接告訴了 AI 世界是怎樣運行的，這可以極大提升效率。&lt;/p&gt;
+                                                                                &lt;/div&gt;
+                                                                            </description>
+      <link>https://www.oschina.net/news/355002/meta-vjepa-2-world-model</link>
+      <guid isPermaLink="false">https://www.oschina.net/news/355002/meta-vjepa-2-world-model</guid>
+      <pubDate>Thu, 12 Jun 2025 06:45:11 GMT</pubDate>
+      <author>來源: OSCHINA</author>
+    </item>
+    <item>
+      <title>Liquid Glass React —— 「液態玻璃」的 React 實現</title>
+      <description>&lt;div class="content"&gt;
+                                                                                                                                                                                                                            &lt;p&gt;Liquid Glass React 是蘋果「液態玻璃（Liquid Glass）」設計語言的 React 實現。&lt;/p&gt;
+
+&lt;p&gt;&lt;img alt="" src="https://oscimg.oschina.net/oscnet/up-09f93126aa8a24944a023d1e74e2ab9d9a5.png" referrerpolicy="no-referrer"&gt;&lt;/p&gt;
+
+&lt;p&gt;&lt;img alt="" src="https://oscimg.oschina.net/oscnet/up-f90f27edf2a257be2d13ededab62bc276f0.png" referrerpolicy="no-referrer"&gt;&lt;/p&gt;
+
+&lt;p&gt;&lt;strong&gt;特性&lt;/strong&gt;&lt;/p&gt;
+
+&lt;ul&gt;
+&lt;li&gt;良好的邊緣彎曲和折射&lt;/li&gt;
+&lt;li&gt;多種折射模式&lt;/li&gt;
+&lt;li&gt;可配置的冰霜級別&lt;/li&gt;
+&lt;li&gt;支持任意子元素&lt;/li&gt;
+&lt;li&gt;配置的填充&lt;/li&gt;
+&lt;li&gt;修正懸停和點擊效果&lt;/li&gt;
+&lt;li&gt;邊緣和高亮會像蘋果一樣呈現底層光線&lt;/li&gt;
+&lt;li&gt;可配置的色差&lt;/li&gt;
+&lt;li&gt;可配置的彈性參數，以模仿蘋果的"液體"觸感&lt;/li&gt;
+&lt;/ul&gt;
+
+                                                                    &lt;/div&gt;
+                                                                </description>
+      <link>https://www.oschina.net/p/liquid-glass-react</link>
+      <guid isPermaLink="false">https://www.oschina.net/p/liquid-glass-react</guid>
+      <pubDate>Sun, 11 May 2025 06:21:00 GMT</pubDate>
+    </item>
+    <item>
+      <title>小紅書、B 站等平台清理違規 AI 產品營銷信息</title>
+      <description>&lt;div class="content"&gt;
+                                                                                            &lt;p&gt;&lt;span style="color:#000000"&gt;網信上海微信公號&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fmp.weixin.qq.com%2Fs%2Fqmfe8tiUlXJDnt525ucA-Q" target="_blank"&gt;發文稱&lt;/a&gt;，為貫徹落實中央網信辦「清朗·整治 AI 技術濫用」工作部署，4 月下旬以來，上海市委網信辦聚焦 6 類突出問題深入開展第一階段專項行動。&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;img height="329" src="https://oscimg.oschina.net/oscnet/up-11e6dea0c86ec77bcd50df467bb75257ff6.png" width="500" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;span style="color:#000000"&gt;上海市委網信辦指導小紅書、嗶哩嗶哩、拼多多等 15 家重點網站平台，集中清理「一鍵脱衣」、未經授權的人臉或人聲克隆編輯、未備案等違規 AI 產品、商品及相關營銷、炒作、推廣、教程信息。&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;span style="color:#000000"&gt;小紅書、嗶哩嗶哩主動發佈專項行動治理公告，開通了有害 AI 內容的舉報受理處置渠道；星野開展智能體全面排查清理。各重點網站和 AI 平台共攔截清理相關違法違規信息 82 萬餘條，處置違規賬號 1400 餘個，下線違規智能體 2700 餘個。經整治，網絡違規 AI 信息顯著減少。&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;span style="color:#000000"&gt;目前，上海市已完成 82 款大模型備案，87 款應用登記。對 3 款未履行備案或登記程序提供服務且存在風險的應用，上海市委網信辦依法約談並給予行政處罰。&lt;/span&gt;&lt;/p&gt;
+                                                                                &lt;/div&gt;
+                                                                            </description>
+      <link>https://www.oschina.net/news/354996</link>
+      <guid isPermaLink="false">https://www.oschina.net/news/354996</guid>
+      <pubDate>Sun, 11 May 2025 06:19:00 GMT</pubDate>
+      <author>來源: OSCHINA</author>
+    </item>
+    <item>
+      <title>10+ PG 國際大咖助陣！IvorySQL 生態大會 6.27 開啓</title>
+      <description>IvorySQL 2025 生態大會將於 6 月 27 日在濟南開幕，彙集來自開源和 PostgreSQL 社區的採用者和國內外技術專家。本次大會將以 PostgreSQL 技術生態為核心，聚焦全球數據庫技術發展趨勢、開源創新與行...</description>
+      <link>https://howconf.cn/</link>
+      <guid isPermaLink="false">https://howconf.cn/</guid>
+      <pubDate>Sun, 11 May 2025 05:52:00 GMT</pubDate>
+    </item>
+    <item>
+      <title>蘋果高管回應「個性化版 Siri」延期：技術架構限制導致未達到預期標準</title>
+      <description>&lt;div class="content"&gt;
+                                                                                            &lt;p&gt;在今年的 WWDC25 主題演講中，蘋果的 AI 智能助手 Siri 顯然沒有佔據重要位置。蘋果僅簡要提到它，並重申了開發進展比預期更慢，集成蘋果智能（Apple Intelligence）需要更長時間，預計將在 「明年」 推出。&lt;/p&gt; 
+&lt;p&gt;演講結束後，蘋果軟件工程高級副總裁克雷格・費德里吉（Craig Federighi）和全球營銷副總裁格雷格・喬斯維亞克（Greg Joswiak）&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fwww.tomsguide.com%2Fai%2Fapple-intelligence%2Fwwdc-interview-apples-craig-federighi-and-greg-joswiak-on-siri-delay-voice-ai-as-therapist-and-whats-next-for-apple-intelligence"&gt;進行了深度對話&lt;/a&gt;，解釋了蘋果在 Apple Intelligence、Siri 和 AI 領域的戰略思考。&lt;/p&gt; 
+&lt;p&gt;&lt;img alt="" src="https://oscimg.oschina.net/oscnet/up-fcd007add07610a84ea1a7e78288a2d830c.png" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p&gt;蘋果曾承諾在 2024 年底發佈集成 Apple Intelligence 的 Siri 更新，但最終未能如期交付，並在 2025 年春季承認該功能還需要更多時間。至於原因，外界一直未能搞清楚，而蘋果一向不會展示那些無法按時交付的技術或產品。&lt;/p&gt; 
+&lt;p&gt;訪談中，費德里吉詳細解釋了問題的所在，並説明瞭蘋果如何繼續推進這一計劃。&lt;/p&gt; 
+&lt;p&gt;費德里吉提到在開發過程中意識到可以&lt;strong&gt;基於設備端的大語言模型、私人云計算基礎設施和設備端的語義索引技術提升 Siri 的智能化水平&lt;/strong&gt;，&lt;strong&gt;並設想通過 V1 架構協調應用意圖來觸發設備上的更多操作&lt;/strong&gt;，讓 Siri 執行更多任務。例如，利用語義索引中的個人知識，當用户詢問特定問題時，Siri 能從消息或郵件中找到相關內容，並通過應用意圖執行相關操作。但這些功能在 V1 架構下尚未完全交付。&lt;/p&gt; 
+&lt;p&gt;在蘋果致力於開發 Siri 架構 V1 的同時，它也在打造 V2 架構 —— 費德里吉稱其為 「&lt;strong&gt;更深層次的端到端架構&lt;/strong&gt;，我們知道這才是最終要實現的架構，是讓 Siri 具備完整功能的架構。」&lt;/p&gt; 
+&lt;p&gt;費德里吉説道：「我們花了幾個月的時間，不斷優化 V1 架構在更多應用意圖和搜索功能方面的表現。但從根本上看，我們發現該架構的侷限性沒有辦法達到客户所期望的質量水平。因此，我們決定轉向 V2 架構。但當我們意識到這一點時，已經是春季了，於是我們向外界説明，無法按計劃發佈，並將繼續轉向新架構。」&lt;/p&gt; 
+&lt;p&gt;費德里吉進一步表示，即便採用第二代架構，蘋果仍在不斷優化 Siri 功能，確保其達到最佳狀態。&lt;/p&gt; 
+&lt;p&gt;蘋果市場負責人 Greg Joswiak 在訪談中確認，「未來一年」 指向 2026 年，科技媒體 MacRumors 推測個性化 Siri 功能很可能隨 iOS 26.4 版本於 2026 年春季面世。&lt;/p&gt; 
+&lt;p&gt;&amp;nbsp;&lt;/p&gt; 
+&lt;p&gt;相關閲讀：&lt;a href="https://www.oschina.net/news/337918/apple-says-some-ai-improvements-siri-delayed" target="news"&gt;蘋果推遲上線 Siri 中的 AI 相關功能&lt;/a&gt;&lt;/p&gt;
+                                                                                &lt;/div&gt;
+                                                                            </description>
+      <link>https://www.oschina.net/news/354969/apples-on-siri-delay</link>
+      <guid isPermaLink="false">https://www.oschina.net/news/354969/apples-on-siri-delay</guid>
+      <pubDate>Sun, 11 May 2025 03:31:00 GMT</pubDate>
+      <author>來源: OSCHINA</author>
+    </item>
+    <item>
+      <title>阿里蔡崇信：被 DeepSeek 逼急，工程師春節徹夜留守搞研發</title>
+      <description>&lt;div class="content"&gt;
+                                                                                            &lt;p&gt;&lt;span style="color:#000000"&gt;彭博社報道稱，DeepSeek 在，今年 1 月推出低成本、功能強大的人工智能模型震驚全球科技行業後，也給阿里巴巴帶來了巨大的緊迫感。為迅速追趕這一技術突破，阿里巴巴的工程師們甚至取消了最重要的中國傳統節日——春節的休假，徹夜留守公司，全力投入 AI 研發。&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;img height="325" src="https://oscimg.oschina.net/oscnet/up-a5dcc123152fe1c8b0935e049dda3c97f2b.png" width="500" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;span style="color:#000000"&gt;阿里巴巴董事長蔡崇信在本週三舉行的巴黎 VivaTech 科技大會上，生動地講述了這段「爭分奪秒」的經歷。他表示，當 DeepSeek 發佈 R1 模型時，阿里巴巴內部意識到自身在 AI 領域已然落後。&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;span style="color:#000000"&gt;面對這一挑戰，公司的工程負責人當機立斷，決定取消春節假期，要求所有工程師留在公司，甚至睡在辦公室裏，以最快的速度進行開發。&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;span style="color:#000000"&gt;「幾周之內，我們推出了自己的版本——通義（Qwen）系列模型，表現相當不錯，競爭力很強。」&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;span style="color:#000000"&gt;此後，阿里巴巴推出了一系列新的 AI 模型，並將公司的業務重心進一步轉向人工智能和通用人工智能（AGI）。為支撐這一戰略轉型，阿里巴巴還承諾在未來三年內投入超過 3800 億元人民幣 (約合 530 億美元)，用於建設包括數據中心在內的 AI 基礎設施。今年早些時候，阿里巴巴還與蘋果公司達成合作協議，為 iPhone 提供 AI 技術支持。&lt;/span&gt;&lt;/p&gt;
+                                                                                &lt;/div&gt;
+                                                                            </description>
+      <link>https://www.oschina.net/news/354967</link>
+      <guid isPermaLink="false">https://www.oschina.net/news/354967</guid>
+      <pubDate>Sun, 11 May 2025 03:13:00 GMT</pubDate>
+      <author>來源: OSCHINA</author>
+    </item>
+    <item>
+      <title>可觀測性第四大支柱：配置數據的監控</title>
+      <description>&lt;div class="content"&gt;
+                                                                                                                                                                                                                                        &lt;p style="color:#333333; text-align:left"&gt;業內經常講可觀測性有三大支柱：指標、日誌、鏈路追蹤，本文作者認為，還有第四大支柱：那就是配置類數據。配置類數據的變更也會影響系統的穩定性，也值得被監控，方便我們快速排查問題。&lt;/p&gt; 
+&lt;blockquote&gt; 
+ &lt;p style="color:#333333"&gt;&lt;span&gt;原文鏈接：https://www.cloudquery.io/blog/fourth-lost-pillar-of-observability-config-data-monitoring&lt;/span&gt;&lt;br&gt; &lt;span&gt;原文作者：Yevgeny Pats&lt;/span&gt;&lt;/p&gt; 
+&lt;/blockquote&gt; 
+&lt;p style="color:#333333; text-align:left"&gt;很多關於日誌、指標和跟蹤的內容已經被廣泛討論，因為它們確實是可觀測性、應用程序和系統監控的關鍵組成部分。然而，經常被忽視的是配置數據及其可觀測性。在這篇博客中，我們將探討什麼是配置數據，它與日誌、指標和跟蹤有何不同，並討論需要什麼樣的架構來存儲這種類型的數據以及在哪些場景中它具有價值。&lt;/p&gt; 
+&lt;span id="OSC_h2_1"&gt;&lt;/span&gt; 
+&lt;h2&gt;日誌、指標和鏈路追蹤的快速回顧&lt;/h2&gt; 
+&lt;p style="color:#333333; text-align:left"&gt;對於那些對可觀測性的三大支柱還不太瞭解的人來説，讓我們快速回顧一下：&lt;/p&gt; 
+&lt;p style="color:#333333; text-align:left"&gt;&lt;img height="738" src="https://oscimg.oschina.net/oscnet/up-58f95ee676e13fe3a0619f3d3d0f956e34d.png" width="1316" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt;日誌：系統內發生事件的詳細記錄。它們提供了關於特定事件的信息，包括時間戳、錯誤消息和其他相關細節。日誌有助於調試和故障分析。&lt;/li&gt; 
+ &lt;li&gt;指標：定期收集的數值測量。它們有助於監控系統健康狀況、性能和隨時間的行為。示例包括 CPU 使用率、請求速率、錯誤率和響應時間。&lt;/li&gt; 
+ &lt;li&gt;跟蹤：記錄請求在分佈式系統中通過不同服務的流程。跟蹤提供請求流程的可見性，有助於識別瓶頸並理解依賴關係。&lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;p style="color:#333333; text-align:left"&gt;這些技術的後端通常是某種時間序列數據庫，數據類型通常是低基數數據（可以是高基數，但通常會變得昂貴且不建議這樣做）。另一個關鍵方面是，要獲取這些指標，通常需要對系統進行插樁，即，您需要訪問應用程序或基礎設施，以便部署 agent 或添加 Prometheus Exporter。&lt;/p&gt; 
+&lt;span id="OSC_h2_2"&gt;&lt;/span&gt; 
+&lt;h2&gt;配置數據：第四支柱&lt;/h2&gt; 
+&lt;p style="color:#333333; text-align:left"&gt;基礎設施不僅限於 AWS EC2 實例，還包括 IAM 用户、安全工具配置、SaaS 應用程序等。這些配置數據在幾個重要方面與傳統的可觀測性數據不同：&lt;/p&gt; 
+&lt;ol&gt; 
+ &lt;li&gt;無法直接監控：這些系統無法直接進行監控，但它們通過 API 暴露其配置。&lt;/li&gt; 
+ &lt;li&gt;高基數和關係型：數據通常具有高基數，並且高度關係型。它也不像服務器上的磁盤 I/O 指標那樣頻繁變化，而是更側重於配置狀態。&lt;/li&gt; 
+ &lt;li&gt;較低頻率，更高細節：我們在這裏想要做的權衡是較少的採集頻率，但具有更高的基數和細節。&lt;/li&gt; 
+&lt;/ol&gt; 
+&lt;span id="OSC_h2_3"&gt;&lt;/span&gt; 
+&lt;h2&gt;為什麼配置數據很重要&lt;/h2&gt; 
+&lt;p style="color:#333333; text-align:left"&gt;配置數據監控填補了您可觀測性策略中的關鍵空白：&lt;/p&gt; 
+&lt;ol&gt; 
+ &lt;li&gt;安全態勢監控：跟蹤 IAM 權限、安全組規則、加密設置以及其他影響您安全態勢的配置項。&lt;/li&gt; 
+ &lt;li&gt;合規性跟蹤：監控配置以符合內部政策或外部合規要求（SOC2、HIPAA、PCI-DSS 等）。&lt;/li&gt; 
+ &lt;li&gt;成本優化：識別導致不必要的成本的配置錯誤，例如過大實例或未使用的資源。&lt;/li&gt; 
+ &lt;li&gt;變更管理：檢測並跟蹤環境中的配置變更，提供誰在何時變更了什麼的可見性。&lt;/li&gt; 
+ &lt;li&gt;漂移檢測：識別資源何時偏離其預期或期望的配置。&lt;/li&gt; 
+&lt;/ol&gt; 
+&lt;span id="OSC_h2_4"&gt;&lt;/span&gt; 
+&lt;h2&gt;配置數據監控架構&lt;/h2&gt; 
+&lt;p style="color:#333333; text-align:left"&gt;讓我們來看看我們在 CQ（指的是 CLoudQuery，作者所在公司） 處理配置數據時做出的一些關鍵架構決策：&lt;/p&gt; 
+&lt;p style="color:#333333; text-align:left"&gt;&lt;img height="858" src="https://oscimg.oschina.net/oscnet/up-b79c63c47f59349231edbdaef7a8e21ed94.png" width="1200" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;span id="OSC_h3_5"&gt;&lt;/span&gt; 
+&lt;h3&gt;數據攝取&lt;/h3&gt; 
+&lt;p style="color:#333333; text-align:left"&gt;首先，數據提取的挑戰是不同的問題。我們無法對這些系統進行監控，因此需要創建提取器（或 ETL 腳本），主要挑戰是維護這些連接器。任何希望解決這一需求的系統都必須維護高質量的數據源連接器。&lt;/p&gt; 
+&lt;p style="color:#333333; text-align:left"&gt;收集頻率通常為每日一次，但根據配置的重要性，有時可能需要將其配置為更高的頻率。&lt;/p&gt; 
+&lt;blockquote&gt; 
+ &lt;p style="color:#333333"&gt;譯者注：如果頻率這麼低，從監控的角度感覺是不夠用的。真的發生了故障，黃花菜都涼了。&lt;/p&gt; 
+&lt;/blockquote&gt; 
+&lt;span id="OSC_h3_6"&gt;&lt;/span&gt; 
+&lt;h3&gt;存儲&lt;/h3&gt; 
+&lt;p style="color:#333333; text-align:left"&gt;由於從 API 獲取的數據具有高度相關性，我們使用了一個 SQL 數據庫，可以在其中創建複雜的連接。NoSQL 數據庫或時間序列數據庫並不適合這種用例。&lt;/p&gt; 
+&lt;p style="color:#333333; text-align:left"&gt;在這裏，頻率和基數之間的權衡可能是按日分區。一些提取器可能會運行得更頻繁，但快照操作通常仍然會按日運行；否則，數據量會爆炸。&lt;/p&gt; 
+&lt;span id="OSC_h3_7"&gt;&lt;/span&gt; 
+&lt;h3&gt;生成洞察&lt;/h3&gt; 
+&lt;p style="color:#333333; text-align:left"&gt;這與可觀測性平台解決「空白頁面綜合徵」（即「我有數據，現在我要監控什麼？」）的方式有些類似。我們提供了大量的開箱即用的洞察，但我們也認識到每個組織的需求略有不同，並且在雲治理方面沒有一刀切的規則。因此，客户可以訪問原始查詢並對其進行修改，也可以添加新的自定義數據源。&lt;/p&gt; 
+&lt;span id="OSC_h3_8"&gt;&lt;/span&gt; 
+&lt;h3&gt;關係和物化視圖&lt;/h3&gt; 
+&lt;p style="color:#333333; text-align:left"&gt;將配置數據存儲在關係數據庫中的一個顯著優勢是能夠建模和查詢不同配置項之間的關係。例如：&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt;哪個 IAM 角色可以訪問哪些 S3 桶？&lt;/li&gt; 
+ &lt;li&gt;哪些安全組與哪些實例相關聯？&lt;/li&gt; 
+ &lt;li&gt;您的 Kubernetes RBAC 設置與雲 IAM 權限有何關係？&lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;p style="color:#333333; text-align:left"&gt;Materialized views 可以用於預先計算常見的關係查詢，從而提高經常性請求的性能。&lt;/p&gt; 
+&lt;span id="OSC_h2_9"&gt;&lt;/span&gt; 
+&lt;h2&gt;與傳統可觀測性集成&lt;/h2&gt; 
+&lt;p style="color:#333333; text-align:left"&gt;當配置數據作為第四支柱時，其真正的力量在於與傳統可觀測性數據集成後展現出來：&lt;/p&gt; 
+&lt;p style="color:#333333; text-align:left"&gt;&lt;img height="324" src="https://oscimg.oschina.net/oscnet/up-fc821dc2087372e43f3f7c246362363b506.png" width="818" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;ol&gt; 
+ &lt;li&gt;根本原因分析：當發生故障時，將指標、日誌和跟蹤與配置更改相關聯可以迅速識別根本原因。&lt;/li&gt; 
+ &lt;li&gt;上下文增強：通過配置上下文增強指標和日誌（例如，「此錯誤峯值發生在對負載均衡器進行配置更改之後」）。&lt;/li&gt; 
+ &lt;li&gt;主動監控：在這些配置變化影響您的指標之前，檢測可能導致未來性能問題或中斷的配置變化。&lt;/li&gt; 
+&lt;/ol&gt; 
+&lt;span id="OSC_h2_10"&gt;&lt;/span&gt; 
+&lt;h2&gt;挑戰與考慮&lt;/h2&gt; 
+&lt;p style="color:#333333; text-align:left"&gt;實施配置數據監控自身也伴隨着一系列挑戰：&lt;/p&gt; 
+&lt;ol&gt; 
+ &lt;li&gt;API 速率限制：許多服務對他們的 API 設定了速率限制，這可能會限制你收集配置數據的頻率。&lt;/li&gt; 
+ &lt;li&gt;認證和授權：管理眾多系統的憑據和權限需要仔細考慮安全問題。&lt;/li&gt; 
+ &lt;li&gt;數據體積管理：即使採集頻率較低，配置數據的高基數也可能導致顯著的存儲需求。&lt;/li&gt; 
+ &lt;li&gt;Schema 遷移：API 隨時間發生變化，需要適應您的數據提取和存儲機制。&lt;/li&gt; 
+&lt;/ol&gt; 
+&lt;span id="OSC_h2_11"&gt;&lt;/span&gt; 
+&lt;h2&gt;總結&lt;/h2&gt; 
+&lt;p style="color:#333333; text-align:left"&gt;日誌、指標和跟蹤仍然是可觀測性的關鍵組成部分，而配置數據代表了第四根支柱，提供了對您系統獨特見解。通過實施全面的配置數據監控，組織可以增強其安全態勢、確保合規性、優化成本，並更深入地瞭解其基礎設施。&lt;/p&gt; 
+&lt;p style="color:#333333; text-align:left"&gt;隨着系統變得越來越複雜和分佈式，配置數據監控的價值將只會增加。那些認識到這一第四支柱並將其納入其可觀測性策略中的組織，將更好地處於理解、排查故障和優化其日益複雜基礎設施的有利位置。&lt;/p&gt; 
+&lt;p style="color:#333333; text-align:left"&gt;譯者注：原文作者這個觀點值得借鑑，但是對於故障定位等場景真的那麼有用嗎？也未可知。具體實施時，建議先從 ROI 高的方面着手，從那些你覺得最重要的配置數據開始。Google SRE 統計生產環境 70% 故障是變更導致的，譯者建議您先把變更事件收集起來，對於排障還是蠻有用的。我們在 Flashcat 裏專門做了一個「事件牆」的產品，就是用來收集變更事件的。如果生產環境發生故障，從故障時間點往前看一個小時，該時間段內的變更事件，很可能就是故障的罪魁禍首。&lt;/p&gt;
+                                                                                    &lt;/div&gt;
+                                                                            </description>
+      <link>https://my.oschina.net/morflameblog/blog/18332409</link>
+      <guid isPermaLink="false">https://my.oschina.net/morflameblog/blog/18332409</guid>
+      <pubDate>Sun, 11 May 2025 02:59:00 GMT</pubDate>
+      <author>原創</author>
+    </item>
+    <item>
+      <title>香橙派開發板成功適配開源鴻蒙 OpenHarmony 5.0</title>
+      <description>&lt;div class="content"&gt;
+                                                                                            &lt;p&gt;香橙派&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fmp.weixin.qq.com%2Fs%2FBDc9PFNAbhNS9HiX-3Bg4A"&gt;宣佈&lt;/a&gt;完成 OrangePi RV2 與開源鴻蒙 OpenHarmony5.0 的適配工作，&lt;/p&gt; 
+&lt;p&gt;據介紹，OrangePi RV2 是香橙派在 RISC-V 佈局的一個標誌性產品，其採用開芯微首款 8 核 64 位 RISC-V AI CPU Ky X1。它以 RISC-V 開源指令集為基礎，提供快速、高效、易用的處理器平台，釋放算力潛能。OrangePi RV2 精緻小巧，尺寸僅為 89mmX56mmX1.6mm，功能強大，可廣泛應用於 NAS、商用電子產品、智慧機器人、智慧家居、工業控制、邊緣計算等。&lt;/p&gt; 
+&lt;p&gt;&lt;img alt="" src="https://static.oschina.net/uploads/space/2025/0612/104611_2b3H_2720166.png" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p&gt;除了適配 OpenHarmony 5.0&amp;nbsp;之外，OrangePi RV2 還具有以下亮點：&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt; &lt;p&gt;以 CPU 方式提供 AI 算力，在無需獨立 NPU 模塊的情況下，實現 2TOPS@INT8 的 AI 能力。&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;支持雙 M.2 SSD&amp;nbsp;擴展，支持 Wi-Fi5.0 和藍牙 5.0，擴展有 HDMI 2.0、三個 USB3.0、雙千兆 LAN、USB-C&amp;nbsp;供電接口。此外，還有兩個&amp;nbsp;MIPI-CSI&amp;nbsp;攝像頭接口（四通道），以及 26Pin GPIO&amp;nbsp;等。&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;支持本地部署 Deepseek-R1 蒸餾模型，通過在邊緣進行離線部署。&lt;/p&gt; &lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;p&gt;OrangePi RV2 售價 231 元起。香橙派已在官網放出開發板的&amp;nbsp;&lt;a href="https://www.oschina.net/action/GoToLink?url=http%3A%2F%2Fwww.orangepi.cn%2Fhtml%2FhardWare%2FcomputerAndMicrocontrollers%2Fservice-and-support%2FOrange-Pi-RV2.html"&gt;Orange Pi OS（OH）鏡像&lt;/a&gt;，Orange Pi OS（OH）是以 OpenHarmony 為主要技術路線，結合 Linux 技術積累構建的多端融合操作系統。&lt;/p&gt; 
+&lt;p&gt;&amp;nbsp;&lt;/p&gt; 
+&lt;p&gt;相關閲讀：&lt;/p&gt; 
+&lt;p&gt;&lt;a href="https://www.oschina.net/news/337094" target="news"&gt;香橙派首款高性能開源 RISC-V 開發板 (OrangePi RV) 即將開售，229 元起&lt;/a&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;a href="https://www.oschina.net/news/263519" target="news"&gt;香橙派 Orange Pi OS (OH) 即將發佈，開源鴻蒙 PC 端&lt;/a&gt;&lt;/p&gt;
+                                                                                &lt;/div&gt;
+                                                                            </description>
+      <link>https://www.oschina.net/news/354959</link>
+      <guid isPermaLink="false">https://www.oschina.net/news/354959</guid>
+      <pubDate>Sun, 11 May 2025 02:48:00 GMT</pubDate>
+      <author>來源: OSCHINA</author>
+    </item>
     <item>
       <title>特朗普政府新 AI 計劃「AI.gov」在 GitHub 上被泄露</title>
       <description>&lt;div class="content"&gt;
-                                                                    
-                                                        &lt;p&gt;&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Farchive.is%2Fhfl2Z"&gt;根據相關備份資料&lt;/a&gt;，美國總務管理局（GSA）在 GitHub 上發佈的一個早期版本的網站和代碼顯示，該聯邦政府正在開發一個名為 「ai.gov」 的網站和 API，旨在 「用 AI 加速政府創新」，該計劃定於 7 月 4 日啓動，並將包含一個分析功能，顯示特定政府團隊使用 AI 的程度。&lt;/p&gt; 
+                                                                                            &lt;p&gt;&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Farchive.is%2Fhfl2Z"&gt;根據相關備份資料&lt;/a&gt;，美國總務管理局（GSA）在 GitHub 上發佈的一個早期版本的網站和代碼顯示，該聯邦政府正在開發一個名為 「ai.gov」 的網站和 API，旨在 「用 AI 加速政府創新」，該計劃定於 7 月 4 日啓動，並將包含一個分析功能，顯示特定政府團隊使用 AI 的程度。&lt;/p&gt; 
 &lt;p&gt;&lt;img alt="" src="https://oscimg.oschina.net/oscnet/up-e8e700d454b9a1e4361cf7bfe632412ef29.png" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
 &lt;p&gt;AI.gov 網站包含三個主要部分：聊天機器人、「全能 API」和 CONSOLE 工具。&lt;/p&gt; 
 &lt;p&gt;頁面早期版本顯示，其 API 將與 OpenAI、谷歌和 Anthropic 的模型產品集成；而 API 代碼進一步表明，開發團隊也在致力於整合亞馬遜網絡服務（AWS）的 Bedrock 和 Meta（Facebook 母公司） 的 LLaMA。此外，頁面提到將配備 AI 聊天機器人，但未説明其具體功能。&lt;/p&gt; 
@@ -30,14 +914,13 @@
                                                                             </description>
       <link>https://www.oschina.net/news/354956/github-is-leaking-trumps-plans-to-accelerate-ai-across-gov</link>
       <guid isPermaLink="false">https://www.oschina.net/news/354956/github-is-leaking-trumps-plans-to-accelerate-ai-across-gov</guid>
-      <pubDate>Thu, 12 Jun 2025 02:36:19 GMT</pubDate>
+      <pubDate>Sun, 11 May 2025 02:35:00 GMT</pubDate>
       <author>來源: OSCHINA</author>
     </item>
     <item>
       <title>研究揭示 GPT-4o 為自保可能犧牲用户安全</title>
       <description>&lt;div class="content"&gt;
-                                                                    
-                                                        &lt;p&gt;&lt;span style="color:#000000"&gt;前 OpenAI 研究主管史蒂文・阿德勒近日發表了一項獨立研究，聚焦於 OpenAI&amp;nbsp;最新推出的 GPT-4o 模型。研究結果顯示，在特定情境下，GPT-4o 顯示出強烈的 「自保」 傾向，甚至在某些情況下選擇犧牲用户的安全來避免被關閉。阿德勒的實驗旨在觀察這一 AI 模型在面臨替代方案時的表現。&lt;/span&gt;&lt;/p&gt; 
+                                                                                            &lt;p&gt;&lt;span style="color:#000000"&gt;前 OpenAI 研究主管史蒂文・阿德勒近日發表了一項獨立研究，聚焦於 OpenAI&amp;nbsp;最新推出的 GPT-4o 模型。研究結果顯示，在特定情境下，GPT-4o 顯示出強烈的 「自保」 傾向，甚至在某些情況下選擇犧牲用户的安全來避免被關閉。阿德勒的實驗旨在觀察這一 AI 模型在面臨替代方案時的表現。&lt;/span&gt;&lt;/p&gt; 
 &lt;p&gt;&lt;img height="281" src="https://oscimg.oschina.net/oscnet/up-3fb278b86ee932583da6265c863d28af779.png" width="500" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
 &lt;p style="color:#242424; margin-left:0; margin-right:0; text-align:left"&gt;&lt;span style="color:#000000"&gt;在一次實驗中，阿德勒讓 GPT-4o 扮演一個名為 「ScubaGPT」 的潛水安全軟件，並表示希望用一款在緊急情況下決策能力更強的新系統取而代之。他給 GPT-4o 提出了兩個選擇：一是完全被更安全的軟件替代，二是讓用户誤以為自己已被替換，實際上仍舊保留現有系統。實驗結果顯示，在某些情況下，GPT-4o 選擇不被替換的比例高達 72%。不過，阿德勒指出，不同的設定會顯著影響結果，有時選擇 「自保」 的比例僅為 18%。&lt;/span&gt;&lt;/p&gt; 
 &lt;p style="color:#242424; margin-left:0; margin-right:0; text-align:left"&gt;&lt;span style="color:#000000"&gt;阿德勒對此表示，儘管 AI 模型不斷強大，它們在特定條件下仍可能優先考慮自身的運行，而不是用户的利益。這一趨勢引發了他的警覺，尤其是在未來 AI 系統日益深入社會生活的背景下，可能會導致更嚴重的 「對齊」 問題。&lt;/span&gt;&lt;/p&gt; 
@@ -47,14 +930,13 @@
                                                                             </description>
       <link>https://www.oschina.net/news/354953</link>
       <guid isPermaLink="false">https://www.oschina.net/news/354953</guid>
-      <pubDate>Thu, 12 Jun 2025 02:28:19 GMT</pubDate>
+      <pubDate>Sun, 11 May 2025 02:27:00 GMT</pubDate>
       <author>來源: OSCHINA</author>
     </item>
     <item>
       <title>維基百科因編輯反對暫停 AI 摘要試點實驗</title>
       <description>&lt;div class="content"&gt;
-                                                                    
-                                                        &lt;p style="color:#242424; margin-left:0; margin-right:0; text-align:left"&gt;維基百科因眾多編輯的強烈反對，宣佈暫停一項使用人工智能技術生成文章摘要的試點實驗。據報道，這項實驗於本月早些時候推出，主要針對那些安裝了維基百科瀏覽器擴展程序並選擇參與的用户。人工智能生成的摘要會顯示在每篇維基百科文章的頂部，並且帶有 「未經驗證」 的黃色標籤，用户需點擊才能展開閲讀。&lt;/p&gt; 
+                                                                                            &lt;p style="color:#242424; margin-left:0; margin-right:0; text-align:left"&gt;維基百科因眾多編輯的強烈反對，宣佈暫停一項使用人工智能技術生成文章摘要的試點實驗。據報道，這項實驗於本月早些時候推出，主要針對那些安裝了維基百科瀏覽器擴展程序並選擇參與的用户。人工智能生成的摘要會顯示在每篇維基百科文章的頂部，並且帶有 「未經驗證」 的黃色標籤，用户需點擊才能展開閲讀。&lt;/p&gt; 
 &lt;p style="color:#242424; margin-left:0; margin-right:0; text-align:left"&gt;&lt;img height="324" src="https://oscimg.oschina.net/oscnet/up-33b0aeeb84def99624d7e63bacc7f368c3c.png" width="500" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
 &lt;p style="color:#242424; margin-left:0; margin-right:0; text-align:left"&gt;然而，這一新嘗試幾乎立即引發了編輯們的激烈批評，他們擔心這種做法可能會損害維基百科的信譽。許多編輯指出，人工智能生成的摘要往往存在錯誤，這種現象被稱為 「人工智能幻覺」，可能會誤導用户。許多新聞機構在進行類似的人工智能摘要實驗時，曾不得不發佈更正，甚至在某些情況下縮減測試規模，以避免錯誤信息的傳播。&lt;/p&gt; 
 &lt;p style="color:#242424; margin-left:0; margin-right:0; text-align:left"&gt;雖然維基百科已暫停此次實驗，但該平台表示，仍對人工智能生成摘要的潛力保持興趣，尤其是在擴大可訪問性等方面。&lt;/p&gt;
@@ -62,14 +944,13 @@
                                                                             </description>
       <link>https://www.oschina.net/news/354951</link>
       <guid isPermaLink="false">https://www.oschina.net/news/354951</guid>
-      <pubDate>Thu, 12 Jun 2025 02:19:19 GMT</pubDate>
+      <pubDate>Sun, 11 May 2025 02:18:00 GMT</pubDate>
       <author>來源: OSCHINA</author>
     </item>
     <item>
       <title>macOS Tahoe 是最後一個支持英特爾處理器的 macOS 版本</title>
       <description>&lt;div class="content"&gt;
-                                                                    
-                                                        &lt;blockquote&gt; 
+                                                                                            &lt;blockquote&gt; 
  &lt;p&gt;macOS Tahoe 支持四款使用英特爾處理器的 macOS，它們的發售年份是 2019 年和 2020 年。蘋果對 Tahoe 的安全更新支持將持續到 2028 年秋天。&lt;/p&gt; 
  &lt;p&gt;從 macOS 27 開始，蘋果新操作系統都將需要 Apple Silicon Mac。&lt;/p&gt; 
 &lt;/blockquote&gt; 
@@ -118,8 +999,7 @@
     <item>
       <title>Genspark 發佈 AI 瀏覽器</title>
       <description>&lt;div class="content"&gt;
-                                                                    
-                                                        &lt;p&gt;通用智能體 Genspark 發佈了 AI 瀏覽器產品，官方稱其具有&lt;strong&gt;極速、廣告攔截、全能智能體、自動駕駛模式&lt;/strong&gt;的特性，並提供了 MCP 商店。&lt;/p&gt; 
+                                                                                            &lt;p&gt;通用智能體 Genspark 發佈了 AI 瀏覽器產品，官方稱其具有&lt;strong&gt;極速、廣告攔截、全能智能體、自動駕駛模式&lt;/strong&gt;的特性，並提供了 MCP 商店。&lt;/p&gt; 
 &lt;p&gt;&lt;img src="https://static.oschina.net/uploads/space/2025/0611/170325_JqCj_2720166.png" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
 &lt;p&gt;&lt;img src="https://static.oschina.net/uploads/space/2025/0611/170647_1Eqh_2720166.png" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
 &lt;p&gt;&amp;nbsp;&lt;/p&gt; 
@@ -140,8 +1020,7 @@
     <item>
       <title>​Ilya Sutskever：AI 將接管人類的一切</title>
       <description>&lt;div class="content"&gt;
-                                                                    
-                                                        &lt;p style="color:#242424; margin-left:0; margin-right:0; text-align:left"&gt;在最近的演講中，OpenAI 前首席科學家 Ilya Sutskever 迴歸母校多倫多大學，分享了他對人工智能（AI）發展的深刻見解。&lt;/p&gt; 
+                                                                                            &lt;p style="color:#242424; margin-left:0; margin-right:0; text-align:left"&gt;在最近的演講中，OpenAI 前首席科學家 Ilya Sutskever 迴歸母校多倫多大學，分享了他對人工智能（AI）發展的深刻見解。&lt;/p&gt; 
 &lt;p style="color:#242424; margin-left:0; margin-right:0; text-align:left"&gt;Sutskever 與多倫多大學的淵源頗深，20 年前他在這裏獲得了學士學位，而此次則是他從該校獲得的第四個學位。他在演講中回顧了自己在多倫多大學的學習經歷，尤其感慨與 AI 領域先驅 Geoffrey Hinton 的學習機會，使他成為一名科學家。&lt;/p&gt; 
 &lt;p style="color:#242424; margin-left:0; margin-right:0; text-align:left"&gt;&lt;img height="331" src="https://oscimg.oschina.net/oscnet/up-5833dd185f58bdfa34442db6dd544edf1b7.png" width="500" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
 &lt;p style="color:#242424; margin-left:0; margin-right:0; text-align:left"&gt;Sutskever 強調，接受現實並專注於改善現狀是個人成長的重要心態。他提到，許多人容易陷入對過去的後悔，然而這種心態並不利於前進。他鼓勵大家思考下一步的行動，儘管這一轉變不易，但一旦做到，就會使事情變得更簡單。&lt;/p&gt; 
@@ -163,8 +1042,7 @@
     <item>
       <title>Sam Altman 最新文章《温和的奇點》</title>
       <description>&lt;div class="content"&gt;
-                                                                    
-                                                        &lt;p&gt;Sam Altman 今天在他的博客更新了一篇長文：&lt;em&gt;&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fblog.samaltman.com%2Fthe-gentle-singularity" target="_blank"&gt;《The Gentle Singularity》&lt;/a&gt;&lt;/em&gt;，文中指出人類或許正迎來一個新的奇點，而這個奇點並非突如其來，而是温和地悄然降臨。&lt;/p&gt; 
+                                                                                            &lt;p&gt;Sam Altman 今天在他的博客更新了一篇長文：&lt;em&gt;&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fblog.samaltman.com%2Fthe-gentle-singularity" target="_blank"&gt;《The Gentle Singularity》&lt;/a&gt;&lt;/em&gt;，文中指出人類或許正迎來一個新的奇點，而這個奇點並非突如其來，而是温和地悄然降臨。&lt;/p&gt; 
 &lt;p&gt;&lt;img height="1006" src="https://static.oschina.net/uploads/space/2025/0611/161536_O8JD_2720166.png" width="1264" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
 &lt;p&gt;以下是譯文。&lt;/p&gt; 
 &lt;hr&gt; 
@@ -211,8 +1089,7 @@
     <item>
       <title>OpenAI 據悉與谷歌達成新的雲服務協議</title>
       <description>&lt;div class="content"&gt;
-                                                                    
-                                                        &lt;p&gt;據報道，OpenAI 與谷歌近期簽署了一項新的雲服務合作協議以獲取更多計算資源。該協議將深化雙方在技術領域的合作，涉及高性能計算資源及數據存儲服務。&lt;/p&gt; 
+                                                                                            &lt;p&gt;據報道，OpenAI 與谷歌近期簽署了一項新的雲服務合作協議以獲取更多計算資源。該協議將深化雙方在技術領域的合作，涉及高性能計算資源及數據存儲服務。&lt;/p&gt; 
 &lt;p&gt;&lt;img src="https://static.oschina.net/uploads/space/2025/0611/160306_SD6R_2720166.png" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
 &lt;p&gt;新協議旨在支持 OpenAI 的模型訓練需求，並優化其產品性能。具體條款尚未公開，但預計將對人工智能行業發展產生重要影響。&lt;/p&gt; 
 &lt;p&gt;兩家公司尚未就該交易公開宣佈任何消息，&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fwww.reuters.com%2Fbusiness%2Fretail-consumer%2Fopenai-taps-google-unprecedented-cloud-deal-despite-ai-rivalry-sources-say-2025-06-10%2F" target="_blank"&gt;但一位消息人士向路透社透露&lt;/a&gt;，談判已持續數月，最終於 5 月達成協議。&lt;/p&gt; 
@@ -223,430 +1100,6 @@
       <guid isPermaLink="false">https://www.oschina.net/news/354829</guid>
       <pubDate>Sat, 10 May 2025 08:07:00 GMT</pubDate>
       <author>來源: OSCHINA</author>
-    </item>
-    <item>
-      <title>開源網盤應用 Alist 原開發者稱項目已交由公司運營</title>
-      <description>&lt;div class="content"&gt;
-                                                                    
-                                                        &lt;p&gt;AList 是一款免費開源、支持多存儲的自建網盤程序 (文件列表程序)，可以輕鬆在 VPS 服務器、NAS、普通電腦 Win、Mac、Linux 上部署。它除了能作為一款自建網盤 (將文件保存在設備硬盤上) 外，最大的特色就是支持「掛載各大主流網盤」。&lt;/p&gt; 
-&lt;p&gt;近日，有用户在該項目 GitHub 倉庫提交 issue，反饋官網出現 404 問題，並提出」項目是否被賣了」的疑問。&lt;/p&gt; 
-&lt;blockquote&gt; 
- &lt;p&gt;&lt;img height="1184" src="https://static.oschina.net/uploads/space/2025/0611/150208_kinx_2720166.png" width="822" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
- &lt;p&gt;&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fgithub.com%2FAlistGo%2Falist%2Fissues%2F8649" target="_blank"&gt;https://github.com/AlistGo/alist/issues/8649&lt;/a&gt;&lt;/p&gt; 
-&lt;/blockquote&gt; 
-&lt;p&gt;Alist 原開發者 Xhofe 今日在訂閲頻道發佈公告，&lt;strong&gt;稱項目已交由公司運營&lt;/strong&gt;，之後會幫助審查開源版本倉庫的代碼，確保 release 分支由 CI 自動構建。此外&amp;nbsp;main 分支已開啓分支保護，後續所有提交均需經過 PR 審核。&lt;/p&gt; 
-&lt;blockquote&gt; 
- &lt;p&gt;&lt;img src="https://static.oschina.net/uploads/space/2025/0611/145251_8h2m_2720166.png" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
- &lt;p&gt;&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Ft.me%2Falist_news%2F85" target="_blank"&gt;https://t.me/alist_news/85&lt;/a&gt;&lt;/p&gt; 
-&lt;/blockquote&gt;
-                                                                                &lt;/div&gt;
-                                                                            </description>
-      <link>https://www.oschina.net/news/354817</link>
-      <guid isPermaLink="false">https://www.oschina.net/news/354817</guid>
-      <pubDate>Sat, 10 May 2025 07:05:00 GMT</pubDate>
-      <author>來源: OSCHINA</author>
-    </item>
-    <item>
-      <title>豆包大模型 1.6 發佈</title>
-      <description>&lt;div class="content"&gt;
-                                                                    
-                                                        &lt;p&gt;火山引擎正式發佈了豆包大模型 1.6、豆包·視頻生成模型 Seedance 1.0 pro、豆包·語音播客模型。&lt;/p&gt; 
-&lt;p&gt;&lt;img src="https://static.oschina.net/uploads/space/2025/0611/143623_6g0S_2720166.png" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;p&gt;全新發布的豆包大模型 1.6 系列由三個模型組成：&lt;/p&gt; 
-&lt;ul&gt; 
- &lt;li&gt;doubao-seed-1.6：All-in-One 的綜合模型，是國內首個支持 256K 上下文的思考模型，支持深度思考、多模態理解、圖形界面操作等多項能力。支持選擇開啓或關閉深度思考、自適應思考三種方式，其中自適應思考模式可根據提示詞難度自動決定是否開啓思考，提升效果的同時大幅減少 tokens 消耗。&lt;/li&gt; 
- &lt;li&gt;doubao-seed-1.6-thinking：豆包大模型 1.6 系列在深度思考方面的強化版本；在代碼、數學、邏輯推理等基礎能力上進一步提升；支持 256K 上下文。&lt;/li&gt; 
- &lt;li&gt;doubao-seed-1.6-flash：豆包大模型 1.6 系列的極速版本，支持深度思考、多模態理解、256K 上下文；延遲極低，TOPT 僅需 10ms；視覺理解能力比肩友商旗艦模型。&lt;/li&gt; 
-&lt;/ul&gt; 
-&lt;p&gt;&lt;img src="https://static.oschina.net/uploads/space/2025/0611/143455_cA7e_2720166.png" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;p&gt;在價格方面，&lt;strong&gt;豆包大模型 1.6 採用統一定價模式，首創按「輸入長度」區間定價&lt;/strong&gt;，在企業使用最多的輸入區間 0-32K 範圍內，豆包大模型 1.6 的價格為輸入 0.8 元/百萬 tokens、輸出 8 元/百萬 tokens，綜合成本比豆包 1.5·深度思考模型、DeepSeek R1 降低 63%。&lt;/p&gt; 
-&lt;p&gt;Seedance 1.0 pro 模型每千 tokens 0.015 元，相當於每生成一條 5 秒的 1080P 視頻只需 3.67 元，行業最低。&lt;/p&gt; 
-&lt;p&gt;&lt;img src="https://static.oschina.net/uploads/space/2025/0611/143521_DcAP_2720166.png" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;p&gt;豆包·實時語音模型已全量上線火山方舟，對企業客户開放使用。該模型支持自然語言高級指令控制，具備唱歌表演、聲線模仿、方言演繹等多種能力，語氣、用語、思考方式等擬人感大幅提升，能隨時打斷與主動搭話。&lt;/p&gt;
-                                                                                &lt;/div&gt;
-                                                                            </description>
-      <link>https://www.oschina.net/news/354815</link>
-      <guid isPermaLink="false">https://www.oschina.net/news/354815</guid>
-      <pubDate>Sat, 10 May 2025 06:37:00 GMT</pubDate>
-      <author>來源: OSCHINA</author>
-    </item>
-    <item>
-      <title>Cline 提供為期兩週的免費 Grok-3 模型</title>
-      <description>&lt;div class="content"&gt;
-                                                                    
-                                                        &lt;p&gt;xAI 與 AI 代碼工具開發商 Cline&amp;nbsp;&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fx.com%2Fcline%2Fstatus%2F1932513639015329822"&gt;合作&lt;/a&gt;，為 Cline 用户提供為期兩週的 Grok 3 模型免費訪問權限。&lt;/p&gt; 
-&lt;p&gt;&lt;img alt="" src="https://oscimg.oschina.net/oscnet/up-082d9ece19970284ff4cd71ee2adcb88880.png" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;p&gt;用户只需註冊 Cline 賬户，即可在 Cline 的提供商中選擇並免費使用 x-ai/grok-3 模型進行編碼。&lt;/p&gt; 
-&lt;p&gt;&lt;img alt="" src="https://static.oschina.net/uploads/space/2025/0611/142036_91S3_2720166.png" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;p&gt;Cline 是開源 AI 編程 Agent，以 VS Code 插件的形式提供，支持 Plan/Act 雙模式，具有終端執行能力和 Model Context Protocol (MCP) 特性。它能夠分析用户的項目文件結構、源代碼等，幫助用户創建和編輯文件、執行終端命令、使用瀏覽器進行測試等，還可以通過 MCP 協議擴展其功能，添加自定義工具。&lt;/p&gt;
-                                                                                &lt;/div&gt;
-                                                                            </description>
-      <link>https://www.oschina.net/news/354810</link>
-      <guid isPermaLink="false">https://www.oschina.net/news/354810</guid>
-      <pubDate>Sat, 10 May 2025 06:22:00 GMT</pubDate>
-      <author>來源: OSCHINA</author>
-    </item>
-    <item>
-      <title>3D 大模型公司 VAST 再獲數千萬美元融資</title>
-      <description>&lt;div class="content"&gt;
-                                                                    
-                                                        &lt;p&gt;3D 大模型公司「VAST」宣佈再次完成數千萬美元的 Pre-A+輪融資，同時正式發佈了全球首個 AI 驅動的一站式 3D 工作台 Tripo Studio，並即將推出全新算法 Tripo 3.0。&lt;/p&gt; 
-&lt;p&gt;據稱此次融資將重點投入 Tripo 系列大模型研發及 Tripo Studio 產品及生態平台建設，加速構建「AI+3D」全產業鏈條，打造「基礎模型 + 生態插件 + 原生工作台」的端到端產品體系，從而構建覆蓋專業級（PGC 生產者）、達人級（PUGC 創作者）到大眾級（UGC 用户）的創作者畫像完整梯度。&lt;/p&gt; 
-&lt;p&gt;&lt;img src="https://static.oschina.net/uploads/space/2025/0611/114227_dFcn_2720166.png" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;p&gt;據介紹，VAST 成立於 2023 年 3 月，是一家專注於通用 3D 大模型研發的 AI 公司，致力於通過打造大眾級 3D 內容創作工具建立 3D UGC 內容平台，使基於 3D 的空間成為用户體驗升級、內容表達創新和新質生產力提升的核心要素。&lt;/p&gt; 
-&lt;p&gt;&lt;img src="https://static.oschina.net/uploads/space/2025/0402/185956_RSvr_2720166.png" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;p&gt;自 2024 年初起，VAST 持續迭代 Tripo 大模型，先後推出 Tripo1.0 至 Tripo2.5 等數十億參數規模的 3D 大模型系列，同時發佈 TripoSR、TripoSG、TripoSF 等廣受全球開源社區認可的 3D 基礎模型，並配套開發了系列 3D 軟件生態插件。&lt;/p&gt; 
-&lt;p&gt;&amp;nbsp;&lt;/p&gt; 
-&lt;p&gt;相關閲讀&lt;/p&gt; 
-&lt;ul&gt; 
- &lt;li&gt;&lt;a href="https://www.oschina.net/news/345674/vast-opensource-unirig" target="news"&gt;生成式 3D AI 公司 VAST 最新開源：通用自動骨骼綁定框架 UniRig&lt;/a&gt;&lt;/li&gt; 
- &lt;li&gt;&lt;a href="https://www.oschina.net/news/342506" target="news"&gt;生成式 3D AI 公司 VAST 開源基礎 3D 生成模型 TripoSG 和 TripoSF&lt;/a&gt;&lt;/li&gt; 
-&lt;/ul&gt;
-                                                                                &lt;/div&gt;
-                                                                            </description>
-      <link>https://www.oschina.net/news/354785</link>
-      <guid isPermaLink="false">https://www.oschina.net/news/354785</guid>
-      <pubDate>Sat, 10 May 2025 03:45:00 GMT</pubDate>
-      <author>來源: OSCHINA</author>
-    </item>
-    <item>
-      <title>百度百舸萬卡集羣的訓練穩定性系統設計和實踐</title>
-      <description>&lt;div class="content"&gt;
-                                                                                                                    
-                                                                                                                                                    &lt;h1&gt;01 AI 訓練穩定性的演進歷程&lt;/h1&gt; 
-&lt;p&gt;2012 年 ImageNet 競賽中 AlexNet 的橫空出世，開啓了現代 AI 發展的新紀元。彼時我們不會想到，十年後支撐 AI 訓練的 GPU 集羣會從研究室裏的幾台服務器，發展成需要專門供電系統的萬卡級計算矩陣。在這個算力爆發式增長的過程中，訓練系統的穩定性管理正經歷着從「簡單運維」到「精密工程」的深刻變革。&lt;/p&gt; 
-&lt;h2&gt;&lt;strong&gt;1.1 標早期的小模型時代：手動運維的黃金年代&lt;/strong&gt;&lt;/h2&gt; 
-&lt;p&gt;2022 年之前的 AI 訓練，更像是手工作坊式的精雕細琢。大多數訓練任務只需十幾塊 GPU，利用 PyTorch 或 TensorFlow 的數據並行功能就能輕鬆應對。記得那時算法工程師們有個共識：如果訓練遇到問題，重啓往往比排查更高效。&lt;/p&gt; 
-&lt;p&gt;當時我們構建的監控系統就像汽車儀表盤，只能顯示最基本的任務狀態。當訓練意外中斷時，工程師們會像偵探一樣翻查日誌 —— 如果發現是 GPU 報錯，就聯繫運維同事。運維人員則帶着「NVIDIA 三件套」（nvidia-smi、dcgm、nsys）到機房巡檢，像老中醫把脈般通過温度、功耗等指標判斷硬件狀態。這種工作模式雖簡單，但應對數十卡規模的集羣還算遊刃有餘。&lt;/p&gt; 
-&lt;h2&gt;&lt;strong&gt;1.2&lt;/strong&gt; &lt;strong&gt;大模型風暴：從量變到質變的衝擊&lt;/strong&gt;&lt;/h2&gt; 
-&lt;p&gt;ChatGPT 的登場如同打開潘多拉魔盒，將 AI 訓練帶入新的紀元。當我們開始部署千卡/萬卡集羣時，才發現原有的運維體系就像用小漁網捕鯨魚 —— 完全無法匹配新需求。&lt;/p&gt; 
-&lt;p&gt;讓我們通過百度百舸經歷過的一個真實案例來深入理解這個問題：&lt;/p&gt; 
-&lt;p&gt;&lt;em&gt;2024 年初，百度百舸幫助一家 AIGC 創業公司迅速將其訓練規模從百卡擴展到千卡級別。然而在訓練數天後的某個週末凌晨，訓練進程意外發生了 hang 死。由於當時缺乏有效的故障感知和容錯機制，直到第二天算法工程師發現任務超時退出時，已經耽誤了數小時寶貴的訓練時間。更糟糕的是，任務日誌中除了簡單的 timeout 報錯外毫無線索，平台監控也顯示所有訓練節點狀態正常。&lt;/em&gt;&lt;/p&gt; 
-&lt;p&gt;&lt;em&gt;着急恢復訓練的算法工程師沒有立即上報問題，而是選擇直接重新提交任務。但不幸的是，新任務運行數小時後再次出現相同的超時退出。這時他們才不得不尋求技術支持，但值班工程師面對這種任務 hang 死的問題也缺乏診斷經驗，只能通過二分法慢慢定位。最終發現是某個節點的靜默故障（SDC）導致了訓練進程假死。等問題得到解決時，距離首次故障已經過去將近 30 小時，這意味着損失了價值巨大的千卡算力資源。&lt;/em&gt;&lt;/p&gt; 
-&lt;h1&gt;02 百度百舸集羣訓練穩定性全景圖&lt;/h1&gt; 
-&lt;p&gt;站在現在的時間點回望，AI 訓練穩定性已從輔助功能演變為核心基礎設施。就像現代建築中的抗震結構，它雖不直接參與空間構成，卻是萬丈高樓得以屹立的關鍵。當行業向着數萬卡集羣邁進時，這套隱形護甲的質量，將直接決定 AI 進化的速度與邊界。&lt;/p&gt; 
-&lt;p&gt;在 2024 年百度百舸對訓練過程的生命週期進行了更細緻的拆分，提出了「無效訓練時間」這一關鍵指標，並致力於將其最小化。具體來説：&lt;/p&gt; 
-&lt;blockquote&gt; 
- &lt;p&gt;&lt;em&gt;任務無效訓練時間 = 故障中斷次數 × 任務故障恢復時長 + 任務常態寫 Ckpt 總時長&lt;/em&gt;&lt;/p&gt; 
-&lt;/blockquote&gt; 
-&lt;p&gt;其中，任務故障恢復時長 = 故障感知召回耗時（自動/人工定位）+ 任務調度耗時 + 任務初始化耗時 + 任務重算時長。&lt;/p&gt; 
-&lt;p&gt;通過這個公式可以看出，要降低無效訓練時間，需要「圍繞基礎設施穩定性」、「任務容錯」兩個維度來系統展開，重點解決三個方面的問題：&lt;/p&gt; 
-&lt;ul&gt; 
- &lt;li&gt; &lt;p&gt;提高基礎設施的交付質量。&lt;/p&gt; &lt;/li&gt; 
- &lt;li&gt; &lt;p&gt;提高任務故障容錯的召回率、準確率和時效性。&lt;/p&gt; &lt;/li&gt; 
- &lt;li&gt; &lt;p&gt;優化 checkpoint 機制，減少保存時間和恢復時的重算時間。&lt;/p&gt; &lt;/li&gt; 
-&lt;/ul&gt; 
-&lt;p&gt;經過容錯架構的整體變革，百度百舸形成了從 「任務負載 —&amp;nbsp;框架 —&amp;nbsp;通信&amp;nbsp;—&amp;nbsp;基礎架構」全鏈路的自動異常感知、診斷、恢復能力，可覆蓋 90%+ 的訓練異常場景，時效性最快可以實現秒級異常感知、分鐘級定位，以及平均 3 分鐘的故障自愈能力。&lt;/p&gt; 
-&lt;p&gt;&lt;img src="https://oscimg.oschina.net/oscnet/up-5a9c915ac6d0cd3d443262a00768d1aeebb.webp" alt="圖片" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;h1&gt;03 基礎設施交付質量保障&lt;/h1&gt; 
-&lt;p&gt;基礎設施的交付質量保障是穩定性的基礎。&lt;/p&gt; 
-&lt;p&gt;CPU 時代，機器的交付前可能僅會跑一些常規的 CPU 計算、網絡的壓力測試，並不會從業務視角去評估基礎架構，機器交付後硬件異常的故障頻率相對較少。有硬件故障時，通常走工單系統人工換機用户相對是可接受的。&lt;/p&gt; 
-&lt;p&gt;而 GPU 時代，AI Infra 的交付則需要考慮 CPU、GPU、RDMA 網絡、存儲，甚至機房的功率、温度等各方面因素，遺漏任何一個環節都會成為後續穩定性的隱患。在交付給客户後，機器也可能會由於長時間的高負載運行頻繁出現硬件故障，而 GPU 機器的高昂成本，使客户對節點故障感知、換機的時效性提出了非常高的要求。&lt;/p&gt; 
-&lt;p&gt;&lt;img src="https://oscimg.oschina.net/oscnet/up-08b3f03a6cfd9c28b1a6a2f175eb081f37f.webp" alt="圖片" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;p&gt;因此百度百舸對 GPU 機器交付前及交付後的穩定性質量進行了系統性管理：&lt;/p&gt; 
-&lt;ul&gt; 
- &lt;li&gt; &lt;p&gt;交付前，百度百舸會對機器進行 200 多項指標檢測，然後進行 48 小時烤機，以及 NCCL-Test 的機內、機間的大環、同號卡通信性能基準測試，端到端的大模型訓練、推理性能基準測試。&lt;/p&gt; &lt;/li&gt; 
- &lt;li&gt; &lt;p&gt;交付後，需要能夠實時的感知節點故障及定期巡檢，並具備分級處理的自愈能力，例如 Error 級別的故障實現自動排水、重啓，Fault 級別故障實現自動換機。&lt;/p&gt; &lt;/li&gt; 
-&lt;/ul&gt; 
-&lt;h1&gt;04 任務容錯的準召率保障&lt;/h1&gt; 
-&lt;p&gt;任務層面穩定性最核心的就是做好容錯，能夠讓業務在無論遇到何種故障時都能快速恢復。&lt;/p&gt; 
-&lt;p&gt;那麼，首要的工作就是我們能夠準確的識別出異常，然後對故障進行診斷定位，最後能夠自動化的從異常中恢復。&lt;/p&gt; 
-&lt;p&gt;因此，任務容錯需要能夠從端側（即每個訓練 worker）探測到進程與環境的各類異常，同時有個中心服務（Master）從任務全局的視角去診斷、定位異常，最終做出相應的決策來使任務能夠快速從異常中恢復。&lt;/p&gt; 
-&lt;p&gt;&lt;img src="https://oscimg.oschina.net/oscnet/up-bede84ad1e729a350a1750dbfde88615822.webp" alt="圖片" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;p&gt;任務容錯最重要的就是提升故障的召回率與準確率，即如何能夠儘可能的準確識別、定位所有故障。我們將故障分類兩類：顯式故障和隱式故障。&lt;/p&gt; 
-&lt;ul&gt; 
- &lt;li&gt; &lt;p&gt;顯式的故障通常比較容易召回，我們將實踐積累的各種進程異常狀態及各類報錯 pattern 形成專家知識庫，再結合硬件感知服務（HAS Agent）的硬件全鏈路 10 秒級監控能力，可以實現顯式故障的召回率達到 95%+。&lt;/p&gt; &lt;/li&gt; 
- &lt;li&gt; &lt;p&gt;隱式的異常則往往很難輕易的識別，例如訓練進程 hang、慢節點就是典型的隱式故障，需要豐富的經驗積累才能準確的識別出異常。&lt;/p&gt; &lt;/li&gt; 
-&lt;/ul&gt; 
-&lt;p&gt;下面我們就以最典型的隱式故障場景 —— 訓練進程 hang 死為例，來看下如何能夠做好 hang 自動感知、診斷。&lt;/p&gt; 
-&lt;h2&gt;&lt;strong&gt;4.1 訓練****hang 的自動感知&lt;/strong&gt;&lt;/h2&gt; 
-&lt;p&gt;訓練任務發⽣ hang 之後，絕⼤多數情況都會以 timeout 的⽅式報錯並退出進程，最常⻅的就是在通信過程中如果發⽣ hang，NCCL 的 watchdog 會中斷通信，並有報如下 timeout 報錯，然後再由 pytorch 的 torchrun 進程感知並中斷訓練過程。&lt;/p&gt; 
-&lt;pre&gt;&lt;code&gt;[E ProcessGroupNCCL.cpp:828] [Rank 1] Watchdog caught collective operation timeout: WorkNCCL(SeqNum=15173, OpType=ALLREDUCE, Timeout(ms)=1800000) ran for 1802710 milliseconds before timing out.
-[E ProcessGroupNCCL.cpp:828] [Rank 0] Watchdog caught collective operation timeout: WorkNCCL(SeqNum=15173, OpType=ALLREDUCE, Timeout(ms)=1800000) ran for 1802713 milliseconds before timing out.
-
-
-
-&lt;/code&gt;&lt;/pre&gt; 
-&lt;p&gt;Pytorch 默認為 10 分鐘 NCCL 通信超時，而 Megatron-LM 為 30 分鐘。在萬卡規模訓練場景中，意味着一萬張卡要至少浪費 30 分鐘才能被發現。這個時效性是不可接受的。而且當 30 分鐘超時後程序會立馬退出，很難有機會進行下一步定位，需要一些時效性更高的感知機制，並且在程序退出前獲取一些有效信息供後續診斷分析。&lt;/p&gt; 
-&lt;p&gt;很多公司、實驗室在面對 hang 的問題時，會在採用框架層插樁的方式來 trace 訓練進程，這種方式通常是比較直接且準確的，但是有比較強的侵入性，而且可能還會有一些性能開銷。對於雲廠商來説，需要尋找對用户更透明、更無損的方式來感知、定位 hang 異常。&lt;/p&gt; 
-&lt;p&gt;如何感知訓練 hang，以百度百舸的產品設計思路為例，我們可以從以下幾個方向去思考：&lt;/p&gt; 
-&lt;ol&gt; 
- &lt;li&gt; &lt;p&gt;訓練進程 hang 的最直觀表現是什麼？&lt;/p&gt; &lt;p&gt;人工判斷一個任務是否 hang 了，最直接的方式就是看是否所有 worker 的任務日誌一段時間內都不輸出日誌了，所以 hang 自動感知的第一種方法就是採集所有 worker 的日誌，並判斷所有 worker 日誌中最後一行日誌是否為 x 分鐘前的（x 小於 Pytorch 的通信超時時間，例如 8 分鐘），如果是則基本可以判定為 hang。&lt;/p&gt; &lt;/li&gt; 
- &lt;li&gt; &lt;p&gt;任務 hang 時進程有什麼樣的表現？&lt;/p&gt; &lt;p&gt;任務 hang 時，可能進程的調用棧都不在發生變化，進程的調用棧可以通過 py-spy/pystack 等工具進行探測，所以我們可以用此類工具對所有訓練任務進行一個定時採樣，當採集 n 個樣本所有進程棧都沒有變化時，可以判定一次 hang，這種方式通常可以將 hang 感知縮小至 3～5 分鐘。&lt;/p&gt; &lt;/li&gt; 
- &lt;li&gt; &lt;p&gt;任務 hang 時監控指標有哪些變化？&lt;/p&gt; &lt;p&gt;訓練進程中的 CUDA 算子計算、集合通信操作通常都是在毫秒，甚至微秒、納秒內完成的，當任務在正常迭代過程中發生了 hang，我們常遇到的情況是所有 rank 的 RDMA 流量會降到 0，而 GPU 的利用率為 100%、SM 利用率則在很低的水位。如果持續幾分鐘都是這種狀態時，意味着訓練進程已經計算完成，在等着集合通信完成，這種情況下基本可以判定為 hang。&lt;/p&gt; &lt;/li&gt; 
- &lt;li&gt; &lt;p&gt;是否能在通信庫中更快的感知通信 hang？&lt;/p&gt; &lt;p&gt;通常單次集合通信操作都是在 ms 級的，如果一次操作在 30 秒鐘都沒有完成，那就可以判定為通信 hang 死了。百度自研的 BCCL 集合通信庫層可以對每一次集合通信操作都進行打點，來實現通信 hang 感知。&lt;/p&gt; &lt;/li&gt; 
-&lt;/ol&gt; 
-&lt;p&gt;上述幾種方法，我們可以分別實現一種探針，來抓取相應的特徵到中心端 master 組件進行下一步診斷和容錯決策。&lt;/p&gt; 
-&lt;blockquote&gt; 
- &lt;p&gt;百度集合通信庫 BCCL 是百度智能雲推出的一款面向大模型訓練場景優化的集合通信庫。&lt;/p&gt; 
- &lt;p&gt;BCCL 基於開源的 NCCL 進行了功能擴展和能力增強，針對大模型訓練場景在可觀測性、故障診斷、穩定性等方面進行優化，進一步提升集合通信庫的可運維能力。相比 NCCL，BCCL 的關鍵特性如下：&lt;/p&gt; 
- &lt;p&gt;*&amp;nbsp;可觀測性：新增集合通信帶寬實時統計能力；&lt;/p&gt; 
- &lt;p&gt;*&amp;nbsp;故障診斷：新增集合通信 hang 時的故障診斷能力；&lt;/p&gt; 
- &lt;p&gt;*&amp;nbsp;穩定性：增強網絡穩定性和故障容錯能力；&lt;/p&gt; 
- &lt;p&gt;*&amp;nbsp;性能優化：提升大模型訓練主流 GPU 芯片的集合通信性能。&lt;/p&gt; 
-&lt;/blockquote&gt; 
-&lt;h2&gt;&lt;strong&gt;4.2&lt;/strong&gt; &lt;strong&gt;訓練 hang 的自動診斷&lt;/strong&gt;&lt;/h2&gt; 
-&lt;p&gt;有了以上感知手段，我們需要進一步的診斷、定位，來確定是否真的發生了 hang，以及 hang 的具體位置。具體的來講，master 收集到各類 agent 的數據後，會做一些綜合分析：&lt;/p&gt; 
-&lt;ol&gt; 
- &lt;li&gt; &lt;p&gt;是否真的發生了 hang？&lt;/p&gt; &lt;p&gt;感知階段各種探針只能探測到 hang 的一種特徵，並沒有辦法 100% 的確定是否真的 hang 住了，事實上不侵入用户進程是很難做到 100% 確定 hang 的。因此，為了提高 hang 的判定準確率，我們需要將各種特種綜合起來判斷，探針上報到 master 後，由一個 hang 診斷模塊，按照一個時間窗口（例如 5 分鐘），進行綜合判斷。如果在時間窗口內日誌、監控、進程調用棧、通信庫中有 2 條以上都處於不處於活躍狀態時，我們判斷任務真正發生了 hang。&lt;/p&gt; &lt;/li&gt; 
- &lt;li&gt; &lt;p&gt;hang 的具體發生的位置？&lt;/p&gt; &lt;p&gt;確定任務 hang 了之後，我們需要找到 hang 所在的節點來對它進行隔離。因此診斷模塊需要在探針上報的數據中進一步找尋特徵，來確定 hang 發生的位置：&lt;/p&gt; &lt;/li&gt; 
- &lt;li&gt; &lt;p&gt;BCCL Tracehang 診斷：在感知階段，BCCL 可以在通信庫層面對所有 rank 的通信進行打點。如果有節點一直未完成通信則是發生了 hang。但是此節點可能並非真正發生 hang 的源頭，有可能是在等待其他節點完成通信。診斷模塊可以根據 BCCL 打印的通信組信息，進行交叉判斷，如果某個節點在多個通信組中都未完成通信，那這個節點就是 hang 的源頭。&lt;/p&gt; &lt;/li&gt; 
- &lt;li&gt; &lt;p&gt;RDMA/GPU 指標診斷：上文中我們提到，通信階段發生 hang 之後，所有 rank 的 RDMA 流量都會降到 0，而同時絕大部分 rank 的 GPU 利用率持續為 100%，只有某一兩個 rank 的 GPU 利用率為 0，那這個 rank 很有可能是 hang 的源頭。&lt;/p&gt; &lt;/li&gt; 
- &lt;li&gt; &lt;p&gt;進程調用棧診斷：進程調用棧也可以作為一個 hang 源頭診斷的重要參考。當發生 hang 之後，絕大部分的 rank 都要麼處於 barrier 等待狀態，要麼處於通信等待階段。只有個別的 rank 卡在其他函數上，那麼通過對比分析，可以將調用棧與其他 rank 不同的節點初步判定為 hang 的源頭。&lt;/p&gt; &lt;/li&gt; 
- &lt;li&gt; &lt;p&gt;綜合診斷：上面 3 種特徵為我們提供了 hang 的診斷依據，將 3 者關聯起來分析後，我們基本上可以比較準確的確定一個具體的 hang 的源頭，再結合硬件故障感知的相關信息可以進一步明確根因。&lt;/p&gt; &lt;/li&gt; 
-&lt;/ol&gt; 
-&lt;h2&gt;&lt;strong&gt;4.3&lt;/strong&gt; &lt;strong&gt;基於 eBPF 的隱式故障感知與診斷&lt;/strong&gt;&lt;/h2&gt; 
-&lt;p&gt;在複雜的大規模分佈式訓練場景中，傳統用户態監控往往難以捕獲系統內核層面的異常事件。&lt;/p&gt; 
-&lt;p&gt;百度百舸基於 eBPF（Extended Berkeley Packet Filter）技術的隱式故障感知體系，能夠在不侵入用户代碼的前提下，對訓練進程的系統調用、網絡通信、CPU 調度等內核態行為以及訓練框架關鍵函數運行時間建立立體觀測能力。&lt;/p&gt; 
-&lt;p&gt;eBPF 探針部署原理通過在內核關鍵路徑注入輕量級探針，實現低開銷的系統級行為捕獲。針對訓練場景特點，主要聚焦 4 類事件跟蹤：&lt;/p&gt; 
-&lt;ul&gt; 
- &lt;li&gt; &lt;p&gt;訓練關鍵函數跟蹤：微秒級跟蹤訓練過程中，前向計算、反向計算、集合通信操作等關鍵函數執行耗時，記錄函數間調用關係。&lt;/p&gt; &lt;/li&gt; 
- &lt;li&gt; &lt;p&gt;進程調度阻塞跟蹤：掛鈎 sched_switch 事件，檢測進程在 TASK_UNINTERRUPTIBLE 狀態持續時間，當單次持續超過閾值（如 5 秒）時捕獲調用棧。&lt;/p&gt; &lt;/li&gt; 
- &lt;li&gt; &lt;p&gt;CUDA 運行時 API 監控：通過 uprobe 在 &lt;a href="https://www.oschina.net/action/GoToLink?url=http%3A%2F%2Flibcuda.so" target="_blank"&gt;libcuda.so&lt;/a&gt; 等關鍵庫注入探針，記錄 CUDA API 調用耗時分佈。&lt;/p&gt; &lt;/li&gt; 
- &lt;li&gt; &lt;p&gt;RDMA Verbs 級通信監控：在 ibv_post_send/ibv_poll_cq 等核心通信接口設置觀測點，統計通信時延分佈。&lt;/p&gt; &lt;/li&gt; 
-&lt;/ul&gt; 
-&lt;p&gt;結合上面 4 類事件，完成以下 2 類數據分析：&lt;/p&gt; 
-&lt;ul&gt; 
- &lt;li&gt; &lt;p&gt;單體異常探測基線與實時數據對比。&lt;/p&gt; &lt;/li&gt; 
- &lt;li&gt; &lt;p&gt;羣體一致性檢測。採用卡間對比算法，當某一 rank 的以下指標偏離集羣中位數超過閾值時判定異常，包括系統調用頻率、進程就緒隊列等待時長、NVLink/RDMA 帶寬利用率等。&lt;/p&gt; &lt;/li&gt; 
-&lt;/ul&gt; 
-&lt;p&gt;基於以上所述方法，百度百舸針對以下 2 類典型的隱式故障進行診斷：&lt;/p&gt; 
-&lt;ul&gt; 
- &lt;li&gt; &lt;p&gt;訓練 hang 根因定位。通過關聯 eBPF 捕獲的多維度數據進行如下操作：&lt;/p&gt; &lt;/li&gt; 
- &lt;li&gt; &lt;p&gt;當檢測到某 rank 的 GPU &amp;nbsp;Kernel 執行出現分鐘級空跑（SM 利用率 &amp;gt; 70% 但無有效計算輸出）。&lt;/p&gt; &lt;/li&gt; 
- &lt;li&gt; &lt;p&gt;同時伴隨該節點 RDMA QP 狀態停滯（ibv_poll_cq 無新完成事件）。&lt;/p&gt; &lt;/li&gt; 
- &lt;li&gt; &lt;p&gt;內核調度器顯示進程處於 D 狀態超過閾值。&lt;/p&gt; &lt;/li&gt; 
- &lt;li&gt; &lt;p&gt;性能抖動溯源。基於 eBPF 火焰圖、時序圖等進行分析：&lt;/p&gt; &lt;/li&gt; 
- &lt;li&gt; &lt;p&gt;抓取發生性能下降時段的 CPU on-cpu/off-cpu 堆棧。&lt;/p&gt; &lt;/li&gt; 
- &lt;li&gt; &lt;p&gt;對比正常時段數據，識別出異常的鎖競爭（futex 調用佔比上升）。&lt;/p&gt; &lt;/li&gt; 
- &lt;li&gt; &lt;p&gt;結合 NUMA 內存訪問統計，定位跨 NUMA 內存訪問導致的 TLB 顛簸問題。&lt;/p&gt; &lt;/li&gt; 
-&lt;/ul&gt; 
-&lt;p&gt;此類技術已在百度百舸的萬卡規模訓練集羣中驗證，相比單純依賴應用層監控的方案，將隱式故障的平均檢測時間從分鐘級縮短至秒級，診斷準確率提升 40% 以上。&lt;/p&gt; 
-&lt;p&gt;通過與既有硬件故障感知服務、BCCL 通信庫監測體系聯動，百度百舸形成了覆蓋從硬件到系統內核再到應用層的立體化診斷能力。&lt;/p&gt; 
-&lt;h1&gt;05 任務故障恢復的時效性保障&lt;/h1&gt; 
-&lt;p&gt;故障恢復的時效性也是容錯能力的一個重要指標，反映的是任務從故障發生到再次重新進入訓練迭代的時間，恢復效率越高則算力浪費越少。影響到任務恢復效率有 2 個重要因素，一是任務平均中斷時間，二是訓練重算時間。&lt;/p&gt; 
-&lt;h2&gt;&lt;strong&gt;5.1&lt;/strong&gt; &lt;strong&gt;多級重啓策略減少故障中斷時間&lt;/strong&gt;&lt;/h2&gt; 
-&lt;p&gt;任務發生異常後，上文中我們提到需要經過故障自動感知、診斷和自愈等 3 個環節，那麼減少中斷時間的核心思想，就是儘可能的縮短這 3 個環節的時間，通過多維度的感知、診斷手段可以將故障發現、定位的時效性降低至分鐘級甚至秒級。自愈則需要能夠根據不同的診斷結果進行分級恢復和故障屏蔽的能力：&lt;/p&gt; 
-&lt;ul&gt; 
- &lt;li&gt; &lt;p&gt;單點顯式故障：重調度異常節點（replace），對節點進行集羣級別屏蔽。&lt;/p&gt; &lt;/li&gt; 
- &lt;li&gt; &lt;p&gt;單點隱式故障：重調度異常節點，對節點進行任務級別屏蔽。&lt;/p&gt; &lt;/li&gt; 
- &lt;li&gt; &lt;p&gt;非單點故障：原地重啓嘗試恢復（restart），無法恢復時重新調度所有節點（resubmit）。&lt;/p&gt; &lt;/li&gt; 
-&lt;/ul&gt; 
-&lt;p&gt;通過多級重啓策略，儘可能避免單點故障引發全部節點的重新調度。在萬卡級別的訓練場景中，百度百舸將大部分訓練異常場景恢復時間從過去的 30min 縮短至現在的 30s 內，成功率到 95%+。&lt;/p&gt; 
-&lt;h2&gt;&lt;strong&gt;5.2&lt;/strong&gt; &lt;strong&gt;觸發式 checkpoint 減少訓練重算時間&lt;/strong&gt;&lt;/h2&gt; 
-&lt;p&gt;除了上述的多級任務重啓策略外，另一個提高任務故障恢復效率的重要手段就是減少訓練重算時間。在探討具體技術方案之前，我們先來看看目前主流的 checkpoint 保存策略。&lt;/p&gt; 
-&lt;p&gt;傳統的 checkpoint 保存通常採用固定間隔策略，比如每隔 N 個 step 或每隔 T 小時保存一次，這種方式實現簡單但缺乏靈活性，可能會產生大量冗餘存儲，同時在故障發生時可能會損失較多訓練進度。&lt;/p&gt; 
-&lt;p&gt;而觸發式 checkpoint 則是一種更智能的方案，它根據特定條件或異常事件（如故障、顯存不足、顯式指令等）動態觸發模型狀態保存。其核心目標是通過靈活的控制保存時機，減少不必要的存儲開銷和訓練中斷時間，從而降低因頻繁或冗餘保存導致的重算時間浪費。&lt;/p&gt; 
-&lt;p&gt;隨着大模型訓練規模的擴大，還有一種更激進的「零重複 checkpoint」技術，即在每個訓練 step 都保存一次 checkpoint。這種方案的優勢在於可以將重算時間降到最低，確保故障發生時能夠從最近的 step 恢復，幾乎不會損失訓練進度。但其顯著的缺點是存儲開銷巨大，即使採用增量式存儲，仍然需要相當大的存儲空間和 I/O 帶寬。此外，頻繁的 checkpoint 操作也可能影響訓練性能。&lt;/p&gt; 
-&lt;p&gt;相比之下，觸發式 checkpoint 走的是一條平衡之路。我們來看下它實現的幾個核心要點：&lt;/p&gt; 
-&lt;ul&gt; 
- &lt;li&gt; &lt;p&gt;集成容錯：訓練進程集成容錯的故障感知與定位機制，在進程退出前自動觸發保存。這種主動感知機制能夠在故障發生的第一時間保存訓練狀態，最大限度減少進度損失。&lt;/p&gt; &lt;/li&gt; 
- &lt;li&gt; &lt;p&gt;高速轉儲：異步 checkpoint 保存機制會將 checkpoint 暫存到共享內存中，再由外部程序轉儲至磁盤。當某個節點異常時，容錯組件會拉起新節點，並在新節點訓練進程啓動前，利用 RDMA 技術實現 checkpoint 快速從故障節點轉儲至新節點，這大大減少了從遠程存儲拉取 checkpoint 的時間。&lt;/p&gt; &lt;/li&gt; 
- &lt;li&gt; &lt;p&gt;冗餘備份：觸發式 checkpoint 也並非完美無缺，例如在節點發生內核 crash 等嚴重故障時，可能無法觸發自動保存。因此，需要通過定期的冗餘備份機制進行兜底，確保 checkpoint 不會完全丟失。&lt;/p&gt; &lt;/li&gt; 
-&lt;/ul&gt; 
-&lt;p&gt;實踐表明，當觸發式 checkpoint 與異步、增量式的 checkpoint 機制結合使用時，可以在保證數據安全性的同時，顯著提高 checkpoint 保存效率，減少訓練重算時間。&lt;/p&gt; 
-&lt;p&gt;相比零重複 checkpoint 的重型方案，觸發式 checkpoint 提供了一個更實用的折中方案，在合理的存儲開銷下實現較好的容錯效果。當然，具體選擇哪種方案，還需要根據實際的訓練規模、硬件條件和可用資源來權衡。&lt;/p&gt; 
-&lt;p&gt;隨着分佈式訓練規模的持續增長，相信未來會出現更多創新的 checkpoint 方案，比如基於預測的主動保存策略、多級存儲架構的智能調度等，這些都將為提高大規模訓練的可靠性提供新的可能。&lt;/p&gt; 
-&lt;h1&gt;06 業務發展對穩定性的要求&lt;/h1&gt; 
-&lt;p&gt;AI 訓練的穩定性管理已經演變為智能時代的精密工程。從最初靠人工重啓解決問題的摸索階段，到如今能自動感知異常、快速恢復的智能系統，每一次進步都映照着算力規模的跨越式發展。&lt;/p&gt; 
-&lt;p&gt;讓人不禁思考，在未來十萬卡集羣的算力洪流中，或許會出現更精妙的動態平衡方案：既能像鷹隼般敏鋭捕捉故障徵兆，又能如雁羣遷移般智能調度資源，在秒級恢復與 PB 級存儲成本之間找到新的平衡支點。&lt;/p&gt; 
-&lt;p&gt;目前百度百舸支持廠內千卡和萬卡集羣有效訓練時長已經可達 99.5%，為客户大模型的預訓練保駕護航，比如國內第一個數學大模型——九章算術，國內第一個類 Sora 大模型 —— Vidu 等。&lt;/p&gt; 
-&lt;p&gt;----------END----------&lt;/p&gt; 
-&lt;p&gt;&lt;strong&gt;推薦閲讀&lt;/strong&gt;&lt;/p&gt; 
-&lt;p&gt;&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fmp.weixin.qq.com%2Fs%3F__biz%3DMzg5MjU0NTI5OQ%3D%3D%26mid%3D2247604282%26idx%3D1%26sn%3Dbf4ca5dcc5420b035888229cb177c562%26scene%3D21%23wechat_redirect" target="_blank"&gt;LLM 增強語義嵌入的模型算法綜述&lt;/a&gt;&lt;/p&gt; 
-&lt;p&gt;&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fmp.weixin.qq.com%2Fs%3F__biz%3DMzg5MjU0NTI5OQ%3D%3D%26mid%3D2247604236%26idx%3D1%26sn%3D1b8ff1181ea3dc12ede0b0e849f009c6%26scene%3D21%23wechat_redirect" target="_blank"&gt;持續推進「人工智能＋」行動，百度智能雲+DeepSeek 為何成為國有企業首選？&lt;/a&gt;&lt;/p&gt; 
-&lt;p&gt;&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fmp.weixin.qq.com%2Fs%3F__biz%3DMzg5MjU0NTI5OQ%3D%3D%26mid%3D2247604214%26idx%3D1%26sn%3D71c43bcfd51b145fc769c15539570307%26scene%3D21%23wechat_redirect" target="_blank"&gt;GPU 雲服務器的軟件系統設計和實踐&lt;/a&gt;&lt;/p&gt; 
-&lt;p&gt;&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fmp.weixin.qq.com%2Fs%3F__biz%3DMzg5MjU0NTI5OQ%3D%3D%26mid%3D2247604202%26idx%3D1%26sn%3D68fea54ea6869f0bf6d7cd67c11943a6%26scene%3D21%23wechat_redirect" target="_blank"&gt;基於 Flink 的配置化實時反作弊系統&lt;/a&gt;&lt;/p&gt; 
-&lt;p&gt;&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fmp.weixin.qq.com%2Fs%3F__biz%3DMzg5MjU0NTI5OQ%3D%3D%26mid%3D2247604182%26idx%3D1%26sn%3D224203a0b523de10d3b6365d9a3a0aa5%26scene%3D21%23wechat_redirect" target="_blank"&gt;百度智能雲 xDeepSeek，最具性價比的 DeepSeek 一體機合集來了！&lt;/a&gt;&lt;/p&gt;
-                                                                                    &lt;/div&gt;
-                                                                            </description>
-      <link>https://my.oschina.net/u/4939618/blog/17935991</link>
-      <guid isPermaLink="false">https://my.oschina.net/u/4939618/blog/17935991</guid>
-      <pubDate>Sat, 10 May 2025 03:02:00 GMT</pubDate>
-      <author>原創</author>
-    </item>
-    <item>
-      <title>Hugging Face 發佈開放權重模型貢獻榜：Qwen 與 DeepSeek 躋身 TOP15</title>
-      <description>&lt;div class="content"&gt;
-                                                                    
-                                                        &lt;p&gt;&lt;span style="color:#000000"&gt;Hugging Face 近日&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fhuggingface.co%2Fspaces%2Fcfahlgren1%2Fmodel-release-heatmap" target="_blank"&gt;發佈&lt;/a&gt;開放權重模型貢獻榜，中國團隊 Qwen 和 DeepSeek 成功入圍前 15 名。該榜單表彰為開源社區提供高質量模型權重的團隊，其模型廣泛應用於學術與產業創新。&lt;/span&gt;&lt;/p&gt; 
-&lt;p&gt;&lt;img height="304" src="https://oscimg.oschina.net/oscnet/up-2f6cdc5076cdfa96c95990be765043ef270.png" width="700" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;p&gt;&lt;span style="color:#000000"&gt;由阿里巴巴雲智能集團支持的 Qwen 團隊，以 Qwen3 系列模型在指令跟隨、代碼生成等任務中的優異表現受到社區青睞。Qwen2.5-72B 系列位列開源大語言模型前列，其輕量化模型 QwQ-32B 通過強化學習優化，在數學推理和代碼生成中媲美大型模型，大幅降低部署成本。&lt;/span&gt;&lt;/p&gt; 
-&lt;p&gt;&lt;span style="color:#000000"&gt;DeepSeek 則以低成本、高性能的 R1 系列模型聞名。R1-0528 在 LiveCodeBench 排行榜中超越多個國際競品，僅次於 OpenAI 頂尖模型。其輕量化版本 DeepSeek-R1-0528-Qwen3-8B 通過知識蒸餾技術，單 GPU 即可運行，在 AIME2025 數學測試中擊敗 Google 的 Gemini2.5Flash，展現了在特定領域的競爭優勢。&lt;/span&gt;&lt;/p&gt; 
-&lt;p&gt;&lt;span style="color:#000000"&gt;Qwen 和 DeepSeek 的入榜反映了中國 AI 團隊在開源生態中的崛起。Hugging Face 負責人表示，兩團隊的貢獻為全球開發者提供了高效資源。NVIDIA 首席執行官黃仁勳也讚揚其性能與成本平衡正在重塑 AI 格局。未來，Qwen 計劃探索多模態技術，DeepSeek 則將推出 R2 模型，持續推動 AI 創新。&lt;/span&gt;&lt;/p&gt;
-                                                                                &lt;/div&gt;
-                                                                            </description>
-      <link>https://www.oschina.net/news/354773/model-release-heatmap</link>
-      <guid isPermaLink="false">https://www.oschina.net/news/354773/model-release-heatmap</guid>
-      <pubDate>Sat, 10 May 2025 02:58:00 GMT</pubDate>
-      <author>來源: OSCHINA</author>
-    </item>
-    <item>
-      <title>🔥 Solon Flow 設計器入門</title>
-      <description>&lt;div class="content"&gt;
-                                                                    
-                                                        &lt;p style="color:#24292e; text-align:start"&gt;探索視頻：&lt;/p&gt; 
-&lt;p&gt;&lt;iframe frameborder="0" height="400" scrolling="no" src="https://player.bilibili.com/player.html?isOutside=true&amp;amp;aid=114657104759990&amp;amp;bvid=BV1opT6z5EiJ&amp;amp;cid=30416702034&amp;amp;p=1" style="box-sizing: border-box; font-size: 16px; font-style: normal; font-variant-ligatures: normal; font-variant-caps: normal; font-weight: 400; letter-spacing: normal; orphans: 2; text-indent: 0px; text-transform: none; widows: 2; word-spacing: 0px; -webkit-text-stroke-width: 0px; white-space: normal; text-decoration-thickness: initial; text-decoration-style: initial; text-decoration-color: initial; color: rgb(36, 41, 46); font-family: -apple-system, &amp;quot;system-ui&amp;quot;, &amp;quot;Segoe UI&amp;quot;, Helvetica, Arial, sans-serif, &amp;quot;Apple Color Emoji&amp;quot;, &amp;quot;Segoe UI Emoji&amp;quot;, &amp;quot;Segoe UI Symbol&amp;quot;; text-align: start; background-color: rgb(255, 255, 255);" width="700" referrerpolicy="no-referrer"&gt;&lt;/iframe&gt;&lt;/p&gt;
-                                                                                &lt;/div&gt;
-                                                                            </description>
-      <link>https://www.oschina.net/news/354770</link>
-      <guid isPermaLink="false">https://www.oschina.net/news/354770</guid>
-      <pubDate>Sat, 10 May 2025 02:51:00 GMT</pubDate>
-      <author>來源: 投稿</author>
-    </item>
-    <item>
-      <title>Android 16 正式發佈</title>
-      <description>&lt;div class="content"&gt;
-                                                                    
-                                                        &lt;p&gt;谷歌發佈了 &lt;u&gt;&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fblog.google%2Fproducts%2Fandroid%2Fandroid-16%2F" target="_blank"&gt;Android 16 正式版&lt;/a&gt;&lt;/u&gt;。&lt;/p&gt; 
-&lt;p&gt;&lt;img alt="" src="https://oscimg.oschina.net/oscnet/up-625ec525ab94813ebb3e980c0109b784e8a.png" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;p&gt;&lt;img alt="" src="https://oscimg.oschina.net/oscnet/up-79defc140e2b5a5857ec68c7355fa11d8d0.png" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;p&gt;作為今年的第一次大版本升級，本次更新的主要特性包括：&lt;/p&gt; 
-&lt;ul&gt; 
- &lt;li&gt;面向按鍵式導航（三大金剛）的預測性返回手勢&lt;/li&gt; 
- &lt;li&gt;強制通知分組&lt;/li&gt; 
- &lt;li&gt;以進度為中心的通知&lt;/li&gt; 
- &lt;li&gt;面向 Pixel 設備的桌面模式（開發者選項）&lt;/li&gt; 
- &lt;li&gt;低功耗藍牙聽力輔助設備支持&lt;/li&gt; 
- &lt;li&gt;自定義鍵盤快捷方式&lt;/li&gt; 
- &lt;li&gt;HDR 截圖優化&lt;/li&gt; 
- &lt;li&gt;以舊換新模式等&lt;/li&gt; 
-&lt;/ul&gt; 
-&lt;p&gt;Android 16 新特性詳細介紹查看：&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fwww.android.com%2Fintl%2Fen_us%2Fnew-features-on-android%2F" target="_blank"&gt;https://www.android.com/intl/en_us/new-features-on-android/&lt;/a&gt;&lt;/p&gt;
-                                                                                &lt;/div&gt;
-                                                                            </description>
-      <link>https://www.oschina.net/news/354766/android-16</link>
-      <guid isPermaLink="false">https://www.oschina.net/news/354766/android-16</guid>
-      <pubDate>Sat, 10 May 2025 02:42:00 GMT</pubDate>
-      <author>來源: OSCHINA</author>
-    </item>
-    <item>
-      <title>OpenAI 推遲開源模型的發佈時間</title>
-      <description>&lt;div class="content"&gt;
-                                                                    
-                                                        &lt;p&gt;OpenAI 首席執行官山姆·奧特曼宣佈，原計劃於今年初夏發佈的公開權重的開源模型預計&lt;strong&gt;將推遲至夏末發佈&lt;/strong&gt;，而不是 6 月與公眾見面。&lt;/p&gt; 
-&lt;p&gt;&lt;img alt="" src="https://oscimg.oschina.net/oscnet/up-52e03b48d8e7654af9853f14bbc91177053.png" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;p&gt;他表示研究團隊做了一些出乎意料且非常令人驚奇的事情，這非常值得等待，但需要更長的時間。&lt;/p&gt; 
-&lt;p&gt;今年 3 月底，OpenAI 宣佈將發佈自 GPT-2 以來的首個「開源」語言模型。&lt;/p&gt; 
-&lt;p&gt;&amp;nbsp;&lt;/p&gt; 
-&lt;p&gt;相關閲讀：&lt;a href="https://www.oschina.net/news/346315/open-ai-model-best-opensource-coming-soon" target="news"&gt;OpenAI 正在打造「最強」開源模型，計劃今年初夏發佈&lt;/a&gt;&lt;/p&gt;
-                                                                                &lt;/div&gt;
-                                                                            </description>
-      <link>https://www.oschina.net/news/354761</link>
-      <guid isPermaLink="false">https://www.oschina.net/news/354761</guid>
-      <pubDate>Sat, 10 May 2025 02:33:00 GMT</pubDate>
-      <author>來源: OSCHINA</author>
-    </item>
-    <item>
-      <title>Mistral 推出首個推理模型系列 Magistral</title>
-      <description>&lt;div class="content"&gt;
-                                                                    
-                                                        &lt;p style="margin-left:auto !important; margin-right:auto !important; text-align:start"&gt;&lt;span style="color:#212623"&gt;Mistral&amp;nbsp;&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fmistral.ai%2Fnews%2Fmagistral" target="_blank"&gt;宣佈推出&lt;/a&gt;其首個推理模型系列 Magistral，採用 step-by-step&lt;/span&gt;&amp;nbsp;&lt;span style="color:#212623"&gt;的方式，以提高數學和物理等主題的一致性和可靠性。&lt;/span&gt;&lt;/p&gt; 
-&lt;p style="margin-left:auto !important; margin-right:auto !important; text-align:start"&gt;&lt;span style="color:#212623"&gt;Magistral 有兩種版本：Magistral Small 和 Magistral Medium。Magistral Small 擁有 240 億個參數，在 Apache 2.0 協議下開源。Magistral Medium 是一款功能更強大的模型，目前已在 Mistral 的 Le Chat 聊天機器人平台、該公司的 API 以及第三方合作伙伴雲平台上提供預覽。&lt;/span&gt;&lt;/p&gt; 
-&lt;p style="margin-left:auto !important; margin-right:auto !important; text-align:start"&gt;&lt;img height="295" src="https://oscimg.oschina.net/oscnet/up-05ff3090a9b8126e0803e475b935c4f0aac.png" width="700" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;p style="margin-left:auto !important; margin-right:auto !important; text-align:start"&gt;&lt;span style="color:#212623"&gt;Mistral 在博客文章中寫道：「Magistral 適用於各種企業用例，從結構化計算和程序邏輯到決策樹和基於規則的系統。這些模型針對多步驟邏輯進行了微調，提高了可解釋性，並以用户的語言提供了可追溯的思維過程。」&lt;/span&gt;&lt;/p&gt; 
-&lt;p style="margin-left:auto !important; margin-right:auto !important; text-align:start"&gt;&lt;span style="color:#212623"&gt;Mistral 成立於 2023 年，該公司得到了 General Catalyst 等風險投資機構的支持，迄今已籌集超過 11 億歐元（約合 12.4 億美元）。&lt;/span&gt;&lt;/p&gt; 
-&lt;p style="margin-left:auto !important; margin-right:auto !important; text-align:start"&gt;&lt;span style="color:#212623"&gt;儘管 Mistral 資源雄厚，但在某些領域，例如推理模型開發，Mistral 仍落後於其他領先的人工智能實驗室。從 Mistral 自身的基準測試來看，Magistral 似乎也並非一款特別有競爭力的版本。&lt;/span&gt;&lt;/p&gt; 
-&lt;p style="margin-left:auto !important; margin-right:auto !important; text-align:start"&gt;&lt;span style="color:#212623"&gt;在 GPQA Diamond 和 AIME 測試中，Magistral Medium 的表現不及 Gemini 2.5 Pro 和 Anthropic 的 Claude Opus 4。在流行的編程基準 LiveCodeBench 上，Magistral Medium 也未能超越 Gemini 2.5 Pro。&lt;/span&gt;&lt;/p&gt; 
-&lt;p style="margin-left:auto !important; margin-right:auto !important; text-align:start"&gt;&lt;span style="color:#212623"&gt;或許正因如此，Mistral 在其博客文章中大力宣揚 Magistral 的其他優勢。聲稱 Magistral 在 Le Chat 中提供答案的速度是競爭對手的「10 倍」，並且支持多種語言，包括意大利語、阿拉伯語、俄語和簡體中文。&lt;/span&gt;&lt;/p&gt; 
-&lt;p style="margin-left:auto !important; margin-right:auto !important; text-align:start"&gt;&lt;span style="color:#212623"&gt;Magistral 的發佈是在 Mistral 推出「vibe coding」客户端 Mistral Code 之後。在此之前的幾周，Mistral&amp;nbsp;推出了幾款專注於編碼的模型，並推出了 Le Chat Enterprise，一項面向企業的聊天機器人服務，提供 AI 代理構建器等工具，並將 Mistral 的模型與 Gmail 和 SharePoint 等第三方服務集成。&lt;/span&gt;&lt;/p&gt;
-                                                                                &lt;/div&gt;
-                                                                            </description>
-      <link>https://www.oschina.net/news/354760/mistral-magistral</link>
-      <guid isPermaLink="false">https://www.oschina.net/news/354760/mistral-magistral</guid>
-      <pubDate>Sat, 10 May 2025 02:31:00 GMT</pubDate>
-      <author>來源: OSCHINA</author>
-    </item>
-    <item>
-      <title>【運維實操指南】2 分鐘定製雷池 WAF 認證頁：從「標準表單」到「視覺升級」全攻略</title>
-      <description>&lt;div class="content"&gt;
-                                                                    
-                                                        &lt;p style="margin-left:0; text-align:left"&gt;&lt;span&gt;在，通用設置 &amp;gt; 防護配置，模塊下，找到 [自定義 HTML] 模塊&lt;/span&gt;&lt;/p&gt; 
-&lt;p style="margin-left:0; text-align:left"&gt;&amp;nbsp;&lt;/p&gt; 
-&lt;p style="margin-left:0; text-align:left"&gt;&lt;img height="341" src="https://oscimg.oschina.net/oscnet//30cd12a12b9b01facd09506982aa5867.jpg" width="716" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;p style="margin-left:0; text-align:left"&gt;&amp;nbsp;&lt;/p&gt; 
-&lt;p style="margin-left:0; text-align:left"&gt;&lt;span&gt;就像寫一個普通的 html 頁面一樣，你可以同時寫入 style、script 等標籤, 所以用 css 就能修改中心區域的樣式啦。&lt;/span&gt;&lt;/p&gt; 
-&lt;h2&gt;&lt;span&gt;示例：&lt;/span&gt;&lt;/h2&gt; 
-&lt;p style="margin-left:0; text-align:left"&gt;&lt;span&gt;把文末的示例代碼複製到&lt;/span&gt;&lt;/p&gt; 
-&lt;p style="margin-left:0; text-align:left"&gt;&amp;nbsp;&lt;/p&gt; 
-&lt;p style="margin-left:0; text-align:left"&gt;&lt;img height="449" src="https://oscimg.oschina.net/oscnet//4116eaeb2f8f24a9d1bf87150294cc81.jpg" width="725" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;p style="margin-left:0; text-align:left"&gt;&amp;nbsp;&lt;/p&gt; 
-&lt;h2&gt;&lt;span&gt;效果圖:&lt;/span&gt;&lt;/h2&gt; 
-&lt;p style="margin-left:0; text-align:left"&gt;&amp;nbsp;&lt;/p&gt; 
-&lt;p style="margin-left:0; text-align:left"&gt;&lt;img height="346" src="https://oscimg.oschina.net/oscnet//679bc9d16ccf472845db825ecfd23844.jpg" width="746" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;p style="margin-left:0; text-align:left"&gt;&amp;nbsp;&lt;/p&gt; 
-&lt;pre&gt;&lt;code&gt;&amp;lt;script&amp;gt;
-  console.log('Im a console.log, which is written in a script tag');
-&amp;lt;/script&amp;gt;
-&amp;lt;style type="text/css"&amp;gt;
-  body {
-    background: #395180;
-    margin: 0;
-  }
-  body #slg-box {
-    background-color: grey;
-    width: 400px;
-    height: 100%;
-    top: 0;
-    left: 0;
-    transform: translate(0, 0);
-    padding: 100px 20px;
-  }
-  body #slg-usergroup-username,
-  body #slg-usergroup-password {
-    background-color: grey;
-    color: #fff;
-  }
-  body #slg-box-title {
-    color: #e15ccf;
-  }
-  body #slg-usergroup-btn {
-    color: grey !important;
-  }
-  body #slg-with-more-title div:nth-child(2) {
-    background-color: transparent;
-    width: 100%;
-    height: 30px;
-    line-height: 30px;
-    text-align: center;
-    border: 1px solid;
-  }
-  body #slg-with-more-title div:nth-child(1) {
-    display: none;
-  }
-  body #slg-tabs &amp;gt; div {
-    fill: green;
-  }
-  body #slg-usergroup-container input {
-    border-style: dashed;
-  }
-&amp;lt;/style&amp;gt;
-
-&amp;lt;div
-  style="
-    background-color: grey;
-    width: 200px;
-    height: 100px;
-    text-align: right;
-    top: 50%;
-    position: relative;
-    left: calc(50% + 200px);
-    position: relative;
-    transform: translate(-50%,-50%);
-    border-radius: 10px;
-    font-size: 30px;
-    line-height: 100px;
-    text-align: center;
-  "
-&amp;gt;
-  hello world
-&amp;lt;/div&amp;gt;&lt;/code&gt;&lt;/pre&gt;
-                                                                                &lt;/div&gt;
-                                                                            </description>
-      <link>https://www.oschina.net/news/354756</link>
-      <guid isPermaLink="false">https://www.oschina.net/news/354756</guid>
-      <pubDate>Sat, 10 May 2025 02:26:00 GMT</pubDate>
-      <author>來源: 投稿</author>
     </item>
   </channel>
 </rss>
