@@ -7,8 +7,265 @@
     <generator>RSSHub</generator>
     <webMaster>contact@rsshub.app (RSSHub)</webMaster>
     <language>zh-cn</language>
-    <lastBuildDate>Fri, 13 Jun 2025 07:47:16 GMT</lastBuildDate>
+    <lastBuildDate>Fri, 13 Jun 2025 12:43:16 GMT</lastBuildDate>
     <ttl>5</ttl>
+    <item>
+      <title>Bun v1.2.16 发布，内存优化，兼容提升，体验增强</title>
+      <description>&lt;div class="content"&gt;
+                                                                                            &lt;p&gt;大家好，我是农村程序员，独立开发者，编程记者，前端之虎陈随易。&lt;/p&gt; 
+&lt;p&gt;我会在这里分享代码技术，编程资讯，行业热点等内容，欢迎关注。&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt;个人网站 1️⃣：&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fchensuiyi.me" target="_blank"&gt;https://chensuiyi.me&lt;/a&gt;&lt;/li&gt; 
+ &lt;li&gt;个人网站 2️⃣：&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fme.yicode.tech" target="_blank"&gt;https://me.yicode.tech&lt;/a&gt;&lt;/li&gt; 
+ &lt;li&gt;技术群，搞钱群，闲聊群，自驾群，想入群的在我个人网站联系我。&lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;p&gt;所有文章都是古法手打，经过了深度思考和总结，不含 AI 添加剂，请放心食用，一起灵魂交流。&lt;/p&gt; 
+&lt;p&gt;一键三连 (&lt;code&gt;点赞&lt;/code&gt;、&lt;code&gt;评论&lt;/code&gt;、&lt;code&gt;转发&lt;/code&gt;)，可以给我提供曝光，带来一份早餐收入，谢谢大家~~&lt;/p&gt; 
+&lt;hr&gt; 
+&lt;p&gt;&lt;code&gt;VSCode v1.101&lt;/code&gt; 和 &lt;code&gt;Bun v1.2.16&lt;/code&gt; 的发布我看都没人其他人分享啊？看来我这个 &lt;code&gt;编程记者&lt;/code&gt; 得好好地坚守岗位才行。&lt;/p&gt; 
+&lt;p&gt;我是 &lt;code&gt;All in Bun&lt;/code&gt; 玩家，截至现在不用 &lt;code&gt;Node.js&lt;/code&gt; 已经半年有余，一切感觉良好，有小伙伴测试了下性能，确实比 &lt;code&gt;Node.js&lt;/code&gt; 快了不少。&lt;/p&gt; 
+&lt;p&gt;那么本次的 &lt;code&gt;v1.2.16&lt;/code&gt; 版本，同样带来一些性能的提升，内存的优化等，让我们来一起看看具体的更新内容吧。&lt;/p&gt; 
+&lt;h2&gt;数据总览&lt;/h2&gt; 
+&lt;p&gt;本次一共解决了 73 个 issue，新增了 119 个能成功通过的 Node.js 兼容性测试。&lt;/p&gt; 
+&lt;h2&gt;在 Bun.serve 的 routes 中直接返回文件&lt;/h2&gt; 
+&lt;pre&gt;&lt;code class="language-js"&gt;import { serve, file } from 'bun';
+server({
+    routes: {
+        '/package.json': file('./package.json'),
+        '/README.md': new Response(file('./README.md'), {
+            headers: {
+                'X-Hi': 'hello'
+            }
+        })
+    }
+});
+&lt;/code&gt;&lt;/pre&gt; 
+&lt;p&gt;Bun 在 &lt;code&gt;使用体验&lt;/code&gt; 和 &lt;code&gt;人性化&lt;/code&gt; 上面一直不断完善，这个功能可以非常方便地返回文件数据，不需要手动读取文件数据，也不需要管理文件的缓存，可以说是非常贴心了。&lt;/p&gt; 
+&lt;h2&gt;新增 install.linkWorkspacePackages 配置&lt;/h2&gt; 
+&lt;pre&gt;&lt;code class="language-toml"&gt;[install]
+linkWorkspacePackages = false
+&lt;/code&gt;&lt;/pre&gt; 
+&lt;p&gt;这个选项可以控制工作区包的链接行为，这在 CI 环境中特别有用，因为从注册表安装预构建的包比从源代码构建更快。&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt;设置为 &lt;code&gt;false&lt;/code&gt; 时，Bun 从注册表安装工作区依赖，而不是本地链接。&lt;/li&gt; 
+ &lt;li&gt;默认值为 &lt;code&gt;true&lt;/code&gt; 以保持向后兼容性。&lt;/li&gt; 
+ &lt;li&gt;即使禁用此选项，&lt;code&gt;workspace:*&lt;/code&gt; 协议仍然会被遵守。&lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;h2&gt;bun outdated 支持 catelog 依赖&lt;/h2&gt; 
+&lt;p&gt;&lt;code&gt;bun outdated&lt;/code&gt; 现在支持目录 (catalog) 依赖，便于在 monorepo 中检查更新。&lt;/p&gt; 
+&lt;p&gt;示例配置：&lt;/p&gt; 
+&lt;pre&gt;&lt;code class="language-json"&gt;// package.json
+{
+    "name": "my-monorepo",
+    "workspaces": {
+        "packages": ["packages/*"],
+        "catalog": {
+            "react": "^18.0.0",
+            "react-dom": "^18.0.0",
+            "typescript": "^4.0.0"
+        }
+    }
+}
+&lt;/code&gt;&lt;/pre&gt; 
+&lt;pre&gt;&lt;code class="language-json"&gt;// packages/app/package.json
+{
+    "name": "app",
+    "dependencies": {
+        "react": "catalog:",
+        "react-dom": "catalog:",
+        "typescript": "catalog:"
+    }
+}
+&lt;/code&gt;&lt;/pre&gt; 
+&lt;p&gt;运行 &lt;code&gt;bun outdated&lt;/code&gt; 将显示目录依赖的可用更新。&lt;/p&gt; 
+&lt;pre&gt;&lt;code class="language-bash"&gt;bun outdated -F app
+|----------------------------------------|
+| Package    | Current | Update | Latest |
+|------------|---------|--------|--------|
+| react      | 18.3.1  | 18.3.1 | 19.1.0 |
+|------------|---------|--------|--------|
+| react-dom  | 18.3.1  | 18.3.1 | 19.1.0 |
+|------------|---------|--------|--------|
+| typescript | 4.9.5   | 4.9.5  | 5.8.3  |
+|----------------------------------------|
+&lt;/code&gt;&lt;/pre&gt; 
+&lt;h2&gt;新增 Bun.hash.rapidhash 算法&lt;/h2&gt; 
+&lt;pre&gt;&lt;code class="language-js"&gt;const hash = Bun.hash.rapidhash('hello world');
+console.log(hash); // 6388527444622164108n
+&lt;/code&gt;&lt;/pre&gt; 
+&lt;p&gt;Rapidhash 在处理较大输入时表现出竞争力的性能，是非加密哈希需求的优秀选择。&lt;/p&gt; 
+&lt;h2&gt;Node.js 兼容性改进&lt;/h2&gt; 
+&lt;h3&gt;node:net 模块重大重构&lt;/h3&gt; 
+&lt;ul&gt; 
+ &lt;li&gt;新增 43 个通过的 Node.js &lt;code&gt;node:net&lt;/code&gt; 测试&lt;/li&gt; 
+ &lt;li&gt;支持 &lt;code&gt;server.maxConnections&lt;/code&gt;&lt;/li&gt; 
+ &lt;li&gt;改进了 socket 连接回调行为&lt;/li&gt; 
+ &lt;li&gt;修复了 TLS 升级功能&lt;/li&gt; 
+ &lt;li&gt;正确识别扩展 Socket 类的自定义方法&lt;/li&gt; 
+ &lt;li&gt;修复了 &lt;code&gt;socket.localAddress()&lt;/code&gt; 和 &lt;code&gt;socket.remoteAddress()&lt;/code&gt;&lt;/li&gt; 
+ &lt;li&gt;&lt;code&gt;node:net&lt;/code&gt; 现在像 Node.js 一样调用 &lt;code&gt;dns.lookup&lt;/code&gt;&lt;/li&gt; 
+ &lt;li&gt;为 &lt;code&gt;net.Socket&lt;/code&gt; 和 &lt;code&gt;net.Server&lt;/code&gt; 提供 &lt;code&gt;net.BlockList&lt;/code&gt; 支持&lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;h3&gt;vm.SyntheticModule 支持&lt;/h3&gt; 
+&lt;p&gt;实现了 &lt;code&gt;vm.SyntheticModule&lt;/code&gt;，支持在 VM 上下文中创建和评估合成模块：&lt;/p&gt; 
+&lt;pre&gt;&lt;code class="language-javascript"&gt;import vm from 'node:vm';
+
+const module = new vm.SyntheticModule(['x'], function () {
+    this.setExport('x', 42);
+});
+
+await module.link(() =&amp;gt; {});
+await module.evaluate();
+
+console.log(module.namespace.x); // 42
+&lt;/code&gt;&lt;/pre&gt; 
+&lt;h3&gt;HTTPParser 绑定&lt;/h3&gt; 
+&lt;p&gt;添加了 &lt;code&gt;process.binding('http_parser')&lt;/code&gt;，提高了与 Node.js HTTP 内部机制的兼容性：&lt;/p&gt; 
+&lt;pre&gt;&lt;code class="language-javascript"&gt;const { HTTPParser } = process.binding('http_parser');
+
+const parser = new HTTPParser();
+parser.initialize(HTTPParser.REQUEST, {});
+
+const input = Buffer.from('GET / HTTP/1.1\\r\\nHost: example.com\\r\\n\\r\\n');
+
+parser[HTTPParser.kOnHeaders] = function () {
+    console.log('Headers!');
+};
+
+parser.execute(input);
+&lt;/code&gt;&lt;/pre&gt; 
+&lt;h2&gt;内存泄漏修复&lt;/h2&gt; 
+&lt;p&gt;本版本修复了几个内存泄漏问题：&lt;/p&gt; 
+&lt;ol&gt; 
+ &lt;li&gt;&lt;strong&gt;N-API handle scopes&lt;/strong&gt;：修复了 &lt;code&gt;NapiHandleScopeImpl&lt;/code&gt; 中的罕见竞态条件和内存泄漏。&lt;/li&gt; 
+ &lt;li&gt;&lt;strong&gt;Bun.spawn stdio&lt;/strong&gt;：修复了 &lt;code&gt;Bun.spawn&lt;/code&gt; 管道 stdio 未被读取时的内存泄漏。&lt;/li&gt; 
+&lt;/ol&gt; 
+&lt;h2&gt;其他错误修复&lt;/h2&gt; 
+&lt;h3&gt;运行时修复&lt;/h3&gt; 
+&lt;ul&gt; 
+ &lt;li&gt;修复了 &lt;code&gt;node:net&lt;/code&gt; 处理缓冲字符串写入时的 &lt;code&gt;bytesWritten&lt;/code&gt; 计算。&lt;/li&gt; 
+ &lt;li&gt;修复了 macOS 上 process.stdin 缓冲问题。&lt;/li&gt; 
+ &lt;li&gt;修复了循环中可能的退出信号挂起。&lt;/li&gt; 
+ &lt;li&gt;修复了某些情况下 &lt;code&gt;node:http&lt;/code&gt; 发送重复 Transfer-Encoding 头的问题。&lt;/li&gt; 
+ &lt;li&gt;修复了 SharedArrayBuffer 传输时崩溃的问题。&lt;/li&gt; 
+ &lt;li&gt;修复了在正确初始化前访问 cookies 导致的崩溃。&lt;/li&gt; 
+ &lt;li&gt;修复了中断 Next.js 开发服务器时的错误。&lt;/li&gt; 
+ &lt;li&gt;修复了使用 Tailwind CSS 时 DevServer 崩溃的问题。&lt;/li&gt; 
+ &lt;li&gt;修复了 TOML 解析器处理内联表后的表数组头的问题。&lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;h3&gt;JavaScript 解析器修复&lt;/h3&gt; 
+&lt;ul&gt; 
+ &lt;li&gt;修复了畸形函数定义导致的崩溃&lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;h3&gt;CSS 解析器修复&lt;/h3&gt; 
+&lt;ul&gt; 
+ &lt;li&gt;修复了嵌套计算导致的 CSS &lt;code&gt;calc()&lt;/code&gt; 表达式堆栈溢出&lt;/li&gt; 
+ &lt;li&gt;修复了 CSS 转换函数中弧度错误转换为度数的问题&lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;h3&gt;FFI 修复&lt;/h3&gt; 
+&lt;ul&gt; 
+ &lt;li&gt;修复了 &lt;code&gt;bun:ffi&lt;/code&gt; 中 &lt;code&gt;new CString()&lt;/code&gt; 在未提供 byteLength 时忽略 byteOffset 参数的问题&lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;h3&gt;TLS 修复&lt;/h3&gt; 
+&lt;ul&gt; 
+ &lt;li&gt;改进了 TLS 服务器身份验证&lt;/li&gt; 
+ &lt;li&gt;正确处理 IP 范围规范化 (例如 「8.8.8.0/24」)&lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;h3&gt;HTTP/2 修复&lt;/h3&gt; 
+&lt;ul&gt; 
+ &lt;li&gt;修复了 HTTP/2 流控制和协议处理问题&lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;h3&gt;Windows 修复&lt;/h3&gt; 
+&lt;ul&gt; 
+ &lt;li&gt;崩溃处理程序现在使用 &lt;code&gt;abort()&lt;/code&gt; 而不是 &lt;code&gt;quick_exit(134)&lt;/code&gt; 以便更好地调试&lt;/li&gt; 
+ &lt;li&gt;更新了 Windows 构建的 WebKit 和 libpas 依赖项&lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;h3&gt;环境变量&lt;/h3&gt; 
+&lt;ul&gt; 
+ &lt;li&gt;新增 &lt;code&gt;BUN_BE_BUN&lt;/code&gt; 环境变量，用于运行 Bun 二进制文件而不是单文件可执行文件的入口点&lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;h3&gt;CLI 改进&lt;/h3&gt; 
+&lt;ul&gt; 
+ &lt;li&gt;改进了包管理器命令的帮助文本格式和文档链接&lt;/li&gt; 
+ &lt;li&gt;从 &lt;code&gt;bun pm&lt;/code&gt; 帮助中移除了 &lt;code&gt;audit&lt;/code&gt; (直接使用 &lt;code&gt;bun audit&lt;/code&gt;)&lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;h3&gt;TypeScript 类型&lt;/h3&gt; 
+&lt;ul&gt; 
+ &lt;li&gt;修复了 &lt;code&gt;RedisClient.prototype.del&lt;/code&gt; 接受一个或多个键作为参数&lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;hr&gt; 
+&lt;p&gt;最后给大家分享一下我的主打产品，VSCode 编程神器 fnMap (函数地图)，欢迎大家体验。&lt;/p&gt; 
+&lt;p&gt;安装地址：&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fsourl.cn%2FzmnsPf" target="_blank"&gt;https://sourl.cn/zmnsPf&lt;/a&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;img alt="" src="https://oscimg.oschina.net/oscnet//21eeac99c22bf045b93a707b25be0ea1.png" referrerpolicy="no-referrer"&gt;&lt;/p&gt;
+                                                                                &lt;/div&gt;
+                                                                            </description>
+      <link>https://www.oschina.net/news/355258/bun-1-2-16-released</link>
+      <guid isPermaLink="false">https://www.oschina.net/news/355258/bun-1-2-16-released</guid>
+      <pubDate>Sun, 11 May 2025 10:57:00 GMT</pubDate>
+      <author>来源: 投稿</author>
+    </item>
+    <item>
+      <title>马建仓 AI 助手全流程升级：更聪明的研发搭子，更专业的协作助手</title>
+      <description>&lt;div class="content"&gt;
+                                                                                            &lt;p&gt;马建仓 AI 助手在近期迎来了一次面向真实研发流程的全链路进化，&lt;strong&gt;新增三十余项智能能力，全面覆盖需求、开发、测试、项目管理等关键研发环节&lt;/strong&gt;。&lt;/p&gt; 
+&lt;p&gt;马建仓现在不仅能听懂业务语言，还能快速生成可落地的任务拆解，串联产品、研发、测试、项目管理等多个角色，是你团队里真正能打的 AI 研发搭子。&lt;/p&gt; 
+&lt;p&gt;&lt;img src="https://static.oschina.net/uploads/space/2025/0613/172937_JNJ0_2720166.png" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p&gt;本次更新能力覆盖项目管理、需求管理、开发与测试、知识沉淀五大核心场景，&lt;strong&gt;不同场景中的马建仓 AI 助手都会根据具体场景推荐对应的对话选项&lt;/strong&gt;。&lt;/p&gt; 
+&lt;h2&gt;马建仓 AI 助手全流程使用实录&lt;/h2&gt; 
+&lt;p&gt;以下为三个典型流程展示马建仓 AI 助手如何深度参与每一个关键节点：&lt;/p&gt; 
+&lt;h3&gt;从需求到提交 PR&lt;/h3&gt; 
+&lt;ul&gt; 
+ &lt;li&gt;产品经理新建需求后，马建仓 AI 助手识别到该页面为「新建需求」，只能推荐「帮我写需求」功能，快速形成结构化文档。&lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;p&gt;&lt;img height="1231" src="https://static.oschina.net/uploads/space/2025/0613/172956_bJGY_2720166.png" width="1080" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt;随后通过「预估工时」，「谁来做更合适」智能排期与分配任务。&lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;p&gt;&lt;img height="814" src="https://static.oschina.net/uploads/space/2025/0613/173007_898b_2720166.png" width="1080" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;img src="https://static.oschina.net/uploads/space/2025/0613/173020_DwJm_2720166.png" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt;研发/UI/测试通过「这个任务要做什么」「需求评论区在说什么」快速理解背景。&lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;p&gt;&lt;img src="https://static.oschina.net/uploads/space/2025/0613/173045_96bV_2720166.png" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt;完成任务后提交 PR，使用 AI 自动生成「PR 标题/描述」。&lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;p&gt;&lt;img src="https://static.oschina.net/uploads/space/2025/0613/173058_nNzf_2720166.png" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;h3&gt;测试缺陷到代码合并&lt;/h3&gt; 
+&lt;ul&gt; 
+ &lt;li&gt;测试阶段发现问题，通过「帮我写缺陷」生成标准缺陷记录。&lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;p&gt;&lt;img src="https://static.oschina.net/uploads/space/2025/0613/173111_s11Y_2720166.png" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt;研发收到后，用「缺陷是什么意思」、「可能原因是什么」快速定位问题。&lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;p&gt;&lt;img src="https://static.oschina.net/uploads/space/2025/0613/173126_1PQd_2720166.png" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt;修改后提交 PR，负责人可用「解读这个 PR 做了什么」「是否存在优化项」辅助代码审查，最终合并。&lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;p&gt;&lt;img src="https://static.oschina.net/uploads/space/2025/0613/173138_HPUH_2720166.png" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;h3&gt;项目排期与知识协作&lt;/h3&gt; 
+&lt;ul&gt; 
+ &lt;li&gt;项目管理过程中可用「项目排期可能有什么风险」「哪个人比较空闲」「当前迭代有什么风险」优化排期与资源配置。&lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;p&gt;&lt;img src="https://static.oschina.net/uploads/space/2025/0613/173208_SNxX_2720166.png" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt;面对文档与代码，AI 可「总结内容」「分析问题」「识别使用的技术栈」，沉淀可用知识资产。&lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;p&gt;&lt;img src="https://static.oschina.net/uploads/space/2025/0613/173223_uO2L_2720166.png" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p&gt;三个典型流程中使用到的能力也仅仅是本次三十余项能力更新的一小部分。通过本次全流程升级，&lt;strong&gt;马建仓 AI 助手真正实现了角色全覆盖、任务全覆盖、流程全闭环&lt;/strong&gt;，让 AI 参与到每一位成员、每一个任务、每一个节点的日常工作中，成为所有团队成员的最佳拍档。&lt;/p&gt; 
+&lt;h2&gt;免费领 1000 次调用额度&lt;/h2&gt; 
+&lt;p&gt;&lt;img src="https://static.oschina.net/uploads/space/2025/0613/173239_QYh6_2720166.png" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p&gt;现在开通马建仓 AI 助手，还可&lt;strong&gt;免费领取 1000 次免费调用额度&lt;/strong&gt;！&lt;/p&gt; 
+&lt;p&gt;欢迎前往 Gitee 企业版，体验马建仓 AI 助手为你带来的全流程效率超进化吧！&lt;/p&gt; 
+&lt;p&gt;&lt;img src="https://static.oschina.net/uploads/space/2025/0411/120710_Spld_2720166.png" referrerpolicy="no-referrer"&gt;&lt;/p&gt;
+                                                                                &lt;/div&gt;
+                                                                            </description>
+      <link>https://www.oschina.net/news/355243</link>
+      <guid isPermaLink="false">https://www.oschina.net/news/355243</guid>
+      <pubDate>Sun, 11 May 2025 09:32:00 GMT</pubDate>
+      <author>来源: 投稿</author>
+    </item>
     <item>
       <title>OpenZFS 2.2.8 发布，支持更新版本的 Linux 内核</title>
       <description>&lt;div class="content"&gt;
@@ -20,7 +277,7 @@
                                                                             </description>
       <link>https://www.oschina.net/news/355205/openzfs-2-2-8</link>
       <guid isPermaLink="false">https://www.oschina.net/news/355205/openzfs-2-2-8</guid>
-      <pubDate>Fri, 13 Jun 2025 07:22:12 GMT</pubDate>
+      <pubDate>Sun, 11 May 2025 07:21:00 GMT</pubDate>
       <author>来源: OSCHINA</author>
     </item>
     <item>
@@ -104,7 +361,7 @@
                                                                             </description>
       <link>https://www.oschina.net/news/355204/rocky-linux-10-0-ga-release</link>
       <guid isPermaLink="false">https://www.oschina.net/news/355204/rocky-linux-10-0-ga-release</guid>
-      <pubDate>Fri, 13 Jun 2025 07:15:12 GMT</pubDate>
+      <pubDate>Sun, 11 May 2025 07:15:00 GMT</pubDate>
       <author>来源: OSCHINA</author>
     </item>
     <item>
@@ -1593,61 +1850,6 @@ BYTEDESK_APPKEY: ZjoyMDI1LTA2LTIxOlBMQVRGT1JNOjo=&lt;/code&gt;&lt;/pre&gt;
       <link>https://www.oschina.net/news/355024/dbeaver-25-1-released</link>
       <guid isPermaLink="false">https://www.oschina.net/news/355024/dbeaver-25-1-released</guid>
       <pubDate>Sat, 10 May 2025 07:37:00 GMT</pubDate>
-      <author>来源: OSCHINA</author>
-    </item>
-    <item>
-      <title>Python 3.13.5 发布</title>
-      <description>&lt;div class="content"&gt;
-                                                                                            &lt;p&gt;&lt;span style="color:#111111"&gt;Python 3.13.5 现已&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fpythoninsider.blogspot.com%2F2025%2F06%2Fpython-3135-is-now-available.html" target="_blank"&gt;发布&lt;/a&gt;，这是 Python 3.13 的第五个维护版本。Python 3.13 是 Python 编程语言的最新主要版本，与 Python 3.12 相比，它包含许多新功能和优化。&lt;/span&gt;&lt;/p&gt; 
-&lt;p style="text-align:start"&gt;&lt;span style="color:#111111"&gt;3.13.5 旨在修复 3.13.4 版本中的几个重大问题：&lt;/span&gt;&lt;/p&gt; 
-&lt;ul&gt; 
- &lt;li&gt;&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fgithub.com%2Fpython%2Fcpython%2Fissues%2F135151" target="_blank"&gt;gh-135151&lt;/a&gt;：在 Windows 上为常规（非自由线程）构建扩展模块失败。&lt;/li&gt; 
- &lt;li&gt;&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fgithub.com%2Fpython%2Fcpython%2Fissues%2F135171" target="_blank"&gt;gh-135171&lt;/a&gt;：生成器表达式不再在 creation time 引发 TypeError（当迭代不可迭代对象时），而是延迟到首次使用。&lt;/li&gt; 
- &lt;li&gt;&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fgithub.com%2Fpython%2Fcpython%2Fissues%2F135326" target="_blank"&gt;gh-135326&lt;/a&gt;：将类 int 对象（如&lt;code&gt;numpy.int64&lt;/code&gt;）传递到&lt;code&gt;random.getrandbits()&lt;/code&gt;失败，而之前它可以正常工作。&lt;/li&gt; 
-&lt;/ul&gt; 
-&lt;p style="text-align:start"&gt;&lt;span style="color:#111111"&gt;还修复了其他几个错误（否则这些错误将等到下一个版本）。&lt;/span&gt;&lt;/p&gt; 
-&lt;p style="text-align:start"&gt;&lt;span style="color:#111111"&gt;&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fdocs.python.org%2Frelease%2F3.13.5%2Fwhatsnew%2Fchangelog.html%23python-3-13-5" target="_blank"&gt;完整更新日志&lt;/a&gt;&lt;/span&gt;&lt;/p&gt;
-                                                                                &lt;/div&gt;
-                                                                            </description>
-      <link>https://www.oschina.net/news/355019/python-3135</link>
-      <guid isPermaLink="false">https://www.oschina.net/news/355019/python-3135</guid>
-      <pubDate>Sat, 10 May 2025 07:30:00 GMT</pubDate>
-      <author>来源: OSCHINA</author>
-    </item>
-    <item>
-      <title>Rufus 4.8 发布，提升打开 Windows ISO 时的镜像分析速度</title>
-      <description>&lt;div class="content"&gt;
-                                                                                            &lt;p&gt;Rufus 4.8 已发布，主要变化：&lt;/p&gt; 
-&lt;ul&gt; 
- &lt;li&gt;切换到 wimlib 进行所有 WIM 镜像处理： 
-  &lt;ul&gt; 
-   &lt;li&gt;极大提升打开 Windows ISO 时的镜像分析速度&lt;/li&gt; 
-   &lt;li&gt;可以加快 Windows To Go 驱动器的创建（但如果你的驱动器很糟糕，效果不会太好）&lt;/li&gt; 
-   &lt;li&gt;可能有助于解决 Mac 上 Parallels 的限制（但 Rufus 在 Parallels 上仍不受支持）&lt;/li&gt; 
-   &lt;li&gt;启用使用&amp;nbsp;Alt&amp;nbsp;-&amp;nbsp;E&amp;nbsp;分割大于 4GB 的文件（但使用 UEFI:NTFS 仍然慢得多）&lt;/li&gt; 
-  &lt;/ul&gt; &lt;/li&gt; 
- &lt;li&gt;由于 MinGW DLL 延迟加载限制，切换到在所有地方使用 Visual Studio 二进制文件&lt;/li&gt; 
- &lt;li&gt;为限制自身仅在 DD 模式下运行的 Linux ISO 添加更多例外（Nobara、openSUSE、...）&lt;/li&gt; 
- &lt;li&gt;改进 UEFI 启动加载器的日志报告，包含安全启动状态信息&lt;/li&gt; 
- &lt;li&gt;修复将未压缩的 VHD 写回同一驱动器时的大小限制问题&lt;/li&gt; 
- &lt;li&gt;修复使用 32 位 MinGW 编译版本打开日志时崩溃的问题&lt;/li&gt; 
- &lt;li&gt;修复命令行参数未传递给原始 Windows&amp;nbsp;&lt;code&gt;setup.exe&lt;/code&gt;&amp;nbsp;的问题&lt;/li&gt; 
-&lt;/ul&gt; 
-&lt;hr&gt; 
-&lt;p&gt;Rufus 是一款格式化和创建 USB 启动盘的辅助工具，适用于以下场景：&lt;/p&gt; 
-&lt;ul&gt; 
- &lt;li&gt;需要将可引导 ISO (Windows、Linux、UEFI 等) 刻录到 USB 安装媒介的情况&lt;/li&gt; 
- &lt;li&gt;需要处理未安装操作系统的设备的情况&lt;/li&gt; 
- &lt;li&gt;需要在 DOS 环境下刷写 BIOS 或其他固件的情况&lt;/li&gt; 
- &lt;li&gt;需要运行低级工具的情况&lt;/li&gt; 
-&lt;/ul&gt; 
-&lt;p&gt;&lt;img alt="" src="https://oscimg.oschina.net/oscnet/up-5f864e3279a92c2e1e0b56f1b4d9aa7e2fd.png" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;p&gt;下载地址：&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fgithub.com%2Fpbatard%2Frufus%2Freleases%2Ftag%2Fv4.8" target="_blank"&gt;https://github.com/pbatard/rufus/releases/tag/v4.8&lt;/a&gt;&lt;/p&gt;
-                                                                                &lt;/div&gt;
-                                                                            </description>
-      <link>https://www.oschina.net/news/355017/rufus-4-8</link>
-      <guid isPermaLink="false">https://www.oschina.net/news/355017/rufus-4-8</guid>
-      <pubDate>Sat, 10 May 2025 07:20:00 GMT</pubDate>
       <author>来源: OSCHINA</author>
     </item>
   </channel>
