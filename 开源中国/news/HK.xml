@@ -7,8 +7,555 @@
     <generator>RSSHub</generator>
     <webMaster>contact@rsshub.app (RSSHub)</webMaster>
     <language>zh-hk</language>
-    <lastBuildDate>Thu, 19 Jun 2025 02:44:43 GMT</lastBuildDate>
+    <lastBuildDate>Thu, 19 Jun 2025 07:47:23 GMT</lastBuildDate>
     <ttl>5</ttl>
+    <item>
+      <title>OpenBMB 開源輕量級 CUDA 推理框架 CPM.cu</title>
+      <description>&lt;div class="content"&gt;
+                                                                    
+                                                        &lt;p&gt;OpenBMB 推出了 CPM.cu，這是一個輕量級且高效的開源 CUDA 推理框架，專為端側大型語言模型（LLMs）的部署而設計，併為&lt;a href="https://www.oschina.net/news/354328"&gt;MiniCPM4&lt;/a&gt;提供優化，核心支持&lt;strong&gt;稀疏架構&lt;/strong&gt;、&lt;strong&gt;投機採樣&lt;/strong&gt;和&lt;strong&gt;低位寬量化&lt;/strong&gt;等前沿技術創新。&lt;/p&gt; 
+&lt;p&gt;CPM.cu 亮點包括：&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt;集成了 InfLLM v2 可訓練稀疏注意力內核，可加速長上下文預填充和解碼；&lt;/li&gt; 
+ &lt;li&gt;FR-Spec（頻率排序推測採樣）通過壓縮詞彙空間提高草稿效率，顯著降低計算開銷；&lt;/li&gt; 
+ &lt;li&gt;結合了 EAGLE-2 推測採樣、4 位量化和基於滑動窗口注意力的長上下文支持，從而在資源受限設備上實現高效部署。&lt;/li&gt; 
+ &lt;li&gt;性能方面，在 128K-token 序列上，預填充速度比 Qwen3-8B 快 2-4 倍，解碼速度快 4-6 倍。&lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;p&gt;CPM.cu&amp;nbsp; 框架結構：&lt;/p&gt; 
+&lt;pre&gt;&lt;code&gt;CPM.cu/
+├── src/
+│   ├── flash_attn/ # 修改後的 Flash-Attention, 支持稀疏和投機採樣
+│   ├── model/
+│   │   ├── minicpm4/ # minicpm4 模型
+│   │   │   ├── minicpm4_model.cuh # 模型的核心實現
+│   │   │   └── minicpm4_eagle.cuh # 投機採樣實現
+│   │   ├── model.cuh # 其他代表性模型
+│   │   ├── w4a16_gptq_marlin/ # GPTQ 量化計算 kernel
+│   │   ├── memory.cuh # 顯存分配
+│   │   └── layer.cuh # 通用層
+│   ├── entry.cu # pybind: 連接 C/CUDA 和 Python
+│   └── ...
+├── cpmcu/ # python interface
+└── ...&lt;/code&gt;&lt;/pre&gt; 
+&lt;ol&gt; 
+ &lt;li&gt; &lt;p&gt;cpmcu/ 代碼提供了一個 python 的調用接口，裏面涉及在 Python 側 tokenize，調用 C 代碼得到模型的輸出 logits，在 Python 側根據 logits 採樣並 detokenize 這些過程。我們使用了 pybind 將 C 代碼與 Python 代碼進行綁定。&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;src/model/memory.cuh 這裏實現了整個推理框架的內存管理，這裏我們採用了先分配模型權重，再分配模型中間計算結果所需的空間，最後把所有剩餘顯存分配給 kv-cache 的內存管理策略。這一點設計上是和 vLLM, SGLang 類似的。分配中間計算結果的空間時可以考慮一下中間計算結果的生命週期，做一點顯存複用。&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;src/model/w4a16_gptq_marlin/ 量化的計算 kernel。這裏直接使用了 vLLM 的 Marlin 代碼。&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;src/model/minicpm4/ 這裏是模型的架構實現。src/model/下也有其他代表性模型實現。&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;src/flash_attn/ 我們基於 flash_attn 2.6.3 版本，在上面增加了對 InfLLM v2、投機採樣的適配支持。下面我們主要介紹這一部分，也是整個框架實現的難點。&lt;/p&gt; &lt;/li&gt; 
+&lt;/ol&gt; 
+&lt;p&gt;開源地址：&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fgithub.com%2FOpenBMB%2FCPM.cu" target="_blank"&gt;https://github.com/OpenBMB/CPM.cu&lt;/a&gt;&lt;/p&gt;
+                                                                                &lt;/div&gt;
+                                                                            </description>
+      <link>https://www.oschina.net/news/356197</link>
+      <guid isPermaLink="false">https://www.oschina.net/news/356197</guid>
+      <pubDate>Thu, 19 Jun 2025 07:41:22 GMT</pubDate>
+      <author>來源: OSCHINA</author>
+    </item>
+    <item>
+      <title>開源模型上下文協議 MCP 更新規範文檔，添加對結構化工具輸出的支持</title>
+      <description>&lt;div class="content"&gt;
+                                                                    
+                                                        &lt;p&gt;開源模型上下文協議 MCP 昨天更新了規範文檔，主要變更如下：&lt;/p&gt; 
+&lt;ol&gt; 
+ &lt;li&gt;移除對 JSON-RPC 批處理的支持（PR #416）&lt;/li&gt; 
+ &lt;li&gt;添加對結構化工具輸出的支持（PR #371）&lt;/li&gt; 
+ &lt;li&gt;將 MCP 服務器歸類為 OAuth 資源服務器，添加受保護資源元數據以發現相應的授權服務器。（PR #338）&lt;/li&gt; 
+ &lt;li&gt;要求 MCP 客户端按照 RFC 8707 中描述的方式實現資源指示器，以防止惡意服務器獲取訪問令牌。（PR #734）&lt;/li&gt; 
+ &lt;li&gt;在授權規範中闡明安全注意事項和最佳實踐，並在新的安全最佳實踐頁面中説明。&lt;/li&gt; 
+ &lt;li&gt;增加引導支持，使服務器能夠在交互過程中向用户請求更多信息。（PR #382）&lt;/li&gt; 
+ &lt;li&gt;在工具調用結果中增加資源鏈接支持。（PR #603）&lt;/li&gt; 
+ &lt;li&gt;在使用 HTTP 時，後續請求中需通過&amp;nbsp;&lt;code&gt;MCP-Protocol-Version&lt;/code&gt;&amp;nbsp;頭指定協商的協議版本。（PR #548）&lt;/li&gt; 
+ &lt;li&gt;將生命週期操作中的 SHOULD 改為 MUST&lt;/li&gt; 
+&lt;/ol&gt; 
+&lt;p&gt;詳情查看&amp;nbsp;&lt;em&gt;&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fmodelcontextprotocol.io%2Fspecification%2F2025-06-18%2Fchangelog" target="_blank"&gt;https://modelcontextprotocol.io/specification/2025-06-18/changelog&lt;/a&gt;&lt;/em&gt;&lt;/p&gt;
+                                                                                &lt;/div&gt;
+                                                                            </description>
+      <link>https://www.oschina.net/news/356195</link>
+      <guid isPermaLink="false">https://www.oschina.net/news/356195</guid>
+      <pubDate>Thu, 19 Jun 2025 07:33:28 GMT</pubDate>
+      <author>來源: OSCHINA</author>
+    </item>
+    <item>
+      <title>開源代碼編輯器 Zed 上線「調試器」功能</title>
+      <description>&lt;div class="content"&gt;
+                                                                    
+                                                        &lt;p&gt;開源代碼編輯器 Zed &lt;u&gt;&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fzed.dev%2Fblog%2Fdebugger" target="_blank"&gt;宣佈&lt;/a&gt;&lt;/u&gt;推出「調試器（Debugger）」功能，稱這是向 Zed 1.0 邁出的重要一步。&lt;/p&gt; 
+&lt;p&gt;&lt;strong&gt;調試器特性&lt;/strong&gt;&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt; &lt;p&gt;&lt;strong&gt;快速&lt;/strong&gt; ：減少上下文切換時間，讓用户能更專注於調試。&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;&lt;strong&gt;熟悉&lt;/strong&gt; ：與 Zed 的設計語言保持一致，支持典型的調試流程，方便用户快速上手。&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;&lt;strong&gt;可配置&lt;/strong&gt; ：用户可自定義 UI、鍵綁定、調試配置等。&lt;/p&gt; &lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;p&gt;&lt;img alt="" src="https://oscimg.oschina.net/oscnet/up-43c899b5d73c5470109aecf601bbff05ba7.png" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p&gt;據介紹，Zed 開箱即支持調試多種流行編程語言，包括 Rust、C/C++、JavaScript、Go 和 Python。通過擴展系統，Zed 可以支持任何實現調試適配器協議（DAP）的調試適配器。&lt;/p&gt; 
+&lt;p style="margin-left:0px; margin-right:0px; text-align:start"&gt;&lt;strong&gt;技術架構&lt;/strong&gt;&lt;/p&gt; 
+&lt;ul style="margin-left:0; margin-right:0"&gt; 
+ &lt;li&gt; 
+  &lt;div style="margin-left:0; margin-right:0"&gt;
+   採用兩層架構，數據層與調試適配器直接通信，UI 層從數據層獲取數據進行界面渲染。
+  &lt;/div&gt; &lt;/li&gt; 
+ &lt;li&gt; 
+  &lt;div style="margin-left:0; margin-right:0"&gt;
+   數據層負責維護會話狀態、緩存響應、使失效數據，UI 層按需請求數據，避免不必要的請求，便於後續實現協作調試。
+  &lt;/div&gt; &lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;p style="margin-left:0px; margin-right:0px; text-align:start"&gt;&lt;strong&gt;調試適配器集成&lt;/strong&gt;&lt;/p&gt; 
+&lt;ul style="margin-left:0; margin-right:0"&gt; 
+ &lt;li&gt; 
+  &lt;div style="margin-left:0; margin-right:0"&gt;
+   擴展了 Zed 的擴展 API 以支持調試器集成，通過定義自定義架構等方式，讓擴展作者能輕鬆將調試適配器集成到 Zed 中。
+  &lt;/div&gt; &lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;p style="margin-left:0px; margin-right:0px; text-align:start"&gt;&lt;strong&gt;內聯變量值實現&lt;/strong&gt;&lt;/p&gt; 
+&lt;ul style="margin-left:0; margin-right:0"&gt; 
+ &lt;li&gt; 
+  &lt;div style="margin-left:0; margin-right:0"&gt;
+   利用 Tree-sitter 查詢準確識別當前執行範圍內的變量，無需依賴 LSP 服務器與調試適配器的緊密集成，目前支持 Python、Rust、Go 等語言。
+  &lt;/div&gt; &lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;p&gt;詳情查看文檔：&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fzed.dev%2Fdocs%2Fdebugger" target="_blank"&gt;https://zed.dev/docs/debugger&lt;/a&gt;&lt;/p&gt;
+                                                                                &lt;/div&gt;
+                                                                            </description>
+      <link>https://www.oschina.net/news/356190/zed-debugger</link>
+      <guid isPermaLink="false">https://www.oschina.net/news/356190/zed-debugger</guid>
+      <pubDate>Thu, 19 Jun 2025 06:59:28 GMT</pubDate>
+      <author>來源: OSCHINA</author>
+    </item>
+    <item>
+      <title>開源 Rust 瀏覽器引擎 Servo 支持 GIF</title>
+      <description>&lt;div class="content"&gt;
+                                                                    
+                                                        &lt;p&gt;Servo 是一款開源的瀏覽器引擎，最初由 Mozilla 開發。它使用 Rust 語言編寫，旨在提供高效、安全的網頁渲染能力，並且採用並行渲染技術，以提高網頁加載速度和性能。&lt;/p&gt; 
+&lt;p&gt;近日，Servo 團隊介紹了最近的更新內容，其中一項重要新功能是&lt;strong&gt;支持顯示動態 GIF&lt;/strong&gt;，並且還可以通過 HTML "img"標籤加載 SVG 圖像。&lt;/p&gt; 
+&lt;p&gt;&lt;img src="https://static.oschina.net/uploads/space/2025/0619/142856_yG2V_2720166.png" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p&gt;Servo 還在推進其 Trusted Types API、輸入類型 &amp;lt;input type=color&amp;gt; 支持、更好的佈局和 CSS 支持，以及支持各種其他 API 和功能。&lt;/p&gt; 
+&lt;p&gt;&lt;img alt="" src="https://oscimg.oschina.net/oscnet/up-958f8cd0cc574887e5f2e0cc055fb9586cf.png" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p&gt;Servo 還在繼續努力提升圍繞 Servo 嵌入支持的開發者體驗，以 Servo 作為 Chromium 的 CEF 替代方案在應用程序中利用 Servo。&lt;/p&gt; 
+&lt;p&gt;詳情查看&amp;nbsp;&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fservo.org%2Fblog%2F2025%2F06%2F18%2Fthis-month-in-servo%2F" target="_blank"&gt;https://servo.org/blog/2025/06/18/this-month-in-servo/&lt;/a&gt;&lt;/p&gt;
+                                                                                &lt;/div&gt;
+                                                                            </description>
+      <link>https://www.oschina.net/news/356185/servo-may-2025-animated-gifs</link>
+      <guid isPermaLink="false">https://www.oschina.net/news/356185/servo-may-2025-animated-gifs</guid>
+      <pubDate>Sun, 11 May 2025 06:30:00 GMT</pubDate>
+      <author>來源: OSCHINA</author>
+    </item>
+    <item>
+      <title>Qt Creator 17 發佈</title>
+      <description>&lt;div class="content"&gt;
+                                                                    
+                                                        &lt;p&gt;Qt Creator 17 現已發佈，&lt;span style="color:#000000"&gt;一些亮點更新內容如下：&lt;/span&gt;&lt;/p&gt; 
+&lt;h4&gt;General&lt;/h4&gt; 
+&lt;p&gt;在 Qt Creator 15 中引入並在 Qt Creator 16 中更新的&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fwww.qt.io%2Fblog%2Fqt-creator-15-released%3FhsLang%3Den" target="_blank"&gt;「2024」淺色和深色主題&lt;/a&gt;現已成為默認主題。用户仍然可以使用 Preferences &amp;gt; Environment &amp;gt; Interface &amp;gt; Theme 來選擇其他主題。已審核並更新了 Qt Creator 中的圖標，以與新的視覺風格保持一致，並實現更一致的用户界面。&lt;/p&gt; 
+&lt;p&gt;&lt;img alt="" height="382" src="https://oscimg.oschina.net/oscnet/up-806935a7e5b640cd078f2e4a9533addd625.webp" width="500" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p&gt;已將擴展的默認註冊表移至&amp;nbsp;&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fgithub.com%2Fqt-creator%2Fextension-registry" target="_blank"&gt;GitHub&lt;/a&gt;。用户現在可以在 Preferences &amp;gt; Extensions &amp;gt; Browser 中設置擴展的多個來源，但使用風險需自負。同時，項目團隊還擴展了尚未安裝的擴展的顯示信息，用户可以直接將擴展的存檔拖放到「擴展」模式進行安裝。&lt;/p&gt; 
+&lt;h4&gt;Projects&lt;/h4&gt; 
+&lt;p&gt;Qt Creator 17 中一個比較大的變化是，將運行配置設為構建配置的一部分。在此之前，構建配置和運行配置完全獨立。現在，每個運行配置都屬於一個特定的構建配置，切換活動的構建配置也會切換可用的運行配置集。這涵蓋了經常需要使用不同運行參數的用例，例如不同的命令行參數或針對不同構建配置（例如 Debug 或 Release）所需的不同環境。&lt;/p&gt; 
+&lt;p&gt;此外，現在可以使用新的「&lt;span style="color:#09102b"&gt;Clone into This&lt;/span&gt;」按鈕將值從一個運行配置複製到另一個運行配置，而不管它們屬於哪個構建配置。&lt;/p&gt; 
+&lt;p&gt;&lt;strong&gt;CMake&lt;/strong&gt;&lt;/p&gt; 
+&lt;p&gt;添加了一個選項，當 CMake 配置因缺少 Qt 軟件包而失敗時，可以使用 Qt 在線安裝程序（如果 Qt Creator 已鏈接到該安裝程序）安裝缺失的 Qt 組件。此功能依賴於 Qt Creator 中的 Preferences &amp;gt; CMake &amp;gt; General &amp;gt; Package manager auto setup 功能，該功能要求使用 Qt Creator 中的 CMake 配置項目。有關此功能以及 Qt Creator 中 CMake 支持的其他改進的更多信息，可查看&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fwww.qt.io%2Fblog%2Fqt-creator-17-cmake-update%3FhsLang%3Den" target="_blank"&gt;單獨的博客文章&lt;/a&gt;。&lt;/p&gt; 
+&lt;p&gt;&lt;strong&gt;Python&lt;/strong&gt;&lt;/p&gt; 
+&lt;p&gt;添加了在 Qt Creator 中打開基於&lt;code&gt;pyproject.toml&lt;/code&gt;項目的支持。現在，通過 Qt Creator 的項目嚮導創建的新 PySide 項目也默認打開 pyproject.toml。同時也支持打開基於&lt;code&gt;.pyproject&lt;/code&gt;的 PySide 項目。&lt;/p&gt; 
+&lt;h4&gt;&lt;strong&gt;Editing&lt;/strong&gt;&lt;/h4&gt; 
+&lt;p&gt;&lt;strong&gt;C++&lt;/strong&gt;&lt;/p&gt; 
+&lt;p&gt;將預構建的二進制文件切換至 LLVM 20.1.3，以獲得更新的 C++ 支持。新增了一些快速修復，用於將&amp;nbsp;&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fdoc.qt.io%2Fqt-6%2Fqt-literals-stringliterals.html" target="_blank"&gt;Qt 的字符串字面量運算符&lt;/a&gt;（例如「_ba」或「_L1」）添加到字符串字面量中。還修復了一些與&amp;nbsp;&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fbugreports.qt.io%2Fbrowse%2FQTCREATORBUG-32667" target="_blank"&gt;function-like built-ins&lt;/a&gt;&amp;nbsp;和&amp;nbsp;&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fbugreports.qt.io%2Fbrowse%2FQTCREATORBUG-32598" target="_blank"&gt;function-like macros&lt;/a&gt;&lt;span style="color:#09102b"&gt;&amp;nbsp;的&lt;/span&gt;問題。&lt;/p&gt; 
+&lt;p&gt;&lt;strong&gt;QML&lt;/strong&gt;&lt;/p&gt; 
+&lt;p&gt;現在，Preferences &amp;gt; Qt Quick &amp;gt; Code Style 中的代碼樣式選項允許使用集成到 QML 語言服務器的 qmlformat 進行代碼格式化，以及內置格式化程序和自定義的、兼容 qmlformat 的格式化程序。現在還可以通過上下文菜單和 Tools &amp;gt; QML/JS 菜單重新格式化文檔。&lt;/p&gt; 
+&lt;p&gt;QML 代碼編輯器的工具欄上有一個新的&lt;code&gt;.ui.qml&lt;/code&gt;文件按鈕，可以在 Qt Design Studio 中打開文件。&lt;/p&gt; 
+&lt;h4&gt;&lt;strong&gt;Version Control&lt;/strong&gt;&lt;/h4&gt; 
+&lt;p&gt;對於 Git 版本控制，添加了各種「diff」操作的變體，這些操作適用於已暫存的更改，而非未暫存的更改。「Instant Blame」的工具提示現在新增了用於還原更改的操作，Add Tag 對話框現在也可以創建帶註釋的標籤。&lt;/p&gt; 
+&lt;p&gt;更多詳情可&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fwww.qt.io%2Fblog%2Fqt-creator-17-released" target="_blank"&gt;查看官方公告&lt;/a&gt;。&lt;/p&gt;
+                                                                                &lt;/div&gt;
+                                                                            </description>
+      <link>https://www.oschina.net/news/356182/qt-creator-17-released</link>
+      <guid isPermaLink="false">https://www.oschina.net/news/356182/qt-creator-17-released</guid>
+      <pubDate>Sun, 11 May 2025 06:24:00 GMT</pubDate>
+      <author>來源: OSCHINA</author>
+    </item>
+    <item>
+      <title>開源遊戲引擎 Godot 4.5 beta 1 發佈</title>
+      <description>&lt;div class="content"&gt;
+                                                                    
+                                                        &lt;p&gt;開源遊戲引擎 Godot 4.5 &lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fgodotengine.org%2Farticle%2Fdev-snapshot-godot-4-5-beta-1%2F" target="_blank"&gt;發佈了首個 Beta 更新&lt;/a&gt;。&lt;/p&gt; 
+&lt;p&gt;&lt;img alt="" src="https://oscimg.oschina.net/oscnet/up-1a2f0c1591c9660839ac2bc0e69402a7647.png" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;img alt="" src="https://oscimg.oschina.net/oscnet/up-2c8b42310278dcb1ea2ce6d7e8611e46f25.png" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p&gt;以下是 Godot 4.5 beta 版本的更新亮點&lt;/p&gt; 
+&lt;h3&gt;新功能&lt;/h3&gt; 
+&lt;ul&gt; 
+ &lt;li&gt;&lt;strong&gt;支持導出變量為 Variant 類型&lt;/strong&gt; ：此前數組和字典雖技術上支持 Variant 值，但無法直接導出 Variant 類型變量，現在可通過修改導出變量類型實現，為用户提供了更大的靈活性。&lt;/li&gt; 
+ &lt;li&gt;&lt;strong&gt;標籤的堆疊輪廓效果&lt;/strong&gt; ：以往添加文本的輪廓或陰影效果時選擇有限，現在支持在 Label 上添加多層堆疊的輪廓效果，無需再通過堆疊多個文本對象來實現，操作更簡便。&lt;/li&gt; 
+ &lt;li&gt;&lt;strong&gt;基於環境光的鏡面遮擋&lt;/strong&gt; ：渲染器新增了基於環境光的鏡面遮擋功能，可使某些金屬或反射材質在該遮擋生效時不再出現不自然的反射，且該功能可通過項目設置中的切換按鈕進行開關。&lt;/li&gt; 
+ &lt;li&gt;&lt;strong&gt;內聯顏色選擇器&lt;/strong&gt; ：在腳本編輯器中為導出色彩變量添加了內聯顏色選擇器，用户無需在檢查器中查看，即可直觀地看到變量所代表的顏色，使代碼編寫更加直觀。&lt;/li&gt; 
+ &lt;li&gt;&lt;strong&gt;動畫改進&lt;/strong&gt; ：如動畫播放器添加字母排序功能、動畫編輯器添加動畫過濾功能等，提升了動畫製作的便利性和效率。&lt;/li&gt; 
+ &lt;li&gt;&lt;strong&gt;對 Apple Vision Pro 的原生支持&lt;/strong&gt; ：Godot 4.5 Beta 版本中，visionOS 成為近十年來首個被 Godot 引擎正式納入支持的平台，為開發者打開了 XR 遊戲開發的新大門。&lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;h3&gt;改進&lt;/h3&gt; 
+&lt;ul&gt; 
+ &lt;li&gt;&lt;strong&gt;編輯器改進&lt;/strong&gt; ：增加了將主菜單摺疊到菜單按鈕的編輯器設置；默認啓用了外部更改時的自動重載腳本功能；添加了在編輯器資源選擇器中快速加載的按鈕等，提升了編輯器的易用性和工作效率。&lt;/li&gt; 
+ &lt;li&gt;&lt;strong&gt;圖形用户界面改進&lt;/strong&gt; ：如添加了文件對話框中的文件排序功能；添加了控制在焦點事件上顯示虛擬鍵盤的屬性；添加了使用 Ctrl+中鍵進行拖動縮放的功能等，優化了用户在圖形界面操作時的體驗。&lt;/li&gt; 
+ &lt;li&gt;&lt;strong&gt;導入改進&lt;/strong&gt; ：使用 libjpeg-turbo 替代原有的 jpeg 編解碼器，提高了兼容性和速度；為紋理資源導入添加了通道重映射設置，為資源導入提供了更多的靈活性和控制。&lt;/li&gt; 
+ &lt;li&gt;&lt;strong&gt;網絡改進&lt;/strong&gt; ：修復了 mbedTLS 中與 TLS 相關的併發問題，提高了網絡功能的穩定性和可靠性。&lt;/li&gt; 
+ &lt;li&gt;&lt;strong&gt;粒子系統改進&lt;/strong&gt; ：對光照、貼花和粒子碰撞器的剔除掩碼內部機制進行了大修，優化了粒子系統的性能和效果。&lt;/li&gt; 
+ &lt;li&gt;&lt;strong&gt;渲染改進&lt;/strong&gt; ：添加了將網格添加到顯存佔用分析器中；允許在沒有運動矢量的情況下移動網格；在正向 + 渲染路徑中，用 DFG LUT 替換了當前的 BRDF 近似，並添加了多散射能量補償等，提升了渲染的質量和性能。&lt;/li&gt; 
+ &lt;li&gt;&lt;strong&gt;着色器改進&lt;/strong&gt; ：公開了內置的區域信息，使着色器編程更加靈活和強大，為開發者提供了更多的創作空間。&lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;h3&gt;修復&lt;/h3&gt; 
+&lt;ul&gt; 
+ &lt;li&gt;修復了調試時對類型化字典的調試問題。&lt;/li&gt; 
+ &lt;li&gt;修復了崩潰處理程序中打印腳本回溯的問題。&lt;/li&gt; 
+ &lt;li&gt;修復了資源複製的問題。&lt;/li&gt; 
+ &lt;li&gt;修復了字符串序列化問題。&lt;/li&gt; 
+ &lt;li&gt;修復了多通道音頻重採樣問題。&lt;/li&gt; 
+ &lt;li&gt;修復了 Android 平台相關問題，如更新 NDK 版本、移除某些導出選項等。&lt;/li&gt; 
+ &lt;li&gt;修復了在非監控區域使用 Jolt 物理時的性能問題。&lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;p&gt;下載地址：&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fgodotengine.org%2Fdownload%2Farchive%2F4.5-beta1%2F" target="_blank"&gt;https://godotengine.org/download/archive/4.5-beta1/&lt;/a&gt;&lt;/p&gt;
+                                                                                &lt;/div&gt;
+                                                                            </description>
+      <link>https://www.oschina.net/news/356177/godot-4-5-beta-1-released</link>
+      <guid isPermaLink="false">https://www.oschina.net/news/356177/godot-4-5-beta-1-released</guid>
+      <pubDate>Sun, 11 May 2025 06:11:00 GMT</pubDate>
+      <author>來源: OSCHINA</author>
+    </item>
+    <item>
+      <title>美國科技巨頭推動聯邦立法，禁止各州單獨監管 AI</title>
+      <description>&lt;div class="content"&gt;
+                                                                    
+                                                        &lt;p&gt;&lt;span style="color:#000000"&gt;《金融時報》報道稱，近日美國多家大型科技公司正積極推動一項聯邦禁令，旨在禁止各州自行制定人工智能（AI）監管法規。此次立法倡議得到了亞馬遜、谷歌、微軟和 Meta 等公司的支持，目的是避免各州在 AI 監管方面各自為政，影響行業的整體發展。&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;span style="color:#000000"&gt;知情人士透露，這項禁令提案已經被納入眾議院版本的 「大而美」 預算法案中。參議院也計劃在近期推出自己的版本，並希望能夠在 7 月 4 日之前完成相關立法工作。前聯邦眾議員、現任 INCOMPAS 首席執行官 Chip Pickering 是這項提案的重要推動者，他表示，保持美國在技術領域的領導地位是確保國家競爭力的關鍵。&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;span style="color:#000000"&gt;INCOMPAS 組織於 2024 年成立了 「人工智能競爭中心」（AICC），專注於遊説國會與監管機構，以適應快速發展的 AI 行業。隨着 AI 監管討論的加劇，尤其是在歐盟出台新規後，亞馬遜和 Meta 也加入了該組織，試圖通過統一監管來增強競爭力。&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;span style="color:#000000"&gt;然而，此提案引發了廣泛的爭議。反對者認為，大型科技公司推動禁令的真正目的是為了鞏固自身在 AGI（通用人工智能）競爭中的壟斷地位。範德比爾特大學的政策加速中心 AI 與科技政策主任 Asad Ramzanali 表示，負責任的創新不應該懼怕法律的約束。同時，麻省理工學院的教授 Max Tegmark 也批評稱，這種行為是科技巨頭為了進一步集中財富和權力的擴張。&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;span style="color:#000000"&gt;另一方面，支持禁令的人士認為，聯邦層面的統一監管將有助於避免各州的分歧，保持行業的創新能力，從而在全球 AI 競爭中處於有利地位。AI 安全倡導者如 Anthropic 聯合創始人 Dario Amodei 則警告稱，如果完全依賴企業自我監管，可能會帶來嚴重的社會風險。&lt;/span&gt;&lt;/p&gt;
+                                                                                &lt;/div&gt;
+                                                                            </description>
+      <link>https://www.oschina.net/news/356176</link>
+      <guid isPermaLink="false">https://www.oschina.net/news/356176</guid>
+      <pubDate>Sun, 11 May 2025 06:08:00 GMT</pubDate>
+      <author>來源: OSCHINA</author>
+    </item>
+    <item>
+      <title>百度垂搜數據管理系統彈性調度優化實踐</title>
+      <description>&lt;div class="content"&gt;
+                                                                                                                    
+                                                                                                                                                    &lt;p&gt;百度垂直搜索系統將搜索核心能力賦能阿拉丁（百度搜索特型結果）、垂直領域搜索、應用內搜索等場景，支撐了數百個檢索場景、百億級內容數據的檢索。隨着接入業務數量和數據量不斷增長，系統在海量數據管理與調度上遭遇新的挑戰，通過垂搜數據管理系統彈性調度優化實踐來滿足業務增長需求。&lt;/p&gt; 
+&lt;span id="OSC_h1_1"&gt;&lt;/span&gt; 
+&lt;h1&gt;01 背景&lt;/h1&gt; 
+&lt;span id="OSC_h2_2"&gt;&lt;/span&gt; 
+&lt;h2&gt;&lt;strong&gt;1.1 簡介&lt;/strong&gt;&lt;/h2&gt; 
+&lt;p&gt;百度垂搜架構的召回引擎經過歷史架構演進確定了&lt;strong&gt;&lt;strong&gt;異構&lt;/strong&gt;&lt;/strong&gt;部署的架構模型，相較於同構部署在容量自動調整、數據按需存儲等方面更具效率與成本的優勢，同時在海量數據和海量檢索方面也實現了高可用和高性能。目前系統已承接 80+業務，全機房部署了數百個檢索服務，數千個索引庫，共計數百億文檔收錄。隨着接入新業務數量的增加，以及存量業務的深入迭代，我們遇到了更加複雜多樣的場景，進而對系統提出更高的要求。本文主要介紹我們的系統在海量數據管理與調度上面臨的問題， 以及各項優化工作落地後在系統擴展性、穩定性等方面取得的效果。&lt;/p&gt; 
+&lt;span id="OSC_h2_3"&gt;&lt;/span&gt; 
+&lt;h2&gt;&lt;strong&gt;1.2&amp;nbsp;當前數據管理架構存在的問題&lt;/strong&gt;&lt;/h2&gt; 
+&lt;p&gt;此前我們的系統設計了彈性伸縮機制應對流量和數據量的上漲，冷熱分離機制實現了資源按需部署。隨着接入業務的增加，系統逐漸暴露出一些新的問題，主要體現在以下幾點:&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt; &lt;p&gt;元信息管理瓶頸。系統使用 ETCD 進行服務發現和心跳管理， 然而所有業務實例&lt;strong&gt;&lt;strong&gt;直連 ETCD&lt;/strong&gt;&lt;/strong&gt;存在嚴重讀寫放大問題， 導致 ETCD 負載超發出現&lt;strong&gt;&lt;strong&gt;單點瓶頸&lt;/strong&gt;&lt;/strong&gt;, 限制集羣規模進一步增長。&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;依靠人工評估資源。新業務的接入或者一些大事件運營保障依賴人工估算所需資源，&lt;strong&gt;&lt;strong&gt;不僅耗費人力，而且不夠準確&lt;/strong&gt;&lt;/strong&gt;，估算過高，服務長期處於低負載會造成資源浪費，估算過低，服務容易過載，進而導致穩定性問題。&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;數據量增長瓶頸。 當前的架構可以在無需重新建庫的情況下原地擴分片，但是分片數只能倍數擴展，並且&lt;strong&gt;&lt;strong&gt;分片數量有限制&lt;/strong&gt;&lt;/strong&gt;，大庫場景容易觸發上限，進而導致數據量無法繼續增長。&lt;/p&gt; &lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;span id="OSC_h1_4"&gt;&lt;/span&gt; 
+&lt;h1&gt;02 檢索系統與數據管理系統架構&lt;/h1&gt; 
+&lt;span id="OSC_h2_5"&gt;&lt;/span&gt; 
+&lt;h2&gt;&lt;strong&gt;2.1&amp;nbsp;檢索系統架構概覽&lt;/strong&gt;&lt;/h2&gt; 
+&lt;p&gt;首先簡單介紹下垂搜檢索系統的各模塊，如下圖所示:&lt;/p&gt; 
+&lt;p&gt;&lt;img src="https://oscimg.oschina.net/oscnet/up-c6fa6c464ffb4e6ea05cb47989be85fcbaf.jpg" alt="" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt; &lt;p&gt;RANK。檢索精排模塊，負責 query 理解、請求構造、多隊列拆分、正排數據獲取、策略因子計算、算分排序、返回結果組裝等流程。&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;BS。檢索召回引擎，負責基礎召回/粗排，根據基礎相關性等權重因子進行數據的粗篩，支持基於 term 倒排拉鍊和 ANN 向量基礎召回。&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;BUILD。數據建庫模塊，負責數據處理、切詞、生成正排/倒排/向量/摘要等功能。&lt;/p&gt; &lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;p&gt;每個垂類 (業務) 擁有一套獨立的上述檢索系統服務，數據管理系統為每個業務的檢索系統提供&lt;strong&gt;&lt;strong&gt;實例調度、容量管理、服務發現、心跳管理、路由控制&lt;/strong&gt;&lt;/strong&gt;等能力，數據管理系統面向的核心管理對象是召回引擎 (BS)。&lt;/p&gt; 
+&lt;span id="OSC_h3_6"&gt;&lt;/span&gt; 
+&lt;h3&gt;2.1.1&amp;nbsp;垂搜召回引擎&lt;/h3&gt; 
+&lt;p&gt;如下圖所示，百度垂搜的召回引擎是一個&lt;strong&gt;&lt;strong&gt;流式、多分片、異構、有狀態的倒排+向量&lt;/strong&gt;&lt;/strong&gt;索引引擎:&lt;/p&gt; 
+&lt;p&gt;&lt;img src="https://oscimg.oschina.net/oscnet/up-6a59f451eae4330c4d002228c9ca5d20b51.jpg" alt="" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt; &lt;p&gt;流式。業務經過離線建庫環節產出建庫包並生效到 Kafka 中，召回引擎再從 Kafka 消費，數據從建庫到檢索可實現&lt;strong&gt;&lt;strong&gt;秒級生效&lt;/strong&gt;&lt;/strong&gt;。&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;多分片。業務數據量超過單機存儲上限，會被拆分成多個分片 (slice)，每個分片由 PaaS 層面實例承載，並對應 Kafka 的一段 partition 區間。&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;異構。單個業務的若干個資源號 (resource) 之間支持獨佔或者混部，一般根據服務負載設置不同副本數，根據數據量設置不同分片數。&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;有狀態。每個實例承載一個或多個分片數據，週期性彙報心跳，消費分片由中控服務統一調度。&lt;/p&gt; &lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;p&gt;名詞解釋:&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt; &lt;p&gt;resource(資源號): 一類或者一個場景的數據集合，即一個&lt;strong&gt;&lt;strong&gt;索引庫&lt;/strong&gt;&lt;/strong&gt;，一個業務通常包含多個資源號 (如圖中 mobile_game，pc_game， game_video 等)。&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;slice(分片):數據調度基本單位，一個 resource 根據數據量可能會拆分成多個 slice(mobile_game 有三個 slice, pc_game 和 game_video1 個)。&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;slot:數據劃分的基本單位，一個 slice 下有若干個 slot， 與 Kafka 的 partition 一一對應，在業務接入時根據數據量級確定。&lt;/p&gt; &lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;p&gt;pod:PaaS 層面實際的物理存儲容器，一個 pod 會承載一個或多個 slice，由中控服務統一調度。&lt;/p&gt; 
+&lt;span id="OSC_h2_7"&gt;&lt;/span&gt; 
+&lt;h2&gt;&lt;strong&gt;2.2&amp;nbsp;動態化數據管理系統&lt;/strong&gt;&lt;/h2&gt; 
+&lt;p&gt;動態化數據管理系統負責召回引擎的每個實例從建庫到檢索，從部署到下線的全生命週期管理。經過&lt;strong&gt;&lt;strong&gt;服務重構、架構升級、新功能建設&lt;/strong&gt;&lt;/strong&gt;等方面的優化工作，形成了包括中控服務，心跳服務 (HeartbeatService), 名字服務 (NamingService), 存儲 ETCD 等模塊的現有系統架構:&lt;/p&gt; 
+&lt;p&gt;&lt;img src="https://oscimg.oschina.net/oscnet/up-da1b5525954986be5194f44d536e0d8d45b.jpg" alt="" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;span id="OSC_h3_8"&gt;&lt;/span&gt; 
+&lt;h3&gt;2.2.1&amp;nbsp;中控服務&lt;/h3&gt; 
+&lt;p&gt;整個動態化數據管理系統的核心模塊，負責各類調度任務的發起、控制等:&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt; &lt;p&gt;資源號接入/下線。新增資源號 (索引庫)，為每個資源號根據副本數、資源號之間部署關係等調度實例；下線資源號， 對應資源號的數據發起清理以及實例回收。&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;副本保活。每個資源號實際副本數可能由於擴縮副本或 PaaS 層面遷移，導致與目標副本數不一致，中控服務負責定期輪訓所有資源號 (分片)，維持副本數與目標一致。&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;容量管理。自動擴縮容服務/人工基於負載調整資源號的副本數，並通過副本保活生效，基於數據量調整資源號分片數，通過任務控制器生效。&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;可用度控制。上線重啓需要保證分片維度的可用度，變更由 PaaS 發起，每個實例重啓前需要請求中控服務的探針，中控服務根據當前分片可用度決定實例是否可以重啓。&lt;/p&gt; &lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;span id="OSC_h3_9"&gt;&lt;/span&gt; 
+&lt;h3&gt;2.2.2&amp;nbsp;名字服務 NamingService&lt;/h3&gt; 
+&lt;p&gt;提供服務發現，實例屏蔽，建庫路由控制等能力：&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt; &lt;p&gt;服務發現。週期性加載並更新全量業務的資源號檢索路由拓撲信息，對每個分片過濾心跳丟失、未消費完成、重啓中等暫不可用實例。&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;實例屏蔽。支持異常實例的分片維度/App 維度屏蔽，線上快速止損，並保留現場便於後續問題追查。&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;建庫路由控制。提供離線建庫側全量業務資源號與 Kafka partition 映射關係查詢，資源號倒排索引雙寫控制。&lt;/p&gt; &lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;span id="OSC_h3_10"&gt;&lt;/span&gt; 
+&lt;h3&gt;2.2.3&amp;nbsp;心跳服務 HeartbeatService&lt;/h3&gt; 
+&lt;p&gt;負責召回引擎 (BS) 實例、分片心跳信息收集並持久化，實例消費區間信息傳遞等:&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt; &lt;p&gt;心跳管理。收集召回引擎實例上報的心跳信息，包括實例自身心跳以及消費分片信息， 並將心跳信息聚合後寫入 ETCD。&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;實例調度信息傳遞。獲取由中控調度下發的最新消費分片信息，寫入心跳請求 response，實例感知到消費分片發生變化後，清理舊分片數據，並重新消費新分片數據。&lt;/p&gt; &lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;span id="OSC_h3_11"&gt;&lt;/span&gt; 
+&lt;h3&gt;2.2.4&amp;nbsp;存儲 ETCD&lt;/h3&gt; 
+&lt;p&gt;動態化數據管理系統各類元信息持久化存儲:&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt; &lt;p&gt;實例心跳信息。包括版本號，實例唯一標識，上報時間戳，消費分片等。&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;分片路由拓撲信息。分片下全量副本狀態信息，包括 endpoint，snapshot 版本，上報時間戳，消費狀態等。&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;業務資源號拓撲信息、建庫路由信息。單業務視角下全量資源號信息，包括版本號，分片數，副本數，對應 Kafka partition 區間，rpc 參數配置等。&lt;/p&gt; &lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;span id="OSC_h1_12"&gt;&lt;/span&gt; 
+&lt;h1&gt;03 彈性調度機制優化實踐&lt;/h1&gt; 
+&lt;span id="OSC_h2_13"&gt;&lt;/span&gt; 
+&lt;h2&gt;&lt;strong&gt;3.1&amp;nbsp;服務發現、心跳管理模塊重構&lt;/strong&gt;&lt;/h2&gt; 
+&lt;span id="OSC_h3_14"&gt;&lt;/span&gt; 
+&lt;h3&gt;3.1.1&amp;nbsp;原有架構&lt;/h3&gt; 
+&lt;p&gt;&lt;img src="https://oscimg.oschina.net/oscnet/up-6f12910e29c40a1a821609e09c774e7296d.jpg" alt="" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p&gt;可以看到在原有架構，業務 RANK 和 BS 實例都是直連 ETCD，隨着業務接入數量的增加逐漸暴露出一些問題:&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt; &lt;p&gt;讀流量放大。同業務的不同 RANK 實例會各自訪問 ETCD 獲取相同的路由拓撲，導致讀流量放大，對於 RANK 實例數多的業務放大現象愈發明顯。&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;寫流量放大。每個分片含有多個副本，在進行更新時，一輪週期內同一個分片會被寫入多次，導致寫流量放大，對於副本數多的分片寫競爭愈發激烈。&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;升級改造困難。路由篩選策略、心跳上報策略均內嵌在 sched-lib 中, 進行升級需要給每個業務 RANK/BS 上線，人力成本巨大。&lt;/p&gt; &lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;p&gt;為瞭解決上述問題，我們對心跳管理和服務發現模塊進行了微服務拆分，新增心跳服務 (以下簡稱 HS) 和名字服務 (以下簡稱 NS) 避免了業務實例直連 ETCD，同時引入了 Prometheus，對心跳上報狀態和路由獲取狀態等信息進行監控和可視化展示。&lt;/p&gt; 
+&lt;p&gt;&lt;img src="https://oscimg.oschina.net/oscnet/up-bb9efb9826cf2b2ebe1bae522ce0df14546.jpg" alt="" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;span id="OSC_h3_15"&gt;&lt;/span&gt; 
+&lt;h3&gt;3.1.2&amp;nbsp;NS(NamingService) 設計&lt;/h3&gt; 
+&lt;p&gt;我們對 NS 的定位是作為 ETCD 的 cache，採用 Read-Through 的模式，對全量業務的 RANK 提供拓撲信息查詢，RANK 不再直接訪問 ETCD:&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt; &lt;p&gt;NS 本身設計為一個&lt;strong&gt;&lt;strong&gt;無狀態服務&lt;/strong&gt;&lt;/strong&gt;， RANK 可以訪問任意一台 NS 獲取拓撲，NS 實例之間拓撲路由&lt;strong&gt;&lt;strong&gt;保證最終一致性&lt;/strong&gt;&lt;/strong&gt;，NS 在拓撲變更時返回拓撲信息+MD5(拓撲)+更新時間戳，未變更時僅返回 MD5 和時間戳， RANK 基於 MD5 和時間戳自行判斷是否需要更新。&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;拓撲更新策略下沉到 NS 中，RANK 獲取到的拓撲即為直接可用拓撲，針對不同業務提供不同的控制策略並且後續升級改造只需上線 NS，成本大幅降低。&lt;/p&gt; &lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;p&gt;單機房 3 台 NS 實例即可支撐全部業務拓撲查詢，重構前後 ETCD 讀流量比例為 M:3，M 為平均每個業務 RANK 實例數，假設 N 取 30，則讀流量下降 90%。&lt;/p&gt; 
+&lt;p&gt;&lt;img src="https://oscimg.oschina.net/oscnet/up-93ea29c3774379e1a2cabf37f1ed095a248.jpg" alt="" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;span id="OSC_h3_16"&gt;&lt;/span&gt; 
+&lt;h3&gt;3.1.3&amp;nbsp;HS(HeartbeatService) 設計&lt;/h3&gt; 
+&lt;p&gt;HS 負責收集 BS 實例本身的心跳以及實例消費的分片的心跳，週期性&lt;strong&gt;&lt;strong&gt;聚合寫入&lt;/strong&gt;&lt;/strong&gt;ETCD，並且向 BS 實例返回其最新的消費分片信息:&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt; &lt;p&gt;HS 採用無主節點設計，也支持任意水平擴展。同一個業務的不同 BS 實例通過&lt;strong&gt;&lt;strong&gt;一致性 hash&lt;/strong&gt;&lt;/strong&gt;方式請求同一台 HS 實例, 便於 HS 進行分片維度的信息聚合，這樣在大部分時間，每個分片無論有多少個副本一個週期內只會被寫入一次，實例本身的心跳採用批量更新形式，寫競爭大幅降低。&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;BS 在上報心跳的同時會從 HS 的 response 中獲取自身消費的最新分片信息，如果分片信息變化，則清理老分片數據，消費新分片數據，後續只上報新分片狀態信息。&lt;/p&gt; &lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;p&gt;單機房 3 台 NS 實例即可支撐全部業務心跳更新，重構前後 ETCD 寫流量比例為 N:1，N 為平均每個分片副本數，假設 N 取 5，則寫流量下降 80%。&lt;/p&gt; 
+&lt;p&gt;&lt;img src="https://oscimg.oschina.net/oscnet/up-f141ad59566f2bbe45c04a1a0dac2046805.jpg" alt="" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;span id="OSC_h2_17"&gt;&lt;/span&gt; 
+&lt;h2&gt;&lt;strong&gt;3.2&amp;nbsp;自動擴縮容&lt;/strong&gt;&lt;/h2&gt; 
+&lt;span id="OSC_h3_18"&gt;&lt;/span&gt; 
+&lt;h3&gt;3.2.1&amp;nbsp;當前現狀&lt;/h3&gt; 
+&lt;p&gt;BS 是一個&lt;strong&gt;&lt;strong&gt;多分片、異構&lt;/strong&gt;&lt;/strong&gt;服務，即每個 App 內通常部署了多個資源號，各業務 App 在 PasS 層面隔離部署，在資源利用率、擴縮容管理等方面我們遇到以下問題：&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt; &lt;p&gt;整體資源利用率低。全機房擁有上百個 BS 業務 App、上千個資源號，PaaS 層面的整體平均峯值 CPU 利用率低於平均水平，峯值 CPU 超過 70% 的資源號佔比不足 20%。&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;依賴人工進行資源號副本數調整。一般上線前通過人工壓測評估放量後所需的資源然後進行申請，有時候通過壓測難以估算真實的資源，並且後續業務迭代或者流量變化也會引起資源使用的變化，如果負載超發，服務穩定性難以保障，如果負載太過空閒，也會造成資源浪費。&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;無法直接接入 PaaS 層面自動擴縮容能力。一方面 PaaS 無法感知每個 App 內資源號維度負載信息，另一方面每個實例承載分片信息只能由中控服務調度，因此無法直接服用 PaaS 層面自動擴縮容能力。&lt;/p&gt; &lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;p&gt;&lt;img src="https://oscimg.oschina.net/oscnet/up-05f53f5b84434e08c78529d148cd54a6dcb.jpg" alt="" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;span id="OSC_h3_19"&gt;&lt;/span&gt; 
+&lt;h3&gt;3.2.2&amp;nbsp;自動擴縮容實現&lt;/h3&gt; 
+&lt;p&gt;為了實現容量自適應調整，我們開發了一個自動擴縮容服務，對全量資源號進行容量管理。自動擴縮容服務週期性計算資源號維度負載，根據負載情況，觸發中控服務進行資源號副本數調整，或者 PaaS 層面實例數調整。對於擴容，優先調度存量資源池中實例，如果存量實例不足則觸發 PaaS 擴容；對於縮容，先將空閒副本數回收至空閒資源池，再觸發 PaaS 縮容。對於自動擴縮容服務的設計我們主要考慮了以下幾點:&lt;/p&gt; 
+&lt;p&gt;&lt;img src="https://oscimg.oschina.net/oscnet/up-53d9ad28a3b34ec0ecb4706a0bc8f9316eb.jpg" alt="" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;span id="OSC_h4_20"&gt;&lt;/span&gt; 
+&lt;h4&gt;&lt;strong&gt;負載指標選取&lt;/strong&gt;&lt;/h4&gt; 
+&lt;p&gt;垂搜系統大部分業務 BS 為純內存版本，且幾乎沒有下游網絡請求，屬於典型的計算密集型業務， 因此我們選擇 CPU 作為負載計算參考指標，另外資源號混部場景進一步結合 QPS 和 Latency 進行判斷。此前我們已經實現了基於 Prometheus 採集實分片維度 CPU、MEM、QPS、Latency、建庫數據量等指標全量業務覆蓋，因此可以低成本的獲取到全量&lt;strong&gt;&lt;strong&gt;資源號維度&lt;/strong&gt;&lt;/strong&gt;的負載數據。&lt;/p&gt; 
+&lt;span id="OSC_h4_21"&gt;&lt;/span&gt; 
+&lt;h4&gt;&lt;strong&gt;負載狀態流轉&lt;/strong&gt;&lt;/h4&gt; 
+&lt;p&gt;每個資源號從擴容到縮容，共定義如下 7 種狀態：&lt;/p&gt; 
+&lt;p&gt;&lt;code&gt;enum LoadStatus { LOAD_STATUS_LOAD_OK = 0; //正常負載 LOAD_STATUS_OVERLOAD = 1; //超負載 LOAD_STATUS_IDLELOAD = 2; //低負載 LOAD_STATUS_BS_ADD_REPLICA = 3; //bs 擴副本中 LOAD_STATUS_BS_REMOVE_REPLICA = 4; // bs 縮副本中 LOAD_STATUS_TRIGGER_PAAS_EXPENSION = 5; // PaaS 擴容中 LOAD_STATUS_TRIGGER_PAAS_SHRINK = 6; // PaaS 縮容中 }&lt;/code&gt;&lt;/p&gt; 
+&lt;p&gt;每個資源號根據負載情況在上述狀態之間流轉:&lt;/p&gt; 
+&lt;p&gt;&lt;img src="https://oscimg.oschina.net/oscnet/up-8fa2f7581ed63466a8f24640ad7258bba52.jpg" alt="" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;span id="OSC_h4_22"&gt;&lt;/span&gt; 
+&lt;h4&gt;&lt;strong&gt;擴縮容執行流程&lt;/strong&gt;&lt;/h4&gt; 
+&lt;ul&gt; 
+ &lt;li&gt; &lt;p&gt;擴副本&lt;/p&gt; 
+  &lt;ul&gt; 
+   &lt;li&gt;優先調度 App 內空閒實例，不足則觸發 PaaS 層面實例數擴容，循環執行直到負載恢復正常。&lt;/li&gt; 
+  &lt;/ul&gt; &lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;p&gt;&lt;img src="https://oscimg.oschina.net/oscnet/up-edfbd8b326a5709833d414a5fb013f357ed.jpg" alt="" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt; &lt;p&gt;縮容&lt;/p&gt; 
+  &lt;ul&gt; 
+   &lt;li&gt;先將資源號多餘副本釋放為空閒實例，再觸發 PaaS 層面縮容，循環執行直到資源號負載以及空閒實例數回到正常水平。&lt;/li&gt; 
+  &lt;/ul&gt; &lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;p&gt;&lt;img src="https://oscimg.oschina.net/oscnet/up-504ce96574f2dc384b323509ab32bd78022.jpg" alt="" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;span id="OSC_h2_23"&gt;&lt;/span&gt; 
+&lt;h2&gt;3.3&amp;nbsp;&lt;strong&gt;資源號擴分片進階&lt;/strong&gt;&lt;/h2&gt; 
+&lt;p&gt;每個資源號隨着數據量級不斷增長，分片數也需要動態擴展，否則會出現分片內存超發的情況。&lt;/p&gt; 
+&lt;span id="OSC_h3_24"&gt;&lt;/span&gt; 
+&lt;h3&gt;3.3.1&amp;nbsp;&lt;strong&gt;當前擴分片方案&lt;/strong&gt;&lt;/h3&gt; 
+&lt;p&gt;每個資源號按 resource-&amp;gt;slice-&amp;gt;slot 的層級劃分，slot 是數據劃分最小單位與 kafka partion 一一對應，在業務接入時每個資源號 slot(partion) 的數量已經確定。擴層時，資源號的 slot 數量不變，&lt;strong&gt;&lt;strong&gt;分片數變成原來 2 倍， 每個分片的 slot 數則為原來的 1/2&lt;/strong&gt;&lt;/strong&gt;。&lt;/p&gt; 
+&lt;p&gt;&lt;img src="https://oscimg.oschina.net/oscnet/up-8db852d84d0b6a8d63c9bac9fed576d9490.jpg" alt="" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p&gt;原有的擴分片方案可以在無需重新建庫的情況下實現業務無感的原地分片擴縮操作，然而依舊存在兩個問題:&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt; &lt;p&gt;分片數按指數增長，當分片數超過一定數值，將帶來不容忽視的資源成本。&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;如果初始分配 slot 數太少，當 slice:slot=1:1 時，無法再擴層，數據增長出現瓶頸。&lt;/p&gt; &lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;span id="OSC_h3_25"&gt;&lt;/span&gt; 
+&lt;h3&gt;3.3.2&amp;nbsp;&lt;strong&gt;進階擴展方案&lt;/strong&gt;&lt;/h3&gt; 
+&lt;p&gt;對於分片無法繼續擴展但是依舊需要繼續建庫的情況，先前的方案只能是重建一個新的資源號，需要業務、架構共同介入，歷史上我們使用原方案遷移一個資源號，前後&lt;strong&gt;&lt;strong&gt;投入近 3 周時間&lt;/strong&gt;&lt;/strong&gt;，耗費成本巨大，因此我們需要一個成本更低的方案。通過分析，當前分片的擴展瓶頸主要有以下三個限制條件：&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt; &lt;p&gt;每個資源號的 slots 是一段連續的區間。&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;BS 的 slot 與 Kafka 的 partition 一一對應。&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;初始分配 slot 數太少，且後續不支持調整。&lt;/p&gt; &lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;p&gt;只需要打破其中任意一個條件，則可以消除瓶頸。綜合考慮改造成本、擴展靈活性、實現難度等因素，我們選擇從條件三入手，在新的 partition 區間重建分片，分片數和 slot 數根據數據量設置，將舊分片的數據全量複製到新的分片上，再將新分片替換舊分片，如下圖所示。&lt;/p&gt; 
+&lt;p&gt;&lt;img src="https://oscimg.oschina.net/oscnet/up-1534a9d4b6b75072160e0a0470563a1c8c8.jpg" alt="" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;span id="OSC_h4_26"&gt;&lt;/span&gt; 
+&lt;h4&gt;&lt;strong&gt;整體實現&lt;/strong&gt;&lt;/h4&gt; 
+&lt;p&gt;對於一個流式建庫系統，業務可能時刻都在進行數據建庫，我們希望做到遷移過程中業務依舊可以持續建庫，並且保證數據不丟失、時序不錯亂。我們的方案是將數據分為存量數據 (老分片中的全量數據) 和增量數據 (實時寫入的新數據)，對於增量數據可以通過雙寫機制，同時寫入新舊分片，存量數據則通過構建 snapshot 的方法遷移至新分片，新分片數據 ready 後，再由服務發現層將檢索流量切換至新分片，整體流程如下:&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt; &lt;p&gt;離線側開啓雙寫，保證增量倒排索引數據同時寫入新舊分片，正排和摘要部分數據無需變化。&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;基於舊分片構建新分片 snapshot, 並記錄構建時間點。將該時間點前舊分片所有數據進行 resharding 構建新分片 snapshot。&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;新分片的 BS 實例加載構建好的 snapshot，然後每個 partition 的消費 offset&lt;strong&gt;&lt;strong&gt;回退到 snapshot 構建時間點開始重新消費&lt;/strong&gt;&lt;/strong&gt;。&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;服務發現層將資源號到 slot 區間映射切換到新分片上，檢索流量從老分片遷移至新分片。&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;將舊分片 BS 實例回收，並關閉雙寫。&lt;/p&gt; &lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;p&gt;&lt;img src="https://oscimg.oschina.net/oscnet/up-2cc22fbbf1492e639ef2bf5cbd76b4f8c3a.jpg" alt="" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;span id="OSC_h1_27"&gt;&lt;/span&gt; 
+&lt;h1&gt;04 總結與展望&lt;/h1&gt; 
+&lt;span id="OSC_h2_28"&gt;&lt;/span&gt; 
+&lt;h2&gt;4.1&amp;nbsp;&lt;strong&gt;總結&lt;/strong&gt;&lt;/h2&gt; 
+&lt;p&gt;本文介紹了百度垂搜檢索數據管理架構在彈性機制建設上的一系列優化工作，並且在擴展性、穩定性、以及成本效率等方面均取得了預期成果:&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt; &lt;p&gt;擴展性&lt;/p&gt; 
+  &lt;ul&gt; 
+   &lt;li&gt; &lt;p&gt;ETCD 負載下降一個量級，單機房 BS、RANK 集羣規模提升兩個量級， 單分片副本數上限提升至 5000+。&lt;/p&gt; &lt;/li&gt; 
+   &lt;li&gt; &lt;p&gt;分片擴展數量不再受限，解決了部分存量業務無法擴展分片導致的內存超發問題，並支持搜索創新業務數據量從百萬級逐步增加至數十億量級。&lt;/p&gt; &lt;/li&gt; 
+  &lt;/ul&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;穩定性&lt;/p&gt; 
+  &lt;ul&gt; 
+   &lt;li&gt; &lt;p&gt;存量調度問題被修復，新增多種路由調度策略以應對不同場景，分片可用度不足幹預時間從小時級縮短至分鐘級。&lt;/p&gt; &lt;/li&gt; 
+   &lt;li&gt; &lt;p&gt;ETCD 負載不再超發，慢查詢基本消失，穩定性風險基本消除，心跳上報、拓撲獲取狀態建立監控，異常情況及時感知。&lt;/p&gt; &lt;/li&gt; 
+  &lt;/ul&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;成本效率&lt;/p&gt; 
+  &lt;ul&gt; 
+   &lt;li&gt; &lt;p&gt;全機房 BS 接入自動擴縮容，實現容量自適應調整，整體峯值 CPU 利用率提升了 15%+，同時相比之前減少了 80% 人工介入容量調整的情況出現。&lt;/p&gt; &lt;/li&gt; 
+   &lt;li&gt; &lt;p&gt;部分業務通過分片合併，最終使用存儲資源為下降至原來的 20%，並且檢索 97 分位耗時降低了 20ms，業務側效果與先前打平。&lt;/p&gt; &lt;/li&gt; 
+  &lt;/ul&gt; &lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;span id="OSC_h2_29"&gt;&lt;/span&gt; 
+&lt;h2&gt;4.2&amp;nbsp;&lt;strong&gt;展望&lt;/strong&gt;&lt;/h2&gt; 
+&lt;p&gt;目前索引庫的自動擴縮容機制實現了副本數隨負載 (CPU) 的自動調整，後續將實現分片數隨數據量的自動調整。另外，在大庫場景將持續建設流批一體機制，以追求用更低的存儲成本實現更高的檢索性能。&lt;/p&gt;
+                                                                                    &lt;/div&gt;
+                                                                            </description>
+      <link>https://my.oschina.net/u/4939618/blog/18627327</link>
+      <guid isPermaLink="false">https://my.oschina.net/u/4939618/blog/18627327</guid>
+      <pubDate>Sun, 11 May 2025 03:11:00 GMT</pubDate>
+      <author>原創</author>
+    </item>
+    <item>
+      <title>Sam Altman 透露將在今年夏季發佈 GPT-5</title>
+      <description>&lt;div class="content"&gt;
+                                                                    
+                                                        &lt;p&gt;今天凌晨，OpenAI 發佈了其聯合創始人兼首席執行官 Sam Altman 的 40 分鐘深度專訪。&lt;/p&gt; 
+&lt;p&gt;&lt;img src="https://static.oschina.net/uploads/space/2025/0619/105636_pUBl_2720166.png" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p&gt;OpenAI CEO Sam Altman &lt;u&gt;&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fx.com%2FOpenAI%2Fstatus%2F1935357512011890815" target="_blank"&gt;透露&lt;/a&gt;&lt;/u&gt;，備受矚目的 GPT-5 預計將於今年夏天推出，不過具體發佈日期尚未確定。&lt;/p&gt; 
+&lt;p&gt;據報道，GPT-5 性能將遠超 GPT-4，測試者表示其在多方面有顯著進步。據悉，這款新模型將整合 OpenAI 的核心技術，融合 GPT-4o 自然語言處理的靈活性與 o3 在代碼及科學推理方面的優勢，打造更強大的統一系統。&lt;/p&gt; 
+&lt;p&gt;Altman 暗示，GPT-5 或許不僅是性能上的升級，更可能是 OpenAI 邁向統一、類似代理模型的重要一步，使其向人工通用智能（AGI）目標更進一步。&lt;/p&gt; 
+&lt;p&gt;此外，據 AI 工程師 Tibor Blaho 和投資者「Chris（chatgpt21）」消息透露，OpenAI 或將在 7 月發佈一個大規模模型，而該模型有望為 GPT-5。&lt;/p&gt; 
+&lt;hr&gt; 
+&lt;p&gt;相關閲讀：&lt;a href="https://www.oschina.net/news/354761" target="news"&gt;OpenAI 推遲開源模型的發佈時間&lt;/a&gt;&lt;/p&gt;
+                                                                                &lt;/div&gt;
+                                                                            </description>
+      <link>https://www.oschina.net/news/356142</link>
+      <guid isPermaLink="false">https://www.oschina.net/news/356142</guid>
+      <pubDate>Sun, 11 May 2025 02:56:00 GMT</pubDate>
+      <author>來源: OSCHINA</author>
+    </item>
+    <item>
+      <title>Warm-Flow 發佈 1.7.4，設計器和流程圖優化</title>
+      <description>&lt;div class="content"&gt;
+                                                                    
+                                                        &lt;h1&gt;主要內容&lt;/h1&gt; 
+&lt;ul&gt; 
+ &lt;li&gt;[feat] 新增下載流程圖功能&lt;/li&gt; 
+ &lt;li&gt;[feat] start 和 skip 或者其衍生的方法，新增指定下個任務辦理人 flowParams.nextHandler&lt;/li&gt; 
+ &lt;li&gt;[feat] 新增流程圖明暗主題&lt;/li&gt; 
+ &lt;li&gt;[feat] 流程圖新增通過訪問路徑設置網格顯隱&lt;/li&gt; 
+ &lt;li&gt;[feat] 流程圖新增懸浮提示, 支持自定義內容和樣式&lt;/li&gt; 
+ &lt;li&gt;[update] 設計器打開自動居中&lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;p&gt;&lt;strong&gt;新版流程圖&lt;/strong&gt;&lt;/p&gt; 
+&lt;div&gt;
+ &lt;img src="https://oscimg.oschina.net/oscnet//89db2b2722c309d9471d214941e3197b.png" referrerpolicy="no-referrer"&gt;
+&lt;/div&gt; 
+&lt;h2&gt;項目介紹&lt;/h2&gt; 
+&lt;p&gt;&lt;strong&gt;Dromara Warm-Flow 國產工作流引擎，其特點簡潔輕量，五臟俱全，靈活擴展性強，是一個可通過 jar 引入設計器的工作流。&lt;/strong&gt;&lt;/p&gt; 
+&lt;ol&gt; 
+ &lt;li&gt;支持常見審批功能、監聽器與流程變量、條件表達式、辦理人表達式&lt;/li&gt; 
+ &lt;li&gt;自帶流程圖、流程設計器、節點擴展屬性&lt;/li&gt; 
+ &lt;li&gt;支持常見的 orm 框架&lt;/li&gt; 
+ &lt;li&gt;支持不同的數據庫&lt;/li&gt; 
+ &lt;li&gt;生態豐富可擴展，文檔全面&lt;/li&gt; 
+&lt;/ol&gt; 
+&lt;h2&gt;功能思維導圖&lt;/h2&gt; 
+&lt;div&gt;
+ &lt;img src="https://oscimg.oschina.net/oscnet//7c9b29e09f2b3ced6b7ee3f1f9a5977a.png" referrerpolicy="no-referrer"&gt;
+&lt;/div&gt; 
+&lt;h2&gt;演示地址&lt;/h2&gt; 
+&lt;p&gt;&lt;a href="https://www.oschina.net/action/GoToLink?url=http%3A%2F%2Fwww.hhzai.top" target="_blank"&gt;http://www.hhzai.top&lt;/a&gt;&lt;/p&gt; 
+&lt;p&gt;賬號密碼：admin/admin123&lt;/p&gt; 
+&lt;h2&gt;官網&lt;/h2&gt; 
+&lt;p&gt;&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fwarm-flow.dromara.org" target="_blank"&gt;https://warm-flow.dromara.org&lt;/a&gt;&lt;/p&gt; 
+&lt;h2&gt;Warm-Flow 視頻&lt;/h2&gt; 
+&lt;p&gt;&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fwww.bilibili.com%2Fvideo%2FBV1AWRGYEEVr%2F%3Fspm_id_from%3D333.1387.0.0%26vd_source%3D1be886ace16159801f6ed0106df215d9" target="_blank"&gt;從零精通: 全流程開發與源碼解讀&lt;/a&gt;&lt;/p&gt;
+                                                                                &lt;/div&gt;
+                                                                            </description>
+      <link>https://www.oschina.net/news/356140/warm-flow-1-7-4</link>
+      <guid isPermaLink="false">https://www.oschina.net/news/356140/warm-flow-1-7-4</guid>
+      <pubDate>Sun, 11 May 2025 02:46:00 GMT</pubDate>
+      <author>來源: 投稿</author>
+    </item>
+    <item>
+      <title>國產數據庫管理工具 CloudDM 個人版六月版本發佈合集</title>
+      <description>&lt;div class="content"&gt;
+                                                                    
+                                                        &lt;p style="color:#333333; margin-left:0; margin-right:0; text-align:left"&gt;&lt;span&gt;CloudDM 個人版&lt;/span&gt;&lt;span style="color:#333333"&gt;是&lt;span&gt;&amp;nbsp;&lt;/span&gt;&lt;/span&gt;&lt;span&gt;ClouGence&lt;/span&gt;&lt;span style="color:#333333"&gt;&lt;span&gt;&amp;nbsp;&lt;/span&gt;公司推出的一款&lt;/span&gt;&lt;strong&gt;&lt;span&gt;一站式多數據源開發管理工具&lt;/span&gt;&lt;/strong&gt;&lt;span style="color:#333333"&gt;，使用它可以方便地訪問和管理&lt;span&gt;&amp;nbsp;&lt;/span&gt;&lt;/span&gt;&lt;span&gt;MySQL、Oracle、PostgreSQL、阿里雲 RDS、Greenplum、TiDB、Redis、StarRocks、Doris、SelectDB、SQL Server、ClickHouse、OceanBase 、PolarDB-X 、IBM Db2 等多種不同類型的數據庫。通過 CloudDM 豐富的數據源支持可以避免在多個專業工具之間切換，從而提高工作效率。&lt;/span&gt;&lt;/p&gt; 
+&lt;p style="color:#333333; margin-left:0; margin-right:0; text-align:left"&gt;&lt;span&gt;它是本地化的應用程序，沒有後台進程。和&lt;span&gt;&amp;nbsp;&lt;/span&gt;&lt;/span&gt;&lt;strong&gt;&lt;span&gt;DataGrip&lt;/span&gt;&lt;/strong&gt;&lt;span&gt;、&lt;/span&gt;&lt;strong&gt;&lt;span&gt;Navicat&lt;/span&gt;&lt;/strong&gt;&lt;span&gt;&lt;span&gt;&amp;nbsp;&lt;/span&gt;一樣在安裝完成後，只需要雙擊應用程序圖標，便可以方便地管理位於本地計算機或遠程計算機上的數據庫。已支持&lt;span&gt;&amp;nbsp;&lt;/span&gt;&lt;/span&gt;&lt;strong&gt;Windows&lt;/strong&gt;、&lt;strong&gt;&lt;span&gt;MacOS、Linux&lt;/span&gt;&lt;/strong&gt;&lt;span&gt;&lt;span&gt;&amp;nbsp;&lt;/span&gt;三個操作系統。&lt;/span&gt;&lt;/p&gt; 
+&lt;p style="color:#333333; margin-left:0; margin-right:0; text-align:center"&gt;&lt;img src="https://oscimg.oschina.net/oscnet/up-8a94365af948142b7db590d03c3dc5e8d5d.png" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p style="color:#030303; margin-left:0px; margin-right:0px; text-align:left"&gt;&lt;span&gt;六月 CloudDM 個人版共迭代發佈了 2 個版本。&lt;/span&gt;&lt;/p&gt; 
+&lt;h2&gt;&lt;strong&gt;&lt;span&gt;3.0.7&lt;/span&gt;&lt;/strong&gt;&lt;/h2&gt; 
+&lt;h3&gt;&lt;strong&gt;&lt;span&gt;問題修復&lt;/span&gt;&lt;/strong&gt;&lt;/h3&gt; 
+&lt;ul&gt; 
+ &lt;li&gt; &lt;p&gt;&lt;span&gt;修復，切換數據庫模式時，數據庫模式沒有變化的問題。&lt;/span&gt;&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;&lt;span&gt;修復，切換數據庫模式後，SQL 可能仍在上一個模式執行的問題。&lt;/span&gt;&lt;/p&gt; &lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;h2&gt;&lt;strong&gt;&lt;span&gt;3.0.6&lt;/span&gt;&lt;/strong&gt;&lt;/h2&gt; 
+&lt;h3&gt;&lt;strong&gt;&lt;span&gt;優化&lt;/span&gt;&lt;/strong&gt;&lt;/h3&gt; 
+&lt;ul&gt; 
+ &lt;li&gt; &lt;p&gt;&lt;span&gt;優化，查詢控制枱日誌面板右側區，新增兩個按鈕可以跳轉到控制枱日誌的最頂部和最底部。&lt;/span&gt;&lt;/p&gt; &lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;h3&gt;&lt;strong&gt;&lt;span&gt;問題修復&lt;/span&gt;&lt;/strong&gt;&lt;/h3&gt; 
+&lt;ul&gt; 
+ &lt;li&gt; &lt;p&gt;&lt;span&gt;修復，達夢數據庫設計表時，無法將字段默認值設置為 Empty String 的問題。&lt;/span&gt;&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;&lt;span&gt;修復，達夢數據庫設計表時，無法將字段默認值設置為 NULL 的問題。&lt;/span&gt;&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;&lt;span&gt;修復，達夢數據庫設計表時，字段默認值為自定義時，無法回顯的問題。&lt;/span&gt;&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;&lt;span&gt;修復，查詢控制枱日誌面板在執行 SQL 後無法定位到最後的問題。&lt;/span&gt;&lt;/p&gt; &lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;h2&gt;&lt;strong&gt;下載與反饋&lt;/strong&gt;&lt;/h2&gt; 
+&lt;ul&gt; 
+ &lt;li&gt;產品官網：&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fwww.clougence.com%2Fclouddm-personal" target="_blank"&gt;&lt;span&gt;https://www.clougence.com/clouddm-personal&lt;/span&gt;&lt;/a&gt;&lt;/li&gt; 
+ &lt;li&gt;問題反饋：&lt;a href="https://gitee.com/clougence/clouddm-issue/issues"&gt;&lt;span&gt;https://gitee.com/clougence/clouddm-issue/issues&lt;/span&gt;&lt;/a&gt;&lt;/li&gt; 
+ &lt;li&gt;微信交流羣：訪問產品官網，掃描右側二維碼即可加入。&lt;/li&gt; 
+&lt;/ul&gt;
+                                                                                &lt;/div&gt;
+                                                                            </description>
+      <link>https://www.oschina.net/news/356139</link>
+      <guid isPermaLink="false">https://www.oschina.net/news/356139</guid>
+      <pubDate>Sun, 11 May 2025 02:44:00 GMT</pubDate>
+      <author>來源: 投稿</author>
+    </item>
     <item>
       <title>​OpenAI 終止與 Scale AI 合作</title>
       <description>&lt;div class="content"&gt;
@@ -23,7 +570,7 @@
                                                                             </description>
       <link>https://www.oschina.net/news/356119/openai-drops-scale-ai-meta</link>
       <guid isPermaLink="false">https://www.oschina.net/news/356119/openai-drops-scale-ai-meta</guid>
-      <pubDate>Thu, 19 Jun 2025 02:30:15 GMT</pubDate>
+      <pubDate>Sun, 11 May 2025 02:29:00 GMT</pubDate>
       <author>來源: OSCHINA</author>
     </item>
     <item>
@@ -45,7 +592,7 @@
                                                                             </description>
       <link>https://www.oschina.net/news/356115/midjourney-launches-its-first-ai-video-generation-model-v1</link>
       <guid isPermaLink="false">https://www.oschina.net/news/356115/midjourney-launches-its-first-ai-video-generation-model-v1</guid>
-      <pubDate>Thu, 19 Jun 2025 02:27:15 GMT</pubDate>
+      <pubDate>Sun, 11 May 2025 02:26:00 GMT</pubDate>
       <author>來源: OSCHINA</author>
     </item>
     <item>
@@ -62,7 +609,7 @@
                                                                             </description>
       <link>https://www.oschina.net/news/356108</link>
       <guid isPermaLink="false">https://www.oschina.net/news/356108</guid>
-      <pubDate>Thu, 19 Jun 2025 02:10:15 GMT</pubDate>
+      <pubDate>Sun, 11 May 2025 02:10:00 GMT</pubDate>
       <author>來源: OSCHINA</author>
     </item>
     <item>
@@ -346,410 +893,6 @@
       <link>https://www.oschina.net/news/356022</link>
       <guid isPermaLink="false">https://www.oschina.net/news/356022</guid>
       <pubDate>Sat, 10 May 2025 10:08:00 GMT</pubDate>
-      <author>來源: OSCHINA</author>
-    </item>
-    <item>
-      <title>bzip2 的 crate 包已完全從 C 遷移到 Rust</title>
-      <description>&lt;div class="content"&gt;
-                                                                    
-                                                        &lt;p&gt;bzip2 0.6.0&amp;nbsp;&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Ftrifectatech.org%2Fblog%2Fbzip2-crate-switches-from-c-to-rust%2F" target="_blank"&gt; 已發佈&lt;/a&gt;，團隊稱新版本默認採用他們實現的 bzip2 算法 libbz2-rs-sys，bzip2 的 crate 包也已完全從 C 遷移到 Rust，bzip2&amp;nbsp;庫現在編譯更快、跨編譯更簡單。&lt;/p&gt; 
-&lt;p&gt;&lt;img alt="" src="https://static.oschina.net/uploads/space/2025/0618/173858_3xAW_2720166.png" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;p&gt;儘管現在 bzip2 的使用不如以前廣泛，但許多協議和庫仍需支持它以滿足規範要求。團隊借鑑了在 zlib-rs 項目中的經驗，對 bzip2 的實現進行了更新。&lt;/p&gt; 
-&lt;p&gt;在性能方面，Rust 實現通常優於 C 實現，儘管在某些情況下兩者性能相當。壓縮性能測試顯示，Rust 實現的壓縮速度比 C 實現快 14% 左右。在解壓縮方面，Rust 實現也帶來了顯著的速度提升，測試結果顯示平均速度快了 5%-10%。&lt;/p&gt; 
-&lt;p&gt;&lt;img alt="" src="https://static.oschina.net/uploads/space/2025/0618/173936_x7TO_2720166.png" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;p&gt;移除 C 語言依賴後，Rust 項目在交叉編譯時的複雜性大大降低，編譯為 WebAssembly 等平台的問題也得到了解決。&lt;/p&gt; 
-&lt;blockquote&gt; 
- &lt;p&gt;相關閲讀：&lt;a href="https://www.oschina.net/news/256102/sudo-rs-0-2-0-first-stable" target="news"&gt;sudo-rs 發佈首個穩定版 0.2.0：內存安全、用 Rust 重寫的 sudo&lt;/a&gt;&lt;/p&gt; 
-&lt;/blockquote&gt;
-                                                                                &lt;/div&gt;
-                                                                            </description>
-      <link>https://www.oschina.net/news/356012/bzip2-crate-switches-from-c-to-rust</link>
-      <guid isPermaLink="false">https://www.oschina.net/news/356012/bzip2-crate-switches-from-c-to-rust</guid>
-      <pubDate>Sat, 10 May 2025 09:43:00 GMT</pubDate>
-      <author>來源: OSCHINA</author>
-    </item>
-    <item>
-      <title>​字節跳動 Seedance 1.0 模型評測結果超越谷歌 Veo 3</title>
-      <description>&lt;div class="content"&gt;
-                                                                    
-                                                        &lt;p style="color:#242424; margin-left:0; margin-right:0; text-align:left"&gt;&lt;span style="color:#000000"&gt;在近期的人工智能視頻生成領域，字節跳動悄然發佈了一款名為 Seedance1.0 的新模型，該模型在獨立的評測中已經超越了谷歌最新推出的 Veo3。&lt;/span&gt;&lt;/p&gt; 
-&lt;p style="color:#242424; margin-left:0; margin-right:0; text-align:left"&gt;&lt;span style="color:#000000"&gt;Seedance1.0 的研究論文中詳細介紹了該模型的創新之處。字節跳動的團隊通過對空間和時間層的解耦，結合了多模態位置編碼，從而使得該模型能夠同時處理文本到視頻和圖像到視頻的生成任務。這樣的方法支持複雜的場景切換和多鏡頭敍事，保持了一致的主題表現。&lt;/span&gt;&lt;/p&gt; 
-&lt;p style="color:#242424; margin-left:0; margin-right:0; text-align:left"&gt;&lt;span style="color:#000000"&gt;&lt;img height="185" src="https://oscimg.oschina.net/oscnet/up-cdfc14b924c4930f690c558ca675747c61e.png" width="500" referrerpolicy="no-referrer"&gt;&lt;/span&gt;&lt;/p&gt; 
-&lt;p style="color:#242424; margin-left:0; margin-right:0; text-align:left"&gt;&lt;span style="color:#000000"&gt;此外，Seedance1.0 的性能離不開字節跳動強大的數據管道。團隊精心構建了一個大規模、多來源的數據集，配有詳細的雙語註釋和豐富的動作與靜態特徵標註，確保生成內容的準確性。同時，採用了一種新穎的強化學習設置，結合了三個獎勵模型，重點關注基礎對齊、動作質量和美觀度。&lt;/span&gt;&lt;/p&gt; 
-&lt;p style="color:#242424; margin-left:0; margin-right:0; text-align:left"&gt;&lt;span style="color:#000000"&gt;&lt;img height="313" src="https://oscimg.oschina.net/oscnet/up-3b8266677daa9731bb02990119d48c53102.png" width="500" referrerpolicy="no-referrer"&gt;&lt;/span&gt;&lt;/p&gt; 
-&lt;p style="color:#242424; margin-left:0; margin-right:0; text-align:left"&gt;&lt;span style="color:#000000"&gt;在評測中，Seedance1.0 在多個維度上超過了 Veo3。在與電影導演合作開發的 SeedVideoBench 基準測試中，該模型在遵循提示和動作真實感方面取得了更高的分數。在圖像到視頻的任務中，Seedance 保持了輸入幀的視覺一致性，而 Veo3 則在某些情況下出現了光照和紋理的變化。&lt;/span&gt;&lt;/p&gt; 
-&lt;p style="color:#242424; margin-left:0; margin-right:0; text-align:left"&gt;&lt;span style="color:#000000"&gt;&lt;img height="293" src="https://oscimg.oschina.net/oscnet/up-47383f948234dcb7e6170c1e5457953697d.png" width="500" referrerpolicy="no-referrer"&gt;&lt;/span&gt;&lt;/p&gt; 
-&lt;p style="color:#242424; margin-left:0; margin-right:0; text-align:left"&gt;&lt;span style="color:#000000"&gt;在推理性能方面，Seedance1.0 也表現出色。該模型能夠在 41.4 秒內生成一段 1080p 的五秒視頻，這一速度遠超其他競爭對手，如 Sora、Runway Gen-4 和 Veo3。字節跳動還表示，他們在降低成本和延遲方面取得了重大進展，使得視頻生成向實時應用的目標邁進了一步。&lt;/span&gt;&lt;/p&gt; 
-&lt;p style="color:#242424; margin-left:0; margin-right:0; text-align:left"&gt;&lt;span style="color:#000000"&gt;Seedance1.0 計劃於 2025 年 6 月集成到 Doubao 和 Jimeng 等平台，旨在顯著改善專業工作流程和常規創作任務。雖然 Veo3 因首次結合了真實視頻與環境音效和對話而備受矚目，但 Seedance1.0 在視覺保真度、運動穩定性和敍事連貫性方面表現更為出色，雖然在音頻能力上有所欠缺。&lt;/span&gt;&lt;/p&gt;
-                                                                                &lt;/div&gt;
-                                                                            </description>
-      <link>https://www.oschina.net/news/356005</link>
-      <guid isPermaLink="false">https://www.oschina.net/news/356005</guid>
-      <pubDate>Sat, 10 May 2025 09:17:00 GMT</pubDate>
-      <author>來源: OSCHINA</author>
-    </item>
-    <item>
-      <title>通過 AIOps、生成式 AI 和機器學習，實現更智能的可觀測性</title>
-      <description>&lt;div class="content"&gt;
-                                                                                                                    
-                                                                                                                                                    &lt;div&gt; 
- &lt;p&gt;雲與 AI 成為基礎設施與平台的當下，運維團隊正面臨多重挑戰：指標、日誌、跟蹤數據割裂形成的「數據孤島」，被動響應機制導致的平均修復時間攀升，傳統監控在動態微服務架構中的失效等等。&lt;/p&gt; 
- &lt;p&gt;而在現代應用開發的背景下，可觀測性可以從各種來源收集和分析數據：日誌、指標和追蹤 —— 以深入瞭解在你環境中運行的應用程序的行為。而通過可觀測性方案 + AI，也能為現代 IT 系統實現更加智能的可觀測性。&lt;/p&gt; 
- &lt;p&gt;本週六，第 114 期 OSC 源創會將在北京舉辦，以「AI 運維「開掛」指南」為主題。Elastic 社區首席佈道師劉曉國將出席活動，並發表《通過 AIOps、生成式 AI 和機器學習，實現更智能的可觀測性》主題演講。在活動正式開始前，先來簡單瞭解下可觀測方案。&lt;/p&gt; 
- &lt;p&gt;&lt;img height="1440" src="https://oscimg.oschina.net/oscnet/up-499956c715242acc73d6281d0bffbe0ce6b.png" width="1080" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
- &lt;p&gt;&lt;strong&gt;OSCHINA：您提到現代系統需從「被動響應轉向主動防禦」，當前企業在可觀測性實踐中面臨的最大痛點是什麼？傳統監控方案為何難以應對雲原生環境下的複雜性？&lt;/strong&gt;&lt;/p&gt; 
- &lt;p&gt;&lt;strong&gt;劉曉國：&lt;/strong&gt;&lt;/p&gt; 
- &lt;p&gt;數據量大，存儲成本高、海量數據處理壓力大，很多企業的可觀測性數據（指標，日誌及跟蹤）存在於不同的數據庫中，從而造成數據孤島，手動關連它們或通過一些工具進行轉化比較困難。當真正的事件發生後，很難找到真正的原因。另外人工分析這些數據幾乎是不可能的，特別是想從被動響應轉向主動防禦。 &lt;strong&gt;Elastic 的全面可觀測性方案&lt;/strong&gt;可以採用機器學習的方法來對實時數據進行分析，並查看異常事件，從而完成從被動響應轉向主動防禦的需求。這些異常的事件可以結合通知/告警的方式以不同的形式發送給運維人員。雲原生環境中的服務頻繁啓動，停止和擴展，傳統的監控很難實時地跟蹤這些變化。另外，傳統監控難以在雲環境中捕獲服務的調用鏈和依賴關係。Elastic 的服務圖可以很方便地顯示各個服務之間的調用關係，並在圖上以不同的顏色顯示該服務的健康狀態。我們可以結合機器學習及大模型來進一步解釋及提供修正的方案。&lt;/p&gt; 
- &lt;p&gt;&amp;nbsp;&lt;/p&gt; 
- &lt;p&gt;&lt;strong&gt;OSCHINA：Elastic 可觀測性方案的優勢是什麼？&lt;/strong&gt;&lt;/p&gt; 
- &lt;p&gt;&lt;strong&gt;劉曉國：&lt;/strong&gt;&lt;/p&gt; 
- &lt;p&gt;Elastic 可觀測性方案把指標，日誌，跟蹤及通用分析數據保存於同一個數據庫中，儘管存在於同一個平台的不同索引裏。Elastic 使用 ECS (Elastic Common Schema) 語義語法來定義統一的字段名稱。這樣不同的索引還是可以通過一些字段進行關聯。當一個事件發生時（比如響應緩慢可以在跟蹤視圖可見），我們可以同時同時在一個平台查看日誌，指標，從而找出真正的事件原因。Elastic 全觀測性方案可以更快地位 IT 團隊找出根因，而不用在各個不同的平台裏進行手動關聯，或通過一種轉換的方式來進行操作。&lt;/p&gt; 
- &lt;p&gt;&amp;nbsp;&lt;/p&gt; 
- &lt;p&gt;&lt;strong&gt;OSCHINA：在您遇到的案例中，是否有某個問題通過傳統監控完全無法捕捉，卻因 Universal Profiling 的‘全棧可見性’意外暴露？當時團隊如何反應？&lt;/strong&gt;&lt;/p&gt; 
- &lt;p&gt;&lt;strong&gt;劉曉國：&lt;/strong&gt;&lt;/p&gt; 
- &lt;p&gt;Elastic Universal Profiling™ 是一種全系統、始終在線、連續的分析解決方案，無需代碼檢測、重新編譯、主機上調試符號或服務重新啓動。 通用分析利用 &lt;span style="color:#6425d0"&gt;&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Febpf.io%2F" target="_blank"&gt;eBPF&lt;/a&gt;&lt;/span&gt; 在 Linux 內核空間內運行，以不引人注目的方式以最小的開銷僅捕獲所需的數據。它可以幫我們定位消耗時間最多的函數以及這些函數的調用情況，並以火焰圖的形式表達出來。它可以幫我們瞭解整個基礎架構中哪些代碼行始終消耗 CPU 資·源。我們可以通過 Universal Profiling 工具來優化我們的代碼設計。&lt;/p&gt; 
- &lt;p&gt;&amp;nbsp;&lt;/p&gt; 
- &lt;p&gt;&lt;strong&gt;OSCHINA：&lt;/strong&gt;&lt;strong&gt;AI&lt;/strong&gt;&lt;strong&gt; Assistant 生成的操作建議需要人工複核嗎？在您經歷的案例中，運維團隊對 AI 建議的信任度如何建立？&lt;/strong&gt;&lt;/p&gt; 
- &lt;p&gt;&lt;strong&gt;劉曉國：&lt;/strong&gt;&lt;/p&gt; 
- &lt;p&gt;我們的 AI Assistant 是基於 LLM RAG 基礎之上的智能助手。我們可以建立自己的知識庫，從而消除人工智能在推理時產生的幻覺。這些知識庫存在於 Elastic 自己的索引裏，是可以由運維人員自己創建的，或者直接有運營手冊直接導入的。這些知識庫可以來自 github，runbook， playbook 等。另外 Elasticsearch 的文檔非常全面，很多大模型對 Elasticsearch 的文檔進行了充分的訓練。通常來説，產生幻覺的機會還是蠻少的。我們將來甚至可以推出自己的大模型。針對有些敏感的操作，我們可以在助手裏做出相應的選擇。在 AI 進行回答問題之前，通常會查看自己的知識庫得到最相近的答案。如果 AI 提供的推理是建立在自己的知識庫之上，或者我們在自己平時積累的解決方案之上，那麼 AI 推理提出的解決方案還是相當可以接受的。&lt;/p&gt; 
- &lt;p&gt;&amp;nbsp;&lt;/p&gt; 
- &lt;p&gt;&lt;strong&gt;OSCHINA：您認為 &lt;/strong&gt;&lt;strong&gt;LLM&lt;/strong&gt;&lt;strong&gt;+Observability 的結合會催生哪些新&lt;/strong&gt;&lt;strong&gt;範式&lt;/strong&gt;&lt;strong&gt;？未來是否可能出現「自主修復系統」？&lt;/strong&gt;&lt;/p&gt; 
- &lt;p&gt;&lt;strong&gt;劉曉國：&lt;/strong&gt;&lt;/p&gt; 
- &lt;p&gt;是的，這種完全可能。目前在 Elastic 的可觀測性方案中，我們使用 AIOps 來針對可觀測性提供解決方案。由於 LLM 具有良好的推理及總結功能，甚至它還可以幫我們關聯不同索引裏的數據。結合私有知識庫，LLM+Observability 為我們的可觀測性提供良好的解決方案。Elastic 的可觀測性其實還有一個叫做 AutoOps 的解決方案。其實主要是針對集羣的運行及查詢，攝入的監控，並提出相應的解決方案。&lt;/p&gt; 
- &lt;p&gt;&amp;nbsp;&lt;/p&gt; 
- &lt;p&gt;&lt;strong&gt;OSCHINA：對於資源有限的中小團隊，部署智能可觀測性最應規避的‘過度設計’陷阱是什麼？能否分享一個最小可行方案的搭建路徑？」&lt;/strong&gt;&lt;/p&gt; 
- &lt;p&gt;&lt;strong&gt;劉曉國：&lt;/strong&gt;&lt;/p&gt; 
- &lt;p&gt;我覺得儘量採用通用標準，比如 OpenTelemetry 從而規避鎖定廠商。另外，儘量避免工具氾濫，膨脹。工具多了，維護的成本也會增加，帶來的問題也會很多。如把需要的數據採集到一個數據庫中，而不是分散到不同的平台中。還有最好採用一下比較成熟的解決方案，而不是一些未經得到證實的方案。Elastic 其實已經提供了一個比較簡介的部署方案，從數據攝取，處理，展示，搜索，及到事件的捕獲，通知/告警。在同一個平台即可搞定所有的事。我們還可以結合人工智能來幫助我們攝取，優化，推理，並提供解決方案。&lt;/p&gt; 
- &lt;p&gt;&amp;nbsp;&lt;/p&gt; 
- &lt;p&gt;&lt;strong&gt;OSCHINA：開發者需掌握哪些新技能來駕馭智能運維時代？&lt;/strong&gt;&lt;/p&gt; 
- &lt;p&gt;&lt;strong&gt;劉曉國：&lt;/strong&gt;&lt;/p&gt; 
- &lt;ul&gt; 
-  &lt;li&gt; &lt;p&gt;日誌，指標及跟蹤的數據採集，處理及分析技能（Elastic Stack, OpenTelemetry 等）&lt;/p&gt; &lt;/li&gt; 
-  &lt;li&gt; &lt;p&gt;數據整合的能力，比如數據採集，清洗，豐富等&lt;/p&gt; &lt;/li&gt; 
-  &lt;li&gt; &lt;p&gt;熟悉 Kafka, Spark, Flink, Logstash, Beats, Elastic Agents 等數據處理框架。&lt;/p&gt; &lt;/li&gt; 
-  &lt;li&gt; &lt;p&gt;AI/ML 能力。Elastic 中使用 ML 來監測異常事件。雖然開發者不需要掌握很深的 ML 能力，但是知道其作用並如何使用即可。。如果使用 LLMs 來幫助我們分析文件，解決問題。在海量的數據裏找到洞察。&lt;/p&gt; &lt;/li&gt; 
-  &lt;li&gt; &lt;p&gt;具有使用一些構建易用，直觀的運維可視化界面能力（比如 Kibana, Grafana 等）&lt;/p&gt; &lt;/li&gt; 
-  &lt;li&gt; &lt;p&gt;通知及告警&lt;/p&gt; &lt;/li&gt; 
-  &lt;li&gt; &lt;p&gt;AI agents&lt;/p&gt; &lt;/li&gt; 
- &lt;/ul&gt; 
- &lt;p&gt;&amp;nbsp;&lt;/p&gt; 
- &lt;p&gt;&lt;strong&gt;OSCHINA：Elastic 近年從&lt;/strong&gt;&lt;strong&gt;搜索引擎&lt;/strong&gt;&lt;strong&gt;擴展到可觀測性、安全甚至&lt;/strong&gt;&lt;strong&gt;生成式 AI&lt;/strong&gt;&lt;strong&gt;領域，這種跨界拓展背後的核心邏輯是什麼？在您看來，未來 3 年 Elastic 最可能顛覆的 「下一個生態位」 會是什麼？&lt;/strong&gt;&lt;/p&gt; 
- &lt;p&gt;&lt;strong&gt;劉曉國：&lt;/strong&gt;&lt;/p&gt; 
- &lt;p&gt;其實 Elastic 在很多年前已經進入到可觀測性及安全領域。早期我們還有企業搜索。這些構成了 Elastic 的三大技術方案。目前企業搜索已經退出，更多地集成到我們的 Search 解決方案裏。Elastic 在過去的三年裏大量投入到 AI 領域。我們的向量搜索庫 Elasticsearch 是世界上下載最多的數據庫。在未來，我們將圍繞 AI 打造智能解決方案。LLMs 為這些提供了良好的基礎。我們結合 MCP 這種 AI agents 通過自然語言的方式對我們的數據進行查詢，分析，並提出解決方案。AI 智能體在未來肯定會越來越聰明，併為我們的可觀測性帶來自動處理的能力！&lt;/p&gt; 
- &lt;p&gt;&lt;img height="10252" src="https://oscimg.oschina.net/oscnet/up-c40d45614995bacbd788286afa1eafa1aa4.png" width="3125" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;/div&gt;
-                                                                                    &lt;/div&gt;
-                                                                            </description>
-      <link>https://my.oschina.net/u/4489239/blog/18627539</link>
-      <guid isPermaLink="false">https://my.oschina.net/u/4489239/blog/18627539</guid>
-      <pubDate>Sat, 10 May 2025 08:48:00 GMT</pubDate>
-      <author>原創</author>
-    </item>
-    <item>
-      <title>Docker Desktop 4.42 發佈，集成 MCP 工具包</title>
-      <description>&lt;div class="content"&gt;
-                                                                    
-                                                        &lt;p&gt;Docker Desktop&amp;nbsp;4.42 &lt;u&gt;&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fwww.docker.com%2Fblog%2Fdocker-desktop-4-42-native-ipv6-built-in-mcp-and-better-model-packaging%2F" target="_blank"&gt;已發佈&lt;/a&gt;&lt;/u&gt;，新增原生支持 IPv6 網絡，智能 DNS 解析、集成 Docker MCP Toolkit、增強 AI 相關功能等。&lt;/p&gt; 
-&lt;p&gt;&lt;img alt="" src="https://oscimg.oschina.net/oscnet/up-b35f142c42d62e4321cd5c076947810288e.png" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;p&gt;在網絡功能方面，Docker Desktop 4.42 為滿足多樣化的企業網絡需求，引入了原生 IPv6 網絡支持，開發者可靈活選擇 IPv4 / IPv6 雙棧（默認）、IPv4 專用或 IPv6 專用模式。&lt;/p&gt; 
-&lt;p&gt;新版本還新增智能 DNS 解析功能，能夠檢測主機的網絡堆棧，並過濾不支持的 DNS 記錄類型，有效減少 IPv4 或 IPv6 限制環境下的連接問題。&lt;/p&gt; 
-&lt;p&gt;這些網絡設置可在 Docker Desktop 的「Settings」 &amp;gt; 「Resources」 &amp;gt; 「Network」中調整，並支持團隊集中管理和強制執行，從而提升複雜網絡配置的可靠性。&lt;/p&gt; 
-&lt;p&gt;在工具方面，Docker Desktop 4.42 集成 Docker MCP Toolkit，開發者無需額外安裝，可以直接使用 GitHub、MongoDB 和 HashiCorp 等熱門 MCP 服務器，並可將其連接至 Claude Desktop、Cursor 等客户端或 Docker 自家 AI 代理 Gordon。此外還新增 docker mcp 命令，支持通過命令行管理服務器、客户端及配置。&lt;/p&gt; 
-&lt;p&gt;Docker 正致力於成為一個全面的 AI 解決方案，&lt;a href="https://www.oschina.net/news/340579/docker-model-runner-run-llms-natively"&gt;此前已內置 LLM 模型運行器&lt;/a&gt;，使得基於 llama.cpp 的服務器模型部署更加便捷。&lt;/p&gt; 
-&lt;p&gt;&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fwww.docker.com%2Fblog%2Fdocker-desktop-4-42-native-ipv6-built-in-mcp-and-better-model-packaging%2F" target="_blank"&gt;詳情查看發佈公告&lt;/a&gt;。&lt;/p&gt;
-                                                                                &lt;/div&gt;
-                                                                            </description>
-      <link>https://www.oschina.net/news/355998/docker-desktop-4-42-native-ipv6-built-in-mcp</link>
-      <guid isPermaLink="false">https://www.oschina.net/news/355998/docker-desktop-4-42-native-ipv6-built-in-mcp</guid>
-      <pubDate>Sat, 10 May 2025 08:47:00 GMT</pubDate>
-      <author>來源: OSCHINA</author>
-    </item>
-    <item>
-      <title>深度解析 Cursor</title>
-      <description>&lt;div class="content"&gt;
-                                                                                                                    
-                                                                                                                                                    &lt;blockquote&gt; 
- &lt;p&gt;&lt;strong&gt;編者按：&lt;/strong&gt; 我們今天為大家帶來的這篇文章，作者的觀點是：只有深入理解 AI 編程工具的底層原理和能力邊界，才能真正駕馭這些工具，讓它們成為提升開發效率的"外掛神器"。&lt;/p&gt; 
- &lt;p&gt;本文從 LLM 的基礎工作機製出發，解釋了 Cursor 等工具本質上是 VSCode 的複雜封裝，通過聊天界面、工具集（如 read_file、write_file 等）和精心設計的提示詞來實現智能編程輔助。作者還逐行解析了 Cursor 的系統提示詞，分析了其中的工程設計細節。此外，作者還提供了制定高效 Cursor Rules 的具體指導，強調 Cursor Rules 應該像百科詞條般詳實，而非簡單的命令列表。&lt;/p&gt; 
-&lt;/blockquote&gt; 
-&lt;p&gt;&lt;strong&gt;作者 | Shrivu Shankar&lt;/strong&gt;&lt;/p&gt; 
-&lt;p&gt;&lt;strong&gt;編譯 | 嶽揚&lt;/strong&gt;&lt;/p&gt; 
-&lt;p&gt;透徹瞭解 Cursor[1]、Windsurf[2] 和 Copilot[3] 這類 AI 編程工具的運作原理細節，能大大提升你的開發效率，並讓這些工具在不同場景下都更加穩定地工作 ------ 尤其在龐大、複雜的代碼庫中。當人們難以讓 AI 編程工具高效工作時，往往是把它們當成了傳統工具來使用，卻忽略了一個關鍵：只有清楚這些工具的先天不足和最佳應對策略，才能真正駕馭它們。一旦摸透這些工具的運作邏輯和能力邊界，它們就會化身成為提升開發效率的"外掛神器"。在我寫作此文時，我約 70% 的代碼 1 都由 Cursor 產出。&lt;/p&gt; 
-&lt;p&gt;在本文，我將深入解析這些 AI 編程工具的實際運行原理、Cursor 的系統提示詞，以及如何優化你的編碼方式與 Cursor rules。&lt;/p&gt; 
-&lt;h1&gt;&lt;strong&gt;01 從 LLM 到代碼編寫智能體&lt;/strong&gt;&lt;/h1&gt; 
-&lt;h2&gt;&lt;strong&gt;1.1 LLM&lt;/strong&gt;&lt;/h2&gt; 
-&lt;p&gt;LLMs 的核心工作方式是不斷重複預測下一個詞，正是基於這個簡單的原理，我們得以構建出各種複雜的應用。&lt;/p&gt; 
-&lt;p&gt;&lt;img src="https://oscimg.oschina.net/oscnet/up-e7cd63f365717b2dd8cdd7ea2ebb3cf3e0c.png" alt="" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;p&gt;從基礎的編程 LLM 到智能體主要經歷三個階段：藍色部分表示我們設定的前綴（即 prompts），橙色部分則為 LLM 自動補全的內容。在智能體中會反覆運行 LLM，直到它生成面向用户的輸出（response）。每次運行時，由客户端代碼（而非 LLM）負責計算工具（tool）運行結果並將其反饋回智能體（agent）。&lt;/p&gt; 
-&lt;p&gt;在早期解碼器 LLM（如 GPT-2[4]）的提示詞實踐中，需要精心構造一個前綴字符串（prefix） ------ 當其被補全時，便能得到想要的結果。相比於直接的指令"Write a poem about whales"，不如説 "Topic: Whales\nPoem: "，甚至是"Topic: Trees\nPoem: ... actual tree poem ...\nTopic: Whales\nPoem: "。在編程場景下，需要構造類似"PR Title: Refactor Foo Method\nDescription: ...\nFull Diff: "這樣的前綴。所謂的"Prompt engineering"，其核心就是巧妙地構建理想前綴，從而引導模型自動補全出所需答案。&lt;/p&gt; 
-&lt;p&gt;隨後引入了指令微調[5]（例如 ChatGPT），大幅降低了大語言模型的使用門檻。現在你如果輸入"Write a PR to refactor Foo"，它就會直接返回代碼。其內在機制幾乎完全等同於上述的自動補全過程，只是前綴變成了"&amp;lt;user&amp;gt;Write a PR to refactor Foo&amp;lt;/user&amp;gt;&amp;lt;assistant&amp;gt;"，此時大語言模型正扮演着聊天中的助手角色。即使在今天，你仍會看到一些奇怪的情況 ------ 模型有時會越過"&amp;lt;/assistant&amp;gt;"標籤繼續自動補全生成內容，開始給自己寫提問。&lt;/p&gt; 
-&lt;p&gt;當模型規模達到一定程度時，我們更進一步，加入了"工具調用（tool calling）[6]"功能。不再侷限於填充 assistant 文本，我們可以在前綴中輸入"Say \read_file(path: str)` instead of responding if you need to read a file"。當遇到編碼任務時，模型現在會補全出"read_file('index.py')&amp;lt;/assistant&amp;gt;"，我們（客户端）則會再次輸入提示詞"&amp;lt;tool&amp;gt;... full contents of index.py ...&amp;lt;/tool&amp;gt;&amp;lt;assistant&amp;gt;`"並要求其繼續補全文本。雖然本質上仍是自動補全，但大語言模型已能借此與外界及外部系統互動了。&lt;/p&gt; 
-&lt;h2&gt;&lt;strong&gt;1.2 Agentic Coding&lt;/strong&gt;&lt;/h2&gt; 
-&lt;p&gt;像 Cursor 這樣的 AI 編程工具，其本質就是這個簡單概念的複雜封裝。&lt;/p&gt; 
-&lt;p&gt;要構建一個 AI 編程工具，你需要：&lt;/p&gt; 
-&lt;ol&gt; 
- &lt;li&gt; &lt;p&gt;Fork VSCode[7]&lt;/p&gt; &lt;/li&gt; 
- &lt;li&gt; &lt;p&gt;添加聊天界面，並選擇一個強大的大語言模型（例如 Sonnet 3.7）&lt;/p&gt; &lt;/li&gt; 
- &lt;li&gt; &lt;p&gt;為編碼智能體實現一套工具集&lt;/p&gt; &lt;p&gt;a. read_file(full_path: str)&lt;/p&gt; &lt;p&gt;b. write_file(full_path: str, content: str)&lt;/p&gt; &lt;p&gt;c. run_command(command: str)&lt;/p&gt; &lt;/li&gt; 
- &lt;li&gt; &lt;p&gt;優化內部提示詞（Prompts）：例如"你是一位編碼專家"、"不要假設，請使用工具"等&lt;/p&gt; &lt;/li&gt; 
-&lt;/ol&gt; 
-&lt;p&gt;總的來看，核心流程基本就是這些了。&lt;strong&gt;真正的難點在於設計提示詞和工具鏈，確保它們能穩定可靠地工作。&lt;/strong&gt; 如果完全按照上述描述來構建，系統雖能勉強運行，但會頻繁出現語法錯誤、幻覺問題（hallucinations）且相當不穩定。&lt;/p&gt; 
-&lt;h2&gt;&lt;strong&gt;1.3 優化 Agentic Coding&lt;/strong&gt;&lt;/h2&gt; 
-&lt;p&gt;打造優秀 AI 編程工具的訣竅，在於找出大語言模型擅長的領域，並圍繞其侷限性精心設計提示詞和工具。這通常意味着需要減輕主智能體的任務負擔 ------ 通過使用更小的模型來完成子任務。&lt;/p&gt; 
-&lt;p&gt;&lt;img src="https://oscimg.oschina.net/oscnet/up-e7e56113a8ef764b999eca561a12d609740.png" alt="" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;p&gt;圖表説明：當你使用 AI 編程工具時，其底層發生了什麼？我們簡化了主智能體的工具集，將"認知負擔"轉移到其他大語言模型上。AI 編程工具會將你的 @標籤注入上下文，調用多個工具來收集更多信息，使用專用的代碼變更標記規則（diff syntax）編輯文件，最後向用户返回摘要響應。&lt;/p&gt; 
-&lt;h2&gt;&lt;strong&gt;1.4 優化措施與面向終端用户的操作建議（Optimizations &amp;amp; User Tips）&lt;/strong&gt;&lt;/h2&gt; 
-&lt;ul&gt; 
- &lt;li&gt; &lt;p&gt;通常情況下，用户自己知道需要哪些具體文件或上下文。因此，我們在聊天界面（Chat UI）中添加了"@file"語法。當調用大語言模型時，我們會將所有附加文件的內容整體打包放入一個"&amp;lt;attached-files&amp;gt;"區塊中傳遞。這本質上是為用户提供語法糖（syntactic sugar），免去了手動複製粘貼整個文件或文件夾的麻煩。&lt;/p&gt; 
-  &lt;ul&gt; 
-   &lt;li&gt;操作建議 (Tip)：&lt;strong&gt;在這些編程工具中建議積極使用 @folder/@file（優先提供更明確的上下文，以獲取更快更準確的響應）。&lt;/strong&gt;&lt;/li&gt; 
-  &lt;/ul&gt; &lt;/li&gt; 
- &lt;li&gt; &lt;p&gt;搜索代碼可能很複雜，尤其對於"我們在哪裏實現了認證功能相關的代碼？"這類語義查詢。我們沒有讓智能體精通編寫搜索正則表達式（regexes），而是選擇在索引階段使用一個編碼器大模型（encoder LLM）將整個代碼庫索引到向量數據庫（vectorstore）中，從而將文件內容及其功能嵌入到向量中。在查詢時，另一個大語言模型會根據相關性對文件進行重排序和過濾。這確保了主智能體在詢問認證功能代碼相關問題時能獲得"完美"的結果。&lt;/p&gt; 
-  &lt;ul&gt; 
-   &lt;li&gt;操作建議 (Tip)：&lt;strong&gt;代碼註釋（Code comments）和文檔字符串（doc-strings）能引導嵌入模型（embedding model）理解代碼，這使得它們的重要性甚至超過了僅寫給人類同事看的情況。&lt;/strong&gt; 務必在文件頂部用一段文字説明：該文件的作用、實現的語義功能以及應何時更新。&lt;/li&gt; 
-  &lt;/ul&gt; &lt;/li&gt; 
- &lt;li&gt; &lt;p&gt;要生成字符層級上零缺陷（character-perfect）的代碼既困難又昂貴，因此優化 write_file(...) 工具成為眾多此類 AI 編程工具的核心。大語言模型通常不會輸出完整的文件內容，而是生成一個 "semantic diff" ------ 僅提供已更改的內容，並附帶代碼註釋，以指導在何處插入更改的文件內容。隨後，另一個更輕量、更快的代碼應用大模型（code-apply LLM） 會將該 "semantic diff" 作為輸入提示詞，並在修復那些微小語法問題的同時寫入實際文件內容。新文件經過 linter 校驗器處理後，工具返回主智能體的結果時會包含實際文件差異（actual diff）和 lint 校驗結果，可用於自我修正文件的錯誤改動。我將此機制類比為：與一位懶散的資深工程師協作，他只需寫出核心片段，後續細節交由實習生完成。&lt;/p&gt; 
-  &lt;ul&gt; 
-   &lt;li&gt;操作建議 (Tip)：你無法直接將提示詞發送給應用模型（apply-model）。&lt;strong&gt;類似"別亂刪代碼"或"別隨意增刪註釋"的建議完全無效，因為這些問題本質上是應用模型（apply-model）工作機制的固有產物。&lt;/strong&gt; 應該讓主智能體獲得更多控制權，例如在指令中明確要求："在 edit_file 指令中提供完整的文件內容"&lt;/li&gt; 
-   &lt;li&gt;操作建議 (Tip)：應用模型處理超大文件時緩慢且易錯，&lt;strong&gt;務必將文件拆分至每部分小於 500 行代碼&lt;/strong&gt;&lt;/li&gt; 
-   &lt;li&gt;&lt;strong&gt;操作建議 (Tip)：lint 反饋對智能體具有極高價值&lt;/strong&gt;，應投資構建能提供高質量建議的增強型 linter2。使用編譯型語言和靜態類型語言能提供更豐富的 lint 時反饋（lint-time feedback）&lt;/li&gt; 
-   &lt;li&gt;操作建議 (Tip)：&lt;strong&gt;使用唯一的文件名&lt;/strong&gt; （不要在代碼庫中使用多個不同的 page.js 文件，最好改用 foo-page.js、bar-page.js 等），&lt;strong&gt;在文檔中應使用完整的文件路徑&lt;/strong&gt;，並將高頻修改的代碼段（hot-paths）集中到同一文件或文件夾中，以降低編輯工具的操作歧義&lt;/li&gt; 
-  &lt;/ul&gt; &lt;/li&gt; 
- &lt;li&gt; &lt;p&gt;選用擅長在此類智能體（Agent）工作流中編寫代碼的模型（而非僅具備通用編碼能力）。這就是 Anthropic 模型在 Cursor 等 AI 編程工具中表現出色的原因 ------ 它們不僅代碼質量高，更擅長將編程任務拆解為這種類型的工具調用（tool calls）。&lt;/p&gt; 
-  &lt;ul&gt; 
-   &lt;li&gt;操作建議 (Tip)：&lt;strong&gt;選用模型時，不應僅關注"編碼能力"，應優先選擇專門為智能體驅動型編程工具（agentic IDEs）優化的模型。&lt;/strong&gt; 目前（據我所知）能有效評估此能力的唯一排行榜是 WebDev Arena[8] 3。&lt;/li&gt; 
-  &lt;/ul&gt; &lt;/li&gt; 
-&lt;/ul&gt; 
-&lt;p&gt;我在自研 AI 編程工具 sparkstack.app 中採用過一個（極其昂貴的）技巧，大幅提升了系統的自我修正能力：為其配備 apply_and_check_tool。該工具會執行更嚴苛的 linting，並啓動無頭瀏覽器（headless browser），沿應用的用户流程（user-flows）獲取控制枱日誌和截圖，為智能體提供反饋。正是在此類場景中，MCP（Model Context Protocol）[9]協議將大放異彩 ------ 它能賦予智能體更強的自主權和上下文理解能力。&lt;/p&gt; 
-&lt;h1&gt;&lt;strong&gt;02 逐行解析 Cursor 的系統提示詞&lt;/strong&gt;&lt;/h1&gt; 
-&lt;p&gt;通過基於 MCP 協議的提示詞注入技術，我提取了 Cursor 智能體模式（agent mode）最新（2025 年 3 月）的提示詞內容。作為一名長期深耕大語言模型領域的開發者，我必須表達對 Cursor "提示詞工程師（prompt engineers）"的高度敬意 ------ 相比其他 AI 編程工具的提示詞設計，他們的專業水準令人讚歎（個人觀點）。我認為這正是 Cursor 能成為領先編程工具的核心因素。剖析此類提示詞也是提升自身提示詞編寫能力與智能體架構能力的絕佳途徑 ------ 從某種意義上看，大多數基於 GPT 的封裝工具採用"開放提示詞（open-prompt）"實現方案，這種特性極具價值。&lt;/p&gt; 
-&lt;p&gt;&lt;img src="https://oscimg.oschina.net/oscnet/up-8e349136713631673bc71fb2c250460d94f.png" alt="" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;p&gt;Cursor Agent 系統提示詞片段。完整提示詞及工具定義（&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fgist.github.com%2Fsshh12%2F25ad2e40529b269a88b80e7cf1c38084%EF%BC%89" target="_blank"&gt;https://gist.github.com/sshh12/25ad2e40529b269a88b80e7cf1c38084）&lt;/a&gt;&lt;/p&gt; 
-&lt;ul&gt; 
- &lt;li&gt;&lt;strong&gt;"&amp;lt;communication&amp;gt;"、"&amp;lt;tool_calling&amp;gt;"等標籤&lt;/strong&gt; → 混合使用 Markdown 和 XML 標籤能大大降低人類和模型對提示詞的閲讀難度 4。&lt;/li&gt; 
- &lt;li&gt;&lt;strong&gt;"由 Claude 3.5 Sonnet 驅動（powered by Claude 3.5 Sonnet）"&lt;/strong&gt; → 大模型通常不會主動聲明自身模型版本。顯式標註此信息可減少用户對計費模型與實際運行模型不一致的抱怨 5。&lt;/li&gt; 
- &lt;li&gt;&lt;strong&gt;"全球最佳 IDE（the world's best IDE）"&lt;/strong&gt; → 該表述簡潔地禁止模型在故障時推薦競品，這對那些代表品牌形象的智能體來説至關重要 6。&lt;/li&gt; 
- &lt;li&gt;&lt;strong&gt;"我們會自動附上某些信息...遵循 &amp;lt;user_query&amp;gt; 標籤內的用户指令（we may automatically attach some information...follow the USER's instructions...by the &amp;lt;user_query&amp;gt; tag）"&lt;/strong&gt; → Cursor 並未直接將用户提示詞傳遞給模型，而是將其置於專用標籤中。這使得系統能在 &amp;lt;user&amp;gt; 消息中傳遞更多與用户相關的文本，既不會讓大語言模型（LLM）混淆，也不會讓用户感到困惑。&lt;/li&gt; 
- &lt;li&gt;&lt;strong&gt;"避免道歉（Refrain from apologizing）"&lt;/strong&gt; → 這顯然是為抑制 Sonnet 模型的致歉傾向而添加的規則。&lt;/li&gt; 
- &lt;li&gt;&lt;strong&gt;"絕對不要提及工具名稱（NEVER refer to tool names when speaking）"&lt;/strong&gt; → Cursor 特別以加粗格式添加此指令。但諷刺的是，我仍常見到類似"使用 edit_tool"的違規輸出 ------ 近期 Sonnet 模型在此方面的表現確實惱人。&lt;/li&gt; 
- &lt;li&gt;&lt;strong&gt;"調用每個工具前需先解釋（Before calling each tool, first explain）"&lt;/strong&gt; → 當大模型在流式傳輸（streaming）工具調用時，用户界面會出現短暫卡頓。此指令能幫助用户確信系統正在處理他們的請求，避免因界面停滯而產生不安。&lt;/li&gt; 
- &lt;li&gt;&lt;strong&gt;"若部分滿足了用户查詢，但你還不確定，則請收集更多信息（partially satiate the USER's query, but you're not confident, gather more information）"&lt;/strong&gt; → 大模型智能體常因過度自信而過早終止任務。此指令為其提供"退路"，促使其深度探索後再響應。&lt;/li&gt; 
- &lt;li&gt;&lt;strong&gt;"禁止直接向用户輸出代碼（NEVER output code to the USER）"&lt;/strong&gt; → 默認情況下，大模型傾向以內聯代碼塊（inline markdown codeblocks）形式輸出代碼。此規則強制其僅通過工具操作代碼，並依賴 UI 間接向用户展示變更結果。&lt;/li&gt; 
- &lt;li&gt;&lt;strong&gt;"若從零構建 Web 應用，必須設計精美的、現代感的 UI（If you're building a web app from scratch, give it a beautiful and modern UI）"&lt;/strong&gt; → 此為針對演示場景的優化（demo-hacking），確保單提示詞（single-prompt）即可生成華麗的應用。&lt;/li&gt; 
- &lt;li&gt;&lt;strong&gt;"在編輯之前，你必須讀取你要編輯的內容 7（you MUST read the contents or section of what you're editing before editing it）"&lt;/strong&gt; → 編碼智能體常急於寫代碼而忽略收集上下文。此類直接的、顯式的指令用於校正該行為。&lt;/li&gt; 
- &lt;li&gt;&lt;strong&gt;"修復 linter 錯誤時循環次數不得超過 3 次（DO NOT loop more than 3 times on fixing linter errors）"&lt;/strong&gt; → 旨在防止 Cursor 陷入代碼編輯的死循環。此措施雖有幫助，但 Cursor 的深度用户都知道，系統仍易因此卡頓。&lt;/li&gt; 
- &lt;li&gt;&lt;strong&gt;"解決根本原因而非僅處理表象（Address the root cause instead of the symptoms）"&lt;/strong&gt; → 這一點是針對大模型常見的對齊問題（alignment issues）：模型常傾向於直接刪除報錯代碼而非修復問題本身。&lt;/li&gt; 
- &lt;li&gt;&lt;strong&gt;"禁止硬編碼 API 密鑰（DO NOT hardcode an API key）"&lt;/strong&gt; → 眾多安全方面的最佳實踐之一，至少可以防止一些明顯的安全問題。&lt;/li&gt; 
- &lt;li&gt;&lt;strong&gt;工具 codebase_search/read_file/grep_search/file_search/web_search&lt;/strong&gt; → 鑑於編碼前獲取正確上下文是非常重要的，Cursor 提供多種形態的搜索工具，確保智能體能夠輕鬆定位要做的修改。&lt;/li&gt; 
- &lt;li&gt;&lt;strong&gt;一些工具中的"單句解釋...説明為何需要運行此命令..."（"One sentence explanation...why this command needs to be run..."）&lt;/strong&gt; → 大多數工具都包含這個非功能性參數，它迫使大模型推理論證它將傳遞哪些參數，此為提升工具調用準確性的常規技巧。&lt;/li&gt; 
- &lt;li&gt;&lt;strong&gt;reapply 工具"調用更強大模型執行上次編輯的內容（Calls a smarter model to apply the last edit）"&lt;/strong&gt; → 允許主智能體動態升級應用模型（即使用更高成本模型），自主解決低級應用錯誤。&lt;/li&gt; 
- &lt;li&gt;&lt;strong&gt;edit_file 工具要求"用對應語言的註釋表示未修改代碼（represent all unchanged code using the comment of the language you're editing）"&lt;/strong&gt; → 此規則解釋了自動生成的隨機註釋的來源，也是應用模型正常工作的必要前提。&lt;/li&gt; 
- &lt;li&gt;&lt;strong&gt;您會注意到整個系統提示詞和工具描述均為靜態內容（未注入用户或代碼庫個性化文本）。&lt;/strong&gt; 該設計使 Cursor 能充分利用提示詞緩存（prompt caching） 優勢[10]，大幅降低推理成本並減少輸出首個 token 的延遲時間（time-to-first-token latency） ------ 這對每次使用工具都需調用大模型的智能體架構至關重要。&lt;/li&gt; 
-&lt;/ul&gt; 
-&lt;h1&gt;&lt;strong&gt;03 如何高效制定 Cursor Rules&lt;/strong&gt;&lt;/h1&gt; 
-&lt;p&gt;現在最大的問題是，編寫 Cursor rules 的"正確方式"是什麼？雖然我的整體答案是"以實際效果為準，適合你的才是最好的"（whatever works for you），但基於提示詞工程經驗和對 Cursor 內部原理的認知，我確實有大量具體建議。&lt;/p&gt; 
-&lt;p&gt;&lt;img src="https://oscimg.oschina.net/oscnet/up-de0947ac445dd1c5a3c2a12d4151efe865a.png" alt="" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;p&gt;大語言模型如何看待你的 Cursor 項目規則？模型會看到規則的名稱和簡介列表，然後根據需要調用 fetch_rules(...) 函數來獲取和查看具體的規則內容&lt;/p&gt; 
-&lt;p&gt;關鍵是要明白，這些規則並非是附加到系統提示詞中的，而是作為具名指令集（named sets of instructions）被引用。因此，建議採用編寫百科詞條（encyclopedia articles）而非命令（commands）的思維方式設計 Cursor rules。&lt;/p&gt; 
-&lt;ul&gt; 
- &lt;li&gt;&lt;strong&gt;切勿在 Cursor rules 中聲明身份（例如"您是精通 TypeScript 的資深前端工程師"）。&lt;/strong&gt; 此類規則雖見於 cursor.directory 且看似有效，但會與內置提示詞賦予的身份產生衝突，導致智能體行為異常。&lt;/li&gt; 
- &lt;li&gt;&lt;strong&gt;避免嘗試覆蓋系統提示詞指令，或通過特定提示詞（prompt）引導應用模型（apply model）的行為。&lt;/strong&gt; 類似"別添加註釋"、"編碼前先提問"、"勿刪除未提及代碼"的指令會直接破壞工具使用機制並幹擾智能體運作。&lt;/li&gt; 
- &lt;li&gt;&lt;strong&gt;減少使用否定性指令。&lt;/strong&gt; 大模型更擅長遵循正向指令（"若遇&amp;lt;此情況&amp;gt;，則&amp;lt;執行此操作&amp;gt;"），而非單純列出限制條件。此原則亦體現在 Cursor 的官方提示詞中。&lt;/li&gt; 
- &lt;li&gt;&lt;strong&gt;請務必花時間編寫高度明顯的規則名稱和描述。&lt;/strong&gt; 關鍵在於，即使智能體（Agent）對您的代碼庫所知甚少，也能憑直覺知道何時適合應用某條 Cursor rules 來使用其 fetch_rules(...) 工具。類似於手動建立文檔索引的做法，你應該適當地創建一些內容相同但名稱和描述不同的規則副本，這樣可以提高 AI 找到相關規則的概率。規則描述應當力求信息密集，避免過度冗長。&lt;/li&gt; 
- &lt;li&gt;&lt;strong&gt;把你的模塊規則和常見代碼修改規則寫得像百科詞條一樣詳細和完整。&lt;/strong&gt; 如同維基百科那樣，將關鍵術語（使用 mdc 鏈接語法）鏈接到代碼文件，這在智能體確定代碼變更所需的關鍵上下文時能提供巨大助力。有時，這也意味着，要避免按部就班地進行説明（專注於"做什麼"而非"怎麼做"），除非真的沒辦法，否則不要讓智能體過度專門化，只會處理某一種特定的代碼修改模式。&lt;/li&gt; 
- &lt;li&gt;&lt;strong&gt;請務必使用 Cursor 本身來起草您的 Cursor rules 。&lt;/strong&gt; 大語言模型（LLMs）非常擅長為其他大語言模型撰寫內容。如果您不確定如何組織文檔格式或編碼上下文，請執行 "@folder/ generate a markdown file that describes the key file paths and definitions for commonly expected changes"。&lt;/li&gt; 
- &lt;li&gt;&lt;strong&gt;要意識到制定太多規則其實是個不好的做法。&lt;/strong&gt; 這一點看似違反直覺 ------ 雖然規則確實是讓 AI 開發工具處理大型項目的關鍵，但需要很多規則本身就暴露了一個問題：你的代碼庫對 AI 來説不夠友好。我在《AI-powered Software Engineering》[11]一書中深入探討了這個話題。未來理想的代碼庫應該設計得足夠清晰直觀，AI 編程工具光靠基礎功能就能完美勝任所有工作。&lt;/li&gt; 
-&lt;/ul&gt; 
-&lt;p&gt;請參考我生成的一些示例[12]。&lt;/p&gt; 
-&lt;h1&gt;&lt;strong&gt;04 Conclusions&lt;/strong&gt;&lt;/h1&gt; 
-&lt;p&gt;一個基於近乎開源的智能體提示詞和公開模型 API 構建的 VSCode 分支，其估值竟能接近 100 億美元 ------ 帶着 68 倍的"wrapper multiple"8 ------ 這着實令人驚歎。我們將拭目以待 Cursor 最終是否會開發自己的智能體模型（感覺可能性不大），或是 Anthropic 是否會帶着 Claude Code + 下一代 Sonnet 強勢介入成為競爭對手。&lt;/p&gt; 
-&lt;p&gt;無論最終結果如何，學會如何優化你的代碼庫、文檔和規則配置仍然是一項有用的技能。我希望這次深入探討能讓你對 Cursor 的工作原理以及優化之道有更具體、更實用的理解。&lt;/p&gt; 
-&lt;p&gt;我經常説這句話，現在再説一遍：&lt;strong&gt;如果你覺得 Cursor 不好用，那一定是你用錯了方法。&lt;/strong&gt;&lt;/p&gt; 
-&lt;hr&gt; 
-&lt;p&gt;1.這是一個基於直覺的統計數據，但我認為相差不遠。一旦你熟練掌握了 Cursor rules，相當數量的 PR 實際上就變成了單次發送提示詞（one-shot prompts）的事。我原本以為要到 2027 年才能達到這個水平，但隨着 Anthropic、Cursor 和我自己的提示詞水平同時提升，進展比我預想的要快。&lt;/p&gt; 
-&lt;p&gt;2.到目前為止，我對 CodeRabbit 的代碼檢查功能印象非常深刻，計劃使用 MCP 將其集成到 Cursor 中。如果 Cursor 的默認代碼檢查器能更好一些，在其他條件不變的情況下，使用體驗會像用 Sonnet 3.8 一樣。&lt;/p&gt; 
-&lt;p&gt;3.（大多數）LLM 的美妙之處在於，雖然這是一個 Web 開發基準測試，但根據我的經驗，其性能與各種類型的編程和框架都有很強的相關性。&lt;/p&gt; 
-&lt;p&gt;4.我沒能找到相關的科學研究，但基於個人經驗，這種方法效果很好，如果 Anthropic 的模型專門針對偽 XML 語法進行訓練，我也絲毫不會感到驚訝。&lt;/p&gt; 
-&lt;p&gt;5.這確實會產生一些意想不到的副作用，編程模型會將你代碼庫中引用的模型名稱更改為它自己（引用的模型）的名稱。&lt;/p&gt; 
-&lt;p&gt;6.這裏存在一個有趣的法律灰色地帶。Cursor 將此內容放在他們的網站上實際上是違法的（見《聯邦貿易委員會法》、《蘭哈姆法》），但（至少目前）他們將內容放進提示詞（prompt）中，並由 LLM 代其表述出來，卻是被允許的。&lt;/p&gt; 
-&lt;p&gt;7.順便説一句："Cursor 團隊，我發現了一個錯別字 (:"&lt;/p&gt; 
-&lt;p&gt;8.這是我創造的一個術語，用來表示基於 GPT 封裝的工具的估值與模型提供商估值之間的比率。在這種情況下，Anthropic : Cursor = 600 億美元 : 100 億美元 = 6。我的直覺告訴我"6"不是一個合理的比率。戴上我那業餘投資者的帽子，我推測 Anthropic 應該接近 1000 億美元，而 Cursor 則最高達 10 億美元（wrapper multiple 為 100）。我實在看不出他們其中任何一方真的擁有持久的"護城河"（long term moat），Anthropic 構建自己的下一代 AI 編程工具似乎也是輕而易舉的事。&lt;/p&gt; 
-&lt;p&gt;&lt;strong&gt;END&lt;/strong&gt;&lt;/p&gt; 
-&lt;p&gt;&lt;strong&gt;本期互動內容 🍻&lt;/strong&gt;&lt;/p&gt; 
-&lt;p&gt;&lt;strong&gt;❓文中説『未來理想的代碼庫應該對 AI 足夠友好』，你眼中的『AI 友好型代碼庫』有哪些具體特徵？&lt;/strong&gt;&lt;/p&gt; 
-&lt;p&gt;&lt;strong&gt;文中鏈接&lt;/strong&gt;&lt;/p&gt; 
-&lt;p&gt;[1]&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fwww.cursor.com%2F" target="_blank"&gt;https://www.cursor.com/&lt;/a&gt;&lt;/p&gt; 
-&lt;p&gt;[2]&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fcodeium.com%2Fwindsurf" target="_blank"&gt;https://codeium.com/windsurf&lt;/a&gt;&lt;/p&gt; 
-&lt;p&gt;[3]&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fgithub.com%2Ffeatures%2Fcopilot" target="_blank"&gt;https://github.com/features/copilot&lt;/a&gt;&lt;/p&gt; 
-&lt;p&gt;[4]&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fcdn.openai.com%2Fbetter-language-models%2Flanguage_models_are_unsupervised_multitask_learners.pdf" target="_blank"&gt;https://cdn.openai.com/better-language-models/language_models_are_unsupervised_multitask_learners.pdf&lt;/a&gt;&lt;/p&gt; 
-&lt;p&gt;[5]&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Farxiv.org%2Fabs%2F2203.02155" target="_blank"&gt;https://arxiv.org/abs/2203.02155&lt;/a&gt;&lt;/p&gt; 
-&lt;p&gt;[6]&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fpython.langchain.com%2Fdocs%2Fconcepts%2Ftool_calling%2F" target="_blank"&gt;https://python.langchain.com/docs/concepts/tool_calling/&lt;/a&gt;&lt;/p&gt; 
-&lt;p&gt;[7]&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fwww.reddit.com%2Fr%2Fcursor%2Fcomments%2F1h9d763%2Fdid_cursor_really_need_to_fork_vscode_rather_than%2F" target="_blank"&gt;https://www.reddit.com/r/cursor/comments/1h9d763/did_cursor_really_need_to_fork_vscode_rather_than/&lt;/a&gt;&lt;/p&gt; 
-&lt;p&gt;[8]&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fweb.lmarena.ai%2Fleaderboard" target="_blank"&gt;https://web.lmarena.ai/leaderboard&lt;/a&gt;&lt;/p&gt; 
-&lt;p&gt;[9]&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fmodelcontextprotocol.io%2Fintroduction" target="_blank"&gt;https://modelcontextprotocol.io/introduction&lt;/a&gt;&lt;/p&gt; 
-&lt;p&gt;[10]&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fwww.anthropic.com%2Fnews%2Fprompt-caching" target="_blank"&gt;https://www.anthropic.com/news/prompt-caching&lt;/a&gt;&lt;/p&gt; 
-&lt;p&gt;[11]&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fblog.sshh.io%2Fp%2Fai-powered-software-engineering" target="_blank"&gt;https://blog.sshh.io/p/ai-powered-software-engineering&lt;/a&gt;&lt;/p&gt; 
-&lt;p&gt;[12]&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fchat.sshh.io%2Fshare%2FpWMGGDyPTok05mxOq17p-" target="_blank"&gt;https://chat.sshh.io/share/pWMGGDyPTok05mxOq17p-&lt;/a&gt;&lt;/p&gt; 
-&lt;p&gt;&lt;strong&gt;本文經原作者授權，由 Baihai IDP 編譯。如需轉載譯文，請聯繫獲取授權。&lt;/strong&gt;&lt;/p&gt; 
-&lt;p&gt;&lt;strong&gt;原文鏈接：&lt;/strong&gt;&lt;/p&gt; 
-&lt;p&gt;&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fblog.sshh.io%2Fp%2Fhow-cursor-ai-ide-works" target="_blank"&gt;https://blog.sshh.io/p/how-cursor-ai-ide-works&lt;/a&gt;&lt;/p&gt;
-                                                                                    &lt;/div&gt;
-                                                                            </description>
-      <link>https://my.oschina.net/IDP/blog/18627427</link>
-      <guid isPermaLink="false">https://my.oschina.net/IDP/blog/18627427</guid>
-      <pubDate>Sat, 10 May 2025 07:43:00 GMT</pubDate>
-      <author>原創</author>
-    </item>
-    <item>
-      <title>Cursor 推出月費 200 美元的 Ultra 計劃，Pro 計劃將更新為「不限量但有速率限制」的模式</title>
-      <description>&lt;div class="content"&gt;
-                                                                    
-                                                        &lt;p&gt;Cursor 推出了每月 200 美元的 &lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fwww.cursor.com%2Fcn%2Fblog%2Fnew-tier" target="_blank"&gt;Ultra 計劃&lt;/a&gt;。官方稱這個變化來自高級用户的需求，他們希望獲得&lt;strong&gt;比按使用量計價更有可預測性的&lt;/strong&gt;訂閲計劃。&lt;/p&gt; 
-&lt;p&gt;&lt;img src="https://static.oschina.net/uploads/space/2025/0618/151550_1QMH_2720166.png" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;p&gt;&lt;strong&gt;新的 Ultra 計劃&lt;/strong&gt;：&lt;/p&gt; 
-&lt;ul&gt; 
- &lt;li&gt; &lt;p&gt;每月費用為 200 美元&lt;/p&gt; &lt;/li&gt; 
- &lt;li&gt; &lt;p&gt;使用量是 Pro 計劃的 20 倍&lt;/p&gt; &lt;/li&gt; 
- &lt;li&gt; &lt;p&gt;專為追求比按使用量計價更穩定價格的高級用户設計&lt;/p&gt; &lt;/li&gt; 
-&lt;/ul&gt; 
-&lt;p&gt;&lt;strong&gt;Pro 計劃的變更&lt;/strong&gt;：&lt;/p&gt; 
-&lt;ul&gt; 
- &lt;li&gt; &lt;p&gt;Pro 計劃將更新為「不限量但有速率限制」的模式&lt;/p&gt; &lt;/li&gt; 
- &lt;li&gt; &lt;p&gt;將取消對工具調用的所有限制&lt;/p&gt; &lt;/li&gt; 
- &lt;li&gt; &lt;p&gt;現有用户如果願意，可以選擇繼續使用之前的「500 次請求限制」方法（通過儀錶板 &amp;gt; 設置 &amp;gt; 高級選項）&lt;/p&gt; &lt;/li&gt; 
-&lt;/ul&gt; 
-&lt;p&gt;&amp;nbsp;&lt;/p&gt; 
-&lt;p&gt;詳情：https://www.cursor.com/blog/new-tier&lt;/p&gt;
-                                                                                &lt;/div&gt;
-                                                                            </description>
-      <link>https://www.oschina.net/news/355977</link>
-      <guid isPermaLink="false">https://www.oschina.net/news/355977</guid>
-      <pubDate>Sat, 10 May 2025 07:20:00 GMT</pubDate>
-      <author>來源: OSCHINA</author>
-    </item>
-    <item>
-      <title>通用智能體 Genspark 免費提供 OpenAI o3-pro 模型</title>
-      <description>&lt;div class="content"&gt;
-                                                                    
-                                                        &lt;p&gt;通用智能體 Genspark&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fx.com%2Fgenspark_ai%2Fstatus%2F1934633273940115571" target="_blank"&gt; 宣佈&lt;/a&gt;其 AI Chat 功能現已免費提供 &lt;a href="https://www.oschina.net/news/354753/openai-o3-pro" target="news"&gt;OpenAI o3-pro&lt;/a&gt;&amp;nbsp;模型。免費用户每天可獲得 200 積分，Plus 用户則可無限量使用。&lt;/p&gt; 
-&lt;p&gt;&lt;img height="1090" src="https://static.oschina.net/uploads/space/2025/0618/150220_b7UB_2720166.png" width="1278" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;p style="color:#333333; margin-left:0; margin-right:0; text-align:left"&gt;o3-pro 是 OpenAI 最新發布的推理模型，基於 o3 所打造，擁有更強的數學、科學、編程等領域的表現。&lt;/p&gt; 
-&lt;p style="color:#333333; margin-left:0; margin-right:0; text-align:left"&gt;o3-Pro 可，自動調用多種工具，包括可以搜索網頁、分析文件、推理視覺輸入、使用 Python、通過記憶功能個性化回覆等。&lt;strong&gt;由於調用的工具較多，所以，思考的時間比 o1 Pro、o3 更長。&lt;/strong&gt;o3-pro 與 o3 系列一樣擁有 200K 的上下文窗口和 100K 的輸出，但價格卻比它們暴降 80%。&lt;/p&gt; 
-&lt;p style="color:#333333; margin-left:0; margin-right:0; text-align:left"&gt;價格方面，o3-pro 輸入為 20 美元 / 百萬 token，輸出 80 美元 / 百萬 token。&lt;/p&gt; 
-&lt;p style="color:#333333; margin-left:0; margin-right:0; text-align:left"&gt;Genspark 由百度前高管景鯤創立，今年 4 月宣佈&lt;a href="https://www.oschina.net/news/342709/mainfunc-ai-genspark-super-agent"&gt;推出&lt;/a&gt;通用 AI 智能體 "Genspark Super Agent"，號稱是一款 "快速、準確、可控" 的通用 AI 代理。這一消息迅速在技術社區引發熱議，眾多專業人士將其與 Manus 相提並論，認為這標誌着通用 AI 代理技術的新一輪角逐。&lt;/p&gt;
-                                                                                &lt;/div&gt;
-                                                                            </description>
-      <link>https://www.oschina.net/news/355972</link>
-      <guid isPermaLink="false">https://www.oschina.net/news/355972</guid>
-      <pubDate>Sat, 10 May 2025 07:06:00 GMT</pubDate>
-      <author>來源: OSCHINA</author>
-    </item>
-    <item>
-      <title>韓國計劃未來 5 年在 AI 領域投入 16 萬億韓元</title>
-      <description>&lt;div class="content"&gt;
-                                                                    
-                                                        &lt;p&gt;&lt;span style="color:#000000"&gt;外媒援引業內消息人士&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fen.yna.co.kr%2Fview%2FAEN20250618008500320%23%3A%7E%3Atext%3DSEOUL%252C%2520June%252018%2520%2528Yonhap%2529%2520--%2520South%2520Korea%2527s%2520science%2Cand%2520development%2520%2528R%2526D%2529%2520activities%252C%2520industry%2520sources%2520said%2520Wednesday." target="_blank"&gt;透露&lt;/a&gt;，韓國科技部已申請在未來五年內撥付超過 16 萬億韓元（約合 117 億美元）的預算，用於建設國家人工智能（AI）基礎設施和支持與 AI 相關的研發活動。&lt;/span&gt;&lt;/p&gt; 
-&lt;p&gt;&lt;img height="298" src="https://oscimg.oschina.net/oscnet/up-ff88a8c741069c76b9c2d612b6c7bb3fc53.png" width="700" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;p&gt;&lt;span style="color:#000000"&gt;據知情人士稱，韓國科技部以到 2030 年使韓國成為世界三大 AI 強國之一為目標，提交了一份要求撥款總額為 16.08 萬億韓元的提案。&lt;/span&gt;&lt;/p&gt; 
-&lt;p&gt;&lt;span style="color:#000000"&gt;韓國科技部拒絕證實這一消息。&lt;/span&gt;&lt;/p&gt; 
-&lt;p&gt;&lt;span style="color:#000000"&gt;消息人士稱，在這筆 16 萬億韓元的預算中，其中 12.3 萬億將將專門用於建立「AI 高速公路」，其中包括建設配備 5 萬個 GPU 的 AI 數據中心。其他資金將用於支持 AI 相關的研發、AI 專業產業園區的發展和政策貸款項目。預算還將用於培養專業技能人才，以引領 AI 領域的創新。&lt;/span&gt;&lt;/p&gt; 
-&lt;p&gt;&lt;span style="color:#000000"&gt;另外，韓國科技部還要求在 5 年內投入 3.09 萬億韓元，用於加強韓國的數字基礎設施，提高用户的便利性。其中，2.34 萬億韓元將用於加強網絡安全和構築更安全的數字環境。該部還建議減輕公眾的電信負擔，允許手機話費減税。&lt;/span&gt;&lt;/p&gt;
-                                                                                &lt;/div&gt;
-                                                                            </description>
-      <link>https://www.oschina.net/news/355971</link>
-      <guid isPermaLink="false">https://www.oschina.net/news/355971</guid>
-      <pubDate>Sat, 10 May 2025 07:05:00 GMT</pubDate>
-      <author>來源: OSCHINA</author>
-    </item>
-    <item>
-      <title>OSC 社區 2.1 發佈：私有化 + AI</title>
-      <description>&lt;div class="content"&gt;
-                                                                    
-                                                        &lt;p&gt;內容社區拒絕一切廣告，是逃避；把廣告做到讓人反感，是失衡。&lt;/p&gt; 
-&lt;p&gt;社區的生命力，從來不在於「免費」與「流量」的幻象，而是在於自我造血，持續成長。那些只依賴低價 CPM 和人海運營的社區，終將如天涯、貓撲那樣被時代拋棄 —— 它們活得像一條奄奄一息的巨魚，體型龐大卻無力迴天。&lt;/p&gt; 
-&lt;p&gt;早年，「社區＝廣告」幾乎是唯一選項。國內大多數社區依靠信息流廣告，CPM（每千次曝光收入）往往在 6 元人民幣左右；而 YouTube 同期的 CPM 高達 18 美元（約合 129 元人民幣），兩者相差 21 倍。當廣告收益的天花板被牢牢掐住，內容與運營的成本卻從未鬆動，社區便陷入了必然的人力成本漩渦。&lt;/p&gt; 
-&lt;p&gt;我們曾見證，一家擁有百萬級日活的社區，為了承載社區安全審核和運營，僅內容審核團隊就 200 人，支撐起從人工審核到緊急攔截的全流程；運營團隊更是分區、分板塊、分專題地輪番維護，人工成本與日俱增。即使人海戰術能暫時撐起「多板塊分流」的表面繁榮，可背後累積的工資支出，卻如同吞噬社區未來的黑洞。&lt;/p&gt; 
-&lt;p&gt;有人説，「社區的靈魂在於共創與分享」，這沒錯；但我更認同，「社區的命脈在於變現與可持續」。那些傳統的廣告商業化模式，雖顯其短期效益，卻無法帶來長久的繁榮。只有找到既能堅守社區初心，又能持續自我造血的創新路徑，才能真正讓分享在實踐中紮根，交流在未來中生長。&lt;/p&gt; 
-&lt;p&gt;答案在於通過 AI 賦能，實現社區的智能化升級，並構建可私有化部署的智能知識庫，為企業提供持續創新和高效協作的解決方案。&lt;/p&gt; 
-&lt;p&gt;今天，開源中國技術社區（&lt;a href="https://www.oschina.net/action/GoToLink?url=http%3A%2F%2FOSCHINA.NET" target="_blank"&gt;OSCHINA.NET&lt;/a&gt;）推出&lt;strong&gt;「數字化企業知識管理 AI 平台」&lt;/strong&gt;，以突破性思路重塑社區商業模式：將社區沉澱的技術力與 AI 深度融合，打造可私有化部署的「企業知識中樞」，從 C 端流量生意轉向 B 端價值創造。實現社區從「免費流量」到「付費解決方案」的全面躍遷。&lt;/p&gt; 
-&lt;p&gt;&lt;img src="https://static.oschina.net/uploads/space/2025/0618/141154_0IaF_2720166.png" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;p&gt;&amp;nbsp;&lt;/p&gt; 
-&lt;h3&gt;&lt;span style="color:#27ae60"&gt;&lt;strong&gt;從「模型」到「場景」，構建真正的 AI 全棧社區&lt;/strong&gt;&lt;/span&gt;&lt;/h3&gt; 
-&lt;p&gt;&lt;strong&gt;GiEngine 高速推理引擎 - 私有化 AI 智能響應&lt;/strong&gt;&lt;/p&gt; 
-&lt;p&gt;在需要對內部海量知識進行實時檢索與推理的場景，OSC 通過 GiEngine 多模型推理能力，實現在本地環境中對 DeepSeek、Qwen3、GLM4 等模型的百毫秒級響應。用户可即時獲得精準答案，顯著提升內部協作效率並降低運維壓力。&lt;/p&gt; 
-&lt;p&gt;&lt;strong&gt;OSC × AI 內容工廠 - 高效閉環的知識生成&lt;/strong&gt;&lt;/p&gt; 
-&lt;p&gt;在跨部門內容策劃、審批與發佈流程複雜、效率低下的場景，&lt;span style="color:#27ae60"&gt;OSC 將社區沉澱的 2000 萬篇開源技術方案與 AI 創作引擎深度融合，自動完成「策劃→採集→翻譯→撰寫→審核→發佈」閉環。&lt;/span&gt;部門間協同成本下降 60%，知識沉澱速度提升 3 倍，實現持續可複用的企業級知識庫。&lt;/p&gt; 
-&lt;p&gt;&lt;strong&gt;AI 智能推薦系統 - 精準匹配客户需求&lt;/strong&gt;&lt;/p&gt; 
-&lt;p&gt;在面臨海量信息難以快速定位高價值內容的場景，OSC 引入原創度、全網熱度、社交反饋、用户畫像匹配度等多維打分，並結合實時熱榜與行業標籤精準推送，解決信息繭房與同質化問題。&lt;/p&gt; 
-&lt;p&gt;&lt;strong&gt;人格化 AI 問答機器人 – 7×24 小時無感問題解決&lt;/strong&gt;&lt;/p&gt; 
-&lt;p&gt;AI 問答機器人專注於技術問答場景，系統結合全文檢索與大模型生成，以「無感」方式自動理解用户需求，快速給出精準解答。用户平均從提問到獲得完整解答的時間可從 10 分鐘縮短至 1 分鐘，節省約 90% 的時間成本。&lt;/p&gt; 
-&lt;p&gt;&lt;strong&gt;AI 態勢大屏&lt;/strong&gt;&lt;/p&gt; 
-&lt;p&gt;在需要宏觀監控社區健康與風險預警的場景，OSC 利用 RAG 檢索增強與大模型趨勢預測，打造「運營指揮中心」可視化平台，一屏呈現訪問熱力、留存、算力消耗、安全攔截等核心指標。管理者可實現宏觀與微觀的無縫切換，決策效率提升 20%，風險響應時間縮短 50%。&lt;/p&gt; 
-&lt;p&gt;&amp;nbsp;&lt;/p&gt; 
-&lt;h3&gt;&lt;span style="color:#27ae60"&gt;&lt;strong&gt;私有化部署的五大價值&lt;/strong&gt;&lt;/span&gt;&lt;/h3&gt; 
-&lt;p&gt;&lt;span style="color:#2980b9"&gt;&lt;strong&gt;安全合規與自主可控&lt;/strong&gt;&lt;/span&gt;：私有化部署在客户內網完成，全鏈路數據不出域，兼容國產操作系統、中間件與數據庫；同時提供細粒度權限管控與操作審計，確保社區運行合規、可控、可信。&lt;/p&gt; 
-&lt;p&gt;&lt;span style="color:#2980b9"&gt;&lt;strong&gt;知識共創與沉澱&lt;/strong&gt;&lt;/span&gt;：員工可跨部門在同一平台發起話題、撰寫文檔、沉澱 FAQ，AI 與人協作的內容自動歸檔入庫，打破知識孤島，形成可檢索、可複用的組織級知識資產。&lt;/p&gt; 
-&lt;p&gt;&lt;span style="color:#2980b9"&gt;&lt;strong&gt;跨部門協作與創新&lt;/strong&gt;&lt;/span&gt;：內置在線討論、活動中心與智能推薦模塊，線上線下無縫銜接，激發創新靈感，促進多團隊協同和技術孵化。&lt;/p&gt; 
-&lt;p&gt;&lt;span style="color:#2980b9"&gt;&lt;strong&gt;智能運營降本增效&lt;/strong&gt;&lt;/span&gt;：AI 自動化覆蓋採集、翻譯、編輯、審核與發佈全流程，7×24h 不間斷運營，內容更新頻率提升 3 倍以上，人力成本減少 60%，並通過預測預警保障運營質量與安全。&lt;/p&gt; 
-&lt;p&gt;&lt;span style="color:#2980b9"&gt;&lt;strong&gt;數字化轉型賦能&lt;/strong&gt;&lt;/span&gt;：整合海量開源技術內容與文檔資源，提供從知識獲取、技能提升到實踐落地的端到端數字化支持；依託模型微調與數據反饋，平台持續進化，助力組織加速數字化升級。&lt;/p&gt; 
-&lt;p&gt;&amp;nbsp;&lt;/p&gt; 
-&lt;h3&gt;&lt;span style="color:#27ae60"&gt;&lt;strong&gt;商業不是污染源，是讓技術流動的河&lt;/strong&gt;&lt;/span&gt;&lt;/h3&gt; 
-&lt;p&gt;社區的靈魂在於共創與分享。沒錯，但真正的價值釋放，必須伴隨可持續的商業閉環。AI 與社區的融合只是開始，我們將繼續突破邊界，推出更多 AI 項目 - 從直播驅動硬件 prototyping，到 AI 培訓教育孵化新一代開發者；從行業專屬知識庫，到全鏈路智能運營。&lt;/p&gt; 
-&lt;p&gt;過去兩年，開源中國社區通過 AI 能力驅動內容增長，內容運營成本降低 30%、商業化營收提升 200%，同時也吸引了多家客户定製化部署合作的需求，更有外資企業前來考察，意欲引入我們的「數字化企業知識管理 AI 平台」。下一步，我們的目標是再翻一番 —— 向政採商機、行業大廠以及全球化市場持續擴張。&lt;/p&gt; 
-&lt;p&gt;在「數字中國」「網絡強國」戰略的雙輪驅動下，企業級社區已成為國家數字基礎設施的重要組成部分。&lt;span style="color:#27ae60"&gt;開源中國社區的「數字化企業知識管理 AI 平台」不僅為企業提供「知識管理＋智能創作＋可視化決策」的一站式解決方案，也正承載着國家「自主可控」「高質量發展」的時代使命&lt;/span&gt;。AI 與社區的深度融合，將助力中國企業在未來十年實現真正的科技突圍與產業升級。&lt;/p&gt; 
-&lt;p&gt;真正的商業化成功，從不是孤軍奮戰，而是與時代共潮生。&lt;/p&gt; 
-&lt;p&gt;&amp;nbsp;&lt;/p&gt; 
-&lt;h4&gt;&lt;strong&gt;數字化企業知識管理 AI 平台：&lt;/strong&gt;&lt;em&gt;&lt;a href="http://next.oschina.net/"&gt;next.oschina.net&lt;/a&gt;&lt;/em&gt;&lt;/h4&gt;
-                                                                                &lt;/div&gt;
-                                                                            </description>
-      <link>https://www.oschina.net/news/355961</link>
-      <guid isPermaLink="false">https://www.oschina.net/news/355961</guid>
-      <pubDate>Sat, 10 May 2025 06:14:00 GMT</pubDate>
-      <author>來源: OSCHINA</author>
-    </item>
-    <item>
-      <title>Sam Altman：Meta 曾試圖以 1 億美元挖走 OpenAI 人才，但未能成功</title>
-      <description>&lt;div class="content"&gt;
-                                                                    
-                                                        &lt;p&gt;&lt;span style="color:#000000"&gt;Meta 首席執行官馬克·扎克伯格 (Mark Zuckerberg ) 最近大舉招聘，試圖從競爭對手的實驗室挖角頂尖 AI 研究人員，以充實 Meta 新的超級智能團隊。據報道，為了在由 Scale AI 前首席執行官 Alexandr Wang 領導的團隊中工作，並在扎克伯格附近辦公，Meta 向 OpenAI 和谷歌 DeepMind 的員工提供了高達 1 億美元的薪酬待遇。&lt;/span&gt;&lt;/p&gt; 
-&lt;p&gt;&lt;span style="color:#000000"&gt;OpenAI 首席執行官薩姆·奧爾特曼 (Sam Altman) 在週二與其兄弟 Jack Altman 共同發佈的&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fx.com%2Fjaltma%2Fstatus%2F1935063796802011164" target="_blank"&gt;播客&lt;/a&gt;中證實了這些報道。但他指出，扎克伯格的招募工作基本上沒有成功，並在過程中多次挖苦 Meta。&lt;/span&gt;&lt;/p&gt; 
-&lt;p&gt;&lt;span style="color:#000000"&gt;「[Meta] 開始給我們隊裏的很多人開出鉅額合同。你知道，比如每年 1 億美元的簽約獎金，比這還多的薪水……我很高興，至少到目前為止，我們最優秀的員工中還沒有人決定接受他的條件。」&lt;/span&gt;&lt;/p&gt; 
-&lt;p&gt;&lt;img height="416" src="https://oscimg.oschina.net/oscnet/up-bc17827506816afff89a78697159baba20a.png" width="500" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;p&gt;&lt;span style="color:#000000"&gt;Altman 稱，他相信員工們的評估是，OpenAI 更有可能實現 AGI，並且有朝一日可能成為更有價值的公司。他認為 Meta 公司只關注員工的高額薪酬，而不是實現 AGI 的使命，這很可能不會創造出優秀的企業文化。&lt;/span&gt;&lt;/p&gt; 
-&lt;p&gt;&lt;span style="color:#000000"&gt;消息稱，Meta 曾試圖挖走 OpenAI 的首席研究員之一 Noam Brown 以及谷歌的 AI 架構師 Koray Kavukcuoglu。然而，這兩次嘗試都未能成功。&lt;/span&gt;&lt;/p&gt; 
-&lt;p&gt;&lt;span style="color:#000000"&gt;Altman 認為，OpenAI 的創新文化是其成功的關鍵，而 Meta 的「當前 AI 努力並未取得預期的效果」。並表示，他尊重 Meta 的很多方面，但也指出他「並不認為他們是一家擅長創新的公司」。在播客的後半部分，Altman 表示，他認為企業僅僅在 AI 領域迎頭趕上是不夠的——他們必須真正創新才能保持領先地位。&lt;/span&gt;&lt;/p&gt; 
-&lt;p&gt;&lt;span style="color:#000000"&gt;此外，Sam Altman 還描述了一款可能會蠶食 Meta 應用市場的由 AI 驅動的社交媒體信息流。他表示，自己很有興趣探索一款利用 AI 根據用户需求提供定製信息流的社交媒體應用，而不是傳統社交媒體應用中默認的算法信息流。&lt;/span&gt;&lt;/p&gt;
-                                                                                &lt;/div&gt;
-                                                                            </description>
-      <link>https://www.oschina.net/news/355944/sam-altman-meta-tried-100m-offers</link>
-      <guid isPermaLink="false">https://www.oschina.net/news/355944/sam-altman-meta-tried-100m-offers</guid>
-      <pubDate>Sat, 10 May 2025 03:39:00 GMT</pubDate>
-      <author>來源: OSCHINA</author>
-    </item>
-    <item>
-      <title>Linux 桌面環境 KDE Plasma 6.4 發佈，帶來多項出色改進</title>
-      <description>&lt;div class="content"&gt;
-                                                                    
-                                                        &lt;p&gt;KDE Plasma 6.4 &lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fkde.org%2Fzh-cn%2Fannouncements%2Fplasma%2F6%2F6.4.0%2F" target="_blank"&gt;已發佈&lt;/a&gt;，為這款開源桌面帶來了諸多精彩的改進。KDE Plasma 6.4 持續增強了對 Wayland 的支持，分離了 KWin X11 代碼，以便更好地與日益增長的 Wayland 優先理念相分離。&lt;/p&gt; 
-&lt;p&gt;&lt;img alt="" src="https://oscimg.oschina.net/oscnet/up-13c517526201b297f34a6dcaf329d9b315d.png" referrerpolicy="no-referrer"&gt; &lt;img alt="" src="https://oscimg.oschina.net/oscnet/up-3a7a8490ff36dd30ab5e4346cf264c1f437.png" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;p&gt;主要變化：&lt;/p&gt; 
-&lt;ul&gt; 
- &lt;li&gt;允許為每一個虛擬桌面選擇不同的磁貼佈局；&lt;/li&gt; 
- &lt;li&gt;支持用數字鍵盤鍵移動指針，觸控板手勢放大或縮小；&lt;/li&gt; 
- &lt;li&gt;增加前景和背景元素之間的對比度；&lt;/li&gt; 
- &lt;li&gt;改進了 Info Center 和 KMenuEdit 的外觀；&lt;/li&gt; 
- &lt;li&gt;文件傳輸通知會顯示直觀的進度圖；&lt;/li&gt; 
- &lt;li&gt;可直接通過可用更新通知安裝更新；&lt;/li&gt; 
- &lt;li&gt;應用全屏模式下將進入「請勿打擾」模式，將只會顯示緊急通知；&lt;/li&gt; 
- &lt;li&gt;當應用嘗試訪問麥克風發現麥克風靜音時會彈出通知；等等。&lt;/li&gt; 
-&lt;/ul&gt; 
-&lt;p&gt;Plasma&amp;nbsp;6.4 還帶來了多項性能提升、更強大的繪圖板支持、更強大的 HDR / 色彩管理、更佳的通知體驗、更流暢的系統監視器應用，以及諸多其他桌面優化和錯誤修復，其中還有大量新功能和其他改進，旨在進一步優化 Plasma 6 桌面體驗。&lt;/p&gt; 
-&lt;p&gt;&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fkde.org%2Fannouncements%2Fplasma%2F6%2F6.4.0%2F" target="_blank"&gt;通過 KDE.org&lt;/a&gt;&amp;nbsp;可以查看有關 Plasma 6.4 的更多詳細信息和屏幕截圖。&lt;/p&gt;
-                                                                                &lt;/div&gt;
-                                                                            </description>
-      <link>https://www.oschina.net/news/355943/kde-plasma-6-4</link>
-      <guid isPermaLink="false">https://www.oschina.net/news/355943/kde-plasma-6-4</guid>
-      <pubDate>Sat, 10 May 2025 03:38:00 GMT</pubDate>
       <author>來源: OSCHINA</author>
     </item>
   </channel>
