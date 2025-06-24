@@ -7,8 +7,613 @@
     <generator>RSSHub</generator>
     <webMaster>contact@rsshub.app (RSSHub)</webMaster>
     <language>zh-tw</language>
-    <lastBuildDate>Tue, 24 Jun 2025 02:43:00 GMT</lastBuildDate>
+    <lastBuildDate>Tue, 24 Jun 2025 07:42:55 GMT</lastBuildDate>
     <ttl>5</ttl>
+    <item>
+      <title>百度日誌中台前端重構實踐</title>
+      <description>&lt;div class="content"&gt;
+                                                                                                                    
+                                                                                                                                                    &lt;p&gt;日誌中台是百度內部針對打點數據的全生命週期管理平台，作為公司日誌數據的唯一入口，承擔以下核心職能：1.功能覆蓋：提供從數據採集、傳輸、存儲到查詢分析的一站式服務，支持產品運營分析、研發性能監控、運維管理等多元場景。2.業務賦能：通過標準化流程實現用戶行為日誌的埋點申請、審批及退場管理，助力 APP 端、服務端等業務線挖掘數據價值。3.生態協同：與大數據平台、推薦中台、性能平台深度聯動，避免重複建設，提升資源利用率，強化業務中台能力。&lt;/p&gt; 
+&lt;span id="OSC_h1_1"&gt;&lt;/span&gt; 
+&lt;h1&gt;01 項目背景&lt;/h1&gt; 
+&lt;p&gt;2020 年初啓動的日誌中台前端項目，隨着業務發展逐漸暴露出嚴重問題。整個前端項目技術負債多，有 500 多個文件，共 11 萬多行源碼。項目已經變得老舊而臃腫。面臨線上 bug 頻發、排查問題效率低下等各種問題，陳舊的技術棧與低效的流程也制約了團隊的生產力。因此需進行全面全面重構，通過基於業務導向的架構優化、開發測試流程規範化，從而提升前端開發效率，使項目具備長期穩健發展的技術基礎。本文將重點介紹我在重構項目過程中的一些實踐經驗。&lt;/p&gt; 
+&lt;span id="OSC_h2_2"&gt;&lt;/span&gt; 
+&lt;h2&gt;02 前端項目面臨的問題&lt;/h2&gt; 
+&lt;p&gt;先介紹下日誌中台前端項目的基本情況&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt; &lt;p&gt;核心框架：Vue 2.6 + Vuex 3.1.1 + VueRouter 3.0.6&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;UI 組件庫：ElementUI 2.15.13&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;構建工具：@vue/cli-service 3.11.0（基於 Webpack 4）&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;部署平台：測試環境（FIS3）、生產環境（Tower）&lt;/p&gt; &lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;p&gt;下面我將從 4 個維度來分析下前端項目所面臨的各種問題。&lt;/p&gt; 
+&lt;span id="OSC_h2_3"&gt;&lt;/span&gt; 
+&lt;h2&gt;&lt;strong&gt;2.1 代碼質量&lt;/strong&gt;&lt;/h2&gt; 
+&lt;p&gt;由於項目沒有接入代碼格式化 prettier 和，代碼規範檢查 eslint，導致項目的代碼質量堪憂，各種各樣的代碼風格並存。在開發需求過程中，各自的編碼風格不一致，維護時需額外適應時間，甚至由此引發線上問題。&lt;/p&gt; 
+&lt;span id="OSC_h2_4"&gt;&lt;/span&gt; 
+&lt;h2&gt;&lt;strong&gt;2.2 基礎建設&lt;/strong&gt;&lt;/h2&gt; 
+&lt;p&gt;&lt;strong&gt;&lt;strong&gt;1. 代碼臃腫，維護困難&lt;/strong&gt;&lt;/strong&gt;&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt; &lt;p&gt;全項目 500+源文件中，30+文件超 1000 行，5+文件超 2000 行，最大文件達 5000 行。&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;巨型文件導致：&lt;/p&gt; &lt;p&gt;IDE 卡頓（Mac 開發時頻繁卡住）。&lt;/p&gt; &lt;p&gt;熱更新失效（&amp;gt;2s 延遲，大文件需手動刷新瀏覽器）。&lt;/p&gt; &lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;p&gt;&lt;strong&gt;&lt;strong&gt;2. 技術棧陳舊&lt;/strong&gt;&lt;/strong&gt;&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt;仍使用已停止維護的&lt;code&gt;vue-cli&lt;/code&gt;（Webpack 4 時代工具鏈），與現代構建工具（Vite、Webpack 5）存在代差。&lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;span id="OSC_h2_5"&gt;&lt;/span&gt; 
+&lt;h2&gt;&lt;strong&gt;2.3 構建和部署&lt;/strong&gt;&lt;/h2&gt; 
+&lt;p&gt;&lt;strong&gt;&lt;strong&gt;測試環境&lt;/strong&gt;&lt;/strong&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;strong&gt;&lt;strong&gt;測試環境的部署採用的是&lt;/strong&gt;&lt;/strong&gt; &lt;strong&gt;&lt;strong&gt;fis3&lt;/strong&gt;&lt;/strong&gt;，這是百度 FE 團隊早期自研的集構建、部署於一身前端構建工具，日誌中台項目使用其部署測試環境的功能。具體流程就是在開發者本地執行打包操作，然後將打包產物通過 fix3 推送到後端的服務器上去，替換掉之前的打包產物，從而實現部署新版本。&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt; &lt;p&gt;這種方式存在諸多問題：&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;本地構建依賴不一致，易引發環境差異問題。&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;無 CDN 緩存，靜態資源直推後端服務器。&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;無版本管理，存在代碼覆蓋風險。&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;FIS3 已停止維護，社區無支持。&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;&lt;strong&gt;&lt;strong&gt;本質問題&lt;/strong&gt;&lt;/strong&gt;：前後端未完全分離，違背當前主流協作模式。&lt;/p&gt; &lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;p&gt;&lt;strong&gt;&lt;strong&gt;生產環境&lt;/strong&gt;&lt;/strong&gt;&lt;/p&gt; 
+&lt;p&gt;生產環境的部署則採用的是 Tower 平台，這是百度內部的線上部署平台，通過平台的形式將 master 分支的代碼在服務器上編譯構建，將打包後的產物推送到線上環境對應的服務器上，從而實現完整的上線流程。這種上線方式同樣存在諸多不足：&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt; &lt;p&gt;上線耗時長達 30 分鐘，無增量構建能力。&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;多服務器部署時存在「漂移現象」（請求路由不一致）。&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;操作流程複雜，平台限制多（如回滾困難）。&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;仍缺失 CDN 加速，影響頁面加載性能。&lt;/p&gt; &lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;span id="OSC_h2_6"&gt;&lt;/span&gt; 
+&lt;h2&gt;&lt;strong&gt;2.4 優質組件&lt;/strong&gt;&lt;/h2&gt; 
+&lt;p&gt;在 Vue 技術棧中，模塊和組件的模糊概念，導致很多開發者無法區分其區別。&lt;/p&gt; 
+&lt;p&gt;&lt;strong&gt;&lt;strong&gt;1. 組件與模塊概念混淆&lt;/strong&gt;&lt;/strong&gt;&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt;&lt;code&gt;src/components&lt;/code&gt;目錄下堆積 40+文件夾，但 90% 為一次性業務模塊（如 5 個重複封裝的 Table 組件），缺乏真正的複用價值。&lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;p&gt;&lt;strong&gt;&lt;strong&gt;2. 基礎建設缺失&lt;/strong&gt;&lt;/strong&gt;&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt; &lt;p&gt;無通用業務組件庫，開發依賴 Element UI 原始組件。&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;高頻邏輯（如表單校驗、數據請求）需重複實現，通過「複製粘貼」開發，導致代碼冗餘和一致性風險。&lt;/p&gt; &lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;span id="OSC_h1_7"&gt;&lt;/span&gt; 
+&lt;h1&gt;03 全面重構拆分&lt;/h1&gt; 
+&lt;p&gt;下面是針對以上項目中的各個痛點的重構具體手段。&lt;/p&gt; 
+&lt;span id="OSC_h2_8"&gt;&lt;/span&gt; 
+&lt;h2&gt;&lt;strong&gt;3.1 接入工程化&lt;/strong&gt;&lt;/h2&gt; 
+&lt;p&gt;前端項目若缺乏統一的代碼規範和質量控制，隨着業務增長，代碼可維護性會急劇下降，最終導致開發效率低下、線上問題頻發。因此，引入業界成熟的工程化方案是提升代碼質量的關鍵。&lt;/p&gt; 
+&lt;p&gt;&lt;img src="https://oscimg.oschina.net/oscnet/up-44faf28db07e05e98073becb5657960b557.jpg" alt="" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;span id="OSC_h4_9"&gt;&lt;/span&gt; 
+&lt;h4&gt;&lt;strong&gt;&lt;strong&gt;工程化改造步驟&lt;/strong&gt;&lt;/strong&gt;&lt;/h4&gt; 
+&lt;p&gt;&lt;strong&gt;&lt;strong&gt;1. 清理冗餘配置&lt;/strong&gt;&lt;/strong&gt;&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt;移除項目中無用的、過時的配置（如廢棄的&lt;code&gt;.babelrc&lt;/code&gt;、冗餘的&lt;code&gt;webpack&lt;/code&gt;配置等），減少幹擾項。&lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;p&gt;&lt;strong&gt;&lt;strong&gt;2. 統一基礎配置文件&lt;/strong&gt;&lt;/strong&gt;&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt; &lt;p&gt;在項目根目錄下添加必要的配置文件，確保團隊開發環境一致：&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;&lt;code&gt;.vscode/settings.json&lt;/code&gt;（統一 VSCode 編輯器配置）&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;&lt;code&gt;.editorconfig&lt;/code&gt;（統一縮進、換行等基礎格式）&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;&lt;code&gt;.npmrc&lt;/code&gt;（設置為百度 npm 鏡像）&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;&lt;code&gt;.browserslistrc&lt;/code&gt;（明確目標瀏覽器兼容範圍）&lt;/p&gt; &lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;p&gt;&lt;strong&gt;3. 接入代碼規範工具&lt;/strong&gt;&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt; &lt;p&gt;&lt;strong&gt;&lt;strong&gt;Prettier&lt;/strong&gt;&lt;/strong&gt;：自動格式化代碼，統一風格（如縮進、引號、分號等）。&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;&lt;strong&gt;&lt;strong&gt;ESLint&lt;/strong&gt;&lt;/strong&gt;：檢查 JavaScript/Vue 代碼質量，避免常見錯誤。&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;&lt;strong&gt;&lt;strong&gt;Stylelint&lt;/strong&gt;&lt;/strong&gt;（可選）：規範 CSS/Less 代碼風格。&lt;/p&gt; &lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;p&gt;&lt;strong&gt;&lt;strong&gt;4. 優化開發體驗&lt;/strong&gt;&lt;/strong&gt;&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt;推薦安裝必要的 VSCode 插件（如 ESLint、Prettier、Volar 等），提升開發效率。&lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;p&gt;&lt;strong&gt;&lt;strong&gt;5. 提交時增量強制校驗（Git Hooks）&lt;/strong&gt;&lt;/strong&gt;&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt;接入&lt;code&gt;husky&lt;/code&gt;+&lt;code&gt;lint-staged&lt;/code&gt;，在&lt;code&gt;git commit&lt;/code&gt;時自動執行代碼檢查，阻止不合規代碼提交。&lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;blockquote&gt; 
+ &lt;p&gt;&lt;strong&gt;&lt;strong&gt;配置參考&lt;/strong&gt;&lt;/strong&gt;：&lt;/p&gt; 
+ &lt;ul&gt; 
+  &lt;li&gt; &lt;p&gt;VSCode 統一配置&lt;/p&gt; &lt;p&gt;&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fwww.yuque.com%2Fshuoshubao%2Fbg00go%2Fwc87bknptk3lomed%23NStKP" target="_blank"&gt;https://www.yuque.com/shuoshubao/bg00go/wc87bknptk3lomed#NStKP&lt;/a&gt;&lt;/p&gt; &lt;/li&gt; 
+  &lt;li&gt; &lt;p&gt;工程化配置方案 https://www.yuque.com/shuoshubao/bg00go/wc87bknptk3lomed#SJTr2&lt;/p&gt; &lt;/li&gt; 
+ &lt;/ul&gt; 
+&lt;/blockquote&gt; 
+&lt;span id="OSC_h4_10"&gt;&lt;/span&gt; 
+&lt;h4&gt;&lt;strong&gt;&lt;strong&gt;歷史代碼修復策略&lt;/strong&gt;&lt;/strong&gt;&lt;/h4&gt; 
+&lt;p&gt;原則：「自動修復優先，手動修復補充」，避免無限制添加&lt;code&gt;eslint-disable&lt;/code&gt;或&lt;code&gt;ignore&lt;/code&gt;規則，導致規範形同虛設。&lt;/p&gt; 
+&lt;p&gt;&lt;strong&gt;&lt;strong&gt;具體執行步驟&lt;/strong&gt;&lt;/strong&gt;：&lt;/p&gt; 
+&lt;p&gt;&lt;strong&gt;&lt;strong&gt;1. 自動格式化（Prettier）&lt;/strong&gt;&lt;/strong&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;strong&gt;&lt;strong&gt;2. ESLint 自動修復&lt;/strong&gt;&lt;/strong&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;strong&gt;&lt;strong&gt;3. 分析剩餘問題&lt;/strong&gt;&lt;/strong&gt;&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt; &lt;p&gt;使用&lt;code&gt;eslint-formatter-html&lt;/code&gt;生成報告，評估剩餘問題。&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;調整 ESLint 規則（如放寬部分歷史代碼限制），拆解為多個小任務手動修復。&lt;/p&gt; &lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;p&gt;&lt;strong&gt;&lt;strong&gt;4. 迴歸測試&lt;/strong&gt;&lt;/strong&gt;&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt;聯合熟悉業務的同學進行全量測試，確保修復過程不影響系統功能。&lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;span id="OSC_h4_11"&gt;&lt;/span&gt; 
+&lt;h4&gt;&lt;strong&gt;&lt;strong&gt;效果驗證&lt;/strong&gt;&lt;/strong&gt;&lt;/h4&gt; 
+&lt;ul&gt; 
+ &lt;li&gt; &lt;p&gt;&lt;strong&gt;&lt;strong&gt;代碼風格統一&lt;/strong&gt;&lt;/strong&gt;：所有新提交的代碼均符合規範，減少風格爭議。&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;&lt;strong&gt;&lt;strong&gt;錯誤率下降&lt;/strong&gt;&lt;/strong&gt;：低級語法錯誤、邊界條件導致的 JS 報錯大幅減少。&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;&lt;strong&gt;&lt;strong&gt;開發體驗提升&lt;/strong&gt;&lt;/strong&gt;：IDE 卡頓減少（格式化後代碼更簡潔），熱更新效率提高。&lt;/p&gt; &lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;span id="OSC_h2_12"&gt;&lt;/span&gt; 
+&lt;h2&gt;&lt;strong&gt;3.2 升級基建&lt;/strong&gt;&lt;/h2&gt; 
+&lt;span id="OSC_h3_13"&gt;&lt;/span&gt; 
+&lt;h3&gt;3.2.1 源碼優化與依賴治理&lt;/h3&gt; 
+&lt;p&gt;&lt;strong&gt;&lt;strong&gt;問題現狀&lt;/strong&gt;&lt;/strong&gt;：&lt;/p&gt; 
+&lt;p&gt;項目存在大量技術債務，包括：&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt; &lt;p&gt;冗餘資源（未壓縮圖片約 2M）&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;無效依賴（22 個未使用的 npm 包）&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;混合模塊規範（require/import 混用）&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;廢棄技術棧（如已停止維護的 iView）&lt;/p&gt; &lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;p&gt;&lt;strong&gt;&lt;strong&gt;優化措施&lt;/strong&gt;&lt;/strong&gt;：&lt;/p&gt; 
+&lt;p&gt;&lt;strong&gt;&lt;strong&gt;1. 資源優化&lt;/strong&gt;&lt;/strong&gt;&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt; &lt;p&gt;使用基於 Tinypng 封裝的工具批量壓縮圖片，體積減少 65%&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;清理已下架頁面的遺留代碼（約 15 個路由）&lt;/p&gt; &lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;p&gt;&lt;strong&gt;&lt;strong&gt;2. 依賴治理&lt;/strong&gt;&lt;/strong&gt;&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt; &lt;p&gt;移除 22 個無用依賴&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;統一使用 ES Module 規範（手動替換 require 為 import）&lt;/p&gt; &lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;p&gt;&lt;strong&gt;&lt;strong&gt;3. 技術棧升級&lt;/strong&gt;&lt;/strong&gt;&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt;替換老舊組件庫：vue-json-diff、vue-code-diff、vue-codemirror 替換為 monaco-editor&lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;span id="OSC_h3_14"&gt;&lt;/span&gt; 
+&lt;h3&gt;3.2.2 &lt;strong&gt;&lt;strong&gt;構建相關&lt;/strong&gt;&lt;/strong&gt;&lt;/h3&gt; 
+&lt;p&gt;相對於以往的 Webpack 或者 Vue CLI，存在開發服務器啓動慢（平均 45 秒）、熱更新延遲高（2.5 秒）、構建流程複雜（需 Babel 轉譯 ES5）。&lt;/p&gt; 
+&lt;p&gt;Vite 配置詳見：&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fwww.yuque.com%2Fshuoshubao%2Fbg00go%2Fwc87bknptk3lomed%23wyx0p" target="_blank"&gt;https://www.yuque.com/shuoshubao/bg00go/wc87bknptk3lomed#wyx0p&lt;/a&gt;&lt;/p&gt; 
+&lt;p&gt;接入 Vite 後，低配置電腦同學開發時的平均熱更新時間由 2.5 秒縮短到 100 毫秒。在單個需求完成耗時方面，由之前的 4.2 人天縮減到 3.4 人天，綜合人效提高&lt;strong&gt;&lt;strong&gt;19%&lt;/strong&gt;&lt;/strong&gt;。&lt;/p&gt; 
+&lt;p&gt;另一方面，由於 Vue CLI 是基於 babel 將 esnext 代碼轉成 es5，而 Vite 基於 esbuild 不需要進行降級編譯。在將 Vite 的配置 build.target 設置為 ['chrome100'] 後，甚至連非常新的 esnext 語法糖都不需要轉換，瀏覽器直接可以使用前端的源碼，極大的利用了 esnext 帶來的開發便利，而不需要關注 Babel 的版本以及各種依賴包和複雜的配置。&lt;/p&gt; 
+&lt;span id="OSC_h3_15"&gt;&lt;/span&gt; 
+&lt;h3&gt;3.2.3 &lt;strong&gt;&lt;strong&gt;部署相關&lt;/strong&gt;&lt;/strong&gt;&lt;/h3&gt; 
+&lt;p&gt;百度內部主流的部署平台是 &lt;strong&gt;&lt;strong&gt;Fcnap&lt;/strong&gt;&lt;/strong&gt;。這是一個類似 Vercel 的前端一站式部署平台，基於 git 分支，只要檢測到分支變動，就會觸發自動構建和部署。&lt;/p&gt; 
+&lt;p&gt;只需配置好各個測試環境以及生產環境的基本信息，後續在需要開發中，只需要將分支和測試環境關聯起來，就可以達到隨時提交代碼隨時部署的效果；上線過程更是絲滑，只需要將代碼合到 master 分支，就會自動上線。&lt;/p&gt; 
+&lt;p&gt;將 fis3 以及 Tower 遷移到 Fcnap 後有如下優勢：&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt; &lt;p&gt;測試和生成環境使用一套部署邏輯&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;上線部署耗時由 30 分鐘縮減至 2 分鐘&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;提供 cdn 功能，每次上線後增量更新的靜態資源只有 500kb&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;上線期間訪問系統不會出現白屏現象&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;上線過程對用戶無任何影響&lt;/p&gt; &lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;span id="OSC_h3_16"&gt;&lt;/span&gt; 
+&lt;h3&gt;3.2.4 接口調試&lt;/h3&gt; 
+&lt;span id="OSC_h4_17"&gt;&lt;/span&gt; 
+&lt;h4&gt;傳統開發模式的痛點&lt;/h4&gt; 
+&lt;p&gt;在傳統前後端協作中，存在典型的"接口依賴症"：&lt;/p&gt; 
+&lt;p&gt;&lt;strong&gt;&lt;strong&gt;1. 開發阻塞&lt;/strong&gt;&lt;/strong&gt;：前端必須等待後端接口 Ready 才能開始調試&lt;/p&gt; 
+&lt;p&gt;&lt;strong&gt;&lt;strong&gt;2. 效率低下&lt;/strong&gt;&lt;/strong&gt;：聯調階段頻繁出現接口變更，導致重複返工&lt;/p&gt; 
+&lt;p&gt;&lt;strong&gt;&lt;strong&gt;3. 數據不可控&lt;/strong&gt;&lt;/strong&gt;：依賴真實測試環境數據，難以覆蓋邊界場景&lt;/p&gt; 
+&lt;blockquote&gt; 
+ &lt;p&gt;數據表明：在接口未就緒階段，前端開發效率會下降 60% 以上&lt;/p&gt; 
+&lt;/blockquote&gt; 
+&lt;span id="OSC_h4_18"&gt;&lt;/span&gt; 
+&lt;h4&gt;真正的"前後端分離"實踐&lt;/h4&gt; 
+&lt;p&gt;&lt;strong&gt;&lt;strong&gt;核心原則&lt;/strong&gt;&lt;/strong&gt;：開發階段解耦，聯調階段對接&lt;/p&gt; 
+&lt;p&gt;&lt;strong&gt;&lt;strong&gt;1. 規範先行&lt;/strong&gt;&lt;/strong&gt;：&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt; &lt;p&gt;後端通過 YAPI 等平台提供完整的接口文檔&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;包含：請求方法、參數結構、響應體示例、狀態碼定義&lt;/p&gt; &lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;p&gt;&lt;strong&gt;&lt;strong&gt;2. Mock 數據要求&lt;/strong&gt;&lt;/strong&gt;：&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt; &lt;p&gt;真實業務數據（非簡單根據接口文檔生成各種隨機數據）&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;可自定義異常場景（404， 502 等真實場景還原）&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;支持動態響應（根據參數返回不同數據）&lt;/p&gt; &lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;p&gt;針對這個開發環節，我們也基於 Vite 實現了一個非常好用的插件：vite-plugin-mock，用於提升開發效率。整體的設計如下：&lt;/p&gt; 
+&lt;p&gt;&lt;img src="https://oscimg.oschina.net/oscnet/up-3eb5ab12f6a4aae3eff18b059102be05cc9.jpg" alt="" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p&gt;相比於傳統的 mock 方案，vite-plugin-mock 在開發體驗、數據維護上有更好的開發體驗。&lt;/p&gt; 
+&lt;table&gt; 
+ &lt;thead&gt; 
+  &lt;tr&gt; 
+   &lt;th&gt;特性&lt;/th&gt; 
+   &lt;th&gt;傳統 Mock 方案&lt;/th&gt; 
+   &lt;th&gt;vite-plugin-mock&lt;/th&gt; 
+  &lt;/tr&gt; 
+ &lt;/thead&gt; 
+ &lt;tbody&gt; 
+  &lt;tr&gt; 
+   &lt;td&gt;數據真實性&lt;/td&gt; 
+   &lt;td&gt;隨機生成，不可用&lt;/td&gt; 
+   &lt;td&gt;可在真實接口數據上任意修改&lt;/td&gt; 
+  &lt;/tr&gt; 
+  &lt;tr&gt; 
+   &lt;td&gt;開發體驗&lt;/td&gt; 
+   &lt;td&gt;需要啓動 Mock 服務&lt;/td&gt; 
+   &lt;td&gt;配置簡單，可隨時修改數據&lt;/td&gt; 
+  &lt;/tr&gt; 
+  &lt;tr&gt; 
+   &lt;td&gt;聯調切換&lt;/td&gt; 
+   &lt;td&gt;手動修改請求地址&lt;/td&gt; 
+   &lt;td&gt;自動代理無縫切換&lt;/td&gt; 
+  &lt;/tr&gt; 
+  &lt;tr&gt; 
+   &lt;td&gt;數據維護&lt;/td&gt; 
+   &lt;td&gt;獨立維護 Mock 數據&lt;/td&gt; 
+   &lt;td&gt;數據存放在本地，每個人都可維護單獨的數據&lt;/td&gt; 
+  &lt;/tr&gt; 
+ &lt;/tbody&gt; 
+&lt;/table&gt; 
+&lt;span id="OSC_h2_19"&gt;&lt;/span&gt; 
+&lt;h2&gt;&lt;strong&gt;3.3 &lt;strong&gt;構建體積優化&lt;/strong&gt;&lt;/strong&gt;&lt;/h2&gt; 
+&lt;p&gt;這一部分主要從以下三個技術方案着手優化，再配合其他人工優化手段，打包體積由開始的 14M 優化到 1.8M，接入 cdn 功能後，則僅有 500kb。&lt;/p&gt; 
+&lt;span id="OSC_h3_20"&gt;&lt;/span&gt; 
+&lt;h3&gt;3.3.1 element-ui&lt;/h3&gt; 
+&lt;p&gt;fork element-ui 源碼, 採用 rollup 進行打包，優化部分源碼，修復部分 bug，重新發包為 @baidu-log/element-ui&lt;/p&gt; 
+&lt;p&gt;這一步驟，js 體積從 1.2M 優化到 500kb。並結合下面 externals 功能，進一步使用 cdn 功能緩存這部分文件體積。&lt;/p&gt; 
+&lt;span id="OSC_h3_21"&gt;&lt;/span&gt; 
+&lt;h3&gt;3.3.2 引入 externals 功能&lt;/h3&gt; 
+&lt;p&gt;將基礎包通過 cdn 的形式在 index.html 模板中引入其 umd 格式的文件，從而避免打包這部分內容。這部分會用到 cdn 的緩存功能，會節約掉大約 2M 的體積。&lt;/p&gt; 
+&lt;p&gt;&lt;strong&gt;&lt;strong&gt;vite-plugin-externals&lt;/strong&gt;&lt;/strong&gt;&lt;/p&gt; 
+&lt;p&gt;這個是開源的 vite 插件，配置也比較簡單，詳見配置：&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fwww.yuque.com%2Fshuoshubao%2Fbg00go%2Fwc87bknptk3lomed%23LiR2X" target="_blank"&gt;https://www.yuque.com/shuoshubao/bg00go/wc87bknptk3lomed#LiR2X&lt;/a&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;strong&gt;&lt;strong&gt;vite-plugin-assets&lt;/strong&gt;&lt;/strong&gt;&lt;/p&gt; 
+&lt;p&gt;這個是為了配合上面 vite-plugin-externals 插件，將對應的 externals 的 npm 包對應的 umd 文件插入到模板中，代碼詳見：&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fwww.yuque.com%2Fshuoshubao%2Fbg00go%2Fwc87bknptk3lomed%23xts88" target="_blank"&gt;https://www.yuque.com/shuoshubao/bg00go/wc87bknptk3lomed#xts88&lt;/a&gt;&lt;/p&gt; 
+&lt;p&gt;為什麼不直接寫在 index.html 裏呢？因為像 vue 和 react 這樣的框架，在開發時都提供了對應的開發調試工具：dev-tools。而使用 dev-tools 則需要提供對應的 &lt;strong&gt;&lt;strong&gt;dist/vue.js&lt;/strong&gt;&lt;/strong&gt;，而 react 對應的則是 &lt;strong&gt;&lt;strong&gt;react.development.js&lt;/strong&gt;&lt;/strong&gt;。&lt;/p&gt; 
+&lt;span id="OSC_h3_22"&gt;&lt;/span&gt; 
+&lt;h3&gt;3.3.3 大包的特殊處理&lt;/h3&gt; 
+&lt;p&gt;1. monaco-editor&lt;/p&gt; 
+&lt;p&gt;項目中用到了 monaco-editor 這個編輯器組件，直接打包將會非常大，有 10M 以上的體積。根據官方提供的方案即可進行如下封裝，其中 cdn 地址由百度的 npm 鏡像服務提供支持。&lt;/p&gt; 
+&lt;p&gt;代碼詳見：&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fwww.yuque.com%2Fshuoshubao%2Fbg00go%2Fwc87bknptk3lomed%23gozcq" target="_blank"&gt;https://www.yuque.com/shuoshubao/bg00go/wc87bknptk3lomed#gozcq&lt;/a&gt;&lt;/p&gt; 
+&lt;p&gt;2. xlsx, fabric 等&lt;/p&gt; 
+&lt;p&gt;在項目中用到了 xlsx, fabric, markdown-it, echarts, &lt;a href="https://www.oschina.net/action/GoToLink?url=http%3A%2F%2Fdraw.io" target="_blank"&gt;draw.io&lt;/a&gt; 這幾個體積很大的包，但又不屬於很基礎的包，只有少部分頁面的某個功能點才會用到。針對這些包採用從 cdn 異步加載其 umd 包的形式來引入，而不是通過 import npm 包的形式。&lt;/p&gt; 
+&lt;p&gt;代碼詳見：&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fwww.yuque.com%2Fshuoshubao%2Fbg00go%2Fwc87bknptk3lomed%23rEBee" target="_blank"&gt;https://www.yuque.com/shuoshubao/bg00go/wc87bknptk3lomed#rEBee&lt;/a&gt;&lt;/p&gt; 
+&lt;p&gt;以上兩種優化方案，與常見的動態引入方案（dynamic import）是有很大區別的，dynamic import 是通過編譯工具將對應的 npm 包打包成一個獨立的 chunk，然後在使用的時候再通過 loadScript 方式引入。這種問題在於文件的緩存，一是 chunk 可能會變，二是像 Vercel 這種平台，每次發佈都是一個全新的 s3 bucket，上線後緩存功能也就失效了。而上述這種方案，則利用 npm 鏡像服務，每次都訪問固定的 cdn 地址，也就達到了 cdn 的緩存目的了。&lt;/p&gt; 
+&lt;span id="OSC_h2_23"&gt;&lt;/span&gt; 
+&lt;h2&gt;&lt;strong&gt;3.4 建設組件庫&lt;/strong&gt;&lt;/h2&gt; 
+&lt;p&gt;鑑於項目沒有優質組件的背景，從零到一搭建了組件庫，組件庫主要包含以下內容：&lt;/p&gt; 
+&lt;p&gt;1. 基於 Vuepress 建設高質量組件庫文檔&lt;/p&gt; 
+&lt;p&gt;2. 遷移 element-ui 文檔，並修復其中大量劣質示例代碼&lt;/p&gt; 
+&lt;p&gt;3. 採用 Vitest 編寫工具方法的測試用例&lt;/p&gt; 
+&lt;p&gt;4. 提供 9 個高頻優質通用組件，10 個業務組件&lt;/p&gt; 
+&lt;p&gt;組件庫文檔：&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Flogsfe.vercel.app%2F" target="_blank"&gt;https://logsfe.vercel.app/&lt;/a&gt;&lt;/p&gt; 
+&lt;p&gt;文檔分為以下幾大模塊&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt; &lt;p&gt;優質組件：&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Flogsfe.vercel.app%2Fcomponents%2FTable%2F" target="_blank"&gt;https://logsfe.vercel.app/components/Table/&lt;/a&gt;&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;組件庫裏的方法：&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Flogsfe.vercel.app%2Futils.html" target="_blank"&gt;https://logsfe.vercel.app/utils.html&lt;/a&gt;&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;@nbfe/tools 工具庫方法： &lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Flogsfe.vercel.app%2Ftools%2Fdate.html" target="_blank"&gt;https://logsfe.vercel.app/tools/date.html&lt;/a&gt;&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;ElementUI 文檔：&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Flogsfe.vercel.app%2Felement%2Ficon.html" target="_blank"&gt;https://logsfe.vercel.app/element/icon.html&lt;/a&gt;&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;前端定製的開發規範：&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Flogsfe.vercel.app%2Fcontribute%2F" target="_blank"&gt;https://logsfe.vercel.app/contribute/&lt;/a&gt;&lt;/p&gt; &lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;p&gt;實際效果：組件庫中的組件在項目中目前已被使用 240 次，用戶使用體驗良好。&lt;/p&gt; 
+&lt;span id="OSC_h3_24"&gt;&lt;/span&gt; 
+&lt;h3&gt;3.4.1 通用組件&lt;/h3&gt; 
+&lt;p&gt;基於大量的 B 端系統開發經驗，提煉出配置化表格和配置化表單組件，滿足項目中 90% 的開發場景，通過重構部分頁面後比較分析，在寫對應模塊時，能減少 40% 的代碼。&lt;/p&gt; 
+&lt;p&gt;通用組件均與業務解耦，設計優雅的 api，並提供大量示例。組件庫裏只提供少量的優質組件，嚴格把控每一行提交的代碼，併為組件中的工具函數提供符合 JSDoc-style 規範的註釋，且通過 Vitest 來編寫單元測試。&lt;/p&gt; 
+&lt;span id="OSC_h3_25"&gt;&lt;/span&gt; 
+&lt;h3&gt;3.4.2 element-ui 文檔集成&lt;/h3&gt; 
+&lt;p&gt;在實際工作中，發現 element-ui 文檔存在很多問題且早已不維護。&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt; &lt;p&gt;主題與日誌中台不符，不利於查看&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;組件默認 size 過大，一頁都看不了多少示例&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;右側沒有 toc 功能，不方便快速定位&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;示例很多寫法不優雅，以及很多冗餘代碼被人機的複製到了項目中&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;在線調試示例採用的是 codepen 平台，這個平台很慢而且經常掛了&lt;/p&gt; &lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;p&gt;基於以上各種問題，將 element-ui 官方的示例 fork 到組件庫中，使用和日誌中台一樣的主題，並修復上述各種問題。&lt;/p&gt; 
+&lt;p&gt;&lt;img src="https://oscimg.oschina.net/oscnet/up-448a51bef83543cbfa7e0b5a4588348e6b3.jpg" alt="" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p&gt;並使用純前端來實現了一個完全可用的 codepen 組件使用示例功能。&lt;/p&gt; 
+&lt;p&gt;&lt;img src="https://oscimg.oschina.net/oscnet/up-10997cf6d1b599250b533a1a538cfa80d94.jpg" alt="" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;span id="OSC_h3_26"&gt;&lt;/span&gt; 
+&lt;h3&gt;3.4.3 通用工具庫&lt;/h3&gt; 
+&lt;p&gt;基於 B 端系統抽象的實用工具方法集合。在組件庫中提供優質的説明文檔和使用示例。這個已經發布到 npm 上，並在多個公司和團隊使用。&lt;/p&gt; 
+&lt;p&gt;包括日期處理、數據處理、接口數據格式化、針對 element-ui 的一些實用封裝。目前已在項目中被 93 個文件使用 150 次。&lt;/p&gt; 
+&lt;p&gt;項目地址：&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fwww.npmjs.com%2Fpackage%2F%40nbfe%2Ftools" target="_blank"&gt;https://www.npmjs.com/package/@nbfe/tools&lt;/a&gt;&lt;/p&gt; 
+&lt;span id="OSC_h1_27"&gt;&lt;/span&gt; 
+&lt;h1&gt;04 總結與展望&lt;/h1&gt; 
+&lt;p&gt;在頻繁的需求迭代過程中，項目遲早會變成臃腫老舊的樣子。當開發體驗、開發速度、代碼質量、項目可維護性、聯調測試體驗、線上質量等全方位令人舉步維艱的時候，就該發起大規模的全面重構了。對每一項重構技術需要深刻掌握，才能掌握重構的深度和保證重構後的項目質量。另外，還定製了很多開發規範和最佳實踐指導，但項目中仍存在大量不符合規範的地方，將在未來繼續進行全量修復，直到將一個老舊的項目重構到更接近現代化前端項目的程度。&lt;/p&gt;
+                                                                                    &lt;/div&gt;
+                                                                            </description>
+      <link>https://my.oschina.net/u/4939618/blog/18635524</link>
+      <guid isPermaLink="false">https://my.oschina.net/u/4939618/blog/18635524</guid>
+      <pubDate>Tue, 24 Jun 2025 07:41:53 GMT</pubDate>
+      <author>原創</author>
+    </item>
+    <item>
+      <title>curl 之父發文介紹 OpenSSL 分支家族</title>
+      <description>&lt;div class="content"&gt;
+                                                                    
+                                                        &lt;p&gt;curl 之父近日發表文章&lt;u&gt;&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fdaniel.haxx.se%2Fblog%2F2025%2F06%2F23%2Fa-family-of-forks%2F" target="_blank"&gt;介紹&lt;/a&gt;&lt;/u&gt; OpenSSL 分支家族，展示了它們的差異、相似之處，以及支持它們所需的一些見解。&lt;/p&gt; 
+&lt;p&gt;譯文如下：&lt;/p&gt; 
+&lt;hr&gt; 
+&lt;p&gt;curl 支持使用 11 種不同的 TLS 庫進行編譯。其中六個庫是 OpenSSL 或其分支。讓我向你展示它們的差異、相似之處，以及支持它們所需的一些見解。&lt;/p&gt; 
+&lt;h2&gt;&lt;strong&gt;SSLeay&lt;/strong&gt;&lt;/h2&gt; 
+&lt;p&gt;這一切都始於 SSLeay。這是我發現的第一個 SSL 庫，我們使用這個庫在 1998 年春天為 curl 添加了第一個 HTTPS 支持。顯然，SSLeay 項目早在 1995 年就已經啓動了。&lt;/p&gt; 
+&lt;p&gt;那是一個我們還只支持 SSL 的年代；TLS 會在之後才出現。&lt;/p&gt; 
+&lt;p&gt;OpenSSL 一直擁有一個古怪、不一致且極其龐大的 API 集（其中一大部分是從 SSLeay 繼承而來的），這進一步被稀疏的文檔所複雜化，這些文檔留給用戶去依靠自己的想象力和技能去查閲源代碼，以獲取最後的細節解答（即使在 2025 年今天也是如此）。在 curl 中，我們經常收到關於如何使用這個庫的偶爾問題報告，即使已經過了幾十年。 presumably，這同樣適用於所有 OpenSSL 用戶。&lt;/p&gt; 
+&lt;p&gt;OpenSSL 項目經常受到批評，認為他們在幾年前升級到版本 3 之後，在性能方面有所疏忽。他們也一直進展緩慢或不願採用新的 TLS 技術，例如 QUIC 和 ECH。&lt;/p&gt; 
+&lt;p&gt;儘管如此，OpenSSL 已經成為一種主導的 TLS 庫，尤其是在開源領域。&lt;/p&gt; 
+&lt;h2&gt;&lt;strong&gt;LibreSSL&lt;/strong&gt;&lt;/h2&gt; 
+&lt;p&gt;回到 Heartbleed 事件時期，LibreSSL 分叉出來併成為獨立的項目。他們刪除了他們認為不屬於庫中的功能，創建了自己的 TLS 庫 API。幾年後，蘋果在 macOS 上使用 LibreSSL 提供 curl。他們有一些本地修補，使它&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fdaniel.haxx.se%2Fblog%2F2024%2F03%2F08%2Fthe-apple-curl-security-incident-12604%2F" target="_blank"&gt;行為與其他不同&lt;/a&gt;。&lt;/p&gt; 
+&lt;p&gt;LibreSSL 在 QUIC 的支持上落後，不支持 SSLKEYLOGFILE、ECH，而且如今在實現新功能方面似乎比 OpenSSL 更慢。&lt;/p&gt; 
+&lt;p&gt;curl 自從創建以來就與 LibreSSL 完美配合。&lt;/p&gt; 
+&lt;h2&gt;&lt;strong&gt;BoringSSL&lt;/strong&gt;&lt;/h2&gt; 
+&lt;p&gt;在 Heartbleed 事件時期由 Google 分叉出來。&lt;em&gt;Google 為 Google 做的&lt;/em&gt;，他們沒有公開發布過，清理了很多原型和變量類型，並在 QUIC API 推動中處於領先地位。總體而言，大多數新的 TLS 發明都已在 BoringSSL 中實現和支持，比其他分叉更早。&lt;/p&gt; 
+&lt;p&gt;Google 在 Android 的其他地方也使用這個。&lt;/p&gt; 
+&lt;p&gt;curl 從創建以來就與 BoringSSL 完美配合。&lt;/p&gt; 
+&lt;h2&gt;&lt;strong&gt;AmiSSL&lt;/strong&gt;&lt;/h2&gt; 
+&lt;p&gt;一個為使 OpenSSL 能夠在 AmigaOS 上正確編譯和運行而製作的 OpenSSL 分支或變種。我對它瞭解不多，但在這裏包含它是為了完整性。它似乎基本上是為 Amiga 系統移植的 OpenSSL。&lt;/p&gt; 
+&lt;p&gt;當為 AmigaOS 編譯時，curl 也能與 AmiSSL 兼容。&lt;/p&gt; 
+&lt;h2&gt;&lt;strong&gt;QuicTLS&lt;/strong&gt;&lt;/h2&gt; 
+&lt;p&gt;由於 OpenSSL 延遲響應並拒絕提供 QUIC API，其他分支在 2020 年初期（我尚未看到有人解釋原因）採取了行動。微軟和 Akamai 分支了 OpenSSL，產生了 &lt;em&gt;QuicTLS&lt;/em&gt;，此後它試圖成為一個 &lt;em&gt;輕量級&lt;/em&gt; 的分支，主要只是在與 BoringSSL 和 LibreSSL 支持相同風格的基礎上添加 QUIC API。&lt;em&gt;輕量級&lt;/em&gt; 的含義是它們密切跟蹤上游開發，並且除了 QUIC API 之外，沒有打算在其他方面偏離。&lt;/p&gt; 
+&lt;p&gt;在 OpenSSL 3.5 中，他們終於提供了一個與 fork（包括 QuicTLS）提供的 QUIC API 不同的 QUIC API。我認為這促使 QuicTLS 重新考慮其未來的發展方向，但我們仍在等待確切的進展。&lt;/p&gt; 
+&lt;p&gt;curl 自從創建以來就與 QuicTLS 完美配合。&lt;/p&gt; 
+&lt;h2&gt;&lt;strong&gt;AWS-LC&lt;/strong&gt;&lt;/h2&gt; 
+&lt;p&gt;這是由亞馬遜維護的一個 BoringSSL 分支。與 BoringSSL 不同的是，他們確實進行了實際的（頻繁的）發佈，因此看起來像一個項目，即使是非亞馬遜用戶也可以實際使用和依賴——儘管他們存在的目的是 _維護一個與 AWS 使用的軟件和應用程序兼容的安全 libcrypto _。令人驚訝的是，他們維護的不僅僅是「僅僅」 libcrypto。&lt;/p&gt; 
+&lt;p&gt;這個分支最近顯示出大量的活動，甚至在覈心部分也是如此。&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fwww.haproxy.com%2Fblog%2Fstate-of-ssl-stacks" target="_blank"&gt;2025 年 5 月由 HAProxy 團隊進行的基準測試&lt;/a&gt; 表明，AWS-LC 顯著優於 OpenSSL。&lt;/p&gt; 
+&lt;p&gt;AWS-LC 提供的 API 與 BoringSSL 的 API 並不完全相同。&lt;/p&gt; 
+&lt;p&gt;curl 與 AWS-LC 從 2023 年初開始就配合得非常好。&lt;/p&gt; 
+&lt;h2&gt;&lt;strong&gt;家族樹&lt;/strong&gt;&lt;/h2&gt; 
+&lt;p&gt;&lt;img alt="" src="https://static.oschina.net/uploads/img/202506/24145235_ALUZ.jpg" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;em&gt;OpenSSL 分支家族樹&lt;/em&gt;&lt;/p&gt; 
+&lt;h2&gt;OpenSSL 分支家族現狀&lt;/h2&gt; 
+&lt;p&gt;這六個不同的分支各自有其特定的特性、API 和功能，這些在不同版本中也會發生變化。目前我們仍然支持這六個分支，因為人們似乎仍在使用它們，而且維護起來是可行的。&lt;/p&gt; 
+&lt;p&gt;我們使用相同的 &lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fgithub.com%2Fcurl%2Fcurl%2Fblob%2Fmaster%2Flib%2Fvtls%2Fopenssl.c" target="_blank"&gt;單個源代碼文件&lt;/a&gt; 支持所有這些分支，並通過不斷增長的 #ifdef 邏輯來實現。我們通過在 CI 中使用這些分支進行構建驗證，儘管只使用了一小部分最近的版本。&lt;/p&gt; 
+&lt;p&gt;隨着時間的推移，這些分支似乎正在逐漸彼此分離。我認為這還不構成一個問題，但我們當然在監控這種情況，可能在某個時候需要進行一些內部重構以適應這種變化。&lt;/p&gt; 
+&lt;h2&gt;&lt;strong&gt;未來&lt;/strong&gt;&lt;/h2&gt; 
+&lt;p&gt;我無法預見會發生什麼。如果歷史是一堂課，我們似乎更傾向於走向更多的分支，而不是更少的分支。但當然，每一位閲讀這篇博客文章的讀者現在都會思考，所有這些分支所耗費的重複努力以及由此帶來的隱含低效性到底有多少。這不僅適用於這些庫本身，也適用於像 curl 這樣的用戶。&lt;/p&gt; 
+&lt;p&gt;我認為我們只能等待觀察。&lt;/p&gt;
+                                                                                &lt;/div&gt;
+                                                                            </description>
+      <link>https://www.oschina.net/news/357005/a-family-of-openssl-forks</link>
+      <guid isPermaLink="false">https://www.oschina.net/news/357005/a-family-of-openssl-forks</guid>
+      <pubDate>Tue, 24 Jun 2025 06:52:53 GMT</pubDate>
+      <author>來源: OSCHINA</author>
+    </item>
+    <item>
+      <title>MiniMax 上線 AI 音色設計功能</title>
+      <description>&lt;div class="content"&gt;
+                                                                    
+                                                        &lt;p&gt;MiniMax 稀宇科技&lt;u&gt;&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fmp.weixin.qq.com%2Fs%2FSUqhAd54Q15Huq-AQ9EeCA" target="_blank"&gt;宣佈&lt;/a&gt;&lt;/u&gt;旗下 MiniMax Audio 上線了「Voice Design 音色設計」功能。&lt;/p&gt; 
+&lt;p&gt;音色的維度一般分成音頻質量、發聲方式、情感基調以及人物畫像。該功能根據用戶對音色需求的描述，模型自動拆解成音色相關的描述信息，並根據上述的描述來得到一個新的音色編碼。同視頻模型類似，該功能支持對音色的抽卡，如果不滿意，多試幾次，很容易得到理想中的專屬獨一音色，並可存儲下來做後續的音頻內容創作。&lt;/p&gt; 
+&lt;p&gt;據介紹，通過 Voice Design 音色設計，用戶可以通過自然語言來描述自己心中所想的音色，實現對多個維度的精準控制，甚至生成世界上不存在的音色。同時，Voice Design 與 Speech 02 語音模型在鏈路上相配合，用戶在文字轉語音中可真正實現了「所需即所得」，以「任意語言 × 任意口音 × 任意音色」，實現可全自定義的無限組合。&lt;/p&gt; 
+&lt;p&gt;此外，Voice Design 解決了語音合成領域的兩個挑戰：難以精準匹配用戶各個細分場景下的多樣需求；復刻音色需要用戶花費大量時間準備輸入素材，並且存在潛在的版權風險。&lt;/p&gt; 
+&lt;p&gt;&lt;img src="https://static.oschina.net/uploads/space/2025/0624/142945_xJzZ_2720166.png" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p&gt;目前，Voice Design 已上線 MiniMax Audio 國內、海外兩個版本。&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt;國內版：minimaxi.com/audio&lt;/li&gt; 
+ &lt;li&gt;海外版：minimax.io/audio&lt;/li&gt; 
+&lt;/ul&gt;
+                                                                                &lt;/div&gt;
+                                                                            </description>
+      <link>https://www.oschina.net/news/357002/minimax-voice-design</link>
+      <guid isPermaLink="false">https://www.oschina.net/news/357002/minimax-voice-design</guid>
+      <pubDate>Sun, 11 May 2025 06:31:00 GMT</pubDate>
+      <author>來源: OSCHINA</author>
+    </item>
+    <item>
+      <title>空間理解模型 SpatialLM 正式發佈首份技術報告</title>
+      <description>&lt;div class="content"&gt;
+                                                                    
+                                                        &lt;p&gt;近日，空間理解模型 SpatialLM 正式發佈首份技術報告。這一模型此前曾與 DeepSeek-V3、通義千問 Qwen2.5-Omni 一起登上全球最大的開源社區 HuggingFace 全球趨勢榜前三。&lt;/p&gt; 
+&lt;p&gt;&lt;img src="https://static.oschina.net/uploads/space/2025/0624/140955_PZlV_2720166.png" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p&gt;作為一款將大語言模型擴展到 3D 空間理解任務中的模型，SpatialLM 能從 3D 點雲輸入生成結構化的空間場景描述，這一過程突破了大語言模型對物理世界幾何與空間關係的理解侷限，讓機器具備空間認知與推理能力，為具身智能等相關領域提供空間理解基礎訓練框架。&lt;/p&gt; 
+&lt;p&gt;在開源後經過廣泛的實際驗證，本次技術報告聚焦 SpatialLM 1.1 升級版本，其不僅包含了詳細的消融實驗與訓練配方，還在點雲編碼方式、分辨率、用戶指定識別類目等維度上實現優化。&lt;/p&gt; 
+&lt;p&gt;多項基準測試數據顯示：該模型在任務數據集微調後，在空間佈局識別、3D 物體檢測任務中，均達到了相比與最新專業模型持平或更優的效果。&lt;/p&gt; 
+&lt;p&gt;&lt;img height="309" src="https://static.oschina.net/uploads/space/2025/0624/141014_3iIl_2720166.png" width="1280" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p&gt;本次報告重點圍繞&lt;strong&gt;算法框架&lt;/strong&gt;和&lt;strong&gt;訓練數據&lt;/strong&gt;兩方面展開。&lt;/p&gt; 
+&lt;p&gt;&lt;strong&gt;在算法架構方面&lt;/strong&gt;，SpatialLM 將大語言模型（LLMs）擴展到 3D 空間理解任務中，特別在結構化室內建模領域實現了重要突破。&lt;/p&gt; 
+&lt;p&gt;這一技術路線打破了傳統任務專屬架構（task-specific architecture）的限制，創新性地採用可編輯的文本形式表達場景結構。這一創新設計具有雙重技術優勢：&lt;/p&gt; 
+&lt;p&gt;一方面&lt;strong&gt;發揮了羣核科技強大數據集能力&lt;/strong&gt;，通過持續訓練不斷優化空間識別精度；另一方面&lt;strong&gt;通過接入大語言模型，系統可直接接收並理解自然語言指令&lt;/strong&gt;，使空間理解模型從簡單任務執行工具轉變為能夠真正理解用戶意圖的智能系統，從而推進了 LLMs 在空間理解和推理方向的能力邊界。&lt;/p&gt; 
+&lt;p&gt;&lt;img src="https://static.oschina.net/uploads/space/2025/0624/141138_pYOw_2720166.png" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;em&gt;&lt;strong&gt;&lt;strong&gt;SpatialLM 模型的網絡結構&lt;/strong&gt;&lt;/strong&gt;&lt;/em&gt;&lt;/p&gt; 
+&lt;p&gt;在訓練數據方面，SpatialLM 構建了一個全新的包含 3D 結構化信息的合成點雲數據集，打破了真實數據稀缺且難以標註的侷限。&lt;/p&gt; 
+&lt;p&gt;&lt;img height="1149" src="https://static.oschina.net/uploads/space/2025/0624/141210_bppP_2720166.png" width="974" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p&gt;&amp;nbsp;&lt;/p&gt; 
+&lt;p&gt;該數據集包含超 1.2 萬場景、5.4 萬個房間的結構化室內點雲數據，其規模遠超 ScanNet（僅包含 1,513 個場景）等現有數據集。所有數據均源自真實項目的專業設計模型，經嚴格篩選與解析後形成符合真實世界統計分佈的虛擬環境，相較程序化生成的 ProcTHOR 等數據集具有更高真實性。&lt;/p&gt; 
+&lt;p&gt;項目地址：https://manycore-research.github.io/SpatialLM/&lt;br&gt; 報告詳情：https://arxiv.org/abs/2506.07491&lt;/p&gt;
+                                                                                &lt;/div&gt;
+                                                                            </description>
+      <link>https://www.oschina.net/news/356998</link>
+      <guid isPermaLink="false">https://www.oschina.net/news/356998</guid>
+      <pubDate>Sun, 11 May 2025 06:12:00 GMT</pubDate>
+      <author>來源: OSCHINA</author>
+    </item>
+    <item>
+      <title>vivo Pulsar 萬億級消息處理實踐 (2) - 從 0 到 1 建設 Pulsar 指標監控鏈路</title>
+      <description>&lt;div class="content"&gt;
+                                                                                                                    
+                                                                                                                                                    &lt;blockquote&gt; 
+ &lt;p&gt;作者：vivo 互聯網大數據團隊- You Shuo&lt;/p&gt; 
+ &lt;p&gt;本文是《vivo Pulsar 萬億級消息處理實踐》系列文章第 2 篇，Pulsar 支持上報分區粒度指標，Kafka 則沒有分區粒度的指標，所以 Pulsar 的指標量級要遠大於 Kafka。在 Pulsar 平台建設初期，提供一個穩定、低時延的監控鏈路尤為重要。&lt;/p&gt; 
+ &lt;p&gt;系列文章：&lt;/p&gt; 
+ &lt;ol&gt; 
+  &lt;li&gt;《&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fmp.weixin.qq.com%2Fs%3F__biz%3DMzI4NjY4MTU5Nw%3D%3D%26mid%3D2247501335%26idx%3D1%26sn%3D3701be0b8b7b789e29c1ca53ba142e9d%26scene%3D21%23wechat_redirect" target="_blank"&gt;vivo Pulsar 萬億級消息處理實踐-數據發送原理解析和性能調優&lt;/a&gt;》&lt;/li&gt; 
+ &lt;/ol&gt; 
+ &lt;p&gt;本文是基於 Pulsar 2.9.2/kop-2.9.2 展開的。&lt;/p&gt; 
+&lt;/blockquote&gt; 
+&lt;h1&gt;一、背景&lt;/h1&gt; 
+&lt;p&gt;作為一種新型消息中間件，Pulsar 在架構設計及功能特性等方面要優於 Kafka，所以我們引入 Pulsar 作為我們新一代的消息中間件。在對 Pulsar 進行調研的時候（比如：性能測試、故障測試等），針對 Pulsar 提供一套可觀測系統是必不可少的。Pulsar 的指標是面向雲原生的，並且官方提供了 Prometheus 作為 Pulsar 指標的採集、存儲和查詢的方案，但是使用 Prometheus 採集指標面臨以下幾個&lt;strong&gt;問題&lt;/strong&gt;：&lt;/p&gt; 
+&lt;ol&gt; 
+ &lt;li&gt; &lt;p&gt;Prometheus 自帶的時序數據庫不是分佈式的，它受單機資源的限制；&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;Prometheus 在存儲時序數據時消耗大量的內存，並且 Prometheus 在實現高效查詢和聚合計算的時候會消耗大量的 CPU。&lt;/p&gt; &lt;/li&gt; 
+&lt;/ol&gt; 
+&lt;p&gt;除了以上列出的可觀測系統問題，Pulsar 還有一些指標本身的問題，這些問題&lt;strong&gt;包括&lt;/strong&gt;：&lt;/p&gt; 
+&lt;ol&gt; 
+ &lt;li&gt; &lt;p&gt;Pulsar 的訂閲積壓指標單位是 entry 而不是條數，這會嚴重影響從 Kafka 遷移過來的用戶的使用體驗及日常運維工作；&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;Pulsar 沒有 bundle 指標，因為 Pulsar 自動均衡的最小單位是 bundle，所以 bundle 指標是調試 Pulsar 自動均衡參數時重要的觀測依據；&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;kop 指標上報異常等問題。&lt;/p&gt; &lt;/li&gt; 
+&lt;/ol&gt; 
+&lt;p&gt;針對以上列出的幾個問題，我們在下面分別展開敍述。&lt;/p&gt; 
+&lt;h1&gt;二、Pulsar 監控告警系統架構&lt;/h1&gt; 
+&lt;p&gt;在上一章節我們列出了使用 Prometheus 作為觀測系統的侷限，由於 Pulsar 的指標是面向雲原生的，採用 Prometheus 採集 Pulsar 指標是最好的選擇，但對於指標的存儲和查詢我們使用第三方存儲來減輕 Prometheus 的壓力，整個監控告警系統架構如下圖所示：&lt;/p&gt; 
+&lt;p&gt;&lt;img src="https://oscimg.oschina.net/oscnet//c032b72031868384106c1cc665fafc42.gif" alt="圖片" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p&gt;在整個可觀測系統中，各組件的職能如下：&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt; &lt;p&gt;Pulsar、bookkeeper 等組件提供暴露指標的接口&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;Prometheus 訪問 Pulsar 指標接口採集指標&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;adaptor 提供了服務發現、Prometheus 格式指標的反序列化和序列化以及指標轉發遠端存儲的能力，這裏的遠端存儲可以是 Pulsar 或 Kafka&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;Druid 消費指標 topic 並提供數據分析的能力&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;vivo 內部的檢測告警平台提供了動態配置檢測告警的能力&lt;/p&gt; &lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;p&gt;基於以上監控系統的設計邏輯，我們在具體實現的過程中遇到了幾個比較&lt;strong&gt;關鍵的問題：&lt;/strong&gt;&lt;/p&gt; 
+&lt;p&gt;**一、**adaptor 需要接收 Pulsar 所有線上服務的指標併兼容 Prometheus 格式數據，所以在調研 Prometheus 採集 Pulsar 指標時，我們基於 Prometheus 的官方文檔開發了 adaptor，在 adaptor 裏實現了服務加入集羣的發現機制以及動態配置 prometheus 採集新新加入服務的指標：&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt; &lt;p&gt;Prometheus 動態加載配置：&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fprometheus.io%2Fdocs%2Fprometheus%2Flatest%2Fconfiguration%2Fconfiguration%2F" target="_blank"&gt;Prometheus 配置-官方文檔&lt;/a&gt;&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;Prometheus 自定義服務發現機制：&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fprometheus.io%2Fblog%2F2015%2F06%2F01%2Fadvanced-service-discovery%2F" target="_blank"&gt;Prometheus 自定義服務發現-官方文檔&lt;/a&gt;&lt;/p&gt; &lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;p&gt;在可以動態配置 Prometheus 採集所有線上正在運行的服務指標之後，由於 Prometheus 的指標是基於 protobuf 協議進行傳輸的，並且 Prometheus 是基於 go 編寫的，所以為了適配 Java 版本的 adaptor，我們基於 Prometheus 和 go 提供的指標格式定義文件（remote.proto、types.proto 和 gogo.proto）生成了 Java 版本的指標接收代碼，並將 protobuf 格式的指標反序列化後寫入消息中間件。&lt;/p&gt; 
+&lt;p&gt;**二、**Grafana 社區提供的 Druid 插件不能很好的展示 Counter 類型的指標，但是 bookkeeper 上報的指標中又有很多是 Counter 類型的指標，vivo 的 Druid 團隊對該插件做了一些改造，新增了計算速率的聚合函數。&lt;/p&gt; 
+&lt;p&gt;druid 插件的安裝可以參考官方文檔（&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fgrafana.com%2Fgrafana%2Fplugins%2Fabhisant-druid-datasource%2F" target="_blank"&gt;詳情&lt;/a&gt;）&lt;/p&gt; 
+&lt;p&gt;**三、**由於 Prometheus 比較依賴內存和 CPU，而我們的機器資源組又是有限的，在使用遠端存儲的基礎上，我們針對該問題優化了一些 Prometheus 參數，這些參數包括：&lt;/p&gt; 
+&lt;blockquote&gt; 
+ &lt;ul&gt; 
+  &lt;li&gt; &lt;p&gt;&lt;strong&gt;--storage.tsdb.retention=30m&lt;/strong&gt;：該參數配置了數據的保留時間為 30 分鐘，在這個時間之後，舊的數據將會被刪除。&lt;/p&gt; &lt;/li&gt; 
+  &lt;li&gt; &lt;p&gt;&lt;strong&gt;--storage.tsdb.min-block-duration=5m&lt;/strong&gt;：該參數配置了生成塊（block）的最小時間間隔為 5 分鐘。塊是一組時序數據的集合，它們通常被一起壓縮和存儲在磁盤上，該參數間接控制 Prometheus 對內存的佔用。&lt;/p&gt; &lt;/li&gt; 
+  &lt;li&gt; &lt;p&gt;&lt;strong&gt;--storage.tsdb.max-block-duration=5m&lt;/strong&gt;：該參數配置了生成塊（block）的最大時間間隔為 5 分鐘。如果一個塊的時間跨度超過這個參數所設的時間跨度，則這個塊將被分成多個子塊。&lt;/p&gt; &lt;/li&gt; 
+  &lt;li&gt; &lt;p&gt;&lt;strong&gt;--enable-feature=memory-snapshot-on-shutdown&lt;/strong&gt;：該參數配置了在 Prometheus 關閉時，自動將當前內存中的數據快照寫入到磁盤中，Prometheus 在下次啓動時讀取該快照從而可以更快的完成啓動。&lt;/p&gt; &lt;/li&gt; 
+ &lt;/ul&gt; 
+&lt;/blockquote&gt; 
+&lt;h1&gt;三、Pulsar 指標優化&lt;/h1&gt; 
+&lt;p&gt;Pulsar 的指標可以成功觀測之後，我們在日常的調優和運維過程中發現了一些 Pulsar 指標本身存在的問題，這些問題包括準確性、用戶體驗、以及性能調優等方面，我們針對這些問題做了一些優化和改造，使得 Pulsar 更加通用、易維護。&lt;/p&gt; 
+&lt;h2&gt;3.1 Pulsar 消費積壓指標&lt;/h2&gt; 
+&lt;p&gt;原生的 Pulsar 訂閲積壓指標單位是 entry，從 Kafka 遷移到 Pulsar 的用戶希望 Pulsar 能夠和 Kafka 一樣，提供以消息條數為單位的積壓指標，這樣可以方便用戶判斷具體的延遲大小並儘量不改變用戶使用消息中間件的習慣。&lt;/p&gt; 
+&lt;p&gt;在確保配置 brokerEntryMetadataInterceptors=&lt;/p&gt; 
+&lt;p&gt;org.apache.pulsar.common.intercept.AppendIndexMetadataInterceptor 情況下，Pulsar broker 端在往 bookkeeper 端寫入 entry 前，通過攔截器往 entry 的頭部添加索引元數據，該索引在同一分區內單調遞增，entry 頭部元數據示例如下：&lt;/p&gt; 
+&lt;pre&gt;&lt;code&gt;biz-log-partition-1 -l 24622961 -e 6
+Batch Message ID: 24622961:6:0
+Publish time: 1676917007607
+Event time: 0
+Broker entry metadata index: 157398560244
+Properties:
+"X-Pulsar-batch-size    2431"
+"X-Pulsar-num-batch-message    50"
+&lt;/code&gt;&lt;/pre&gt; 
+&lt;p&gt;以分區為指標統計的最小單位，基於 last add confirmed entry 和 last consumed entry 計算兩個 entry 中的索引差值，即是訂閲在每個分區的數據積壓。下面是 cursor 基於訂閲位置計算訂閲積壓的示意圖，其中 last add confirmed entry 在攔截器中有記錄最新索引，對於 last consumed entry，cursor 需要從 bookkeeper 中讀取，這個操作可能會涉及到 bookkeeper 讀盤，所以在收集延遲指標的時候可能會增加採集的耗時。&lt;/p&gt; 
+&lt;p&gt;&lt;img src="https://oscimg.oschina.net/oscnet//f954824fee0a365add038a1a9aed4e3b.gif" alt="圖片" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;strong&gt;效果&lt;/strong&gt;&lt;/p&gt; 
+&lt;p&gt;上圖是新訂閲積壓指標和原生積壓指標的對比，新增的訂閲積壓指標單位是條，原生訂閲積壓指標單位是 entry。在客戶端指定單條發送 100w 條消息時，訂閲積壓都有明顯的升高，當客戶端指定批次發送 100w 條消息的時候，新的訂閲積壓指標會有明顯的升高，而原生訂閲積壓指標相對升高幅度不大，所以新的訂閲積壓指標更具體的體現了訂閲積壓的情況。&lt;/p&gt; 
+&lt;p&gt;&lt;img src="https://oscimg.oschina.net/oscnet//a62f11043d23bcbc8c667854834e2437.png" alt="圖片" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;h2&gt;3.2 Pulsar bundle 指標&lt;/h2&gt; 
+&lt;p&gt;Pulsar 相比於 Kafka 增加了自動負載均衡的能力，在 Pulsar 裏 topic 分區是綁定在 bundle 上的，而負載均衡的最小單位是 bundle，所以我們在調優負載均衡策略和參數的時候比較依賴 bunlde 的流量分佈指標，並且該指標也可以作為我們切分 bundle 的參考依據。我們在開發 bundle 指標的時候做了下面兩件事情：&lt;/p&gt; 
+&lt;p&gt;統計當前 Pulsar 集羣非遊離狀態 bundle 的負載情況對於處於遊離狀態的 bundle（即沒有被分配到任何 broker 上的 bundle），我們指定 Pulsar leader 在上報自身 bundle 指標的同時，上報這些處於遊離狀態的 bundle 指標，並打上是否遊離的標籤。&lt;/p&gt; 
+&lt;p&gt;&lt;strong&gt;效果&lt;/strong&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;img src="https://oscimg.oschina.net/oscnet//d465e1009a88707edf424e50711bfd36.png" alt="圖片" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p&gt;上圖就是 bundle 的負載指標，除了出入流量分佈的情況，我們還提供了生產者/消費者到 bundle 的連接數量，以便運維同學從更多角度來調優負載均衡策略和參數。&lt;/p&gt; 
+&lt;h2&gt;3.3 kop 消費延遲指標無法上報&lt;/h2&gt; 
+&lt;p&gt;在我們實際運維過程中，重啓 kop 的 Coordinator 節點後會偶發消費延遲指標下降或者掉 0 的問題，從 druid 查看上報的數據，我們發現在重啓 broker 之後消費組就沒有繼續上報 kop 消費延遲指標。&lt;/p&gt; 
+&lt;p&gt;&lt;strong&gt;（1）原因分析&lt;/strong&gt;&lt;/p&gt; 
+&lt;p&gt;由於 kop 的消費延遲指標是由 Kafka lag exporter 採集的，所以我們重點分析了 Kafka lag exporter 採集消費延遲指標的邏輯，下圖是 Kafka-lag-exporter 採集消費延遲指標的示意圖：&lt;/p&gt; 
+&lt;p&gt;&lt;img src="https://oscimg.oschina.net/oscnet//e1c60c3dfc3fbdfdcbacbe9501bd9c30.gif" alt="圖片" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p&gt;其中，kafka-lag-exporter 計算消費延遲指標的邏輯會依賴 kop 的 describeConsumerGroups 接口，但是當 GroupCoordinator 節點重啓後，該接口返回的 member 信息中 assignment 數據缺失，kafka-lag-exporter 會將 assignment 為空的 member 給過濾掉，所以最終不會上報對應 member 下的分區指標，代碼調試如下圖所示：&lt;/p&gt; 
+&lt;p&gt;&lt;img src="https://oscimg.oschina.net/oscnet//44161110538352a1751268f3d5e09c35.png" alt="圖片" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;img src="https://oscimg.oschina.net/oscnet//756d27b220d957877e1713dd1ac7e29a.png" alt="圖片" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p&gt;為什麼 kop/Kafka describeConsumerGroups 接口返回 member 的 assignment 是空的？因為 consumer 在啓動消費時會通過 groupManager.storeGroup 寫入__consumer_&lt;/p&gt; 
+&lt;p&gt;offset，在 coordinator 關閉時會轉移到另一個 broker，但另一個 broker 並沒有把 assignment 字段反序列化出來（序列化為 groupMetadataValue，反序列化為 readGroupMessageValue），如下圖：&lt;/p&gt; 
+&lt;p&gt;&lt;img src="https://oscimg.oschina.net/oscnet//378c807ffd55bb262d54d26e52e6d73a.png" alt="圖片" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;strong&gt;（2）解決方案&lt;/strong&gt;&lt;/p&gt; 
+&lt;p&gt;在 GroupMetadataConstants#readGroup-&lt;/p&gt; 
+&lt;p&gt;MessageValue() 方法對 coordinator 反序列化消費組元數據信息時，將 assignment 字段讀出來並設置（序列化為 groupMetadataValue，反序列化為 readGroupMessageValue），如下圖：&lt;/p&gt; 
+&lt;p&gt;&lt;img src="https://oscimg.oschina.net/oscnet//97fe15c2e044eb609406a2ab3d5e51e8.png" alt="圖片" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;h1&gt;四、總結&lt;/h1&gt; 
+&lt;p&gt;在 Pulsar 監控系統構建的過程中，我們解決了與用戶體驗、運維效率、Pulsar 可用性等方面相關的問題，加快了 Pulsar 在 vivo 的落地進度。雖然我們在構建 Pulsar 可觀測系統過程中解決了一部分問題，但是監控鏈路仍然存在單點瓶頸等問題，所以 Pulsar 在 vivo 的發展未來還會有很多挑戰。&lt;/p&gt;
+                                                                                    &lt;/div&gt;
+                                                                            </description>
+      <link>https://my.oschina.net/vivotech/blog/18619289</link>
+      <guid isPermaLink="false">https://my.oschina.net/vivotech/blog/18619289</guid>
+      <pubDate>Sun, 11 May 2025 03:41:00 GMT</pubDate>
+      <author>原創</author>
+    </item>
+    <item>
+      <title>譚中意：「中國內源第一人」 的九年佈道路</title>
+      <description>&lt;div class="content"&gt;
+                                                                                                                    
+                                                                                                                                                    &lt;div&gt; 
+ &lt;p&gt;「中國內源第一人」，開源中國董事長馬越、多家國內著名科技企業內源負責人都曾這樣稱呼譚中意。國內開源專家眾多，但真正投身內源（InnerSource）實踐者卻寥寥無幾。&lt;/p&gt; 
+ &lt;p&gt;內源一詞，是&amp;nbsp;Tim O'Reilly 先生在在 1999 年創造的，他也是開源創始人之一。內源並不神祕，簡單來説，就是在企業內部公開代碼，可見可貢獻。2015 年，著名開源活動家 Danese Cooper 女士將其發揚光大，併成立國際內源基金會 （InnerSource Commons），到今天已經快 10 年了。&lt;/p&gt; 
+ &lt;p&gt;今年 5 月，國際內源基金會在其官網上公佈最新的董事會成員（https://innersourcecommons.org/about/board/），譚中意（英文名字為 Jerry Tan）赫然在列。 他是首個來自中國的董事會成員。&lt;/p&gt; 
+ &lt;p style="text-align:center"&gt;&lt;img height="392" src="https://oscimg.oschina.net/oscnet/up-b3017296e42653f6c12fdbbe80e592162da.png" width="1204" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+ &lt;p&gt;對他個人而言，這意味着一頂在業界流傳已久、卻始終缺個「正式認證」的桂冠——「中國內源第一人」——終於得到了國際權威機構的背書。&lt;/p&gt; 
+ &lt;p&gt;「現在有這麼一個戳了。」&lt;/p&gt; 
+ &lt;p&gt;從 2016 年在百度初次將內源納入開源戰略版圖，到 2018 年遠赴美國參加 OSCON 大會，與國際內源基金會負責人 Danese Cooper 女士的初次握手與合影，再到 2019 年登上 OSCON 舞台分享「中國經驗」，九年間，譚中意的每一步，都串聯起中國內源從萌芽到走向國際的隱祕脈絡。&lt;/p&gt; 
+ &lt;p style="text-align:center"&gt;&lt;img height="445" src="https://oscimg.oschina.net/oscnet/up-174ad251279b59840baf710961adc386c61.png" width="1177" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+ &lt;p style="text-align:center"&gt;2018 年、2019 OSCON InnerSource Day，譚中意，與&amp;nbsp;Danese Cooper 女士合影&lt;/p&gt; 
+ &lt;p&gt;如今，作為新晉董事，這位「內源佈道者」的專家，正試圖將「彆着急」的長期主義哲學注入到內源事業中，讓更多企業，尤其是傳統企業和國央企，理解並擁抱開源協作的力量。&lt;/p&gt; 
+ &lt;p&gt;他的信條很簡單：「彆着急，內源與開源都不是一蹴而就的事情。」&lt;/p&gt; 
+ &lt;span id="OSC_h4_1"&gt;&lt;/span&gt; 
+ &lt;h4&gt;&lt;strong&gt;從百度出發的漫長旅程&lt;/strong&gt;&lt;/h4&gt; 
+ &lt;p&gt;2010 年，譚中意加入百度，先後在多個產品線工作，之後負責百度集團的平台化項目。之後，他又負責推進整個集團的開源工作——包括規範引入外部開源項目的合規、安全與高效流程，建立對外開源項目的健康持續發展機制以提升技術影響力和構建生態，以及探索內部開源如何提升研發與創新效率。&lt;/p&gt; 
+ &lt;p&gt;譚中意回憶，最早開始着手進行內源工作是 2016 年。那時候，中國沒幾個人知道內源是什麼。他之所以在百度搞內源，源於平台化項目面臨的實際挑戰：平台化後的項目團隊人力有限，難以支撐百度內部眾多業務線的需求。因此，譚中意主動引入內源模式，吸引業務線的研發工程師一起對平台項目進行共同維護。&amp;nbsp;他的內源推廣採取了漸進式路徑：最初從一個具體的項目（ODP，一個 PHP MVC 框架）試點，隨後擴展到一個部門（Inf，百度基礎架構部），最終覆蓋到整個集團。&lt;/p&gt; 
+ &lt;p&gt;譚中意坦言，起步並非完全從零開始——內源與開源共享着許多方法論和價值觀（如透明協作、社區驅動），但初期的探索依然充滿挑戰。「當時我們確實積累了一些開源相關的經驗」，他回憶道，「但後來發現，要將內源模式推廣到互聯網行業之外，尤其是傳統企業，難度相當大。」&lt;/p&gt; 
+ &lt;p&gt;這種挑戰感促使他主動尋求突破，跳出去看看國際上怎麼做的。2018 年，他遠赴美國參加 OSCON 大會的內源分論壇（InnerSource Day），首次與國際內源基金會負責人 Danese Cooper 女士深入交流。這成為他連接全球內源社區的起點。這次交流也給了他信心，次年（2019 年），他成功將百度推進內源的經驗投稿 OSCON 並獲選，在大會上專門介紹了中國的內源實踐，再次深化了與國際同行的聯繫。&lt;/p&gt; 
+ &lt;p&gt;連接一旦建立，交流便持續深化。 2021 年，他在深圳（騰訊）牽頭組織了 InnerSource Asia Summit 2021 線上和線下活動；到了 2024 年，他再次於深圳組織相關活動，並頒發了 InnerSource China Award 2024，代表 InnerSource Commons 基金會對中國內源實踐突出的優秀企業進行了表彰。(詳見 https://it.sohu.com/a/812246006_827544）。中國內源的影響力持續擴大，這些實踐不僅在國內播種，也反哺着國際交流。&lt;/p&gt; 
+ &lt;p style="text-align:center"&gt;&lt;img height="387" src="https://oscimg.oschina.net/oscnet/up-feb919554db1f71da4f23957d40aa5e367f.png" width="688" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+ &lt;p style="text-align:center"&gt;2024 年深圳內源峯會頒獎大合影&lt;/p&gt; 
+ &lt;p&gt;&lt;br&gt; 作為 InnerSource Commons 的新任董事，譚中意基於過往連接國際的經驗，目標已十分清晰：一方面，在中國組織更多內源活動，深化本土推廣；另一方面，積極推動更多中國成員參與國際內源基金會的活動，促進更多交流和協作。&lt;/p&gt; 
+ &lt;span id="OSC_h4_2"&gt;&lt;/span&gt; 
+ &lt;h4&gt;&lt;strong&gt;中國式內源，有自己的獨特經驗&lt;/strong&gt;&lt;/h4&gt; 
+ &lt;p&gt;譚中意幾乎已經跟中國所有做內源的企業接觸過，並深度參與過百度和騰訊的內源工作。他看到中國企業有一個很大的優點，就是很擅長學習先進經驗，並結合本地實際迭代。中國企業的內源實踐也因此獨具特色。&lt;/p&gt; 
+ &lt;p&gt;「騰訊的經驗就很值得借鑑。」譚中意表示，在推行內源前，騰訊內部是一個極其龐大，但又各自為戰、沒有太多技術追求的狀態，重複造輪子的情況很常見，技術壁壘也很嚴重。認識到這情況以後，騰訊把‘開源協同’作為集團戰略之一，通過七年實踐，扭轉了內部技術各自為戰、缺乏協作的局面。&lt;/p&gt; 
+ &lt;p&gt;他總結了騰訊做內源成功的幾個關鍵：&lt;/p&gt; 
+ &lt;p style="text-align:left"&gt;首先高層要定好調： 「總辦認識到開源協同是解決他們集團長期以來在技術上的一些痛點問題的非常有效的手段」，並將其宣佈為「兩大集團戰略之一」。&lt;/p&gt; 
+ &lt;p style="text-align:left"&gt;接着必須要有強力推手： 「找了一個很有實權的部門來推行，這個部門是騰訊 TEG 運營管理部，運管派了很大的人力組成內源運營團隊，每年還有相當多的運營經費」。&lt;/p&gt; 
+ &lt;p style="text-align:left"&gt;同時要提供機制保障： 代碼默認開放，「只要這個項目放到公司的代碼倉庫默認內部開源的」，只有約 10% 多的項目經 VP 審批保密；代碼協同還需要基礎的研發設施、流程工具、度量平台等來支持。&lt;/p&gt; 
+ &lt;p&gt;此外還有很多的機制設計、運營活動等等。&lt;/p&gt; 
+ &lt;p&gt;譚中意稱之為「騰訊開源協同之道」，並對這一模式給予高度評價：「徹底扭轉了局面，讓開源協同成了騰訊內部技術部門的主旋律，值得國內外大企業學習。&lt;/p&gt; 
+ &lt;p&gt;基於多年觀察，譚中意總結出內源項目失敗的幾個常見根源。&lt;/p&gt; 
+ &lt;p&gt;「太着急」 是第一個問題。他描述道：「文檔都還沒寫好，代碼又很亂，然後就把內部放出來之後大家能説這是個什麼爛項目，我憑什麼要支持你？」 倉促上陣，反而讓項目失去了人心。&lt;/p&gt; 
+ &lt;p&gt;「脫離實際」 是第二個關鍵原因。他指出：「你開出去的東西，你不解決別人的需求...或者要用就要用全部，成本太高了。」 這樣的項目，自然難以獲得支持。&lt;/p&gt; 
+ &lt;p&gt;「人才梯隊斷檔」 則是致命一擊。譚中意強調，一旦項目關鍵人離職，「別人接不上來了」，項目也就岌岌可危。&lt;/p&gt; 
+ &lt;p&gt;如何應對？譚中意舉了百度 BRPC 項目的例子。&lt;/p&gt; 
+ &lt;p&gt;當時項目遇到了嚴重危機：主要貢獻者離職，內部也沒人能接起來。面對困境，他們選擇了將項目捐獻給 Apache 軟件基金會。&lt;/p&gt; 
+ &lt;p&gt;這一招帶來了轉機。原貢獻者得以以社區身份繼續貢獻，正如譚中意所説，「社區對項目的信任感是永遠跟着他們的」。同時，百度內部也藉此機會培養新人接棒。結果，項目不僅活了下來，還獲得了發展。&lt;/p&gt; 
+ &lt;p&gt;譚中意點明瞭其中的核心：「社區歸屬感比勞動合同更長效」。他總結道，「社區最後培養就是歸屬感」——正是這種歸屬感，成為了項目持續發展的生命力所在。&lt;/p&gt; 
+ &lt;span id="OSC_h4_3"&gt;&lt;/span&gt; 
+ &lt;h4&gt;&lt;strong&gt;內源做得好，開源很輕鬆&lt;/strong&gt;&lt;/h4&gt; 
+ &lt;p&gt;內源與開源有着密不可分的關係，就是在企業內部，應用開源軟件開發最佳實踐和建立類似開源文化，鼓勵內部協作和代碼共享的方法。&lt;/p&gt; 
+ &lt;p&gt;在譚中意看來，開源和內源，具有相同的基因，但是又有不同的側重點。&lt;/p&gt; 
+ &lt;p&gt;譚中意強調，開源和內源的核心都是「協作」，共享很多的方法（如寫好文檔、建立良好的評審機制），也遵循同樣的價值觀。&lt;/p&gt; 
+ &lt;p&gt;不管是企業內源還是企業對外開源，要把這件事做好，都需要「上下同欲」——企業上層有清晰的戰略，企業下面有到位的執行，有工程師組成的社區活躍參與。此外，價值觀也很關鍵，它能吸引志同道合的人，排斥破壞協作的人。&lt;/p&gt; 
+ &lt;p&gt;內源與開源的核心區別在於協作範圍的大小，協作範圍可大可小——小到一個團隊內部，大到一個部門、事業部、整個公司，或者整個外部世界，那就是對外開源了。&lt;/p&gt; 
+ &lt;p&gt;不過，譚中意指出，二者的目的並不一致，內源核心是「提升企業內部效率，減少重複，加速創新」；對外開源則常與「品牌戰略或者商業戰略」關聯。因此，在很多企業裏，管內源（ISPO）和管外源（OSPO）的可能是兩撥人，也可能合為一撥。「微軟一開始就是分開的，後來整合了，百度當時我就全管了。這取決於公司具體情況。「&lt;/p&gt; 
+ &lt;p style="text-align:left"&gt;「內源對企業有很大的價值，包括增加代碼複用，提高產品質量；加速知識共享，提升開發人員能力；加速科技創新；減少重複輪子，降低成本；為對外開源做準備等等。內源做得好，開源很輕鬆」。譚中意表示，谷歌、微軟、Intel 等公司內部都採用開源方式協作，對外開源只需戰略審核。&lt;/p&gt; 
+ &lt;p&gt;Fury 項目的故事也為譚中意的觀點做出了最好的證明。&lt;/p&gt; 
+ &lt;p&gt;Fury 是螞蟻集團的工程師個人發起的多語言分佈式序列化框架，向公司申請對外開源時被駁回了，理由是「內部都沒有人用，只有他所在的這個團隊在用」。之後，項目負責人轉向「內部開源」，專注於「做好文檔，做好宣講」，吸引內部用戶和貢獻者。過了兩年，Fury 項目在螞蟻集團的內部社區已經形成了，再次申請對外開源獲得通過，併成功進入 Apache 軟件基金會孵化器，最近剛剛更名為 fory，成為「內源作為外源孵化器」的典範案例。&lt;/p&gt; 
+ &lt;p&gt;他警告，若企業僅做外源而「內部鎖得很死」，缺乏協作文化和價值觀支撐，開源項目可能難以持久，「過不了不久，對外開源的項目就掛掉了，或者沒人維護了」。&lt;/p&gt; 
+ &lt;span id="OSC_h4_4"&gt;&lt;/span&gt; 
+ &lt;h4&gt;&lt;strong&gt;嘴上説着彆着急，但步履不停&lt;/strong&gt;&lt;/h4&gt; 
+ &lt;p&gt;這兩年，譚中意觀察到，中國的內源環境發生了顯著變化：入局者越來越多，中電信、中移動以及金山辦公等更多企業正在關注或嘗試內源，尋求效率提升。但是，國內內源推廣者相對比較少，並且整體而言，國內企業對內源的認識仍然不足。&lt;/p&gt; 
+ &lt;p&gt;面對推廣者少、認知度低的現狀，譚中意強調「彆着急」。他不給自己設置短期硬性 KPI，而是看重實質進展，如企業關注、社區活躍度、國際參與度提升。&lt;/p&gt; 
+ &lt;p&gt;話雖這麼説，但手上的活兒還是沒停下來。&lt;/p&gt; 
+ &lt;p&gt;「在國內活動這塊，我計劃每年開一次線下峯會，去年舉辦過一次，今年更有經驗了。其次，每個月組織一次線上內源案例分享，今年已經完成了三期，騰訊、華為都分享了，這個月底是 OPPO。之後，每月都會有一期。另外，還將不定期組織線上內源溝通會，針對特定主題，時間靈活安排。年底，我會把這些分享的案例沉澱下來，做成企業內源案例集。」&lt;/p&gt; 
+ &lt;p&gt;在促進國際融合方面，譚中意將推動更多的中國成員去參與國際內源基金會的活動，具體方式包括：定期參與線上會議、在基金會活動中分享中國經驗（如上月已在 webinar 分享並吸引 SAP 等公司關注）、推動中國企業參與基金會十週年峯會（今年在日本、德國、美國舉行線上線下混合峯會）。&lt;/p&gt; 
+ &lt;p&gt;所有關於內源相關的事務，譚中意都是利用業餘時間在推進，沒有薪資，純義務勞動。&lt;/p&gt; 
+ &lt;p&gt;他稱自己是「內源佈道者」，認為有必要把這個方法論推廣到國內，讓更多的國內企業能應用到，然後來提升他們的效率——「企業內部提升效率是永無止境的」。&lt;/p&gt; 
+ &lt;p&gt;他用馬斯洛需求理論的最高層——「自我價值實現」來詮釋這份堅持：「能認識一幫有同樣志向，希望能改變他們公司面貌的朋友，是非常難得的。我和他們認識、交流，一起探討如何推進他們企業內部的技術協作，這是非常有意義的事情。這也是在追求自我價值的實現。」&lt;/p&gt; 
+ &lt;p&gt;除了國際內源基金會董事，譚中意身上還掛着好些開源組織的頭銜，比如開放原子基金會 TOC 主席、Apache 軟件基金會正式成員和孵化器導師等等。凡是能出一份力的活兒，譚中意都會積極參與。他表示，作為志願者能創造價值、得到認可，是件開心的事。」就算以後沒有這些頭銜，也會繼續去做這些事。」&lt;/p&gt; 
+ &lt;p&gt;至於內源，註定是一條長長的河流，但水流的方向，已然清晰。&lt;/p&gt; 
+&lt;/div&gt;
+                                                                                    &lt;/div&gt;
+                                                                            </description>
+      <link>https://my.oschina.net/u/3859945/blog/18635529</link>
+      <guid isPermaLink="false">https://my.oschina.net/u/3859945/blog/18635529</guid>
+      <pubDate>Sun, 11 May 2025 03:26:00 GMT</pubDate>
+      <author>原創</author>
+    </item>
+    <item>
+      <title>谷歌開源智能體通信協議 Agent2Agent (A2A) 已被 Linux 基金會接管</title>
+      <description>&lt;div class="content"&gt;
+                                                                    
+                                                        &lt;p&gt;2025 年 6 月 23 日，Linux 基金會在北美開源峯會&lt;u&gt;&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fwww.linuxfoundation.org%2Fpress%2Flinux-foundation-launches-the-agent2agent-protocol-project-to-enable-secure-intelligent-communication-between-ai-agents" target="_blank"&gt;宣佈&lt;/a&gt;&lt;/u&gt;啓動&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fgithub.com%2Fa2aproject%2FA2A" target="_blank"&gt;Agent2Agent（A2A）&lt;/a&gt;項目。該項目由谷歌於 2025 年 4 月發起並獲得 100 多家領先技術公司支持，旨在創建一個開放協議，實現 AI 智能體間的安全通信與協作。Linux 基金會將負責 A2A 項目的管理，確保其中立性、協作性和治理性。&lt;/p&gt; 
+&lt;p&gt;&lt;img alt="" src="https://oscimg.oschina.net/oscnet/up-8fe3e4a0fa786414ab6de80f762399a6327.png" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p&gt;A2A 協議賦予開發者構建跨平台、廠商和框架自由互操作的智能體的能力。它允許智能體在動態多智能體環境中發現彼此、安全交換信息並跨系統協作。這有助於提高模塊化程度、降低供應商鎖定風險並加速創新。&lt;/p&gt; 
+&lt;p&gt;加入 Linux 基金會後，A2A 規範化了其對開放、協作生態系統的承諾——提供更大的自主權並提高生產力。&lt;/p&gt; 
+&lt;p&gt;&lt;strong&gt;Linux 基金會執行董事吉姆·澤姆林表示，「我們很高興成為 Agent2Agent 協議項目的新家園，通過加入 Linux 基金會，A2A 將確保長期的中立性、協作性和治理性，這將解鎖下一代由智能體間協作驅動的生產力時代。」&lt;/strong&gt;&lt;/p&gt; 
+&lt;p&gt;在 Linux 基金會的治理下，A2A 將保持供應商中立，強調包容性貢獻，並繼續關注協議的擴展性、安全性以及跨行業的實際可用性。&lt;/p&gt; 
+&lt;p&gt;多家科技巨頭表達了對 A2A 項目的支持。AWS 副總裁 Swami Sivasubramanian 認為，智能體 AI 對客戶體驗至關重要，A2A 加入 Linux 基金會將創造更多機會。谷歌雲計算業務副總裁兼總經理 Rao Surapaneni 表示，A2A 協議為通信建立了重要開放標準，推動了跨平台和系統的真正互操作性 AI 智能體的發展。思科 Outshift 總經理兼高級副總裁 Vijoy Pandey 強調了社區驅動開發在智能體間廣泛採用中的重要性。Salesforce 產品架構師 Gary Lerhaupt 稱，企業 AI 的未來在於智能體間的無縫協作。SAP 全球人工智能高級副總裁兼全球負責人 Walter Sun 表示，A2A 開放標準確保了不同廠商的智能體能夠交互、共享上下文並協同工作。微軟產品副總裁 Yina Arenas 承諾，將結合開放互操作性與企業級功能，負責任地大規模部署智能體。ServiceNow 平台工程與人工智能技術集團執行副總裁 Joe Davis 表示，A2A 的開放標準構建了跨平台協作的基礎。&lt;/p&gt;
+                                                                                &lt;/div&gt;
+                                                                            </description>
+      <link>https://www.oschina.net/news/356965/linux-foundation-launches-the-agent2agent-protocol-project</link>
+      <guid isPermaLink="false">https://www.oschina.net/news/356965/linux-foundation-launches-the-agent2agent-protocol-project</guid>
+      <pubDate>Sun, 11 May 2025 02:50:00 GMT</pubDate>
+      <author>來源: OSCHINA</author>
+    </item>
     <item>
       <title>搶答題：「把文字變成數字」、「對結果精修」，都是什麼技術？</title>
       <description>&lt;div class="content"&gt;
@@ -47,7 +652,7 @@
                                                                             </description>
       <link>https://www.oschina.net/news/356959</link>
       <guid isPermaLink="false">https://www.oschina.net/news/356959</guid>
-      <pubDate>Tue, 24 Jun 2025 02:34:57 GMT</pubDate>
+      <pubDate>Sun, 11 May 2025 02:34:00 GMT</pubDate>
       <author>來源: OSCHINA</author>
     </item>
     <item>
@@ -63,7 +668,7 @@
                                                                             </description>
       <link>https://www.oschina.net/news/356958/microsoft-mu-language-model-</link>
       <guid isPermaLink="false">https://www.oschina.net/news/356958/microsoft-mu-language-model-</guid>
-      <pubDate>Tue, 24 Jun 2025 02:31:57 GMT</pubDate>
+      <pubDate>Sun, 11 May 2025 02:31:00 GMT</pubDate>
       <author>來源: OSCHINA</author>
     </item>
     <item>
@@ -81,7 +686,7 @@
                                                                             </description>
       <link>https://www.oschina.net/news/356956</link>
       <guid isPermaLink="false">https://www.oschina.net/news/356956</guid>
-      <pubDate>Tue, 24 Jun 2025 02:15:57 GMT</pubDate>
+      <pubDate>Sun, 11 May 2025 02:15:00 GMT</pubDate>
       <author>來源: OSCHINA</author>
     </item>
     <item>
@@ -122,7 +727,7 @@ This is *bold text*. The sum of [#numbers.map(it =&amp;gt; str(it)).join(", ")] 
                                                                             </description>
       <link>https://www.oschina.net/news/356954</link>
       <guid isPermaLink="false">https://www.oschina.net/news/356954</guid>
-      <pubDate>Tue, 24 Jun 2025 01:57:57 GMT</pubDate>
+      <pubDate>Sun, 11 May 2025 01:57:00 GMT</pubDate>
       <author>來源: 投稿</author>
     </item>
     <item>
@@ -519,946 +1124,6 @@ PrintUtil.printTree(expr);
       <link>https://www.oschina.net/news/356864</link>
       <guid isPermaLink="false">https://www.oschina.net/news/356864</guid>
       <pubDate>Sat, 10 May 2025 08:31:00 GMT</pubDate>
-      <author>來源: OSCHINA</author>
-    </item>
-    <item>
-      <title>第二屆壁仞科技 「飛翔杯」 AI 應用創新挑戰賽</title>
-      <description>&lt;div class="content"&gt;
-                                                                                                                    
-                                                                                                                                                    &lt;p style="margin-left:.0001pt; margin-right:0; text-align:left"&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;6 月 20 日，&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;由上海市計算機行業協會、&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;上海&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;壁仞科技&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;股份有限公司&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;主辦&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;，&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;上海臨港浦江國際科技城&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;發展有限公司&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;、浙江大學&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;上海&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;高等研究院、模力方舟（ Gitee AI ）、&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;杭州&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;一驀&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;信息&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;科技&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;有限公司&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;承辦&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;，&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;上海農村商業銀行股份有限公司協辦的&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;strong&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span style="color:#c00000"&gt;&lt;strong&gt;第二屆壁仞科技「飛翔杯」 AI 應用創新挑戰賽&lt;/strong&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/strong&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;正式啓幕。&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/p&gt; 
-&lt;p style="margin-left:.0001pt; margin-right:0; text-align:center"&gt;&lt;img height="4146" src="https://oscimg.oschina.net/oscnet/up-8adee0809261b27666b62893ecf019e0589.png" width="2160" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;p style="margin-left:.0001pt; margin-right:0; text-align:left"&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;本屆大賽以&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;strong&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;「智領創新應用，芯啓 AI 藍圖」&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/strong&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;為主題，基於壁仞科技自主研發的高性能 GPU ，通過「技術賦能+場景驅動」的雙輪機制，聚焦智能政務、醫療健康、教育科技、金融法律等八大重點行業領域，面向企業開發者、高校科研團隊及個人創客徵集具備商業價值與社會效益的 AI 應用，旨在促進國產算力基礎設施與實體經濟深度融合。&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/p&gt; 
-&lt;p style="margin-left:.0001pt; margin-right:0; text-align:left"&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;據悉，本屆大賽獲得了重點高校、場景企業、投資機構、金融機構等 12 家單位支持。壁仞科技更是攜手合作夥伴向參賽選手提供了「五重驚喜」，打造國產 GPU 背景下的更宏偉的 AI 應用藍圖。&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/p&gt; 
-&lt;p style="margin-left:.0001pt; margin-right:0; text-align:center"&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;strong&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;第二屆壁仞科技「飛翔杯」AI 應用創新挑戰賽&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/strong&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/p&gt; 
-&lt;p style="margin-left:.0001pt; margin-right:0; text-align:center"&gt;&lt;strong&gt;&lt;a href="https://www.oschina.net/biren_fxcup/" rel="nofollow"&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;報，名&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/a&gt;&lt;/strong&gt;&lt;/p&gt; 
-&lt;p style="margin-left:.0001pt; margin-right:0; text-align:left"&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;strong&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;賽事日程&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/strong&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/p&gt; 
-&lt;table cellspacing="0" style="border-collapse:collapse; border:none; font-family:&amp;quot;Times New Roman&amp;quot;; font-size:10pt; margin-left:-0.6000pt; width:427.8000pt"&gt; 
- &lt;tbody&gt; 
-  &lt;tr&gt; 
-   &lt;td style="border-bottom:none; border-left:none; border-right:none; border-top:none; height:59.0500pt; vertical-align:top; width:71.3000pt"&gt; &lt;p style="margin-left:.0001pt; margin-right:0; text-align:left"&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;strong&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;報，名 &lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/strong&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/p&gt; &lt;p style="margin-left:.0001pt; margin-right:0; text-align:left"&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;6 月 20 日&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/p&gt; &lt;/td&gt; 
-   &lt;td style="border-bottom:none; border-left:none; border-right:none; border-top:none; height:59.0500pt; vertical-align:top; width:76.2500pt"&gt; &lt;p style="margin-left:.0001pt; margin-right:0; text-align:left"&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;strong&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;開，始 &lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/strong&gt;&lt;strong&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;提，交 &lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/strong&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/p&gt; &lt;p style="margin-left:.0001pt; margin-right:0; text-align:left"&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;7 月 11 日&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/p&gt; &lt;/td&gt; 
-   &lt;td style="border-bottom:none; border-left:none; border-right:none; border-top:none; height:59.0500pt; vertical-align:top; width:80.5000pt"&gt; &lt;p style="margin-left:.0001pt; margin-right:0; text-align:left"&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;strong&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;截，止&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/strong&gt;&lt;strong&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&amp;nbsp;提，交&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/strong&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/p&gt; &lt;p style="margin-left:.0001pt; margin-right:0; text-align:left"&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;8 月 15 日&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/p&gt; &lt;/td&gt; 
-   &lt;td style="border-bottom:none; border-left:none; border-right:none; border-top:none; height:59.0500pt; vertical-align:top; width:57.1500pt"&gt; &lt;p style="margin-left:.0001pt; margin-right:0; text-align:left"&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;strong&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;復，審&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/strong&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/p&gt; &lt;p style="margin-left:.0001pt; margin-right:0; text-align:left"&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;8&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&amp;nbsp;- 9&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;月&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/p&gt; &lt;/td&gt; 
-   &lt;td style="border-bottom:none; border-left:none; border-right:none; border-top:none; height:59.0500pt; vertical-align:top; width:71.3000pt"&gt; &lt;p style="margin-left:.0001pt; margin-right:0; text-align:left"&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;strong&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;決，賽 &lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/strong&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/p&gt; &lt;p style="margin-left:.0001pt; margin-right:0; text-align:left"&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;8 - &lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;9&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;月&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/p&gt; &lt;/td&gt; 
-   &lt;td style="border-bottom:none; border-left:none; border-right:none; border-top:none; height:59.0500pt; vertical-align:top; width:71.3000pt"&gt; &lt;p style="margin-left:.0001pt; margin-right:0; text-align:left"&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;strong&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;頒，獎&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/strong&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/p&gt; &lt;p style="margin-left:.0001pt; margin-right:0; text-align:left"&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;9 月&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/p&gt; &lt;/td&gt; 
-  &lt;/tr&gt; 
- &lt;/tbody&gt; 
-&lt;/table&gt; 
-&lt;p style="margin-left:.0001pt; margin-right:0; text-align:left"&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;strong&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;參賽對象&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/strong&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/p&gt; 
-&lt;p style="margin-left:.0001pt; margin-right:0; text-align:left"&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;面向企業開發者、高校科研團隊及個人創客，並以團體賽形式報名，每隊限定 1~5 個人。&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/p&gt; 
-&lt;p style="margin-left:.0001pt; margin-right:0; text-align:left"&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;strong&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;賽題設置&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/strong&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/p&gt; 
-&lt;p style="margin-left:0; margin-right:0; text-align:left"&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;本次大賽設置揭榜賽題和常規賽題兩類賽題。&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/p&gt; 
-&lt;p style="margin-left:0; margin-right:0; text-align:left"&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;揭榜賽題由壁仞科技、華山醫院、一驀科技出題，聚焦 AI4S、智慧醫療、實訓項目三大場景。揭榜賽題直接匹配企業現有需求，更有機會直接獲取合作機會及資金支持。&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/p&gt; 
-&lt;p style="margin-left:0; margin-right:0; text-align:left"&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;常規賽題聚焦智慧政務、醫療健康、教育科技、金融法律、文化傳媒、具身智能、先進製造、互聯網電商等八大重點行業領域。&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/p&gt; 
-&lt;p style="margin-left:.0001pt; margin-right:0; text-align:left"&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;strong&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;報名方式&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/strong&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/p&gt; 
-&lt;p style="margin-left:0; margin-right:0; text-align:left"&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;即日起，第二屆壁仞科技「飛翔杯」AI 應用創新挑戰賽正式開啓報名啦！&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/p&gt; 
-&lt;p style="margin-left:0; margin-right:0; text-align:left"&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;報名方式一：&lt;/span&gt;&lt;/span&gt;&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fruw9xpnpiv.feishu.cn%2Fshare%2Fbase%2Fform%2Fshrcnp5GagUPERraQX0KsrkqHIc" rel="nofollow" target="_blank"&gt;&lt;u&gt;&lt;span&gt;&lt;span&gt;&lt;span style="color:#0000ff"&gt;&lt;u&gt;&lt;span&gt;https://ruw9xpnpiv.feishu.cn/share/base/form/shrcnp5GagUPERraQX0KsrkqHIc&lt;/span&gt;&lt;/u&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/u&gt;&lt;/a&gt;&lt;/span&gt;&lt;/span&gt;&lt;/p&gt; 
-&lt;p style="margin-left:0; margin-right:0; text-align:left"&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;報名方式二：掃描下方二維碼，獲取報名信息。&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/p&gt; 
-&lt;p style="margin-left:0; margin-right:0; text-align:center"&gt;&lt;img height="252" src="https://oscimg.oschina.net/oscnet/up-a9e468acbf6bd697baae4d8393b3e2d3616.png" width="257" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;p style="margin-left:0; margin-right:0; text-align:justify"&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;strong&gt;&lt;span&gt;&lt;span&gt;作品提交&lt;/span&gt;&lt;/span&gt;&lt;/strong&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/p&gt; 
-&lt;p style="margin-left:.0001pt; margin-right:0; text-align:left"&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;報名成功後，行業組與高校組作品分不同的平台進行提交。&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/p&gt; 
-&lt;p style="margin-left:0; margin-right:0; text-align:left"&gt;&lt;span&gt;&lt;span&gt;&lt;strong&gt;行業組作品提交&lt;/strong&gt;：模力方舟平台；&lt;/span&gt;&lt;/span&gt;&lt;/p&gt; 
-&lt;p style="margin-left:0; margin-right:0; text-align:left"&gt;&lt;strong&gt;高校組作品提交&lt;/strong&gt;：浙大智海 Mo 平台；&lt;/p&gt; 
-&lt;p style="margin-left:0; margin-right:0; text-align:left"&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;提交內容為 zip 壓縮包，包含在線演示視頻錄製、應用介紹 PPT、DEMO 體驗地址、代碼工程（可選）。&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/p&gt; 
-&lt;p style="margin-left:0; margin-right:0; text-align:justify"&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;strong&gt;&lt;span&gt;&lt;span&gt;參賽即可獲得五重驚喜！&lt;/span&gt;&lt;/span&gt;&lt;/strong&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/p&gt; 
-&lt;p style="margin-left:.0001pt; margin-right:0; text-align:left"&gt;&lt;span&gt;&lt;span&gt;&lt;strong&gt;&lt;span&gt;&lt;span&gt;&lt;strong&gt;1、高性能算力支持：&lt;/strong&gt;&lt;/span&gt;&lt;/span&gt;&lt;/strong&gt;&lt;span&gt;&lt;span&gt;依託壁仞科技自主研發的高性能 GPU，大賽組織方已上線 8 大類近 20 種典型模型的 API 接口，並提供大量免費算力券！&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/p&gt; 
-&lt;p style="margin-left:.0001pt; margin-right:0; text-align:left"&gt;&lt;span&gt;&lt;span&gt;&lt;strong&gt;&lt;span&gt;&lt;span&gt;&lt;strong&gt;2、全棧式技術指導：&lt;/strong&gt;&lt;/span&gt;&lt;/span&gt;&lt;/strong&gt;&lt;span&gt;&lt;span&gt;強大技術團隊坐鎮！參賽者可獲得來自壁仞科技及合作伙伴提供的 GPU 算力支持及模型調用專業指導。&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/p&gt; 
-&lt;p style="margin-left:.0001pt; margin-right:0; text-align:left"&gt;&lt;span&gt;&lt;span&gt;&lt;strong&gt;&lt;span&gt;&lt;span&gt;&lt;strong&gt;3、專業評審團隊：&lt;/strong&gt;&lt;/span&gt;&lt;/span&gt;&lt;/strong&gt;&lt;span&gt;&lt;span&gt;由行業專家、資深工程師、學術界大咖、資深投資人組成的評審委員會，確保比賽的公正性和專業性。&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/p&gt; 
-&lt;p style="margin-left:.0001pt; margin-right:0; text-align:left"&gt;&lt;span&gt;&lt;span&gt;&lt;strong&gt;&lt;span&gt;&lt;span&gt;&lt;strong&gt;4、&lt;/strong&gt;&lt;/span&gt;&lt;/span&gt;&lt;/strong&gt;&lt;strong&gt;&lt;span&gt;&lt;span&gt;&lt;strong&gt;最高可獲 5 萬元獎勵：&lt;/strong&gt;&lt;/span&gt;&lt;/span&gt;&lt;/strong&gt;&lt;/span&gt;&lt;/span&gt;&lt;/p&gt; 
-&lt;p style="margin-left:.0001pt; margin-right:0; text-align:left"&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;本屆「飛翔杯」大賽設立豐厚獎金池！&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/p&gt; 
-&lt;p style="margin-left:.0001pt; margin-right:0; text-align:left"&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;本次大賽分為卓越、標杆、創新、潛力四大等級，&lt;/span&gt;&lt;/span&gt;&lt;strong&gt;&lt;span&gt;&lt;span&gt;&lt;strong&gt;行業組最高獎勵可達 5 萬元，高校組最高獎勵 3 萬元！&lt;/strong&gt;&lt;/span&gt;&lt;/span&gt;&lt;/strong&gt;&lt;/span&gt;&lt;/span&gt;&lt;/p&gt; 
-&lt;p style="margin-left:.0001pt; margin-right:0; text-align:left"&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;值得一提的是，所有獲獎團隊將會獲得賽事組織方頒發的獲獎證書，獲獎團隊隊員可獲得壁仞科技提供的優秀 AI 應用開發者證書！&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/p&gt; 
-&lt;p style="margin-left:.0001pt; margin-right:0; text-align:left"&gt;&lt;span&gt;&lt;span&gt;&lt;strong&gt;&lt;span&gt;&lt;span&gt;&lt;strong&gt;5、&lt;/strong&gt;&lt;/span&gt;&lt;/span&gt;&lt;/strong&gt;&lt;strong&gt;&lt;span&gt;&lt;span&gt;&lt;strong&gt;超豪華曝光大禮包：&lt;/strong&gt;&lt;/span&gt;&lt;/span&gt;&lt;/strong&gt;&lt;/span&gt;&lt;/span&gt;&lt;/p&gt; 
-&lt;p style="margin-left:.0001pt; margin-right:0; text-align:left"&gt;&lt;span&gt;&lt;span&gt;&lt;strong&gt;&lt;span&gt;&lt;span&gt;&lt;strong&gt;投資人面對面：&lt;/strong&gt;&lt;/span&gt;&lt;/span&gt;&lt;/strong&gt;&lt;span&gt;&lt;span&gt;進入決賽的團隊可獲得與投資機構交流的機會！&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/p&gt; 
-&lt;p style="margin-left:.0001pt; margin-right:0; text-align:left"&gt;&lt;span&gt;&lt;span&gt;&lt;strong&gt;&lt;span&gt;&lt;span&gt;&lt;strong&gt;OFFER 請查收：&lt;/strong&gt;&lt;/span&gt;&lt;/span&gt;&lt;/strong&gt;&lt;span&gt;&lt;span&gt;優勝者將有機會獲得壁仞科技合作機會、實習就業直通卡！參與技術社區線下沙龍活動，與大咖深入交流！&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/p&gt; 
-&lt;p style="margin-left:.0001pt; margin-right:0; text-align:left"&gt;&lt;span&gt;&lt;span&gt;&lt;strong&gt;&lt;span&gt;&lt;span&gt;&lt;strong&gt;大商機強曝光：&lt;/strong&gt;&lt;/span&gt;&lt;/span&gt;&lt;/strong&gt;&lt;span&gt;&lt;span&gt;參與揭榜題及有意商業化的項目，主辦方將於賽事結束後為團隊對接感興趣的企業，為項目提供業務合作機會！&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/p&gt; 
-&lt;p style="margin-left:.0001pt; margin-right:0; text-align:left"&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;趕快報名「飛翔杯」AI 應用創新挑戰賽吧，讓夢想在這裏啓航！&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/p&gt; 
-&lt;p style="margin-left:.0001pt; margin-right:0; text-align:left"&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span style="color:#8f959e"&gt;*大賽解釋權歸大賽組委會&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/p&gt; 
-&lt;p style="margin-left:.0001pt; margin-right:0; text-align:left"&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;strong&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;關於壁仞科技：&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/strong&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/p&gt; 
-&lt;p style="margin-left:.0001pt; margin-right:0; text-align:left"&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;壁仞科技成立於 2019 年，致力於研發高性能通用 GPU，打造自主原創的高性能 GPU 軟硬件體系，構建國產智能計算產業生態。首代壁仞通用 GPU 產品基於原創訓推一體芯片架構，已在多地智算中心落地。新一代全國產產品研發正全面推進。近期，壁仞科技實現中國首個四種及以上異構芯片混訓技術落地，突破了大模型算力孤島難題，引領業界異構混訓技術發展趨勢。合作伙伴包括中國移動、中國電信、中興通訊等。截至目前，壁仞科技在全球多個國家和地區累計申請專利近 1200 項，獲得專利授權 430 餘項&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;。&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/p&gt; 
-&lt;p style="margin-left:.0001pt; margin-right:0; text-align:justify"&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;想了解壁仞科技更多信息，請前往&lt;/span&gt;&lt;/span&gt;&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fwww.birentech.com%2F%25E8%258E%25B7%25E5%258F%2596%25E3%2580%2582" rel="nofollow" target="_blank"&gt;&lt;span&gt;&lt;span&gt;&lt;span style="color:#3370ff"&gt;https://www.birentech.com/&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/a&gt;&lt;span&gt;&lt;span&gt;獲取。&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/p&gt;
-                                                                                    &lt;/div&gt;
-                                                                            </description>
-      <link>https://my.oschina.net/u/4806939/blog/18633161</link>
-      <guid isPermaLink="false">https://my.oschina.net/u/4806939/blog/18633161</guid>
-      <pubDate>Sat, 10 May 2025 08:03:00 GMT</pubDate>
-      <author>原創</author>
-    </item>
-    <item>
-      <title>模力方舟 17 款 Embedding 和 Reranker 模型全部免費使用</title>
-      <description>&lt;div class="content"&gt;
-                                                                    
-                                                        &lt;p&gt;為了讓更多開發者和企業能夠零門檻體驗最前沿的 AI 能力，模力方舟攜手國產 GPU 夥伴，已將模型廣場中 17 款 Embedding 與 Reranker 模型全部開放免費使用——其中包括最新的 4096 維 Qwen3-Embedding-8B。&lt;/p&gt; 
-&lt;p&gt;&lt;img src="https://static.oschina.net/uploads/space/2025/0623/160005_Q4xj_2720166.png" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;p&gt;RAG 架構必備的檢索向量和重排序能力，即刻零成本上手！&lt;/p&gt; 
-&lt;p&gt;更多免費模型，盡在模力方舟模型廣場：&lt;em&gt;&lt;strong&gt;&lt;a href="https://ai.gitee.com/serverless-api" target="_blank"&gt;https://ai.gitee.com/serverless-api&lt;/a&gt;&lt;/strong&gt;&lt;/em&gt;&lt;/p&gt;
-                                                                                &lt;/div&gt;
-                                                                            </description>
-      <link>https://www.oschina.net/news/356859</link>
-      <guid isPermaLink="false">https://www.oschina.net/news/356859</guid>
-      <pubDate>Sat, 10 May 2025 08:00:00 GMT</pubDate>
-      <author>來源: OSCHINA</author>
-    </item>
-    <item>
-      <title>Anthropic 發佈 Claude Code 的 VS Code 擴展</title>
-      <description>&lt;div class="content"&gt;
-                                                                    
-                                                        &lt;p&gt;Anthropic 已為&amp;nbsp;VS Code&amp;nbsp;發佈了&amp;nbsp;Claude Code&amp;nbsp;擴展。&lt;/p&gt; 
-&lt;p&gt;&lt;img src="https://static.oschina.net/uploads/space/2025/0623/155007_jjcF_2720166.png" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;p&gt;據介紹，它能自動檢測並安裝，通過自動添加選定文本到&amp;nbsp;Claude&amp;nbsp;的上下文、在&amp;nbsp;VSCode&amp;nbsp;的差異查看器中顯示代碼更改、支持快捷鍵以及查看編輯器中打開的文件等功能來提升編碼體驗。&lt;/p&gt; 
-&lt;p&gt;Claude Code for VSCode 插件主要特性：&lt;/p&gt; 
-&lt;ul&gt; 
- &lt;li&gt;&lt;strong&gt;集成緊密&lt;/strong&gt; ：安裝後，Claude Code 能與 VSCode 緊密集成， Claucte 提出的編輯建議以內聯方式在文件中顯示，簡化代碼審查和跟蹤過程。&lt;/li&gt; 
- &lt;li&gt;&lt;strong&gt;操作便捷&lt;/strong&gt; ：在 VSCode 中，使用 &lt;code&gt;Cmd+Esc&lt;/code&gt;（Mac）或 &lt;code&gt;Ctrl+Esc&lt;/code&gt;（Windows/Linux）可直接從編輯器打開 Claude Code，也可點擊 UI 中的相應按鈕；使用 &lt;code&gt;Cmd+Option+K&lt;/code&gt;（Mac）或 &lt;code&gt;Alt+Ctrl+K&lt;/code&gt;（Linux/Windows）可插入文件引用。&lt;/li&gt; 
- &lt;li&gt;&lt;strong&gt;功能實用&lt;/strong&gt; ：如代碼片段所述，該插件支持自動檢測已安裝插件，可通過快捷鍵將選中代碼發送至 Claude，還能在 VSCode 的 Diff 視圖中直接查看代碼變更。&lt;/li&gt; 
-&lt;/ul&gt; 
-&lt;p&gt;下載地址：&lt;em&gt;&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fmarketplace.visualstudio.com%2Fitems%3FitemName%3Danthropic.claude-code" target="_blank"&gt;https://marketplace.visualstudio.com/items?itemName=anthropic.claude-code&lt;/a&gt;&lt;/em&gt;&lt;/p&gt; 
-&lt;ul&gt; 
-&lt;/ul&gt;
-                                                                                &lt;/div&gt;
-                                                                            </description>
-      <link>https://www.oschina.net/news/356857/claude-code-for-vs-code</link>
-      <guid isPermaLink="false">https://www.oschina.net/news/356857/claude-code-for-vs-code</guid>
-      <pubDate>Sat, 10 May 2025 07:56:00 GMT</pubDate>
-      <author>來源: OSCHINA</author>
-    </item>
-    <item>
-      <title>MiniMax 宣佈 Hailuo Video Agent 開啓 Beta 公測</title>
-      <description>&lt;div class="content"&gt;
-                                                                    
-                                                        &lt;p&gt;MiniMax 宣佈旗下視頻創作 Agent 產品——Hailuo Video Agen&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fmp.weixin.qq.com%2Fs%2FyphAy5SDzmOzUsNB21lsvA" target="_blank"&gt;t 已開放 Beta 版本&lt;/a&gt;。&lt;/p&gt; 
-&lt;p&gt;&lt;img alt="" src="https://oscimg.oschina.net/oscnet/up-118191fd968c50acaec868448d58c4508b0.png" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;p&gt;據介紹，在 Hailuo Video Agent 中，為了提供足夠大的創意空間，且保證好的質量， MiniMax 做了以下設計：&lt;/p&gt; 
-&lt;ul&gt; 
- &lt;li&gt; &lt;p&gt;拋棄傳統工作流+節點的工具模式，通過 LLM 語言模型的工具調用能力，創新性地支持用戶在自然語言描述中構建完整視頻；&lt;/p&gt; &lt;/li&gt; 
- &lt;li&gt; &lt;p&gt;打造視頻構思、資料收集、分鏡製作、剪輯、配音等視頻製作全流程工具集，並通過 Agent 模型在不同階段實現自動調用。為了提高短片創作的質量，我們遴選了所有視頻創作需要的最佳工具集；&lt;/p&gt; &lt;/li&gt; 
- &lt;li&gt; &lt;p&gt;Agent 思維鏈可視化，用戶實時查看 Agent 創作流程，為自定義編輯功能提供可視窗口與操作空間。&lt;/p&gt; &lt;/li&gt; 
-&lt;/ul&gt; 
-&lt;p&gt;Web 端登錄 https://hailuoai.com/ 即可體驗。&lt;/p&gt;
-                                                                                &lt;/div&gt;
-                                                                            </description>
-      <link>https://www.oschina.net/news/356853</link>
-      <guid isPermaLink="false">https://www.oschina.net/news/356853</guid>
-      <pubDate>Sat, 10 May 2025 07:41:00 GMT</pubDate>
-      <author>來源: OSCHINA</author>
-    </item>
-    <item>
-      <title>圖挖掘在反作弊場景的應用</title>
-      <description>&lt;div class="content"&gt;
-                                                                                                                    
-                                                                                                                                                    &lt;p&gt;本文全面探討了營銷活動反作弊與電商反作弊的圖算法應用。首先介紹了黑產薅取活動獎勵、刷單等作弊行為的背景，隨後深入講解了同人挖掘技術，包括同人建模、挖掘步驟及穩定性處理。接着，依次介紹了標籤傳播算法、Fraudar 算法、GCN 網絡的原理、優缺點及應用。最後，文章展望了未來圖算法在風控反作弊應用的發展方向，如多模態數據融合與動態圖實時計算，旨在應對黑產的快速演化，確保營銷活動的公平性與數據真實性。&lt;/p&gt; 
-&lt;span id="OSC_h1_1"&gt;&lt;/span&gt; 
-&lt;h1&gt;01 業務背景&lt;/h1&gt; 
-&lt;p&gt;在營銷活動場景中，黑產團夥通過自動化手段大規模獲取活動獎勵，擠佔真實用戶權益造成營銷資金浪費，並污染數據指標導致活動效果失真，從而影響運營決策準確性。&lt;/p&gt; 
-&lt;p&gt;以當前主流作弊模式為例，黑產實施路徑如下：&lt;/p&gt; 
-&lt;p&gt;1. 資源準備階段：通過虛擬機登錄批量購買的百度賬號。&lt;/p&gt; 
-&lt;p&gt;2. 任務執行階段：部署自動化腳本模擬用戶行為，如視頻播放、廣告點擊等。&lt;/p&gt; 
-&lt;p&gt;3. 資金變現階段：使用分散的真實微信賬號進行提現操作。&lt;/p&gt; 
-&lt;p&gt;在與反作弊的對抗中，黑產工具持續升級（如改機工具、IP 池輪換等），傳統特徵採集數據趨於分散。我們的反作弊體系從兩個方向不斷提升防禦能力：&lt;/p&gt; 
-&lt;p&gt;1. 多維特徵挖掘，包括設備指紋、行為特徵以及環境特徵。&lt;/p&gt; 
-&lt;p&gt;2. 關聯團夥分析，包括用戶操作模式量化、暱稱相似度分析以及基於賬號-設備-提現賬戶等信息建立關聯圖譜。&lt;/p&gt; 
-&lt;p&gt;&lt;img alt="圖片" src="https://oscimg.oschina.net/oscnet/up-b567c76d759b133c58127296b4127e848a9.jpg" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;p&gt;上圖為雲手機工具示例。&lt;/p&gt; 
-&lt;p&gt;在電商場景中，存在着類似於營銷活動的批量團夥作弊，典型的即刷單。刷單作弊即非真實有購買需求的用戶（機器或眾包真人）為了提升店鋪的銷量、評分，替店鋪虛假的下單、評價，然後收取店鋪報酬的一種作弊方式。&lt;/p&gt; 
-&lt;span id="OSC_h1_2"&gt;&lt;/span&gt; 
-&lt;h1&gt;02 同人挖掘&lt;/h1&gt; 
-&lt;span id="OSC_h2_3"&gt;&lt;/span&gt; 
-&lt;h2&gt;&lt;strong&gt;2.1 同人建模&lt;/strong&gt;&lt;/h2&gt; 
-&lt;p&gt;黑產為了節省成本往往存在賬號、設備共用的情況，因此我們定義「同人」概念：&lt;/p&gt; 
-&lt;p&gt;&lt;strong&gt;&lt;strong&gt;若參與活動的賬號、設備背後的主體相同，則為一個同人團夥。&lt;/strong&gt;&lt;/strong&gt;&lt;/p&gt; 
-&lt;p&gt;在賬號之外，增加一個同人粒度進行數據監控和風險控制。例如，某人使用 5 個手機號分別註冊 5 個 uid，並使用 2 個身份證進行實名認證，每天在 3 個設備上參與活動，並將收益提取到 2 個微信賬號中，我們希望通過構圖將其歸類為一個同人團夥。&lt;/p&gt; 
-&lt;span id="OSC_h3_4"&gt;&lt;/span&gt; 
-&lt;h3&gt;2.1.1 同人挖掘&lt;/h3&gt; 
-&lt;p&gt;挖掘步驟可分為以下 3 步：&lt;/p&gt; 
-&lt;p&gt;1. 以用戶百度賬號為節點，共設備 ID/手機號/提現 ID/身份證號（加密）為邊構圖&lt;/p&gt; 
-&lt;p&gt;2. 挖掘極大連通子圖，即有邊的強連通判為同人關係&lt;/p&gt; 
-&lt;p&gt;3. 在多天參與活動的用戶上挖掘同人關係，並與歷史挖掘結果進行拼接，做同人 ID 穩定性處理&lt;/p&gt; 
-&lt;span id="OSC_h3_5"&gt;&lt;/span&gt; 
-&lt;h3&gt;2.1.2 穩定性處理&lt;/h3&gt; 
-&lt;p&gt;在與歷史同人結果拼接時，可將情況分為以下幾類：&lt;/p&gt; 
-&lt;p&gt;&lt;img alt="圖片" src="https://oscimg.oschina.net/oscnet/up-ab1a6ef3b27b0b9b955c9dc6b8740c0fc75.png" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;p&gt;經過穩定性處理後，整體同人 ID 穩定性達 96.8%，排除已知合併等不穩定因素穩定性達 99.3%。&lt;/p&gt; 
-&lt;span id="OSC_h2_6"&gt;&lt;/span&gt; 
-&lt;h2&gt;&lt;strong&gt;2.2 挖掘結果&lt;/strong&gt;&lt;/h2&gt; 
-&lt;p&gt;由於線上已有一對多業務規則，同人團夥會採用多對多打散以繞過規則。&lt;/p&gt; 
-&lt;p&gt;以下展示部分典型團夥構圖：&lt;/p&gt; 
-&lt;p&gt;&lt;img alt="圖片" src="https://oscimg.oschina.net/oscnet/up-7ce79c7f88211177a7133e1a96d8e3daec7.png" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;span id="OSC_h2_7"&gt;&lt;/span&gt; 
-&lt;h2&gt;&lt;strong&gt;2.3 同人應用&lt;/strong&gt;&lt;/h2&gt; 
-&lt;p&gt;&lt;strong&gt;&lt;strong&gt;作弊識別&lt;/strong&gt;&lt;/strong&gt;：按照團大小逐漸收斂，從同人作弊株連、團內作弊風險濃度高、同人且有作弊風險幾個思路進行策略迭代。&lt;/p&gt; 
-&lt;p&gt;&lt;strong&gt;&lt;strong&gt;發放打壓&lt;/strong&gt;&lt;/strong&gt;：對於作弊風險較低的羊毛黨用戶，業務側可根據情況進行獎勵發放打壓。&lt;/p&gt; 
-&lt;span id="OSC_h1_8"&gt;&lt;/span&gt; 
-&lt;h1&gt;03 標籤傳播算法及其應用&lt;/h1&gt; 
-&lt;span id="OSC_h2_9"&gt;&lt;/span&gt; 
-&lt;h2&gt;&lt;strong&gt;3.1 標籤傳播算法&lt;/strong&gt;&lt;/h2&gt; 
-&lt;p&gt;標籤傳播算法（Label Propagation Algorithm，LPA）是一種基於圖的&lt;strong&gt;&lt;strong&gt;半監督&lt;/strong&gt;&lt;/strong&gt;學習算法，常用於社區檢測和節點分類任務。它通過迭代傳播標籤信息，利用數據結構的相似性來推斷未知節點的標籤。&lt;/p&gt; 
-&lt;span id="OSC_h3_10"&gt;&lt;/span&gt; 
-&lt;h3&gt;3.1.1 算法流程&lt;/h3&gt; 
-&lt;p&gt;&lt;strong&gt;輸入&lt;/strong&gt;：圖&lt;span class="math-tex"&gt;\(G=(V,E)\)&lt;/span&gt;，已知標籤節點集合&lt;span class="math-tex"&gt;\(V_L\)&lt;/span&gt;，未知標籤節點集合&lt;span class="math-tex"&gt;\(V_U\)&lt;/span&gt;。&lt;/p&gt; 
-&lt;p&gt;&lt;strong&gt;輸出&lt;/strong&gt;：所有節點預測標籤&lt;span class="math-tex"&gt;\({\{y_i\}}_{i\in V}\)&lt;/span&gt;。&lt;/p&gt; 
-&lt;p&gt;&lt;strong&gt;初始化階段&lt;/strong&gt;：為每個已標記節點&lt;span class="math-tex"&gt;\(v\in V_L\)&lt;/span&gt;分配固定標籤&lt;span class="math-tex"&gt;\(y_v\)&lt;/span&gt;，為每個未標記節點&lt;span class="math-tex"&gt;\(v\in V_U\)&lt;/span&gt;隨機分配標籤（或按先驗分佈分配）。&lt;/p&gt; 
-&lt;p&gt;&lt;strong&gt;迭代傳播階段&lt;/strong&gt;：對於每個未標記節點，將出現頻率最高的鄰居標籤作為自己的新標籤。&lt;/p&gt; 
-&lt;p&gt;定義&lt;span class="math-tex"&gt;\(N(v)\)&lt;/span&gt;為節點&lt;span class="math-tex"&gt;\(v\)&lt;/span&gt;的鄰居集合，&lt;span class="math-tex"&gt;\(y_v^{(t)}\)&lt;/span&gt;為節點&lt;span class="math-tex"&gt;\(v\)&lt;/span&gt;在迭代&lt;span class="math-tex"&gt;\(t\)&lt;/span&gt;時的標籤，Ⅱ為指示函數（當&lt;span class="math-tex"&gt;\(y_u=l\)&lt;/span&gt;時為 1，否則為 0）。&lt;/p&gt; 
-&lt;p&gt;無權圖標籤更新規則&lt;span class="math-tex"&gt;\(y_v^{(t+1)} = \argmax_l \displaystyle\sum_{u\in N(v)} \Pi(y_u^{t}=l)\)&lt;/span&gt;&lt;/p&gt; 
-&lt;p&gt;加權圖標籤更新規則&amp;nbsp;&lt;span class="math-tex"&gt;\(y_v^{(t+1)} = \argmax_l \displaystyle\sum_{u\in N(v)} w_{uv} \cdot\Pi(y_u^{t}=l)\)&lt;/span&gt;，其中&lt;span class="math-tex"&gt;\(w_{uv}\)&lt;/span&gt;為邊權重。&lt;/p&gt; 
-&lt;p&gt;&lt;strong&gt;終止條件&lt;/strong&gt;：當迭代不再改變任何節點的標籤時；或達到最大迭代次數。&lt;/p&gt; 
-&lt;p&gt;&lt;img alt="圖片" src="https://oscimg.oschina.net/oscnet/up-9f71c1149e2ddfb7d9ae359bbdbcd6fc955.png" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;p&gt;上圖為標籤傳播示例。&lt;/p&gt; 
-&lt;span id="OSC_h3_11"&gt;&lt;/span&gt; 
-&lt;h3&gt;3.1.2 實踐細節&lt;/h3&gt; 
-&lt;p&gt;最高頻率標籤不唯一時：隨機選擇（結果可能不穩定），或結合其他信息（如節點度數等）。&lt;/p&gt; 
-&lt;p&gt;傳播順序：同步更新（所有節點同時更新，可能振盪），或異步更新（按隨機或度排序等順序逐個更新）。&lt;/p&gt; 
-&lt;span id="OSC_h3_12"&gt;&lt;/span&gt; 
-&lt;h3&gt;3.1.3 無監督改進&lt;/h3&gt; 
-&lt;p&gt;在&lt;strong&gt;&lt;strong&gt;完全無監督&lt;/strong&gt;&lt;/strong&gt;的情況下，仍然可以通過改進方法實現社區檢測或聚類任務。面對局部最優問題，使用模塊度作為目標函數多次運行。&lt;/p&gt; 
-&lt;p&gt;&lt;strong&gt;&lt;strong&gt;算法流程：&lt;/strong&gt;&lt;/strong&gt;&lt;/p&gt; 
-&lt;p&gt;1. 隨機初始化所有節點的標籤（如 1 到 K，K 為社區數）&lt;/p&gt; 
-&lt;p&gt;2. 執行標準 LPA 迭代，直到收斂，計算模塊度 Q&lt;/p&gt; 
-&lt;p&gt;3. 重複多次，選擇模塊度最高的劃分結果&lt;/p&gt; 
-&lt;p&gt;模塊度指標的核心思想：社區內部的連接應顯著高於隨機情況&lt;/p&gt; 
-&lt;p&gt;&lt;span class="math-tex"&gt;\(Q = \frac{1}{2m} \sum_{i,j}\Big[A_{ij}-\frac{k_ik_j}{2m}\Big]\delta(c_i,c_j)\)&lt;/span&gt;&lt;/p&gt; 
-&lt;p&gt;其中&lt;span class="math-tex"&gt;\(A_{ij}\)&lt;/span&gt;為鄰接矩陣元素（節點&lt;span class="math-tex"&gt;\(i\)&lt;/span&gt;和&lt;span class="math-tex"&gt;\(j\)&lt;/span&gt;相連時為 1，否則為 0），&lt;span class="math-tex"&gt;\(k_i\)&lt;/span&gt;為節點&lt;span class="math-tex"&gt;\(i\)&lt;/span&gt;的度數，&lt;span class="math-tex"&gt;\(m\)&lt;/span&gt;為圖中總邊數&lt;span class="math-tex"&gt;\(m=\frac{1}{2}\sum_iki\)&lt;/span&gt;，&lt;span class="math-tex"&gt;\(c_i\)&lt;/span&gt;節點&lt;span class="math-tex"&gt;\(i\)&lt;/span&gt;所屬的社區，&lt;span class="math-tex"&gt;\(\delta(c_i,c_j)\)&lt;/span&gt;若&lt;span class="math-tex"&gt;\(c_i=c_j\)&lt;/span&gt;則為 1，否則為 0。&lt;/p&gt; 
-&lt;span id="OSC_h3_13"&gt;&lt;/span&gt; 
-&lt;h3&gt;3.1.4 算法優缺點&lt;/h3&gt; 
-&lt;p&gt;&lt;strong&gt;&lt;strong&gt;優點：&lt;/strong&gt;&lt;/strong&gt;&lt;/p&gt; 
-&lt;p&gt;1. 計算高效：每輪迭代複雜度&lt;span class="math-tex"&gt;\(O(|E|)\)&lt;/span&gt;&lt;/p&gt; 
-&lt;p&gt;2. 無需參數調優：完全基於圖結構&lt;/p&gt; 
-&lt;p&gt;3. 自然並行化：節點更新可並行執行&lt;/p&gt; 
-&lt;p&gt;&lt;strong&gt;&lt;strong&gt;侷限性：&lt;/strong&gt;&lt;/strong&gt;&lt;/p&gt; 
-&lt;p&gt;1. 結果可能不穩定：受初始化順序影響&lt;/p&gt; 
-&lt;p&gt;2. 僅利用拓撲結構：忽略節點特徵信息&lt;/p&gt; 
-&lt;p&gt;3. 對稀疏圖效果差：鄰居信息不足時傳播受限&lt;/p&gt; 
-&lt;span id="OSC_h2_14"&gt;&lt;/span&gt; 
-&lt;h2&gt;&lt;strong&gt;3.2 在營銷活動場景的應用&lt;/strong&gt;&lt;/h2&gt; 
-&lt;p&gt;在營銷活動場景中，黑產在資源準備和任務執行階段存在批量化的賬號生成和活動行為，在挖掘結果中也經常發現存在暱稱、行為序列等相似的聚集特徵。&lt;/p&gt; 
-&lt;span id="OSC_h3_15"&gt;&lt;/span&gt; 
-&lt;h3&gt;3.2.1 構圖&lt;/h3&gt; 
-&lt;p&gt;以用戶賬號為節點，以暱稱與活動點位行為序列為例，分別採用針對字符串、序列相似度的建邊算法。&lt;/p&gt; 
-&lt;p&gt;暱稱相似度：兩兩計算用戶暱稱的編輯距離，編輯距離越小説明兩個暱稱越相似。&lt;/p&gt; 
-&lt;p&gt;序列相似度：拼接用戶活動點位（活動行為類型標記）-時間作為行為序列，將序列中的打點轉換為詞頻矩陣，使用 MinHash 估計 Jaccard 相似度。&lt;/p&gt; 
-&lt;p&gt;&lt;strong&gt;&lt;strong&gt;實踐細節&lt;/strong&gt;&lt;/strong&gt;&lt;/p&gt; 
-&lt;p&gt;1. 預處理，如做暱稱長度分桶、異常用戶篩選等，減少相似度計算量。&lt;/p&gt; 
-&lt;p&gt;2. 使用局部敏感哈希（LSH）進行優化，減少搜索空間。&lt;/p&gt; 
-&lt;p&gt;3. 可結合業務場景做相似度閾值過濾，縮減構圖輸入。&lt;/p&gt; 
-&lt;span id="OSC_h3_16"&gt;&lt;/span&gt; 
-&lt;h3&gt;3.2.2 團夥挖掘&lt;/h3&gt; 
-&lt;p&gt;使用無監督的 LPA 算法進行團夥挖掘，設定團夥閾值、或結合業務場景添加其他特徵進行作弊識別。&lt;/p&gt; 
-&lt;p&gt;下表為實際應用中，通過用戶行為序列相似挖掘出的一個團夥部分數據，其設備和地域並不聚集，但暱稱可看出為批量操作。&lt;/p&gt; 
-&lt;p&gt;&lt;img alt="圖片" src="https://oscimg.oschina.net/oscnet/up-cd8efca074b9009b15bde0cbb5f30c8cc46.png" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;span id="OSC_h1_17"&gt;&lt;/span&gt; 
-&lt;h1&gt;04 Fraudar 算法及其應用&lt;/h1&gt; 
-&lt;p&gt;在電商場景中，用戶-店鋪之間天然形成一種二部圖的結構，二部圖是指圖中的節點有兩類、邊有一類，兩類節點互相連接，每類節點本身之間沒有連接。Fraudar 算法是一種適用於二部圖結構的算法，下文詳細介紹我們在電商場景的應用。&lt;/p&gt; 
-&lt;span id="OSC_h2_18"&gt;&lt;/span&gt; 
-&lt;h2&gt;&lt;strong&gt;4.1 Fraudar 算法原理&lt;/strong&gt;&lt;/h2&gt; 
-&lt;span id="OSC_h3_19"&gt;&lt;/span&gt; 
-&lt;h3&gt;4.1.1 全局可疑度度量&lt;/h3&gt; 
-&lt;p&gt;Fraudar 定義了一個全局度量&lt;span class="math-tex"&gt;\(g(S) = \frac{f(S)}{|S|}\)&lt;/span&gt;，其中：&lt;br&gt; ● &lt;span class="math-tex"&gt;\(f(S) = f_v(S) + f_{\epsilon}(S)\)&lt;/span&gt;：子網絡&lt;span class="math-tex"&gt;\(S\)&lt;/span&gt;中節點的可疑度之和（&lt;span class="math-tex"&gt;\(f_v\)&lt;/span&gt;）與邊的可疑度之和（&lt;span class="math-tex"&gt;\(f_{\epsilon}\)&lt;/span&gt;）；&lt;br&gt; ● 假設在一個用戶-商品二部圖中，那麼&lt;span class="math-tex"&gt;\(f_v(S)\)&lt;/span&gt;可以理解為用戶或商品的獨立可疑度，&lt;span class="math-tex"&gt;\(f_{\epsilon}(S)\)&lt;/span&gt;可以理解為用戶在商品下的訂單/評論的可疑度。&lt;br&gt; ● &lt;span class="math-tex"&gt;\(|S|\)&lt;/span&gt;：子網絡的規模（節點數）。&lt;br&gt; &lt;span class="math-tex"&gt;\(g(S)\)&lt;/span&gt;表示一個網絡的平均可疑度，滿足以下四個屬性：&lt;/p&gt; 
-&lt;p&gt;1. （節點可疑度）當節點總數、邊可疑度保持一致時，由較高可疑度的節點組成的網絡比由較低可疑度節點組成的網絡更可疑。&lt;/p&gt; 
-&lt;p&gt;&lt;span class="math-tex"&gt;\(|S| = |S'| \land f_{\epsilon}(S) = f_{\epsilon}(S') \land f_v(S) &amp;gt; f_v(S') \Rightarrow g(S) &amp;gt; g(S')\)&lt;/span&gt;&lt;/p&gt; 
-&lt;p&gt;2. （邊可疑度）其他條件不變，在網絡中添加邊會增加該網絡的可疑度。&lt;/p&gt; 
-&lt;p&gt;&lt;span class="math-tex"&gt;\(e \notin \epsilon \Rightarrow g(S(v, \epsilon \cup \{e\})) &amp;gt; g(S(v, \epsilon))\)&lt;/span&gt;&lt;/p&gt; 
-&lt;p&gt;3. （大小）假設節點和邊的權重都相等，邊的密度也相等，那麼更大的網絡比小的網絡更可疑。其中邊的密度$\rho(S)$定義為網絡中的邊數除以它可能的最大邊數。&lt;/p&gt; 
-&lt;p&gt;&lt;span class="math-tex"&gt;\(|S| &amp;gt; |S'| \land S \supset S' \land \rho(S) = \rho(S') \Rightarrow g(S) &amp;gt; g(S')\)&lt;/span&gt;&lt;/p&gt; 
-&lt;p&gt;4. (集中度) 較小的網絡比相同總可疑度但規模更大的網絡更可疑。&lt;/p&gt; 
-&lt;p&gt;&lt;span class="math-tex"&gt;\(|S| &amp;lt; |S'| \land f(S) = f(S') \Rightarrow g(S) &amp;gt; g(S')\)&lt;/span&gt;&lt;/p&gt; 
-&lt;span id="OSC_h3_20"&gt;&lt;/span&gt; 
-&lt;h3&gt;4.1.2 抗偽裝設計&lt;/h3&gt; 
-&lt;p&gt;即使虛假賬戶添加大量正常連接（偽裝），算法仍能通過識別局部密集子網絡發現異常，因為偽裝行為會導致整體網絡稀疏化，而欺詐子網絡仍保持高密度。&lt;/p&gt; 
-&lt;p&gt;&lt;img alt="圖片" src="https://oscimg.oschina.net/oscnet/up-12ea6c9656a0117fc3f04e647772db3cd0d.png" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;p&gt;上圖是虛假賬戶常用的偽裝方法，假設為用戶-商品網絡，那麼（a）刷單用戶通過向正常商品隨機下單偽裝；（b）刷單用戶通過向正常商品添加有偏的偽裝；（c）刷單用戶劫持一些正常賬戶。&lt;/p&gt; 
-&lt;p&gt;算法使用了列權重作為邊權的方式來抗偽裝，即利用商品的邊數來定義邊權。在一個用戶商品圖中，算法先確定商品節點的數量，利用 1/log(商品節點邊數+5) 確定邊權 （邊可疑度），然後按照邊權彙總求取商品節點、用戶節點的權重（節點可疑度）。&lt;/p&gt; 
-&lt;span id="OSC_h3_21"&gt;&lt;/span&gt; 
-&lt;h3&gt;4.1.3 算法實現流程&lt;/h3&gt; 
-&lt;p&gt;利用列權重定義邊權能夠抵抗虛假賬戶向正常商品增加邊的偽裝，因為是往正常商品增加邊，不會影響欺詐商品的邊數，也即三種偽裝方式的欺詐塊仍然是高權重的/密集的。而如果使用行權重，那麼一個用戶通過向正常商品增加邊，就可以稀釋自己的欺詐邊的可疑度，達到偽裝的目的。&lt;/p&gt; 
-&lt;p&gt;&lt;img alt="圖片" src="https://oscimg.oschina.net/oscnet/up-3f0893250a1894485d2ba5248e81434106c.png" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;p&gt;上圖是 Fraudar 算法的步驟。迭代移除當前優先級最高的節點（可疑度貢獻最低的節點），逐步縮小網絡規模，直至所有節點被移除。每一步記錄剩餘子網絡的全局可疑度&lt;span class="math-tex"&gt;\(g(S)\)&lt;/span&gt;。在所有迭代步驟中，&lt;span class="math-tex"&gt;\(g(S)\)&lt;/span&gt;值會先增大後減小，算法保留每一步的迭代結果，選擇&lt;span class="math-tex"&gt;\(g(S)\)&lt;/span&gt;達到最大值的子網絡作為最可疑的欺詐團夥。&lt;/p&gt; 
-&lt;p&gt;由於遍歷刪除圖中可疑度最低的節點是個&lt;span class="math-tex"&gt;\(O(|V|^2)\)&lt;/span&gt;的操作（迭代&lt;span class="math-tex"&gt;\(|V|\)&lt;/span&gt;次，每次找到可疑度最低的節點&lt;span class="math-tex"&gt;\(O(|V|)\)&lt;/span&gt;），因此算法引入了優先樹（小頂堆），葉子節點對應圖中的節點，父節點記錄子節點中的最高優先級，以此實現快速訪問和更新優先級。優化後算法需要迭代邊數次，每次查找和更新節點優先級的複雜度變為&lt;span class="math-tex"&gt;\(O(log|V|)\)&lt;/span&gt;，算法的總時間複雜度為&lt;span class="math-tex"&gt;\(O(|\epsilon| log|V|)\)&lt;/span&gt;。&lt;/p&gt; 
-&lt;p&gt;另外，在實際應用中，只獲得可疑度最大的子圖可能並不夠用，可以在獲取一個可疑度最大子圖後將其中原始圖中刪除，然後再在剩餘的圖中獲取次可疑的子圖，循環往復得到多個可疑子圖。&lt;/p&gt; 
-&lt;span id="OSC_h3_22"&gt;&lt;/span&gt; 
-&lt;h3&gt;4.1.4 優缺點及改進方向&lt;/h3&gt; 
-&lt;p&gt;優勢：&lt;/p&gt; 
-&lt;p&gt;&lt;strong&gt;&lt;strong&gt;1. 抗偽裝能力&lt;/strong&gt;&lt;/strong&gt;通過全局度量而非局部密度，算法能抵抗虛假賬戶添加正常連接的行為，即使部分節點被「污染」，仍能準確識別核心欺詐簇。&lt;/p&gt; 
-&lt;p&gt;&lt;strong&gt;&lt;strong&gt;2. 高效性與可擴展性&lt;/strong&gt;&lt;/strong&gt;利用優先樹結構優化節點移除操作，時間複雜度為&lt;span class="math-tex"&gt;\(O(|\epsilon| log |V|)\)&lt;/span&gt;，適用於大規模網絡。&lt;/p&gt; 
-&lt;p&gt;&lt;strong&gt;&lt;strong&gt;3. 實際應用場景&lt;/strong&gt;&lt;/strong&gt;&lt;/p&gt; 
-&lt;ul&gt; 
- &lt;li&gt; &lt;p&gt;&lt;strong&gt;&lt;strong&gt;電商刷單檢測&lt;/strong&gt;&lt;/strong&gt;：識別虛假評論形成的密集用戶-商品子網絡。&lt;/p&gt; &lt;/li&gt; 
- &lt;li&gt; &lt;p&gt;&lt;strong&gt;&lt;strong&gt;社交網絡反欺詐&lt;/strong&gt;&lt;/strong&gt;：檢測偽卡交易或虛假關注關係。&lt;/p&gt; &lt;/li&gt; 
- &lt;li&gt; &lt;p&gt;&lt;strong&gt;&lt;strong&gt;金融反洗錢&lt;/strong&gt;&lt;/strong&gt;：發現異常交易團夥。&lt;/p&gt; &lt;/li&gt; 
-&lt;/ul&gt; 
-&lt;span id="OSC_h2_23"&gt;&lt;/span&gt; 
-&lt;h2&gt;&lt;strong&gt;4.2 Fraudar 算法應用&lt;/strong&gt;&lt;/h2&gt; 
-&lt;p&gt;&lt;img alt="圖片" src="https://oscimg.oschina.net/oscnet/up-928573e7eca9a5c3ce222a41201de5f7d3a.jpg" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;span id="OSC_h3_24"&gt;&lt;/span&gt; 
-&lt;h3&gt;4.2.1 構圖與關係降噪&lt;/h3&gt; 
-&lt;p&gt;實踐中，我們利用用戶-店鋪的訂單關係構建二部圖，並且為了提升二部圖中的風險濃度，對低風險店鋪等做了剪枝實現關係的降噪，然後輸入 Fraudar 算法挖掘異常子圖。&lt;/p&gt; 
-&lt;p&gt;原始的 Fraudar 算法只能挖掘出風險最高的一個子圖，但實際業務中，一般不止一個作弊團夥，因此我們在每次運行 Fraudar 算法產生一個子圖後，就將這個子圖從原始圖中裁剪掉，再次運行 Fraudar 算法得到次可疑的子圖，即循環 Fraudar。通過這種方法，我們可以獲得期望數量的異常子圖。&lt;/p&gt; 
-&lt;span id="OSC_h3_25"&gt;&lt;/span&gt; 
-&lt;h3&gt;4.2.2 結合監督模型&lt;/h3&gt; 
-&lt;p&gt;挖掘出的風險子圖由用戶和店鋪構成，而實際業務的識別目標是訂單，且風險子圖中會摻雜少量正常用戶的訂單。為了進一步提升算法識別結果的準確率，我們將挖掘出的風險子圖輸入到 LR 模型進行精細判別。LR 模型使用用戶、店鋪的特徵作為輸入，異常訂單為正樣本、正常訂單為負樣本訓練，最後在風險子圖的用戶、店鋪的訂單上區分出異常訂單並落地到業務。&lt;/p&gt; 
-&lt;span id="OSC_h1_26"&gt;&lt;/span&gt; 
-&lt;h1&gt;05 GCN 模型及其應用&lt;/h1&gt; 
-&lt;p&gt;上文提到 Fraudar 模型為了提升圖的風險濃度做了剪枝降噪，這樣提升算法精準的同時會損失一部分召回。並且 Fraudar 本身是無監督模型，還需要結合監督模型做精細化判別。因此我們嘗試了端到端的 GCN 模型，提升召回的同時簡化了識別鏈路。&lt;/p&gt; 
-&lt;span id="OSC_h2_27"&gt;&lt;/span&gt; 
-&lt;h2&gt;&lt;strong&gt;5.1 GCN 模型原理&lt;/strong&gt;&lt;/h2&gt; 
-&lt;span id="OSC_h3_28"&gt;&lt;/span&gt; 
-&lt;h3&gt;5.1.1 GCN 的核心思想：消息傳遞與聚合&lt;/h3&gt; 
-&lt;p&gt;GCN 的核心是通過鄰域聚合更新節點特徵，其本質是讓每個節點從鄰居節點中提取有效信息：&lt;/p&gt; 
-&lt;p&gt;&lt;strong&gt;&lt;strong&gt;1. 基礎聚合公式：&lt;/strong&gt;&lt;/strong&gt;&lt;/p&gt; 
-&lt;p&gt;&lt;span class="math-tex"&gt;\(H^{(l+1)} = \sigma\left(\hat{D}^{-1/2} \hat{A} \hat{D}^{-1/2} H^{(l)} W^{(l)}\right)\)&lt;/span&gt;&lt;/p&gt; 
-&lt;p&gt;其中：&lt;/p&gt; 
-&lt;ul&gt; 
- &lt;li&gt; &lt;p&gt;&lt;span class="math-tex"&gt;\(\hat{A} = A + I\)&lt;/span&gt;：鄰接矩陣加入自連接，防止節點自身信息丟失。&lt;/p&gt; &lt;/li&gt; 
- &lt;li&gt; &lt;p&gt;&lt;span class="math-tex"&gt;\(\hat{D}\)&lt;/span&gt;：度矩陣的對稱歸一化，解決節點度數差異導致的權重偏差。&lt;/p&gt; &lt;/li&gt; 
- &lt;li&gt; &lt;p&gt;&lt;span class="math-tex"&gt;\(W^{(l)}\)&lt;/span&gt;：可學習的權重矩陣，用於特徵變換，即卷積核。&lt;/p&gt; &lt;/li&gt; 
- &lt;li&gt; &lt;p&gt;&lt;span class="math-tex"&gt;\(H^{(l)}\)&lt;/span&gt;：激活值，對於輸入層可以理解成特徵矩陣。&lt;/p&gt; &lt;/li&gt; 
-&lt;/ul&gt; 
-&lt;p&gt;&lt;strong&gt;&lt;strong&gt;2. 關鍵設計：&lt;/strong&gt;&lt;/strong&gt;&lt;/p&gt; 
-&lt;ul&gt; 
- &lt;li&gt; &lt;p&gt;歸一化：通過&lt;span class="math-tex"&gt;\(\hat{D}^{-1/2} \hat{A} \hat{D}^{-1/2}\)&lt;/span&gt;避免度數高的節點主導信息傳播，使模型更穩定。&lt;/p&gt; &lt;/li&gt; 
- &lt;li&gt; &lt;p&gt;非線性激活：如 ReLU 函數，增強模型的表達能力。&lt;/p&gt; &lt;/li&gt; 
-&lt;/ul&gt; 
-&lt;span id="OSC_h3_29"&gt;&lt;/span&gt; 
-&lt;h3&gt;5.1.2 數學視角：從拉普拉斯矩陣到頻譜域卷積&lt;/h3&gt; 
-&lt;p&gt;GCN 的理論基礎源自圖譜理論，通過將圖信號轉換到頻域進行卷積操作，核心概念：&lt;/p&gt; 
-&lt;p&gt;1. 拉普拉斯矩陣：定義為&lt;span class="math-tex"&gt;\(L = D - A\)&lt;/span&gt;，其特徵分解&lt;span class="math-tex"&gt;\((L = U \Lambda U^T)\)&lt;/span&gt;將圖結構映射到頻域空間。&lt;/p&gt; 
-&lt;p&gt;2. 圖傅裏葉變換：利用特徵向量矩陣&lt;span class="math-tex"&gt;\(U\)&lt;/span&gt;對節點特徵進行頻域投影，卷積操作簡化為頻域的乘積。&lt;/p&gt; 
-&lt;p&gt;a. 卷積定理：函數卷積的傅裏葉變換是函數傅裏葉變換的乘積，即對於函數&lt;span class="math-tex"&gt;\(f(t)\)&lt;/span&gt;與&lt;span class="math-tex"&gt;\(h(t)\)&lt;/span&gt;兩者的卷積是其函數傅裏葉變換乘積的逆變換。&lt;br&gt; b. 圖傅裏葉變換把圖上定義的任意向量，表示成了拉普拉斯矩陣特徵向量的線性組合。&lt;/p&gt; 
-&lt;p&gt;3. 切比雪夫近似：為降低計算複雜度，GCN 採用一階近似（僅考慮直接鄰居），公式退化為經典聚合形式。&lt;br&gt; 第一代 GCN：將輸入特徵通過圖傅裏葉變換從空域映射到譜域，做卷積運算後再映射回空域。&lt;/p&gt; 
-&lt;p&gt;&lt;span class="math-tex"&gt;\(Y = U \cdot g_\theta(\Lambda) \cdot U^T X\)&lt;/span&gt;&lt;/p&gt; 
-&lt;p&gt;第二代 GCN：利用切比雪夫多項式近似&lt;span class="math-tex"&gt;\(g_\theta(\Lambda)\)&lt;/span&gt;，避免&lt;span class="math-tex"&gt;\(O(N^3)\)&lt;/span&gt;複雜度的拉普拉斯矩陣分解。&lt;br&gt; 卷積核用 K 階段切比雪夫多項式展開：&lt;/p&gt; 
-&lt;p&gt;&lt;span class="math-tex"&gt;\(g_\theta(\Lambda) = \sum_{k=0}^K \theta_k T_k(\tilde{\Lambda})\)&lt;/span&gt;&lt;/p&gt; 
-&lt;p&gt;最終 GCN 公式：&lt;/p&gt; 
-&lt;p&gt;&lt;span class="math-tex"&gt;\(Y = \sum_{k=0}^K \theta_k T_k(\tilde{L}) X\)&lt;/span&gt;&lt;/p&gt; 
-&lt;p&gt;第三代 GCN：只保留一階切比雪夫多項式，並加入自環和歸一化。&lt;/p&gt; 
-&lt;p&gt;&lt;span class="math-tex"&gt;\(H^{(l+1)} = \sigma \left( \hat{A} H^{(l)} W^{(l)} \right)\)&lt;/span&gt;&lt;/p&gt; 
-&lt;span id="OSC_h3_30"&gt;&lt;/span&gt; 
-&lt;h3&gt;5.1.3 模型結構：輕量化與高效性&lt;/h3&gt; 
-&lt;p&gt;GCN 的典型結構通常僅需 2-4 層即可完成高效學習，原因在於：&lt;/p&gt; 
-&lt;p&gt;&lt;strong&gt;&lt;strong&gt;1. 層數限制&lt;/strong&gt;&lt;/strong&gt;：過深的網絡會導致&lt;strong&gt;&lt;strong&gt;過平滑（圖中同一連通分量的節點特徵趨同）&lt;/strong&gt;&lt;/strong&gt;，因此實踐中常用淺層架構。&lt;/p&gt; 
-&lt;p&gt;&lt;strong&gt;&lt;strong&gt;2. 參數共享&lt;/strong&gt;&lt;/strong&gt;：每層共享權重矩陣，大幅減少參數量，適合處理大規模圖數據。（相對於一個節點一個權重矩陣的全連接形式）&lt;/p&gt; 
-&lt;p&gt;&lt;strong&gt;&lt;strong&gt;3. 應用場景&lt;/strong&gt;&lt;/strong&gt;：&lt;/p&gt; 
-&lt;ul&gt; 
- &lt;li&gt; &lt;p&gt;&lt;strong&gt;&lt;strong&gt;節點分類&lt;/strong&gt;&lt;/strong&gt;（如電商刷單用戶檢測）&lt;/p&gt; &lt;/li&gt; 
- &lt;li&gt; &lt;p&gt;&lt;strong&gt;&lt;strong&gt;圖分類&lt;/strong&gt;&lt;/strong&gt;（如分子屬性判斷）&lt;/p&gt; &lt;/li&gt; 
- &lt;li&gt; &lt;p&gt;&lt;strong&gt;&lt;strong&gt;鏈接預測&lt;/strong&gt;&lt;/strong&gt;（如推薦系統好友關係推斷）&lt;/p&gt; &lt;/li&gt; 
-&lt;/ul&gt; 
-&lt;span id="OSC_h3_31"&gt;&lt;/span&gt; 
-&lt;h3&gt;5.1.4 GCN 的優缺點與改進方向&lt;/h3&gt; 
-&lt;p&gt;&lt;strong&gt;&lt;strong&gt;1. 優勢&lt;/strong&gt;&lt;/strong&gt;：&lt;/p&gt; 
-&lt;ul&gt; 
- &lt;li&gt; &lt;p&gt;天然融合圖結構與節點特徵，適合複雜關係建模。&lt;/p&gt; &lt;/li&gt; 
- &lt;li&gt; &lt;p&gt;計算高效，支持稀疏矩陣優化。&lt;/p&gt; &lt;/li&gt; 
-&lt;/ul&gt; 
-&lt;p&gt;&lt;strong&gt;&lt;strong&gt;2. 侷限&lt;/strong&gt;&lt;/strong&gt;：&lt;/p&gt; 
-&lt;ul&gt; 
- &lt;li&gt; &lt;p&gt;&lt;strong&gt;&lt;strong&gt;過平滑問題&lt;/strong&gt;&lt;/strong&gt;：深層網絡性能下降。&lt;/p&gt; &lt;/li&gt; 
- &lt;li&gt; &lt;p&gt;&lt;strong&gt;&lt;strong&gt;靜態圖假設&lt;/strong&gt;&lt;/strong&gt;：難以處理動態變化的圖結構。&lt;/p&gt; &lt;/li&gt; 
-&lt;/ul&gt; 
-&lt;span id="OSC_h2_32"&gt;&lt;/span&gt; 
-&lt;h2&gt;&lt;strong&gt;5.2 GCN 模型應用&lt;/strong&gt;&lt;/h2&gt; 
-&lt;span id="OSC_h3_33"&gt;&lt;/span&gt; 
-&lt;h3&gt;5.2.1 構圖&lt;/h3&gt; 
-&lt;p&gt;利用訂單作為節點、訂單之間的屬性關聯關係構建同構圖。特徵上採用用戶、 店鋪等風險屬性刻畫訂單，異常訂單為正樣本、正常訂單為負樣本。&lt;/p&gt; 
-&lt;p&gt;&lt;img alt="圖片" src="https://oscimg.oschina.net/oscnet/up-e413211583231cf96809e8be84b96306075.jpg" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;span id="OSC_h3_34"&gt;&lt;/span&gt; 
-&lt;h3&gt;5.2.2 風險訂單挖掘&lt;/h3&gt; 
-&lt;p&gt;由於實際業務中有標籤的風險訂單、正常訂單僅是全量訂單的一小部分，因此我們採用了半監督的方式訓練 GCN 模型，利用有標籤的訂單對無標籤的訂單進行推理。GCN 模型設計上針對的是靜態圖，應用中我們採用了隨着時間窗口滾動構圖的方式來適應動態變化的數據，滾動過程中排除了 GCN 模型本身推理的標籤，防止對模型自身結果過擬合。&lt;/p&gt; 
-&lt;p&gt;這裏解釋下，為什麼我們不採用一個訓練好的模型在線上不斷的推理，而是滾動的訓練推理。這是因為 GCN 模型從原理上屬於直推式模型，通常的訓練好一個模型後不斷的對新數據推理的模型是歸納式模型。GCN 的直推式，本質上是因為卷積計算用到了圖的拉普拉斯矩陣，圖發生了變化，那麼這個拉普拉斯矩陣也就發生變化，訓練的模型也就失效了。&lt;/p&gt; 
-&lt;p&gt;既然 GCN 是直推式的，這裏又產生一個問題，為什麼我們不使用歸納式模型呢？事實上，我們對比了 GraphSage 等模型在同樣圖結構、特徵數據上的效果，在我們的場景中比 GCN 效果差，為了保證業務效果我們最終採用的是 GCN。&lt;/p&gt; 
-&lt;span id="OSC_h1_35"&gt;&lt;/span&gt; 
-&lt;h1&gt;06 總結和展望&lt;/h1&gt; 
-&lt;p&gt;在風控反作弊的業務中，我們落地了 LPA、Fraudar、GCN 等算法並取得了良好的效果，未來我們希望做的更多。&lt;/p&gt; 
-&lt;p&gt;&lt;strong&gt;&lt;strong&gt;1. 多模態數據融合：從單一圖譜到全域關聯&lt;/strong&gt;&lt;/strong&gt;&lt;/p&gt; 
-&lt;p&gt;未來風控需整合圖數據、時序數據（如交易頻率）、文本數據（如聊天記錄）等多模態信息。例如，通過圖嵌入技術將設備、IP、地理位置等實體統一表徵，構建全域風險畫像。&lt;/p&gt; 
-&lt;p&gt;&lt;strong&gt;&lt;strong&gt;2. 動態圖實時計算：應對黑產快速演化&lt;/strong&gt;&lt;/strong&gt;&lt;/p&gt; 
-&lt;p&gt;當前黑產通過「少邊構造」（刻意斷開部分關聯）繞過靜態圖檢測，需引入動態圖算法（如時序 GNN）實時捕捉行為演變，並結合增量計算優化性能。&lt;/p&gt; 
-&lt;p&gt;&lt;strong&gt;&lt;strong&gt;3. 可解釋性與對抗防禦：提升算法可信度&lt;/strong&gt;&lt;/strong&gt;&lt;/p&gt; 
-&lt;p&gt;探索可視化工具（如子圖歸因分析）解釋 GCN 決策邏輯，並研發對抗訓練技術抵禦黑產對模型的逆向攻擊。&lt;/p&gt; 
-&lt;p&gt;圖算法正從「輔助工具」升級為風控系統的核心引擎，而未來的挑戰在於如何平衡技術效能、業務合規與用戶體驗。&lt;/p&gt;
-                                                                                    &lt;/div&gt;
-                                                                            </description>
-      <link>https://my.oschina.net/u/4939618/blog/18627800</link>
-      <guid isPermaLink="false">https://my.oschina.net/u/4939618/blog/18627800</guid>
-      <pubDate>Sat, 10 May 2025 07:21:00 GMT</pubDate>
-      <author>原創</author>
-    </item>
-    <item>
-      <title>JDK 高版本特性總結與 ZGC 實踐</title>
-      <description>&lt;div class="content"&gt;
-                                                                                                                    
-                                                                                                                                                    &lt;blockquote&gt; 
- &lt;p&gt;美團信息安全技術團隊核心服務升級 JDK 17 後，性能與穩定性大幅提升，機器成本降低了 10%。高版本 JDK 與 ZGC 技術令人驚豔，且 Java AI SDK 最低支持 JDK 17。本文總結了 JDK 17 的主要特性，然後重點分享了 JDK 17+ZGC 在安全領域的一些實踐，希望能對大家有所幫助或啓發。&lt;/p&gt; 
-&lt;/blockquote&gt; 
-&lt;p&gt;&lt;img src="https://oscimg.oschina.net/oscnet/up-31d46a32fb835d661ed43d399296dac8a92.png" alt="" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;p&gt;從一句調侃的話 "你發任你發，我用 Java 8！" 可以看出，在開發新項目時，Java 8 依然是大家的首選。美團 Java 8 服務佔比超過 70%，可以説 Java 8 依然是絕對的主流。但是，我們在多個核心服務上遇到較多的性能問題，這些問題無法通過 JVM 參數微調來解決，為此我們對部分核心服務使用了 JDK 17，升級後服務性能和穩定性指標也得到巨大的飛躍，同時機器成本可以下降約 10%，升級 JDK 版本收益十分明顯。另外，目前正處在 AI 時代的爆發期，Java AI SDK 的最小支持版本為 JDK 17，這讓升級 JDK 版本變得更具價值。接下來，期望跟大家一起探索 JDK 高版本和 ZGC 技術的奧祕，開啓優化 Java 應用的新徵程。&lt;/p&gt; 
-&lt;ol&gt; 
- &lt;li&gt;JDK 17 的主要特性&lt;/li&gt; 
-&lt;/ol&gt; 
-&lt;hr&gt; 
-&lt;blockquote&gt; 
- &lt;p&gt;包含 JDK 9~17 等中間版本的特性。&lt;/p&gt; 
-&lt;/blockquote&gt; 
-&lt;p&gt;從 JDK 8 直接升級到 JDK 17，以下是需要重點關注的特性，這些特性對開發效率、代碼風格、性能優化和安全性都有顯著影響。&lt;/p&gt; 
-&lt;h3&gt;1.1 語言特性[1]&lt;/h3&gt; 
-&lt;h4&gt;1.1.1 局部變量類型推斷&lt;/h4&gt; 
-&lt;p&gt;使用 var 關鍵字來聲明局部變量，而無需顯式指定變量的類型。在 Java 17 中，可以使用局部變量類型推斷的擴展來編寫更簡潔的代碼。其他語言如 Golang 很早就支持了 var 變量。&lt;/p&gt; 
-&lt;pre&gt;&lt;code&gt;// JDK8
-String str = "Hello world";
-
-// JDK17
-var str = "Hello world";
-&lt;/code&gt;&lt;/pre&gt; 
-&lt;blockquote&gt; 
- &lt;p&gt;需要注意的是，var 類型的局部變量仍然具有靜態類型，一旦被推斷出來，類型就會固定下來，並且不能重新賦值為不兼容的類型。&lt;/p&gt; 
-&lt;/blockquote&gt; 
-&lt;h4&gt;1.1.2 密封類&lt;/h4&gt; 
-&lt;p&gt;它允許我們將類或接口的繼承限制為一組有限的子類。如果想將類或接口的繼承限制為一組有限的子類時，這非常有用。在下面的示例中，可以看到我們如何使用 sealed 關鍵字將類的繼承限制為一組有限的子類。我們可以通過在類的聲明前加上 sealed 關鍵字來將該類聲明為密封類。然後，可以使用 permits 關鍵字列出該密封類允許繼承的子類。這些子類必須直接或間接地繼承自密封類。這樣，只有在這個預定義的子類中，才能繼承該密封類。&lt;/p&gt; 
-&lt;pre&gt;&lt;code&gt;//使用 permits 關鍵字列出了允許繼承的子類 Circle、Rectangle 和 Triangle
-public sealed class Shape permits Circle, Rectangle, Triangle {
-    // 省略實現
-}
-
-// 在與密封類相同的模塊或包中，定義以下三個允許的子類， Circle，Square 和：Rectangle
-public final class Circle extends Shape {
-    public float radius;
-}
- 
-public non-sealed class Square extends Shape {
-   public double side;
-}   
- 
-public sealed class Rectangle extends Shape permits FilledRectangle {
-    public double length, width;
-}
-&lt;/code&gt;&lt;/pre&gt; 
-&lt;h4&gt;1.1.3 Record 類&lt;/h4&gt; 
-&lt;p&gt;Record 類的主要目的是提供一種更簡潔、更安全的方式來定義不可變的數據載體類。它自動實現了常見的方法（如&lt;code&gt;equals()&lt;/code&gt;、&lt;code&gt;hashCode()&lt;/code&gt;、&lt;code&gt;toString()&lt;/code&gt;和構造函數），從而減少了樣板代碼。&lt;/p&gt; 
-&lt;p&gt;&lt;strong&gt;特點&lt;/strong&gt;&lt;/p&gt; 
-&lt;ol&gt; 
- &lt;li&gt;&lt;strong&gt;不可變性&lt;/strong&gt; ：Record 類的字段默認是&lt;code&gt;final&lt;/code&gt;的，因此 Record 類是不可變的。&lt;/li&gt; 
- &lt;li&gt;&lt;strong&gt;簡潔性&lt;/strong&gt; ：Record 類自動提供了構造函數、&lt;code&gt;equals()&lt;/code&gt;、&lt;code&gt;hashCode()&lt;/code&gt;和&lt;code&gt;toString()&lt;/code&gt;方法，無需手動編寫。&lt;/li&gt; 
- &lt;li&gt;&lt;strong&gt;組件訪問&lt;/strong&gt; ：Record 類的字段可以通過&lt;code&gt;recordName.fieldName&lt;/code&gt;的方式直接訪問。&lt;/li&gt; 
- &lt;li&gt;&lt;strong&gt;模式匹配&lt;/strong&gt; ：Record 類支持模式匹配（Pattern Matching），可以與&lt;code&gt;instanceof&lt;/code&gt;和&lt;code&gt;switch&lt;/code&gt;表達式結合使用。&lt;/li&gt; 
-&lt;/ol&gt; 
-&lt;p&gt;Record 類的定義非常簡單，只需要使用&lt;code&gt;record&lt;/code&gt;關鍵字，並聲明字段類型和名稱即可。例如：&lt;/p&gt; 
-&lt;pre&gt;&lt;code&gt;// 這裏有一個包含兩個字段的記錄類
-record Rectangle(double length, double width) { }
-
-// 這個簡潔的矩形聲明等同於以下普通類
-public final class Rectangle {
-    private final double length;
-    private final double width;
-
-    public Rectangle(double length, double width) {
-        this.length = length;
-        this.width = width;
-    }
-
-    double length() { return this.length; }
-    double width()  { return this.width; }
-
-    // ...
-    public boolean equals...
-    public int hashCode...
-
-    // ...
-    public String toString() {...}
-}
-&lt;/code&gt;&lt;/pre&gt; 
-&lt;h4&gt;1.1.4 switch 表達式優化&lt;/h4&gt; 
-&lt;p&gt;在 Java 17 中使用 switch 表達式時，不必使用關鍵字 break 來跳出 switch 語句，或 return 在每個 switch case 上使用關鍵字來返回值；相反，我們可以返回整個 switch 表達式。這種增強的 switch 表達式使整體代碼看起來更清晰，更易於閲讀。switch 打印一週中某一天的字母數量的語句。&lt;/p&gt; 
-&lt;p&gt;&lt;strong&gt;JDK 8&lt;/strong&gt;&lt;/p&gt; 
-&lt;pre&gt;&lt;code&gt;public enum Day { SUNDAY, MONDAY, TUESDAY,
-    WEDNESDAY, THURSDAY, FRIDAY, SATURDAY; }
-
-// ...
-
-    int numLetters = 0;
-    Day day = Day.WEDNESDAY;
-    switch (day) {
-        case MONDAY:
-        case FRIDAY:
-        case SUNDAY:
-            numLetters = 6;
-            break;
-        case TUESDAY:
-            numLetters = 7;
-            break;
-        case THURSDAY:
-        case SATURDAY:
-            numLetters = 8;
-            break;
-        case WEDNESDAY:
-            numLetters = 9;
-            break;
-        default:
-            throw new IllegalStateException("Invalid day: " + day);
-    }
-    System.out.println(numLetters);
-&lt;/code&gt;&lt;/pre&gt; 
-&lt;p&gt;&lt;strong&gt;JDK 17&lt;/strong&gt;&lt;/p&gt; 
-&lt;pre&gt;&lt;code&gt;Day day = Day.WEDNESDAY;    
-    System.out.println(
-        switch (day) {
-            case MONDAY, FRIDAY, SUNDAY -&amp;gt; 6;
-            case TUESDAY                -&amp;gt; 7;
-            case THURSDAY, SATURDAY     -&amp;gt; 8;
-            case WEDNESDAY              -&amp;gt; 9;
-            default -&amp;gt; throw new IllegalStateException("Invalid day: " + day);
-        }
-    ); 
-&lt;/code&gt;&lt;/pre&gt; 
-&lt;h4&gt;1.1.5 文本塊&lt;/h4&gt; 
-&lt;p&gt;在不使用轉義序列的情況下創建多行字符串。在創建 SQL 查詢或 JSON 字符串時非常有用。在下面的示例中，可以看到使用文本塊時代碼看起來更加簡潔。&lt;/p&gt; 
-&lt;pre&gt;&lt;code&gt;// JDK8
-String message = "'The time has come,' the Walrus said,\n" +
-                 "'To talk of many things:\n" +
-                 "Of shoes -- and ships -- and sealing-wax --\n" +
-                 "Of cabbages -- and kings --\n" +
-                 "And why the sea is boiling hot --\n" +
-                 "And whether pigs have wings.'\n";
-
-// 使用文本塊可以消除大部分混亂：
-String message = """
-    'The time has come,' the Walrus said,
-    'To talk of many things:
-    Of shoes -- and ships -- and sealing-wax --
-    Of cabbages -- and kings --
-    And why the sea is boiling hot --
-    And whether pigs have wings.'
-    """;
-&lt;/code&gt;&lt;/pre&gt; 
-&lt;p&gt;&lt;strong&gt;SQL 註解描述&lt;/strong&gt;&lt;/p&gt; 
-&lt;pre&gt;&lt;code&gt;// JDK8    
-@Select("select distinct ta.host_name from tb_agent_info tai, tb_agent ta where 1=1 " +
-        "and ta.host_name=tai.host_name and ta.status=1 and ta.master=1 and tai.report_pid_count &amp;gt; 0")
-Set&amp;lt;String&amp;gt; queryAllJavaHost();
-
-// JDK17
-@Select("""
-    SELECT DISTINCT ta.host_name
-    FROM tb_agent_info tai, tb_agent ta
-    WHERE 1=1
-      AND ta.host_name = tai.host_name
-      AND ta.status = 1
-      AND ta.master = 1
-      AND tai.report_pid_count &amp;gt; 0
- """)
- Set&amp;lt;String&amp;gt; queryAllJavaHost2();
-&lt;/code&gt;&lt;/pre&gt; 
-&lt;ul&gt; 
- &lt;li&gt;&lt;strong&gt;可讀性更強&lt;/strong&gt;：文本結構清晰可見，無需處理轉義字符或字符串連接。&lt;/li&gt; 
- &lt;li&gt;&lt;strong&gt;減少錯誤&lt;/strong&gt;：不需要手動添加換行符（\n），降低了出錯的可能性。&lt;/li&gt; 
- &lt;li&gt;&lt;strong&gt;易於編輯&lt;/strong&gt;：可以直接複製粘貼格式化好的 JSON，而不需要額外的處理。&lt;/li&gt; 
- &lt;li&gt;&lt;strong&gt;保留縮進&lt;/strong&gt;：文本塊會保留的縮進，使得其在 Java 代碼中的呈現更加美觀。&lt;/li&gt; 
-&lt;/ul&gt; 
-&lt;h4&gt;1.1.6 模式匹配 instanceof 優化&lt;/h4&gt; 
-&lt;p&gt;它允許將 instanceof 運算符用作返回已轉換對象的表達式。當我們使用嵌套的 if-else 語句時，這非常有用。在下面的示例中，可以看到我們如何使用 instanceof 運算符來捕獲對象，而不是進行顯式轉換。&lt;/p&gt; 
-&lt;p&gt;&lt;strong&gt;JDK 8&lt;/strong&gt;&lt;/p&gt; 
-&lt;pre&gt;&lt;code&gt;Object obj = ...;
-
-if (obj instanceof String) {
-    String str = (String) obj;
-    int length = str.length();
-    System.out.println("字符串長度：" + length);
-}
-&lt;/code&gt;&lt;/pre&gt; 
-&lt;p&gt;&lt;strong&gt;JDK 17&lt;/strong&gt;&lt;/p&gt; 
-&lt;pre&gt;&lt;code&gt;Object obj = ...;
-
-if (obj instanceof String str) {
-    int length = str.length();
-    System.out.println("字符串長度：" + length);
-}
-&lt;/code&gt;&lt;/pre&gt; 
-&lt;h4&gt;1.1.7 NullPointerExceptions 的優化&lt;/h4&gt; 
-&lt;p&gt;對象空指針在日常開發中遇到的比較多，一般代碼報錯只能精確的某一行，如果該行的代碼比較複雜，涉及到多個對象，往往不能直接確定是哪一個對象為空。&lt;/p&gt; 
-&lt;pre&gt;&lt;code&gt;public class NpeDemo { 
-  public static void main(String[] args) { 
-    Address address=new Address();
-    User user=new User();
-    user.setAddress(address);
-    log.info(user.getAddress().getCity().toLowerCase()); 
-  }
-}
-&lt;/code&gt;&lt;/pre&gt; 
-&lt;p&gt;上面代碼中的第 6 行鏈式調用，如果某一個環節出現空指針，將會拋出空指針的異常：&lt;/p&gt; 
-&lt;pre&gt;&lt;code&gt;Exception in thread "main" java.lang.NullPointerException 
-at NpeDemo.main(Main.java:6)
-&lt;/code&gt;&lt;/pre&gt; 
-&lt;p&gt;使用 JDK 17&lt;/p&gt; 
-&lt;pre&gt;&lt;code&gt;Exception in thread "main" java.lang.NullPointerException: 
-Cannot invoke "String.toLowerCase()" because the return value of "Address.getCity()" is null 
-  at NpeDemo.main(Main.java:6)
-&lt;/code&gt;&lt;/pre&gt; 
-&lt;h4&gt;1.1.8 集合、Stream 和 Optional 的增強&lt;/h4&gt; 
-&lt;p&gt;Java 在集合（Collections）、Stream API 和 Optional 類方面引入了許多增強功能。主要有：&lt;/p&gt; 
-&lt;p&gt;&lt;strong&gt;集合增強&lt;/strong&gt;：不可變集合： 引入了創建不可變集合的便捷方法，如 List.of()、Set.of() 和 Map.of()。這些方法用於快速創建不可變集合，減少了代碼量並提高了安全性。&lt;/p&gt; 
-&lt;pre&gt;&lt;code&gt;import java.util.*;
-
-public class CollectionsDemo {
-    public static void main(String[] args) {
-        // 創建不可變 list
-        List&amp;lt;String&amp;gt; list = List.of("Java", "Golang", "Python");
-        // 創建不可變 set
-        Set&amp;lt;String&amp;gt; set = Set.of("Java", "Golang", "Python");
-        // 創建不可變 map
-        Map&amp;lt;String, Integer&amp;gt; map = Map.of("Java", 1, "Golang", 2, "Python", 3);
-    }
-}
-&lt;/code&gt;&lt;/pre&gt; 
-&lt;p&gt;&lt;strong&gt;集合工廠方法&lt;/strong&gt;：Java 17 還引入了集合工廠方法，如 List.copyOf()、Set.copyOf() 和 Map.copyOf()，用於從現有集合創建不可變副本。&lt;/p&gt; 
-&lt;p&gt;&lt;strong&gt;Stream API 增強&lt;/strong&gt; ：&lt;code&gt;takeWhile&lt;/code&gt;和&lt;code&gt;dropWhile&lt;/code&gt;：基於條件截取或跳過元素；&lt;code&gt;iterate&lt;/code&gt;：支持終止條件的迭代；&lt;code&gt;ofNullable&lt;/code&gt;：將可能為&lt;code&gt;null&lt;/code&gt;的值轉換為 Stream。&lt;/p&gt; 
-&lt;p&gt;&lt;strong&gt;Optional 增強&lt;/strong&gt; ： &lt;code&gt;ifPresentOrElse&lt;/code&gt;：值存在時執行操作，否則執行另一個操作；&lt;code&gt;or&lt;/code&gt;：在值不存在時提供替代值；&lt;code&gt;stream&lt;/code&gt;：將&lt;code&gt;Optional&lt;/code&gt;轉換為 Stream。&lt;/p&gt; 
-&lt;h3&gt;1.2 新 API 和工具&lt;/h3&gt; 
-&lt;h4&gt;1.2.1 新的 HttpClient&lt;/h4&gt; 
-&lt;p&gt;可以使用&lt;code&gt;HttpClient&lt;/code&gt;使用來發送請求並檢索其響應。 &lt;code&gt;HttpClient&lt;/code&gt;可以通過&lt;code&gt;builder&lt;/code&gt;來創建。該&lt;code&gt;newBuilder&lt;/code&gt;方法返回一個構建器，用於創建默認&lt;code&gt;HttpClient&lt;/code&gt;實現的實例。該構建器可用於配置每個客戶端的狀態，例如：首選協議版本（HTTP/1.1 或 HTTP/2）、是否遵循重定向、代理、身份驗證器等。 構建完成後，&lt;code&gt;HttpClient&lt;/code&gt;是不可變的，可用於發送多個請求。&lt;/p&gt; 
-&lt;pre&gt;&lt;code&gt;// 同步示例
-HttpClient client = HttpClient.newBuilder()
-        .version(Version.HTTP_1_1)
-        .followRedirects(Redirect.NORMAL)
-        .connectTimeout(Duration.ofSeconds(20))
-        .proxy(ProxySelector.of(new InetSocketAddress("proxy.example.com", 80)))
-        .authenticator(Authenticator.getDefault())
-        .build();
-   HttpResponse&amp;lt;String&amp;gt; response = client.send(request, BodyHandlers.ofString());
-   System.out.println(response.statusCode());
-   System.out.println(response.body());  
-
-// 異步示例
-HttpRequest request = HttpRequest.newBuilder()
-        .uri(URI.create("https://foo.com/"))
-        .timeout(Duration.ofMinutes(2))
-        .header("Content-Type", "application/json")
-        .POST(BodyPublishers.ofFile(Paths.get("file.json")))
-        .build();
-   client.sendAsync(request, BodyHandlers.ofString())
-        .thenApply(HttpResponse::body)
-        .thenAccept(System.out::println);  
-&lt;/code&gt;&lt;/pre&gt; 
-&lt;p&gt;如果不希望引入三方依賴（三方依賴漏洞和 Bug 等需要經常升級），可以使用 JDK 提供的原生的 httpClient API，適用場景&lt;code&gt;中間件&lt;/code&gt;。&lt;/p&gt; 
-&lt;h4&gt;1.2.2 打包工具 jpackage[2]&lt;/h4&gt; 
-&lt;p&gt;該工具將以 Java 應用程序和 Java 運行時鏡像作為輸入，生成包含所有必要依賴項的 Java 應用程序鏡像。它能夠生成特定平台格式的原生軟件包，例如 Windows 上的 exe 文件或 macOS 上的 dmg 文件。每種格式都必須在其運行的平台上構建，不支持跨平台。該工具將提供一些選項，允許以各種方式定製打包的應用程序。該工具最大特點是無需單獨安裝 JDK 環境，例如用 JDK17 寫了一個 MCP Server 工具，直接打包為可執行文件安裝即可，減少環境依賴安裝。&lt;/p&gt; 
-&lt;h4&gt;1.2.3 進程相關 API[3]&lt;/h4&gt; 
-&lt;p&gt;進程管理功能得到了顯著增強，&lt;code&gt;ProcessHandle&lt;/code&gt;提供了更強大的功能來創建、監控和管理本地進程。這些改進使得 Java 程序能夠更靈活地與操作系統交互，同時提供了更詳細的進程信息和更強大的生命週期管理功能。&lt;/p&gt; 
-&lt;p&gt;&lt;strong&gt;1.創建進程&lt;/strong&gt;&lt;/p&gt; 
-&lt;p&gt;在 Java 中，創建新進程通常使用&lt;code&gt;ProcessBuilder&lt;/code&gt;或&lt;code&gt;Runtime.getRuntime().exec()&lt;/code&gt;。而 Java 17 上&lt;code&gt;ProcessHandle&lt;/code&gt;提供了更強大的功能來管理這些進程。&lt;/p&gt; 
-&lt;pre&gt;&lt;code&gt;ProcessBuilder pb = new ProcessBuilder("echo", "Hello World!");
-Process p = pb.start();
-&lt;/code&gt;&lt;/pre&gt; 
-&lt;p&gt;&lt;strong&gt;2.監控進程&lt;/strong&gt;&lt;/p&gt; 
-&lt;pre&gt;&lt;code&gt;public class ProcessTest {
-
-  // ...
-
-  static public void startProcessesTest() throws IOException, InterruptedException {
-    List&amp;lt;ProcessBuilder&amp;gt; greps = new ArrayList&amp;lt;&amp;gt;();
-    greps.add(new ProcessBuilder("/bin/sh", "-c", "grep -c \"java\" *"));
-    greps.add(new ProcessBuilder("/bin/sh", "-c", "grep -c \"Process\" *"));
-    greps.add(new ProcessBuilder("/bin/sh", "-c", "grep -c \"onExit\" *"));
-    ProcessTest.startSeveralProcesses (greps, ProcessTest::printGrepResults);      
-    System.out.println("\nPress enter to continue ...\n");
-    System.in.read();  
-  }
-
-  static void startSeveralProcesses (
-    List&amp;lt;ProcessBuilder&amp;gt; pBList,
-    Consumer&amp;lt;Process&amp;gt; onExitMethod)
-    throws InterruptedException {
-    System.out.println("Number of processes: " + pBList.size());
-    pBList.stream().forEach(
-      pb -&amp;gt; {
-        try {
-          Process p = pb.start();
-          System.out.printf("Start %d, %s%n",
-            p.pid(), p.info().commandLine().orElse("&amp;lt;na&amp;gt;"));
-          p.onExit().thenAccept(onExitMethod);
-        } catch (IOException e) {
-          System.err.println("Exception caught");
-          e.printStackTrace();
-        }
-      }
-    );
-  }
-  
-  static void printGrepResults(Process p) {
-    System.out.printf("Exit %d, status %d%n%s%n%n",
-      p.pid(), p.exitValue(), output(p.getInputStream()));
-  }
-
-  private static String output(InputStream inputStream) {
-    String s = "";
-    try (BufferedReader br = new BufferedReader(new InputStreamReader(inputStream))) {
-      s = br.lines().collect(Collectors.joining(System.getProperty("line.separator")));
-    } catch (IOException e) {
-      System.err.println("Caught IOException");
-      e.printStackTrace();
-    }
-    return s;
-  }
-
-  // ...
-}
-&lt;/code&gt;&lt;/pre&gt; 
-&lt;p&gt;&lt;strong&gt;3.獲取進程信息&lt;/strong&gt;&lt;/p&gt; 
-&lt;pre&gt;&lt;code&gt;public static void getInfoTest() throws IOException {
-        ProcessBuilder pb = new ProcessBuilder("echo", "Hello World!");
-        String na = "&amp;lt;not available&amp;gt;";
-        Process p = pb.start();
-        ProcessHandle.Info info = p.info();
-        System.out.printf("Process ID: %s%n", p.pid());
-        System.out.printf("Command name: %s%n", info.command().orElse(na));
-        System.out.printf("Command line: %s%n", info.commandLine().orElse(na));
-
-        System.out.printf("Start time: %s%n",
-            info.startInstant().map((Instant i) -&amp;gt; i
-                .atZone(ZoneId.systemDefault()).toLocalDateTime().toString())
-                .orElse(na));
-
-        System.out.printf("Arguments: %s%n",
-            info.arguments().map(
-                (String[] a) -&amp;gt; Stream.of(a).collect(Collectors.joining(" ")))
-                .orElse(na));
-
-        System.out.printf("User: %s%n", info.user().orElse(na));
-}
-
-輸出
-Process ID: 18761
-Command name: /usr/bin/echo
-Command line: echo Hello World!
-Start time: 2017-05-30T18:52:15.577
-Arguments: &amp;lt;not available&amp;gt;
-User: administrator
-&lt;/code&gt;&lt;/pre&gt; 
-&lt;h4&gt;1.2.4 AI 工具最低版本為 JDK17&lt;/h4&gt; 
-&lt;p&gt;最近火熱的 AI 大模型工具，JDK 8 不再兼容，運行的最低版本為 JDK 17，例如 Spring AI 工具。&lt;/p&gt; 
-&lt;h3&gt;1.3 性能優化與 Bug 修復&lt;/h3&gt; 
-&lt;h4&gt;1.3.1 垃圾回收器改進 ZGC&lt;/h4&gt; 
-&lt;p&gt;ZGC 作為新一代的垃圾回收器，主要目標：&lt;/p&gt; 
-&lt;ul&gt; 
- &lt;li&gt;支持 TB 級內存&lt;/li&gt; 
- &lt;li&gt;停頓時間控制在 10ms 之內&lt;/li&gt; 
- &lt;li&gt;對程序吞吐量影響小於 15%&lt;/li&gt; 
-&lt;/ul&gt; 
-&lt;p&gt;據官方測評數據，在內存為 128GB 的機器上，相比於 G1 來説，性能提高 30%，停頓時間減少 99%。&lt;/p&gt; 
-&lt;h4&gt;1.3.2 NIO 重寫與優化&lt;/h4&gt; 
-&lt;ul&gt; 
- &lt;li&gt;&lt;strong&gt;支持 Unix-Domain 套接字&lt;/strong&gt;：在 JDK8 上如果想要使用 UDS，一般使用 Netty 或者開源的 Juds 庫，JDK 17 支持了該功能，無需使用第三方庫；&lt;/li&gt; 
- &lt;li&gt;&lt;strong&gt;文件通道的優化&lt;/strong&gt;：可以將文件的某個區域直接映射到內存中，從而實現高效的讀寫操作。這種方式利用了操作系統的內存映射機制，減少了 I/O 操作的開銷；&lt;/li&gt; 
- &lt;li&gt;&lt;strong&gt;零拷貝支持&lt;/strong&gt;：允許數據直接從磁盤的一個位置複製到另一個位置，而無需經過用戶態內存。這減少了數據在用戶態和內核態之間的拷貝次數，從而顯著提高了性能。&lt;/li&gt; 
-&lt;/ul&gt; 
-&lt;h4&gt;1.3.3 Java SDK 模塊化設計&lt;/h4&gt; 
-&lt;p&gt;JVM 的模塊化是 Java 9 引入的一個重要特性，通過 Java Platform Module System (JPMS) 實現。這一特性旨在解決 Java 應用在可擴展性和維護上的問題，提供更高級別的封裝和依賴管理機制。&lt;/p&gt; 
-&lt;ul&gt; 
- &lt;li&gt;&lt;strong&gt;減少環境資源開銷&lt;/strong&gt;：在 JDK 9 之前，每次啓動 JVM 都要耗費至少 30MB 到 60MB 的內存空間，因為 JVM 需要加載整個 rt.jar。模塊化允許 JVM 選擇性地加載必需的模塊，從而減少內存佔用。&lt;/li&gt; 
- &lt;li&gt;&lt;strong&gt;提升開發效率和運行速度&lt;/strong&gt;：隨着代碼庫的複雜性增加，開發效率和運行速度會受到影響。模塊化通過規範化路徑和依賴關係，使系統更安全、更高效。&lt;/li&gt; 
- &lt;li&gt;&lt;strong&gt;規範化路徑及依賴關係&lt;/strong&gt;：JDK 9 之前，系統沒有對不同 JAR 之間的依賴或敏感路徑進行限制，導致所有 JAR 都可以被訪問，暴露了安全問題。模塊化通過管理模塊間的依賴關係，隱藏不必要的模塊，提高了安全性和空間利用率。&lt;/li&gt; 
-&lt;/ul&gt; 
-&lt;h4&gt;1.3.4 Java Agent 機制的 Attach Bug 修復&lt;/h4&gt; 
-&lt;p&gt;Java Attach Socket 文件被刪除後會導致 Java Agent 注入失敗，在 JDK 8 上只能通過重啓解決，而 JDK 17 會重新創建一個新的文件。&lt;/p&gt; 
-&lt;h4&gt;1.3.5 彈性元空間[4]&lt;/h4&gt; 
-&lt;p&gt;更及時地將未使用的元空間內存回收，減少元空間佔用的內存。&lt;/p&gt; 
-&lt;ol start="2"&gt; 
- &lt;li&gt;JDK17+ZGC 在安全領域的實踐&lt;/li&gt; 
-&lt;/ol&gt; 
-&lt;hr&gt; 
-&lt;h3&gt;2.1 美團 JDK 的現狀&lt;/h3&gt; 
-&lt;p&gt;在美團信息安全部，JDK8（Oracle JDK8u201）依然是主流版本，其次是 Open JDK17，剩下為 Open JDK 11。&lt;/p&gt; 
-&lt;p&gt;&lt;img src="https://oscimg.oschina.net/oscnet//741b89994a9cb115f8cfa24e32a8c514.png" alt="" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;h3&gt;2.2 ZGC 適用場景&lt;/h3&gt; 
-&lt;p&gt;&lt;img src="https://oscimg.oschina.net/oscnet//63b1d3093a63550bd74f5489a0c68462.png" alt="" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;ul&gt; 
- &lt;li&gt;服務器成本壓力大：服務器數量大於 100 台、單機配置大於 16C16G、Java 堆內存超過 16G 等。&lt;/li&gt; 
- &lt;li&gt;單機 CPU 高：峯值大約在 50%&lt;/li&gt; 
-&lt;/ul&gt; 
-&lt;p&gt;&lt;img src="https://oscimg.oschina.net/oscnet//33bd0463bac3ff69b941c53beb498801.png" alt="" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;ul&gt; 
- &lt;li&gt;性能火焰圖中 GC 佔比高&lt;/li&gt; 
- &lt;li&gt;高峯期故障雷達、監控大盤和服務日誌等告警頻繁&lt;/li&gt; 
-&lt;/ul&gt; 
-&lt;h3&gt;2.3 ZGC 效果&lt;/h3&gt; 
-&lt;h4&gt;2.3.1 性能壓測效果&lt;/h4&gt; 
-&lt;p&gt;在測試服務不同接口中，ZGC 在高 QPS 場景中收益較大（服務的 QPS 超過 1 萬）：&lt;/p&gt; 
-&lt;ul&gt; 
- &lt;li&gt;&lt;strong&gt;TP9999&lt;/strong&gt;：下降 220~380ms，下降幅度 18%~74%。&lt;/li&gt; 
- &lt;li&gt;&lt;strong&gt;TP999&lt;/strong&gt;：下降 60-125ms，下降幅度 10%~63%。&lt;/li&gt; 
- &lt;li&gt;&lt;strong&gt;TP99&lt;/strong&gt;：下降 3ms-20ms，下降幅度 0%-25%。&lt;/li&gt; 
-&lt;/ul&gt; 
-&lt;p&gt;一些重度依賴外部的接口中性能優化不大，原因是這些服務的響應時間瓶頸不是 GC，而是外部依賴的性能，在一些低 QPS 接口中對比不太明顯。&lt;/p&gt; 
-&lt;h4&gt;2.3.2 案例 1：智能決策系統（JDK 11+ZGC 升級到 JDK 17+ZGC）&lt;/h4&gt; 
-&lt;p&gt;&lt;strong&gt;峯值 cpu.busy 指標下降&lt;/strong&gt;&lt;/p&gt; 
-&lt;p&gt;升級前: 47.8565%&lt;/p&gt; 
-&lt;p&gt;&lt;img src="https://oscimg.oschina.net/oscnet//f718dd4d745bb448173cbe960ab78a8f.png" alt="" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;p&gt;升級後: 41.4933%&lt;/p&gt; 
-&lt;p&gt;&lt;img src="https://oscimg.oschina.net/oscnet//6da00d3b35876b2f54ef3da8ce680972.png" alt="" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;p&gt;&lt;strong&gt;系統長期運行時 TP9999 性能穩定&lt;/strong&gt;&lt;/p&gt; 
-&lt;p&gt;運行 15 天，JDK11 機器長時間不重啓三九、四九線會逐漸升高，JDK 17 機器較為穩定。&lt;/p&gt; 
-&lt;p&gt;&lt;img src="https://oscimg.oschina.net/oscnet//a82620036e2172e5eed80eede0944f36.png" alt="" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;p&gt;&lt;strong&gt;服務失敗率顯著降低&lt;/strong&gt;&lt;/p&gt; 
-&lt;p&gt;UGC 集羣升級效果：錯誤數量由峯值 6000 下降到 349。&lt;/p&gt; 
-&lt;p&gt;&lt;img src="https://oscimg.oschina.net/oscnet//9d6499c78dd50077ab3a09c8b9a5fded.png" alt="" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;p&gt;&lt;strong&gt;JVM 元空間使用降低&lt;/strong&gt;&lt;/p&gt; 
-&lt;p&gt;&lt;img src="https://oscimg.oschina.net/oscnet//14e0e2f136345f99ea5521fe4de3de52.png" alt="" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;p&gt;&lt;strong&gt;單機維度高峯期性能指標&lt;/strong&gt;&lt;/p&gt; 
-&lt;p&gt;&lt;img src="https://oscimg.oschina.net/oscnet//1b3e2d500a2966651ec0ac9ecd2a5663.png" alt="" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;h4&gt;2.3.3 案例 2：內容安全核心服務 (JDK 8+CMS 升級到 JDK 17+ZGC）&lt;/h4&gt; 
-&lt;p&gt;該服務是內容安全的代理層，主要負責匹配請求的分發、輔助功能支撐（日誌、監控、熔斷）以及一些個性化業務需求。當前該服務 GC 是 CMS，該服務線上的 Young GC 平均耗時是 17ms，平均每分鐘 GC 次數是 6 次，該服務接口平均響應時間是 2.6ms。&lt;/p&gt; 
-&lt;p&gt;根據文章《&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Ftech.meituan.com%2F2017%2F12%2F29%2Fjvm-optimize.html" target="_blank"&gt;從實際案例聊聊 Java 應用的 GC 優化&lt;/a&gt;》中提供的計算方式，受到 Young GC 影響的請求佔比是：&lt;/p&gt; 
-&lt;p&gt;$$受 GC 影響請求佔比 = \frac{N * \left ( GC 時間 + 接口響應時間 \right ) }{T} = \frac{6 * \left ( 17 + 2.6 \right ) }{60000} = 0.196%$$&lt;/p&gt; 
-&lt;p&gt;即有 0.196% 的請求收到 GC 時間 0-17ms 不等的影響。其中收到 GC 停頓完整影響的請求佔比：&lt;/p&gt; 
-&lt;p&gt;$$受 GC 完整影響請求佔比 = \frac{N * \left (接口響應時間 \right ) }{T} = \frac{6 * 2.6}{60000} = 0.026%$$&lt;/p&gt; 
-&lt;p&gt;即其中有 0.026% 的請求受到完整的 GC 停頓時間影響，即耗時增加 17ms，可以大致理解為請求響應的 9999 線會因 GC 停頓而導致 17ms 的上漲。&lt;/p&gt; 
-&lt;p&gt;根據 ZGC 的 STW 的耗時在毫秒甚至亞毫秒級別，因此理論上升級後服務的 9999 線可以降低 17ms 左右。在實際生產中，還會有 Full GC 的影響，會帶來耗時的進一步提升，ZGC 在該部分可以避免 Full GC 帶來的影響。&lt;/p&gt; 
-&lt;p&gt;服務升級採用的是 Tomcat 9+JDK 17 的配置，錄製線上流量進行壓測，使用同樣的流量對先前採用 CMS 垃圾回收的以及採用 ZGC 垃圾回收方式的同時進行壓測。服務器配置均為 8C16G，800QPS 的壓測，通過 2h 左右的壓測，&lt;/p&gt; 
-&lt;p&gt;&lt;strong&gt;分析接口耗時統計&lt;/strong&gt;：可得到以下數據，發現耗時均有明顯下降，9999 線的下降量低於理論的 17ms，由於實際環境中其他因素的影響也基本符合預期。&lt;/p&gt; 
-&lt;p&gt;&lt;img src="https://oscimg.oschina.net/oscnet//56b4d79c7da3403c9fde82947bf34f88.png" alt="" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;p&gt;分析 CPU 和 JVM 佔用情況：CPU 和 JVM 佔用情況發現，CPU 佔用在峯值處會提升 10% 左右，JVM 佔用情況基本一致。&lt;/p&gt; 
-&lt;p&gt;&lt;img src="https://oscimg.oschina.net/oscnet//5c62be54cdd72cde90060ce5bf8c78cc.png" alt="" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;h3&gt;2.4 ZGC 實現原理簡介&lt;/h3&gt; 
-&lt;blockquote&gt; 
- &lt;p&gt;更多詳情，可參考《&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Ftech.meituan.com%2F2020%2F08%2F06%2Fnew-zgc-practice-in-meituan.html" target="_blank"&gt;新一代垃圾回收器 ZGC 的探索與實踐&lt;/a&gt;》一文。&lt;/p&gt; 
-&lt;/blockquote&gt; 
-&lt;h4&gt;2.4.1 CMS 與 G1 停頓時間瓶頸&lt;/h4&gt; 
-&lt;p&gt;在介紹 ZGC 之前，首先回顧一下 CMS 和 G1 的 GC 過程以及停頓時間的瓶頸。CMS 新生代的 Young GC、G1 和 ZGC 都基於標記-複製算法，但算法具體實現的不同就導致了巨大的性能差異。&lt;/p&gt; 
-&lt;p&gt;標記-複製算法應用在 CMS 新生代（ParNew 是 CMS 默認的新生代垃圾回收器）和 G1 垃圾回收器中。標記-複製算法可以分為三個階段：&lt;/p&gt; 
-&lt;ul&gt; 
- &lt;li&gt;&lt;strong&gt;標記階段&lt;/strong&gt;，即從 GC Roots 集合開始，標記活躍對象；&lt;/li&gt; 
- &lt;li&gt;&lt;strong&gt;轉移階段&lt;/strong&gt;，即把活躍對象複製到新的內存地址上；&lt;/li&gt; 
- &lt;li&gt;&lt;strong&gt;重定位階段&lt;/strong&gt;，因為轉移導致對象的地址發生了變化，在重定位階段，所有指向對象舊地址的指針都要調整到對象新的地址上。&lt;/li&gt; 
-&lt;/ul&gt; 
-&lt;p&gt;下面以 G1 為例，通過 G1 中標記-複製算法過程（G1 的 Young GC 和 Mixed GC 均採用該算法），分析 G1 停頓耗時的主要瓶頸。G1 垃圾回收週期如下圖所示：&lt;/p&gt; 
-&lt;p&gt;&lt;img src="https://oscimg.oschina.net/oscnet//475b53df8e7a764b5b232636407dfcaa.png" alt="" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;p&gt;G1 的混合回收過程可以分為標記階段、清理階段和複製階段：&lt;/p&gt; 
-&lt;p&gt;&lt;strong&gt;標記階段停頓分析&lt;/strong&gt;&lt;/p&gt; 
-&lt;ul&gt; 
- &lt;li&gt;&lt;strong&gt;初始標記階段&lt;/strong&gt;：初始標記階段是指從根節點（GC Roots）出發標記全部直接子節點的過程，該階段是 STW 的。由於 GC Roots 數量不多，通常該階段耗時非常短。&lt;/li&gt; 
- &lt;li&gt;&lt;strong&gt;併發標記階段&lt;/strong&gt;：併發標記階段是指從 GC Roots 開始對堆中對象進行可達性分析，找出存活對象。該階段是併發的，即應用線程和 GC 線程可以同時活動。併發標記耗時相對長很多，但因為不是 STW，所以我們不太關心該階段耗時的長短。&lt;/li&gt; 
- &lt;li&gt;&lt;strong&gt;再標記階段&lt;/strong&gt;：重新標記那些在併發標記階段發生變化的對象。該階段是 STW 的。&lt;/li&gt; 
-&lt;/ul&gt; 
-&lt;p&gt;&lt;strong&gt;清理階段停頓分析&lt;/strong&gt;&lt;/p&gt; 
-&lt;ul&gt; 
- &lt;li&gt;清理階段清點出有存活對象的分區和沒有存活對象的分區，該階段不會清理垃圾對象，也不會執行存活對象的複製。該階段是 STW 的。&lt;/li&gt; 
-&lt;/ul&gt; 
-&lt;p&gt;&lt;strong&gt;複製階段停頓分析&lt;/strong&gt;&lt;/p&gt; 
-&lt;ul&gt; 
- &lt;li&gt;複製算法中的轉移階段需要分配新內存和複製對象的成員變量。轉移階段是 STW 的，其中內存分配通常耗時非常短，但對象成員變量的複製耗時有可能較長，這是因為複製耗時與存活對象數量與對象複雜度成正比。對象越複雜，複製耗時越長。&lt;/li&gt; 
-&lt;/ul&gt; 
-&lt;p&gt;四個 STW 過程中，初始標記因為只標記 GC Roots，耗時較短。再標記因為對象數少，耗時也較短。清理階段因為內存分區數量少，耗時也較短。轉移階段要處理所有存活的對象，耗時會較長。因此，G1 停頓時間的瓶頸主要是標記-複製中的轉移階段 STW。為什麼轉移階段不能和標記階段一樣併發執行呢？主要是 G1 未能解決轉移過程中準確定位對象地址的問題。&lt;/p&gt; 
-&lt;h4&gt;2.4.2 ZGC 原理&lt;/h4&gt; 
-&lt;p&gt;與 CMS 中的 ParNew 和 G1 類似，ZGC 也採用標記-複製算法，不過 ZGC 對該算法做了重大改進：&lt;strong&gt;ZGC 在標記、轉移和重定位階段幾乎都是併發的&lt;/strong&gt;，這是 ZGC 實現停頓時間小於 10ms 目標的最關鍵原因。&lt;/p&gt; 
-&lt;p&gt;ZGC 垃圾回收週期如下圖所示：&lt;/p&gt; 
-&lt;p&gt;&lt;img src="https://oscimg.oschina.net/oscnet//ff472f97b6b955687ebeabd32e9a9ee7.png" alt="" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;p&gt;ZGC 只有三個 STW 階段：&lt;strong&gt;初始標記，再標記，初始轉移&lt;/strong&gt;。其中，初始標記和初始轉移分別都只需要掃描所有 GC Roots，其處理時間和 GC Roots 的數量成正比，一般情況耗時非常短；再標記階段 STW 時間很短，最多 1ms，超過 1ms 則再次進入併發標記階段。即，ZGC 幾乎所有暫停都只依賴於 GC Roots 集合大小，停頓時間不會隨着堆的大小或者活躍對象的大小而增加。與 ZGC 對比，G1 的轉移階段完全 STW 的，且停頓時間隨存活對象的大小增加而增加。&lt;/p&gt; 
-&lt;h4&gt;2.4.3 主要特點&lt;/h4&gt; 
-&lt;ul&gt; 
- &lt;li&gt;&lt;strong&gt;單代&lt;/strong&gt;：ZGC 沒有分代，基於"大部分對象朝生夕死"的假設，沒有 Young GC 的概念（這裏僅指 JDK 17，JDK 21 支持分代回收，性能更高）。&lt;/li&gt; 
- &lt;li&gt;&lt;strong&gt;基於 Region&lt;/strong&gt;： G1 的每個 Region 大小是完全一樣的，而 ZGC 的 Region 更靈活，其中大型 Region 大小不固定,可以動態變化，也不會被重分配，因為複製一個大對象代價太高。&lt;/li&gt; 
- &lt;li&gt;&lt;strong&gt;部分壓縮&lt;/strong&gt;： 基於 Region，"標記-整理"，相對 CMS 壓縮時間更短。&lt;/li&gt; 
- &lt;li&gt;&lt;strong&gt;支持 NUMA&lt;/strong&gt;： 對應有 UMA，每個 CPU 對應有一塊內存，每個 CPU 優先訪問這塊內存。&lt;/li&gt; 
-&lt;/ul&gt; 
-&lt;p&gt;&lt;img src="https://oscimg.oschina.net/oscnet//addc3e92b946e1d9221a8cb50eff2b94.png" alt="" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;ul&gt; 
- &lt;li&gt;&lt;strong&gt;染色指針&lt;/strong&gt;&lt;/li&gt; 
-&lt;/ul&gt; 
-&lt;p&gt;&lt;img src="https://oscimg.oschina.net/oscnet//143532af9ea5101d47ac6e49dec629eb.png" alt="" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;p&gt;以前的垃圾回收器的 GC 信息都保存在對象頭中，ZGC 將 GC 信息保存在了染色指針上,無需進行對象訪問就可以獲得 GC 信息。這就是 ZGC 在標記和轉移階段速度更快的原因。Marked0、Marked1 和 Remapped 這三個虛擬內存作為 ZGC 的三個視圖空間，在同一個時間點內只能有一個有效。ZGC 就是通過這三個視圖空間的切換，來完成併發的垃圾回收。&lt;/p&gt; 
-&lt;ul&gt; 
- &lt;li&gt;讀屏障&lt;/li&gt; 
-&lt;/ul&gt; 
-&lt;p&gt;讀屏障，在標記和移動對象的階段，每次從堆裏對象的引用類型中讀取一個指針的時候，都需要加上一個 Load Barriers。用於確定對象的引用地址是否滿足條件，並作出相應動作。&lt;/p&gt; 
-&lt;ol start="3"&gt; 
- &lt;li&gt;JDK 17 升級實踐過程&lt;/li&gt; 
-&lt;/ol&gt; 
-&lt;hr&gt; 
-&lt;p&gt;主要分為三個階段：安裝部署、解決兼容性問題、性能測試與參數優化。&lt;/p&gt; 
-&lt;blockquote&gt; 
- &lt;p&gt;如果公司的中間件大部分基於 JDK 8，工程代碼編譯可以基於 JDK 8，運行環境使用 JDK 17。&lt;/p&gt; 
-&lt;/blockquote&gt; 
-&lt;h3&gt;3.1 安裝與兼容性問題&lt;/h3&gt; 
-&lt;p&gt;&lt;strong&gt;1.主要的問題舉例&lt;/strong&gt;&lt;/p&gt; 
-&lt;p&gt;JVM 運行的報錯信息：module java.base does not "opens java.util.concurrent.locks" to unnamed module&lt;/p&gt; 
-&lt;pre&gt;&lt;code&gt;[ERROR] main JsonUtil Json parse failed
-java.lang.reflect.InaccessibleObjectException: Unable to make field private final java.util.concurrent.locks.ReentrantReadWriteLock$ReadLock java.util.concurrent.locks.ReentrantReadWriteLock.readerLock accessible: module java.base does not "opens java.util.concurrent.locks" to unnamed module @1ba9117e
-at java.base/java.lang.reflect.AccessibleObject.checkCanSetAccessible(AccessibleObject.java:354)
-at java.base/java.lang.reflect.AccessibleObject.checkCanSetAccessible(AccessibleObject.java:297)
-at java.base/java.lang.reflect.Field.checkCanSetAccessible(Field.java:178)
-at java.base/java.lang.reflect.Field.setAccessible(Field.java:172)
-at com.fasterxml.jackson.databind.util.ClassUtil.checkAndFixAccess(ClassUtil.java:939)
-at com.fasterxml.jackson.databind.deser.impl.FieldProperty.fixAccess(FieldProperty.java:104)
-&lt;/code&gt;&lt;/pre&gt; 
-&lt;p&gt;&lt;strong&gt;2.原因&lt;/strong&gt;：JDK9 之後 Java API 使用了模塊化設計方案，用戶模塊無法反射調用 Java 代碼，需要使用開啓對應模塊訪問權限（沒有引入新的安全問題，相當於沒有用模塊隔離的功能）。&lt;/p&gt; 
-&lt;p&gt;&lt;strong&gt;3.解決方式&lt;/strong&gt;：　JVM 參數增加如下：&lt;/p&gt; 
-&lt;pre&gt;&lt;code&gt;--add-opens java.base/java.lang=ALL-UNNAMED --add-opens java.base/java.io=ALL-UNNAMED --add-opens java.base/java.math=ALL-UNNAMED --add-opens java.base/java.net=ALL-UNNAMED --add-opens java.base/java.nio=ALL-UNNAMED --add-opens java.base/java.security=ALL-UNNAMED --add-opens java.base/java.text=ALL-UNNAMED --add-opens java.base/java.time=ALL-UNNAMED --add-opens java.base/java.util=ALL-UNNAMED --add-opens java.base/java.util.concurrent=ALL-UNNAMED --add-opens java.base/java.util.concurrent.locks=ALL-UNNAMED --add-opens java.base/java.util.concurrent.atomic=ALL-UNNAMED --add-opens java.base/jdk.internal.access=ALL-UNNAMED --add-opens java.base/jdk.internal.misc=ALL-UNNAMED
-&lt;/code&gt;&lt;/pre&gt; 
-&lt;p&gt;其他軟件等兼容性問題，根據自身服務報錯，對應解決問題。&lt;/p&gt; 
-&lt;h3&gt;3.2 性能壓測&lt;/h3&gt; 
-&lt;ul&gt; 
- &lt;li&gt;&lt;strong&gt;基準&lt;/strong&gt;： JDK 8+CMS&lt;/li&gt; 
- &lt;li&gt;&lt;strong&gt;壓測&lt;/strong&gt;：實驗組和對照組壓測後重啓避免性能優化為結果影響並取平均值&lt;/li&gt; 
- &lt;li&gt;&lt;strong&gt;指標監控&lt;/strong&gt;： 峯值 CPU、平均 CPU、TP9999、報錯數量、GC 總時間和次數、JVM 堆內存和元空間變化等&lt;/li&gt; 
- &lt;li&gt;&lt;strong&gt;其他&lt;/strong&gt;：性能火焰圖&lt;/li&gt; 
-&lt;/ul&gt; 
-&lt;h3&gt;3.3 JVM 參數&lt;/h3&gt; 
-&lt;ul&gt; 
- &lt;li&gt;-Xmx18g -Xms18g 堆大小&lt;/li&gt; 
- &lt;li&gt;-XX:MaxDirectMemorySize=2G 直接內存&lt;/li&gt; 
- &lt;li&gt;-XX:+HeapDumpOnOutOfMemoryError 當 JVM 發生 OOM 時，自動生成 DUMP 文件。&lt;/li&gt; 
- &lt;li&gt;-XX:ReservedCodeCacheSize=256m -XX:InitialCodeCacheSize=256m 設置 codecache 大小，默認 128m&lt;/li&gt; 
- &lt;li&gt;-XX:+UseZGC 使用 ZGC&lt;/li&gt; 
- &lt;li&gt;-XX:ZAllocationSpikeTolerance=2 ZGC 觸發自適應算法的修正係數，默認 2，數值越大，越早的觸發 ZGC&lt;/li&gt; 
- &lt;li&gt;-XX:ZCollectionInterval=0 ZGC 的週期。默認值為 0，表示不需要觸發垃圾回收。固定週期垃圾回收。ZGC 發生的最小時間間隔，單位秒&lt;/li&gt; 
- &lt;li&gt;-XX:ConcGCThreads=4 併發階段的 GC 線程數，默認是總核數的 12.5%&lt;/li&gt; 
- &lt;li&gt;-XX:ZStatisticsInterval=10 控制統計信息輸出的間隔，默認 10s&lt;/li&gt; 
- &lt;li&gt;-XX:ParallelGCThreads=16 並行工作線程數據，STW 階段使用線程數，默認是總核數的 60%&lt;/li&gt; 
- &lt;li&gt;-Xlog:safepoint,classhisto*=trace,age*,gc*=info:file=/opt/logs/logs/gc-%t.log:time,tid,tags:filecount=5,filesize=50m' 設置 GC 日誌中的內容、格式、位置以及每個日誌的大小&lt;/li&gt; 
-&lt;/ul&gt; 
-&lt;p&gt;本服務 prod 機器 16c，16g 成功運行起來的 JVM 參數（還在調整中，僅供參考）：&lt;/p&gt; 
-&lt;pre&gt;&lt;code&gt;-server -Xmx12g -Xms12g -XX:+UnlockExperimentalVMOptions -XX:+UnlockDiagnosticVMOptions -XX:+UseZGC -XX:+UseDynamicNumberOfGCThreads -XX:ConcGCThreads=3 -XX:ParallelGCThreads=8 -XX:ZCollectionInterval=130 -XX:ZAllocationSpikeTolerance=1 -XX:MaxDirectMemorySize=460m -XX:MetaspaceSize=330m -XX:MaxMetaspaceSize=330m -XX:ReservedCodeCacheSize=256m -XX:InitialCodeCacheSize=256m -XX:+UseCountedLoopSafepoints -XX:+SafepointTimeout -XX:SafepointTimeoutDelay=500 -XX:GuaranteedSafepointInterval=0 -XX:+DisableExplicitGC -XX:+HeapDumpOnOutOfMemoryError -XX:ZStatisticsInterval=130 -XX:+PrintGCDetails -Xlog:safepoint,class+load=info,class+unload=info,classhisto*=trace,age*,gc*=info:file=/opt/logs/logs/gc-%t.log:time,tid,tags:filecount=5,filesize=50m --add-opens java.base/java.lang=ALL-UNNAMED --add-opens java.base/java.io=ALL-UNNAMED --add-opens java.base/java.math=ALL-UNNAMED --add-opens java.base/java.net=ALL-UNNAMED --add-opens java.base/java.nio=ALL-UNNAMED --add-opens java.base/java.security=ALL-UNNAMED --add-opens java.base/java.text=ALL-UNNAMED --add-opens java.base/java.time=ALL-UNNAMED --add-opens java.base/java.util=ALL-UNNAMED --add-opens java.base/java.util.concurrent=ALL-UNNAMED --add-opens java.base/java.util.concurrent.locks=ALL-UNNAMED --add-opens java.base/java.util.concurrent.atomic=ALL-UNNAMED --add-opens java.base/jdk.internal.access=ALL-UNNAMED --add-opens java.base/jdk.internal.misc=ALL-UNNAMED --add-opens java.base/sun.reflect.generics.reflectiveObjects=ALL-UNNAMED --add-opens java.base/jdk.internal.perf=ALL-UNNAMED --add-opens java.base/java.instrument=ALL-UNNAMED --add-opens jdk.attach/sun.tools.attach=ALL-UNNAMED 
-&lt;/code&gt;&lt;/pre&gt; 
-&lt;ol start="4"&gt; 
- &lt;li&gt;總結&lt;/li&gt; 
-&lt;/ol&gt; 
-&lt;hr&gt; 
-&lt;ul&gt; 
- &lt;li&gt;ZGC 作為新一代垃圾回收器，各項性能指標都比較突出，升級之後，機器成本和性能收益明顯；&lt;/li&gt; 
- &lt;li&gt;Spring AI SDK 支持的 JDK 版本最小為 17，升級到 JDK 17 能更好地擁抱 AI 新技術；&lt;/li&gt; 
- &lt;li&gt;直接從 JDK 8 升級到 JDK 17 跨度較大，需要解決的兼容性問題較多，如果公司的基礎組件不支持 JDK 17，可以考慮先升級到 JDK 11 做一個過渡；&lt;/li&gt; 
- &lt;li&gt;如果在升級與實踐的過程中遇到了一些問題，可以結合 AI 大模型來給出解決方案，幫助提高升級效率。&lt;/li&gt; 
-&lt;/ul&gt; 
-&lt;p&gt;&lt;strong&gt;註釋&lt;/strong&gt;&lt;/p&gt; 
-&lt;ul&gt; 
- &lt;li&gt;[1] &lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fdocs.oracle.com%2Fen%2Fjava%2Fjavase%2F17%2Flanguage%2Fjava-language-changes-summary.html" target="_blank"&gt;語言特性&lt;/a&gt;&lt;/li&gt; 
- &lt;li&gt;[2] &lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fdocs.oracle.com%2Fen%2Fjava%2Fjavase%2F17%2Fdocs%2Fspecs%2Fman%2Fjpackage.html" target="_blank"&gt;打包工具 jpackage&lt;/a&gt;&lt;/li&gt; 
- &lt;li&gt;[3] &lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fdocs.oracle.com%2Fen%2Fjava%2Fjavase%2F17%2Fcore%2Fprocess-api1.html" target="_blank"&gt;進程相關 API&lt;/a&gt;&lt;/li&gt; 
- &lt;li&gt;[4] &lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fopenjdk.org%2Fjeps%2F387" target="_blank"&gt;彈性元空間&lt;/a&gt;&lt;/li&gt; 
- &lt;li&gt;[5] TP999：指的是 OctoService.TP999&lt;/li&gt; 
- &lt;li&gt;[6] &lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fmalloc.se%2Fblog%2Fzgc-jdk16" target="_blank"&gt;TP9999&lt;/a&gt;&lt;/li&gt; 
-&lt;/ul&gt; 
-&lt;p&gt;&lt;strong&gt;閲讀更多&lt;/strong&gt;&lt;/p&gt; 
-&lt;p&gt;| 關注「美團技術團隊」微信公眾號，在公眾號菜單欄對話框回覆【2024 年貨】、【2023 年貨】、【2022 年貨】、【2021 年貨】、【2020 年貨】、【2019 年貨】、【2018 年貨】、【2017 年貨】等關鍵詞，可查看美團技術團隊歷年技術文章合集。&lt;/p&gt; 
-&lt;p&gt;&lt;img src="https://oscimg.oschina.net/oscnet//99197a0cda5599168313884ca25c4fd6.png" alt="" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;p&gt;| 本文系美團技術團隊出品，著作權歸屬美團。歡迎出於分享和交流等非商業目的轉載或使用本文內容，敬請註明 "內容轉載自美團技術團隊"。本文未經許可，不得進行商業性轉載或者使用。任何商用行為，請發送郵件至 &lt;a href="https://www.oschina.net/action/GoToLink?url=mailto%3Atech%40meituan.com" target="_blank"&gt;tech@meituan.com&lt;/a&gt; 申請授權。&lt;/p&gt;
-                                                                                    &lt;/div&gt;
-                                                                            </description>
-      <link>https://my.oschina.net/meituantech/blog/18627969</link>
-      <guid isPermaLink="false">https://my.oschina.net/meituantech/blog/18627969</guid>
-      <pubDate>Sat, 10 May 2025 03:41:00 GMT</pubDate>
-      <author>原創</author>
-    </item>
-    <item>
-      <title>深圳程序員住車裏，被質疑佔用公共資源</title>
-      <description>&lt;div class="content"&gt;
-                                                                    
-                                                        &lt;p&gt;&lt;span style="color:#000000"&gt;今年 4 月，深圳程序員張運來因不租房住車裏引發大量關注。報道稱，張運來工作日期間天天睡車裏，週五晚上再開車約 300 公里回陽江老家陪家人，週一一早再開車回深圳上班。利用公園的公共衞生間洗漱，每晚只需花費 6 元停車費，每日消費僅 100 元上下。&lt;/span&gt;&lt;/p&gt; 
-&lt;p&gt;&lt;span style="color:#000000"&gt;通過住進車裏，「三年多省了差不多十萬塊錢」。&lt;/span&gt;&lt;/p&gt; 
-&lt;p&gt;&lt;span style="color:#000000"&gt;&lt;img height="416" src="https://oscimg.oschina.net/oscnet/up-a27f5633fe69b3d829c02629eb8616161d2.png" width="300" referrerpolicy="no-referrer"&gt;&lt;/span&gt;&lt;/p&gt; 
-&lt;p&gt;&lt;span style="color:#000000"&gt;但該行為也引來了許多網友的質疑，認為他佔用了公共資源。對此，紅星新聞記者近日專訪張運來。張運來解釋稱，自己並沒有不文明行為。深圳灣晚上的空閒車位很多，他只是剛好利用空閒時間在那邊過夜，最多也只是在公園的洗手間進行刷牙洗臉。&lt;/span&gt;&lt;/p&gt;
-                                                                                &lt;/div&gt;
-                                                                            </description>
-      <link>https://www.oschina.net/news/356800</link>
-      <guid isPermaLink="false">https://www.oschina.net/news/356800</guid>
-      <pubDate>Sat, 10 May 2025 03:20:00 GMT</pubDate>
       <author>來源: OSCHINA</author>
     </item>
   </channel>
