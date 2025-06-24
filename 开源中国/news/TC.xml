@@ -7,8 +7,273 @@
     <generator>RSSHub</generator>
     <webMaster>contact@rsshub.app (RSSHub)</webMaster>
     <language>zh-tw</language>
-    <lastBuildDate>Tue, 24 Jun 2025 02:45:26 GMT</lastBuildDate>
+    <lastBuildDate>Tue, 24 Jun 2025 07:45:57 GMT</lastBuildDate>
     <ttl>5</ttl>
+    <item>
+      <title>curl 之父發文介紹 OpenSSL 分支家族</title>
+      <description>&lt;div class="content"&gt;
+                                                                    
+                                                        &lt;p&gt;curl 之父近日發表文章&lt;u&gt;&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fdaniel.haxx.se%2Fblog%2F2025%2F06%2F23%2Fa-family-of-forks%2F" target="_blank"&gt;介紹&lt;/a&gt;&lt;/u&gt; OpenSSL 分支家族，展示了它們的差異、相似之處，以及支持它們所需的一些見解。&lt;/p&gt; 
+&lt;p&gt;譯文如下：&lt;/p&gt; 
+&lt;hr&gt; 
+&lt;p&gt;curl 支持使用 11 種不同的 TLS 庫進行編譯。其中六個庫是 OpenSSL 或其分支。讓我向你展示它們的差異、相似之處，以及支持它們所需的一些見解。&lt;/p&gt; 
+&lt;h2&gt;&lt;strong&gt;SSLeay&lt;/strong&gt;&lt;/h2&gt; 
+&lt;p&gt;這一切都始於 SSLeay。這是我發現的第一個 SSL 庫，我們使用這個庫在 1998 年春天為 curl 添加了第一個 HTTPS 支持。顯然，SSLeay 項目早在 1995 年就已經啓動了。&lt;/p&gt; 
+&lt;p&gt;那是一個我們還只支持 SSL 的年代；TLS 會在之後才出現。&lt;/p&gt; 
+&lt;p&gt;OpenSSL 一直擁有一個古怪、不一致且極其龐大的 API 集（其中一大部分是從 SSLeay 繼承而來的），這進一步被稀疏的文檔所複雜化，這些文檔留給用戶去依靠自己的想象力和技能去查閲源代碼，以獲取最後的細節解答（即使在 2025 年今天也是如此）。在 curl 中，我們經常收到關於如何使用這個庫的偶爾問題報告，即使已經過了幾十年。 presumably，這同樣適用於所有 OpenSSL 用戶。&lt;/p&gt; 
+&lt;p&gt;OpenSSL 項目經常受到批評，認為他們在幾年前升級到版本 3 之後，在性能方面有所疏忽。他們也一直進展緩慢或不願採用新的 TLS 技術，例如 QUIC 和 ECH。&lt;/p&gt; 
+&lt;p&gt;儘管如此，OpenSSL 已經成為一種主導的 TLS 庫，尤其是在開源領域。&lt;/p&gt; 
+&lt;h2&gt;&lt;strong&gt;LibreSSL&lt;/strong&gt;&lt;/h2&gt; 
+&lt;p&gt;回到 Heartbleed 事件時期，LibreSSL 分叉出來併成為獨立的項目。他們刪除了他們認為不屬於庫中的功能，創建了自己的 TLS 庫 API。幾年後，蘋果在 macOS 上使用 LibreSSL 提供 curl。他們有一些本地修補，使它&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fdaniel.haxx.se%2Fblog%2F2024%2F03%2F08%2Fthe-apple-curl-security-incident-12604%2F" target="_blank"&gt;行為與其他不同&lt;/a&gt;。&lt;/p&gt; 
+&lt;p&gt;LibreSSL 在 QUIC 的支持上落後，不支持 SSLKEYLOGFILE、ECH，而且如今在實現新功能方面似乎比 OpenSSL 更慢。&lt;/p&gt; 
+&lt;p&gt;curl 自從創建以來就與 LibreSSL 完美配合。&lt;/p&gt; 
+&lt;h2&gt;&lt;strong&gt;BoringSSL&lt;/strong&gt;&lt;/h2&gt; 
+&lt;p&gt;在 Heartbleed 事件時期由 Google 分叉出來。&lt;em&gt;Google 為 Google 做的&lt;/em&gt;，他們沒有公開發布過，清理了很多原型和變量類型，並在 QUIC API 推動中處於領先地位。總體而言，大多數新的 TLS 發明都已在 BoringSSL 中實現和支持，比其他分叉更早。&lt;/p&gt; 
+&lt;p&gt;Google 在 Android 的其他地方也使用這個。&lt;/p&gt; 
+&lt;p&gt;curl 從創建以來就與 BoringSSL 完美配合。&lt;/p&gt; 
+&lt;h2&gt;&lt;strong&gt;AmiSSL&lt;/strong&gt;&lt;/h2&gt; 
+&lt;p&gt;一個為使 OpenSSL 能夠在 AmigaOS 上正確編譯和運行而製作的 OpenSSL 分支或變種。我對它瞭解不多，但在這裏包含它是為了完整性。它似乎基本上是為 Amiga 系統移植的 OpenSSL。&lt;/p&gt; 
+&lt;p&gt;當為 AmigaOS 編譯時，curl 也能與 AmiSSL 兼容。&lt;/p&gt; 
+&lt;h2&gt;&lt;strong&gt;QuicTLS&lt;/strong&gt;&lt;/h2&gt; 
+&lt;p&gt;由於 OpenSSL 延遲響應並拒絕提供 QUIC API，其他分支在 2020 年初期（我尚未看到有人解釋原因）採取了行動。微軟和 Akamai 分支了 OpenSSL，產生了 &lt;em&gt;QuicTLS&lt;/em&gt;，此後它試圖成為一個 &lt;em&gt;輕量級&lt;/em&gt; 的分支，主要只是在與 BoringSSL 和 LibreSSL 支持相同風格的基礎上添加 QUIC API。&lt;em&gt;輕量級&lt;/em&gt; 的含義是它們密切跟蹤上游開發，並且除了 QUIC API 之外，沒有打算在其他方面偏離。&lt;/p&gt; 
+&lt;p&gt;在 OpenSSL 3.5 中，他們終於提供了一個與 fork（包括 QuicTLS）提供的 QUIC API 不同的 QUIC API。我認為這促使 QuicTLS 重新考慮其未來的發展方向，但我們仍在等待確切的進展。&lt;/p&gt; 
+&lt;p&gt;curl 自從創建以來就與 QuicTLS 完美配合。&lt;/p&gt; 
+&lt;h2&gt;&lt;strong&gt;AWS-LC&lt;/strong&gt;&lt;/h2&gt; 
+&lt;p&gt;這是由亞馬遜維護的一個 BoringSSL 分支。與 BoringSSL 不同的是，他們確實進行了實際的（頻繁的）發佈，因此看起來像一個項目，即使是非亞馬遜用戶也可以實際使用和依賴——儘管他們存在的目的是 _維護一個與 AWS 使用的軟件和應用程序兼容的安全 libcrypto _。令人驚訝的是，他們維護的不僅僅是「僅僅」 libcrypto。&lt;/p&gt; 
+&lt;p&gt;這個分支最近顯示出大量的活動，甚至在覈心部分也是如此。&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fwww.haproxy.com%2Fblog%2Fstate-of-ssl-stacks" target="_blank"&gt;2025 年 5 月由 HAProxy 團隊進行的基準測試&lt;/a&gt; 表明，AWS-LC 顯著優於 OpenSSL。&lt;/p&gt; 
+&lt;p&gt;AWS-LC 提供的 API 與 BoringSSL 的 API 並不完全相同。&lt;/p&gt; 
+&lt;p&gt;curl 與 AWS-LC 從 2023 年初開始就配合得非常好。&lt;/p&gt; 
+&lt;h2&gt;&lt;strong&gt;家族樹&lt;/strong&gt;&lt;/h2&gt; 
+&lt;p&gt;&lt;img alt="" src="https://static.oschina.net/uploads/img/202506/24145235_ALUZ.jpg" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;em&gt;OpenSSL 分支家族樹&lt;/em&gt;&lt;/p&gt; 
+&lt;h2&gt;OpenSSL 分支家族現狀&lt;/h2&gt; 
+&lt;p&gt;這六個不同的分支各自有其特定的特性、API 和功能，這些在不同版本中也會發生變化。目前我們仍然支持這六個分支，因為人們似乎仍在使用它們，而且維護起來是可行的。&lt;/p&gt; 
+&lt;p&gt;我們使用相同的 &lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fgithub.com%2Fcurl%2Fcurl%2Fblob%2Fmaster%2Flib%2Fvtls%2Fopenssl.c" target="_blank"&gt;單個源代碼文件&lt;/a&gt; 支持所有這些分支，並通過不斷增長的 #ifdef 邏輯來實現。我們通過在 CI 中使用這些分支進行構建驗證，儘管只使用了一小部分最近的版本。&lt;/p&gt; 
+&lt;p&gt;隨着時間的推移，這些分支似乎正在逐漸彼此分離。我認為這還不構成一個問題，但我們當然在監控這種情況，可能在某個時候需要進行一些內部重構以適應這種變化。&lt;/p&gt; 
+&lt;h2&gt;&lt;strong&gt;未來&lt;/strong&gt;&lt;/h2&gt; 
+&lt;p&gt;我無法預見會發生什麼。如果歷史是一堂課，我們似乎更傾向於走向更多的分支，而不是更少的分支。但當然，每一位閲讀這篇博客文章的讀者現在都會思考，所有這些分支所耗費的重複努力以及由此帶來的隱含低效性到底有多少。這不僅適用於這些庫本身，也適用於像 curl 這樣的用戶。&lt;/p&gt; 
+&lt;p&gt;我認為我們只能等待觀察。&lt;/p&gt;
+                                                                                &lt;/div&gt;
+                                                                            </description>
+      <link>https://www.oschina.net/news/357005/a-family-of-openssl-forks</link>
+      <guid isPermaLink="false">https://www.oschina.net/news/357005/a-family-of-openssl-forks</guid>
+      <pubDate>Tue, 24 Jun 2025 06:52:53 GMT</pubDate>
+      <author>來源: OSCHINA</author>
+    </item>
+    <item>
+      <title>Kotlin 2.2.0 發佈</title>
+      <description>&lt;div class="content"&gt;
+                                                                    
+                                                        &lt;p style="margin-left:0; margin-right:0; text-align:start"&gt;&lt;span style="color:#19191c"&gt;Kotlin 2.2.0 版本現已&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fblog.jetbrains.com%2Fkotlin%2F2025%2F06%2Fkotlin-2-2-0-released%2F" target="_blank"&gt;發佈&lt;/a&gt;。此版本包含全新和穩定的語言功能、工具更新、針對不同平台的性能改進以及重要修復。&lt;/span&gt;&lt;/p&gt; 
+&lt;p style="margin-left:0; margin-right:0; text-align:start"&gt;&lt;span style="color:#19191c"&gt;一些亮點更新內容如下：&lt;/span&gt;&lt;/p&gt; 
+&lt;ul style="margin-left:0; margin-right:0"&gt; 
+ &lt;li&gt;&lt;strong&gt;Language：&lt;/strong&gt;預覽版中的新語言功能，包括上下文參數。一些之前處於實驗階段的功能現已穩定，例如 guard conditions、non-local break and continue 以及 multi-dollar interpolation。&lt;/li&gt; 
+ &lt;li&gt;&lt;strong&gt;Kotlin compiler：&lt;/strong&gt;統一管理編譯器警告。&lt;/li&gt; 
+ &lt;li&gt;&lt;strong&gt;Kotlin/JVM：&lt;/strong&gt;接口函數的默認方法生成發生變化。&lt;/li&gt; 
+ &lt;li&gt;&lt;strong&gt;Kotlin/Native：&lt;/strong&gt;&amp;nbsp;LLVM 19 和用於跟蹤和調整內存消耗的新功能。&lt;/li&gt; 
+ &lt;li&gt;&lt;strong&gt;Kotlin/Wasm：&lt;/strong&gt;分離的 Wasm target，以及為每個項目配置 Binaryen 的功能。&lt;/li&gt; 
+ &lt;li&gt;&lt;strong&gt;Kotlin/JS：&lt;/strong&gt;修復為@JsPlainObject 接口生成的複製方法。&lt;/li&gt; 
+ &lt;li&gt;&lt;strong&gt;Gradle：&lt;/strong&gt;&amp;nbsp;Kotlin Gradle 插件中包含二進制兼容性驗證。&lt;/li&gt; 
+ &lt;li&gt;&lt;strong&gt;Standard library：&lt;/strong&gt;穩定的 Base64 和 HexFormat API。&lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;p style="margin-left:0; margin-right:0; text-align:start"&gt;&lt;span style="color:#19191c"&gt;有關更改的完整列表可參閲&amp;nbsp;&lt;a href="https://www.oschina.net/action/GoToLink?url=http%3A%2F%2Fkotlinlang.org%2Fdocs%2Fwhatsnew22.html" target="_blank"&gt;Kotlin 2.2.0 中的新增功能&lt;/a&gt;或&amp;nbsp;&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fgithub.com%2FJetBrains%2Fkotlin%2Freleases%2Ftag%2Fv2.2.0" target="_blank"&gt;GitHub 上的發行説明&lt;/a&gt;。&lt;/span&gt;&lt;/p&gt;
+                                                                                &lt;/div&gt;
+                                                                            </description>
+      <link>https://www.oschina.net/news/357003/kotlin-2-2-0-released</link>
+      <guid isPermaLink="false">https://www.oschina.net/news/357003/kotlin-2-2-0-released</guid>
+      <pubDate>Sun, 11 May 2025 06:34:00 GMT</pubDate>
+      <author>來源: OSCHINA</author>
+    </item>
+    <item>
+      <title>MiniMax 上線 AI 音色設計功能</title>
+      <description>&lt;div class="content"&gt;
+                                                                    
+                                                        &lt;p&gt;MiniMax 稀宇科技&lt;u&gt;&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fmp.weixin.qq.com%2Fs%2FSUqhAd54Q15Huq-AQ9EeCA" target="_blank"&gt;宣佈&lt;/a&gt;&lt;/u&gt;旗下 MiniMax Audio 上線了「Voice Design 音色設計」功能。&lt;/p&gt; 
+&lt;p&gt;音色的維度一般分成音頻質量、發聲方式、情感基調以及人物畫像。該功能根據用戶對音色需求的描述，模型自動拆解成音色相關的描述信息，並根據上述的描述來得到一個新的音色編碼。同視頻模型類似，該功能支持對音色的抽卡，如果不滿意，多試幾次，很容易得到理想中的專屬獨一音色，並可存儲下來做後續的音頻內容創作。&lt;/p&gt; 
+&lt;p&gt;據介紹，通過 Voice Design 音色設計，用戶可以通過自然語言來描述自己心中所想的音色，實現對多個維度的精準控制，甚至生成世界上不存在的音色。同時，Voice Design 與 Speech 02 語音模型在鏈路上相配合，用戶在文字轉語音中可真正實現了「所需即所得」，以「任意語言 × 任意口音 × 任意音色」，實現可全自定義的無限組合。&lt;/p&gt; 
+&lt;p&gt;此外，Voice Design 解決了語音合成領域的兩個挑戰：難以精準匹配用戶各個細分場景下的多樣需求；復刻音色需要用戶花費大量時間準備輸入素材，並且存在潛在的版權風險。&lt;/p&gt; 
+&lt;p&gt;&lt;img src="https://static.oschina.net/uploads/space/2025/0624/142945_xJzZ_2720166.png" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p&gt;目前，Voice Design 已上線 MiniMax Audio 國內、海外兩個版本。&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt;國內版：minimaxi.com/audio&lt;/li&gt; 
+ &lt;li&gt;海外版：minimax.io/audio&lt;/li&gt; 
+&lt;/ul&gt;
+                                                                                &lt;/div&gt;
+                                                                            </description>
+      <link>https://www.oschina.net/news/357002/minimax-voice-design</link>
+      <guid isPermaLink="false">https://www.oschina.net/news/357002/minimax-voice-design</guid>
+      <pubDate>Sun, 11 May 2025 06:31:00 GMT</pubDate>
+      <author>來源: OSCHINA</author>
+    </item>
+    <item>
+      <title>空間理解模型 SpatialLM 正式發佈首份技術報告</title>
+      <description>&lt;div class="content"&gt;
+                                                                    
+                                                        &lt;p&gt;近日，空間理解模型 SpatialLM 正式發佈首份技術報告。這一模型此前曾與 DeepSeek-V3、通義千問 Qwen2.5-Omni 一起登上全球最大的開源社區 HuggingFace 全球趨勢榜前三。&lt;/p&gt; 
+&lt;p&gt;&lt;img src="https://static.oschina.net/uploads/space/2025/0624/140955_PZlV_2720166.png" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p&gt;作為一款將大語言模型擴展到 3D 空間理解任務中的模型，SpatialLM 能從 3D 點雲輸入生成結構化的空間場景描述，這一過程突破了大語言模型對物理世界幾何與空間關係的理解侷限，讓機器具備空間認知與推理能力，為具身智能等相關領域提供空間理解基礎訓練框架。&lt;/p&gt; 
+&lt;p&gt;在開源後經過廣泛的實際驗證，本次技術報告聚焦 SpatialLM 1.1 升級版本，其不僅包含了詳細的消融實驗與訓練配方，還在點雲編碼方式、分辨率、用戶指定識別類目等維度上實現優化。&lt;/p&gt; 
+&lt;p&gt;多項基準測試數據顯示：該模型在任務數據集微調後，在空間佈局識別、3D 物體檢測任務中，均達到了相比與最新專業模型持平或更優的效果。&lt;/p&gt; 
+&lt;p&gt;&lt;img height="309" src="https://static.oschina.net/uploads/space/2025/0624/141014_3iIl_2720166.png" width="1280" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p&gt;本次報告重點圍繞&lt;strong&gt;算法框架&lt;/strong&gt;和&lt;strong&gt;訓練數據&lt;/strong&gt;兩方面展開。&lt;/p&gt; 
+&lt;p&gt;&lt;strong&gt;在算法架構方面&lt;/strong&gt;，SpatialLM 將大語言模型（LLMs）擴展到 3D 空間理解任務中，特別在結構化室內建模領域實現了重要突破。&lt;/p&gt; 
+&lt;p&gt;這一技術路線打破了傳統任務專屬架構（task-specific architecture）的限制，創新性地採用可編輯的文本形式表達場景結構。這一創新設計具有雙重技術優勢：&lt;/p&gt; 
+&lt;p&gt;一方面&lt;strong&gt;發揮了羣核科技強大數據集能力&lt;/strong&gt;，通過持續訓練不斷優化空間識別精度；另一方面&lt;strong&gt;通過接入大語言模型，系統可直接接收並理解自然語言指令&lt;/strong&gt;，使空間理解模型從簡單任務執行工具轉變為能夠真正理解用戶意圖的智能系統，從而推進了 LLMs 在空間理解和推理方向的能力邊界。&lt;/p&gt; 
+&lt;p&gt;&lt;img src="https://static.oschina.net/uploads/space/2025/0624/141138_pYOw_2720166.png" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;em&gt;&lt;strong&gt;&lt;strong&gt;SpatialLM 模型的網絡結構&lt;/strong&gt;&lt;/strong&gt;&lt;/em&gt;&lt;/p&gt; 
+&lt;p&gt;在訓練數據方面，SpatialLM 構建了一個全新的包含 3D 結構化信息的合成點雲數據集，打破了真實數據稀缺且難以標註的侷限。&lt;/p&gt; 
+&lt;p&gt;&lt;img height="1149" src="https://static.oschina.net/uploads/space/2025/0624/141210_bppP_2720166.png" width="974" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p&gt;&amp;nbsp;&lt;/p&gt; 
+&lt;p&gt;該數據集包含超 1.2 萬場景、5.4 萬個房間的結構化室內點雲數據，其規模遠超 ScanNet（僅包含 1,513 個場景）等現有數據集。所有數據均源自真實項目的專業設計模型，經嚴格篩選與解析後形成符合真實世界統計分佈的虛擬環境，相較程序化生成的 ProcTHOR 等數據集具有更高真實性。&lt;/p&gt; 
+&lt;p&gt;項目地址：https://manycore-research.github.io/SpatialLM/&lt;br&gt; 報告詳情：https://arxiv.org/abs/2506.07491&lt;/p&gt;
+                                                                                &lt;/div&gt;
+                                                                            </description>
+      <link>https://www.oschina.net/news/356998</link>
+      <guid isPermaLink="false">https://www.oschina.net/news/356998</guid>
+      <pubDate>Sun, 11 May 2025 06:12:00 GMT</pubDate>
+      <author>來源: OSCHINA</author>
+    </item>
+    <item>
+      <title>Roo Code 3.21.4 發佈，添加新的 Claude Code 提供商</title>
+      <description>&lt;div class="content"&gt;
+                                                                    
+                                                        &lt;p&gt;Roo Code 3.21.4 已發佈，此版本添加了&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fdocs.roocode.com%2Fproviders%2Fclaude-code" target="_blank"&gt;新的 Claude Code 提供商&lt;/a&gt;，允許用戶通過 Claude Code 直接在 Roo Code 中使用其現有的 Claude Max 訂閲。這意味着用戶可以利用其訂閲權益，無需額外支付按令牌計費的 API 費用，並可訪問 Claude Sonnet 4、Opus 4 等高級模型，同時享受零設置複雜性和對 Claude 思維模式及推理能力的完全訪問。&lt;/p&gt; 
+&lt;p&gt;此次更新還修復了多文件差異應用時的起始行參數不正確問題，以及 Ollama 在某些模型上出現的驗證錯誤。&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt;新增 Claude Code provider 可用於本地 CLI 集成，允許用戶將 Claude Max 訂閲直接在 Roo Code 中使用，連接訂閲後，使用訂閲福利而非按 token 支付 API 費用，還可使用 Claude Sonnet 4、Opus 4 等高級模型，且在初始設置時選擇 Claude Code 作為提供商，無需 API 密鑰，還能完全訪問 Claude 的思考模式和推理能力。&lt;/li&gt; 
+ &lt;li&gt;修復了多個文件差異應用時起始行參數未正確工作的錯誤，以及解決了導致 Ollama 無法與某些模型配合使用的驗證錯誤。&lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;p&gt;詳情查看&amp;nbsp;&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fdocs.roocode.com%2Fupdate-notes%2Fv3.21.4" target="_blank"&gt;https://docs.roocode.com/update-notes/v3.21.4&lt;/a&gt;&lt;/p&gt;
+                                                                                &lt;/div&gt;
+                                                                            </description>
+      <link>https://www.oschina.net/news/356980/roocode-3-21-4</link>
+      <guid isPermaLink="false">https://www.oschina.net/news/356980/roocode-3-21-4</guid>
+      <pubDate>Sun, 11 May 2025 03:54:00 GMT</pubDate>
+      <author>來源: OSCHINA</author>
+    </item>
+    <item>
+      <title>vivo Pulsar 萬億級消息處理實踐 (2) - 從 0 到 1 建設 Pulsar 指標監控鏈路</title>
+      <description>&lt;div class="content"&gt;
+                                                                                                                    
+                                                                                                                                                    &lt;blockquote&gt; 
+ &lt;p&gt;作者：vivo 互聯網大數據團隊- You Shuo&lt;/p&gt; 
+ &lt;p&gt;本文是《vivo Pulsar 萬億級消息處理實踐》系列文章第 2 篇，Pulsar 支持上報分區粒度指標，Kafka 則沒有分區粒度的指標，所以 Pulsar 的指標量級要遠大於 Kafka。在 Pulsar 平台建設初期，提供一個穩定、低時延的監控鏈路尤為重要。&lt;/p&gt; 
+ &lt;p&gt;系列文章：&lt;/p&gt; 
+ &lt;ol&gt; 
+  &lt;li&gt;《&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fmp.weixin.qq.com%2Fs%3F__biz%3DMzI4NjY4MTU5Nw%3D%3D%26mid%3D2247501335%26idx%3D1%26sn%3D3701be0b8b7b789e29c1ca53ba142e9d%26scene%3D21%23wechat_redirect" target="_blank"&gt;vivo Pulsar 萬億級消息處理實踐-數據發送原理解析和性能調優&lt;/a&gt;》&lt;/li&gt; 
+ &lt;/ol&gt; 
+ &lt;p&gt;本文是基於 Pulsar 2.9.2/kop-2.9.2 展開的。&lt;/p&gt; 
+&lt;/blockquote&gt; 
+&lt;h1&gt;一、背景&lt;/h1&gt; 
+&lt;p&gt;作為一種新型消息中間件，Pulsar 在架構設計及功能特性等方面要優於 Kafka，所以我們引入 Pulsar 作為我們新一代的消息中間件。在對 Pulsar 進行調研的時候（比如：性能測試、故障測試等），針對 Pulsar 提供一套可觀測系統是必不可少的。Pulsar 的指標是面向雲原生的，並且官方提供了 Prometheus 作為 Pulsar 指標的採集、存儲和查詢的方案，但是使用 Prometheus 採集指標面臨以下幾個&lt;strong&gt;問題&lt;/strong&gt;：&lt;/p&gt; 
+&lt;ol&gt; 
+ &lt;li&gt; &lt;p&gt;Prometheus 自帶的時序數據庫不是分佈式的，它受單機資源的限制；&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;Prometheus 在存儲時序數據時消耗大量的內存，並且 Prometheus 在實現高效查詢和聚合計算的時候會消耗大量的 CPU。&lt;/p&gt; &lt;/li&gt; 
+&lt;/ol&gt; 
+&lt;p&gt;除了以上列出的可觀測系統問題，Pulsar 還有一些指標本身的問題，這些問題&lt;strong&gt;包括&lt;/strong&gt;：&lt;/p&gt; 
+&lt;ol&gt; 
+ &lt;li&gt; &lt;p&gt;Pulsar 的訂閲積壓指標單位是 entry 而不是條數，這會嚴重影響從 Kafka 遷移過來的用戶的使用體驗及日常運維工作；&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;Pulsar 沒有 bundle 指標，因為 Pulsar 自動均衡的最小單位是 bundle，所以 bundle 指標是調試 Pulsar 自動均衡參數時重要的觀測依據；&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;kop 指標上報異常等問題。&lt;/p&gt; &lt;/li&gt; 
+&lt;/ol&gt; 
+&lt;p&gt;針對以上列出的幾個問題，我們在下面分別展開敍述。&lt;/p&gt; 
+&lt;h1&gt;二、Pulsar 監控告警系統架構&lt;/h1&gt; 
+&lt;p&gt;在上一章節我們列出了使用 Prometheus 作為觀測系統的侷限，由於 Pulsar 的指標是面向雲原生的，採用 Prometheus 採集 Pulsar 指標是最好的選擇，但對於指標的存儲和查詢我們使用第三方存儲來減輕 Prometheus 的壓力，整個監控告警系統架構如下圖所示：&lt;/p&gt; 
+&lt;p&gt;&lt;img src="https://oscimg.oschina.net/oscnet//c032b72031868384106c1cc665fafc42.gif" alt="圖片" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p&gt;在整個可觀測系統中，各組件的職能如下：&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt; &lt;p&gt;Pulsar、bookkeeper 等組件提供暴露指標的接口&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;Prometheus 訪問 Pulsar 指標接口採集指標&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;adaptor 提供了服務發現、Prometheus 格式指標的反序列化和序列化以及指標轉發遠端存儲的能力，這裏的遠端存儲可以是 Pulsar 或 Kafka&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;Druid 消費指標 topic 並提供數據分析的能力&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;vivo 內部的檢測告警平台提供了動態配置檢測告警的能力&lt;/p&gt; &lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;p&gt;基於以上監控系統的設計邏輯，我們在具體實現的過程中遇到了幾個比較&lt;strong&gt;關鍵的問題：&lt;/strong&gt;&lt;/p&gt; 
+&lt;p&gt;**一、**adaptor 需要接收 Pulsar 所有線上服務的指標併兼容 Prometheus 格式數據，所以在調研 Prometheus 採集 Pulsar 指標時，我們基於 Prometheus 的官方文檔開發了 adaptor，在 adaptor 裏實現了服務加入集羣的發現機制以及動態配置 prometheus 採集新新加入服務的指標：&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt; &lt;p&gt;Prometheus 動態加載配置：&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fprometheus.io%2Fdocs%2Fprometheus%2Flatest%2Fconfiguration%2Fconfiguration%2F" target="_blank"&gt;Prometheus 配置-官方文檔&lt;/a&gt;&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;Prometheus 自定義服務發現機制：&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fprometheus.io%2Fblog%2F2015%2F06%2F01%2Fadvanced-service-discovery%2F" target="_blank"&gt;Prometheus 自定義服務發現-官方文檔&lt;/a&gt;&lt;/p&gt; &lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;p&gt;在可以動態配置 Prometheus 採集所有線上正在運行的服務指標之後，由於 Prometheus 的指標是基於 protobuf 協議進行傳輸的，並且 Prometheus 是基於 go 編寫的，所以為了適配 Java 版本的 adaptor，我們基於 Prometheus 和 go 提供的指標格式定義文件（remote.proto、types.proto 和 gogo.proto）生成了 Java 版本的指標接收代碼，並將 protobuf 格式的指標反序列化後寫入消息中間件。&lt;/p&gt; 
+&lt;p&gt;**二、**Grafana 社區提供的 Druid 插件不能很好的展示 Counter 類型的指標，但是 bookkeeper 上報的指標中又有很多是 Counter 類型的指標，vivo 的 Druid 團隊對該插件做了一些改造，新增了計算速率的聚合函數。&lt;/p&gt; 
+&lt;p&gt;druid 插件的安裝可以參考官方文檔（&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fgrafana.com%2Fgrafana%2Fplugins%2Fabhisant-druid-datasource%2F" target="_blank"&gt;詳情&lt;/a&gt;）&lt;/p&gt; 
+&lt;p&gt;**三、**由於 Prometheus 比較依賴內存和 CPU，而我們的機器資源組又是有限的，在使用遠端存儲的基礎上，我們針對該問題優化了一些 Prometheus 參數，這些參數包括：&lt;/p&gt; 
+&lt;blockquote&gt; 
+ &lt;ul&gt; 
+  &lt;li&gt; &lt;p&gt;&lt;strong&gt;--storage.tsdb.retention=30m&lt;/strong&gt;：該參數配置了數據的保留時間為 30 分鐘，在這個時間之後，舊的數據將會被刪除。&lt;/p&gt; &lt;/li&gt; 
+  &lt;li&gt; &lt;p&gt;&lt;strong&gt;--storage.tsdb.min-block-duration=5m&lt;/strong&gt;：該參數配置了生成塊（block）的最小時間間隔為 5 分鐘。塊是一組時序數據的集合，它們通常被一起壓縮和存儲在磁盤上，該參數間接控制 Prometheus 對內存的佔用。&lt;/p&gt; &lt;/li&gt; 
+  &lt;li&gt; &lt;p&gt;&lt;strong&gt;--storage.tsdb.max-block-duration=5m&lt;/strong&gt;：該參數配置了生成塊（block）的最大時間間隔為 5 分鐘。如果一個塊的時間跨度超過這個參數所設的時間跨度，則這個塊將被分成多個子塊。&lt;/p&gt; &lt;/li&gt; 
+  &lt;li&gt; &lt;p&gt;&lt;strong&gt;--enable-feature=memory-snapshot-on-shutdown&lt;/strong&gt;：該參數配置了在 Prometheus 關閉時，自動將當前內存中的數據快照寫入到磁盤中，Prometheus 在下次啓動時讀取該快照從而可以更快的完成啓動。&lt;/p&gt; &lt;/li&gt; 
+ &lt;/ul&gt; 
+&lt;/blockquote&gt; 
+&lt;h1&gt;三、Pulsar 指標優化&lt;/h1&gt; 
+&lt;p&gt;Pulsar 的指標可以成功觀測之後，我們在日常的調優和運維過程中發現了一些 Pulsar 指標本身存在的問題，這些問題包括準確性、用戶體驗、以及性能調優等方面，我們針對這些問題做了一些優化和改造，使得 Pulsar 更加通用、易維護。&lt;/p&gt; 
+&lt;h2&gt;3.1 Pulsar 消費積壓指標&lt;/h2&gt; 
+&lt;p&gt;原生的 Pulsar 訂閲積壓指標單位是 entry，從 Kafka 遷移到 Pulsar 的用戶希望 Pulsar 能夠和 Kafka 一樣，提供以消息條數為單位的積壓指標，這樣可以方便用戶判斷具體的延遲大小並儘量不改變用戶使用消息中間件的習慣。&lt;/p&gt; 
+&lt;p&gt;在確保配置 brokerEntryMetadataInterceptors=&lt;/p&gt; 
+&lt;p&gt;org.apache.pulsar.common.intercept.AppendIndexMetadataInterceptor 情況下，Pulsar broker 端在往 bookkeeper 端寫入 entry 前，通過攔截器往 entry 的頭部添加索引元數據，該索引在同一分區內單調遞增，entry 頭部元數據示例如下：&lt;/p&gt; 
+&lt;pre&gt;&lt;code&gt;biz-log-partition-1 -l 24622961 -e 6
+Batch Message ID: 24622961:6:0
+Publish time: 1676917007607
+Event time: 0
+Broker entry metadata index: 157398560244
+Properties:
+"X-Pulsar-batch-size    2431"
+"X-Pulsar-num-batch-message    50"
+&lt;/code&gt;&lt;/pre&gt; 
+&lt;p&gt;以分區為指標統計的最小單位，基於 last add confirmed entry 和 last consumed entry 計算兩個 entry 中的索引差值，即是訂閲在每個分區的數據積壓。下面是 cursor 基於訂閲位置計算訂閲積壓的示意圖，其中 last add confirmed entry 在攔截器中有記錄最新索引，對於 last consumed entry，cursor 需要從 bookkeeper 中讀取，這個操作可能會涉及到 bookkeeper 讀盤，所以在收集延遲指標的時候可能會增加採集的耗時。&lt;/p&gt; 
+&lt;p&gt;&lt;img src="https://oscimg.oschina.net/oscnet//f954824fee0a365add038a1a9aed4e3b.gif" alt="圖片" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;strong&gt;效果&lt;/strong&gt;&lt;/p&gt; 
+&lt;p&gt;上圖是新訂閲積壓指標和原生積壓指標的對比，新增的訂閲積壓指標單位是條，原生訂閲積壓指標單位是 entry。在客戶端指定單條發送 100w 條消息時，訂閲積壓都有明顯的升高，當客戶端指定批次發送 100w 條消息的時候，新的訂閲積壓指標會有明顯的升高，而原生訂閲積壓指標相對升高幅度不大，所以新的訂閲積壓指標更具體的體現了訂閲積壓的情況。&lt;/p&gt; 
+&lt;p&gt;&lt;img src="https://oscimg.oschina.net/oscnet//a62f11043d23bcbc8c667854834e2437.png" alt="圖片" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;h2&gt;3.2 Pulsar bundle 指標&lt;/h2&gt; 
+&lt;p&gt;Pulsar 相比於 Kafka 增加了自動負載均衡的能力，在 Pulsar 裏 topic 分區是綁定在 bundle 上的，而負載均衡的最小單位是 bundle，所以我們在調優負載均衡策略和參數的時候比較依賴 bunlde 的流量分佈指標，並且該指標也可以作為我們切分 bundle 的參考依據。我們在開發 bundle 指標的時候做了下面兩件事情：&lt;/p&gt; 
+&lt;p&gt;統計當前 Pulsar 集羣非遊離狀態 bundle 的負載情況對於處於遊離狀態的 bundle（即沒有被分配到任何 broker 上的 bundle），我們指定 Pulsar leader 在上報自身 bundle 指標的同時，上報這些處於遊離狀態的 bundle 指標，並打上是否遊離的標籤。&lt;/p&gt; 
+&lt;p&gt;&lt;strong&gt;效果&lt;/strong&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;img src="https://oscimg.oschina.net/oscnet//d465e1009a88707edf424e50711bfd36.png" alt="圖片" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p&gt;上圖就是 bundle 的負載指標，除了出入流量分佈的情況，我們還提供了生產者/消費者到 bundle 的連接數量，以便運維同學從更多角度來調優負載均衡策略和參數。&lt;/p&gt; 
+&lt;h2&gt;3.3 kop 消費延遲指標無法上報&lt;/h2&gt; 
+&lt;p&gt;在我們實際運維過程中，重啓 kop 的 Coordinator 節點後會偶發消費延遲指標下降或者掉 0 的問題，從 druid 查看上報的數據，我們發現在重啓 broker 之後消費組就沒有繼續上報 kop 消費延遲指標。&lt;/p&gt; 
+&lt;p&gt;&lt;strong&gt;（1）原因分析&lt;/strong&gt;&lt;/p&gt; 
+&lt;p&gt;由於 kop 的消費延遲指標是由 Kafka lag exporter 採集的，所以我們重點分析了 Kafka lag exporter 採集消費延遲指標的邏輯，下圖是 Kafka-lag-exporter 採集消費延遲指標的示意圖：&lt;/p&gt; 
+&lt;p&gt;&lt;img src="https://oscimg.oschina.net/oscnet//e1c60c3dfc3fbdfdcbacbe9501bd9c30.gif" alt="圖片" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p&gt;其中，kafka-lag-exporter 計算消費延遲指標的邏輯會依賴 kop 的 describeConsumerGroups 接口，但是當 GroupCoordinator 節點重啓後，該接口返回的 member 信息中 assignment 數據缺失，kafka-lag-exporter 會將 assignment 為空的 member 給過濾掉，所以最終不會上報對應 member 下的分區指標，代碼調試如下圖所示：&lt;/p&gt; 
+&lt;p&gt;&lt;img src="https://oscimg.oschina.net/oscnet//44161110538352a1751268f3d5e09c35.png" alt="圖片" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;img src="https://oscimg.oschina.net/oscnet//756d27b220d957877e1713dd1ac7e29a.png" alt="圖片" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p&gt;為什麼 kop/Kafka describeConsumerGroups 接口返回 member 的 assignment 是空的？因為 consumer 在啓動消費時會通過 groupManager.storeGroup 寫入__consumer_&lt;/p&gt; 
+&lt;p&gt;offset，在 coordinator 關閉時會轉移到另一個 broker，但另一個 broker 並沒有把 assignment 字段反序列化出來（序列化為 groupMetadataValue，反序列化為 readGroupMessageValue），如下圖：&lt;/p&gt; 
+&lt;p&gt;&lt;img src="https://oscimg.oschina.net/oscnet//378c807ffd55bb262d54d26e52e6d73a.png" alt="圖片" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;strong&gt;（2）解決方案&lt;/strong&gt;&lt;/p&gt; 
+&lt;p&gt;在 GroupMetadataConstants#readGroup-&lt;/p&gt; 
+&lt;p&gt;MessageValue() 方法對 coordinator 反序列化消費組元數據信息時，將 assignment 字段讀出來並設置（序列化為 groupMetadataValue，反序列化為 readGroupMessageValue），如下圖：&lt;/p&gt; 
+&lt;p&gt;&lt;img src="https://oscimg.oschina.net/oscnet//97fe15c2e044eb609406a2ab3d5e51e8.png" alt="圖片" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;h1&gt;四、總結&lt;/h1&gt; 
+&lt;p&gt;在 Pulsar 監控系統構建的過程中，我們解決了與用戶體驗、運維效率、Pulsar 可用性等方面相關的問題，加快了 Pulsar 在 vivo 的落地進度。雖然我們在構建 Pulsar 可觀測系統過程中解決了一部分問題，但是監控鏈路仍然存在單點瓶頸等問題，所以 Pulsar 在 vivo 的發展未來還會有很多挑戰。&lt;/p&gt;
+                                                                                    &lt;/div&gt;
+                                                                            </description>
+      <link>https://my.oschina.net/vivotech/blog/18619289</link>
+      <guid isPermaLink="false">https://my.oschina.net/vivotech/blog/18619289</guid>
+      <pubDate>Sun, 11 May 2025 03:41:00 GMT</pubDate>
+      <author>原創</author>
+    </item>
+    <item>
+      <title>谷歌開源智能體通信協議 Agent2Agent (A2A) 已被 Linux 基金會接管</title>
+      <description>&lt;div class="content"&gt;
+                                                                    
+                                                        &lt;p&gt;2025 年 6 月 23 日，Linux 基金會在北美開源峯會&lt;u&gt;&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fwww.linuxfoundation.org%2Fpress%2Flinux-foundation-launches-the-agent2agent-protocol-project-to-enable-secure-intelligent-communication-between-ai-agents" target="_blank"&gt;宣佈&lt;/a&gt;&lt;/u&gt;啓動&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fgithub.com%2Fa2aproject%2FA2A" target="_blank"&gt;Agent2Agent（A2A）&lt;/a&gt;項目。該項目由谷歌於 2025 年 4 月發起並獲得 100 多家領先技術公司支持，旨在創建一個開放協議，實現 AI 智能體間的安全通信與協作。Linux 基金會將負責 A2A 項目的管理，確保其中立性、協作性和治理性。&lt;/p&gt; 
+&lt;p&gt;&lt;img alt="" src="https://oscimg.oschina.net/oscnet/up-8fe3e4a0fa786414ab6de80f762399a6327.png" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p&gt;A2A 協議賦予開發者構建跨平台、廠商和框架自由互操作的智能體的能力。它允許智能體在動態多智能體環境中發現彼此、安全交換信息並跨系統協作。這有助於提高模塊化程度、降低供應商鎖定風險並加速創新。&lt;/p&gt; 
+&lt;p&gt;加入 Linux 基金會後，A2A 規範化了其對開放、協作生態系統的承諾——提供更大的自主權並提高生產力。&lt;/p&gt; 
+&lt;p&gt;&lt;strong&gt;Linux 基金會執行董事吉姆·澤姆林表示，「我們很高興成為 Agent2Agent 協議項目的新家園，通過加入 Linux 基金會，A2A 將確保長期的中立性、協作性和治理性，這將解鎖下一代由智能體間協作驅動的生產力時代。」&lt;/strong&gt;&lt;/p&gt; 
+&lt;p&gt;在 Linux 基金會的治理下，A2A 將保持供應商中立，強調包容性貢獻，並繼續關注協議的擴展性、安全性以及跨行業的實際可用性。&lt;/p&gt; 
+&lt;p&gt;多家科技巨頭表達了對 A2A 項目的支持。AWS 副總裁 Swami Sivasubramanian 認為，智能體 AI 對客戶體驗至關重要，A2A 加入 Linux 基金會將創造更多機會。谷歌雲計算業務副總裁兼總經理 Rao Surapaneni 表示，A2A 協議為通信建立了重要開放標準，推動了跨平台和系統的真正互操作性 AI 智能體的發展。思科 Outshift 總經理兼高級副總裁 Vijoy Pandey 強調了社區驅動開發在智能體間廣泛採用中的重要性。Salesforce 產品架構師 Gary Lerhaupt 稱，企業 AI 的未來在於智能體間的無縫協作。SAP 全球人工智能高級副總裁兼全球負責人 Walter Sun 表示，A2A 開放標準確保了不同廠商的智能體能夠交互、共享上下文並協同工作。微軟產品副總裁 Yina Arenas 承諾，將結合開放互操作性與企業級功能，負責任地大規模部署智能體。ServiceNow 平台工程與人工智能技術集團執行副總裁 Joe Davis 表示，A2A 的開放標準構建了跨平台協作的基礎。&lt;/p&gt;
+                                                                                &lt;/div&gt;
+                                                                            </description>
+      <link>https://www.oschina.net/news/356965/linux-foundation-launches-the-agent2agent-protocol-project</link>
+      <guid isPermaLink="false">https://www.oschina.net/news/356965/linux-foundation-launches-the-agent2agent-protocol-project</guid>
+      <pubDate>Sun, 11 May 2025 02:50:00 GMT</pubDate>
+      <author>來源: OSCHINA</author>
+    </item>
     <item>
       <title>搶答題：「把文字變成數字」、「對結果精修」，都是什麼技術？</title>
       <description>&lt;div class="content"&gt;
@@ -47,7 +312,7 @@
                                                                             </description>
       <link>https://www.oschina.net/news/356959</link>
       <guid isPermaLink="false">https://www.oschina.net/news/356959</guid>
-      <pubDate>Tue, 24 Jun 2025 02:34:57 GMT</pubDate>
+      <pubDate>Sun, 11 May 2025 02:34:00 GMT</pubDate>
       <author>來源: OSCHINA</author>
     </item>
     <item>
@@ -63,7 +328,7 @@
                                                                             </description>
       <link>https://www.oschina.net/news/356958/microsoft-mu-language-model-</link>
       <guid isPermaLink="false">https://www.oschina.net/news/356958/microsoft-mu-language-model-</guid>
-      <pubDate>Tue, 24 Jun 2025 02:31:57 GMT</pubDate>
+      <pubDate>Sun, 11 May 2025 02:31:00 GMT</pubDate>
       <author>來源: OSCHINA</author>
     </item>
     <item>
@@ -81,7 +346,7 @@
                                                                             </description>
       <link>https://www.oschina.net/news/356956</link>
       <guid isPermaLink="false">https://www.oschina.net/news/356956</guid>
-      <pubDate>Tue, 24 Jun 2025 02:15:57 GMT</pubDate>
+      <pubDate>Sun, 11 May 2025 02:15:00 GMT</pubDate>
       <author>來源: OSCHINA</author>
     </item>
     <item>
@@ -122,7 +387,7 @@ This is *bold text*. The sum of [#numbers.map(it =&amp;gt; str(it)).join(", ")] 
                                                                             </description>
       <link>https://www.oschina.net/news/356954</link>
       <guid isPermaLink="false">https://www.oschina.net/news/356954</guid>
-      <pubDate>Tue, 24 Jun 2025 01:57:57 GMT</pubDate>
+      <pubDate>Sun, 11 May 2025 01:57:00 GMT</pubDate>
       <author>來源: 投稿</author>
     </item>
     <item>
@@ -548,434 +813,6 @@ PrintUtil.printTree(expr);
       <link>https://www.oschina.net/news/356867</link>
       <guid isPermaLink="false">https://www.oschina.net/news/356867</guid>
       <pubDate>Sat, 10 May 2025 08:48:00 GMT</pubDate>
-      <author>來源: OSCHINA</author>
-    </item>
-    <item>
-      <title>《鴻蒙智能體框架白皮書》發佈</title>
-      <description>&lt;div class="content"&gt;
-                                                                    
-                                                        &lt;p&gt;華為正式發佈了鴻蒙智能體框架（Harmony Agent Framework，HMAF）以及《Agent 時代，鴻蒙應用生而智能 —— 鴻蒙智能體框架白皮書》，全面且系統地定義了在鴻蒙系統下，操作系統、鴻蒙應用 / 元服務與智能體之間相互交互以及協同合作的全新範式。&lt;/p&gt; 
-&lt;p&gt;&lt;img height="1660" src="https://static.oschina.net/uploads/space/2025/0623/162018_MUZn_2720166.png" width="1316" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;p&gt;鴻蒙智能體框架的核心目標是建立一個具備自主決策、羣體協作能力的 AI 生態系統，全面賦能應用智能化升級。&lt;/p&gt; 
-&lt;p&gt;無論是手機、手錶、PC，還是其他智能終端，鴻蒙智能體都能夠在各設備之間高度協同與互動。系統級智能體小藝和應用 Agent 的深度融合，能夠實現無縫協作，讓用戶的需求和意圖可以通過智能體間的協作流暢實現。&lt;/p&gt; 
-&lt;p&gt;&lt;img height="1664" src="https://static.oschina.net/uploads/space/2025/0623/162449_PJXg_2720166.png" width="2234" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;p&gt;&lt;img src="https://static.oschina.net/uploads/space/2025/0623/162552_RABO_2720166.png" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;p&gt;與此同時，華為還推出了小藝智能體開放平台，旨在全方位賦能開發者，驅動智能體開發的蓬勃開展。通過小藝智能體開放平台，開發者可以快速構建符合自己需求的智能體，並藉助鴻蒙系統級的分發入口，精準觸達目標用戶。平台還提供了豐富的插件、新手引導指南等，將開發門檻降低到新手開發者也能夠迅速上手的程度。&lt;/p&gt; 
-&lt;p&gt;&lt;img src="https://static.oschina.net/uploads/space/2025/0623/163017_fsUG_2720166.png" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;p&gt;更多內容查看&amp;nbsp;&lt;em&gt;&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fdeveloper.huawei.com%2Fconsumer%2Fcn%2Fdoc%2Fguidebook%2Fai-agent-0000002355199797" target="_blank"&gt;https://developer.huawei.com/consumer/cn/doc/guidebook/ai-agent-0000002355199797&lt;/a&gt;&lt;/em&gt;&lt;/p&gt; 
-&lt;p&gt;&amp;nbsp;&lt;/p&gt; 
-&lt;p&gt;閲讀更多：&lt;/p&gt; 
-&lt;p&gt;&lt;a href="https://www.oschina.net/news/356477" target="news"&gt;《鴻蒙編程語言白皮書》發佈&lt;/a&gt;&lt;/p&gt;
-                                                                                &lt;/div&gt;
-                                                                            </description>
-      <link>https://www.oschina.net/news/356864</link>
-      <guid isPermaLink="false">https://www.oschina.net/news/356864</guid>
-      <pubDate>Sat, 10 May 2025 08:31:00 GMT</pubDate>
-      <author>來源: OSCHINA</author>
-    </item>
-    <item>
-      <title>第二屆壁仞科技 「飛翔杯」 AI 應用創新挑戰賽</title>
-      <description>&lt;div class="content"&gt;
-                                                                                                                    
-                                                                                                                                                    &lt;p style="margin-left:.0001pt; margin-right:0; text-align:left"&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;6 月 20 日，&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;由上海市計算機行業協會、&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;上海&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;壁仞科技&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;股份有限公司&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;主辦&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;，&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;上海臨港浦江國際科技城&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;發展有限公司&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;、浙江大學&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;上海&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;高等研究院、模力方舟（ Gitee AI ）、&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;杭州&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;一驀&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;信息&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;科技&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;有限公司&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;承辦&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;，&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;上海農村商業銀行股份有限公司協辦的&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;strong&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span style="color:#c00000"&gt;&lt;strong&gt;第二屆壁仞科技「飛翔杯」 AI 應用創新挑戰賽&lt;/strong&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/strong&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;正式啓幕。&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/p&gt; 
-&lt;p style="margin-left:.0001pt; margin-right:0; text-align:center"&gt;&lt;img height="4146" src="https://oscimg.oschina.net/oscnet/up-8adee0809261b27666b62893ecf019e0589.png" width="2160" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;p style="margin-left:.0001pt; margin-right:0; text-align:left"&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;本屆大賽以&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;strong&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;「智領創新應用，芯啓 AI 藍圖」&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/strong&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;為主題，基於壁仞科技自主研發的高性能 GPU ，通過「技術賦能+場景驅動」的雙輪機制，聚焦智能政務、醫療健康、教育科技、金融法律等八大重點行業領域，面向企業開發者、高校科研團隊及個人創客徵集具備商業價值與社會效益的 AI 應用，旨在促進國產算力基礎設施與實體經濟深度融合。&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/p&gt; 
-&lt;p style="margin-left:.0001pt; margin-right:0; text-align:left"&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;據悉，本屆大賽獲得了重點高校、場景企業、投資機構、金融機構等 12 家單位支持。壁仞科技更是攜手合作夥伴向參賽選手提供了「五重驚喜」，打造國產 GPU 背景下的更宏偉的 AI 應用藍圖。&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/p&gt; 
-&lt;p style="margin-left:.0001pt; margin-right:0; text-align:center"&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;strong&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;第二屆壁仞科技「飛翔杯」AI 應用創新挑戰賽&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/strong&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/p&gt; 
-&lt;p style="margin-left:.0001pt; margin-right:0; text-align:center"&gt;&lt;strong&gt;&lt;a href="https://www.oschina.net/biren_fxcup/" rel="nofollow"&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;報，名&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/a&gt;&lt;/strong&gt;&lt;/p&gt; 
-&lt;p style="margin-left:.0001pt; margin-right:0; text-align:left"&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;strong&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;賽事日程&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/strong&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/p&gt; 
-&lt;table cellspacing="0" style="border-collapse:collapse; border:none; font-family:&amp;quot;Times New Roman&amp;quot;; font-size:10pt; margin-left:-0.6000pt; width:427.8000pt"&gt; 
- &lt;tbody&gt; 
-  &lt;tr&gt; 
-   &lt;td style="border-bottom:none; border-left:none; border-right:none; border-top:none; height:59.0500pt; vertical-align:top; width:71.3000pt"&gt; &lt;p style="margin-left:.0001pt; margin-right:0; text-align:left"&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;strong&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;報，名 &lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/strong&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/p&gt; &lt;p style="margin-left:.0001pt; margin-right:0; text-align:left"&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;6 月 20 日&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/p&gt; &lt;/td&gt; 
-   &lt;td style="border-bottom:none; border-left:none; border-right:none; border-top:none; height:59.0500pt; vertical-align:top; width:76.2500pt"&gt; &lt;p style="margin-left:.0001pt; margin-right:0; text-align:left"&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;strong&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;開，始 &lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/strong&gt;&lt;strong&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;提，交 &lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/strong&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/p&gt; &lt;p style="margin-left:.0001pt; margin-right:0; text-align:left"&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;7 月 11 日&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/p&gt; &lt;/td&gt; 
-   &lt;td style="border-bottom:none; border-left:none; border-right:none; border-top:none; height:59.0500pt; vertical-align:top; width:80.5000pt"&gt; &lt;p style="margin-left:.0001pt; margin-right:0; text-align:left"&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;strong&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;截，止&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/strong&gt;&lt;strong&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&amp;nbsp;提，交&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/strong&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/p&gt; &lt;p style="margin-left:.0001pt; margin-right:0; text-align:left"&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;8 月 15 日&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/p&gt; &lt;/td&gt; 
-   &lt;td style="border-bottom:none; border-left:none; border-right:none; border-top:none; height:59.0500pt; vertical-align:top; width:57.1500pt"&gt; &lt;p style="margin-left:.0001pt; margin-right:0; text-align:left"&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;strong&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;復，審&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/strong&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/p&gt; &lt;p style="margin-left:.0001pt; margin-right:0; text-align:left"&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;8&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&amp;nbsp;- 9&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;月&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/p&gt; &lt;/td&gt; 
-   &lt;td style="border-bottom:none; border-left:none; border-right:none; border-top:none; height:59.0500pt; vertical-align:top; width:71.3000pt"&gt; &lt;p style="margin-left:.0001pt; margin-right:0; text-align:left"&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;strong&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;決，賽 &lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/strong&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/p&gt; &lt;p style="margin-left:.0001pt; margin-right:0; text-align:left"&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;8 - &lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;9&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;月&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/p&gt; &lt;/td&gt; 
-   &lt;td style="border-bottom:none; border-left:none; border-right:none; border-top:none; height:59.0500pt; vertical-align:top; width:71.3000pt"&gt; &lt;p style="margin-left:.0001pt; margin-right:0; text-align:left"&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;strong&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;頒，獎&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/strong&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/p&gt; &lt;p style="margin-left:.0001pt; margin-right:0; text-align:left"&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;9 月&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/p&gt; &lt;/td&gt; 
-  &lt;/tr&gt; 
- &lt;/tbody&gt; 
-&lt;/table&gt; 
-&lt;p style="margin-left:.0001pt; margin-right:0; text-align:left"&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;strong&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;參賽對象&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/strong&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/p&gt; 
-&lt;p style="margin-left:.0001pt; margin-right:0; text-align:left"&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;面向企業開發者、高校科研團隊及個人創客，並以團體賽形式報名，每隊限定 1~5 個人。&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/p&gt; 
-&lt;p style="margin-left:.0001pt; margin-right:0; text-align:left"&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;strong&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;賽題設置&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/strong&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/p&gt; 
-&lt;p style="margin-left:0; margin-right:0; text-align:left"&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;本次大賽設置揭榜賽題和常規賽題兩類賽題。&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/p&gt; 
-&lt;p style="margin-left:0; margin-right:0; text-align:left"&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;揭榜賽題由壁仞科技、華山醫院、一驀科技出題，聚焦 AI4S、智慧醫療、實訓項目三大場景。揭榜賽題直接匹配企業現有需求，更有機會直接獲取合作機會及資金支持。&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/p&gt; 
-&lt;p style="margin-left:0; margin-right:0; text-align:left"&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;常規賽題聚焦智慧政務、醫療健康、教育科技、金融法律、文化傳媒、具身智能、先進製造、互聯網電商等八大重點行業領域。&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/p&gt; 
-&lt;p style="margin-left:.0001pt; margin-right:0; text-align:left"&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;strong&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;報名方式&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/strong&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/p&gt; 
-&lt;p style="margin-left:0; margin-right:0; text-align:left"&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;即日起，第二屆壁仞科技「飛翔杯」AI 應用創新挑戰賽正式開啓報名啦！&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/p&gt; 
-&lt;p style="margin-left:0; margin-right:0; text-align:left"&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;報名方式一：&lt;/span&gt;&lt;/span&gt;&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fruw9xpnpiv.feishu.cn%2Fshare%2Fbase%2Fform%2Fshrcnp5GagUPERraQX0KsrkqHIc" rel="nofollow" target="_blank"&gt;&lt;u&gt;&lt;span&gt;&lt;span&gt;&lt;span style="color:#0000ff"&gt;&lt;u&gt;&lt;span&gt;https://ruw9xpnpiv.feishu.cn/share/base/form/shrcnp5GagUPERraQX0KsrkqHIc&lt;/span&gt;&lt;/u&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/u&gt;&lt;/a&gt;&lt;/span&gt;&lt;/span&gt;&lt;/p&gt; 
-&lt;p style="margin-left:0; margin-right:0; text-align:left"&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;報名方式二：掃描下方二維碼，獲取報名信息。&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/p&gt; 
-&lt;p style="margin-left:0; margin-right:0; text-align:center"&gt;&lt;img height="252" src="https://oscimg.oschina.net/oscnet/up-a9e468acbf6bd697baae4d8393b3e2d3616.png" width="257" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;p style="margin-left:0; margin-right:0; text-align:justify"&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;strong&gt;&lt;span&gt;&lt;span&gt;作品提交&lt;/span&gt;&lt;/span&gt;&lt;/strong&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/p&gt; 
-&lt;p style="margin-left:.0001pt; margin-right:0; text-align:left"&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;報名成功後，行業組與高校組作品分不同的平台進行提交。&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/p&gt; 
-&lt;p style="margin-left:0; margin-right:0; text-align:left"&gt;&lt;span&gt;&lt;span&gt;&lt;strong&gt;行業組作品提交&lt;/strong&gt;：模力方舟平台；&lt;/span&gt;&lt;/span&gt;&lt;/p&gt; 
-&lt;p style="margin-left:0; margin-right:0; text-align:left"&gt;&lt;strong&gt;高校組作品提交&lt;/strong&gt;：浙大智海 Mo 平台；&lt;/p&gt; 
-&lt;p style="margin-left:0; margin-right:0; text-align:left"&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;提交內容為 zip 壓縮包，包含在線演示視頻錄製、應用介紹 PPT、DEMO 體驗地址、代碼工程（可選）。&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/p&gt; 
-&lt;p style="margin-left:0; margin-right:0; text-align:justify"&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;strong&gt;&lt;span&gt;&lt;span&gt;參賽即可獲得五重驚喜！&lt;/span&gt;&lt;/span&gt;&lt;/strong&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/p&gt; 
-&lt;p style="margin-left:.0001pt; margin-right:0; text-align:left"&gt;&lt;span&gt;&lt;span&gt;&lt;strong&gt;&lt;span&gt;&lt;span&gt;&lt;strong&gt;1、高性能算力支持：&lt;/strong&gt;&lt;/span&gt;&lt;/span&gt;&lt;/strong&gt;&lt;span&gt;&lt;span&gt;依託壁仞科技自主研發的高性能 GPU，大賽組織方已上線 8 大類近 20 種典型模型的 API 接口，並提供大量免費算力券！&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/p&gt; 
-&lt;p style="margin-left:.0001pt; margin-right:0; text-align:left"&gt;&lt;span&gt;&lt;span&gt;&lt;strong&gt;&lt;span&gt;&lt;span&gt;&lt;strong&gt;2、全棧式技術指導：&lt;/strong&gt;&lt;/span&gt;&lt;/span&gt;&lt;/strong&gt;&lt;span&gt;&lt;span&gt;強大技術團隊坐鎮！參賽者可獲得來自壁仞科技及合作伙伴提供的 GPU 算力支持及模型調用專業指導。&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/p&gt; 
-&lt;p style="margin-left:.0001pt; margin-right:0; text-align:left"&gt;&lt;span&gt;&lt;span&gt;&lt;strong&gt;&lt;span&gt;&lt;span&gt;&lt;strong&gt;3、專業評審團隊：&lt;/strong&gt;&lt;/span&gt;&lt;/span&gt;&lt;/strong&gt;&lt;span&gt;&lt;span&gt;由行業專家、資深工程師、學術界大咖、資深投資人組成的評審委員會，確保比賽的公正性和專業性。&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/p&gt; 
-&lt;p style="margin-left:.0001pt; margin-right:0; text-align:left"&gt;&lt;span&gt;&lt;span&gt;&lt;strong&gt;&lt;span&gt;&lt;span&gt;&lt;strong&gt;4、&lt;/strong&gt;&lt;/span&gt;&lt;/span&gt;&lt;/strong&gt;&lt;strong&gt;&lt;span&gt;&lt;span&gt;&lt;strong&gt;最高可獲 5 萬元獎勵：&lt;/strong&gt;&lt;/span&gt;&lt;/span&gt;&lt;/strong&gt;&lt;/span&gt;&lt;/span&gt;&lt;/p&gt; 
-&lt;p style="margin-left:.0001pt; margin-right:0; text-align:left"&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;本屆「飛翔杯」大賽設立豐厚獎金池！&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/p&gt; 
-&lt;p style="margin-left:.0001pt; margin-right:0; text-align:left"&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;本次大賽分為卓越、標杆、創新、潛力四大等級，&lt;/span&gt;&lt;/span&gt;&lt;strong&gt;&lt;span&gt;&lt;span&gt;&lt;strong&gt;行業組最高獎勵可達 5 萬元，高校組最高獎勵 3 萬元！&lt;/strong&gt;&lt;/span&gt;&lt;/span&gt;&lt;/strong&gt;&lt;/span&gt;&lt;/span&gt;&lt;/p&gt; 
-&lt;p style="margin-left:.0001pt; margin-right:0; text-align:left"&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;值得一提的是，所有獲獎團隊將會獲得賽事組織方頒發的獲獎證書，獲獎團隊隊員可獲得壁仞科技提供的優秀 AI 應用開發者證書！&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/p&gt; 
-&lt;p style="margin-left:.0001pt; margin-right:0; text-align:left"&gt;&lt;span&gt;&lt;span&gt;&lt;strong&gt;&lt;span&gt;&lt;span&gt;&lt;strong&gt;5、&lt;/strong&gt;&lt;/span&gt;&lt;/span&gt;&lt;/strong&gt;&lt;strong&gt;&lt;span&gt;&lt;span&gt;&lt;strong&gt;超豪華曝光大禮包：&lt;/strong&gt;&lt;/span&gt;&lt;/span&gt;&lt;/strong&gt;&lt;/span&gt;&lt;/span&gt;&lt;/p&gt; 
-&lt;p style="margin-left:.0001pt; margin-right:0; text-align:left"&gt;&lt;span&gt;&lt;span&gt;&lt;strong&gt;&lt;span&gt;&lt;span&gt;&lt;strong&gt;投資人面對面：&lt;/strong&gt;&lt;/span&gt;&lt;/span&gt;&lt;/strong&gt;&lt;span&gt;&lt;span&gt;進入決賽的團隊可獲得與投資機構交流的機會！&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/p&gt; 
-&lt;p style="margin-left:.0001pt; margin-right:0; text-align:left"&gt;&lt;span&gt;&lt;span&gt;&lt;strong&gt;&lt;span&gt;&lt;span&gt;&lt;strong&gt;OFFER 請查收：&lt;/strong&gt;&lt;/span&gt;&lt;/span&gt;&lt;/strong&gt;&lt;span&gt;&lt;span&gt;優勝者將有機會獲得壁仞科技合作機會、實習就業直通卡！參與技術社區線下沙龍活動，與大咖深入交流！&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/p&gt; 
-&lt;p style="margin-left:.0001pt; margin-right:0; text-align:left"&gt;&lt;span&gt;&lt;span&gt;&lt;strong&gt;&lt;span&gt;&lt;span&gt;&lt;strong&gt;大商機強曝光：&lt;/strong&gt;&lt;/span&gt;&lt;/span&gt;&lt;/strong&gt;&lt;span&gt;&lt;span&gt;參與揭榜題及有意商業化的項目，主辦方將於賽事結束後為團隊對接感興趣的企業，為項目提供業務合作機會！&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/p&gt; 
-&lt;p style="margin-left:.0001pt; margin-right:0; text-align:left"&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;趕快報名「飛翔杯」AI 應用創新挑戰賽吧，讓夢想在這裏啓航！&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/p&gt; 
-&lt;p style="margin-left:.0001pt; margin-right:0; text-align:left"&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span style="color:#8f959e"&gt;*大賽解釋權歸大賽組委會&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/p&gt; 
-&lt;p style="margin-left:.0001pt; margin-right:0; text-align:left"&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;strong&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;關於壁仞科技：&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/strong&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/p&gt; 
-&lt;p style="margin-left:.0001pt; margin-right:0; text-align:left"&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;壁仞科技成立於 2019 年，致力於研發高性能通用 GPU，打造自主原創的高性能 GPU 軟硬件體系，構建國產智能計算產業生態。首代壁仞通用 GPU 產品基於原創訓推一體芯片架構，已在多地智算中心落地。新一代全國產產品研發正全面推進。近期，壁仞科技實現中國首個四種及以上異構芯片混訓技術落地，突破了大模型算力孤島難題，引領業界異構混訓技術發展趨勢。合作伙伴包括中國移動、中國電信、中興通訊等。截至目前，壁仞科技在全球多個國家和地區累計申請專利近 1200 項，獲得專利授權 430 餘項&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;。&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/p&gt; 
-&lt;p style="margin-left:.0001pt; margin-right:0; text-align:justify"&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;想了解壁仞科技更多信息，請前往&lt;/span&gt;&lt;/span&gt;&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fwww.birentech.com%2F%25E8%258E%25B7%25E5%258F%2596%25E3%2580%2582" rel="nofollow" target="_blank"&gt;&lt;span&gt;&lt;span&gt;&lt;span style="color:#3370ff"&gt;https://www.birentech.com/&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/a&gt;&lt;span&gt;&lt;span&gt;獲取。&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/p&gt;
-                                                                                    &lt;/div&gt;
-                                                                            </description>
-      <link>https://my.oschina.net/u/4806939/blog/18633161</link>
-      <guid isPermaLink="false">https://my.oschina.net/u/4806939/blog/18633161</guid>
-      <pubDate>Sat, 10 May 2025 08:03:00 GMT</pubDate>
-      <author>原創</author>
-    </item>
-    <item>
-      <title>模力方舟 17 款 Embedding 和 Reranker 模型全部免費使用</title>
-      <description>&lt;div class="content"&gt;
-                                                                    
-                                                        &lt;p&gt;為了讓更多開發者和企業能夠零門檻體驗最前沿的 AI 能力，模力方舟攜手國產 GPU 夥伴，已將模型廣場中 17 款 Embedding 與 Reranker 模型全部開放免費使用——其中包括最新的 4096 維 Qwen3-Embedding-8B。&lt;/p&gt; 
-&lt;p&gt;&lt;img src="https://static.oschina.net/uploads/space/2025/0623/160005_Q4xj_2720166.png" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;p&gt;RAG 架構必備的檢索向量和重排序能力，即刻零成本上手！&lt;/p&gt; 
-&lt;p&gt;更多免費模型，盡在模力方舟模型廣場：&lt;em&gt;&lt;strong&gt;&lt;a href="https://ai.gitee.com/serverless-api" target="_blank"&gt;https://ai.gitee.com/serverless-api&lt;/a&gt;&lt;/strong&gt;&lt;/em&gt;&lt;/p&gt;
-                                                                                &lt;/div&gt;
-                                                                            </description>
-      <link>https://www.oschina.net/news/356859</link>
-      <guid isPermaLink="false">https://www.oschina.net/news/356859</guid>
-      <pubDate>Sat, 10 May 2025 08:00:00 GMT</pubDate>
-      <author>來源: OSCHINA</author>
-    </item>
-    <item>
-      <title>Anthropic 發佈 Claude Code 的 VS Code 擴展</title>
-      <description>&lt;div class="content"&gt;
-                                                                    
-                                                        &lt;p&gt;Anthropic 已為&amp;nbsp;VS Code&amp;nbsp;發佈了&amp;nbsp;Claude Code&amp;nbsp;擴展。&lt;/p&gt; 
-&lt;p&gt;&lt;img src="https://static.oschina.net/uploads/space/2025/0623/155007_jjcF_2720166.png" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;p&gt;據介紹，它能自動檢測並安裝，通過自動添加選定文本到&amp;nbsp;Claude&amp;nbsp;的上下文、在&amp;nbsp;VSCode&amp;nbsp;的差異查看器中顯示代碼更改、支持快捷鍵以及查看編輯器中打開的文件等功能來提升編碼體驗。&lt;/p&gt; 
-&lt;p&gt;Claude Code for VSCode 插件主要特性：&lt;/p&gt; 
-&lt;ul&gt; 
- &lt;li&gt;&lt;strong&gt;集成緊密&lt;/strong&gt; ：安裝後，Claude Code 能與 VSCode 緊密集成， Claucte 提出的編輯建議以內聯方式在文件中顯示，簡化代碼審查和跟蹤過程。&lt;/li&gt; 
- &lt;li&gt;&lt;strong&gt;操作便捷&lt;/strong&gt; ：在 VSCode 中，使用 &lt;code&gt;Cmd+Esc&lt;/code&gt;（Mac）或 &lt;code&gt;Ctrl+Esc&lt;/code&gt;（Windows/Linux）可直接從編輯器打開 Claude Code，也可點擊 UI 中的相應按鈕；使用 &lt;code&gt;Cmd+Option+K&lt;/code&gt;（Mac）或 &lt;code&gt;Alt+Ctrl+K&lt;/code&gt;（Linux/Windows）可插入文件引用。&lt;/li&gt; 
- &lt;li&gt;&lt;strong&gt;功能實用&lt;/strong&gt; ：如代碼片段所述，該插件支持自動檢測已安裝插件，可通過快捷鍵將選中代碼發送至 Claude，還能在 VSCode 的 Diff 視圖中直接查看代碼變更。&lt;/li&gt; 
-&lt;/ul&gt; 
-&lt;p&gt;下載地址：&lt;em&gt;&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fmarketplace.visualstudio.com%2Fitems%3FitemName%3Danthropic.claude-code" target="_blank"&gt;https://marketplace.visualstudio.com/items?itemName=anthropic.claude-code&lt;/a&gt;&lt;/em&gt;&lt;/p&gt; 
-&lt;ul&gt; 
-&lt;/ul&gt;
-                                                                                &lt;/div&gt;
-                                                                            </description>
-      <link>https://www.oschina.net/news/356857/claude-code-for-vs-code</link>
-      <guid isPermaLink="false">https://www.oschina.net/news/356857/claude-code-for-vs-code</guid>
-      <pubDate>Sat, 10 May 2025 07:56:00 GMT</pubDate>
-      <author>來源: OSCHINA</author>
-    </item>
-    <item>
-      <title>MiniMax 宣佈 Hailuo Video Agent 開啓 Beta 公測</title>
-      <description>&lt;div class="content"&gt;
-                                                                    
-                                                        &lt;p&gt;MiniMax 宣佈旗下視頻創作 Agent 產品——Hailuo Video Agen&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fmp.weixin.qq.com%2Fs%2FyphAy5SDzmOzUsNB21lsvA" target="_blank"&gt;t 已開放 Beta 版本&lt;/a&gt;。&lt;/p&gt; 
-&lt;p&gt;&lt;img alt="" src="https://oscimg.oschina.net/oscnet/up-118191fd968c50acaec868448d58c4508b0.png" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;p&gt;據介紹，在 Hailuo Video Agent 中，為了提供足夠大的創意空間，且保證好的質量， MiniMax 做了以下設計：&lt;/p&gt; 
-&lt;ul&gt; 
- &lt;li&gt; &lt;p&gt;拋棄傳統工作流+節點的工具模式，通過 LLM 語言模型的工具調用能力，創新性地支持用戶在自然語言描述中構建完整視頻；&lt;/p&gt; &lt;/li&gt; 
- &lt;li&gt; &lt;p&gt;打造視頻構思、資料收集、分鏡製作、剪輯、配音等視頻製作全流程工具集，並通過 Agent 模型在不同階段實現自動調用。為了提高短片創作的質量，我們遴選了所有視頻創作需要的最佳工具集；&lt;/p&gt; &lt;/li&gt; 
- &lt;li&gt; &lt;p&gt;Agent 思維鏈可視化，用戶實時查看 Agent 創作流程，為自定義編輯功能提供可視窗口與操作空間。&lt;/p&gt; &lt;/li&gt; 
-&lt;/ul&gt; 
-&lt;p&gt;Web 端登錄 https://hailuoai.com/ 即可體驗。&lt;/p&gt;
-                                                                                &lt;/div&gt;
-                                                                            </description>
-      <link>https://www.oschina.net/news/356853</link>
-      <guid isPermaLink="false">https://www.oschina.net/news/356853</guid>
-      <pubDate>Sat, 10 May 2025 07:41:00 GMT</pubDate>
-      <author>來源: OSCHINA</author>
-    </item>
-    <item>
-      <title>圖挖掘在反作弊場景的應用</title>
-      <description>&lt;div class="content"&gt;
-                                                                                                                    
-                                                                                                                                                    &lt;p&gt;本文全面探討了營銷活動反作弊與電商反作弊的圖算法應用。首先介紹了黑產薅取活動獎勵、刷單等作弊行為的背景，隨後深入講解了同人挖掘技術，包括同人建模、挖掘步驟及穩定性處理。接着，依次介紹了標籤傳播算法、Fraudar 算法、GCN 網絡的原理、優缺點及應用。最後，文章展望了未來圖算法在風控反作弊應用的發展方向，如多模態數據融合與動態圖實時計算，旨在應對黑產的快速演化，確保營銷活動的公平性與數據真實性。&lt;/p&gt; 
-&lt;span id="OSC_h1_1"&gt;&lt;/span&gt; 
-&lt;h1&gt;01 業務背景&lt;/h1&gt; 
-&lt;p&gt;在營銷活動場景中，黑產團夥通過自動化手段大規模獲取活動獎勵，擠佔真實用戶權益造成營銷資金浪費，並污染數據指標導致活動效果失真，從而影響運營決策準確性。&lt;/p&gt; 
-&lt;p&gt;以當前主流作弊模式為例，黑產實施路徑如下：&lt;/p&gt; 
-&lt;p&gt;1. 資源準備階段：通過虛擬機登錄批量購買的百度賬號。&lt;/p&gt; 
-&lt;p&gt;2. 任務執行階段：部署自動化腳本模擬用戶行為，如視頻播放、廣告點擊等。&lt;/p&gt; 
-&lt;p&gt;3. 資金變現階段：使用分散的真實微信賬號進行提現操作。&lt;/p&gt; 
-&lt;p&gt;在與反作弊的對抗中，黑產工具持續升級（如改機工具、IP 池輪換等），傳統特徵採集數據趨於分散。我們的反作弊體系從兩個方向不斷提升防禦能力：&lt;/p&gt; 
-&lt;p&gt;1. 多維特徵挖掘，包括設備指紋、行為特徵以及環境特徵。&lt;/p&gt; 
-&lt;p&gt;2. 關聯團夥分析，包括用戶操作模式量化、暱稱相似度分析以及基於賬號-設備-提現賬戶等信息建立關聯圖譜。&lt;/p&gt; 
-&lt;p&gt;&lt;img alt="圖片" src="https://oscimg.oschina.net/oscnet/up-b567c76d759b133c58127296b4127e848a9.jpg" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;p&gt;上圖為雲手機工具示例。&lt;/p&gt; 
-&lt;p&gt;在電商場景中，存在着類似於營銷活動的批量團夥作弊，典型的即刷單。刷單作弊即非真實有購買需求的用戶（機器或眾包真人）為了提升店鋪的銷量、評分，替店鋪虛假的下單、評價，然後收取店鋪報酬的一種作弊方式。&lt;/p&gt; 
-&lt;span id="OSC_h1_2"&gt;&lt;/span&gt; 
-&lt;h1&gt;02 同人挖掘&lt;/h1&gt; 
-&lt;span id="OSC_h2_3"&gt;&lt;/span&gt; 
-&lt;h2&gt;&lt;strong&gt;2.1 同人建模&lt;/strong&gt;&lt;/h2&gt; 
-&lt;p&gt;黑產為了節省成本往往存在賬號、設備共用的情況，因此我們定義「同人」概念：&lt;/p&gt; 
-&lt;p&gt;&lt;strong&gt;&lt;strong&gt;若參與活動的賬號、設備背後的主體相同，則為一個同人團夥。&lt;/strong&gt;&lt;/strong&gt;&lt;/p&gt; 
-&lt;p&gt;在賬號之外，增加一個同人粒度進行數據監控和風險控制。例如，某人使用 5 個手機號分別註冊 5 個 uid，並使用 2 個身份證進行實名認證，每天在 3 個設備上參與活動，並將收益提取到 2 個微信賬號中，我們希望通過構圖將其歸類為一個同人團夥。&lt;/p&gt; 
-&lt;span id="OSC_h3_4"&gt;&lt;/span&gt; 
-&lt;h3&gt;2.1.1 同人挖掘&lt;/h3&gt; 
-&lt;p&gt;挖掘步驟可分為以下 3 步：&lt;/p&gt; 
-&lt;p&gt;1. 以用戶百度賬號為節點，共設備 ID/手機號/提現 ID/身份證號（加密）為邊構圖&lt;/p&gt; 
-&lt;p&gt;2. 挖掘極大連通子圖，即有邊的強連通判為同人關係&lt;/p&gt; 
-&lt;p&gt;3. 在多天參與活動的用戶上挖掘同人關係，並與歷史挖掘結果進行拼接，做同人 ID 穩定性處理&lt;/p&gt; 
-&lt;span id="OSC_h3_5"&gt;&lt;/span&gt; 
-&lt;h3&gt;2.1.2 穩定性處理&lt;/h3&gt; 
-&lt;p&gt;在與歷史同人結果拼接時，可將情況分為以下幾類：&lt;/p&gt; 
-&lt;p&gt;&lt;img alt="圖片" src="https://oscimg.oschina.net/oscnet/up-ab1a6ef3b27b0b9b955c9dc6b8740c0fc75.png" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;p&gt;經過穩定性處理後，整體同人 ID 穩定性達 96.8%，排除已知合併等不穩定因素穩定性達 99.3%。&lt;/p&gt; 
-&lt;span id="OSC_h2_6"&gt;&lt;/span&gt; 
-&lt;h2&gt;&lt;strong&gt;2.2 挖掘結果&lt;/strong&gt;&lt;/h2&gt; 
-&lt;p&gt;由於線上已有一對多業務規則，同人團夥會採用多對多打散以繞過規則。&lt;/p&gt; 
-&lt;p&gt;以下展示部分典型團夥構圖：&lt;/p&gt; 
-&lt;p&gt;&lt;img alt="圖片" src="https://oscimg.oschina.net/oscnet/up-7ce79c7f88211177a7133e1a96d8e3daec7.png" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;span id="OSC_h2_7"&gt;&lt;/span&gt; 
-&lt;h2&gt;&lt;strong&gt;2.3 同人應用&lt;/strong&gt;&lt;/h2&gt; 
-&lt;p&gt;&lt;strong&gt;&lt;strong&gt;作弊識別&lt;/strong&gt;&lt;/strong&gt;：按照團大小逐漸收斂，從同人作弊株連、團內作弊風險濃度高、同人且有作弊風險幾個思路進行策略迭代。&lt;/p&gt; 
-&lt;p&gt;&lt;strong&gt;&lt;strong&gt;發放打壓&lt;/strong&gt;&lt;/strong&gt;：對於作弊風險較低的羊毛黨用戶，業務側可根據情況進行獎勵發放打壓。&lt;/p&gt; 
-&lt;span id="OSC_h1_8"&gt;&lt;/span&gt; 
-&lt;h1&gt;03 標籤傳播算法及其應用&lt;/h1&gt; 
-&lt;span id="OSC_h2_9"&gt;&lt;/span&gt; 
-&lt;h2&gt;&lt;strong&gt;3.1 標籤傳播算法&lt;/strong&gt;&lt;/h2&gt; 
-&lt;p&gt;標籤傳播算法（Label Propagation Algorithm，LPA）是一種基於圖的&lt;strong&gt;&lt;strong&gt;半監督&lt;/strong&gt;&lt;/strong&gt;學習算法，常用於社區檢測和節點分類任務。它通過迭代傳播標籤信息，利用數據結構的相似性來推斷未知節點的標籤。&lt;/p&gt; 
-&lt;span id="OSC_h3_10"&gt;&lt;/span&gt; 
-&lt;h3&gt;3.1.1 算法流程&lt;/h3&gt; 
-&lt;p&gt;&lt;strong&gt;輸入&lt;/strong&gt;：圖&lt;span class="math-tex"&gt;\(G=(V,E)\)&lt;/span&gt;，已知標籤節點集合&lt;span class="math-tex"&gt;\(V_L\)&lt;/span&gt;，未知標籤節點集合&lt;span class="math-tex"&gt;\(V_U\)&lt;/span&gt;。&lt;/p&gt; 
-&lt;p&gt;&lt;strong&gt;輸出&lt;/strong&gt;：所有節點預測標籤&lt;span class="math-tex"&gt;\({\{y_i\}}_{i\in V}\)&lt;/span&gt;。&lt;/p&gt; 
-&lt;p&gt;&lt;strong&gt;初始化階段&lt;/strong&gt;：為每個已標記節點&lt;span class="math-tex"&gt;\(v\in V_L\)&lt;/span&gt;分配固定標籤&lt;span class="math-tex"&gt;\(y_v\)&lt;/span&gt;，為每個未標記節點&lt;span class="math-tex"&gt;\(v\in V_U\)&lt;/span&gt;隨機分配標籤（或按先驗分佈分配）。&lt;/p&gt; 
-&lt;p&gt;&lt;strong&gt;迭代傳播階段&lt;/strong&gt;：對於每個未標記節點，將出現頻率最高的鄰居標籤作為自己的新標籤。&lt;/p&gt; 
-&lt;p&gt;定義&lt;span class="math-tex"&gt;\(N(v)\)&lt;/span&gt;為節點&lt;span class="math-tex"&gt;\(v\)&lt;/span&gt;的鄰居集合，&lt;span class="math-tex"&gt;\(y_v^{(t)}\)&lt;/span&gt;為節點&lt;span class="math-tex"&gt;\(v\)&lt;/span&gt;在迭代&lt;span class="math-tex"&gt;\(t\)&lt;/span&gt;時的標籤，Ⅱ為指示函數（當&lt;span class="math-tex"&gt;\(y_u=l\)&lt;/span&gt;時為 1，否則為 0）。&lt;/p&gt; 
-&lt;p&gt;無權圖標籤更新規則&lt;span class="math-tex"&gt;\(y_v^{(t+1)} = \argmax_l \displaystyle\sum_{u\in N(v)} \Pi(y_u^{t}=l)\)&lt;/span&gt;&lt;/p&gt; 
-&lt;p&gt;加權圖標籤更新規則&amp;nbsp;&lt;span class="math-tex"&gt;\(y_v^{(t+1)} = \argmax_l \displaystyle\sum_{u\in N(v)} w_{uv} \cdot\Pi(y_u^{t}=l)\)&lt;/span&gt;，其中&lt;span class="math-tex"&gt;\(w_{uv}\)&lt;/span&gt;為邊權重。&lt;/p&gt; 
-&lt;p&gt;&lt;strong&gt;終止條件&lt;/strong&gt;：當迭代不再改變任何節點的標籤時；或達到最大迭代次數。&lt;/p&gt; 
-&lt;p&gt;&lt;img alt="圖片" src="https://oscimg.oschina.net/oscnet/up-9f71c1149e2ddfb7d9ae359bbdbcd6fc955.png" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;p&gt;上圖為標籤傳播示例。&lt;/p&gt; 
-&lt;span id="OSC_h3_11"&gt;&lt;/span&gt; 
-&lt;h3&gt;3.1.2 實踐細節&lt;/h3&gt; 
-&lt;p&gt;最高頻率標籤不唯一時：隨機選擇（結果可能不穩定），或結合其他信息（如節點度數等）。&lt;/p&gt; 
-&lt;p&gt;傳播順序：同步更新（所有節點同時更新，可能振盪），或異步更新（按隨機或度排序等順序逐個更新）。&lt;/p&gt; 
-&lt;span id="OSC_h3_12"&gt;&lt;/span&gt; 
-&lt;h3&gt;3.1.3 無監督改進&lt;/h3&gt; 
-&lt;p&gt;在&lt;strong&gt;&lt;strong&gt;完全無監督&lt;/strong&gt;&lt;/strong&gt;的情況下，仍然可以通過改進方法實現社區檢測或聚類任務。面對局部最優問題，使用模塊度作為目標函數多次運行。&lt;/p&gt; 
-&lt;p&gt;&lt;strong&gt;&lt;strong&gt;算法流程：&lt;/strong&gt;&lt;/strong&gt;&lt;/p&gt; 
-&lt;p&gt;1. 隨機初始化所有節點的標籤（如 1 到 K，K 為社區數）&lt;/p&gt; 
-&lt;p&gt;2. 執行標準 LPA 迭代，直到收斂，計算模塊度 Q&lt;/p&gt; 
-&lt;p&gt;3. 重複多次，選擇模塊度最高的劃分結果&lt;/p&gt; 
-&lt;p&gt;模塊度指標的核心思想：社區內部的連接應顯著高於隨機情況&lt;/p&gt; 
-&lt;p&gt;&lt;span class="math-tex"&gt;\(Q = \frac{1}{2m} \sum_{i,j}\Big[A_{ij}-\frac{k_ik_j}{2m}\Big]\delta(c_i,c_j)\)&lt;/span&gt;&lt;/p&gt; 
-&lt;p&gt;其中&lt;span class="math-tex"&gt;\(A_{ij}\)&lt;/span&gt;為鄰接矩陣元素（節點&lt;span class="math-tex"&gt;\(i\)&lt;/span&gt;和&lt;span class="math-tex"&gt;\(j\)&lt;/span&gt;相連時為 1，否則為 0），&lt;span class="math-tex"&gt;\(k_i\)&lt;/span&gt;為節點&lt;span class="math-tex"&gt;\(i\)&lt;/span&gt;的度數，&lt;span class="math-tex"&gt;\(m\)&lt;/span&gt;為圖中總邊數&lt;span class="math-tex"&gt;\(m=\frac{1}{2}\sum_iki\)&lt;/span&gt;，&lt;span class="math-tex"&gt;\(c_i\)&lt;/span&gt;節點&lt;span class="math-tex"&gt;\(i\)&lt;/span&gt;所屬的社區，&lt;span class="math-tex"&gt;\(\delta(c_i,c_j)\)&lt;/span&gt;若&lt;span class="math-tex"&gt;\(c_i=c_j\)&lt;/span&gt;則為 1，否則為 0。&lt;/p&gt; 
-&lt;span id="OSC_h3_13"&gt;&lt;/span&gt; 
-&lt;h3&gt;3.1.4 算法優缺點&lt;/h3&gt; 
-&lt;p&gt;&lt;strong&gt;&lt;strong&gt;優點：&lt;/strong&gt;&lt;/strong&gt;&lt;/p&gt; 
-&lt;p&gt;1. 計算高效：每輪迭代複雜度&lt;span class="math-tex"&gt;\(O(|E|)\)&lt;/span&gt;&lt;/p&gt; 
-&lt;p&gt;2. 無需參數調優：完全基於圖結構&lt;/p&gt; 
-&lt;p&gt;3. 自然並行化：節點更新可並行執行&lt;/p&gt; 
-&lt;p&gt;&lt;strong&gt;&lt;strong&gt;侷限性：&lt;/strong&gt;&lt;/strong&gt;&lt;/p&gt; 
-&lt;p&gt;1. 結果可能不穩定：受初始化順序影響&lt;/p&gt; 
-&lt;p&gt;2. 僅利用拓撲結構：忽略節點特徵信息&lt;/p&gt; 
-&lt;p&gt;3. 對稀疏圖效果差：鄰居信息不足時傳播受限&lt;/p&gt; 
-&lt;span id="OSC_h2_14"&gt;&lt;/span&gt; 
-&lt;h2&gt;&lt;strong&gt;3.2 在營銷活動場景的應用&lt;/strong&gt;&lt;/h2&gt; 
-&lt;p&gt;在營銷活動場景中，黑產在資源準備和任務執行階段存在批量化的賬號生成和活動行為，在挖掘結果中也經常發現存在暱稱、行為序列等相似的聚集特徵。&lt;/p&gt; 
-&lt;span id="OSC_h3_15"&gt;&lt;/span&gt; 
-&lt;h3&gt;3.2.1 構圖&lt;/h3&gt; 
-&lt;p&gt;以用戶賬號為節點，以暱稱與活動點位行為序列為例，分別採用針對字符串、序列相似度的建邊算法。&lt;/p&gt; 
-&lt;p&gt;暱稱相似度：兩兩計算用戶暱稱的編輯距離，編輯距離越小説明兩個暱稱越相似。&lt;/p&gt; 
-&lt;p&gt;序列相似度：拼接用戶活動點位（活動行為類型標記）-時間作為行為序列，將序列中的打點轉換為詞頻矩陣，使用 MinHash 估計 Jaccard 相似度。&lt;/p&gt; 
-&lt;p&gt;&lt;strong&gt;&lt;strong&gt;實踐細節&lt;/strong&gt;&lt;/strong&gt;&lt;/p&gt; 
-&lt;p&gt;1. 預處理，如做暱稱長度分桶、異常用戶篩選等，減少相似度計算量。&lt;/p&gt; 
-&lt;p&gt;2. 使用局部敏感哈希（LSH）進行優化，減少搜索空間。&lt;/p&gt; 
-&lt;p&gt;3. 可結合業務場景做相似度閾值過濾，縮減構圖輸入。&lt;/p&gt; 
-&lt;span id="OSC_h3_16"&gt;&lt;/span&gt; 
-&lt;h3&gt;3.2.2 團夥挖掘&lt;/h3&gt; 
-&lt;p&gt;使用無監督的 LPA 算法進行團夥挖掘，設定團夥閾值、或結合業務場景添加其他特徵進行作弊識別。&lt;/p&gt; 
-&lt;p&gt;下表為實際應用中，通過用戶行為序列相似挖掘出的一個團夥部分數據，其設備和地域並不聚集，但暱稱可看出為批量操作。&lt;/p&gt; 
-&lt;p&gt;&lt;img alt="圖片" src="https://oscimg.oschina.net/oscnet/up-cd8efca074b9009b15bde0cbb5f30c8cc46.png" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;span id="OSC_h1_17"&gt;&lt;/span&gt; 
-&lt;h1&gt;04 Fraudar 算法及其應用&lt;/h1&gt; 
-&lt;p&gt;在電商場景中，用戶-店鋪之間天然形成一種二部圖的結構，二部圖是指圖中的節點有兩類、邊有一類，兩類節點互相連接，每類節點本身之間沒有連接。Fraudar 算法是一種適用於二部圖結構的算法，下文詳細介紹我們在電商場景的應用。&lt;/p&gt; 
-&lt;span id="OSC_h2_18"&gt;&lt;/span&gt; 
-&lt;h2&gt;&lt;strong&gt;4.1 Fraudar 算法原理&lt;/strong&gt;&lt;/h2&gt; 
-&lt;span id="OSC_h3_19"&gt;&lt;/span&gt; 
-&lt;h3&gt;4.1.1 全局可疑度度量&lt;/h3&gt; 
-&lt;p&gt;Fraudar 定義了一個全局度量&lt;span class="math-tex"&gt;\(g(S) = \frac{f(S)}{|S|}\)&lt;/span&gt;，其中：&lt;br&gt; ● &lt;span class="math-tex"&gt;\(f(S) = f_v(S) + f_{\epsilon}(S)\)&lt;/span&gt;：子網絡&lt;span class="math-tex"&gt;\(S\)&lt;/span&gt;中節點的可疑度之和（&lt;span class="math-tex"&gt;\(f_v\)&lt;/span&gt;）與邊的可疑度之和（&lt;span class="math-tex"&gt;\(f_{\epsilon}\)&lt;/span&gt;）；&lt;br&gt; ● 假設在一個用戶-商品二部圖中，那麼&lt;span class="math-tex"&gt;\(f_v(S)\)&lt;/span&gt;可以理解為用戶或商品的獨立可疑度，&lt;span class="math-tex"&gt;\(f_{\epsilon}(S)\)&lt;/span&gt;可以理解為用戶在商品下的訂單/評論的可疑度。&lt;br&gt; ● &lt;span class="math-tex"&gt;\(|S|\)&lt;/span&gt;：子網絡的規模（節點數）。&lt;br&gt; &lt;span class="math-tex"&gt;\(g(S)\)&lt;/span&gt;表示一個網絡的平均可疑度，滿足以下四個屬性：&lt;/p&gt; 
-&lt;p&gt;1. （節點可疑度）當節點總數、邊可疑度保持一致時，由較高可疑度的節點組成的網絡比由較低可疑度節點組成的網絡更可疑。&lt;/p&gt; 
-&lt;p&gt;&lt;span class="math-tex"&gt;\(|S| = |S'| \land f_{\epsilon}(S) = f_{\epsilon}(S') \land f_v(S) &amp;gt; f_v(S') \Rightarrow g(S) &amp;gt; g(S')\)&lt;/span&gt;&lt;/p&gt; 
-&lt;p&gt;2. （邊可疑度）其他條件不變，在網絡中添加邊會增加該網絡的可疑度。&lt;/p&gt; 
-&lt;p&gt;&lt;span class="math-tex"&gt;\(e \notin \epsilon \Rightarrow g(S(v, \epsilon \cup \{e\})) &amp;gt; g(S(v, \epsilon))\)&lt;/span&gt;&lt;/p&gt; 
-&lt;p&gt;3. （大小）假設節點和邊的權重都相等，邊的密度也相等，那麼更大的網絡比小的網絡更可疑。其中邊的密度$\rho(S)$定義為網絡中的邊數除以它可能的最大邊數。&lt;/p&gt; 
-&lt;p&gt;&lt;span class="math-tex"&gt;\(|S| &amp;gt; |S'| \land S \supset S' \land \rho(S) = \rho(S') \Rightarrow g(S) &amp;gt; g(S')\)&lt;/span&gt;&lt;/p&gt; 
-&lt;p&gt;4. (集中度) 較小的網絡比相同總可疑度但規模更大的網絡更可疑。&lt;/p&gt; 
-&lt;p&gt;&lt;span class="math-tex"&gt;\(|S| &amp;lt; |S'| \land f(S) = f(S') \Rightarrow g(S) &amp;gt; g(S')\)&lt;/span&gt;&lt;/p&gt; 
-&lt;span id="OSC_h3_20"&gt;&lt;/span&gt; 
-&lt;h3&gt;4.1.2 抗偽裝設計&lt;/h3&gt; 
-&lt;p&gt;即使虛假賬戶添加大量正常連接（偽裝），算法仍能通過識別局部密集子網絡發現異常，因為偽裝行為會導致整體網絡稀疏化，而欺詐子網絡仍保持高密度。&lt;/p&gt; 
-&lt;p&gt;&lt;img alt="圖片" src="https://oscimg.oschina.net/oscnet/up-12ea6c9656a0117fc3f04e647772db3cd0d.png" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;p&gt;上圖是虛假賬戶常用的偽裝方法，假設為用戶-商品網絡，那麼（a）刷單用戶通過向正常商品隨機下單偽裝；（b）刷單用戶通過向正常商品添加有偏的偽裝；（c）刷單用戶劫持一些正常賬戶。&lt;/p&gt; 
-&lt;p&gt;算法使用了列權重作為邊權的方式來抗偽裝，即利用商品的邊數來定義邊權。在一個用戶商品圖中，算法先確定商品節點的數量，利用 1/log(商品節點邊數+5) 確定邊權 （邊可疑度），然後按照邊權彙總求取商品節點、用戶節點的權重（節點可疑度）。&lt;/p&gt; 
-&lt;span id="OSC_h3_21"&gt;&lt;/span&gt; 
-&lt;h3&gt;4.1.3 算法實現流程&lt;/h3&gt; 
-&lt;p&gt;利用列權重定義邊權能夠抵抗虛假賬戶向正常商品增加邊的偽裝，因為是往正常商品增加邊，不會影響欺詐商品的邊數，也即三種偽裝方式的欺詐塊仍然是高權重的/密集的。而如果使用行權重，那麼一個用戶通過向正常商品增加邊，就可以稀釋自己的欺詐邊的可疑度，達到偽裝的目的。&lt;/p&gt; 
-&lt;p&gt;&lt;img alt="圖片" src="https://oscimg.oschina.net/oscnet/up-3f0893250a1894485d2ba5248e81434106c.png" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;p&gt;上圖是 Fraudar 算法的步驟。迭代移除當前優先級最高的節點（可疑度貢獻最低的節點），逐步縮小網絡規模，直至所有節點被移除。每一步記錄剩餘子網絡的全局可疑度&lt;span class="math-tex"&gt;\(g(S)\)&lt;/span&gt;。在所有迭代步驟中，&lt;span class="math-tex"&gt;\(g(S)\)&lt;/span&gt;值會先增大後減小，算法保留每一步的迭代結果，選擇&lt;span class="math-tex"&gt;\(g(S)\)&lt;/span&gt;達到最大值的子網絡作為最可疑的欺詐團夥。&lt;/p&gt; 
-&lt;p&gt;由於遍歷刪除圖中可疑度最低的節點是個&lt;span class="math-tex"&gt;\(O(|V|^2)\)&lt;/span&gt;的操作（迭代&lt;span class="math-tex"&gt;\(|V|\)&lt;/span&gt;次，每次找到可疑度最低的節點&lt;span class="math-tex"&gt;\(O(|V|)\)&lt;/span&gt;），因此算法引入了優先樹（小頂堆），葉子節點對應圖中的節點，父節點記錄子節點中的最高優先級，以此實現快速訪問和更新優先級。優化後算法需要迭代邊數次，每次查找和更新節點優先級的複雜度變為&lt;span class="math-tex"&gt;\(O(log|V|)\)&lt;/span&gt;，算法的總時間複雜度為&lt;span class="math-tex"&gt;\(O(|\epsilon| log|V|)\)&lt;/span&gt;。&lt;/p&gt; 
-&lt;p&gt;另外，在實際應用中，只獲得可疑度最大的子圖可能並不夠用，可以在獲取一個可疑度最大子圖後將其中原始圖中刪除，然後再在剩餘的圖中獲取次可疑的子圖，循環往復得到多個可疑子圖。&lt;/p&gt; 
-&lt;span id="OSC_h3_22"&gt;&lt;/span&gt; 
-&lt;h3&gt;4.1.4 優缺點及改進方向&lt;/h3&gt; 
-&lt;p&gt;優勢：&lt;/p&gt; 
-&lt;p&gt;&lt;strong&gt;&lt;strong&gt;1. 抗偽裝能力&lt;/strong&gt;&lt;/strong&gt;通過全局度量而非局部密度，算法能抵抗虛假賬戶添加正常連接的行為，即使部分節點被「污染」，仍能準確識別核心欺詐簇。&lt;/p&gt; 
-&lt;p&gt;&lt;strong&gt;&lt;strong&gt;2. 高效性與可擴展性&lt;/strong&gt;&lt;/strong&gt;利用優先樹結構優化節點移除操作，時間複雜度為&lt;span class="math-tex"&gt;\(O(|\epsilon| log |V|)\)&lt;/span&gt;，適用於大規模網絡。&lt;/p&gt; 
-&lt;p&gt;&lt;strong&gt;&lt;strong&gt;3. 實際應用場景&lt;/strong&gt;&lt;/strong&gt;&lt;/p&gt; 
-&lt;ul&gt; 
- &lt;li&gt; &lt;p&gt;&lt;strong&gt;&lt;strong&gt;電商刷單檢測&lt;/strong&gt;&lt;/strong&gt;：識別虛假評論形成的密集用戶-商品子網絡。&lt;/p&gt; &lt;/li&gt; 
- &lt;li&gt; &lt;p&gt;&lt;strong&gt;&lt;strong&gt;社交網絡反欺詐&lt;/strong&gt;&lt;/strong&gt;：檢測偽卡交易或虛假關注關係。&lt;/p&gt; &lt;/li&gt; 
- &lt;li&gt; &lt;p&gt;&lt;strong&gt;&lt;strong&gt;金融反洗錢&lt;/strong&gt;&lt;/strong&gt;：發現異常交易團夥。&lt;/p&gt; &lt;/li&gt; 
-&lt;/ul&gt; 
-&lt;span id="OSC_h2_23"&gt;&lt;/span&gt; 
-&lt;h2&gt;&lt;strong&gt;4.2 Fraudar 算法應用&lt;/strong&gt;&lt;/h2&gt; 
-&lt;p&gt;&lt;img alt="圖片" src="https://oscimg.oschina.net/oscnet/up-928573e7eca9a5c3ce222a41201de5f7d3a.jpg" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;span id="OSC_h3_24"&gt;&lt;/span&gt; 
-&lt;h3&gt;4.2.1 構圖與關係降噪&lt;/h3&gt; 
-&lt;p&gt;實踐中，我們利用用戶-店鋪的訂單關係構建二部圖，並且為了提升二部圖中的風險濃度，對低風險店鋪等做了剪枝實現關係的降噪，然後輸入 Fraudar 算法挖掘異常子圖。&lt;/p&gt; 
-&lt;p&gt;原始的 Fraudar 算法只能挖掘出風險最高的一個子圖，但實際業務中，一般不止一個作弊團夥，因此我們在每次運行 Fraudar 算法產生一個子圖後，就將這個子圖從原始圖中裁剪掉，再次運行 Fraudar 算法得到次可疑的子圖，即循環 Fraudar。通過這種方法，我們可以獲得期望數量的異常子圖。&lt;/p&gt; 
-&lt;span id="OSC_h3_25"&gt;&lt;/span&gt; 
-&lt;h3&gt;4.2.2 結合監督模型&lt;/h3&gt; 
-&lt;p&gt;挖掘出的風險子圖由用戶和店鋪構成，而實際業務的識別目標是訂單，且風險子圖中會摻雜少量正常用戶的訂單。為了進一步提升算法識別結果的準確率，我們將挖掘出的風險子圖輸入到 LR 模型進行精細判別。LR 模型使用用戶、店鋪的特徵作為輸入，異常訂單為正樣本、正常訂單為負樣本訓練，最後在風險子圖的用戶、店鋪的訂單上區分出異常訂單並落地到業務。&lt;/p&gt; 
-&lt;span id="OSC_h1_26"&gt;&lt;/span&gt; 
-&lt;h1&gt;05 GCN 模型及其應用&lt;/h1&gt; 
-&lt;p&gt;上文提到 Fraudar 模型為了提升圖的風險濃度做了剪枝降噪，這樣提升算法精準的同時會損失一部分召回。並且 Fraudar 本身是無監督模型，還需要結合監督模型做精細化判別。因此我們嘗試了端到端的 GCN 模型，提升召回的同時簡化了識別鏈路。&lt;/p&gt; 
-&lt;span id="OSC_h2_27"&gt;&lt;/span&gt; 
-&lt;h2&gt;&lt;strong&gt;5.1 GCN 模型原理&lt;/strong&gt;&lt;/h2&gt; 
-&lt;span id="OSC_h3_28"&gt;&lt;/span&gt; 
-&lt;h3&gt;5.1.1 GCN 的核心思想：消息傳遞與聚合&lt;/h3&gt; 
-&lt;p&gt;GCN 的核心是通過鄰域聚合更新節點特徵，其本質是讓每個節點從鄰居節點中提取有效信息：&lt;/p&gt; 
-&lt;p&gt;&lt;strong&gt;&lt;strong&gt;1. 基礎聚合公式：&lt;/strong&gt;&lt;/strong&gt;&lt;/p&gt; 
-&lt;p&gt;&lt;span class="math-tex"&gt;\(H^{(l+1)} = \sigma\left(\hat{D}^{-1/2} \hat{A} \hat{D}^{-1/2} H^{(l)} W^{(l)}\right)\)&lt;/span&gt;&lt;/p&gt; 
-&lt;p&gt;其中：&lt;/p&gt; 
-&lt;ul&gt; 
- &lt;li&gt; &lt;p&gt;&lt;span class="math-tex"&gt;\(\hat{A} = A + I\)&lt;/span&gt;：鄰接矩陣加入自連接，防止節點自身信息丟失。&lt;/p&gt; &lt;/li&gt; 
- &lt;li&gt; &lt;p&gt;&lt;span class="math-tex"&gt;\(\hat{D}\)&lt;/span&gt;：度矩陣的對稱歸一化，解決節點度數差異導致的權重偏差。&lt;/p&gt; &lt;/li&gt; 
- &lt;li&gt; &lt;p&gt;&lt;span class="math-tex"&gt;\(W^{(l)}\)&lt;/span&gt;：可學習的權重矩陣，用於特徵變換，即卷積核。&lt;/p&gt; &lt;/li&gt; 
- &lt;li&gt; &lt;p&gt;&lt;span class="math-tex"&gt;\(H^{(l)}\)&lt;/span&gt;：激活值，對於輸入層可以理解成特徵矩陣。&lt;/p&gt; &lt;/li&gt; 
-&lt;/ul&gt; 
-&lt;p&gt;&lt;strong&gt;&lt;strong&gt;2. 關鍵設計：&lt;/strong&gt;&lt;/strong&gt;&lt;/p&gt; 
-&lt;ul&gt; 
- &lt;li&gt; &lt;p&gt;歸一化：通過&lt;span class="math-tex"&gt;\(\hat{D}^{-1/2} \hat{A} \hat{D}^{-1/2}\)&lt;/span&gt;避免度數高的節點主導信息傳播，使模型更穩定。&lt;/p&gt; &lt;/li&gt; 
- &lt;li&gt; &lt;p&gt;非線性激活：如 ReLU 函數，增強模型的表達能力。&lt;/p&gt; &lt;/li&gt; 
-&lt;/ul&gt; 
-&lt;span id="OSC_h3_29"&gt;&lt;/span&gt; 
-&lt;h3&gt;5.1.2 數學視角：從拉普拉斯矩陣到頻譜域卷積&lt;/h3&gt; 
-&lt;p&gt;GCN 的理論基礎源自圖譜理論，通過將圖信號轉換到頻域進行卷積操作，核心概念：&lt;/p&gt; 
-&lt;p&gt;1. 拉普拉斯矩陣：定義為&lt;span class="math-tex"&gt;\(L = D - A\)&lt;/span&gt;，其特徵分解&lt;span class="math-tex"&gt;\((L = U \Lambda U^T)\)&lt;/span&gt;將圖結構映射到頻域空間。&lt;/p&gt; 
-&lt;p&gt;2. 圖傅裏葉變換：利用特徵向量矩陣&lt;span class="math-tex"&gt;\(U\)&lt;/span&gt;對節點特徵進行頻域投影，卷積操作簡化為頻域的乘積。&lt;/p&gt; 
-&lt;p&gt;a. 卷積定理：函數卷積的傅裏葉變換是函數傅裏葉變換的乘積，即對於函數&lt;span class="math-tex"&gt;\(f(t)\)&lt;/span&gt;與&lt;span class="math-tex"&gt;\(h(t)\)&lt;/span&gt;兩者的卷積是其函數傅裏葉變換乘積的逆變換。&lt;br&gt; b. 圖傅裏葉變換把圖上定義的任意向量，表示成了拉普拉斯矩陣特徵向量的線性組合。&lt;/p&gt; 
-&lt;p&gt;3. 切比雪夫近似：為降低計算複雜度，GCN 採用一階近似（僅考慮直接鄰居），公式退化為經典聚合形式。&lt;br&gt; 第一代 GCN：將輸入特徵通過圖傅裏葉變換從空域映射到譜域，做卷積運算後再映射回空域。&lt;/p&gt; 
-&lt;p&gt;&lt;span class="math-tex"&gt;\(Y = U \cdot g_\theta(\Lambda) \cdot U^T X\)&lt;/span&gt;&lt;/p&gt; 
-&lt;p&gt;第二代 GCN：利用切比雪夫多項式近似&lt;span class="math-tex"&gt;\(g_\theta(\Lambda)\)&lt;/span&gt;，避免&lt;span class="math-tex"&gt;\(O(N^3)\)&lt;/span&gt;複雜度的拉普拉斯矩陣分解。&lt;br&gt; 卷積核用 K 階段切比雪夫多項式展開：&lt;/p&gt; 
-&lt;p&gt;&lt;span class="math-tex"&gt;\(g_\theta(\Lambda) = \sum_{k=0}^K \theta_k T_k(\tilde{\Lambda})\)&lt;/span&gt;&lt;/p&gt; 
-&lt;p&gt;最終 GCN 公式：&lt;/p&gt; 
-&lt;p&gt;&lt;span class="math-tex"&gt;\(Y = \sum_{k=0}^K \theta_k T_k(\tilde{L}) X\)&lt;/span&gt;&lt;/p&gt; 
-&lt;p&gt;第三代 GCN：只保留一階切比雪夫多項式，並加入自環和歸一化。&lt;/p&gt; 
-&lt;p&gt;&lt;span class="math-tex"&gt;\(H^{(l+1)} = \sigma \left( \hat{A} H^{(l)} W^{(l)} \right)\)&lt;/span&gt;&lt;/p&gt; 
-&lt;span id="OSC_h3_30"&gt;&lt;/span&gt; 
-&lt;h3&gt;5.1.3 模型結構：輕量化與高效性&lt;/h3&gt; 
-&lt;p&gt;GCN 的典型結構通常僅需 2-4 層即可完成高效學習，原因在於：&lt;/p&gt; 
-&lt;p&gt;&lt;strong&gt;&lt;strong&gt;1. 層數限制&lt;/strong&gt;&lt;/strong&gt;：過深的網絡會導致&lt;strong&gt;&lt;strong&gt;過平滑（圖中同一連通分量的節點特徵趨同）&lt;/strong&gt;&lt;/strong&gt;，因此實踐中常用淺層架構。&lt;/p&gt; 
-&lt;p&gt;&lt;strong&gt;&lt;strong&gt;2. 參數共享&lt;/strong&gt;&lt;/strong&gt;：每層共享權重矩陣，大幅減少參數量，適合處理大規模圖數據。（相對於一個節點一個權重矩陣的全連接形式）&lt;/p&gt; 
-&lt;p&gt;&lt;strong&gt;&lt;strong&gt;3. 應用場景&lt;/strong&gt;&lt;/strong&gt;：&lt;/p&gt; 
-&lt;ul&gt; 
- &lt;li&gt; &lt;p&gt;&lt;strong&gt;&lt;strong&gt;節點分類&lt;/strong&gt;&lt;/strong&gt;（如電商刷單用戶檢測）&lt;/p&gt; &lt;/li&gt; 
- &lt;li&gt; &lt;p&gt;&lt;strong&gt;&lt;strong&gt;圖分類&lt;/strong&gt;&lt;/strong&gt;（如分子屬性判斷）&lt;/p&gt; &lt;/li&gt; 
- &lt;li&gt; &lt;p&gt;&lt;strong&gt;&lt;strong&gt;鏈接預測&lt;/strong&gt;&lt;/strong&gt;（如推薦系統好友關係推斷）&lt;/p&gt; &lt;/li&gt; 
-&lt;/ul&gt; 
-&lt;span id="OSC_h3_31"&gt;&lt;/span&gt; 
-&lt;h3&gt;5.1.4 GCN 的優缺點與改進方向&lt;/h3&gt; 
-&lt;p&gt;&lt;strong&gt;&lt;strong&gt;1. 優勢&lt;/strong&gt;&lt;/strong&gt;：&lt;/p&gt; 
-&lt;ul&gt; 
- &lt;li&gt; &lt;p&gt;天然融合圖結構與節點特徵，適合複雜關係建模。&lt;/p&gt; &lt;/li&gt; 
- &lt;li&gt; &lt;p&gt;計算高效，支持稀疏矩陣優化。&lt;/p&gt; &lt;/li&gt; 
-&lt;/ul&gt; 
-&lt;p&gt;&lt;strong&gt;&lt;strong&gt;2. 侷限&lt;/strong&gt;&lt;/strong&gt;：&lt;/p&gt; 
-&lt;ul&gt; 
- &lt;li&gt; &lt;p&gt;&lt;strong&gt;&lt;strong&gt;過平滑問題&lt;/strong&gt;&lt;/strong&gt;：深層網絡性能下降。&lt;/p&gt; &lt;/li&gt; 
- &lt;li&gt; &lt;p&gt;&lt;strong&gt;&lt;strong&gt;靜態圖假設&lt;/strong&gt;&lt;/strong&gt;：難以處理動態變化的圖結構。&lt;/p&gt; &lt;/li&gt; 
-&lt;/ul&gt; 
-&lt;span id="OSC_h2_32"&gt;&lt;/span&gt; 
-&lt;h2&gt;&lt;strong&gt;5.2 GCN 模型應用&lt;/strong&gt;&lt;/h2&gt; 
-&lt;span id="OSC_h3_33"&gt;&lt;/span&gt; 
-&lt;h3&gt;5.2.1 構圖&lt;/h3&gt; 
-&lt;p&gt;利用訂單作為節點、訂單之間的屬性關聯關係構建同構圖。特徵上採用用戶、 店鋪等風險屬性刻畫訂單，異常訂單為正樣本、正常訂單為負樣本。&lt;/p&gt; 
-&lt;p&gt;&lt;img alt="圖片" src="https://oscimg.oschina.net/oscnet/up-e413211583231cf96809e8be84b96306075.jpg" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;span id="OSC_h3_34"&gt;&lt;/span&gt; 
-&lt;h3&gt;5.2.2 風險訂單挖掘&lt;/h3&gt; 
-&lt;p&gt;由於實際業務中有標籤的風險訂單、正常訂單僅是全量訂單的一小部分，因此我們採用了半監督的方式訓練 GCN 模型，利用有標籤的訂單對無標籤的訂單進行推理。GCN 模型設計上針對的是靜態圖，應用中我們採用了隨着時間窗口滾動構圖的方式來適應動態變化的數據，滾動過程中排除了 GCN 模型本身推理的標籤，防止對模型自身結果過擬合。&lt;/p&gt; 
-&lt;p&gt;這裏解釋下，為什麼我們不採用一個訓練好的模型在線上不斷的推理，而是滾動的訓練推理。這是因為 GCN 模型從原理上屬於直推式模型，通常的訓練好一個模型後不斷的對新數據推理的模型是歸納式模型。GCN 的直推式，本質上是因為卷積計算用到了圖的拉普拉斯矩陣，圖發生了變化，那麼這個拉普拉斯矩陣也就發生變化，訓練的模型也就失效了。&lt;/p&gt; 
-&lt;p&gt;既然 GCN 是直推式的，這裏又產生一個問題，為什麼我們不使用歸納式模型呢？事實上，我們對比了 GraphSage 等模型在同樣圖結構、特徵數據上的效果，在我們的場景中比 GCN 效果差，為了保證業務效果我們最終採用的是 GCN。&lt;/p&gt; 
-&lt;span id="OSC_h1_35"&gt;&lt;/span&gt; 
-&lt;h1&gt;06 總結和展望&lt;/h1&gt; 
-&lt;p&gt;在風控反作弊的業務中，我們落地了 LPA、Fraudar、GCN 等算法並取得了良好的效果，未來我們希望做的更多。&lt;/p&gt; 
-&lt;p&gt;&lt;strong&gt;&lt;strong&gt;1. 多模態數據融合：從單一圖譜到全域關聯&lt;/strong&gt;&lt;/strong&gt;&lt;/p&gt; 
-&lt;p&gt;未來風控需整合圖數據、時序數據（如交易頻率）、文本數據（如聊天記錄）等多模態信息。例如，通過圖嵌入技術將設備、IP、地理位置等實體統一表徵，構建全域風險畫像。&lt;/p&gt; 
-&lt;p&gt;&lt;strong&gt;&lt;strong&gt;2. 動態圖實時計算：應對黑產快速演化&lt;/strong&gt;&lt;/strong&gt;&lt;/p&gt; 
-&lt;p&gt;當前黑產通過「少邊構造」（刻意斷開部分關聯）繞過靜態圖檢測，需引入動態圖算法（如時序 GNN）實時捕捉行為演變，並結合增量計算優化性能。&lt;/p&gt; 
-&lt;p&gt;&lt;strong&gt;&lt;strong&gt;3. 可解釋性與對抗防禦：提升算法可信度&lt;/strong&gt;&lt;/strong&gt;&lt;/p&gt; 
-&lt;p&gt;探索可視化工具（如子圖歸因分析）解釋 GCN 決策邏輯，並研發對抗訓練技術抵禦黑產對模型的逆向攻擊。&lt;/p&gt; 
-&lt;p&gt;圖算法正從「輔助工具」升級為風控系統的核心引擎，而未來的挑戰在於如何平衡技術效能、業務合規與用戶體驗。&lt;/p&gt;
-                                                                                    &lt;/div&gt;
-                                                                            </description>
-      <link>https://my.oschina.net/u/4939618/blog/18627800</link>
-      <guid isPermaLink="false">https://my.oschina.net/u/4939618/blog/18627800</guid>
-      <pubDate>Sat, 10 May 2025 07:21:00 GMT</pubDate>
-      <author>原創</author>
-    </item>
-    <item>
-      <title>jsoup 1.21.1 發佈，Java HTML 解析器</title>
-      <description>&lt;div class="content"&gt;
-                                                                    
-                                                        &lt;p&gt;&lt;span style="color:#000000"&gt;jsoup 1.21.1 現已發佈。此版本具有強大的全新節點選擇功能，可讓用戶使用 CSS 選擇器鎖定特定的 DOM 節點（例如註釋和文本節點）、通過新的 TagSet 回調系統進行動態標籤自定義，並通過簡化的屬性轉義增強了對突變 XSS 攻擊的防禦能力。&lt;/span&gt;&lt;/p&gt; 
-&lt;p&gt;&lt;span style="color:#000000"&gt;此版本還默認提供 HTTP/2 支持，並進行了多項 API 改進以提升開發者體驗，並修復了多個 edge-case parsing 問題。&lt;/span&gt;&lt;/p&gt; 
-&lt;p&gt;&lt;strong&gt;&lt;span style="color:#192943"&gt;Changes&lt;/span&gt;&lt;/strong&gt;&lt;/p&gt; 
-&lt;ul style="margin-left:0; margin-right:0"&gt; 
- &lt;li&gt;刪除了以前棄用的方法。&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fgithub.com%2Fjhy%2Fjsoup%2Fpull%2F2317" target="_blank"&gt;#2317&lt;/a&gt;&lt;/li&gt; 
- &lt;li&gt;由於&lt;code&gt;:matchText&lt;/code&gt;pseduo-selector 對 DOM 的副作用，已將其棄用；改用新的&lt;code&gt;::textnode&lt;/code&gt;&lt;span style="color:#192943"&gt;&amp;nbsp;selector&lt;/span&gt;和 &lt;span style="color:#192943"&gt;&amp;nbsp;&lt;/span&gt;&lt;code&gt;&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fjsoup.org%2Fapidocs%2Forg%2Fjsoup%2Fnodes%2FElement.html%23selectNodes%28java.lang.String%2Cjava.lang.Class%29" target="_blank"&gt;Element#selectNodes(String css, Class&amp;lt;T&amp;gt; type)&lt;/a&gt;&lt;/code&gt;方法。&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fgithub.com%2Fjhy%2Fjsoup%2Fpull%2F2343" target="_blank"&gt;#2343&lt;/a&gt;&lt;/li&gt; 
- &lt;li&gt;已棄用&lt;code&gt;&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fjsoup.org%2Fapidocs%2Forg%2Fjsoup%2FConnection.Response.html%23bufferUp%28%29" target="_blank"&gt;Connection.Response#bufferUp()&lt;/a&gt;&lt;/code&gt;，以代替&lt;code&gt;&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fjsoup.org%2Fapidocs%2Forg%2Fjsoup%2FConnection.Response.html%23readFully%28%29" target="_blank"&gt;Connection.Response#readFully()&lt;/a&gt;&lt;/code&gt;，後者會拋出一個已檢查的 IOException。&lt;/li&gt; 
- &lt;li&gt;已棄用的內部方法&lt;span style="color:#192943"&gt;&amp;nbsp;&lt;/span&gt;&lt;code&gt;&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fjsoup.org%2Fapidocs%2Forg%2Fjsoup%2Fhelper%2FValidate.html%23ensureNotNull%28java.lang.Object%29" target="_blank"&gt;Validate#ensureNotNull(Object)&lt;/a&gt;&lt;/code&gt;（由 t&lt;span style="color:#192943"&gt;yped&amp;nbsp;&lt;/span&gt;&lt;code&gt;&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fjsoup.org%2Fapidocs%2Forg%2Fjsoup%2Fhelper%2FValidate.html%23expectNotNull%28T%29" target="_blank"&gt;Validate#expectNotNull(T)&lt;/a&gt;&lt;/code&gt;替代）；來自 Attribute 和 Node 的受保護 HTML 附加程序。&lt;/li&gt; 
- &lt;li&gt;如果你碰巧正在使用任何已棄用的方法，官方建議立即藉此機會遷移它們，因為它們將在未來的版本中被刪除。&lt;/li&gt; 
-&lt;/ul&gt; 
-&lt;p&gt;&lt;strong&gt;&lt;span style="color:#192943"&gt;Improvements&lt;/span&gt;&lt;/strong&gt;&lt;/p&gt; 
-&lt;ul style="margin-left:0; margin-right:0"&gt; 
- &lt;li&gt;增強了&lt;code&gt;&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fjsoup.org%2Fapidocs%2Forg%2Fjsoup%2Fselect%2FSelector.html" target="_blank"&gt;Selector&lt;/a&gt;&lt;/code&gt;，支持直接匹配註釋和文本節點等節點。&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fgithub.com%2Fjhy%2Fjsoup%2Fpull%2F2324" target="_blank"&gt;#2324&lt;/a&gt;&lt;/li&gt; 
- &lt;li&gt;新增&amp;nbsp;&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fjsoup.org%2Fapidocs%2Forg%2Fjsoup%2Fparser%2FTagSet.html%23onNewTag%28java.util.function.Consumer%29" target="_blank"&gt;TagSet#onNewTag(Consumer&amp;lt;Tag&amp;gt; customizer)&lt;/a&gt;：註冊一個回，當每個新的或克隆的標籤插入到集合中時，都會調用該回調函數。該函數支持動態調整標籤選項（例如，將所有自定義標籤標記為自閉合，或將給定命名空間中的所有內容標記為保留空格）。&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fgithub.com%2Fjhy%2Fjsoup%2Fissues%2F2330" target="_blank"&gt;#2330&lt;/a&gt;&lt;/li&gt; 
- &lt;li&gt;使&lt;code&gt;&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fjsoup.org%2Fapidocs%2Forg%2Fjsoup%2Fparser%2FTokenQueue.html" target="_blank"&gt;TokenQueue&lt;/a&gt;&lt;/code&gt;和&lt;code&gt;&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fjsoup.org%2Fapidocs%2Forg%2Fjsoup%2Fparser%2FCharacterReader.html" target="_blank"&gt;CharacterReader&lt;/a&gt;&lt;/code&gt;可自動關閉，以確保它們將緩衝區釋放回緩衝池，以供以後重用。&lt;/li&gt; 
- &lt;li&gt;添加了&lt;code&gt;&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fjsoup.org%2Fapidocs%2Forg%2Fjsoup%2Fselect%2FSelector.html%23evaluatorOf%28java.lang.String%29" target="_blank"&gt;Selector#evaluatorOf(String css)&lt;/a&gt;&lt;/code&gt;，以更清晰的方式從 CSS 查詢中獲取評估器。這是&lt;code&gt;&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fjsoup.org%2Fapidocs%2Forg%2Fjsoup%2Fselect%2FQueryParser.html%23parse%28java.lang.String%29" target="_blank"&gt;QueryParser.parse(String css)&lt;/a&gt;&lt;/code&gt;的別名。&lt;/li&gt; 
- &lt;li&gt;可以將外部命名空間（例如 SVG）中的自定義標籤（通過&lt;code&gt;&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fjsoup.org%2Fapidocs%2Forg%2Fjsoup%2Fparser%2FTagSet.html" target="_blank"&gt;TagSet&lt;/a&gt;&lt;/code&gt;定義）配置為數據標籤進行解析。&lt;/li&gt; 
- &lt;li&gt;添加&lt;code&gt;&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fjsoup.org%2Fapidocs%2Forg%2Fjsoup%2Fselect%2FNodeVisitor.html%23traverse%28org.jsoup.nodes.Node%29" target="_blank"&gt;NodeVisitor#traverse(Node)&lt;/a&gt;&lt;/code&gt;以簡化節點遍歷調用（相對於導入&lt;code&gt;&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fjsoup.org%2Fapidocs%2Forg%2Fjsoup%2Fselect%2FNodeTraversor.html" target="_blank"&gt;NodeTraversor&lt;/a&gt;&lt;/code&gt;）。&lt;/li&gt; 
- &lt;li&gt;更新了默認用戶代理字符串以提高兼容性。&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fgithub.com%2Fjhy%2Fjsoup%2Fissues%2F2341" target="_blank"&gt;#2341&lt;/a&gt;&lt;/li&gt; 
- &lt;li&gt;HTML 解析器現在允許為已知標籤自定義特定的文本數據類型 (Data、RcData)。（之前此功能僅支持自定義標籤。）&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fgithub.com%2Fjhy%2Fjsoup%2Fissues%2F2326" target="_blank"&gt;#2326&lt;/a&gt;&lt;/li&gt; 
- &lt;li&gt;添加了&lt;code&gt;&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fjsoup.org%2Fapidocs%2Forg%2Fjsoup%2FConnection.Response.html%23readFully%28%29" target="_blank"&gt;Connection.Response#readFully()&lt;/a&gt;&lt;/code&gt;，以替代&lt;code&gt;&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fjsoup.org%2Fapidocs%2Forg%2Fjsoup%2FConnection.Response.html%23bufferUp%28%29" target="_blank"&gt;Connection.Response#bufferUp()&lt;/a&gt;&lt;/code&gt;，並明確了 IOException。同樣，添加&lt;code&gt;&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fjsoup.org%2Fapidocs%2Forg%2Fjsoup%2FConnection.Response.html%23readBody%28%29" target="_blank"&gt;Connection.Response#readBody()&lt;/a&gt;&lt;/code&gt;代替&lt;code&gt;&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fjsoup.org%2Fapidocs%2Forg%2Fjsoup%2FConnection.Response.html%23body%28%29" target="_blank"&gt;Connection.Response#body()&lt;/a&gt;&lt;/code&gt;。已棄用&lt;code&gt;&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fjsoup.org%2Fapidocs%2Forg%2Fjsoup%2FConnection.Response.html%23bufferUp%28%29" target="_blank"&gt;Connection.Response#bufferUp()&lt;/a&gt;&lt;/code&gt;。&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fgithub.com%2Fjhy%2Fjsoup%2Fpull%2F2327" target="_blank"&gt;#2327&lt;/a&gt;&lt;/li&gt; 
- &lt;li&gt;序列化 HTML 時，屬性中的&lt;code&gt;&amp;lt;&lt;/code&gt;和&lt;code&gt;&amp;gt;&lt;/code&gt;字符現在會被轉義。這有助於防止一類變異 XSS 攻擊。&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fgithub.com%2Fjhy%2Fjsoup%2Fpull%2F2337" target="_blank"&gt;#2337&lt;/a&gt;&lt;/li&gt; 
- &lt;li&gt;已更改&lt;code&gt;&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fjsoup.org%2Fapidocs%2Forg%2Fjsoup%2FConnection.html" target="_blank"&gt;Connection&lt;/a&gt;&lt;/code&gt;為優先使用 JDK 的 HttpClient 而非 HttpUrlConnection（如果可用），以默認啓用 HTTP/2 支持。用戶可以通過禁用&lt;code&gt;-Djsoup.useHttpClient=false&lt;/code&gt;關閉該功能。&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fgithub.com%2Fjhy%2Fjsoup%2Fpull%2F2340" target="_blank"&gt;#2340&lt;/a&gt;&lt;/li&gt; 
-&lt;/ul&gt; 
-&lt;p&gt;&lt;strong&gt;&lt;span style="color:#192943"&gt;Bug Fixes&lt;/span&gt;&lt;/strong&gt;&lt;/p&gt; 
-&lt;ul style="margin-left:0; margin-right:0"&gt; 
- &lt;li&gt;&lt;code&gt;svg&lt;/code&gt;外部上下文中的&lt;code&gt;script&lt;/code&gt;內容應被解析為腳本數據，而非文本。&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fgithub.com%2Fjhy%2Fjsoup%2Fissues%2F2320" target="_blank"&gt;#2320&lt;/a&gt;&lt;/li&gt; 
- &lt;li&gt;&lt;code&gt;&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fjsoup.org%2Fapidocs%2Forg%2Fjsoup%2Fparser%2FTag.html%23isFormSubmittable%28%29" target="_blank"&gt;Tag#isFormSubmittable()&lt;/a&gt;&lt;/code&gt;正在更新標籤的選項。&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fgithub.com%2Fjhy%2Fjsoup%2Fissues%2F2323" target="_blank"&gt;#2323&lt;/a&gt;&lt;/li&gt; 
- &lt;li&gt;當文本跟在塊元素中的內聯元素之後時，HTML pretty-printer&amp;nbsp;會錯誤地修剪空格。&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fgithub.com%2Fjhy%2Fjsoup%2Fissues%2F2325" target="_blank"&gt;#2325&lt;/a&gt;&lt;/li&gt; 
- &lt;li&gt;名稱中帶有連字符或其他非字母字符的自定義標籤現在可以正確用作 Data 或 RcData 標籤。它們的結束標籤現在也能正確標記。&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fgithub.com%2Fjhy%2Fjsoup%2Fissues%2F2332" target="_blank"&gt;#2332&lt;/a&gt;&lt;/li&gt; 
- &lt;li&gt;克隆元素時，克隆將保留源的緩存子元素列表（如果有），這可能導致在修改克隆的子元素時出現不正確的結果。&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fgithub.com%2Fjhy%2Fjsoup%2Fissues%2F2334" target="_blank"&gt;#2334&lt;/a&gt;&lt;/li&gt; 
-&lt;/ul&gt; 
-&lt;p&gt;更新説明：&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fjsoup.org%2Fnews%2Frelease-1.21.1" target="_blank"&gt;https://jsoup.org/news/release-1.21.1&lt;/a&gt;&lt;/p&gt;
-                                                                                &lt;/div&gt;
-                                                                            </description>
-      <link>https://www.oschina.net/news/356839/jsoup-1-21-1-released</link>
-      <guid isPermaLink="false">https://www.oschina.net/news/356839/jsoup-1-21-1-released</guid>
-      <pubDate>Sat, 10 May 2025 06:40:00 GMT</pubDate>
       <author>來源: OSCHINA</author>
     </item>
   </channel>
