@@ -7,8 +7,283 @@
     <generator>RSSHub</generator>
     <webMaster>contact@rsshub.app (RSSHub)</webMaster>
     <language>zh-tw</language>
-    <lastBuildDate>Fri, 27 Jun 2025 07:46:06 GMT</lastBuildDate>
+    <lastBuildDate>Fri, 27 Jun 2025 12:46:33 GMT</lastBuildDate>
     <ttl>5</ttl>
+    <item>
+      <title>Apache APISIX 3.13.0 正式發佈</title>
+      <description>&lt;div class="content"&gt;
+                                                                    
+                                                        &lt;p&gt;Apache APISIX 3.13.0 版本已經&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fmp.weixin.qq.com%2Fs%2F2hpdb8cAGIXRITyAOVSf_Q" target="_blank"&gt;發佈&lt;/a&gt;，帶來了一系列新功能、修復、以及相關用戶體驗優化。&lt;/p&gt; 
+&lt;p&gt;此版本引入了多項新功能，包括 mcp-bridge 和 lago 插件、獨立的 Admin API、狀態健康檢查端點、L4 代理健康檢查等等。雖然本次更新沒有引入任何重大變更，但部分功能已被標記為未來版本中將廢棄。&lt;/p&gt; 
+&lt;h2&gt;&lt;strong&gt;棄用説明&lt;/strong&gt;&lt;/h2&gt; 
+&lt;h3&gt;&lt;strong&gt;1. 標記 server-info 插件為棄用&lt;/strong&gt;&lt;/h3&gt; 
+&lt;p&gt;&lt;code&gt;server-info&lt;/code&gt;插件已被標記為棄用，並將在未來的版本中移除。該插件會定期將服務器信息寫入 etcd，在大型集羣中可能會由於啓動時 etcd 寫入操作過多而導致性能問題。&lt;/p&gt; 
+&lt;p&gt;更多信息請參見&amp;nbsp;&lt;strong&gt;郵件列表討論&lt;/strong&gt;[1]和&amp;nbsp;&lt;strong&gt;PR #12244&lt;/strong&gt;。&lt;/p&gt; 
+&lt;h3&gt;&lt;strong&gt;2. 在解耦 data_plane 模式下對執行 etcd 寫操作進行警告&lt;/strong&gt;&lt;/h3&gt; 
+&lt;p&gt;當 APISIX 以數據面實例運行在解耦模式時，如果通過 core.etcd 函數或 CLI 執行 etcd 寫操作，將記錄警告日誌。未來版本中將棄用並禁止此類操作。&lt;/p&gt; 
+&lt;p&gt;更多信息請參見&amp;nbsp;&lt;strong&gt;郵件列表討論&lt;/strong&gt;[2]和&amp;nbsp;&lt;strong&gt;PR #12241&lt;/strong&gt;。&lt;/p&gt; 
+&lt;h2&gt;&lt;strong&gt;新功能&lt;/strong&gt;&lt;/h2&gt; 
+&lt;h3&gt;&lt;strong&gt;1. 新增 standalone 模式 Admin API&lt;/strong&gt;&lt;/h3&gt; 
+&lt;p&gt;本次版本為 standalone 模式引入了新的 Admin API，允許用戶通過 HTTP PUT（更新）和 GET（獲取）來管理內存中的配置。配置支持以 JSON 或 YAML 格式提交，會在驗證後廣播至同一 APISIX 實例中的所有 worker 進程，實現完全無狀態的運行模式。該功能提升了對 Ingress Controller 等場景的支持能力。&lt;/p&gt; 
+&lt;p&gt;更多信息請參見相關&amp;nbsp;&lt;strong&gt;PR #12179&lt;/strong&gt;、&lt;strong&gt;PR #12214&lt;/strong&gt;、&lt;strong&gt;PR #12256&lt;/strong&gt;、&lt;strong&gt;PR #12295&lt;/strong&gt;、&lt;strong&gt;PR #12317&lt;/strong&gt;、&lt;strong&gt;PR #12333&lt;/strong&gt;。&lt;/p&gt; 
+&lt;h3&gt;&lt;strong&gt;2. 支持 L4 代理的健康檢查&lt;/strong&gt;&lt;/h3&gt; 
+&lt;p&gt;APISIX 現已支持作為 L4 代理運行時對上游目標進行健康檢查，從而提升 TCP/UDP 流量的可靠性並實現自動故障轉移。&lt;/p&gt; 
+&lt;p&gt;更多信息請參見&amp;nbsp;&lt;strong&gt;PR #12180&lt;/strong&gt;。&lt;/p&gt; 
+&lt;h3&gt;&lt;strong&gt;3. 新增狀態健康檢查端點&lt;/strong&gt;&lt;/h3&gt; 
+&lt;p&gt;本次版本引入了一個健康檢查 status 端點，用於指示 APISIX 是否已準備好接收流量。在 standalone 模式下，該端點在從外部客戶端（如 Ingress Controller）加載配置後報告就緒狀態；在使用 etcd 時，該端點會在所有工作進程完成初始配置加載之前一直處於非就緒狀態。該功能有助於外部系統準確執行就緒性檢查。&lt;/p&gt; 
+&lt;p&gt;更多信息請參見&amp;nbsp;&lt;strong&gt;PR #12200&lt;/strong&gt;。&lt;/p&gt; 
+&lt;h3&gt;&lt;strong&gt;4. 新增 mcp-bridge 插件&lt;/strong&gt;&lt;/h3&gt; 
+&lt;p&gt;本次版本引入了&amp;nbsp;&lt;code&gt;mcp-bridge&lt;/code&gt;插件，用於將基於 stdio 的 MCP 服務器轉換為基於 HTTP SSE 的接口，並支持子進程管理和跨 NGINX worker 的會話原型處理。為支持更廣泛的使用場景，MCP 服務器已重構為獨立模塊，替換了原始的&amp;nbsp;&lt;code&gt;mcp-bridge&lt;/code&gt;實現，採用更靈活的框架，同時通過現有測試保持向後兼容。&lt;/p&gt; 
+&lt;p&gt;更多信息請參見&amp;nbsp;**PR&amp;nbsp;[#12168](javascript:;)&amp;nbsp;**和&amp;nbsp;&lt;strong&gt;PR #12151&lt;/strong&gt;。&lt;/p&gt; 
+&lt;h3&gt;&lt;strong&gt;5. 新增 lago 插件&lt;/strong&gt;&lt;/h3&gt; 
+&lt;p&gt;本次版本引入了&amp;nbsp;&lt;code&gt;lago&lt;/code&gt;插件，支持與 Lago 集成實現 API 商業化。該插件記錄 API 調用，並基於配置的計費指標和訂閲對消費者進行計費。它支持靈活的使用場景，例如面向 AI 服務的基於令牌的計費或基於調用次數的 API 計費，並允許將多個路由鏈接到不同的定價模型，以支持按需付費模式。&lt;/p&gt; 
+&lt;p&gt;更多信息請參見&amp;nbsp;&lt;strong&gt;PR #12196&lt;/strong&gt;。&lt;/p&gt; 
+&lt;h3&gt;&lt;strong&gt;6. 為 loki-logger 插件添加 headers 屬性&lt;/strong&gt;&lt;/h3&gt; 
+&lt;p&gt;本次版本為&amp;nbsp;&lt;code&gt;loki-logger&lt;/code&gt;插件新增了&amp;nbsp;&lt;code&gt;headers&lt;/code&gt;屬性。通過此功能，用戶可以在將日誌發送到遠程 Loki 服務時設置授權等自定義請求頭。&lt;/p&gt; 
+&lt;p&gt;更多信息請參見&amp;nbsp;&lt;strong&gt;PR #12243&lt;/strong&gt;。&lt;/p&gt; 
+&lt;h3&gt;&lt;strong&gt;7. 為核心資源 schema 添加 metadata 字段&lt;/strong&gt;&lt;/h3&gt; 
+&lt;p&gt;本次版本為核心資源 schema 添加了標準化的 metadata 字段，包括名稱、描述和標籤。此增強提升了資源的一致性，並解決了下游項目中的相關問題。&lt;/p&gt; 
+&lt;p&gt;更多信息請參見&amp;nbsp;&lt;strong&gt;PR #12224&lt;/strong&gt;。&lt;/p&gt; 
+&lt;h3&gt;&lt;strong&gt;8. 為批處理器新增 max_pending_entries 屬性&lt;/strong&gt;&lt;/h3&gt; 
+&lt;p&gt;本次版本為批處理器新增了&amp;nbsp;&lt;code&gt;max_pending_entries&lt;/code&gt;配置項，用於防止在日誌服務器響應緩慢或無響應時引發內存激增。該配置允許在等待處理的回調數量過多時丟棄新的日誌條目。&lt;/p&gt; 
+&lt;p&gt;更多信息請參見&amp;nbsp;&lt;strong&gt;PR #12338&lt;/strong&gt;。&lt;/p&gt; 
+&lt;h3&gt;&lt;strong&gt;9. 增強 Admin API 過濾功能&lt;/strong&gt;&lt;/h3&gt; 
+&lt;p&gt;Admin API 現在支持通過&amp;nbsp;&lt;code&gt;service_id&lt;/code&gt;和&amp;nbsp;&lt;code&gt;upstream_id&lt;/code&gt;過濾 routes 和 stream routes，使用戶更容易查詢和管理相關資源，特別是對 APISIX Dashboard 項目更為友好。&lt;/p&gt; 
+&lt;p&gt;更多信息請參見&amp;nbsp;&lt;strong&gt;PR #12291&lt;/strong&gt;。&lt;/p&gt; 
+&lt;h3&gt;&lt;strong&gt;10. 在 Prometheus node_info 指標中暴露 APISIX 版本&lt;/strong&gt;&lt;/h3&gt; 
+&lt;p&gt;本次版本增強了 Prometheus 的&amp;nbsp;&lt;code&gt;node_info&lt;/code&gt;指標，增加了&amp;nbsp;&lt;code&gt;version&lt;/code&gt;標籤用於暴露當前 APISIX 版本，從而提升可觀測性和版本追蹤能力。&lt;/p&gt; 
+&lt;p&gt;更多信息請參見&amp;nbsp;&lt;strong&gt;PR #12367&lt;/strong&gt;。&lt;/p&gt; 
+&lt;h3&gt;&lt;strong&gt;11. 支持在 consumer 用戶名中使用連字符 (-)&lt;/strong&gt;&lt;/h3&gt; 
+&lt;p&gt;本次版本允許在 consumer 的用戶名中使用連字符（&lt;code&gt;-&lt;/code&gt;）。該功能適用於 Kubernetes 等場景，可以通過類似&amp;nbsp;&lt;code&gt;namespace-username&lt;/code&gt;的格式實現資源隔離。&lt;/p&gt; 
+&lt;p&gt;更多信息請參見&amp;nbsp;&lt;strong&gt;PR #12296&lt;/strong&gt;。&lt;/p&gt; 
+&lt;h2&gt;&lt;strong&gt;依賴項更新&lt;/strong&gt;&lt;/h2&gt; 
+&lt;p&gt;為提升穩定性、兼容性以及修復已知問題，本次版本升級了核心依賴項：&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt;升級 OpenResty 至 v1.27.1.2（&lt;strong&gt;PR #12307&lt;/strong&gt;）&lt;/li&gt; 
+ &lt;li&gt;升級 LuaRocks 至 v3.12.0（&lt;strong&gt;PR #12305&lt;/strong&gt;）&lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;h2&gt;&lt;strong&gt;其他更新&lt;/strong&gt;&lt;/h2&gt; 
+&lt;ul&gt; 
+ &lt;li&gt;通過比較服務發現節點的地址來提升性能（&lt;strong&gt;PR #12258&lt;/strong&gt;）&lt;/li&gt; 
+ &lt;li&gt;將日誌級別調整為&amp;nbsp;&lt;code&gt;debug&lt;/code&gt;，以減少不必要的日誌輸出（&lt;strong&gt;PR #12361&lt;/strong&gt;）&lt;/li&gt; 
+ &lt;li&gt;移除過期批處理器時，將日誌級別從&amp;nbsp;&lt;code&gt;warn&lt;/code&gt;調整為&amp;nbsp;&lt;code&gt;info&lt;/code&gt;（&lt;strong&gt;PR #12297&lt;/strong&gt;）&lt;/li&gt; 
+ &lt;li&gt;重構&amp;nbsp;&lt;code&gt;ai-proxy&lt;/code&gt;插件，將&amp;nbsp;&lt;code&gt;read_response&lt;/code&gt;移動到&amp;nbsp;&lt;code&gt;ai_driver.request&lt;/code&gt;函數中（&lt;strong&gt;PR #12101&lt;/strong&gt;）&lt;/li&gt; 
+ &lt;li&gt;當新增節點數量小於或等於 1 時，避免啓動過期的健康檢查器（&lt;strong&gt;PR #12118&lt;/strong&gt;）&lt;/li&gt; 
+ &lt;li&gt;在節點數量為 0 時釋放健康檢查器資源（&lt;strong&gt;PR #12126&lt;/strong&gt;）&lt;/li&gt; 
+ &lt;li&gt;CLI 工具僅在啓動時解析並驗證&amp;nbsp;&lt;code&gt;apisix.yaml&lt;/code&gt;文件（&lt;strong&gt;PR #12216&lt;/strong&gt;）&lt;/li&gt; 
+ &lt;li&gt;限制 TLSv1.3 的跨 SNI 會話恢復（&lt;strong&gt;PR #12366&lt;/strong&gt;）&lt;/li&gt; 
+ &lt;li&gt;修復 Kubernetes 服務發現單節點模式下的數據導出問題（&lt;strong&gt;PR #12284&lt;/strong&gt;）&lt;/li&gt; 
+ &lt;li&gt;在 Consul 中處理&amp;nbsp;&lt;code&gt;nil&lt;/code&gt;端口的情況，默認使用端口 80（&lt;strong&gt;PR #12304&lt;/strong&gt;）&lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;p&gt;變更日誌：&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fgithub.com%2Fapache%2Fapisix%2Fblob%2Fmaster%2FCHANGELOG.md%233130" target="_blank"&gt;https://github.com/apache/apisix/blob/master/CHANGELOG.md#3130&lt;/a&gt;&lt;/p&gt;
+                                                                                &lt;/div&gt;
+                                                                            </description>
+      <link>https://www.oschina.net/news/357637/apache-apisix-3-13-0-released</link>
+      <guid isPermaLink="false">https://www.oschina.net/news/357637/apache-apisix-3-13-0-released</guid>
+      <pubDate>Sun, 11 May 2025 10:28:00 GMT</pubDate>
+      <author>來源: OSCHINA</author>
+    </item>
+    <item>
+      <title>OpenDeepWiki 多輪對話全新升級，輕鬆接入您的項目</title>
+      <description>&lt;div class="content"&gt;
+                                                                    
+                                                        &lt;h1&gt;多輪對話全新升級&lt;/h1&gt; 
+&lt;p&gt;OpenDeepWiki 現已支持更智能的多輪對話能力，讓您可以與代碼庫進行深入交流，像與真人對話一樣理解代碼邏輯和架構。新的對話系統能夠保持上下文連貫性，理解複雜查詢，並提供更精準的回答。&lt;/p&gt; 
+&lt;p&gt;&lt;img height="1032" src="https://oscimg.oschina.net/oscnet/up-e330da016632cd20a2b49bb081ebd8da29a.png" width="1132" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;img height="1032" src="https://oscimg.oschina.net/oscnet/up-848608f26fae793dca9fcc65a9702dc09c1.png" width="1132" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;h2&gt;系統接入能力&lt;/h2&gt; 
+&lt;p&gt;現在您可以輕鬆將 OpenDeepWiki 接入到您自己的系統中，為您的應用提供強大的代碼理解和對話能力。通過簡單的 API 集成，您的系統可以立即獲得 AI 驅動的代碼知識庫功能。&lt;/p&gt; 
+&lt;p&gt;&lt;img height="1032" src="https://oscimg.oschina.net/oscnet/up-534b45c1afcc5af185b7f6d85c27b2bfe23.png" width="1132" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt;支持 Github、Gitlab、Gitee、Gitea 等代碼倉庫快速轉換&lt;/li&gt; 
+ &lt;li&gt;支持所有編程語言的代碼分析和文檔生成&lt;/li&gt; 
+ &lt;li&gt;自動生成 Mermaid 圖表，可視化代碼結構&lt;/li&gt; 
+ &lt;li&gt;支持自定義模型和 API，按需擴展&lt;/li&gt; 
+ &lt;li&gt;基於 AI 的代碼分析和代碼關係理解&lt;/li&gt; 
+ &lt;li&gt;使用 Next.js 生成 SEO 友好的文檔和知識庫&lt;/li&gt; 
+ &lt;li&gt;支持 Model Context Protocol，可作為其他 AI 模型的知識來源&lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;p&gt;OpenDeepWiki 是一個強大的 AI 驅動工具，持續進化以提供更優質的代碼知識管理體驗。&lt;/p&gt; 
+&lt;p&gt;🌟 如果您覺得這個項目有用，請在 &lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fgithub.com%2FAIDotNet%2FOpenDeepWiki" target="_blank"&gt;GitHub&lt;/a&gt; 上給我們點個 Star！&lt;/p&gt; 
+&lt;p&gt;🔗 在線體驗：&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fopendeep.wiki" target="_blank"&gt;https://opendeep.wiki&lt;/a&gt;&lt;/p&gt;
+                                                                                &lt;/div&gt;
+                                                                            </description>
+      <link>https://www.oschina.net/news/357635</link>
+      <guid isPermaLink="false">https://www.oschina.net/news/357635</guid>
+      <pubDate>Sun, 11 May 2025 10:10:00 GMT</pubDate>
+      <author>來源: 投稿</author>
+    </item>
+    <item>
+      <title>MCMS 6.0.1 已經發布，銘飛內容管理系統</title>
+      <description>&lt;div class="content"&gt;
+                                                                    
+                                                        &lt;p&gt;MCMS 6.0.1 已經發布，銘飛內容管理系統&lt;/p&gt; 
+&lt;p&gt;此版本更新內容包括：&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt;【新增】上傳路徑支持指定絕對路徑&lt;/li&gt; 
+ &lt;li&gt;【修復】修復單篇使用模型問題&lt;/li&gt; 
+ &lt;li&gt;【優化】context-path 配置優化&lt;/li&gt; 
+ &lt;li&gt;【優化】日誌管理記錄優化&lt;/li&gt; 
+ &lt;li&gt;【優化】異常處理優化&lt;/li&gt; 
+ &lt;li&gt;【優化】業務表單邊界優化&lt;/li&gt; 
+ &lt;li&gt;【優化】基礎結構代碼優化&lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;p&gt;詳情查看：&lt;a href="https://gitee.com/mingSoft/MCMS/releases/6.0.1"&gt;https://gitee.com/mingSoft/MCMS/releases/6.0.1&lt;/a&gt;&lt;/p&gt;
+                                                                                &lt;/div&gt;
+                                                                            </description>
+      <link>https://www.oschina.net/news/357628/mcms-6-0-1-released</link>
+      <guid isPermaLink="false">https://www.oschina.net/news/357628/mcms-6-0-1-released</guid>
+      <pubDate>Sun, 11 May 2025 09:37:00 GMT</pubDate>
+      <author>來源: 投稿</author>
+    </item>
+    <item>
+      <title>全新 ioc 框架 loveqq-framework，教你白嫖 SpringBoot 的插件的配置文件自動提示</title>
+      <description>&lt;div class="content"&gt;
+                                                                    
+                                                        &lt;p&gt;全新輕量級 ioc/aop 框架 loveqq-framework 現已支持在 idea ide 下，application.yaml 配置文件的智能提示。&lt;/p&gt; 
+&lt;p&gt;該智能提示的實現完全複用了 idea 自帶的 springboot 支持插件。只需要引入 loveqq-boot-starter-test 依賴可使用智能提示。&lt;/p&gt; 
+&lt;p&gt;下面介紹下非 springboot 項目如何能夠快捷複用 springboot 插件，從而實現配置文件的智能提示。&lt;/p&gt; 
+&lt;p&gt;首先引入下面的依賴，注意依賴作用域最好是 test，因為我們只需要智能提示，編譯和運行都需要他們，test 作用域也方便打包時進行排除，從而也不會增加打包體積：&lt;/p&gt; 
+&lt;pre&gt;&lt;code class="language-xml"&gt;&amp;lt;dependency&amp;gt;
+  &amp;lt;groupId&amp;gt;org.springframework.boot&amp;lt;/groupId&amp;gt;
+  &amp;lt;artifactId&amp;gt;spring-boot&amp;lt;/artifactId&amp;gt;
+  &amp;lt;version&amp;gt;3.5.0&amp;lt;/version&amp;gt;
+  &amp;lt;scope&amp;gt;test&amp;lt;/scope&amp;gt;
+  &amp;lt;exclusions&amp;gt;
+&amp;lt;exclusion&amp;gt;
+  &amp;lt;groupId&amp;gt;org.springframework&amp;lt;/groupId&amp;gt;
+  &amp;lt;artifactId&amp;gt;spring-context&amp;lt;/artifactId&amp;gt;
+&amp;lt;/exclusion&amp;gt;
+&amp;lt;exclusion&amp;gt;
+  &amp;lt;groupId&amp;gt;org.springframework&amp;lt;/groupId&amp;gt;
+  &amp;lt;artifactId&amp;gt;spring-jcl&amp;lt;/artifactId&amp;gt;
+&amp;lt;/exclusion&amp;gt;
+  &amp;lt;/exclusions&amp;gt;
+&amp;lt;/dependency&amp;gt;&lt;/code&gt;&lt;/pre&gt; 
+&lt;p&gt;然後編寫&amp;nbsp;spring-configuration-metadata.json 配置文件放入&amp;nbsp;META-INF 文件夾下即可。&lt;/p&gt; 
+&lt;p&gt;當然手動編寫可能很繁複，大家可以複用 loveqq-framework 的自動構建的代碼：&lt;/p&gt; 
+&lt;pre&gt;&lt;code&gt;com.kfyty.loveqq.framework.core.support.task.BuildConfigurationMetadataAntTask&lt;/code&gt;&lt;/pre&gt; 
+&lt;p&gt;然後在 maven 中添加如下插件：&lt;/p&gt; 
+&lt;pre&gt;&lt;code class="language-xml"&gt;&amp;lt;plugin&amp;gt;
+&amp;lt;artifactId&amp;gt;maven-antrun-plugin&amp;lt;/artifactId&amp;gt;
+&amp;lt;version&amp;gt;3.1.0&amp;lt;/version&amp;gt;
+&amp;lt;executions&amp;gt;
+  &amp;lt;execution&amp;gt;
+&amp;lt;id&amp;gt;build configuration metadata&amp;lt;/id&amp;gt;
+&amp;lt;phase&amp;gt;verify&amp;lt;/phase&amp;gt;
+&amp;lt;goals&amp;gt;
+  &amp;lt;goal&amp;gt;run&amp;lt;/goal&amp;gt;
+&amp;lt;/goals&amp;gt;
+&amp;lt;configuration&amp;gt;
+  &amp;lt;target name="metadata"&amp;gt;
+&amp;lt;java fork="true" classname="com.kfyty.loveqq.framework.core.support.task.BuildConfigurationMetadataAntTask" classpathref="maven.compile.classpath"&amp;gt;
+  &amp;lt;arg value="-OUTPUT_TYPE=${project.packaging}" /&amp;gt;
+  &amp;lt;arg value="-OUTPUT_DIRECTORY=${project.build.directory}" /&amp;gt;
+  &amp;lt;arg value="-OUTPUT_JAR=${project.build.finalName}.jar" /&amp;gt;
+  &amp;lt;arg value="-OUTPUT_DEFAULT_JAR=${project.artifactId}-${project.version}.jar" /&amp;gt;
+  &amp;lt;jvmarg value="--add-opens=java.base/sun.reflect.annotation=ALL-UNNAMED" /&amp;gt;
+&amp;lt;/java&amp;gt;
+  &amp;lt;/target&amp;gt;
+&amp;lt;/configuration&amp;gt;
+  &amp;lt;/execution&amp;gt;
+&amp;lt;/executions&amp;gt;
+
+&amp;lt;dependencies&amp;gt;
+  &amp;lt;dependency&amp;gt;
+&amp;lt;groupId&amp;gt;org.apache.ant&amp;lt;/groupId&amp;gt;
+&amp;lt;artifactId&amp;gt;ant&amp;lt;/artifactId&amp;gt;
+&amp;lt;version&amp;gt;1.10.14&amp;lt;/version&amp;gt;
+  &amp;lt;/dependency&amp;gt;
+&amp;lt;/dependencies&amp;gt;
+&amp;lt;/plugin&amp;gt;&lt;/code&gt;&lt;/pre&gt; 
+&lt;p&gt;然後運行 mvn&amp;nbsp;install&amp;nbsp;就可以自動生成 spring-configuration-metadata.json 配置文件並寫入 jar 包了。&lt;/p&gt; 
+&lt;p&gt;然後就可以愉快的使用智能提示了~&lt;/p&gt;
+                                                                                &lt;/div&gt;
+                                                                            </description>
+      <link>https://www.oschina.net/news/357596</link>
+      <guid isPermaLink="false">https://www.oschina.net/news/357596</guid>
+      <pubDate>Sun, 11 May 2025 07:53:00 GMT</pubDate>
+      <author>來源: 投稿</author>
+    </item>
+    <item>
+      <title>BBS-GO v4.1.0 版本發佈 - 全面支持國際化與富文本編輯體驗升級</title>
+      <description>&lt;div class="content"&gt;
+                                                                    
+                                                        &lt;h2&gt;🎉 版本亮點&lt;/h2&gt; 
+&lt;p style="color:#40485b; margin-left:0; margin-right:0; text-align:start"&gt;我們很高興地宣佈 BBS-GO v4.1.0 正式發佈！這是一個具有里程碑意義的版本，帶來了兩個重要的功能升級：&lt;/p&gt; 
+&lt;h3&gt;🌍 國際化支持 (i18n)&lt;/h3&gt; 
+&lt;ul&gt; 
+ &lt;li&gt;&lt;strong&gt;多語言界面&lt;/strong&gt;：新增完整的中英文雙語支持&lt;/li&gt; 
+ &lt;li&gt;&lt;strong&gt;語言切換&lt;/strong&gt;：用戶可自由切換界面語言，提供更好的國際化體驗&lt;/li&gt; 
+ &lt;li&gt;&lt;strong&gt;本地化數據&lt;/strong&gt;：支持多語言數據庫初始化，包括節點、角色等基礎數據&lt;/li&gt; 
+ &lt;li&gt;&lt;strong&gt;管理後台&lt;/strong&gt;：管理界面同步支持多語言，方便不同地區的管理員使用&lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;h3&gt;✍️ 全新富文本編輯器&lt;/h3&gt; 
+&lt;ul&gt; 
+ &lt;li&gt;&lt;strong&gt;現代化設計&lt;/strong&gt;：採用基於 TipTap 的全新富文本編輯器，界面更加美觀現代&lt;/li&gt; 
+ &lt;li&gt;&lt;strong&gt;豐富功能&lt;/strong&gt;：支持標題、列表、表格、代碼塊、引用、鏈接等多種排版元素&lt;/li&gt; 
+ &lt;li&gt;&lt;strong&gt;主題適配&lt;/strong&gt;：完美支持明暗主題切換，自動適應用戶系統偏好&lt;/li&gt; 
+ &lt;li&gt;&lt;strong&gt;圖片處理&lt;/strong&gt;：優化圖片上傳和顯示，支持拖拽上傳和可調整大小&lt;/li&gt; 
+ &lt;li&gt;&lt;strong&gt;移動友好&lt;/strong&gt;：響應式設計，在移動設備上同樣提供出色的編輯體驗&lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;h2&gt;🚀 項目簡介&lt;/h2&gt; 
+&lt;p style="color:#40485b; margin-left:0; margin-right:0; text-align:start"&gt;BBS-GO 是一個基於 Go 語言開發的現代化開源社區論壇系統。我們的設計哲學是輕量、高效、易於擴展和部署，旨在為開發者和社區管理者提供一個強大的在線社區解決方案。&lt;/p&gt; 
+&lt;h3&gt;🎯 核心特性&lt;/h3&gt; 
+&lt;ul&gt; 
+ &lt;li&gt;&lt;strong&gt;🚀 高性能&lt;/strong&gt;：基於 Go 語言的併發特性，確保在高負載下也能提供流暢的用戶體驗&lt;/li&gt; 
+ &lt;li&gt;&lt;strong&gt;🔧 高度靈活&lt;/strong&gt;：支持豐富的自定義配置和插件擴展，輕鬆滿足不同場景的業務需求&lt;/li&gt; 
+ &lt;li&gt;&lt;strong&gt;👨‍💼 簡單易用&lt;/strong&gt;：擁有設計簡潔、功能強大的管理後台，讓社區管理變得輕鬆高效&lt;/li&gt; 
+ &lt;li&gt;&lt;strong&gt;🛡️ 穩定可靠&lt;/strong&gt;：經過充分測試，確保系統穩定性和良好的可擴展性&lt;/li&gt; 
+ &lt;li&gt;&lt;strong&gt;📱 響應式設計&lt;/strong&gt;：完美適配桌面和移動設備，為用戶提供一致的訪問體驗&lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;h3&gt;🏗️ 技術架構&lt;/h3&gt; 
+&lt;p style="color:#40485b; margin-left:0; margin-right:0; text-align:start"&gt;&lt;strong&gt;後端 (Server)&lt;/strong&gt;&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt;基於 Go 語言 + Iris 框架構建&lt;/li&gt; 
+ &lt;li&gt;使用 GORM 作為 ORM 框架&lt;/li&gt; 
+ &lt;li&gt;支持 MySQL 數據庫&lt;/li&gt; 
+ &lt;li&gt;提供完整的 RESTful API&lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;p style="color:#40485b; margin-left:0; margin-right:0; text-align:start"&gt;&lt;strong&gt;前端 (Site)&lt;/strong&gt;&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt;基於 Vue.js + Nuxt.js 構建&lt;/li&gt; 
+ &lt;li&gt;服務端渲染 (SSR)，優化 SEO 和加載速度&lt;/li&gt; 
+ &lt;li&gt;響應式設計，支持多終端訪問&lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;p style="color:#40485b; margin-left:0; margin-right:0; text-align:start"&gt;&lt;strong&gt;管理後台 (Admin)&lt;/strong&gt;&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt;基於 Vue.js + Arco Design 構建&lt;/li&gt; 
+ &lt;li&gt;功能完整的管理界面&lt;/li&gt; 
+ &lt;li&gt;支持用戶管理、內容審核、系統配置等&lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;h2&gt;🌟 功能展示&lt;/h2&gt; 
+&lt;p style="color:#333333; margin-left:0; margin-right:0; text-align:left"&gt;&lt;img height="2518" src="https://oscimg.oschina.net/oscnet/up-c2c565122d2d0a51d6ed22cdfcb59e7e0f7.png" width="3940" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p style="color:#333333; margin-left:0; margin-right:0; text-align:left"&gt;&lt;img height="2518" src="https://oscimg.oschina.net/oscnet/up-aca702ba61c84fb2b2272849b1d4c923c0a.png" width="3940" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p style="color:#333333; margin-left:0; margin-right:0; text-align:left"&gt;&lt;img height="2518" src="https://oscimg.oschina.net/oscnet/up-82de54a1ed9d52713aad4b09e683f3b71fd.png" width="3940" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p style="color:#333333; margin-left:0; margin-right:0; text-align:left"&gt;&lt;img height="2518" src="https://oscimg.oschina.net/oscnet/up-de6ff0fbc7a761df69405794d1f8f0807df.png" width="3940" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;h2&gt;🔗 相關鏈接&lt;/h2&gt; 
+&lt;ul&gt; 
+ &lt;li&gt;幫助文檔：https://bbs-go.com&lt;/li&gt; 
+ &lt;li&gt;官網交流：https://bbs.bbs-go.com&lt;/li&gt; 
+ &lt;li&gt;gitee 地址：&lt;a href="https://gitee.com/mlogclub/bbs-go"&gt;https://gitee.com/mlogclub/bbs-go&lt;/a&gt;&lt;/li&gt; 
+ &lt;li&gt;github 地址：&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fgithub.com%2Fmlogclub%2Fbbs-go" target="_blank"&gt;https://github.com/mlogclub/bbs-go&lt;/a&gt;&lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;h2&gt;🤝 參與貢獻&lt;/h2&gt; 
+&lt;p style="color:#40485b; margin-left:0; margin-right:0; text-align:start"&gt;BBS-GO 是一個充滿活力的開源項目，我們歡迎任何形式的貢獻：&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt;🐛 Bug 反饋&lt;/li&gt; 
+ &lt;li&gt;💡 功能建議&lt;/li&gt; 
+ &lt;li&gt;📝 文檔完善&lt;/li&gt; 
+ &lt;li&gt;💻 代碼貢獻&lt;/li&gt; 
+ &lt;li&gt;🌍 多語言翻譯&lt;/li&gt; 
+&lt;/ul&gt;
+                                                                                &lt;/div&gt;
+                                                                            </description>
+      <link>https://www.oschina.net/news/357592/bbs-go-4-1-0-released</link>
+      <guid isPermaLink="false">https://www.oschina.net/news/357592/bbs-go-4-1-0-released</guid>
+      <pubDate>Sun, 11 May 2025 07:30:00 GMT</pubDate>
+      <author>來源: 投稿</author>
+    </item>
     <item>
       <title>Rust 1.88.0 發佈：引入裸函數 (Naked Functions)、改進鏈式 let 語句</title>
       <description>&lt;div class="content"&gt;
@@ -24,8 +299,56 @@
                                                                             </description>
       <link>https://www.oschina.net/news/357590/rust-1-88-0</link>
       <guid isPermaLink="false">https://www.oschina.net/news/357590/rust-1-88-0</guid>
-      <pubDate>Fri, 27 Jun 2025 07:25:02 GMT</pubDate>
+      <pubDate>Sun, 11 May 2025 07:24:00 GMT</pubDate>
       <author>來源: OSCHINA</author>
+    </item>
+    <item>
+      <title>調問更新 6.20~6.27：考試時長限制+分頁時長限制+2 項功能新增+9 項功能優化+4 項 BugFix</title>
+      <description>&lt;div class="content"&gt;
+                                                                    
+                                                        &lt;div&gt;
+ &lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span style="background-color:#ffffff"&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span style="color:#40485b"&gt;&lt;span&gt;&lt;span&gt;調問自開源以來一直堅持前後端所有代碼 100% 開源💯，保證所有功能的穩定與可改造能力👏。&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;
+&lt;/div&gt; 
+&lt;div&gt; 
+ &lt;ul&gt; 
+  &lt;li style="margin-left: 0px; margin-right: 0px; text-align: left;"&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span style="background-color:#ffffff"&gt;&lt;span&gt;&lt;strong&gt;&lt;span&gt;&lt;span style="color:#40485b"&gt;&lt;span&gt;&lt;span&gt;🔥 安裝下載地址（安裝包）：&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/strong&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;a href="https://gitee.com/link?target=https%3A%2F%2Fwww.diaowen.net%2Finstall%2Fdocker"&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;u&gt;&lt;span style="color:#1e6fff"&gt;&lt;span&gt;&lt;span&gt;https://www.diaowen.net/install/docker&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/u&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/a&gt;&lt;/span&gt;&lt;/span&gt;&lt;/li&gt; 
+  &lt;li style="margin-left: 0px; margin-right: 0px; text-align: left;"&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span style="background-color:#ffffff"&gt;&lt;span&gt;&lt;strong&gt;&lt;span&gt;&lt;span style="color:#40485b"&gt;&lt;span&gt;&lt;span&gt;🔥 源碼下載地址： &lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/strong&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;a href="https://gitee.com/wkeyuan/DWSurvey"&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;u&gt;&lt;span style="color:#1e6fff"&gt;&lt;span&gt;&lt;span&gt;https://gitee.com/wkeyuan/DWSurvey&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/u&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/a&gt;&lt;/span&gt;&lt;/span&gt;&lt;/li&gt; 
+ &lt;/ul&gt; 
+ &lt;p style="margin-left:0; margin-right:0; text-align:justify"&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span style="color:#333333"&gt;&lt;span&gt;&lt;span&gt;本週針對考試場景下的的客戶需求，在細節能力上又進行了進一步的功能增加和優化，其中包括&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;span style="color:#1abc9c"&gt;&lt;strong&gt;考試總時長限制&lt;/strong&gt;&lt;/span&gt;&lt;span style="color:#333333"&gt;&lt;span&gt;&lt;span&gt;，目前可以控制考試總時長，並且可以設置倒計時，這個能力是考試場景下的剛需，調問在客戶的不斷支持下，現在也具備了這個能力&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span style="color:#333333"&gt;&lt;span&gt;&lt;span&gt;。&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/p&gt; 
+ &lt;p style="margin-left:0; margin-right:0; text-align:justify"&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span style="color:#333333"&gt;&lt;span&gt;&lt;span&gt;此外，還可以根據&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;strong&gt;&lt;span style="color:#1abc9c"&gt;每一頁進行時長限制&lt;/span&gt;&lt;/strong&gt;&lt;span style="color:#333333"&gt;&lt;span&gt;&lt;span&gt;，可以配置每一頁的最短時間，這樣可以防止胡亂答題的情況，讓用戶認真對待每一份問卷：&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/p&gt; 
+ &lt;p style="margin-left:0; margin-right:0; text-align:justify"&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span style="color:#000000"&gt;&lt;span&gt;&lt;span&gt;歡迎夥伴們，在 surveyform.cn 上進行體驗、試用！！！&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fsurveyform.cn%2F" target="_blank"&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;u&gt;&lt;span style="color:#1e6fff"&gt;&lt;span&gt;&lt;span&gt;https://www.surveyform.cn&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/u&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/a&gt;&lt;/span&gt;&lt;/span&gt;&lt;/p&gt; 
+ &lt;p style="margin-left:0; margin-right:0; text-align:justify"&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;strong&gt;&lt;span&gt;&lt;span style="color:#000000"&gt;&lt;span&gt;&lt;span&gt;本週更新：&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/strong&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/p&gt; 
+ &lt;p style="margin-left:0; margin-right:0; text-align:justify"&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;strong&gt;&lt;span&gt;&lt;span style="color:#1abc9c"&gt;&lt;span&gt;&lt;span&gt;功能新增：&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/strong&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/p&gt; 
+ &lt;ul&gt; 
+  &lt;li&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span style="color:#333333"&gt;&lt;span&gt;&lt;span&gt;考試場景下，增加考試時長限制（倒計時）能力，可以控制配置考試時間；&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/li&gt; 
+  &lt;li&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span style="color:#333333"&gt;&lt;span&gt;&lt;span&gt;增加分頁限制（每頁最短時長，最大）能力，限制每頁顯示時間。&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/li&gt; 
+ &lt;/ul&gt; 
+ &lt;p style="margin-left:0; margin-right:0; text-align:justify"&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;strong&gt;&lt;span&gt;&lt;span style="color:#1abc9c"&gt;&lt;span&gt;&lt;span&gt;功能優化：&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/strong&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/p&gt; 
+ &lt;ul&gt; 
+  &lt;li&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span style="color:#333333"&gt;&lt;span&gt;&lt;span&gt;實現每頁一題，打完後自動下一頁；&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/li&gt; 
+  &lt;li&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span style="color:#333333"&gt;&lt;span&gt;&lt;span&gt;管理後台看到答卷中可以看維度量表信息；&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/li&gt; 
+  &lt;li&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span style="color:#333333"&gt;&lt;span&gt;&lt;span&gt;添加 DSL 單選題賦值功能，實現 DSL 可以設置除填空題值後，也可以配置選擇題；&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/li&gt; 
+  &lt;li&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span style="color:#333333"&gt;&lt;span&gt;&lt;span&gt;DSL 驗證文本，自定義驗證錯誤信息文本；&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/li&gt; 
+  &lt;li&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span style="color:#333333"&gt;&lt;span&gt;&lt;span&gt;可以給答卷限定特定的地區，防止其它地區參考答卷；&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/li&gt; 
+  &lt;li&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span style="color:#333333"&gt;&lt;span&gt;&lt;span&gt;答卷時支持清空答案，重新填寫；&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/li&gt; 
+  &lt;li&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span style="color:#333333"&gt;&lt;span&gt;&lt;span&gt;優化打包部署方式，通過 JAR 包部署可以自定義配置文件；&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/li&gt; 
+  &lt;li&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span style="color:#333333"&gt;&lt;span&gt;&lt;span&gt;優化 API 自動登錄流程；&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/li&gt; 
+  &lt;li&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span style="color:#333333"&gt;&lt;span&gt;&lt;span&gt;優化 webhook 推送方案。&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/li&gt; 
+ &lt;/ul&gt; 
+ &lt;p style="margin-left:0; margin-right:0; text-align:justify"&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;strong&gt;&lt;span&gt;&lt;span style="color:#1abc9c"&gt;&lt;span&gt;&lt;span&gt;BUG 修復：&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/strong&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/p&gt; 
+ &lt;ul&gt; 
+  &lt;li&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span style="color:#333333"&gt;&lt;span&gt;&lt;span&gt;修復點擊下一頁時，如果題目過多能自動跳到第一題的問題；&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/li&gt; 
+  &lt;li&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span style="color:#333333"&gt;&lt;span&gt;&lt;span&gt;解決新包在下載原始數據時，權限信息丟失問題；&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/li&gt; 
+  &lt;li&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span style="color:#333333"&gt;&lt;span&gt;&lt;span&gt;修復題目標記在不顯示答題卡時仍然顯示的問題；&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/li&gt; 
+  &lt;li&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span style="color:#333333"&gt;&lt;span&gt;&lt;span&gt;修復題型名稱在移動端不顯示問題。&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/li&gt; 
+ &lt;/ul&gt; 
+&lt;/div&gt;
+                                                                                &lt;/div&gt;
+                                                                            </description>
+      <link>https://www.oschina.net/news/357585/dwsurvey-updated</link>
+      <guid isPermaLink="false">https://www.oschina.net/news/357585/dwsurvey-updated</guid>
+      <pubDate>Sun, 11 May 2025 07:07:00 GMT</pubDate>
+      <author>來源: 投稿</author>
     </item>
     <item>
       <title>Jakarta EE 11 發佈，增強企業 Java 開發人員生產力和性能</title>
@@ -769,419 +1092,6 @@ BYTEDESK_APPKEY: ZjoyMDI1LTA3LTE5OlBMQVRGT1JNOjo=&lt;/code&gt;&lt;/pre&gt;
       <link>https://www.oschina.net/news/357387/course-tencent-cloud-1-2-2-released</link>
       <guid isPermaLink="false">https://www.oschina.net/news/357387/course-tencent-cloud-1-2-2-released</guid>
       <pubDate>Sat, 10 May 2025 07:38:00 GMT</pubDate>
-      <author>來源: 投稿</author>
-    </item>
-    <item>
-      <title>🔥 外部數據源支持按需加載數據表：開源無代碼 / 低代碼平台 NocoBase</title>
-      <description>&lt;div class="content"&gt;
-                                                                    
-                                                        &lt;p style="color:#333333; margin-left:0; margin-right:0; text-align:left"&gt;&lt;span style="background-color:#ffffff; color:#333333"&gt;NocoBase 是一個極易擴展的開源無代碼開發平台。完全掌控，無限擴展，助力你的開發團隊快速響應變化，顯著降低成本，不必投入幾年時間和數百萬資金研發，只需要花幾分鐘部署 NocoBase。&lt;/span&gt;&lt;/p&gt; 
-&lt;ul&gt; 
- &lt;li&gt;&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fwww.nocobase.com%2Fcn%2F" target="_blank"&gt;NocoBase 中文官網&lt;/a&gt;&lt;/li&gt; 
- &lt;li&gt;&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fdocs-cn.nocobase.com%2Fwelcome%2Fintroduction" target="_blank"&gt;官方文檔&lt;/a&gt;&lt;/li&gt; 
- &lt;li&gt;&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fdemo-cn.nocobase.com%2Fnew" target="_blank"&gt;在線 Demo&lt;/a&gt;&lt;/li&gt; 
-&lt;/ul&gt; 
-&lt;hr&gt; 
-&lt;p&gt;&lt;strong&gt;NocoBase 目前更新包括的版本更新包括三個分支：&lt;code&gt;main&lt;/code&gt; ，&lt;code&gt;next&lt;/code&gt;和 &lt;code&gt;develop&lt;/code&gt;。&lt;/strong&gt;&lt;/p&gt; 
-&lt;p&gt;&lt;img alt="version.png" src="https://oscimg.oschina.net/oscnet//59664fb1282b07407c9ddb7231225604.png" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;p&gt;&lt;code&gt;main&lt;/code&gt; ：截止目前最穩定的版本，推薦安裝此版本。&lt;/p&gt; 
-&lt;p&gt;&lt;code&gt;next&lt;/code&gt;：包含即將發佈的新功能，經過初步測試的版本，可能存在部分已知或未知問題。主要面向測試用戶,用於收集反饋和進一步優化功能。適合願意提前體驗新功能並提供反饋的測試用戶。&lt;/p&gt; 
-&lt;p&gt;&lt;code&gt;develop&lt;/code&gt;：開發中的版本，包含最新的功能代碼，可能尚未完成或存在較多不穩定因素，主要用於內部開發和快速迭代。適合對產品功能前沿發展感興趣的技術用戶，但可能存在較多問題或不完整功能，不建議在生產環境中使用。&lt;/p&gt; 
-&lt;h2&gt;main&lt;/h2&gt; 
-&lt;p&gt;&lt;img alt="main.png" src="https://oscimg.oschina.net/oscnet//18eff782afb43c4d9a36a259e851ec1c.png" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;h3&gt;&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fwww.nocobase.com%2Fcn%2Fblog%2Fv1.7.17" target="_blank"&gt;v1.7.17&lt;/a&gt;&lt;/h3&gt; 
-&lt;p&gt;&lt;em&gt;發佈時間：2025-06-24&lt;/em&gt;&lt;/p&gt; 
-&lt;h4&gt;🐛 修復&lt;/h4&gt; 
-&lt;ul&gt; 
- &lt;li&gt; &lt;p&gt;&lt;strong&gt;[client]&lt;/strong&gt;&lt;/p&gt; 
-  &lt;ul&gt; 
-   &lt;li&gt;修復日期字段在含時間格式下的範圍約束錯誤 (&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fgithub.com%2Fnocobase%2Fnocobase%2Fpull%2F7107" target="_blank"&gt;#7107&lt;/a&gt;) by @katherinehhh&lt;/li&gt; 
-   &lt;li&gt;URL 查詢參數變量為空時，數據範圍的條件沒有被移除 (&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fgithub.com%2Fnocobase%2Fnocobase%2Fpull%2F7104" target="_blank"&gt;#7104&lt;/a&gt;) by @zhangzhonghe&lt;/li&gt; 
-  &lt;/ul&gt; &lt;/li&gt; 
- &lt;li&gt; &lt;p&gt;&lt;strong&gt;[移動端]&lt;/strong&gt; 修復移動端彈窗的層級問題 (&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fgithub.com%2Fnocobase%2Fnocobase%2Fpull%2F7110" target="_blank"&gt;#7110&lt;/a&gt;) by @zhangzhonghe&lt;/p&gt; &lt;/li&gt; 
- &lt;li&gt; &lt;p&gt;&lt;strong&gt;[日曆]&lt;/strong&gt; 修復日曆區塊快速創建事項時，表單日期字段異常問題 (&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fgithub.com%2Fnocobase%2Fnocobase%2Fpull%2F7106" target="_blank"&gt;#7106&lt;/a&gt;) by @katherinehhh&lt;/p&gt; &lt;/li&gt; 
-&lt;/ul&gt; 
-&lt;h3&gt;&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fwww.nocobase.com%2Fcn%2Fblog%2Fv1.7.16" target="_blank"&gt;v1.7.16&lt;/a&gt;&lt;/h3&gt; 
-&lt;p&gt;&lt;em&gt;發佈時間：2025-06-20&lt;/em&gt;&lt;/p&gt; 
-&lt;h4&gt;🐛 修復&lt;/h4&gt; 
-&lt;ul&gt; 
- &lt;li&gt; &lt;p&gt;&lt;strong&gt;[工作流]&lt;/strong&gt;&lt;/p&gt; 
-  &lt;ul&gt; 
-   &lt;li&gt;修復已執行數在大整型數時檢查錯誤的問題 (&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fgithub.com%2Fnocobase%2Fnocobase%2Fpull%2F7099" target="_blank"&gt;#7099&lt;/a&gt;) by @mytharcher&lt;/li&gt; 
-   &lt;li&gt;修復統計數據被不是主版本的工作流級聯刪除的問題 (&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fgithub.com%2Fnocobase%2Fnocobase%2Fpull%2F7103" target="_blank"&gt;#7103&lt;/a&gt;) by @mytharcher&lt;/li&gt; 
-  &lt;/ul&gt; &lt;/li&gt; 
- &lt;li&gt; &lt;p&gt;&lt;strong&gt;[操作：導入記錄]&lt;/strong&gt; 修復批量導入用戶名和密碼後無法登錄的問題 (&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fgithub.com%2Fnocobase%2Fnocobase%2Fpull%2F7076" target="_blank"&gt;#7076&lt;/a&gt;) by @aaaaaajie&lt;/p&gt; &lt;/li&gt; 
- &lt;li&gt; &lt;p&gt;&lt;strong&gt;[工作流：審批]&lt;/strong&gt; 限制只有參與者可以查看審批詳情 by @mytharcher&lt;/p&gt; &lt;/li&gt; 
-&lt;/ul&gt; 
-&lt;h3&gt;&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fwww.nocobase.com%2Fcn%2Fblog%2Fv1.7.15" target="_blank"&gt;v1.7.15&lt;/a&gt;&lt;/h3&gt; 
-&lt;p&gt;&lt;em&gt;發佈時間：2025-06-18&lt;/em&gt;&lt;/p&gt; 
-&lt;h4&gt;🐛 修復&lt;/h4&gt; 
-&lt;ul&gt; 
- &lt;li&gt; &lt;p&gt;&lt;strong&gt;[client]&lt;/strong&gt;&lt;/p&gt; 
-  &lt;ul&gt; 
-   &lt;li&gt;對每個字段使用獨立的變量範圍 (&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fgithub.com%2Fnocobase%2Fnocobase%2Fpull%2F7012" target="_blank"&gt;#7012&lt;/a&gt;) by @mytharcher&lt;/li&gt; 
-   &lt;li&gt;字段賦值：關係字段無法被清空數據 (&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fgithub.com%2Fnocobase%2Fnocobase%2Fpull%2F7086" target="_blank"&gt;#7086&lt;/a&gt;) by @zhangzhonghe&lt;/li&gt; 
-   &lt;li&gt;表格列的文本對齊功能無效 (&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fgithub.com%2Fnocobase%2Fnocobase%2Fpull%2F7094" target="_blank"&gt;#7094&lt;/a&gt;) by @zhangzhonghe&lt;/li&gt; 
-  &lt;/ul&gt; &lt;/li&gt; 
- &lt;li&gt; &lt;p&gt;&lt;strong&gt;[工作流]&lt;/strong&gt; 修復已執行數在大整型數時檢查錯誤的問題 (&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fgithub.com%2Fnocobase%2Fnocobase%2Fpull%2F7091" target="_blank"&gt;#7091&lt;/a&gt;) by @mytharcher&lt;/p&gt; &lt;/li&gt; 
- &lt;li&gt; &lt;p&gt;&lt;strong&gt;[文件管理器]&lt;/strong&gt; 修復審批處理中附件字段無法被更新的問題 (&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fgithub.com%2Fnocobase%2Fnocobase%2Fpull%2F7093" target="_blank"&gt;#7093&lt;/a&gt;) by @mytharcher&lt;/p&gt; &lt;/li&gt; 
- &lt;li&gt; &lt;p&gt;&lt;strong&gt;[工作流：審批]&lt;/strong&gt; 使用比較代替隱式邏輯以避免類型問題 by @mytharcher&lt;/p&gt; &lt;/li&gt; 
-&lt;/ul&gt; 
-&lt;h2&gt;next&lt;/h2&gt; 
-&lt;p&gt;&lt;img alt="next.png" src="https://oscimg.oschina.net/oscnet//e21ae74966cca091624fb1099f7668e3.png" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;h3&gt;&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fwww.nocobase.com%2Fcn%2Fblog%2Fv1.8.0-beta.10" target="_blank"&gt;v1.8.0-beta.10&lt;/a&gt;&lt;/h3&gt; 
-&lt;p&gt;&lt;em&gt;發佈時間：2025-06-19&lt;/em&gt;&lt;/p&gt; 
-&lt;h4&gt;🎉 新特性&lt;/h4&gt; 
-&lt;ul&gt; 
- &lt;li&gt;&lt;strong&gt;[工作流：審批]&lt;/strong&gt; 審批節點結果中增加審批記錄變量 by @mytharcher&lt;/li&gt; 
-&lt;/ul&gt; 
-&lt;h4&gt;🐛 修復&lt;/h4&gt; 
-&lt;ul&gt; 
- &lt;li&gt; &lt;p&gt;&lt;strong&gt;[client]&lt;/strong&gt;&lt;/p&gt; 
-  &lt;ul&gt; 
-   &lt;li&gt;表格列的文本對齊功能無效 (&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fgithub.com%2Fnocobase%2Fnocobase%2Fpull%2F7094" target="_blank"&gt;#7094&lt;/a&gt;) by @zhangzhonghe&lt;/li&gt; 
-   &lt;li&gt;字段賦值：關係字段無法被清空數據 (&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fgithub.com%2Fnocobase%2Fnocobase%2Fpull%2F7086" target="_blank"&gt;#7086&lt;/a&gt;) by @zhangzhonghe&lt;/li&gt; 
-   &lt;li&gt;對每個字段使用獨立的變量範圍 (&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fgithub.com%2Fnocobase%2Fnocobase%2Fpull%2F7012" target="_blank"&gt;#7012&lt;/a&gt;) by @mytharcher&lt;/li&gt; 
-  &lt;/ul&gt; &lt;/li&gt; 
- &lt;li&gt; &lt;p&gt;&lt;strong&gt;[文件管理器]&lt;/strong&gt; 修復審批處理中附件字段無法被更新的問題 (&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fgithub.com%2Fnocobase%2Fnocobase%2Fpull%2F7093" target="_blank"&gt;#7093&lt;/a&gt;) by @mytharcher&lt;/p&gt; &lt;/li&gt; 
- &lt;li&gt; &lt;p&gt;&lt;strong&gt;[工作流]&lt;/strong&gt; 修復已執行數在大整型數時檢查錯誤的問題 (&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fgithub.com%2Fnocobase%2Fnocobase%2Fpull%2F7091" target="_blank"&gt;#7091&lt;/a&gt;) by @mytharcher&lt;/p&gt; &lt;/li&gt; 
- &lt;li&gt; &lt;p&gt;&lt;strong&gt;[工作流：審批]&lt;/strong&gt; 使用比較代替隱式邏輯以避免類型問題 by @mytharcher&lt;/p&gt; &lt;/li&gt; 
-&lt;/ul&gt; 
-&lt;h2&gt;develop&lt;/h2&gt; 
-&lt;p&gt;&lt;img alt="develop.png" src="https://oscimg.oschina.net/oscnet//274dd483b8918e38c64ef3a3a93c0b95.png" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;h3&gt;&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fwww.nocobase.com%2Fcn%2Fblog%2Fv1.8.0-alpha.10" target="_blank"&gt;v1.8.0-alpha.10&lt;/a&gt;&lt;/h3&gt; 
-&lt;p&gt;&lt;em&gt;發佈時間：2025-06-25&lt;/em&gt;&lt;/p&gt; 
-&lt;h4&gt;🎉 新特性&lt;/h4&gt; 
-&lt;ul&gt; 
- &lt;li&gt;&lt;strong&gt;[數據源管理]&lt;/strong&gt; ✨ 支持外部數據源按需加載數據表 (&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fgithub.com%2Fnocobase%2Fnocobase%2Fpull%2F6979" target="_blank"&gt;#6979&lt;/a&gt;) by @aaaaaajie&lt;/li&gt; 
- &lt;li&gt;&lt;strong&gt;[工作流：HTTP 請求節點]&lt;/strong&gt; 支持 &lt;code&gt;multipart/form-data&lt;/code&gt; 類型的請求 (&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fgithub.com%2Fnocobase%2Fnocobase%2Fpull%2F7087" target="_blank"&gt;#7087&lt;/a&gt;) by @shushu992&lt;/li&gt; 
- &lt;li&gt;&lt;strong&gt;[數據源：外部 SQL Server]&lt;/strong&gt; 支持外部數據源按需加載數據表 by @aaaaaajie&lt;/li&gt; 
-&lt;/ul&gt; 
-&lt;h4&gt;🐛 修復&lt;/h4&gt; 
-&lt;ul&gt; 
- &lt;li&gt; &lt;p&gt;&lt;strong&gt;[client]&lt;/strong&gt;&lt;/p&gt; 
-  &lt;ul&gt; 
-   &lt;li&gt;URL 查詢參數變量為空時，數據範圍的條件沒有被移除 (&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fgithub.com%2Fnocobase%2Fnocobase%2Fpull%2F7104" target="_blank"&gt;#7104&lt;/a&gt;) by @zhangzhonghe&lt;/li&gt; 
-   &lt;li&gt;修復日期字段在含時間格式下的範圍約束錯誤 (&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fgithub.com%2Fnocobase%2Fnocobase%2Fpull%2F7107" target="_blank"&gt;#7107&lt;/a&gt;) by @katherinehhh&lt;/li&gt; 
-  &lt;/ul&gt; &lt;/li&gt; 
- &lt;li&gt; &lt;p&gt;&lt;strong&gt;[移動端]&lt;/strong&gt; 修復移動端彈窗的層級問題 (&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fgithub.com%2Fnocobase%2Fnocobase%2Fpull%2F7110" target="_blank"&gt;#7110&lt;/a&gt;) by @zhangzhonghe&lt;/p&gt; &lt;/li&gt; 
- &lt;li&gt; &lt;p&gt;&lt;strong&gt;[日曆]&lt;/strong&gt; 修復日曆區塊快速創建事項時，表單日期字段異常問題 (&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fgithub.com%2Fnocobase%2Fnocobase%2Fpull%2F7106" target="_blank"&gt;#7106&lt;/a&gt;) by @katherinehhh&lt;/p&gt; &lt;/li&gt; 
- &lt;li&gt; &lt;p&gt;&lt;strong&gt;[工作流：審批]&lt;/strong&gt;&lt;/p&gt; 
-  &lt;ul&gt; 
-   &lt;li&gt;修復變量歷史遺留 API 導致的錯誤 by @mytharcher&lt;/li&gt; 
-   &lt;li&gt;修復移動端樣式 by @mytharcher&lt;/li&gt; 
-   &lt;li&gt;修復審批關聯表被刪除後的報錯 by @mytharcher&lt;/li&gt; 
-  &lt;/ul&gt; &lt;/li&gt; 
- &lt;li&gt; &lt;p&gt;&lt;strong&gt;[郵件管理]&lt;/strong&gt; 附件不顯示 by @jiannx&lt;/p&gt; &lt;/li&gt; 
-&lt;/ul&gt; 
-&lt;h3&gt;&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fwww.nocobase.com%2Fcn%2Fblog%2Fv1.8.0-alpha.9" target="_blank"&gt;v1.8.0-alpha.9&lt;/a&gt;&lt;/h3&gt; 
-&lt;p&gt;&lt;em&gt;發佈時間：2025-06-20&lt;/em&gt;&lt;/p&gt; 
-&lt;h4&gt;🎉 新特性&lt;/h4&gt; 
-&lt;ul&gt; 
- &lt;li&gt;&lt;strong&gt;[client]&lt;/strong&gt; 支持外部數據源中的 SQL Server BIT 字段 (&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fgithub.com%2Fnocobase%2Fnocobase%2Fpull%2F7058" target="_blank"&gt;#7058&lt;/a&gt;) by @aaaaaajie&lt;/li&gt; 
- &lt;li&gt;&lt;strong&gt;[工作流：審批]&lt;/strong&gt; 審批節點結果中增加審批記錄變量 by @mytharcher&lt;/li&gt; 
-&lt;/ul&gt; 
-&lt;h4&gt;🚀 優化&lt;/h4&gt; 
-&lt;ul&gt; 
- &lt;li&gt;&lt;strong&gt;[client]&lt;/strong&gt; 網格卡片區塊操作欄為空時自動隱藏 (&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fgithub.com%2Fnocobase%2Fnocobase%2Fpull%2F7069" target="_blank"&gt;#7069&lt;/a&gt;) by @zhangzhonghe&lt;/li&gt; 
- &lt;li&gt;&lt;strong&gt;[驗證]&lt;/strong&gt; 移除 &lt;code&gt;verifiers:listByUser&lt;/code&gt; 接口中響應的認證器配置信息 (&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fgithub.com%2Fnocobase%2Fnocobase%2Fpull%2F7090" target="_blank"&gt;#7090&lt;/a&gt;) by @2013xile&lt;/li&gt; 
- &lt;li&gt;&lt;strong&gt;[工作流]&lt;/strong&gt; 調整 &lt;code&gt;getCollectionFieldOptions&lt;/code&gt; 方法的 API (&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fgithub.com%2Fnocobase%2Fnocobase%2Fpull%2F7095" target="_blank"&gt;#7095&lt;/a&gt;) by @mytharcher&lt;/li&gt; 
- &lt;li&gt;&lt;strong&gt;[工作流：操作前事件]&lt;/strong&gt; 調整變量 API by @mytharcher&lt;/li&gt; 
- &lt;li&gt;&lt;strong&gt;[工作流：審批]&lt;/strong&gt; 調整變量 API by @mytharcher&lt;/li&gt; 
-&lt;/ul&gt; 
-&lt;h4&gt;🐛 修復&lt;/h4&gt; 
-&lt;ul&gt; 
- &lt;li&gt; &lt;p&gt;&lt;strong&gt;[client]&lt;/strong&gt;&lt;/p&gt; 
-  &lt;ul&gt; 
-   &lt;li&gt;表格列的文本對齊功能無效 (&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fgithub.com%2Fnocobase%2Fnocobase%2Fpull%2F7094" target="_blank"&gt;#7094&lt;/a&gt;) by @zhangzhonghe&lt;/li&gt; 
-   &lt;li&gt;字段賦值：關係字段無法被清空數據 (&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fgithub.com%2Fnocobase%2Fnocobase%2Fpull%2F7086" target="_blank"&gt;#7086&lt;/a&gt;) by @zhangzhonghe&lt;/li&gt; 
-   &lt;li&gt;對每個字段使用獨立的變量範圍 (&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fgithub.com%2Fnocobase%2Fnocobase%2Fpull%2F7012" target="_blank"&gt;#7012&lt;/a&gt;) by @mytharcher&lt;/li&gt; 
-   &lt;li&gt;修復，子表格列字段 style 條件判斷無效的問題 (&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fgithub.com%2Fnocobase%2Fnocobase%2Fpull%2F7083" target="_blank"&gt;#7083&lt;/a&gt;) by @katherinehhh&lt;/li&gt; 
-   &lt;li&gt;篩選表單中，通過關係表字段篩選無效 (&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fgithub.com%2Fnocobase%2Fnocobase%2Fpull%2F7070" target="_blank"&gt;#7070&lt;/a&gt;) by @zhangzhonghe&lt;/li&gt; 
-   &lt;li&gt;修復公開表單字段默認值中 URL 查詢參數變量無效的問題 (&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fgithub.com%2Fnocobase%2Fnocobase%2Fpull%2F7084" target="_blank"&gt;#7084&lt;/a&gt;) by @katherinehhh&lt;/li&gt; 
-   &lt;li&gt;修復子表格字段切換頁面後必填提示不消失的問題 (&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fgithub.com%2Fnocobase%2Fnocobase%2Fpull%2F7080" target="_blank"&gt;#7080&lt;/a&gt;) by @katherinehhh&lt;/li&gt; 
-   &lt;li&gt;點擊篩選按鈕報錯 (&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fgithub.com%2Fnocobase%2Fnocobase%2Fpull%2F7100" target="_blank"&gt;#7100&lt;/a&gt;) by @zhangzhonghe&lt;/li&gt; 
-  &lt;/ul&gt; &lt;/li&gt; 
- &lt;li&gt; &lt;p&gt;&lt;strong&gt;[database]&lt;/strong&gt; 修復 updateOrCreate 和 firstOrCreate 不支持關係更新的問題 (&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fgithub.com%2Fnocobase%2Fnocobase%2Fpull%2F7088" target="_blank"&gt;#7088&lt;/a&gt;) by @chenos&lt;/p&gt; &lt;/li&gt; 
- &lt;li&gt; &lt;p&gt;&lt;strong&gt;[工作流]&lt;/strong&gt;&lt;/p&gt; 
-  &lt;ul&gt; 
-   &lt;li&gt;修復統計數據被不是主版本的工作流級聯刪除的問題 (&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fgithub.com%2Fnocobase%2Fnocobase%2Fpull%2F7103" target="_blank"&gt;#7103&lt;/a&gt;) by @mytharcher&lt;/li&gt; 
-   &lt;li&gt;修復已執行數在大整型數時檢查錯誤的問題 (&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fgithub.com%2Fnocobase%2Fnocobase%2Fpull%2F7099" target="_blank"&gt;#7099&lt;/a&gt;) by @mytharcher&lt;/li&gt; 
-   &lt;li&gt;修復已執行數在大整型數時檢查錯誤的問題 (&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fgithub.com%2Fnocobase%2Fnocobase%2Fpull%2F7091" target="_blank"&gt;#7091&lt;/a&gt;) by @mytharcher&lt;/li&gt; 
-  &lt;/ul&gt; &lt;/li&gt; 
- &lt;li&gt; &lt;p&gt;&lt;strong&gt;[操作：導入記錄]&lt;/strong&gt; 修復批量導入用戶名和密碼後無法登錄的問題 (&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fgithub.com%2Fnocobase%2Fnocobase%2Fpull%2F7076" target="_blank"&gt;#7076&lt;/a&gt;) by @aaaaaajie&lt;/p&gt; &lt;/li&gt; 
- &lt;li&gt; &lt;p&gt;&lt;strong&gt;[數據表字段：多對多 (數組)]&lt;/strong&gt; 存在 &lt;code&gt;updatedBy&lt;/code&gt; 字段的時，更新多對多（數組）字段報錯 (&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fgithub.com%2Fnocobase%2Fnocobase%2Fpull%2F7089" target="_blank"&gt;#7089&lt;/a&gt;) by @2013xile&lt;/p&gt; &lt;/li&gt; 
- &lt;li&gt; &lt;p&gt;&lt;strong&gt;[文件管理器]&lt;/strong&gt; 修復審批處理中附件字段無法被更新的問題 (&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fgithub.com%2Fnocobase%2Fnocobase%2Fpull%2F7093" target="_blank"&gt;#7093&lt;/a&gt;) by @mytharcher&lt;/p&gt; &lt;/li&gt; 
- &lt;li&gt; &lt;p&gt;&lt;strong&gt;[公開表單]&lt;/strong&gt; 公開表單：修復提交表單時報無權限的問題 (&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fgithub.com%2Fnocobase%2Fnocobase%2Fpull%2F7085" target="_blank"&gt;#7085&lt;/a&gt;) by @zhangzhonghe&lt;/p&gt; &lt;/li&gt; 
- &lt;li&gt; &lt;p&gt;&lt;strong&gt;[數據表字段：自動編碼]&lt;/strong&gt; 修復基於字符串的大整數序列計算 (&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fgithub.com%2Fnocobase%2Fnocobase%2Fpull%2F7079" target="_blank"&gt;#7079&lt;/a&gt;) by @mytharcher&lt;/p&gt; &lt;/li&gt; 
- &lt;li&gt; &lt;p&gt;&lt;strong&gt;[工作流：審批]&lt;/strong&gt;&lt;/p&gt; 
-  &lt;ul&gt; 
-   &lt;li&gt;使用比較代替隱式邏輯以避免類型問題 by @mytharcher&lt;/li&gt; 
-   &lt;li&gt;限制只有參與者可以查看審批詳情 by @mytharcher&lt;/li&gt; 
-  &lt;/ul&gt; &lt;/li&gt; 
- &lt;li&gt; &lt;p&gt;&lt;strong&gt;[郵件管理]&lt;/strong&gt; 郵件刪除報錯 by @jiannx&lt;/p&gt; &lt;/li&gt; 
-&lt;/ul&gt;
-                                                                                &lt;/div&gt;
-                                                                            </description>
-      <link>https://www.oschina.net/news/357385/nocobase-updated</link>
-      <guid isPermaLink="false">https://www.oschina.net/news/357385/nocobase-updated</guid>
-      <pubDate>Sat, 10 May 2025 07:21:00 GMT</pubDate>
-      <author>來源: 投稿</author>
-    </item>
-    <item>
-      <title>LM Studio 0.3.17 發佈，新增 MCP 主機支持</title>
-      <description>&lt;div class="content"&gt;
-                                                                    
-                                                        &lt;p&gt;LM Studio v0.3.17&lt;u&gt;&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Flmstudio.ai%2Fblog%2Flmstudio-v0.3.17" target="_blank"&gt;已發佈&lt;/a&gt;&lt;/u&gt;，新版本引入了 Model Context Protocol (MCP) 主機支持，允許用戶連接 MCP 服務器並與本地模型協同使用，同時強調了安全風險和工具調用確認機制。&lt;/p&gt; 
-&lt;p&gt;&lt;img alt="" src="https://oscimg.oschina.net/oscnet/up-ff9f8ff547dc70dcc08e650304920222373.png" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;p&gt;LM Studio 支持本地和遠程 MCP 服務器，用戶可以通過編輯應用的 mcp.json 文件或通過新的「添加到 LM Studio」按鈕添加 MCP。LM Studio 提醒用戶，安裝來自不受信任來源的 MCP 存在風險，因為某些 MCP 服務器可能運行任意代碼、訪問本地文件和使用網絡連接。&lt;/p&gt; 
-&lt;p&gt;&lt;img alt="" src="https://oscimg.oschina.net/oscnet/up-909832708bbeb89e7371519a489805a66b5.png" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;p&gt;當模型調用工具時，LM Studio 會顯示確認對話框，允許用戶在執行前審查和編輯工具調用參數。&lt;/p&gt; 
-&lt;p&gt;開發者現在還可以為 LM Studio 中的 MCP 服務器創建一鍵安裝按鈕。此次更新還包括支持 11 種新語言（總計 33 種）、多項錯誤修復以及用戶界面改進，如新增「Solarized Dark」主題。&lt;/p&gt;
-                                                                                &lt;/div&gt;
-                                                                            </description>
-      <link>https://www.oschina.net/news/357384</link>
-      <guid isPermaLink="false">https://www.oschina.net/news/357384</guid>
-      <pubDate>Sat, 10 May 2025 07:14:00 GMT</pubDate>
-      <author>來源: OSCHINA</author>
-    </item>
-    <item>
-      <title>PublicCMS 202506.a 發佈，增加指紋登錄，二次驗證</title>
-      <description>&lt;div class="content"&gt;
-                                                                    
-                                                        &lt;p style="color:#212529; text-align:start"&gt;功能新增&lt;/p&gt; 
-&lt;ol&gt; 
- &lt;li&gt; &lt;p&gt;增加後台登錄二次驗證&lt;/p&gt; &lt;/li&gt; 
- &lt;li&gt; &lt;p&gt;增加全局圖片水印設置&lt;/p&gt; &lt;/li&gt; 
- &lt;li&gt; &lt;p&gt;V5 增加指紋登錄&lt;/p&gt; &lt;/li&gt; 
- &lt;li&gt; &lt;p&gt;增加簡單工作流&lt;/p&gt; &lt;/li&gt; 
- &lt;li&gt; &lt;p&gt;增加用戶設置&lt;/p&gt; &lt;/li&gt; 
- &lt;li&gt; &lt;p&gt;增加用戶代辦提醒&lt;/p&gt; &lt;/li&gt; 
- &lt;li&gt; &lt;p&gt;增加我的部門&lt;/p&gt; &lt;/li&gt; 
- &lt;li&gt; &lt;p&gt;增加 markdown 文檔導入功能&lt;/p&gt; &lt;/li&gt; 
- &lt;li&gt; &lt;p&gt;V5 增加 AI 功能，文檔處理和網頁生成兩個場景&lt;/p&gt; &lt;/li&gt; 
- &lt;li&gt; &lt;p&gt;增加擴展字段類型：模板目錄，網站文件目錄&lt;/p&gt; &lt;/li&gt; 
- &lt;li&gt; &lt;p&gt;增加推薦位數據導入&lt;/p&gt; &lt;/li&gt; 
-&lt;/ol&gt; 
-&lt;p&gt;指紋登錄：&lt;/p&gt; 
-&lt;p&gt;&lt;img alt="4bf9f5b39cee44d5ffbca513b6016ce9.png" src="https://oscimg.oschina.net/oscnet//1003539817d61fd0bf7a247c9d061afa.png" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;p style="color:#212529; text-align:start"&gt;AI 生成網站示例：&lt;/p&gt; 
-&lt;p&gt;&lt;img alt="image.png" src="https://oscimg.oschina.net/oscnet//2b11ba25a53b4e5eb1b923045ca2b2ae.png" referrerpolicy="no-referrer"&gt;&lt;/p&gt;
-                                                                                &lt;/div&gt;
-                                                                            </description>
-      <link>https://www.oschina.net/news/357373/publiccms-202506a</link>
-      <guid isPermaLink="false">https://www.oschina.net/news/357373/publiccms-202506a</guid>
-      <pubDate>Sat, 10 May 2025 06:48:00 GMT</pubDate>
-      <author>來源: 投稿</author>
-    </item>
-    <item>
-      <title>deepin 25 正式發佈！萬物向新，堅如磐石</title>
-      <description>&lt;div class="content"&gt;
-                                                                    
-                                                        &lt;div&gt; 
- &lt;p&gt;&lt;img height="383" src="https://oscimg.oschina.net/oscnet/up-2b978d9744246aedc27e66c24c7ed37d6de.jpg" width="900" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;/div&gt; 
-&lt;div&gt;
- 歷經 Preview、Alpha、Beta 三輪社區共創測試，deepin 25 於今日發佈亮相！本次版本以
- &lt;span&gt;&amp;nbsp;&lt;/span&gt;
- &lt;strong&gt;「萬物向新」&lt;/strong&gt;
- &lt;span&gt;&amp;nbsp;&lt;/span&gt;為核心，四大革新特性全面進化，1000+ 項優化修復落地，為廣大開發者與用戶朋友們帶來更可靠、更流暢、更自由的開源操作系統體驗。
-&lt;/div&gt; 
-&lt;div&gt; 
- &lt;h1&gt;&lt;strong&gt;DDE 桌面：界面"新"貌・絲滑過人&lt;/strong&gt;&lt;/h1&gt; 
-&lt;/div&gt; 
-&lt;div&gt;
- 我們相信，每一次點擊、每一次滑動，都應是享受。全新 DDE 桌面環境，從每一個像素開始，為您重塑感官與效率的邊界。
-&lt;/div&gt; 
-&lt;div&gt; 
- &lt;p style="text-align:center"&gt;&lt;img height="2250" src="https://oscimg.oschina.net/oscnet/up-26836d54c962cff64107821896ae1cf1282.jpg" width="4000" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;/div&gt; 
-&lt;div&gt; 
- &lt;ul&gt; 
-  &lt;li&gt; 
-   &lt;div&gt;
-    &lt;strong&gt;看得見的優雅，看不見的用心&lt;/strong&gt;：我們對桌面環境的眾多組件進行了 QML 重構，這不僅帶來了肉眼可見的流暢度提升，更實現了視覺語言的全面統一。從擬物化圖標到溫潤如玉的平滑圓角設計，每一處細節都經過反覆打磨，讓系統界面更具呼吸感和溫度。
-   &lt;/div&gt; &lt;/li&gt; 
-  &lt;li&gt; 
-   &lt;div&gt;
-    &lt;strong&gt;告別繁瑣，控制中心「顛覆式」進化&lt;/strong&gt;：控制中心引入了新的「側邊欄+內容區」分層結構，左側導航一目瞭然，右側設置直觀便捷，您所需的一切都觸手可及，高頻操作從此告別層級跳轉。
-   &lt;/div&gt; &lt;/li&gt; 
-  &lt;li&gt; 
-   &lt;div&gt;
-    &lt;strong&gt;會「整理」的啓動器與文件管理器&lt;/strong&gt;：為了讓您更快地找到所需，啓動器現已支持按應用名稱首字母排序。文件管理器也迎來了搜索功能的重大升級，支持「即輸即搜」和關鍵詞高亮，讓您在海量文件中精準定位。
-   &lt;/div&gt; &lt;/li&gt; 
-  &lt;li&gt; 
-   &lt;div&gt;
-    &lt;strong&gt;更自由的交互定義&lt;/strong&gt;：針對筆記本用戶，我們新增了三指、四指觸控板手勢的自定義能力，分屏、切換窗口等操作皆可隨心設定，讓您的觸控板真正成為效率神器。
-   &lt;/div&gt; &lt;/li&gt; 
- &lt;/ul&gt; 
- &lt;h1&gt;&lt;strong&gt;UOS AI：AI "新"聲・問啥都行&lt;/strong&gt;&lt;/h1&gt; 
- &lt;div&gt;
-  在 deepin 25 中，AI 不再是遙遠的功能，而是融入系統的智能夥伴，時刻感知您的需求。
- &lt;/div&gt; 
- &lt;div&gt; 
-  &lt;p style="text-align:center"&gt;&lt;img src="https://oscimg.oschina.net/oscnet//7df4f785506cc9cba40c60520777084a.jpg" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-  &lt;ul&gt; 
-   &lt;li&gt; 
-    &lt;div&gt;
-     &lt;strong&gt;AI 隨航，知識隨行&lt;/strong&gt;：無論在任何界面閲讀，只需輕劃選中文字，AI 圖標便會即時浮現。一鍵翻譯、總結、解釋，甚至支持離線使用，讓知識獲取再無障礙，讓您的專注不被打斷。
-    &lt;/div&gt; &lt;/li&gt; 
-   &lt;li&gt; 
-    &lt;div&gt;
-     &lt;strong&gt;動口不動手，系統聽你説&lt;/strong&gt;：想調暗屏幕、或是快速創建會議日程？試試用自然語言對系統下達指令吧！無論是語音還是文字，系統都能心領神會，告別繁瑣的菜單點擊。
-    &lt;/div&gt; &lt;/li&gt; 
-   &lt;li&gt; 
-    &lt;div&gt;
-     &lt;strong&gt;雙模引擎，安全與強大的平衡&lt;/strong&gt;：您可以選擇接入 DeepSeek、百度千帆、訊飛星火等主流在線大模型，暢享雲端算力；也可以在設置中安裝並使用「統信有容大模型」，實現數據不出本地的離線運行，為您的隱私安全保駕護航。
-    &lt;/div&gt; &lt;/li&gt; 
-   &lt;li&gt; 
-    &lt;div&gt;
-     &lt;strong&gt;智能體商店，無限能力擴展&lt;/strong&gt;：通過 AI 助手新增的智能體商店入口，您可以下載不同領域的智能體，拓展 AI 的應用場景，讓您的 AI 更具個性化。
-    &lt;/div&gt; &lt;/li&gt; 
-  &lt;/ul&gt; 
-  &lt;h1&gt;&lt;strong&gt;磐石系統：權限"新"固・核心防護&lt;/strong&gt;&lt;/h1&gt; 
-  &lt;div&gt;
-   我們深刻理解系統穩定對於用戶的意義。為此，deepin 25 重磅推出「磐石系統」，重新定義了 Linux 操作系統的穩定標杆。
-  &lt;/div&gt; 
-  &lt;div&gt;
-   &lt;img alt="" height="689" src="https://oscimg.oschina.net/oscnet//ece74b2f32e767d83b0c05a667132b03.png" width="1394" referrerpolicy="no-referrer"&gt;
-  &lt;/div&gt; 
-  &lt;div&gt;
-   &amp;nbsp;
-  &lt;/div&gt; 
-  &lt;ul&gt; 
-   &lt;li&gt; 
-    &lt;div&gt;
-     &lt;strong&gt;只讀防護，杜絕核心篡改&lt;/strong&gt;：系統通過將
-     &lt;code&gt;/usr/bin&lt;/code&gt;等核心目錄強制設置為只讀掛載，從根本上攔截了用戶誤操作或惡意軟件對系統核心的修改，確保系統長久穩定運行。對於需要深度定製的開發者，我們也提供了便捷的命令一鍵開/關防護。
-    &lt;/div&gt; &lt;/li&gt; 
-   &lt;li&gt; 
-    &lt;div&gt;
-     &lt;strong&gt;秒級快照，升級高枕無憂&lt;/strong&gt;：每一次系統更新前，系統都會自動創建備份快照。即便更新過程中發生意外，系統也能在重啓後自動回滾至上一個正常狀態，讓您告別「升級變磚」的焦慮。
-    &lt;/div&gt; &lt;/li&gt; 
-   &lt;li&gt; 
-    &lt;div&gt;
-     &lt;strong&gt;無憂還原，公共設備「自淨」引擎&lt;/strong&gt;：針對公用電腦、展廳設備等場景，「無憂還原」功能可實現重啓後自動清空使用痕跡，同時支持白名單配置，兼顧安全與效率。
-    &lt;/div&gt; &lt;/li&gt; 
-  &lt;/ul&gt; 
-  &lt;h1&gt;&lt;strong&gt;如意玲瓏：兼容"新"篇・處處生根&lt;/strong&gt;&lt;/h1&gt; 
-  &lt;div&gt;
-   依賴衝突是 Linux 用戶長久以來的痛點。現在，「如意玲瓏」為您帶來終極解決方案。
-  &lt;/div&gt; 
-  &lt;ul&gt; 
-   &lt;li&gt; 
-    &lt;div&gt;
-     &lt;strong&gt;跨發行版兼容，一次封裝處處運行&lt;/strong&gt;：玲瓏通過沙箱化容器技術，將應用與依賴庫徹底隔離。這意味着，一個玲瓏包可以在 Debian、Ubuntu、Arch、Fedora、openEuler 等 7 大主流發行版上直接運行，開發者無需再為不同平台重複打包。
-    &lt;/div&gt; &lt;/li&gt; 
-   &lt;li&gt; 
-    &lt;div&gt;
-     &lt;strong&gt;多架構支持，生態版圖持續擴張&lt;/strong&gt;：我們已實現對 AMD64、ARM64、LoongArch64 等主流 CPU 架構的全面支持。目前，玲瓏生態已累計上架超過 5000 款軟件，覆蓋辦公、開發、娛樂等多樣化需求。
-    &lt;/div&gt; &lt;/li&gt; 
-  &lt;/ul&gt; 
-  &lt;h1&gt;&lt;strong&gt;社區利器：為開發者與極客打造的自由天地&lt;/strong&gt;&lt;/h1&gt; 
-  &lt;ul&gt; 
-   &lt;li&gt; 
-    &lt;div&gt;
-     &lt;strong&gt;Distrobox 子系統&lt;/strong&gt;：現在，您可以在應用商店一鍵安裝 Debian12、Ubuntu（20.04/24.04）、Arch、Fedora（41/42）等主流發行版的子系統鏡像，自由搭建您所熟悉的開發與測試環境。
-    &lt;/div&gt; &lt;/li&gt; 
-   &lt;li&gt; 
-    &lt;div&gt;
-     &lt;strong&gt;Treeland 窗口合成器 (預覽探索)&lt;/strong&gt;：我們自研的渲染引擎，帶來了 40% 的動畫流暢度提升，並支持多指觸控板的跟手操作，交互如絲般順滑。歡迎各位極客朋友切換體驗，感受未來的桌面交互。
-    &lt;/div&gt; &lt;/li&gt; 
-   &lt;li&gt; 
-    &lt;div&gt;
-     &lt;strong&gt;跨端協同，打破設備邊界&lt;/strong&gt;：除了 PC 間的鍵鼠、剪貼板共享，新版跨端協同實現了手機與 PC 的突破性雙向操控。在電腦大屏上回復手機消息、操作手機應用，構建一體化的無縫工作流。
-    &lt;/div&gt; &lt;/li&gt; 
-   &lt;li&gt; 
-    &lt;div&gt;
-     &lt;strong&gt;主流架構支持：&lt;span&gt;&amp;nbsp;&lt;/span&gt;&lt;/strong&gt;在 AMD64 穩定適配的基礎上，新增 ARM 64 / LoongArch64 / RISC-V 架構支持，覆蓋主流芯片平台；並已適配包括樹莓派 4B+、瑞莎 Rock5B/5B+ 及 ROCK 5 ITX 主板等設備，拓展了在嵌入式及輕量級計算領域的應用。
-    &lt;/div&gt; &lt;/li&gt; 
-   &lt;li&gt; 
-    &lt;div&gt;
-     &lt;strong&gt;全球化落地&lt;/strong&gt;：安裝器新增 17 種語言，系統級翻譯共覆蓋
-     &lt;span&gt;&amp;nbsp;&lt;/span&gt;
-     &lt;strong&gt;51 種語言&lt;/strong&gt;，應用商店支持區域化內容分發，為全球用戶提供一致化的本地體驗。
-    &lt;/div&gt; &lt;/li&gt; 
-  &lt;/ul&gt; 
-  &lt;h2&gt;&lt;span style="color:#0052ff"&gt;&lt;strong&gt;&lt;span&gt;&lt;span&gt;堅持開放，持續共建&lt;/span&gt;&lt;/span&gt;&lt;/strong&gt;&lt;/span&gt;&lt;/h2&gt; 
-  &lt;p style="margin-left:0px; margin-right:0px; text-align:justify"&gt;&lt;span&gt;&lt;span&gt;deepin 25 不僅是四大革新的舞台，更是全體社區成員開放共建的答卷。我們誠摯感謝每一位參與測試、提出建議的社區夥伴！&lt;/span&gt;&lt;/span&gt;&lt;/p&gt; 
-  &lt;p style="margin-left:0px; margin-right:0px; text-align:justify"&gt;&lt;span&gt;&lt;span&gt;秉承「開放、創新、共建」的社區理念，本次版本重點修復了多項高頻問題（詳見發行註記用戶反饋問題優化與修復部分），涵蓋系統穩定性（如更新後啓動異常、關機緩慢）、安全性、桌面體驗（任務欄、控制中心）等多個方面，讓「堅如磐石」的承諾更加堅實可靠。您的每一次反饋，都在真切地塑造着 deepin 的未來！&lt;/span&gt;&lt;/span&gt;&lt;/p&gt; 
-  &lt;p style="margin-left:0px; margin-right:0px; text-align:justify"&gt;&lt;span&gt;&lt;strong&gt;⬇️&amp;nbsp;&lt;/strong&gt;&lt;/span&gt;&lt;strong&gt;&lt;span&gt;&lt;strong&gt;立即下載，開啓 deepin 25 之旅！&lt;/strong&gt;&lt;/span&gt;&lt;/strong&gt;&lt;/p&gt; 
-  &lt;ul&gt; 
-   &lt;li style="color: rgba(0, 0, 0, 0.9); margin-left: 0px; margin-right: 0px; text-align: justify;"&gt;&lt;strong&gt;&lt;span&gt;&lt;span&gt;下載地址&lt;/span&gt;&lt;/span&gt;&lt;/strong&gt;&lt;span&gt;&lt;span&gt;：&lt;/span&gt;&lt;/span&gt;&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fwww.deepin.org%2Fzh%2Fdownload%2F" target="_blank"&gt;&lt;span&gt;&lt;span&gt;&lt;span style="color:#0052ff"&gt;https://www.deepin.org/zh/download/&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/a&gt;&lt;/li&gt; 
-   &lt;li style="color: rgba(0, 0, 0, 0.9); margin-left: 0px; margin-right: 0px; text-align: justify;"&gt;&lt;strong&gt;&lt;span&gt;&lt;span&gt;完整發行註記&lt;/span&gt;&lt;/span&gt;&lt;/strong&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;：&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fwww.deepin.org%2Fzh%2Fdeepin-25-release" target="_blank"&gt;&lt;span&gt;&lt;span style="color:#0052ff"&gt;&lt;span&gt;https://www.deepin.org/zh/deepin-25-release&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/a&gt;&lt;/li&gt; 
-  &lt;/ul&gt; 
- &lt;/div&gt; 
-&lt;/div&gt;
-                                                                                &lt;/div&gt;
-                                                                            </description>
-      <link>https://www.oschina.net/news/357370/deepin-25-released</link>
-      <guid isPermaLink="false">https://www.oschina.net/news/357370/deepin-25-released</guid>
-      <pubDate>Sat, 10 May 2025 06:43:00 GMT</pubDate>
-      <author>來源: 投稿</author>
-    </item>
-    <item>
-      <title>Vite v7.0 正式發佈，超快的前端構建工具</title>
-      <description>&lt;div class="content"&gt;
-                                                                    
-                                                        &lt;p&gt;Vite v7.0 已正式&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fgithub.com%2Fvitejs%2Fvite%2Freleases%2Ftag%2Fv7.0.0" target="_blank"&gt;發佈&lt;/a&gt;。&lt;/p&gt; 
-&lt;blockquote&gt; 
- &lt;p&gt;Vite（法語意為 "快速的"，發音&lt;code&gt;/vit/&lt;/code&gt;，發音同 "veet"）是一種新型前端構建工具，能夠顯著提升前端開發體驗。它主要由兩部分組成：&lt;/p&gt; 
- &lt;ul&gt; 
-  &lt;li&gt; &lt;p&gt;一個開發服務器，它基於&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fdeveloper.mozilla.org%2Fen-US%2Fdocs%2FWeb%2FJavaScript%2FGuide%2FModules"&gt;原生 ES 模塊&lt;/a&gt;提供了&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fcn.vite.dev%2Fguide%2Ffeatures.html"&gt;豐富的內建功能&lt;/a&gt;，如速度快到驚人的&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fcn.vite.dev%2Fguide%2Ffeatures.html%23hot-module-replacement"&gt;模塊熱替換（HMR）&lt;/a&gt;。&lt;/p&gt; &lt;/li&gt; 
-  &lt;li&gt; &lt;p&gt;一套構建指令，它使用&amp;nbsp;&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Frollupjs.org%2F"&gt;Rollup&lt;/a&gt;&amp;nbsp;打包你的代碼，並且它是預配置的，可輸出用於生產環境的高度優化過的靜態資源。&lt;/p&gt; &lt;/li&gt; 
- &lt;/ul&gt; 
-&lt;/blockquote&gt; 
-&lt;p&gt;&lt;img alt="" src="https://oscimg.oschina.net/oscnet/up-5e2ecda18c413c7f0cb508984defebdc3d5.png" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;h2&gt;Node.js 支持&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fcn.vite.dev%2Fblog%2Fannouncing-vite7%23node-js-support" target="_blank"&gt;&lt;/a&gt;&lt;/h2&gt; 
-&lt;p&gt;Vite 現在要求使用 Node.js 20.19+ 或 22.12+。由於 Node.js 18 已於 2025 年 4 月底達到&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fendoflife.date%2Fnodejs" target="_blank"&gt;生命週期終點（EOL）&lt;/a&gt;，我們已不再支持該版本。&lt;/p&gt; 
-&lt;p&gt;我們要求使用這些新的 Node.js 版本範圍，以確保 Node.js 可以無需啓用標誌即可支持&lt;code&gt;require(esm)&lt;/code&gt;。這使我們能夠僅以 ESM 格式發佈 Vite 7.0，同時不會阻止 CJS 模塊通過&lt;code&gt;require&lt;/code&gt;調用 Vite 的 JavaScript API。有關當前 ESM 在生態系統中的發展狀況的詳細分析，請查看 Anthony Fu 的文章&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fantfu.me%2Fposts%2Fmove-on-to-esm-only" target="_blank"&gt;《邁向純 ESM》&lt;/a&gt;。&lt;/p&gt; 
-&lt;h2&gt;默認瀏覽器兼容性目標已更改為 Baseline Widely Available&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fcn.vite.dev%2Fblog%2Fannouncing-vite7%23default-browser-target-changed-to-baseline-widely-available" target="_blank"&gt;&lt;/a&gt;&lt;/h2&gt; 
-&lt;p&gt;&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fweb-platform-dx.github.io%2Fweb-features%2F" target="_blank"&gt;Baseline&lt;/a&gt;為我們提供了明確的信息，指出了哪些 Web 平台特性在當今主流瀏覽器中可用。Baseline Widely Available，表示該功能已經十分成熟，可在多種設備和瀏覽器版本中正常工作，並且在各瀏覽器中至少已支持 30 個月。&lt;/p&gt; 
-&lt;p&gt;在 Vite 7 中，默認瀏覽器目標將從&lt;code&gt;'modules'&lt;/code&gt;更改為新的默認值：&lt;code&gt;'baseline-widely-available'&lt;/code&gt;。每當我們發佈一個重大版本時，所支持的瀏覽器列表都會更新，以匹配與「Baseline Widely Available」特性兼容的最低瀏覽器版本。Vite 7.0 中&lt;code&gt;build.target&lt;/code&gt;的默認瀏覽器值變化如下：&lt;/p&gt; 
-&lt;ul&gt; 
- &lt;li&gt;Chrome 87 → 107&lt;/li&gt; 
- &lt;li&gt;Edge 88 → 107&lt;/li&gt; 
- &lt;li&gt;Firefox 78 → 104&lt;/li&gt; 
- &lt;li&gt;Safari 14.0 → 16.0&lt;/li&gt; 
-&lt;/ul&gt; 
-&lt;p&gt;這一變化為未來版本的瀏覽器兼容性帶來了更高的可預測性。&lt;/p&gt; 
-&lt;h2&gt;Vitest&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fcn.vite.dev%2Fblog%2Fannouncing-vite7%23vitest" target="_blank"&gt;&lt;/a&gt;&lt;/h2&gt; 
-&lt;p&gt;對於 Vitest 用戶而言，Vite 7.0 從 Vitest 3.2 開始得到支持。你可以閲讀&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fvitest.dev%2Fblog%2Fvitest-3-2.html" target="_blank"&gt;Vitest 3.2 發佈博客&lt;/a&gt;，瞭解更多關於 Vitest 團隊如何持續改進 Vite 測試功能的內容。&lt;/p&gt; 
-&lt;h2&gt;Environment API&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fcn.vite.dev%2Fblog%2Fannouncing-vite7%23environment-api" target="_blank"&gt;&lt;/a&gt;&lt;/h2&gt; 
-&lt;p&gt;Vite 6 是自 Vite 2 以來最具意義的一次重大發布，它通過&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fvite.dev%2Fblog%2Fannouncing-vite6.html%23experimental-environment-api" target="_blank"&gt;全新的實驗性 Environment API&lt;/a&gt;引入了多項新功能。我們暫時將這些新 API 保持為實驗性狀態，以便生態系統逐步評估它們在各類項目中的適用性並提供反饋。如果你正在基於 Vite 構建項目，我們鼓勵你嘗試使用這些新 API，並通過&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fgithub.com%2Fvitejs%2Fvite%2Fdiscussions%2F16358" target="_blank"&gt;此開放討論話題&lt;/a&gt;向我們提供你的使用反饋。&lt;/p&gt; 
-&lt;p&gt;在 Vite 7 中，我們新增了一個&lt;code&gt;buildApp&lt;/code&gt;鈎子，使插件能夠協調環境的構建過程。詳情請參閲&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fcn.vite.dev%2Fguide%2Fapi-environment-frameworks.html%23environments-during-build" target="_blank"&gt;面向框架的 Environment API 指南&lt;/a&gt;。&lt;/p&gt; 
-&lt;p&gt;我們要感謝那些一直在測試新 API 並幫助我們穩定新功能的團隊。例如，Cloudflare 團隊宣佈了其 Cloudflare Vite 插件的 1.0 版本發佈，並正式支持 React Router v7。他們的插件展示了 Environment API 在運行時提供者方面的潛力。要了解更多關於他們的實現方式和未來計劃，請查看文章&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fblog.cloudflare.com%2Fintroducing-the-cloudflare-vite-plugin%2F" target="_blank"&gt;「Just use Vite」… with the Workers runtime&lt;/a&gt;。&lt;/p&gt; 
-&lt;h2&gt;遷移到 Vite 7&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fcn.vite.dev%2Fblog%2Fannouncing-vite7%23migrating-to-vite-7" target="_blank"&gt;&lt;/a&gt;&lt;/h2&gt; 
-&lt;p&gt;從 Vite 6 升級到 Vite 7 應該是一次平滑的體驗。我們移除了已棄用的功能，例如 Sass 的舊版 API 支持以及&lt;code&gt;splitVendorChunkPlugin&lt;/code&gt;，這些改動不會影響你的項目。我們仍然建議你在升級前查看&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fcn.vite.dev%2Fguide%2Fmigration.html" target="_blank"&gt;詳細的遷移指南&lt;/a&gt;。&lt;/p&gt; 
-&lt;p&gt;所有變更的完整列表請見&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fgithub.com%2Fvitejs%2Fvite%2Fblob%2Fmain%2Fpackages%2Fvite%2FCHANGELOG.md" target="_blank"&gt;Vite 7 更新日誌&lt;/a&gt;。&lt;/p&gt;
-                                                                                &lt;/div&gt;
-                                                                            </description>
-      <link>https://www.oschina.net/news/357360/vite7-released</link>
-      <guid isPermaLink="false">https://www.oschina.net/news/357360/vite7-released</guid>
-      <pubDate>Sat, 10 May 2025 06:09:00 GMT</pubDate>
-      <author>來源: OSCHINA</author>
-    </item>
-    <item>
-      <title>FastEcho v1.1.0 已經發布，網絡連通性測試工具</title>
-      <description>&lt;div class="content"&gt;
-                                                                    
-                                                        &lt;p&gt;FastEcho v1.1.0 已經發布，網絡連通性測試工具&lt;/p&gt; 
-&lt;p&gt;此版本更新內容包括：&lt;/p&gt; 
-&lt;p&gt;主要功能：&lt;/p&gt; 
-&lt;p&gt;1）多主機併發 ping 測試&lt;/p&gt; 
-&lt;p&gt;2）雙擊測試結果可調用系統 ping 或 tracert 命令&lt;/p&gt; 
-&lt;p&gt;3）可使用名稱或 IP 搜索待測試節點&lt;/p&gt; 
-&lt;p&gt;4）自定義接收超時、測試輪數及載荷大小&lt;/p&gt; 
-&lt;p&gt;5）可選擇不同的配置文件&lt;/p&gt; 
-&lt;p&gt;6）可對窗體截圖保存測試結果&lt;/p&gt; 
-&lt;p&gt;&lt;strong&gt;完整的更新日誌&lt;/strong&gt;: &lt;a href="https://gitee.com/xsrc1977/fastecho/commits/v1.1.0" target="_blank"&gt;https://gitee.com/xsrc1977/fastecho/commits/v1.1.0&lt;/a&gt;&lt;/p&gt; 
-&lt;p&gt;詳情查看：&lt;a href="https://gitee.com/xsrc1977/fastecho/releases/v1.1.0"&gt;https://gitee.com/xsrc1977/fastecho/releases/v1.1.0&lt;/a&gt;&lt;/p&gt;
-                                                                                &lt;/div&gt;
-                                                                            </description>
-      <link>https://www.oschina.net/news/357353/fastecho-1-1-0-released</link>
-      <guid isPermaLink="false">https://www.oschina.net/news/357353/fastecho-1-1-0-released</guid>
-      <pubDate>Sat, 10 May 2025 05:32:00 GMT</pubDate>
       <author>來源: 投稿</author>
     </item>
   </channel>
