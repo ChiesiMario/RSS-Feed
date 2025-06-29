@@ -7,8 +7,747 @@
     <generator>RSSHub</generator>
     <webMaster>contact@rsshub.app (RSSHub)</webMaster>
     <language>zh-hk</language>
-    <lastBuildDate>Sun, 29 Jun 2025 12:44:20 GMT</lastBuildDate>
+    <lastBuildDate>Sun, 29 Jun 2025 16:45:28 GMT</lastBuildDate>
     <ttl>5</ttl>
+    <item>
+      <title>Apache APISIX 3.13.0 正式發佈</title>
+      <description>&lt;div class="content"&gt;
+                                                                    
+                                                        &lt;p&gt;Apache APISIX 3.13.0 版本已經&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fmp.weixin.qq.com%2Fs%2F2hpdb8cAGIXRITyAOVSf_Q" target="_blank"&gt;發佈&lt;/a&gt;，帶來了一系列新功能、修復、以及相關用户體驗優化。&lt;/p&gt; 
+&lt;p&gt;此版本引入了多項新功能，包括 mcp-bridge 和 lago 插件、獨立的 Admin API、狀態健康檢查端點、L4 代理健康檢查等等。雖然本次更新沒有引入任何重大變更，但部分功能已被標記為未來版本中將廢棄。&lt;/p&gt; 
+&lt;h2&gt;&lt;strong&gt;棄用説明&lt;/strong&gt;&lt;/h2&gt; 
+&lt;h3&gt;&lt;strong&gt;1. 標記 server-info 插件為棄用&lt;/strong&gt;&lt;/h3&gt; 
+&lt;p&gt;&lt;code&gt;server-info&lt;/code&gt;插件已被標記為棄用，並將在未來的版本中移除。該插件會定期將服務器信息寫入 etcd，在大型集羣中可能會由於啓動時 etcd 寫入操作過多而導致性能問題。&lt;/p&gt; 
+&lt;p&gt;更多信息請參見&amp;nbsp;&lt;strong&gt;郵件列表討論&lt;/strong&gt;[1]和&amp;nbsp;&lt;strong&gt;PR #12244&lt;/strong&gt;。&lt;/p&gt; 
+&lt;h3&gt;&lt;strong&gt;2. 在解耦 data_plane 模式下對執行 etcd 寫操作進行警告&lt;/strong&gt;&lt;/h3&gt; 
+&lt;p&gt;當 APISIX 以數據面實例運行在解耦模式時，如果通過 core.etcd 函數或 CLI 執行 etcd 寫操作，將記錄警告日誌。未來版本中將棄用並禁止此類操作。&lt;/p&gt; 
+&lt;p&gt;更多信息請參見&amp;nbsp;&lt;strong&gt;郵件列表討論&lt;/strong&gt;[2]和&amp;nbsp;&lt;strong&gt;PR #12241&lt;/strong&gt;。&lt;/p&gt; 
+&lt;h2&gt;&lt;strong&gt;新功能&lt;/strong&gt;&lt;/h2&gt; 
+&lt;h3&gt;&lt;strong&gt;1. 新增 standalone 模式 Admin API&lt;/strong&gt;&lt;/h3&gt; 
+&lt;p&gt;本次版本為 standalone 模式引入了新的 Admin API，允許用户通過 HTTP PUT（更新）和 GET（獲取）來管理內存中的配置。配置支持以 JSON 或 YAML 格式提交，會在驗證後廣播至同一 APISIX 實例中的所有 worker 進程，實現完全無狀態的運行模式。該功能提升了對 Ingress Controller 等場景的支持能力。&lt;/p&gt; 
+&lt;p&gt;更多信息請參見相關&amp;nbsp;&lt;strong&gt;PR #12179&lt;/strong&gt;、&lt;strong&gt;PR #12214&lt;/strong&gt;、&lt;strong&gt;PR #12256&lt;/strong&gt;、&lt;strong&gt;PR #12295&lt;/strong&gt;、&lt;strong&gt;PR #12317&lt;/strong&gt;、&lt;strong&gt;PR #12333&lt;/strong&gt;。&lt;/p&gt; 
+&lt;h3&gt;&lt;strong&gt;2. 支持 L4 代理的健康檢查&lt;/strong&gt;&lt;/h3&gt; 
+&lt;p&gt;APISIX 現已支持作為 L4 代理運行時對上游目標進行健康檢查，從而提升 TCP/UDP 流量的可靠性並實現自動故障轉移。&lt;/p&gt; 
+&lt;p&gt;更多信息請參見&amp;nbsp;&lt;strong&gt;PR #12180&lt;/strong&gt;。&lt;/p&gt; 
+&lt;h3&gt;&lt;strong&gt;3. 新增狀態健康檢查端點&lt;/strong&gt;&lt;/h3&gt; 
+&lt;p&gt;本次版本引入了一個健康檢查 status 端點，用於指示 APISIX 是否已準備好接收流量。在 standalone 模式下，該端點在從外部客户端（如 Ingress Controller）加載配置後報告就緒狀態；在使用 etcd 時，該端點會在所有工作進程完成初始配置加載之前一直處於非就緒狀態。該功能有助於外部系統準確執行就緒性檢查。&lt;/p&gt; 
+&lt;p&gt;更多信息請參見&amp;nbsp;&lt;strong&gt;PR #12200&lt;/strong&gt;。&lt;/p&gt; 
+&lt;h3&gt;&lt;strong&gt;4. 新增 mcp-bridge 插件&lt;/strong&gt;&lt;/h3&gt; 
+&lt;p&gt;本次版本引入了&amp;nbsp;&lt;code&gt;mcp-bridge&lt;/code&gt;插件，用於將基於 stdio 的 MCP 服務器轉換為基於 HTTP SSE 的接口，並支持子進程管理和跨 NGINX worker 的會話原型處理。為支持更廣泛的使用場景，MCP 服務器已重構為獨立模塊，替換了原始的&amp;nbsp;&lt;code&gt;mcp-bridge&lt;/code&gt;實現，採用更靈活的框架，同時通過現有測試保持向後兼容。&lt;/p&gt; 
+&lt;p&gt;更多信息請參見&amp;nbsp;**PR&amp;nbsp;[#12168](javascript:;)&amp;nbsp;**和&amp;nbsp;&lt;strong&gt;PR #12151&lt;/strong&gt;。&lt;/p&gt; 
+&lt;h3&gt;&lt;strong&gt;5. 新增 lago 插件&lt;/strong&gt;&lt;/h3&gt; 
+&lt;p&gt;本次版本引入了&amp;nbsp;&lt;code&gt;lago&lt;/code&gt;插件，支持與 Lago 集成實現 API 商業化。該插件記錄 API 調用，並基於配置的計費指標和訂閲對消費者進行計費。它支持靈活的使用場景，例如面向 AI 服務的基於令牌的計費或基於調用次數的 API 計費，並允許將多個路由鏈接到不同的定價模型，以支持按需付費模式。&lt;/p&gt; 
+&lt;p&gt;更多信息請參見&amp;nbsp;&lt;strong&gt;PR #12196&lt;/strong&gt;。&lt;/p&gt; 
+&lt;h3&gt;&lt;strong&gt;6. 為 loki-logger 插件添加 headers 屬性&lt;/strong&gt;&lt;/h3&gt; 
+&lt;p&gt;本次版本為&amp;nbsp;&lt;code&gt;loki-logger&lt;/code&gt;插件新增了&amp;nbsp;&lt;code&gt;headers&lt;/code&gt;屬性。通過此功能，用户可以在將日誌發送到遠程 Loki 服務時設置授權等自定義請求頭。&lt;/p&gt; 
+&lt;p&gt;更多信息請參見&amp;nbsp;&lt;strong&gt;PR #12243&lt;/strong&gt;。&lt;/p&gt; 
+&lt;h3&gt;&lt;strong&gt;7. 為核心資源 schema 添加 metadata 字段&lt;/strong&gt;&lt;/h3&gt; 
+&lt;p&gt;本次版本為核心資源 schema 添加了標準化的 metadata 字段，包括名稱、描述和標籤。此增強提升了資源的一致性，並解決了下游項目中的相關問題。&lt;/p&gt; 
+&lt;p&gt;更多信息請參見&amp;nbsp;&lt;strong&gt;PR #12224&lt;/strong&gt;。&lt;/p&gt; 
+&lt;h3&gt;&lt;strong&gt;8. 為批處理器新增 max_pending_entries 屬性&lt;/strong&gt;&lt;/h3&gt; 
+&lt;p&gt;本次版本為批處理器新增了&amp;nbsp;&lt;code&gt;max_pending_entries&lt;/code&gt;配置項，用於防止在日誌服務器響應緩慢或無響應時引發內存激增。該配置允許在等待處理的回調數量過多時丟棄新的日誌條目。&lt;/p&gt; 
+&lt;p&gt;更多信息請參見&amp;nbsp;&lt;strong&gt;PR #12338&lt;/strong&gt;。&lt;/p&gt; 
+&lt;h3&gt;&lt;strong&gt;9. 增強 Admin API 過濾功能&lt;/strong&gt;&lt;/h3&gt; 
+&lt;p&gt;Admin API 現在支持通過&amp;nbsp;&lt;code&gt;service_id&lt;/code&gt;和&amp;nbsp;&lt;code&gt;upstream_id&lt;/code&gt;過濾 routes 和 stream routes，使用户更容易查詢和管理相關資源，特別是對 APISIX Dashboard 項目更為友好。&lt;/p&gt; 
+&lt;p&gt;更多信息請參見&amp;nbsp;&lt;strong&gt;PR #12291&lt;/strong&gt;。&lt;/p&gt; 
+&lt;h3&gt;&lt;strong&gt;10. 在 Prometheus node_info 指標中暴露 APISIX 版本&lt;/strong&gt;&lt;/h3&gt; 
+&lt;p&gt;本次版本增強了 Prometheus 的&amp;nbsp;&lt;code&gt;node_info&lt;/code&gt;指標，增加了&amp;nbsp;&lt;code&gt;version&lt;/code&gt;標籤用於暴露當前 APISIX 版本，從而提升可觀測性和版本追蹤能力。&lt;/p&gt; 
+&lt;p&gt;更多信息請參見&amp;nbsp;&lt;strong&gt;PR #12367&lt;/strong&gt;。&lt;/p&gt; 
+&lt;h3&gt;&lt;strong&gt;11. 支持在 consumer 用户名中使用連字符 (-)&lt;/strong&gt;&lt;/h3&gt; 
+&lt;p&gt;本次版本允許在 consumer 的用户名中使用連字符（&lt;code&gt;-&lt;/code&gt;）。該功能適用於 Kubernetes 等場景，可以通過類似&amp;nbsp;&lt;code&gt;namespace-username&lt;/code&gt;的格式實現資源隔離。&lt;/p&gt; 
+&lt;p&gt;更多信息請參見&amp;nbsp;&lt;strong&gt;PR #12296&lt;/strong&gt;。&lt;/p&gt; 
+&lt;h2&gt;&lt;strong&gt;依賴項更新&lt;/strong&gt;&lt;/h2&gt; 
+&lt;p&gt;為提升穩定性、兼容性以及修復已知問題，本次版本升級了核心依賴項：&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt;升級 OpenResty 至 v1.27.1.2（&lt;strong&gt;PR #12307&lt;/strong&gt;）&lt;/li&gt; 
+ &lt;li&gt;升級 LuaRocks 至 v3.12.0（&lt;strong&gt;PR #12305&lt;/strong&gt;）&lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;h2&gt;&lt;strong&gt;其他更新&lt;/strong&gt;&lt;/h2&gt; 
+&lt;ul&gt; 
+ &lt;li&gt;通過比較服務發現節點的地址來提升性能（&lt;strong&gt;PR #12258&lt;/strong&gt;）&lt;/li&gt; 
+ &lt;li&gt;將日誌級別調整為&amp;nbsp;&lt;code&gt;debug&lt;/code&gt;，以減少不必要的日誌輸出（&lt;strong&gt;PR #12361&lt;/strong&gt;）&lt;/li&gt; 
+ &lt;li&gt;移除過期批處理器時，將日誌級別從&amp;nbsp;&lt;code&gt;warn&lt;/code&gt;調整為&amp;nbsp;&lt;code&gt;info&lt;/code&gt;（&lt;strong&gt;PR #12297&lt;/strong&gt;）&lt;/li&gt; 
+ &lt;li&gt;重構&amp;nbsp;&lt;code&gt;ai-proxy&lt;/code&gt;插件，將&amp;nbsp;&lt;code&gt;read_response&lt;/code&gt;移動到&amp;nbsp;&lt;code&gt;ai_driver.request&lt;/code&gt;函數中（&lt;strong&gt;PR #12101&lt;/strong&gt;）&lt;/li&gt; 
+ &lt;li&gt;當新增節點數量小於或等於 1 時，避免啓動過期的健康檢查器（&lt;strong&gt;PR #12118&lt;/strong&gt;）&lt;/li&gt; 
+ &lt;li&gt;在節點數量為 0 時釋放健康檢查器資源（&lt;strong&gt;PR #12126&lt;/strong&gt;）&lt;/li&gt; 
+ &lt;li&gt;CLI 工具僅在啓動時解析並驗證&amp;nbsp;&lt;code&gt;apisix.yaml&lt;/code&gt;文件（&lt;strong&gt;PR #12216&lt;/strong&gt;）&lt;/li&gt; 
+ &lt;li&gt;限制 TLSv1.3 的跨 SNI 會話恢復（&lt;strong&gt;PR #12366&lt;/strong&gt;）&lt;/li&gt; 
+ &lt;li&gt;修復 Kubernetes 服務發現單節點模式下的數據導出問題（&lt;strong&gt;PR #12284&lt;/strong&gt;）&lt;/li&gt; 
+ &lt;li&gt;在 Consul 中處理&amp;nbsp;&lt;code&gt;nil&lt;/code&gt;端口的情況，默認使用端口 80（&lt;strong&gt;PR #12304&lt;/strong&gt;）&lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;p&gt;變更日誌：&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fgithub.com%2Fapache%2Fapisix%2Fblob%2Fmaster%2FCHANGELOG.md%233130" target="_blank"&gt;https://github.com/apache/apisix/blob/master/CHANGELOG.md#3130&lt;/a&gt;&lt;/p&gt;
+                                                                                &lt;/div&gt;
+                                                                            </description>
+      <link>https://www.oschina.net/news/357637/apache-apisix-3-13-0-released</link>
+      <guid isPermaLink="false">https://www.oschina.net/news/357637/apache-apisix-3-13-0-released</guid>
+      <pubDate>Fri, 27 Jun 2025 10:28:00 GMT</pubDate>
+      <author>來源: OSCHINA</author>
+    </item>
+    <item>
+      <title>OpenDeepWiki 多輪對話全新升級，輕鬆接入您的項目</title>
+      <description>&lt;div class="content"&gt;
+                                                                    
+                                                        &lt;h1&gt;多輪對話全新升級&lt;/h1&gt; 
+&lt;p&gt;OpenDeepWiki 現已支持更智能的多輪對話能力，讓您可以與代碼庫進行深入交流，像與真人對話一樣理解代碼邏輯和架構。新的對話系統能夠保持上下文連貫性，理解複雜查詢，並提供更精準的回答。&lt;/p&gt; 
+&lt;p&gt;&lt;img height="1032" src="https://oscimg.oschina.net/oscnet/up-e330da016632cd20a2b49bb081ebd8da29a.png" width="1132" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;img height="1032" src="https://oscimg.oschina.net/oscnet/up-848608f26fae793dca9fcc65a9702dc09c1.png" width="1132" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;h2&gt;系統接入能力&lt;/h2&gt; 
+&lt;p&gt;現在您可以輕鬆將 OpenDeepWiki 接入到您自己的系統中，為您的應用提供強大的代碼理解和對話能力。通過簡單的 API 集成，您的系統可以立即獲得 AI 驅動的代碼知識庫功能。&lt;/p&gt; 
+&lt;p&gt;&lt;img height="1032" src="https://oscimg.oschina.net/oscnet/up-534b45c1afcc5af185b7f6d85c27b2bfe23.png" width="1132" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt;支持 Github、Gitlab、Gitee、Gitea 等代碼倉庫快速轉換&lt;/li&gt; 
+ &lt;li&gt;支持所有編程語言的代碼分析和文檔生成&lt;/li&gt; 
+ &lt;li&gt;自動生成 Mermaid 圖表，可視化代碼結構&lt;/li&gt; 
+ &lt;li&gt;支持自定義模型和 API，按需擴展&lt;/li&gt; 
+ &lt;li&gt;基於 AI 的代碼分析和代碼關係理解&lt;/li&gt; 
+ &lt;li&gt;使用 Next.js 生成 SEO 友好的文檔和知識庫&lt;/li&gt; 
+ &lt;li&gt;支持 Model Context Protocol，可作為其他 AI 模型的知識來源&lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;p&gt;OpenDeepWiki 是一個強大的 AI 驅動工具，持續進化以提供更優質的代碼知識管理體驗。&lt;/p&gt; 
+&lt;p&gt;🌟 如果您覺得這個項目有用，請在 &lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fgithub.com%2FAIDotNet%2FOpenDeepWiki" target="_blank"&gt;GitHub&lt;/a&gt; 上給我們點個 Star！&lt;/p&gt; 
+&lt;p&gt;🔗 在線體驗：&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fopendeep.wiki" target="_blank"&gt;https://opendeep.wiki&lt;/a&gt;&lt;/p&gt;
+                                                                                &lt;/div&gt;
+                                                                            </description>
+      <link>https://www.oschina.net/news/357635</link>
+      <guid isPermaLink="false">https://www.oschina.net/news/357635</guid>
+      <pubDate>Fri, 27 Jun 2025 10:10:00 GMT</pubDate>
+      <author>來源: 投稿</author>
+    </item>
+    <item>
+      <title>MCMS 6.0.1 已經發布，銘飛內容管理系統</title>
+      <description>&lt;div class="content"&gt;
+                                                                    
+                                                        &lt;p&gt;MCMS 6.0.1 已經發布，銘飛內容管理系統&lt;/p&gt; 
+&lt;p&gt;此版本更新內容包括：&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt;【新增】上傳路徑支持指定絕對路徑&lt;/li&gt; 
+ &lt;li&gt;【修復】修復單篇使用模型問題&lt;/li&gt; 
+ &lt;li&gt;【優化】context-path 配置優化&lt;/li&gt; 
+ &lt;li&gt;【優化】日誌管理記錄優化&lt;/li&gt; 
+ &lt;li&gt;【優化】異常處理優化&lt;/li&gt; 
+ &lt;li&gt;【優化】業務表單邊界優化&lt;/li&gt; 
+ &lt;li&gt;【優化】基礎結構代碼優化&lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;p&gt;詳情查看：&lt;a href="https://gitee.com/mingSoft/MCMS/releases/6.0.1"&gt;https://gitee.com/mingSoft/MCMS/releases/6.0.1&lt;/a&gt;&lt;/p&gt;
+                                                                                &lt;/div&gt;
+                                                                            </description>
+      <link>https://www.oschina.net/news/357628/mcms-6-0-1-released</link>
+      <guid isPermaLink="false">https://www.oschina.net/news/357628/mcms-6-0-1-released</guid>
+      <pubDate>Fri, 27 Jun 2025 09:37:00 GMT</pubDate>
+      <author>來源: 投稿</author>
+    </item>
+    <item>
+      <title>全新 ioc 框架 loveqq-framework，教你白嫖 SpringBoot 的插件的配置文件自動提示</title>
+      <description>&lt;div class="content"&gt;
+                                                                    
+                                                        &lt;p&gt;全新輕量級 ioc/aop 框架 loveqq-framework 現已支持在 idea ide 下，application.yaml 配置文件的智能提示。&lt;/p&gt; 
+&lt;p&gt;該智能提示的實現完全複用了 idea 自帶的 springboot 支持插件。只需要引入 loveqq-boot-starter-test 依賴可使用智能提示。&lt;/p&gt; 
+&lt;p&gt;下面介紹下非 springboot 項目如何能夠快捷複用 springboot 插件，從而實現配置文件的智能提示。&lt;/p&gt; 
+&lt;p&gt;首先引入下面的依賴，注意依賴作用域最好是 test，因為我們只需要智能提示，編譯和運行都需要他們，test 作用域也方便打包時進行排除，從而也不會增加打包體積：&lt;/p&gt; 
+&lt;pre&gt;&lt;code class="language-xml"&gt;&amp;lt;dependency&amp;gt;
+  &amp;lt;groupId&amp;gt;org.springframework.boot&amp;lt;/groupId&amp;gt;
+  &amp;lt;artifactId&amp;gt;spring-boot&amp;lt;/artifactId&amp;gt;
+  &amp;lt;version&amp;gt;3.5.0&amp;lt;/version&amp;gt;
+  &amp;lt;scope&amp;gt;test&amp;lt;/scope&amp;gt;
+  &amp;lt;exclusions&amp;gt;
+&amp;lt;exclusion&amp;gt;
+  &amp;lt;groupId&amp;gt;org.springframework&amp;lt;/groupId&amp;gt;
+  &amp;lt;artifactId&amp;gt;spring-context&amp;lt;/artifactId&amp;gt;
+&amp;lt;/exclusion&amp;gt;
+&amp;lt;exclusion&amp;gt;
+  &amp;lt;groupId&amp;gt;org.springframework&amp;lt;/groupId&amp;gt;
+  &amp;lt;artifactId&amp;gt;spring-jcl&amp;lt;/artifactId&amp;gt;
+&amp;lt;/exclusion&amp;gt;
+  &amp;lt;/exclusions&amp;gt;
+&amp;lt;/dependency&amp;gt;&lt;/code&gt;&lt;/pre&gt; 
+&lt;p&gt;然後編寫&amp;nbsp;spring-configuration-metadata.json 配置文件放入&amp;nbsp;META-INF 文件夾下即可。&lt;/p&gt; 
+&lt;p&gt;當然手動編寫可能很繁複，大家可以複用 loveqq-framework 的自動構建的代碼：&lt;/p&gt; 
+&lt;pre&gt;&lt;code&gt;com.kfyty.loveqq.framework.core.support.task.BuildConfigurationMetadataAntTask&lt;/code&gt;&lt;/pre&gt; 
+&lt;p&gt;然後在 maven 中添加如下插件：&lt;/p&gt; 
+&lt;pre&gt;&lt;code class="language-xml"&gt;&amp;lt;plugin&amp;gt;
+&amp;lt;artifactId&amp;gt;maven-antrun-plugin&amp;lt;/artifactId&amp;gt;
+&amp;lt;version&amp;gt;3.1.0&amp;lt;/version&amp;gt;
+&amp;lt;executions&amp;gt;
+  &amp;lt;execution&amp;gt;
+&amp;lt;id&amp;gt;build configuration metadata&amp;lt;/id&amp;gt;
+&amp;lt;phase&amp;gt;verify&amp;lt;/phase&amp;gt;
+&amp;lt;goals&amp;gt;
+  &amp;lt;goal&amp;gt;run&amp;lt;/goal&amp;gt;
+&amp;lt;/goals&amp;gt;
+&amp;lt;configuration&amp;gt;
+  &amp;lt;target name="metadata"&amp;gt;
+&amp;lt;java fork="true" classname="com.kfyty.loveqq.framework.core.support.task.BuildConfigurationMetadataAntTask" classpathref="maven.compile.classpath"&amp;gt;
+  &amp;lt;arg value="-OUTPUT_TYPE=${project.packaging}" /&amp;gt;
+  &amp;lt;arg value="-OUTPUT_DIRECTORY=${project.build.directory}" /&amp;gt;
+  &amp;lt;arg value="-OUTPUT_JAR=${project.build.finalName}.jar" /&amp;gt;
+  &amp;lt;arg value="-OUTPUT_DEFAULT_JAR=${project.artifactId}-${project.version}.jar" /&amp;gt;
+  &amp;lt;jvmarg value="--add-opens=java.base/sun.reflect.annotation=ALL-UNNAMED" /&amp;gt;
+&amp;lt;/java&amp;gt;
+  &amp;lt;/target&amp;gt;
+&amp;lt;/configuration&amp;gt;
+  &amp;lt;/execution&amp;gt;
+&amp;lt;/executions&amp;gt;
+
+&amp;lt;dependencies&amp;gt;
+  &amp;lt;dependency&amp;gt;
+&amp;lt;groupId&amp;gt;org.apache.ant&amp;lt;/groupId&amp;gt;
+&amp;lt;artifactId&amp;gt;ant&amp;lt;/artifactId&amp;gt;
+&amp;lt;version&amp;gt;1.10.14&amp;lt;/version&amp;gt;
+  &amp;lt;/dependency&amp;gt;
+&amp;lt;/dependencies&amp;gt;
+&amp;lt;/plugin&amp;gt;&lt;/code&gt;&lt;/pre&gt; 
+&lt;p&gt;然後運行 mvn&amp;nbsp;install&amp;nbsp;就可以自動生成 spring-configuration-metadata.json 配置文件並寫入 jar 包了。&lt;/p&gt; 
+&lt;p&gt;然後就可以愉快的使用智能提示了~&lt;/p&gt;
+                                                                                &lt;/div&gt;
+                                                                            </description>
+      <link>https://www.oschina.net/news/357596</link>
+      <guid isPermaLink="false">https://www.oschina.net/news/357596</guid>
+      <pubDate>Fri, 27 Jun 2025 07:53:00 GMT</pubDate>
+      <author>來源: 投稿</author>
+    </item>
+    <item>
+      <title>BBS-GO v4.1.0 版本發佈 - 全面支持國際化與富文本編輯體驗升級</title>
+      <description>&lt;div class="content"&gt;
+                                                                    
+                                                        &lt;h2&gt;🎉 版本亮點&lt;/h2&gt; 
+&lt;p style="color:#40485b; margin-left:0; margin-right:0; text-align:start"&gt;我們很高興地宣佈 BBS-GO v4.1.0 正式發佈！這是一個具有里程碑意義的版本，帶來了兩個重要的功能升級：&lt;/p&gt; 
+&lt;h3&gt;🌍 國際化支持 (i18n)&lt;/h3&gt; 
+&lt;ul&gt; 
+ &lt;li&gt;&lt;strong&gt;多語言界面&lt;/strong&gt;：新增完整的中英文雙語支持&lt;/li&gt; 
+ &lt;li&gt;&lt;strong&gt;語言切換&lt;/strong&gt;：用户可自由切換界面語言，提供更好的國際化體驗&lt;/li&gt; 
+ &lt;li&gt;&lt;strong&gt;本地化數據&lt;/strong&gt;：支持多語言數據庫初始化，包括節點、角色等基礎數據&lt;/li&gt; 
+ &lt;li&gt;&lt;strong&gt;管理後台&lt;/strong&gt;：管理界面同步支持多語言，方便不同地區的管理員使用&lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;h3&gt;✍️ 全新富文本編輯器&lt;/h3&gt; 
+&lt;ul&gt; 
+ &lt;li&gt;&lt;strong&gt;現代化設計&lt;/strong&gt;：採用基於 TipTap 的全新富文本編輯器，界面更加美觀現代&lt;/li&gt; 
+ &lt;li&gt;&lt;strong&gt;豐富功能&lt;/strong&gt;：支持標題、列表、表格、代碼塊、引用、鏈接等多種排版元素&lt;/li&gt; 
+ &lt;li&gt;&lt;strong&gt;主題適配&lt;/strong&gt;：完美支持明暗主題切換，自動適應用户系統偏好&lt;/li&gt; 
+ &lt;li&gt;&lt;strong&gt;圖片處理&lt;/strong&gt;：優化圖片上傳和顯示，支持拖拽上傳和可調整大小&lt;/li&gt; 
+ &lt;li&gt;&lt;strong&gt;移動友好&lt;/strong&gt;：響應式設計，在移動設備上同樣提供出色的編輯體驗&lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;h2&gt;🚀 項目簡介&lt;/h2&gt; 
+&lt;p style="color:#40485b; margin-left:0; margin-right:0; text-align:start"&gt;BBS-GO 是一個基於 Go 語言開發的現代化開源社區論壇系統。我們的設計哲學是輕量、高效、易於擴展和部署，旨在為開發者和社區管理者提供一個強大的在線社區解決方案。&lt;/p&gt; 
+&lt;h3&gt;🎯 核心特性&lt;/h3&gt; 
+&lt;ul&gt; 
+ &lt;li&gt;&lt;strong&gt;🚀 高性能&lt;/strong&gt;：基於 Go 語言的併發特性，確保在高負載下也能提供流暢的用户體驗&lt;/li&gt; 
+ &lt;li&gt;&lt;strong&gt;🔧 高度靈活&lt;/strong&gt;：支持豐富的自定義配置和插件擴展，輕鬆滿足不同場景的業務需求&lt;/li&gt; 
+ &lt;li&gt;&lt;strong&gt;👨‍💼 簡單易用&lt;/strong&gt;：擁有設計簡潔、功能強大的管理後台，讓社區管理變得輕鬆高效&lt;/li&gt; 
+ &lt;li&gt;&lt;strong&gt;🛡️ 穩定可靠&lt;/strong&gt;：經過充分測試，確保系統穩定性和良好的可擴展性&lt;/li&gt; 
+ &lt;li&gt;&lt;strong&gt;📱 響應式設計&lt;/strong&gt;：完美適配桌面和移動設備，為用户提供一致的訪問體驗&lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;h3&gt;🏗️ 技術架構&lt;/h3&gt; 
+&lt;p style="color:#40485b; margin-left:0; margin-right:0; text-align:start"&gt;&lt;strong&gt;後端 (Server)&lt;/strong&gt;&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt;基於 Go 語言 + Iris 框架構建&lt;/li&gt; 
+ &lt;li&gt;使用 GORM 作為 ORM 框架&lt;/li&gt; 
+ &lt;li&gt;支持 MySQL 數據庫&lt;/li&gt; 
+ &lt;li&gt;提供完整的 RESTful API&lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;p style="color:#40485b; margin-left:0; margin-right:0; text-align:start"&gt;&lt;strong&gt;前端 (Site)&lt;/strong&gt;&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt;基於 Vue.js + Nuxt.js 構建&lt;/li&gt; 
+ &lt;li&gt;服務端渲染 (SSR)，優化 SEO 和加載速度&lt;/li&gt; 
+ &lt;li&gt;響應式設計，支持多終端訪問&lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;p style="color:#40485b; margin-left:0; margin-right:0; text-align:start"&gt;&lt;strong&gt;管理後台 (Admin)&lt;/strong&gt;&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt;基於 Vue.js + Arco Design 構建&lt;/li&gt; 
+ &lt;li&gt;功能完整的管理界面&lt;/li&gt; 
+ &lt;li&gt;支持用户管理、內容審核、系統配置等&lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;h2&gt;🌟 功能展示&lt;/h2&gt; 
+&lt;p style="color:#333333; margin-left:0; margin-right:0; text-align:left"&gt;&lt;img height="2518" src="https://oscimg.oschina.net/oscnet/up-c2c565122d2d0a51d6ed22cdfcb59e7e0f7.png" width="3940" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p style="color:#333333; margin-left:0; margin-right:0; text-align:left"&gt;&lt;img height="2518" src="https://oscimg.oschina.net/oscnet/up-aca702ba61c84fb2b2272849b1d4c923c0a.png" width="3940" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p style="color:#333333; margin-left:0; margin-right:0; text-align:left"&gt;&lt;img height="2518" src="https://oscimg.oschina.net/oscnet/up-82de54a1ed9d52713aad4b09e683f3b71fd.png" width="3940" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p style="color:#333333; margin-left:0; margin-right:0; text-align:left"&gt;&lt;img height="2518" src="https://oscimg.oschina.net/oscnet/up-de6ff0fbc7a761df69405794d1f8f0807df.png" width="3940" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;h2&gt;🔗 相關鏈接&lt;/h2&gt; 
+&lt;ul&gt; 
+ &lt;li&gt;幫助文檔：https://bbs-go.com&lt;/li&gt; 
+ &lt;li&gt;官網交流：https://bbs.bbs-go.com&lt;/li&gt; 
+ &lt;li&gt;gitee 地址：&lt;a href="https://gitee.com/mlogclub/bbs-go"&gt;https://gitee.com/mlogclub/bbs-go&lt;/a&gt;&lt;/li&gt; 
+ &lt;li&gt;github 地址：&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fgithub.com%2Fmlogclub%2Fbbs-go" target="_blank"&gt;https://github.com/mlogclub/bbs-go&lt;/a&gt;&lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;h2&gt;🤝 參與貢獻&lt;/h2&gt; 
+&lt;p style="color:#40485b; margin-left:0; margin-right:0; text-align:start"&gt;BBS-GO 是一個充滿活力的開源項目，我們歡迎任何形式的貢獻：&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt;🐛 Bug 反饋&lt;/li&gt; 
+ &lt;li&gt;💡 功能建議&lt;/li&gt; 
+ &lt;li&gt;📝 文檔完善&lt;/li&gt; 
+ &lt;li&gt;💻 代碼貢獻&lt;/li&gt; 
+ &lt;li&gt;🌍 多語言翻譯&lt;/li&gt; 
+&lt;/ul&gt;
+                                                                                &lt;/div&gt;
+                                                                            </description>
+      <link>https://www.oschina.net/news/357592/bbs-go-4-1-0-released</link>
+      <guid isPermaLink="false">https://www.oschina.net/news/357592/bbs-go-4-1-0-released</guid>
+      <pubDate>Fri, 27 Jun 2025 07:30:00 GMT</pubDate>
+      <author>來源: 投稿</author>
+    </item>
+    <item>
+      <title>Rust 1.88.0 發佈：引入裸函數 (Naked Functions)、改進鏈式 let 語句</title>
+      <description>&lt;div class="content"&gt;
+                                                                    
+                                                        &lt;p&gt;Rust 1.88.0 已正式&lt;u&gt;&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fblog.rust-lang.org%2F2025%2F06%2F26%2FRust-1.88.0%2F" target="_blank"&gt;發佈&lt;/a&gt;&lt;/u&gt;。&lt;/p&gt; 
+&lt;p&gt;Rust 1.88 引入了支持編寫沒有編譯器生成和前導代碼的裸函數，以允許對該函數生成的彙編代碼擁有完全控制。裸函數使用 &lt;code&gt;_#\[unsafe(naked)\]_&lt;/code&gt; 屬性進行標記。&lt;/p&gt; 
+&lt;p&gt;&lt;img alt="" src="https://oscimg.oschina.net/oscnet/up-2fe189cbfe1916654a90d164d7b95825701.png" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p&gt;Rust 1.88 還添加了在 if 和 while 語句中使用 "&amp;amp;&amp;amp;" 鏈式連接 let 語句的支持。&lt;/p&gt; 
+&lt;p&gt;在 Cargo 方面，Rust 1.88 為 Cargo 帶來了自動緩存清理功能，通過在主目錄內運行垃圾回收來清理緩存。Cargo 目前設置為在三個月內未被訪問的從網絡下載的文件將被刪除。&lt;/p&gt; 
+&lt;p&gt;Rust 1.88 還為 cfg 條件謂詞語言引入了布爾字面量的支持，並穩定了一些 API，同時將 i686-pc-windows-gnu 目標降級為二級架構。&lt;/p&gt; 
+&lt;p&gt;&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fblog.rust-lang.org%2F2025%2F06%2F26%2FRust-1.88.0%2F" target="_blank"&gt;詳情查看發佈公告&lt;/a&gt;。&lt;/p&gt;
+                                                                                &lt;/div&gt;
+                                                                            </description>
+      <link>https://www.oschina.net/news/357590/rust-1-88-0</link>
+      <guid isPermaLink="false">https://www.oschina.net/news/357590/rust-1-88-0</guid>
+      <pubDate>Fri, 27 Jun 2025 07:24:00 GMT</pubDate>
+      <author>來源: OSCHINA</author>
+    </item>
+    <item>
+      <title>調問更新 6.20~6.27：考試時長限制+分頁時長限制+2 項功能新增+9 項功能優化+4 項 BugFix</title>
+      <description>&lt;div class="content"&gt;
+                                                                    
+                                                        &lt;div&gt;
+ &lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span style="background-color:#ffffff"&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span style="color:#40485b"&gt;&lt;span&gt;&lt;span&gt;調問自開源以來一直堅持前後端所有代碼 100% 開源💯，保證所有功能的穩定與可改造能力👏。&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;
+&lt;/div&gt; 
+&lt;div&gt; 
+ &lt;ul&gt; 
+  &lt;li style="margin-left: 0px; margin-right: 0px; text-align: left;"&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span style="background-color:#ffffff"&gt;&lt;span&gt;&lt;strong&gt;&lt;span&gt;&lt;span style="color:#40485b"&gt;&lt;span&gt;&lt;span&gt;🔥 安裝下載地址（安裝包）：&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/strong&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;a href="https://gitee.com/link?target=https%3A%2F%2Fwww.diaowen.net%2Finstall%2Fdocker"&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;u&gt;&lt;span style="color:#1e6fff"&gt;&lt;span&gt;&lt;span&gt;https://www.diaowen.net/install/docker&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/u&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/a&gt;&lt;/span&gt;&lt;/span&gt;&lt;/li&gt; 
+  &lt;li style="margin-left: 0px; margin-right: 0px; text-align: left;"&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span style="background-color:#ffffff"&gt;&lt;span&gt;&lt;strong&gt;&lt;span&gt;&lt;span style="color:#40485b"&gt;&lt;span&gt;&lt;span&gt;🔥 源碼下載地址： &lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/strong&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;a href="https://gitee.com/wkeyuan/DWSurvey"&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;u&gt;&lt;span style="color:#1e6fff"&gt;&lt;span&gt;&lt;span&gt;https://gitee.com/wkeyuan/DWSurvey&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/u&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/a&gt;&lt;/span&gt;&lt;/span&gt;&lt;/li&gt; 
+ &lt;/ul&gt; 
+ &lt;p style="margin-left:0; margin-right:0; text-align:justify"&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span style="color:#333333"&gt;&lt;span&gt;&lt;span&gt;本週針對考試場景下的的客户需求，在細節能力上又進行了進一步的功能增加和優化，其中包括&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;span style="color:#1abc9c"&gt;&lt;strong&gt;考試總時長限制&lt;/strong&gt;&lt;/span&gt;&lt;span style="color:#333333"&gt;&lt;span&gt;&lt;span&gt;，目前可以控制考試總時長，並且可以設置倒計時，這個能力是考試場景下的剛需，調問在客户的不斷支持下，現在也具備了這個能力&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span style="color:#333333"&gt;&lt;span&gt;&lt;span&gt;。&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/p&gt; 
+ &lt;p style="margin-left:0; margin-right:0; text-align:justify"&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span style="color:#333333"&gt;&lt;span&gt;&lt;span&gt;此外，還可以根據&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;strong&gt;&lt;span style="color:#1abc9c"&gt;每一頁進行時長限制&lt;/span&gt;&lt;/strong&gt;&lt;span style="color:#333333"&gt;&lt;span&gt;&lt;span&gt;，可以配置每一頁的最短時間，這樣可以防止胡亂答題的情況，讓用户認真對待每一份問卷：&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/p&gt; 
+ &lt;p style="margin-left:0; margin-right:0; text-align:justify"&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span style="color:#000000"&gt;&lt;span&gt;&lt;span&gt;歡迎夥伴們，在 surveyform.cn 上進行體驗、試用！！！&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fsurveyform.cn%2F" target="_blank"&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;u&gt;&lt;span style="color:#1e6fff"&gt;&lt;span&gt;&lt;span&gt;https://www.surveyform.cn&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/u&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/a&gt;&lt;/span&gt;&lt;/span&gt;&lt;/p&gt; 
+ &lt;p style="margin-left:0; margin-right:0; text-align:justify"&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;strong&gt;&lt;span&gt;&lt;span style="color:#000000"&gt;&lt;span&gt;&lt;span&gt;本週更新：&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/strong&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/p&gt; 
+ &lt;p style="margin-left:0; margin-right:0; text-align:justify"&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;strong&gt;&lt;span&gt;&lt;span style="color:#1abc9c"&gt;&lt;span&gt;&lt;span&gt;功能新增：&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/strong&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/p&gt; 
+ &lt;ul&gt; 
+  &lt;li&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span style="color:#333333"&gt;&lt;span&gt;&lt;span&gt;考試場景下，增加考試時長限制（倒計時）能力，可以控制配置考試時間；&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/li&gt; 
+  &lt;li&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span style="color:#333333"&gt;&lt;span&gt;&lt;span&gt;增加分頁限制（每頁最短時長，最大）能力，限制每頁顯示時間。&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/li&gt; 
+ &lt;/ul&gt; 
+ &lt;p style="margin-left:0; margin-right:0; text-align:justify"&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;strong&gt;&lt;span&gt;&lt;span style="color:#1abc9c"&gt;&lt;span&gt;&lt;span&gt;功能優化：&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/strong&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/p&gt; 
+ &lt;ul&gt; 
+  &lt;li&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span style="color:#333333"&gt;&lt;span&gt;&lt;span&gt;實現每頁一題，打完後自動下一頁；&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/li&gt; 
+  &lt;li&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span style="color:#333333"&gt;&lt;span&gt;&lt;span&gt;管理後台看到答卷中可以看維度量表信息；&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/li&gt; 
+  &lt;li&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span style="color:#333333"&gt;&lt;span&gt;&lt;span&gt;添加 DSL 單選題賦值功能，實現 DSL 可以設置除填空題值後，也可以配置選擇題；&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/li&gt; 
+  &lt;li&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span style="color:#333333"&gt;&lt;span&gt;&lt;span&gt;DSL 驗證文本，自定義驗證錯誤信息文本；&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/li&gt; 
+  &lt;li&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span style="color:#333333"&gt;&lt;span&gt;&lt;span&gt;可以給答卷限定特定的地區，防止其它地區參考答卷；&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/li&gt; 
+  &lt;li&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span style="color:#333333"&gt;&lt;span&gt;&lt;span&gt;答卷時支持清空答案，重新填寫；&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/li&gt; 
+  &lt;li&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span style="color:#333333"&gt;&lt;span&gt;&lt;span&gt;優化打包部署方式，通過 JAR 包部署可以自定義配置文件；&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/li&gt; 
+  &lt;li&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span style="color:#333333"&gt;&lt;span&gt;&lt;span&gt;優化 API 自動登錄流程；&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/li&gt; 
+  &lt;li&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span style="color:#333333"&gt;&lt;span&gt;&lt;span&gt;優化 webhook 推送方案。&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/li&gt; 
+ &lt;/ul&gt; 
+ &lt;p style="margin-left:0; margin-right:0; text-align:justify"&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;strong&gt;&lt;span&gt;&lt;span style="color:#1abc9c"&gt;&lt;span&gt;&lt;span&gt;BUG 修復：&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/strong&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/p&gt; 
+ &lt;ul&gt; 
+  &lt;li&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span style="color:#333333"&gt;&lt;span&gt;&lt;span&gt;修復點擊下一頁時，如果題目過多能自動跳到第一題的問題；&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/li&gt; 
+  &lt;li&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span style="color:#333333"&gt;&lt;span&gt;&lt;span&gt;解決新包在下載原始數據時，權限信息丟失問題；&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/li&gt; 
+  &lt;li&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span style="color:#333333"&gt;&lt;span&gt;&lt;span&gt;修復題目標記在不顯示答題卡時仍然顯示的問題；&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/li&gt; 
+  &lt;li&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span style="color:#333333"&gt;&lt;span&gt;&lt;span&gt;修復題型名稱在移動端不顯示問題。&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/li&gt; 
+ &lt;/ul&gt; 
+&lt;/div&gt;
+                                                                                &lt;/div&gt;
+                                                                            </description>
+      <link>https://www.oschina.net/news/357585/dwsurvey-updated</link>
+      <guid isPermaLink="false">https://www.oschina.net/news/357585/dwsurvey-updated</guid>
+      <pubDate>Fri, 27 Jun 2025 07:07:00 GMT</pubDate>
+      <author>來源: 投稿</author>
+    </item>
+    <item>
+      <title>Jakarta EE 11 發佈，增強企業 Java 開發人員生產力和性能</title>
+      <description>&lt;div class="content"&gt;
+                                                                    
+                                                        &lt;p style="margin-left:0; margin-right:0; text-align:start"&gt;&lt;span style="color:#4c4d4e"&gt;Eclipse 基金會&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fblogs.eclipse.org%2Fpost%2Ftatjana-obradovic%2Fjakarta-ee-11-empowering-enterprise-java-developers-enhanced-productivity" target="_blank"&gt;宣佈&lt;/a&gt;發佈&amp;nbsp;&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fjakarta.ee%2Frelease%2F11%2F" target="_blank"&gt;Jakarta EE 11&lt;/a&gt;平台，該平台基於之前的核心配置文件 (2024 年 12 月) 和 Web 配置文件 (2025 年 3 月) 版本構建。&amp;nbsp;&lt;/span&gt;&lt;/p&gt; 
+&lt;p style="margin-left:0; margin-right:0; text-align:start"&gt;&lt;span style="color:#4c4d4e"&gt;此版本標誌着企業級 Java 在簡化開發、提升開發人員生產力和整體性能方面的進步。主要亮點包括：現代化的測試兼容性工具包 (TCK)、全新 Jakarta Data 規範的引入、對現有規範的重大更新以及對最新 Java LTS 版本的支持，使開發人員能夠充分利用 Java 21 中的增強功能，包括虛擬線程。&lt;/span&gt;&lt;/p&gt; 
+&lt;h4 style="text-align:start"&gt;&lt;strong&gt;&lt;span style="color:#272726"&gt;Jakarta EE 11 的主要功能&lt;/span&gt;&lt;/strong&gt;&lt;/h4&gt; 
+&lt;p style="margin-left:0; margin-right:0; text-align:start"&gt;&lt;span style="color:#4c4d4e"&gt;&lt;strong&gt;自 Jakarta EE 10 發佈以來，企業級 Java 復興進程持續加速。Jakarta EE 11 在此基礎上進一步提升性能，並在 Jakarta Data 規範&lt;/strong&gt;的引入下，進一步提升了開發人員的工作效率&amp;nbsp;。&lt;/span&gt;&lt;/p&gt; 
+&lt;p style="margin-left:0; margin-right:0; text-align:start"&gt;&lt;span style="color:#4c4d4e"&gt;Jakarta Data 在簡化企業應用程序持久化邏輯方面邁出了重要一步。主要功能包括：&lt;/span&gt;&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt;&lt;strong&gt;BasicRepository&amp;nbsp;&lt;/strong&gt;：基礎存儲庫接口，為基本數據操作提供開箱即用的支持，減少樣板和設置時間。&lt;/li&gt; 
+ &lt;li&gt;&lt;strong&gt;CrudRepository&amp;nbsp;&lt;/strong&gt;：在 BasicRepository 的基礎上提供完整的創建、讀取、更新和刪除 (CRUD) 功能，實現乾淨、直觀的數據庫交互。&lt;/li&gt; 
+ &lt;li&gt;&lt;strong&gt;Pagination&lt;/strong&gt;：包括對基於偏移量和基於遊標的分頁支持，為開發人員提供靈活的工具來有效地管理大型數據集。&lt;/li&gt; 
+ &lt;li&gt;&lt;strong&gt;Query Language&lt;/strong&gt;：引入一種簡潔、專用的查詢語言，可直接簡化 Jakarta 數據存儲庫中的方法級查詢定義。&lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;h4 style="text-align:start"&gt;&lt;strong&gt;&lt;span style="color:#272726"&gt;TCK 的現代化&lt;/span&gt;&lt;/strong&gt;&lt;/h4&gt; 
+&lt;p style="margin-left:0; margin-right:0; text-align:start"&gt;&lt;span style="color:#4c4d4e"&gt;此次發佈的一大亮點是對 Jakarta EE 平台測試兼容性套件 (TCK) 的現代化升級和增強。通過整合 JUnit 5 和 Maven 等現代測試工具，這項舉措提升了可維護性和靈活性，使 TCK 能夠更輕鬆地與平台一同發展。&lt;/span&gt;&lt;/p&gt; 
+&lt;p style="margin-left:0; margin-right:0; text-align:start"&gt;&lt;span style="color:#4c4d4e"&gt;這些更新簡化了兼容性測試，降低了貢獻新測試的門檻，有助於推動 Jakarta EE 生態系統未來的創新。因此，貢獻者可以更輕鬆地上手，而有意參與的新供應商或開發者也將發現加入和貢獻的便捷性顯著提升。有意參與的人士可以通過&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fprojects.eclipse.org%2Fprojects%2Fee4j.jakartaee-tck" target="_blank"&gt;&amp;nbsp;Jakarta EE TCK 項目頁面&lt;/a&gt;瞭解更多信息並積極參與。&amp;nbsp;&lt;/span&gt;&lt;/p&gt; 
+&lt;h4 style="text-align:start"&gt;&lt;strong&gt;&lt;span style="color:#272726"&gt;精簡規範&lt;/span&gt;&lt;/strong&gt;&lt;/h4&gt; 
+&lt;p style="margin-left:0; margin-right:0; text-align:start"&gt;&lt;span style="color:#4c4d4e"&gt;一項顯著的變化是&amp;nbsp;&lt;strong&gt;移除了已棄用的託管 Bean 規範&lt;/strong&gt;，該規範早已被更靈活、更強大的替代方案所取代。此次清理有助於降低遺留系統的複雜性，並明確了未來推薦的編程模型。&lt;/span&gt;&lt;/p&gt; 
+&lt;p style="margin-left:0; margin-right:0; text-align:start"&gt;&lt;span style="color:#4c4d4e"&gt;為此，該平台高度重視&amp;nbsp;&lt;strong&gt;上下文和依賴注入 (CDI)&amp;nbsp;&lt;/strong&gt;作為核心編程模型。Jakarta EE 11 進一步增強了 CDI，使其成為託管 Bean 的標準替代方案。該版本還通過&amp;nbsp;&lt;strong&gt;支持各種規範（例如 Jakarta Bean Validation）的 Java Records 功能，進一步強化了其對現代 Java 特性的承諾&lt;/strong&gt;。&lt;/span&gt;&lt;/p&gt; 
+&lt;p style="margin-left:0; margin-right:0; text-align:start"&gt;&lt;span style="color:#4c4d4e"&gt;最後，Jakarta EE 11 與 Java 平台的方向保持一致，&amp;nbsp;&lt;strong&gt;刪除了對 Java SE SecurityManager 的所有引用&lt;/strong&gt;，遵循了 JEP 411 中概述的棄用規定。&lt;/span&gt;&lt;/p&gt; 
+&lt;h4 style="text-align:start"&gt;&lt;strong&gt;&lt;span style="color:#272726"&gt;Leveraging Java 21 Enhancements&lt;/span&gt;&lt;/strong&gt;&lt;/h4&gt; 
+&lt;p style="margin-left:0; margin-right:0; text-align:start"&gt;&lt;span style="color:#4c4d4e"&gt;Jakarta EE 11 支持 Java 17 或更高版本，併為 Java 21 用户提供了獨特的增強功能。其中最顯著的功能之一是更新的併發規範，使開發人員能夠利用 Java 21 中的虛擬線程。這可以高效處理併發任務，而無需承擔傳統線程管理的開銷，從而顯著提升性能。&lt;/span&gt;&lt;/p&gt; 
+&lt;h4 style="margin-left:0px; margin-right:0px; text-align:start"&gt;&lt;strong&gt;&lt;span style="color:#4c4d4e"&gt;接下來&lt;/span&gt;&lt;/strong&gt;&lt;/h4&gt; 
+&lt;p style="margin-left:0; margin-right:0; text-align:start"&gt;&lt;span style="color:#4c4d4e"&gt;Jakarta EE 12 的開發工作已在進行中，計劃於 2026 年發佈。下一版本旨在將平台的 API 源代碼級別提升至 Java SE 21，並瞄準 Java SE 25 的運行時支持。社區正在積極推進多項規範的增強，包括可能引入 Jakarta Query 和 Jakarta MVC 等功能，並持續改進 Jakarta NoSQL。Jakarta EE 秉承既定的兩年發佈週期，繼續優先考慮長期規劃和持續創新。&lt;/span&gt;&lt;/p&gt;
+                                                                                &lt;/div&gt;
+                                                                            </description>
+      <link>https://www.oschina.net/news/357577/jakarta-ee-11</link>
+      <guid isPermaLink="false">https://www.oschina.net/news/357577/jakarta-ee-11</guid>
+      <pubDate>Fri, 27 Jun 2025 06:41:00 GMT</pubDate>
+      <author>來源: OSCHINA</author>
+    </item>
+    <item>
+      <title>開源的 OA 辦公系統 — 勾股 OA 5.8 發佈</title>
+      <description>&lt;div class="content"&gt;
+                                                                    
+                                                        &lt;p style="color:#40485b; margin-left:0; margin-right:0; text-align:start"&gt;勾股 OA 辦公系統是一款簡單實用的開源的企業辦公系統。系統集成了系統設置、附件管理、人事管理、行政管理、消息管理、企業公告、知識網盤、審批流程設置、辦公審批、日常辦公、財務管理、客户管理、合同管理、項目管理、任務管理等功能模塊。系統簡約，易於功能擴展，方便二次開發，可以用來做日常 OA，CRM，ERP，業務管理等系統。&lt;/p&gt; 
+&lt;p style="color:#40485b; margin-left:0; margin-right:0; text-align:start"&gt;勾股 OA5.8 版，主要更是日常的功能優化、小 bug 修復，屬於小版本的更新升級，升級前記得先備份，本次更新需要更新數據庫文件（具體查看文件目錄的文件：\update_sql\v5.7.6 升級到 v5.8.sql）。另外，本次更新涉及到靜態文件更新，更新完畢後，記得 ctrl+f5 去一下瀏覽器緩存&lt;/p&gt; 
+&lt;p style="color:#40485b; margin-left:0; margin-right:0; text-align:start"&gt;1、優化：審批模塊、支持設置是否開啓抄送人、是否支持撤回、是否支持審批時上傳附件&lt;br&gt; 2、修復：多層級側邊欄，無法查看附件的問題&lt;br&gt; 3、修復：文件大小格式化時，可能傳入參數是字符串引起的計算 bug&lt;br&gt; 4、修復：移動端 mbui 選擇人員控件選擇所在部門錯誤的問題&lt;br&gt; 5、優化：移動端 mbui 加載數據控件&lt;br&gt; 6、升級：layui 升級到最新的 v2.11.4 穩定版本&lt;br&gt; 7、優化：部門層級支持到 5 層級&lt;br&gt; 9、新增：項目新增完成狀態可反確認功能&lt;br&gt; 10、新增：項目時項目階段可選擇操作&lt;br&gt; 11、新增：項目文檔可上傳附件功能&lt;br&gt; 12、優化：優化表單表格樣式&lt;br&gt; 13、修復：審批類型設置狀態方法命名錯誤問題修復。&lt;br&gt; 14、優化：去除 4.0 版本以前無用的代碼&lt;br&gt; 15、修復：thinkph-orm 新版不兼容消息處理的一個問題修復。&lt;br&gt; 16、優化：完善部分已知的問題或者細節小調整。&lt;/p&gt; 
+&lt;p style="color:#40485b; margin-left:0; margin-right:0; text-align:start"&gt;勾股 OA5.8，具體看如下功能導圖：&lt;/p&gt; 
+&lt;p style="color:#40485b; margin-left:0; margin-right:0; text-align:start"&gt;&lt;img alt="" src="https://oscimg.oschina.net/oscnet/up-d392f9dab84420e6bcfbbd83491fc34c7c0.png" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;h3&gt;內置模塊&lt;/h3&gt; 
+&lt;ul&gt; 
+ &lt;li&gt;配置管理：對系統的常規配置信息進行維護，網站配置管理功能統一維護。&lt;/li&gt; 
+ &lt;li&gt;用户管理：維護管理系統的用户，常規信息的維護與賬號設置。&lt;/li&gt; 
+ &lt;li&gt;菜單管理：配置系統菜單，操作權限，按鈕權限標識等。&lt;/li&gt; 
+ &lt;li&gt;權限角色：角色菜單管理與權限分配、設置角色所擁有的菜單權限。&lt;/li&gt; 
+ &lt;li&gt;部門管理：管理系統組織架構，對組織架構進行統一管理維護。&lt;/li&gt; 
+ &lt;li&gt;崗位管理：管理用户擔任的崗位。&lt;/li&gt; 
+ &lt;li&gt;操作日誌：系統正常操作日誌記錄和查詢；系統異常信息日誌記錄和查詢。&lt;/li&gt; 
+ &lt;li&gt;基礎數據：對系統中常用的較為固定的數據進行統一維護管理。&lt;/li&gt; 
+ &lt;li&gt;消息通知：系統通知私信、消息等管理。&lt;/li&gt; 
+ &lt;li&gt;企業公告：企業公告信息發佈維護。&lt;/li&gt; 
+ &lt;li&gt;&lt;span style="background-color:#ffffff; color:#40485b"&gt;辦公審批：&lt;/span&gt;支持人事、財務、行政、業務等多審批流程。&lt;/li&gt; 
+ &lt;li&gt;&lt;span style="background-color:#ffffff; color:#40485b"&gt;日常辦公：&lt;/span&gt;日程、計劃、週報、日報、月報等信息化辦公工具。&lt;/li&gt; 
+ &lt;li&gt;&lt;span style="background-color:#ffffff; color:#40485b"&gt;財務管理：&lt;/span&gt;財務報銷、開票、收票、到賬，付款財務數據規範化管理。&lt;/li&gt; 
+ &lt;li&gt;&lt;span style="background-color:#ffffff; color:#40485b"&gt;客户管理：&lt;/span&gt;統一管理客户，沉澱客户資產，避免客户流失。&lt;/li&gt; 
+ &lt;li&gt;&lt;span style="background-color:#ffffff; color:#40485b"&gt;合同管理：&lt;/span&gt;合同維護、審批、執行、變更、關閉全流程管理。&lt;/li&gt; 
+ &lt;li&gt;&lt;span style="background-color:#ffffff; color:#40485b"&gt;項目管理：&lt;/span&gt;項目操作記錄全覆蓋跟蹤，項目進度一目瞭然，任務分派，工時記錄。&lt;/li&gt; 
+ &lt;li&gt;&lt;span style="background-color:#ffffff; color:#40485b"&gt;知識網盤：工作經驗、行業知識、文件歸類管理。&lt;/span&gt;&lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;h3&gt;軟件信息&lt;/h3&gt; 
+&lt;ul&gt; 
+ &lt;li&gt;軟件名稱：勾股 OA&lt;/li&gt; 
+ &lt;li&gt;開源地址：&lt;a href="https://gitee.com/gouguopen/office"&gt;https://gitee.com/gouguopen/office&lt;/a&gt;&lt;/li&gt; 
+ &lt;li&gt;官網網址：&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fwww.gougucms.com%2Fhome%2Fpages%2Fdetail%2Fs%2Fgouguoa.html" target="_blank"&gt;https://www.gougucms.com/home/pages/detail/s/gouguoa.html&lt;/a&gt;&lt;/li&gt; 
+ &lt;li&gt;文檔網址：&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fblog.gougucms.com%2Fhome%2Fbook%2Fdetail%2Fbid%2F3.html" target="_blank"&gt;https://blog.gougucms.com/home/book/detail/bid/3.html&lt;/a&gt;&lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;h3&gt;系統預覽&lt;/h3&gt; 
+&lt;p style="color:#333333; margin-left:0; margin-right:0; text-align:left"&gt;&lt;img alt="" height="688" src="https://oscimg.oschina.net/oscnet/up-114ac577175174bd2d0e57babceb6711d72.jpg" width="700" referrerpolicy="no-referrer"&gt;&lt;/p&gt;
+                                                                                &lt;/div&gt;
+                                                                            </description>
+      <link>https://www.oschina.net/news/357564/gouguopen-5-8-released</link>
+      <guid isPermaLink="false">https://www.oschina.net/news/357564/gouguopen-5-8-released</guid>
+      <pubDate>Fri, 27 Jun 2025 05:51:00 GMT</pubDate>
+      <author>來源: 投稿</author>
+    </item>
+    <item>
+      <title>Notepad-- v3.4 已經發布，文本編輯器</title>
+      <description>&lt;div class="content"&gt;
+                                                                    
+                                                        &lt;p&gt;Notepad-- v3.4 已經發布，文本編輯器&lt;/p&gt;
+&lt;p&gt;此版本更新內容包括：&lt;/p&gt;
+&lt;p&gt;&lt;strong&gt;windows&lt;/strong&gt;&lt;/p&gt; 
+&lt;p&gt;Notepad--v3.4.0-plugin-Installer.exe 是 win10 下面的插件版安裝包，會關聯右鍵菜單等。 Notepad--v3.4.0-win10-portable.zip 是綠色免安裝版本，解壓即用，不會關聯右鍵菜單註冊表。&lt;/p&gt; 
+&lt;p&gt;Ndd-quick-v3.3.0-win10-single-portable.zip 是單文件綠色免安裝版，只包含皮膚和 vc 依賴庫，不含插件、不含文件對比，主推輕量級、快速反應。適合只需要純粹、輕快級，文本編輯器的用户。不定期發佈。&lt;/p&gt; 
+&lt;p&gt;&lt;strong&gt;MacOS 版本&lt;/strong&gt;&lt;/p&gt; 
+&lt;p&gt;Notepad--v3.4.0-mac_x64_12.3.dmg 是 macos 12.x 及以後的版本。&lt;/p&gt; 
+&lt;p&gt;Notepad--v3.4.0-mac_arm64_12.3.dmg 是 macos 12.x 及以後 arm64 m1/m2 芯片，的版本。第一次安裝時，需要在設置偏好裏面，放開蘋果的安裝限制，才能正常識別，請自行放開設置一下。&lt;/p&gt; 
+&lt;p&gt;如果還是有問題，參考帖子：#I8JTJN:macOS Sonoma 14.1.1 安裝提示已損壞&lt;/p&gt; 
+&lt;p&gt;&lt;strong&gt;uos&lt;/strong&gt;&lt;/p&gt; 
+&lt;p&gt;com.hmja.notepad_3.4.0.0_amd64.deb 是 x64 cpu 架構的 uos 系統對應的 ndd 版本。&lt;/p&gt; 
+&lt;p&gt;其餘系統版本後續會發布。&lt;/p&gt; 
+&lt;p&gt;&lt;strong&gt;3.4 修改如下：&lt;/strong&gt;&lt;/p&gt; 
+&lt;p&gt;1 支持文件標籤拖入拖出到新窗口的效果。&lt;/p&gt; 
+&lt;p&gt;2 windows 下修改快捷鍵放開。&lt;/p&gt; 
+&lt;p&gt;3 按行號切分大文件。&lt;/p&gt; 
+&lt;p&gt;4 大文件打開時，在文件夾查找所在目錄，macos 下可能會崩潰問題。&lt;/p&gt; 
+&lt;p&gt;5 目錄右鍵增加刪除文件、文件夾功能。&lt;/p&gt; 
+&lt;p&gt;6 補充深色主題下 rust 語法高亮; lisp 語法失效問題。&lt;/p&gt; 
+&lt;p&gt;7 linux 下信號打開文件，不拿鎖，打開文件在消息隊列中去做。&lt;/p&gt; 
+&lt;p&gt;8 黑色模式下默認 tab 未修改圖標錯誤。&lt;/p&gt; 
+&lt;p&gt;9 對比查找框支持 esc 退出。&lt;/p&gt; 
+&lt;p&gt;10 對比時對齊的部分不使用行號&lt;/p&gt; 
+&lt;p&gt;11 改善 markdown 每次從頭預覽顯示的問題&lt;/p&gt; 
+&lt;p&gt;12 關閉時新增全部不保存按鈕&lt;/p&gt; 
+&lt;p&gt;13 查找結果是否自動摺疊提供可配置。&lt;/p&gt; 
+&lt;p&gt;14 普通文本限制放大到 200M；批量編碼轉換限制放大到 200M&lt;/p&gt; 
+&lt;p&gt;15 查找結果的行號右對齊，讓右邊文本能夠對齊顯示&lt;/p&gt; 
+&lt;p&gt;16 解決深色背景下，第一次打開如果不重新激活，標題欄還是白色的問題&lt;/p&gt;
+&lt;p&gt;詳情查看：&lt;a href="https://gitee.com/cxasm/notepad--/releases/v3.4" rel="nofollow"&gt;https://gitee.com/cxasm/notepad--/releases/v3.4&lt;/a&gt;&lt;/p&gt;
+                                                                                &lt;/div&gt;
+                                                                            </description>
+      <link>https://www.oschina.net/news/357546</link>
+      <guid isPermaLink="false">https://www.oschina.net/news/357546</guid>
+      <pubDate>Fri, 27 Jun 2025 03:47:00 GMT</pubDate>
+      <author>來源: 投稿</author>
+    </item>
+    <item>
+      <title>MariaDB 12.1 預覽版發佈</title>
+      <description>&lt;div class="content"&gt;
+                                                                    
+                                                        &lt;p&gt;&lt;span style="color:#111111"&gt;&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fmariadb.com%2Fdocs%2Frelease-notes%2Fmariadb-community-server-release-notes%2Frelease-notes-mariadb-12.1-rolling-releases" target="_blank"&gt;MariaDB 12.1&lt;/a&gt;&amp;nbsp;系列現已推出預覽版。新版本引入了許多新功能，一些亮點如下：&lt;/span&gt;&lt;/p&gt; 
+&lt;p style="margin-left:0px; margin-right:0px; text-align:start"&gt;&lt;span style="color:#000000"&gt;&lt;strong&gt;性能改進&lt;/strong&gt;&lt;/span&gt;&lt;/p&gt; 
+&lt;ul style="margin-left:0; margin-right:0"&gt; 
+ &lt;li&gt;Aria 的分段密鑰緩存（&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fjira.mariadb.org%2Fbrowse%2FMDEV-24" target="_blank"&gt;MDEV-24&lt;/a&gt;）&lt;/li&gt; 
+ &lt;li&gt;MDL 可擴展性改進（&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fjira.mariadb.org%2Fbrowse%2FMDEV-19749" target="_blank"&gt;MDEV-19749&lt;/a&gt;）&lt;/li&gt; 
+ &lt;li&gt;Galera replicas 的並行複製（&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fjira.mariadb.org%2Fbrowse%2FMDEV-20065" target="_blank"&gt;MDEV-20065&lt;/a&gt;）&lt;/li&gt; 
+ &lt;li&gt;審計插件的緩衝日誌記錄（&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fjira.mariadb.org%2Fbrowse%2FMDEV-34680" target="_blank"&gt;MDEV-34680&lt;/a&gt;）&lt;/li&gt; 
+ &lt;li&gt;通過外推法更快地計算向量距離（&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fjira.mariadb.org%2Fbrowse%2FMDEV-36205" target="_blank"&gt;MDEV-36205&lt;/a&gt;）&lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;p style="margin-left:0px; margin-right:0px; text-align:start"&gt;&lt;span style="color:#000000"&gt;&lt;strong&gt;兼容性功能&lt;/strong&gt;&lt;/span&gt;&lt;/p&gt; 
+&lt;ul style="margin-left:0; margin-right:0"&gt; 
+ &lt;li&gt;caching_sha2_password 插件（&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fjira.mariadb.org%2Fbrowse%2FMDEV-9804" target="_blank"&gt;MDEV-9804&lt;/a&gt;）&lt;/li&gt; 
+ &lt;li&gt;( + )&amp;nbsp;用於外連接語法（&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fjira.mariadb.org%2Fbrowse%2FMDEV-13817" target="_blank"&gt;MDEV-13817&lt;/a&gt;）&lt;/li&gt; 
+ &lt;li&gt;rpl_semi_sync_master_wait_for_slave_count (&amp;nbsp;&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fjira.mariadb.org%2Fbrowse%2FMDEV-18983" target="_blank"&gt;MDEV-18983&lt;/a&gt;&amp;nbsp;)&lt;/li&gt; 
+ &lt;li&gt;關聯數組：DECLARE TYPE..TABLE OF..INDEX BY（&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fjira.mariadb.org%2Fbrowse%2FMDEV-34319" target="_blank"&gt;MDEV-34319&lt;/a&gt;）&lt;/li&gt; 
+ &lt;li&gt;如果用户有活動會話，則 DROP USER 失敗（&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fjira.mariadb.org%2Fbrowse%2FMDEV-35617" target="_blank"&gt;MDEV-35617&lt;/a&gt;）&lt;/li&gt; 
+ &lt;li&gt;Optimizer hints：[NO_]JOIN_INDEX、[NO_]GROUP_INDEX、[NO_]ORDER_INDEX、[NO_]INDEX（&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fjira.mariadb.org%2Fbrowse%2FMDEV-35856" target="_blank"&gt;MDEV-35856&lt;/a&gt;）&lt;/li&gt; 
+ &lt;li&gt;Optimizer hints：[NO_]SPLIT_MATERIALIZED (&amp;nbsp;&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fjira.mariadb.org%2Fbrowse%2FMDEV-36092" target="_blank"&gt;MDEV-36092&lt;/a&gt;&amp;nbsp;)&lt;/li&gt; 
+ &lt;li&gt;Optimizer hints：[NO_]DERIVED_CONDITION_PUSHDOWN、[NO_]MERGE（&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fjira.mariadb.org%2Fbrowse%2FMDEV-36106" target="_blank"&gt;MDEV-36106&lt;/a&gt;）&lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;p style="margin-left:0px; margin-right:0px; text-align:start"&gt;&lt;strong&gt;&lt;span style="color:#000000"&gt;其他&lt;/span&gt;&lt;/strong&gt;&lt;/p&gt; 
+&lt;ul style="margin-left:0; margin-right:0"&gt; 
+ &lt;li&gt;重試在 galera 節點上應用寫入集（&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fjira.mariadb.org%2Fbrowse%2FMDEV-36077" target="_blank"&gt;MDEV-36077&lt;/a&gt;）&lt;/li&gt; 
+ &lt;li&gt;mariadb-dump 中的通配符支持（&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fjira.mariadb.org%2Fbrowse%2FMDEV-21376" target="_blank"&gt;MDEV-21376&lt;/a&gt;）&lt;/li&gt; 
+ &lt;li&gt;每個表唯一的 FOREIGN KEY 約束名稱（&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fjira.mariadb.org%2Fbrowse%2FMDEV-28933" target="_blank"&gt;MDEV-28933&lt;/a&gt;）&lt;/li&gt; 
+ &lt;li&gt;刪除 JSON 函數的深度限制（&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fjira.mariadb.org%2Fbrowse%2FMDEV-32854" target="_blank"&gt;MDEV-32854&lt;/a&gt;）&lt;/li&gt; 
+ &lt;li&gt;支持 GROUP/ORDER BY 中的功能索引（&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fjira.mariadb.org%2Fbrowse%2FMDEV-36132" target="_blank"&gt;MDEV-36132&lt;/a&gt;）&lt;/li&gt; 
+ &lt;li&gt;在 optimizer trace 中包含表和視圖的定義（&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fjira.mariadb.org%2Fbrowse%2FMDEV-36483" target="_blank"&gt;MDEV-36483&lt;/a&gt;）&lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;p&gt;&lt;span style="color:#000000"&gt;發佈公告：&lt;/span&gt;&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fmariadb.org%2Fmariadb-12-1-preview-available%2F" target="_blank"&gt;https://mariadb.org/mariadb-12-1-preview-available/&lt;/a&gt;&lt;/p&gt;
+                                                                                &lt;/div&gt;
+                                                                            </description>
+      <link>https://www.oschina.net/news/357545/mariadb-12-1-preview</link>
+      <guid isPermaLink="false">https://www.oschina.net/news/357545/mariadb-12-1-preview</guid>
+      <pubDate>Fri, 27 Jun 2025 03:47:00 GMT</pubDate>
+      <author>來源: OSCHINA</author>
+    </item>
+    <item>
+      <title>字節跳動旗下開源多模態智能體 Agent TARS 發佈 Beta 版本</title>
+      <description>&lt;div class="content"&gt;
+                                                                    
+                                                        &lt;p&gt;字節跳動正式&lt;u&gt;&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fagent-tars.com%2Fzh%2Fblog%2F2025-06-25-introducing-agent-tars-beta.html" target="_blank"&gt;發佈&lt;/a&gt;&lt;/u&gt;了&amp;nbsp;Agent TARS&amp;nbsp;的 Beta 版本，將其定位為一個開源的多模態&amp;nbsp;AI Agent&amp;nbsp;工具，旨在提供與各種現實世界工具的無縫集成能力，並實現「隨時隨地可用」。&lt;/p&gt; 
+&lt;p&gt;&lt;img alt="" src="https://oscimg.oschina.net/oscnet/up-de6be480af81939d00d5c997035bf46b81b.png" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p&gt;Agent TARS&amp;nbsp;的早期預覽版已於三月份開源。此次 Beta 版本的發佈得益於&amp;nbsp;Seed&amp;nbsp;多模態模型（如&amp;nbsp;UI-TARS 1.5&amp;nbsp;和&amp;nbsp;Doubao 1.5 VL）的逐步增強，並解決了早期架構中&amp;nbsp;Agent UI&amp;nbsp;未解耦等挑戰。&lt;/p&gt; 
+&lt;p&gt;新版本引入了全新的多層分層架構，其核心構建在一個基於事件流驅動的&amp;nbsp;Agent Kernel&amp;nbsp;上。Agent TARS&amp;nbsp;的設計原則包括：&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt;&lt;strong&gt;上下文工程 (Context Engineering)&lt;/strong&gt;：為構建長時間運行的 Agent，新版本對 Agent Loop 的內存進行了動態優化，針對不同模態內容採用不同的滑動窗口，並面向上下文窗口進行優化和計算，以解決上下文溢出問題。&lt;/li&gt; 
+ &lt;li&gt;&lt;strong&gt;MCP (多模態通信協議) 的洞察&lt;/strong&gt;：Agent TARS 團隊認為 MCP 應作為標準化的工具分發協議，而非自由拓展工具的方式，並計劃建立 MCP 工具的基準測試，以評估其模型兼容性、上下文壓縮率和性能等。&lt;/li&gt; 
+ &lt;li&gt;&lt;strong&gt;上下文壓縮 (Context Compress)&lt;/strong&gt;：正在推動多級內存設計（L0 永久記憶、L1 會話記憶、L2 循環記憶、L3 臨時記憶），並結合選擇性上下文和 LLM/SLM 摘要等策略進行壓縮。&lt;/li&gt; 
+ &lt;li&gt;&lt;strong&gt;可觀測與可評估 (Observable and Evaluable)&lt;/strong&gt;：引入了 Snapshot 框架，能夠在運行時將 Agent 依賴的環境保存為快照，用於回放和調試，已驅動持續集成和測試。同時，通過 Agent 與 UI 分層的新架構，實現了 Headless 運行模式，使得自動化評測成為可能，並參考 OpenAI 的 simple-evals 實現了 browsecomp 評測方案。&lt;/li&gt; 
+ &lt;li&gt;&lt;strong&gt;易於構建應用 (Easy to build applications)&lt;/strong&gt;：引入了 Agent Event Stream，將 Agent 的狀態、工具調用細節、最終回覆和環境信息等以流式方式輸出，使得用户可以輕鬆構建自定義 Agent UI。Agent TARS Server 與 Web UI 的架構設計也因此變得簡潔。&lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;p&gt;&lt;img alt="" src="https://oscimg.oschina.net/oscnet/up-35f79b54f76d476c905a32d464b7cf6e45a.png" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p&gt;同時，Agent TARS 關注並學習了 AG-UI 協議，並説明瞭 Agent Event Stream 在構建上下文方面的差異化優勢。&lt;/p&gt; 
+&lt;p&gt;新版本的主要特性包括：&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt; &lt;p&gt;&lt;strong&gt;Agent TARS CLI&lt;/strong&gt;：取代了&amp;nbsp;&lt;code&gt;Electron&lt;/code&gt;&amp;nbsp;應用，具有更容易更新迭代和顯著減小的安裝體積優勢。&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;&lt;strong&gt;混合瀏覽器 GUI Agent&lt;/strong&gt;：結合了基於&amp;nbsp;&lt;code&gt;DOM&lt;/code&gt;&amp;nbsp;分析的&amp;nbsp;&lt;code&gt;Browser Use&lt;/code&gt;&amp;nbsp;和基於&amp;nbsp;&lt;code&gt;UI-TARS&lt;/code&gt;/&lt;code&gt;Doubao 1.5 VL&lt;/code&gt;&amp;nbsp;的視覺控制方案，操作邏輯更接近人類理解屏幕的方式。提供了&amp;nbsp;&lt;code&gt;dom&lt;/code&gt;、&lt;code&gt;visual-grounding&lt;/code&gt;&amp;nbsp;和&amp;nbsp;&lt;code&gt;hybrid&lt;/code&gt;&amp;nbsp;三種操作方案。&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;&lt;strong&gt;更好的跨模型兼容性&lt;/strong&gt;：完全重寫了&amp;nbsp;&lt;code&gt;Model Provider&lt;/code&gt;&amp;nbsp;層，現在支持&amp;nbsp;&lt;code&gt;Volcengine (Seed1.5-VL)&lt;/code&gt;、&lt;code&gt;Anthropic (Claude-3.7-Sonnet)&lt;/code&gt;&amp;nbsp;和&amp;nbsp;&lt;code&gt;OpenAI (GPT-4o)&lt;/code&gt;&amp;nbsp;等模型提供商。&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;&lt;strong&gt;原生流式傳輸 (Native Streaming)&lt;/strong&gt;：整個架構構建在流式傳輸之上，顯著提升了複雜任務的交互體驗。&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;&lt;strong&gt;Web UI&lt;/strong&gt;：得益於&amp;nbsp;&lt;code&gt;Agent Event Stream&lt;/code&gt;，&lt;code&gt;Web UI&lt;/code&gt;&amp;nbsp;可以完全獨立開發，支持&amp;nbsp;&lt;code&gt;GUI Grounding Transition&lt;/code&gt;（實時鼠標追蹤）、&lt;code&gt;Replay&lt;/code&gt;&amp;nbsp;保存與分享，並實現了通用的多模態內容渲染器。&lt;/p&gt; &lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;p&gt;Agent TARS 團隊還展示了多項內部開發者示例，包括 UI 復刻、先寫遊戲再玩遊戲，以及圖文並茂的報告生成等，這些都得益於模型能力和上下文工程的提升。Agent TARS 仍在快速發展中，未來將推出帶有動態規劃推理的版本，並致力於成為隨時隨地可用的 Agent 開發者工具。&lt;/p&gt;
+                                                                                &lt;/div&gt;
+                                                                            </description>
+      <link>https://www.oschina.net/news/357518/agent-tars-beta</link>
+      <guid isPermaLink="false">https://www.oschina.net/news/357518/agent-tars-beta</guid>
+      <pubDate>Fri, 27 Jun 2025 02:22:00 GMT</pubDate>
+      <author>來源: OSCHINA</author>
+    </item>
+    <item>
+      <title>VTJ.PRO 的 AI+低代碼設計器和渲染器技術架構和實現原理</title>
+      <description>&lt;div class="content"&gt;
+                                                                    
+                                                        &lt;p style="margin-left:0; margin-right:0"&gt;本文介紹支持 VTJ.PRO 低代碼體驗的可視化設計環境 （&lt;code&gt;@vtj/designer&lt;/code&gt;） 和運行時渲染系統 （&lt;code&gt;@vtj/renderer&lt;/code&gt;）。Designer 提供了交互式可視化編輯環境，用户可以在其中拖放和配置組件，而 Renderer 在設計時預覽和運行時環境中執行生成的 DSL 架構。&lt;/p&gt; 
+&lt;p style="margin-left:0; margin-right:0"&gt;有關這些系統運行的核心引擎和數據模型的信息，請參閲&lt;strong&gt;引擎、提供程序和服務層&lt;/strong&gt;&lt;span&gt; &lt;/span&gt;。有關提供實際小組件的 UI 組件庫的詳細信息，請參閲&lt;span&gt; &lt;/span&gt;&lt;strong&gt;UI 組件庫&lt;/strong&gt;&lt;span&gt; &lt;/span&gt;。&lt;/p&gt; 
+&lt;h2&gt;Designer 架構&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fvtj.pro%2Fwiki%2Fpackage%2Fdesigner-and-renderer.html%23designer-%25E6%259E%25B6%25E6%259E%2584" target="_blank"&gt;&lt;/a&gt;&lt;/h2&gt; 
+&lt;p style="margin-left:0; margin-right:0"&gt;Designer 系統通過以&lt;span&gt; &lt;/span&gt;&lt;code&gt;Designer&lt;/code&gt;&lt;span&gt; &lt;/span&gt;類及其與仿真環境的集成為中心的複雜事件驅動架構提供交互式可視化編輯功能。&lt;/p&gt; 
+&lt;h3&gt;Core Designer 類&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fvtj.pro%2Fwiki%2Fpackage%2Fdesigner-and-renderer.html%23core-designer-%25E7%25B1%25BB" target="_blank"&gt;&lt;/a&gt;&lt;/h3&gt; 
+&lt;p style="margin-left:0; margin-right:0"&gt;&lt;code&gt;Designer&lt;/code&gt;&lt;span&gt; &lt;/span&gt;類充當所有設計時交互的中心編排器，管理鼠標事件、拖放作、元素選擇和視覺反饋系統。&lt;/p&gt; 
+&lt;p style="margin-left:0; margin-right:0"&gt;&lt;img alt="" src="https://oscimg.oschina.net/oscnet//05010de879d43b96f68f8cac262bee37.png" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p style="margin-left:0; margin-right:0"&gt;Designer 通過對具有特殊屬性 （&lt;code&gt;__vtj__&lt;/code&gt;、&lt;code&gt;__context__&lt;/code&gt;） 的 DOM 元素進行檢測來運行，這些屬性使其能夠在可視元素及其相應的數據模型之間進行映射。&lt;/p&gt; 
+&lt;h3&gt;事件處理系統&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fvtj.pro%2Fwiki%2Fpackage%2Fdesigner-and-renderer.html%23%25E4%25BA%258B%25E4%25BB%25B6%25E5%25A4%2584%25E7%2590%2586%25E7%25B3%25BB%25E7%25BB%259F" target="_blank"&gt;&lt;/a&gt;&lt;/h3&gt; 
+&lt;p style="margin-left:0; margin-right:0"&gt;Designer 實現了一個全面的事件處理系統，該系統可以捕獲用户交互並將其轉換為設計作：&lt;/p&gt; 
+&lt;p style="margin-left:0; margin-right:0"&gt;&lt;img alt="" src="https://oscimg.oschina.net/oscnet//ef1a4b256c3eed48a11a91f75601b83e.png" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;h3&gt;視覺反饋組件&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fvtj.pro%2Fwiki%2Fpackage%2Fdesigner-and-renderer.html%23%25E8%25A7%2586%25E8%25A7%2589%25E5%258F%258D%25E9%25A6%2588%25E7%25BB%2584%25E4%25BB%25B6" target="_blank"&gt;&lt;/a&gt;&lt;/h3&gt; 
+&lt;p style="margin-left:0; margin-right:0"&gt;Designer 系統通過突出顯示交互式元素的疊加組件提供實時視覺反饋：&lt;/p&gt; 
+&lt;h2&gt;渲染器架構&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fvtj.pro%2Fwiki%2Fpackage%2Fdesigner-and-renderer.html%23%25E6%25B8%25B2%25E6%259F%2593%25E5%2599%25A8%25E6%259E%25B6%25E6%259E%2584" target="_blank"&gt;&lt;/a&gt;&lt;/h2&gt; 
+&lt;p style="margin-left:0; margin-right:0"&gt;Renderer 系統為 VTJ DSL 模式提供運行時執行環境，支持多種執行模式和上下文。&lt;/p&gt; 
+&lt;h3&gt;上下文系統&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fvtj.pro%2Fwiki%2Fpackage%2Fdesigner-and-renderer.html%23%25E4%25B8%258A%25E4%25B8%258B%25E6%2596%2587%25E7%25B3%25BB%25E7%25BB%259F" target="_blank"&gt;&lt;/a&gt;&lt;/h3&gt; 
+&lt;p style="margin-left:0; margin-right:0"&gt;&lt;code&gt;Context&lt;/code&gt;&lt;span&gt; &lt;/span&gt;類充當運行時執行環境，為組件實例提供對狀態、props、生命週期方法和實用程序函數的訪問：&lt;/p&gt; 
+&lt;p style="margin-left:0; margin-right:0"&gt;&lt;img alt="" src="https://oscimg.oschina.net/oscnet//b053bdd59830ab949e97dfc731235450.png" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p style="margin-left:0; margin-right:0"&gt;Context 系統支持三種不同的執行模式：&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt;&lt;strong&gt;設計模式&lt;/strong&gt;&lt;span&gt; &lt;/span&gt;：用於設計時交互的 Instruments 元素&lt;/li&gt; 
+ &lt;li&gt;&lt;strong&gt;運行模式&lt;/strong&gt;&lt;span&gt; &lt;/span&gt;：提供生產執行環境&lt;/li&gt; 
+ &lt;li&gt;&lt;strong&gt;VNode 模式&lt;/strong&gt;&lt;span&gt; &lt;/span&gt;：支持無 refs 的虛擬節點渲染&lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;h3&gt;多模式渲染&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fvtj.pro%2Fwiki%2Fpackage%2Fdesigner-and-renderer.html%23%25E5%25A4%259A%25E6%25A8%25A1%25E5%25BC%258F%25E6%25B8%25B2%25E6%259F%2593" target="_blank"&gt;&lt;/a&gt;&lt;/h3&gt; 
+&lt;p style="margin-left:0; margin-right:0"&gt;Renderer 支持通過 Context 系統在設計時和運行時模式之間無縫切換：&lt;/p&gt; 
+&lt;p style="margin-left:0; margin-right:0"&gt;&lt;img alt="" src="https://oscimg.oschina.net/oscnet//c9a5959e3c493abbfe9aebba842450b0.png" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;h2&gt;設計時集成&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fvtj.pro%2Fwiki%2Fpackage%2Fdesigner-and-renderer.html%23%25E8%25AE%25BE%25E8%25AE%25A1%25E6%2597%25B6%25E9%259B%2586%25E6%2588%2590" target="_blank"&gt;&lt;/a&gt;&lt;/h2&gt; 
+&lt;p style="margin-left:0; margin-right:0"&gt;Designer 和 Renderer 系統通過基於 iframe 的共享模擬環境進行集成，該環境支持實時預覽和交互。&lt;/p&gt; 
+&lt;h3&gt;模擬器架構&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fvtj.pro%2Fwiki%2Fpackage%2Fdesigner-and-renderer.html%23%25E6%25A8%25A1%25E6%258B%259F%25E5%2599%25A8%25E6%259E%25B6%25E6%259E%2584" target="_blank"&gt;&lt;/a&gt;&lt;/h3&gt; 
+&lt;p style="margin-left:0; margin-right:0"&gt;&lt;img alt="" src="https://oscimg.oschina.net/oscnet//e059163c63246e9ea099ceea511c2597.png" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;h3&gt;元件檢測&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fvtj.pro%2Fwiki%2Fpackage%2Fdesigner-and-renderer.html%23%25E5%2585%2583%25E4%25BB%25B6%25E6%25A3%2580%25E6%25B5%258B" target="_blank"&gt;&lt;/a&gt;&lt;/h3&gt; 
+&lt;p style="margin-left:0; margin-right:0"&gt;在設計模式下，Renderer 使用特殊屬性檢測 DOM 元素，使 Designer 能夠跟蹤和作它們：&lt;/p&gt; 
+&lt;p style="margin-left:0; margin-right:0"&gt;&lt;img alt="" src="https://oscimg.oschina.net/oscnet//35e8660da19e5361de71bddb62f84af2.png" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;h2&gt;視口和響應式設計&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fvtj.pro%2Fwiki%2Fpackage%2Fdesigner-and-renderer.html%23%25E8%25A7%2586%25E5%258F%25A3%25E5%2592%258C%25E5%2593%258D%25E5%25BA%2594%25E5%25BC%258F%25E8%25AE%25BE%25E8%25AE%25A1" target="_blank"&gt;&lt;/a&gt;&lt;/h2&gt; 
+&lt;p style="margin-left:0; margin-right:0"&gt;Designer 提供了一個複雜的視口系統，該系統支持多種設備模式和自定義大小調整，以便進行響應式設計測試。&lt;/p&gt; 
+&lt;h3&gt;視口模式&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fvtj.pro%2Fwiki%2Fpackage%2Fdesigner-and-renderer.html%23%25E8%25A7%2586%25E5%258F%25A3%25E6%25A8%25A1%25E5%25BC%258F" target="_blank"&gt;&lt;/a&gt;&lt;/h3&gt; 
+&lt;p style="margin-left:0; margin-right:0"&gt;&lt;img alt="" src="https://oscimg.oschina.net/oscnet//6ee43b64521f23c8c941a1168cd5a29b.png" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;h2&gt;運行時性能優化&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fvtj.pro%2Fwiki%2Fpackage%2Fdesigner-and-renderer.html%23%25E8%25BF%2590%25E8%25A1%258C%25E6%2597%25B6%25E6%2580%25A7%25E8%2583%25BD%25E4%25BC%2598%25E5%258C%2596" target="_blank"&gt;&lt;/a&gt;&lt;/h2&gt; 
+&lt;p style="margin-left:0; margin-right:0"&gt;Renderer 系統包括針對運行時性能的多項優化，用於區分設計時插樁和生產執行。&lt;/p&gt; 
+&lt;p style="margin-left:0; margin-right:0"&gt;&lt;img alt="" src="https://oscimg.oschina.net/oscnet//fd21715b2388c67e35deed2e7443e1b6.png" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p style="margin-left:0; margin-right:0"&gt;Context 系統會自動管理 Vue 實例生命週期、引用跟蹤和清理，以確保在不同執行模式下的最佳性能，同時保持設計時插樁所需的靈活性。&lt;/p&gt;
+                                                                                &lt;/div&gt;
+                                                                            </description>
+      <link>https://www.oschina.net/news/357511</link>
+      <guid isPermaLink="false">https://www.oschina.net/news/357511</guid>
+      <pubDate>Fri, 27 Jun 2025 01:41:00 GMT</pubDate>
+      <author>來源: 投稿</author>
+    </item>
+    <item>
+      <title>Bean Searcher v4.4.2 已發佈</title>
+      <description>&lt;div class="content"&gt;
+                                                                    
+                                                        &lt;h2&gt;Bean Searcher 是什麼？&lt;/h2&gt; 
+&lt;p style="color:#333333; margin-left:0; margin-right:0; text-align:left"&gt;它是一款專注高級查詢的只讀 ORM，&lt;span style="background-color:#ffffff; color:rgba(60, 60, 67, 0.78)"&gt;只需一行代碼&lt;/span&gt;，即可為應用賦能高級查詢。&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt;快來看它如何讓你的效率提升 100 倍：&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fjuejin.cn%2Fpost%2F7027733039299952676" target="_blank"&gt;https://juejin.cn/post/7027733039299952676&lt;/a&gt;&lt;/li&gt; 
+ &lt;li&gt;快來看它為何不能被 MP 替代：&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fjuejin.cn%2Fpost%2F7092411551507808264" target="_blank"&gt;https://juejin.cn/post/7092411551507808264&lt;/a&gt;&lt;/li&gt; 
+ &lt;li&gt;超詳細文檔：&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fbs.zhxu.cn%2F" target="_blank"&gt;https://bs.zhxu.cn/&lt;/a&gt;&lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;p style="color:#333333; margin-left:0; margin-right:0; text-align:left"&gt;如果覺得不錯點個 STAR 吧 ^_^：&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt;Github:&lt;span&gt;&amp;nbsp;&lt;/span&gt;&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fgithub.com%2Ftroyzhxu%2Fbean-searcher" target="_blank"&gt;https://github.com/troyzhxu/bean-searcher&lt;/a&gt;&lt;/li&gt; 
+ &lt;li&gt;Gitee:&amp;nbsp; &amp;nbsp;&lt;a href="https://gitee.com/troyzhxu/bean-searcher"&gt;https://gitee.com/troyzhxu/bean-searcher&lt;/a&gt;&lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;h2&gt;本次更新內容&lt;/h2&gt; 
+&lt;h2&gt;✨ Features&lt;/h2&gt; 
+&lt;ul&gt; 
+ &lt;li&gt;增強&lt;span&gt;&amp;nbsp;&lt;/span&gt;&lt;code&gt;MapUtils&lt;/code&gt;&lt;span&gt;&amp;nbsp;&lt;/span&gt;工具類 
+  &lt;ul&gt; 
+   &lt;li&gt;添加&lt;span&gt;&amp;nbsp;&lt;/span&gt;&lt;code&gt;flat(Map&amp;lt;String, String[]&amp;gt; map, boolean urlDecode)&lt;/code&gt;&lt;span&gt;&amp;nbsp;&lt;/span&gt;方法，支持，指定知否進行 URL 解碼&lt;/li&gt; 
+   &lt;li&gt;添加&lt;span&gt;&amp;nbsp;&lt;/span&gt;&lt;code&gt;flatBuilder(Map&amp;lt;String, String[]&amp;gt; map, boolean urlDecode)&lt;/code&gt;&lt;span&gt;&amp;nbsp;&lt;/span&gt;支持，指定知否進行 URL 解碼&lt;/li&gt; 
+   &lt;li&gt;原&lt;span&gt;&amp;nbsp;&lt;/span&gt;&lt;code&gt;flat(Map&amp;lt;String, String[]&amp;gt; map)&lt;/code&gt;&lt;span&gt;&amp;nbsp;&lt;/span&gt;方法，默認進行 URL 解碼&lt;/li&gt; 
+   &lt;li&gt;原&lt;span&gt;&amp;nbsp;&lt;/span&gt;&lt;code&gt;flatBuilder(Map&amp;lt;String, String[]&amp;gt; map)&lt;/code&gt;&lt;span&gt;&amp;nbsp;&lt;/span&gt;方法，默認進行 URL 解碼&lt;/li&gt; 
+  &lt;/ul&gt; &lt;/li&gt; 
+&lt;/ul&gt;
+                                                                                &lt;/div&gt;
+                                                                            </description>
+      <link>https://www.oschina.net/news/357505/bean-searcher-4-4-2-released</link>
+      <guid isPermaLink="false">https://www.oschina.net/news/357505/bean-searcher-4-4-2-released</guid>
+      <pubDate>Fri, 27 Jun 2025 01:02:00 GMT</pubDate>
+      <author>來源: 投稿</author>
+    </item>
+    <item>
+      <title>DjangoAdmin 敏捷開發框架 Tornado+AntdVue 版本 v2.3.0 發佈</title>
+      <description>&lt;div class="content"&gt;
+                                                                    
+                                                        &lt;p&gt;&lt;span style="background-color:#ffffff; color:#333333"&gt;v2.3.0 更新內容：&lt;/span&gt;&lt;br&gt; &lt;span style="background-color:#ffffff; color:#333333"&gt;1、新增用户重置密碼功能；&lt;/span&gt;&lt;br&gt; &lt;span style="background-color:#ffffff; color:#333333"&gt;2、優化菜單管理模塊，提供用户操作體驗；&lt;/span&gt;&lt;br&gt; &lt;span style="background-color:#ffffff; color:#333333"&gt;3、移除項目中廢棄代碼，調整代碼結構；&lt;/span&gt;&lt;br&gt; &lt;span style="background-color:#ffffff; color:#333333"&gt;4、修復近期用户使用過程中反饋的問題；&lt;/span&gt;&lt;/p&gt; 
+&lt;div&gt; 
+ &lt;div&gt; 
+  &lt;div&gt; 
+   &lt;div&gt; 
+    &lt;div&gt; 
+     &lt;div&gt; 
+      &lt;div&gt; 
+       &lt;div&gt; 
+        &lt;div&gt; 
+         &lt;div&gt; 
+          &lt;div&gt; 
+           &lt;div&gt; 
+            &lt;p style="margin-left:0; margin-right:0"&gt;&lt;span style="background-color:#ffffff; color:#40485b"&gt;一款 Python 語言基於 Tornado、Vue3、AntDesign、MySQL 等框架精心打造的一款模塊化、高性能、企業級的敏捷開發框架，本着簡化開發、提升開發效率的初衷觸發，框架自研了一套個性化的組件，實現了可插拔的組件式開發方式：單圖上傳、多圖上傳等一系列個性化、輕量級的組件，是一款真正意義上實現組件化開發的敏捷開發框架。&lt;/span&gt;&lt;/p&gt; 
+            &lt;h2&gt;軟件信息&lt;/h2&gt; 
+            &lt;ul&gt; 
+             &lt;li&gt;軟件名稱：DjangoAdmin 敏捷開發框架 Tornado+AntdVue 版本&lt;/li&gt; 
+             &lt;li&gt;官網網址：&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fwww.djangoadmin.cn" target="_blank"&gt;https://www.djangoadmin.cn&lt;/a&gt;&lt;/li&gt; 
+             &lt;li&gt;文檔網址：&lt;a href="https://www.oschina.net/action/GoToLink?url=http%3A%2F%2Fdocs.tornado.antdvue.djangoadmin.cn" target="_blank"&gt;http://docs.tornado.antdvue.djangoadmin.cn&lt;/a&gt;&lt;/li&gt; 
+             &lt;li&gt;演示地址：&lt;a href="https://www.oschina.net/action/GoToLink?url=http%3A%2F%2Fmanage.tornado.antdvue.djangoadmin.cn" target="_blank"&gt;http://manage.tornado.antdvue.djangoadmin.cn&lt;/a&gt;&lt;/li&gt; 
+            &lt;/ul&gt; 
+            &lt;h2&gt;版本説明&lt;/h2&gt; 
+            &lt;table cellspacing="0" style="-webkit-text-stroke-width:0px; background-color:#ffffff; border-collapse:collapse; border-spacing:0px; border:none; box-sizing:border-box; color:#40485b; display:block; font-family:-apple-system,BlinkMacSystemFont,&amp;quot;Segoe UI&amp;quot;,Helvetica,Arial,&amp;quot;Apple Color Emoji&amp;quot;,&amp;quot;Segoe UI Emoji&amp;quot;,&amp;quot;Segoe UI Symbol&amp;quot;,&amp;quot;Liberation Sans&amp;quot;,&amp;quot;PingFang SC&amp;quot;,&amp;quot;Microsoft YaHei&amp;quot;,&amp;quot;Hiragino Sans GB&amp;quot;,&amp;quot;Wenquanyi Micro Hei&amp;quot;,&amp;quot;WenQuanYi Zen Hei&amp;quot;,&amp;quot;ST Heiti&amp;quot;,SimHei,SimSun,&amp;quot;WenQuanYi Zen Hei Sharp&amp;quot;,sans-serif; font-size:16px; font-style:normal; font-variant-caps:normal; font-variant-ligatures:normal; font-weight:400; letter-spacing:normal; line-height:inherit; margin:0px 0px 16px; max-width:100%; orphans:2; overflow:auto; text-align:left; text-decoration-color:initial; text-decoration-style:initial; text-decoration-thickness:initial; text-transform:none; white-space:normal; widows:2; width:635px; word-break:initial; word-spacing:0px"&gt; 
+             &lt;tbody&gt; 
+              &lt;tr&gt; 
+               &lt;th&gt;版本名稱&lt;/th&gt; 
+               &lt;th&gt;版本説明&lt;/th&gt; 
+               &lt;th&gt;版本地址&lt;/th&gt; 
+              &lt;/tr&gt; 
+             &lt;/tbody&gt; 
+             &lt;tbody&gt; 
+              &lt;tr&gt; 
+               &lt;td style="border-color:#dfe2e5; border-style:solid; border-width:1px"&gt;Django+Layui 混編版&lt;/td&gt; 
+               &lt;td style="border-color:#dfe2e5; border-style:solid; border-width:1px"&gt;採用 Django、Layui 等框架研發&lt;/td&gt; 
+               &lt;td style="border-color:#dfe2e5; border-style:solid; border-width:1px"&gt;&lt;a href="https://gitee.com/djangoadmin/DjangoAdmin_Django_Layui"&gt;https://gitee.com/djangoadmin/DjangoAdmin_Django_Layui&lt;/a&gt;&lt;/td&gt; 
+              &lt;/tr&gt; 
+              &lt;tr&gt; 
+               &lt;td style="border-color:#dfe2e5; border-style:solid; border-width:1px"&gt;Flask+Layui 混編版&lt;/td&gt; 
+               &lt;td style="border-color:#dfe2e5; border-style:solid; border-width:1px"&gt;採用 Flask、Layui 等框架研發&lt;/td&gt; 
+               &lt;td style="border-color:#dfe2e5; border-style:solid; border-width:1px"&gt;&lt;a href="https://gitee.com/djangoadmin/DjangoAdmin_Flask_Layui"&gt;https://gitee.com/djangoadmin/DjangoAdmin_Flask_Layui&lt;/a&gt;&lt;/td&gt; 
+              &lt;/tr&gt; 
+              &lt;tr&gt; 
+               &lt;td style="border-color:#dfe2e5; border-style:solid; border-width:1px"&gt;FastAPI+Layui 混編版&lt;/td&gt; 
+               &lt;td style="border-color:#dfe2e5; border-style:solid; border-width:1px"&gt;採用 FastAPI、Layui 等框架研發&lt;/td&gt; 
+               &lt;td style="border-color:#dfe2e5; border-style:solid; border-width:1px"&gt;&lt;a href="https://gitee.com/djangoadmin/DjangoAdmin_Fastapi_Layui"&gt;https://gitee.com/djangoadmin/DjangoAdmin_Fastapi_Layui&lt;/a&gt;&lt;/td&gt; 
+              &lt;/tr&gt; 
+              &lt;tr&gt; 
+               &lt;td style="border-color:#dfe2e5; border-style:solid; border-width:1px"&gt;Tornado+Layui 混編版&lt;/td&gt; 
+               &lt;td style="border-color:#dfe2e5; border-style:solid; border-width:1px"&gt;採用 Tornado、Layui 等框架研發&lt;/td&gt; 
+               &lt;td style="border-color:#dfe2e5; border-style:solid; border-width:1px"&gt;&lt;a href="https://gitee.com/djangoadmin/DjangoAdmin_Tornado_Layui"&gt;https://gitee.com/djangoadmin/DjangoAdmin_Tornado_Layui&lt;/a&gt;&lt;/td&gt; 
+              &lt;/tr&gt; 
+              &lt;tr&gt; 
+               &lt;td style="border-color:#dfe2e5; border-style:solid; border-width:1px"&gt;Django+EleVue 前後端分離版&lt;/td&gt; 
+               &lt;td style="border-color:#dfe2e5; border-style:solid; border-width:1px"&gt;採用 Django、Vue2.x、ElementUI 等框架研發前後端分離版本&lt;/td&gt; 
+               &lt;td style="border-color:#dfe2e5; border-style:solid; border-width:1px"&gt;&lt;a href="https://gitee.com/djangoadmin/DjangoAdmin_Django_EleVue"&gt;https://gitee.com/djangoadmin/DjangoAdmin_Django_EleVue&lt;/a&gt;&lt;/td&gt; 
+              &lt;/tr&gt; 
+              &lt;tr&gt; 
+               &lt;td style="border-color:#dfe2e5; border-style:solid; border-width:1px"&gt;Flask+EleVue 前後端分離版&lt;/td&gt; 
+               &lt;td style="border-color:#dfe2e5; border-style:solid; border-width:1px"&gt;採用 Flask、Vue2.x、ElementUI 等框架研發前後端分離版本&lt;/td&gt; 
+               &lt;td style="border-color:#dfe2e5; border-style:solid; border-width:1px"&gt;&lt;a href="https://gitee.com/djangoadmin/DjangoAdmin_Flask_EleVue"&gt;https://gitee.com/djangoadmin/DjangoAdmin_Flask_EleVue&lt;/a&gt;&lt;/td&gt; 
+              &lt;/tr&gt; 
+              &lt;tr&gt; 
+               &lt;td style="border-color:#dfe2e5; border-style:solid; border-width:1px"&gt;FastAPI+EleVue 前後端分離版&lt;/td&gt; 
+               &lt;td style="border-color:#dfe2e5; border-style:solid; border-width:1px"&gt;採用 FastAPI、Vue2.x、ElementUI 等框架研發前後端分離版本&lt;/td&gt; 
+               &lt;td style="border-color:#dfe2e5; border-style:solid; border-width:1px"&gt;&lt;a href="https://gitee.com/djangoadmin/DjangoAdmin_Fastapi_EleVue"&gt;https://gitee.com/djangoadmin/DjangoAdmin_Fastapi_EleVue&lt;/a&gt;&lt;/td&gt; 
+              &lt;/tr&gt; 
+              &lt;tr&gt; 
+               &lt;td style="border-color:#dfe2e5; border-style:solid; border-width:1px"&gt;Tornado+EleVue 前後端分離版&lt;/td&gt; 
+               &lt;td style="border-color:#dfe2e5; border-style:solid; border-width:1px"&gt;採用 Tornado、Vue2.x、ElementUI 等框架研發前後端分離版本&lt;/td&gt; 
+               &lt;td style="border-color:#dfe2e5; border-style:solid; border-width:1px"&gt;&lt;a href="https://gitee.com/djangoadmin/DjangoAdmin_Tornado_EleVue"&gt;https://gitee.com/djangoadmin/DjangoAdmin_Tornado_EleVue&lt;/a&gt;&lt;/td&gt; 
+              &lt;/tr&gt; 
+              &lt;tr&gt; 
+               &lt;td style="border-color:#dfe2e5; border-style:solid; border-width:1px"&gt;Django+AntdVue 前後端分離版&lt;/td&gt; 
+               &lt;td style="border-color:#dfe2e5; border-style:solid; border-width:1px"&gt;採用 Django、Vue3.x、AntDesign 等框架研發前後端分離版本&lt;/td&gt; 
+               &lt;td style="border-color:#dfe2e5; border-style:solid; border-width:1px"&gt;&lt;a href="https://gitee.com/djangoadmin/DjangoAdmin_Django_AntdVue"&gt;https://gitee.com/djangoadmin/DjangoAdmin_Django_AntdVue&lt;/a&gt;&lt;/td&gt; 
+              &lt;/tr&gt; 
+              &lt;tr&gt; 
+               &lt;td style="border-color:#dfe2e5; border-style:solid; border-width:1px"&gt;Flask+AntdVue 前後端分離版&lt;/td&gt; 
+               &lt;td style="border-color:#dfe2e5; border-style:solid; border-width:1px"&gt;採用 Flask、Vue3.x、AntDesign 等框架研發前後端分離版本&lt;/td&gt; 
+               &lt;td style="border-color:#dfe2e5; border-style:solid; border-width:1px"&gt;&lt;a href="https://gitee.com/djangoadmin/DjangoAdmin_Flask_AntdVue"&gt;https://gitee.com/djangoadmin/DjangoAdmin_Flask_AntdVue&lt;/a&gt;&lt;/td&gt; 
+              &lt;/tr&gt; 
+              &lt;tr&gt; 
+               &lt;td style="border-color:#dfe2e5; border-style:solid; border-width:1px"&gt;FastAPI+AntdVue 前後端分離版&lt;/td&gt; 
+               &lt;td style="border-color:#dfe2e5; border-style:solid; border-width:1px"&gt;採用 FastAPI、Vue3.x、AntDesign 等框架研發前後端分離版本&lt;/td&gt; 
+               &lt;td style="border-color:#dfe2e5; border-style:solid; border-width:1px"&gt;&lt;a href="https://gitee.com/djangoadmin/DjangoAdmin_Fastapi_AntdVue"&gt;https://gitee.com/djangoadmin/DjangoAdmin_Fastapi_AntdVue&lt;/a&gt;&lt;/td&gt; 
+              &lt;/tr&gt; 
+              &lt;tr&gt; 
+               &lt;td style="border-color:#dfe2e5; border-style:solid; border-width:1px"&gt;Tornado+AntdVue 前後端分離版&lt;/td&gt; 
+               &lt;td style="border-color:#dfe2e5; border-style:solid; border-width:1px"&gt;採用 Tornado、Vue、AntDesign 等框架研發前後端分離版本&lt;/td&gt; 
+               &lt;td style="border-color:#dfe2e5; border-style:solid; border-width:1px"&gt;&lt;a href="https://gitee.com/djangoadmin/DjangoAdmin_Tornado_AntdVue"&gt;https://gitee.com/djangoadmin/DjangoAdmin_Tornado_AntdVue&lt;/a&gt;&lt;/td&gt; 
+              &lt;/tr&gt; 
+             &lt;/tbody&gt; 
+            &lt;/table&gt; 
+            &lt;h2&gt;模塊展示&lt;/h2&gt; 
+            &lt;p style="margin-left:0; margin-right:0"&gt;&lt;img alt="" height="1080" src="https://oscimg.oschina.net/oscnet/up-7d010e6980e11a2900f552d415e4fb3a6ca.png" width="1920" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+           &lt;/div&gt; 
+          &lt;/div&gt; 
+         &lt;/div&gt; 
+        &lt;/div&gt; 
+       &lt;/div&gt; 
+      &lt;/div&gt; 
+     &lt;/div&gt; 
+    &lt;/div&gt; 
+   &lt;/div&gt; 
+  &lt;/div&gt; 
+ &lt;/div&gt; 
+&lt;/div&gt;
+                                                                                &lt;/div&gt;
+                                                                            </description>
+      <link>https://www.oschina.net/news/357503</link>
+      <guid isPermaLink="false">https://www.oschina.net/news/357503</guid>
+      <pubDate>Fri, 27 Jun 2025 00:47:00 GMT</pubDate>
+      <author>來源: 投稿</author>
+    </item>
     <item>
       <title>doocs-md v2.0.4 已經發布，微信 Markdown 編輯器</title>
       <description>&lt;div class="content"&gt;
@@ -337,746 +1076,7 @@ BYTEDESK_APPKEY: ZjoyMDI1LTA3LTE5OlBMQVRGT1JNOjo=&lt;/code&gt;&lt;/pre&gt;
                                                                             </description>
       <link>https://www.oschina.net/news/357730/snow-lang-0-4-0-released</link>
       <guid isPermaLink="false">https://www.oschina.net/news/357730/snow-lang-0-4-0-released</guid>
-      <pubDate>Sat, 10 May 2025 10:23:00 GMT</pubDate>
-      <author>來源: 投稿</author>
-    </item>
-    <item>
-      <title>Apache APISIX 3.13.0 正式發佈</title>
-      <description>&lt;div class="content"&gt;
-                                                                    
-                                                        &lt;p&gt;Apache APISIX 3.13.0 版本已經&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fmp.weixin.qq.com%2Fs%2F2hpdb8cAGIXRITyAOVSf_Q" target="_blank"&gt;發佈&lt;/a&gt;，帶來了一系列新功能、修復、以及相關用户體驗優化。&lt;/p&gt; 
-&lt;p&gt;此版本引入了多項新功能，包括 mcp-bridge 和 lago 插件、獨立的 Admin API、狀態健康檢查端點、L4 代理健康檢查等等。雖然本次更新沒有引入任何重大變更，但部分功能已被標記為未來版本中將廢棄。&lt;/p&gt; 
-&lt;h2&gt;&lt;strong&gt;棄用説明&lt;/strong&gt;&lt;/h2&gt; 
-&lt;h3&gt;&lt;strong&gt;1. 標記 server-info 插件為棄用&lt;/strong&gt;&lt;/h3&gt; 
-&lt;p&gt;&lt;code&gt;server-info&lt;/code&gt;插件已被標記為棄用，並將在未來的版本中移除。該插件會定期將服務器信息寫入 etcd，在大型集羣中可能會由於啓動時 etcd 寫入操作過多而導致性能問題。&lt;/p&gt; 
-&lt;p&gt;更多信息請參見&amp;nbsp;&lt;strong&gt;郵件列表討論&lt;/strong&gt;[1]和&amp;nbsp;&lt;strong&gt;PR #12244&lt;/strong&gt;。&lt;/p&gt; 
-&lt;h3&gt;&lt;strong&gt;2. 在解耦 data_plane 模式下對執行 etcd 寫操作進行警告&lt;/strong&gt;&lt;/h3&gt; 
-&lt;p&gt;當 APISIX 以數據面實例運行在解耦模式時，如果通過 core.etcd 函數或 CLI 執行 etcd 寫操作，將記錄警告日誌。未來版本中將棄用並禁止此類操作。&lt;/p&gt; 
-&lt;p&gt;更多信息請參見&amp;nbsp;&lt;strong&gt;郵件列表討論&lt;/strong&gt;[2]和&amp;nbsp;&lt;strong&gt;PR #12241&lt;/strong&gt;。&lt;/p&gt; 
-&lt;h2&gt;&lt;strong&gt;新功能&lt;/strong&gt;&lt;/h2&gt; 
-&lt;h3&gt;&lt;strong&gt;1. 新增 standalone 模式 Admin API&lt;/strong&gt;&lt;/h3&gt; 
-&lt;p&gt;本次版本為 standalone 模式引入了新的 Admin API，允許用户通過 HTTP PUT（更新）和 GET（獲取）來管理內存中的配置。配置支持以 JSON 或 YAML 格式提交，會在驗證後廣播至同一 APISIX 實例中的所有 worker 進程，實現完全無狀態的運行模式。該功能提升了對 Ingress Controller 等場景的支持能力。&lt;/p&gt; 
-&lt;p&gt;更多信息請參見相關&amp;nbsp;&lt;strong&gt;PR #12179&lt;/strong&gt;、&lt;strong&gt;PR #12214&lt;/strong&gt;、&lt;strong&gt;PR #12256&lt;/strong&gt;、&lt;strong&gt;PR #12295&lt;/strong&gt;、&lt;strong&gt;PR #12317&lt;/strong&gt;、&lt;strong&gt;PR #12333&lt;/strong&gt;。&lt;/p&gt; 
-&lt;h3&gt;&lt;strong&gt;2. 支持 L4 代理的健康檢查&lt;/strong&gt;&lt;/h3&gt; 
-&lt;p&gt;APISIX 現已支持作為 L4 代理運行時對上游目標進行健康檢查，從而提升 TCP/UDP 流量的可靠性並實現自動故障轉移。&lt;/p&gt; 
-&lt;p&gt;更多信息請參見&amp;nbsp;&lt;strong&gt;PR #12180&lt;/strong&gt;。&lt;/p&gt; 
-&lt;h3&gt;&lt;strong&gt;3. 新增狀態健康檢查端點&lt;/strong&gt;&lt;/h3&gt; 
-&lt;p&gt;本次版本引入了一個健康檢查 status 端點，用於指示 APISIX 是否已準備好接收流量。在 standalone 模式下，該端點在從外部客户端（如 Ingress Controller）加載配置後報告就緒狀態；在使用 etcd 時，該端點會在所有工作進程完成初始配置加載之前一直處於非就緒狀態。該功能有助於外部系統準確執行就緒性檢查。&lt;/p&gt; 
-&lt;p&gt;更多信息請參見&amp;nbsp;&lt;strong&gt;PR #12200&lt;/strong&gt;。&lt;/p&gt; 
-&lt;h3&gt;&lt;strong&gt;4. 新增 mcp-bridge 插件&lt;/strong&gt;&lt;/h3&gt; 
-&lt;p&gt;本次版本引入了&amp;nbsp;&lt;code&gt;mcp-bridge&lt;/code&gt;插件，用於將基於 stdio 的 MCP 服務器轉換為基於 HTTP SSE 的接口，並支持子進程管理和跨 NGINX worker 的會話原型處理。為支持更廣泛的使用場景，MCP 服務器已重構為獨立模塊，替換了原始的&amp;nbsp;&lt;code&gt;mcp-bridge&lt;/code&gt;實現，採用更靈活的框架，同時通過現有測試保持向後兼容。&lt;/p&gt; 
-&lt;p&gt;更多信息請參見&amp;nbsp;**PR&amp;nbsp;[#12168](javascript:;)&amp;nbsp;**和&amp;nbsp;&lt;strong&gt;PR #12151&lt;/strong&gt;。&lt;/p&gt; 
-&lt;h3&gt;&lt;strong&gt;5. 新增 lago 插件&lt;/strong&gt;&lt;/h3&gt; 
-&lt;p&gt;本次版本引入了&amp;nbsp;&lt;code&gt;lago&lt;/code&gt;插件，支持與 Lago 集成實現 API 商業化。該插件記錄 API 調用，並基於配置的計費指標和訂閲對消費者進行計費。它支持靈活的使用場景，例如面向 AI 服務的基於令牌的計費或基於調用次數的 API 計費，並允許將多個路由鏈接到不同的定價模型，以支持按需付費模式。&lt;/p&gt; 
-&lt;p&gt;更多信息請參見&amp;nbsp;&lt;strong&gt;PR #12196&lt;/strong&gt;。&lt;/p&gt; 
-&lt;h3&gt;&lt;strong&gt;6. 為 loki-logger 插件添加 headers 屬性&lt;/strong&gt;&lt;/h3&gt; 
-&lt;p&gt;本次版本為&amp;nbsp;&lt;code&gt;loki-logger&lt;/code&gt;插件新增了&amp;nbsp;&lt;code&gt;headers&lt;/code&gt;屬性。通過此功能，用户可以在將日誌發送到遠程 Loki 服務時設置授權等自定義請求頭。&lt;/p&gt; 
-&lt;p&gt;更多信息請參見&amp;nbsp;&lt;strong&gt;PR #12243&lt;/strong&gt;。&lt;/p&gt; 
-&lt;h3&gt;&lt;strong&gt;7. 為核心資源 schema 添加 metadata 字段&lt;/strong&gt;&lt;/h3&gt; 
-&lt;p&gt;本次版本為核心資源 schema 添加了標準化的 metadata 字段，包括名稱、描述和標籤。此增強提升了資源的一致性，並解決了下游項目中的相關問題。&lt;/p&gt; 
-&lt;p&gt;更多信息請參見&amp;nbsp;&lt;strong&gt;PR #12224&lt;/strong&gt;。&lt;/p&gt; 
-&lt;h3&gt;&lt;strong&gt;8. 為批處理器新增 max_pending_entries 屬性&lt;/strong&gt;&lt;/h3&gt; 
-&lt;p&gt;本次版本為批處理器新增了&amp;nbsp;&lt;code&gt;max_pending_entries&lt;/code&gt;配置項，用於防止在日誌服務器響應緩慢或無響應時引發內存激增。該配置允許在等待處理的回調數量過多時丟棄新的日誌條目。&lt;/p&gt; 
-&lt;p&gt;更多信息請參見&amp;nbsp;&lt;strong&gt;PR #12338&lt;/strong&gt;。&lt;/p&gt; 
-&lt;h3&gt;&lt;strong&gt;9. 增強 Admin API 過濾功能&lt;/strong&gt;&lt;/h3&gt; 
-&lt;p&gt;Admin API 現在支持通過&amp;nbsp;&lt;code&gt;service_id&lt;/code&gt;和&amp;nbsp;&lt;code&gt;upstream_id&lt;/code&gt;過濾 routes 和 stream routes，使用户更容易查詢和管理相關資源，特別是對 APISIX Dashboard 項目更為友好。&lt;/p&gt; 
-&lt;p&gt;更多信息請參見&amp;nbsp;&lt;strong&gt;PR #12291&lt;/strong&gt;。&lt;/p&gt; 
-&lt;h3&gt;&lt;strong&gt;10. 在 Prometheus node_info 指標中暴露 APISIX 版本&lt;/strong&gt;&lt;/h3&gt; 
-&lt;p&gt;本次版本增強了 Prometheus 的&amp;nbsp;&lt;code&gt;node_info&lt;/code&gt;指標，增加了&amp;nbsp;&lt;code&gt;version&lt;/code&gt;標籤用於暴露當前 APISIX 版本，從而提升可觀測性和版本追蹤能力。&lt;/p&gt; 
-&lt;p&gt;更多信息請參見&amp;nbsp;&lt;strong&gt;PR #12367&lt;/strong&gt;。&lt;/p&gt; 
-&lt;h3&gt;&lt;strong&gt;11. 支持在 consumer 用户名中使用連字符 (-)&lt;/strong&gt;&lt;/h3&gt; 
-&lt;p&gt;本次版本允許在 consumer 的用户名中使用連字符（&lt;code&gt;-&lt;/code&gt;）。該功能適用於 Kubernetes 等場景，可以通過類似&amp;nbsp;&lt;code&gt;namespace-username&lt;/code&gt;的格式實現資源隔離。&lt;/p&gt; 
-&lt;p&gt;更多信息請參見&amp;nbsp;&lt;strong&gt;PR #12296&lt;/strong&gt;。&lt;/p&gt; 
-&lt;h2&gt;&lt;strong&gt;依賴項更新&lt;/strong&gt;&lt;/h2&gt; 
-&lt;p&gt;為提升穩定性、兼容性以及修復已知問題，本次版本升級了核心依賴項：&lt;/p&gt; 
-&lt;ul&gt; 
- &lt;li&gt;升級 OpenResty 至 v1.27.1.2（&lt;strong&gt;PR #12307&lt;/strong&gt;）&lt;/li&gt; 
- &lt;li&gt;升級 LuaRocks 至 v3.12.0（&lt;strong&gt;PR #12305&lt;/strong&gt;）&lt;/li&gt; 
-&lt;/ul&gt; 
-&lt;h2&gt;&lt;strong&gt;其他更新&lt;/strong&gt;&lt;/h2&gt; 
-&lt;ul&gt; 
- &lt;li&gt;通過比較服務發現節點的地址來提升性能（&lt;strong&gt;PR #12258&lt;/strong&gt;）&lt;/li&gt; 
- &lt;li&gt;將日誌級別調整為&amp;nbsp;&lt;code&gt;debug&lt;/code&gt;，以減少不必要的日誌輸出（&lt;strong&gt;PR #12361&lt;/strong&gt;）&lt;/li&gt; 
- &lt;li&gt;移除過期批處理器時，將日誌級別從&amp;nbsp;&lt;code&gt;warn&lt;/code&gt;調整為&amp;nbsp;&lt;code&gt;info&lt;/code&gt;（&lt;strong&gt;PR #12297&lt;/strong&gt;）&lt;/li&gt; 
- &lt;li&gt;重構&amp;nbsp;&lt;code&gt;ai-proxy&lt;/code&gt;插件，將&amp;nbsp;&lt;code&gt;read_response&lt;/code&gt;移動到&amp;nbsp;&lt;code&gt;ai_driver.request&lt;/code&gt;函數中（&lt;strong&gt;PR #12101&lt;/strong&gt;）&lt;/li&gt; 
- &lt;li&gt;當新增節點數量小於或等於 1 時，避免啓動過期的健康檢查器（&lt;strong&gt;PR #12118&lt;/strong&gt;）&lt;/li&gt; 
- &lt;li&gt;在節點數量為 0 時釋放健康檢查器資源（&lt;strong&gt;PR #12126&lt;/strong&gt;）&lt;/li&gt; 
- &lt;li&gt;CLI 工具僅在啓動時解析並驗證&amp;nbsp;&lt;code&gt;apisix.yaml&lt;/code&gt;文件（&lt;strong&gt;PR #12216&lt;/strong&gt;）&lt;/li&gt; 
- &lt;li&gt;限制 TLSv1.3 的跨 SNI 會話恢復（&lt;strong&gt;PR #12366&lt;/strong&gt;）&lt;/li&gt; 
- &lt;li&gt;修復 Kubernetes 服務發現單節點模式下的數據導出問題（&lt;strong&gt;PR #12284&lt;/strong&gt;）&lt;/li&gt; 
- &lt;li&gt;在 Consul 中處理&amp;nbsp;&lt;code&gt;nil&lt;/code&gt;端口的情況，默認使用端口 80（&lt;strong&gt;PR #12304&lt;/strong&gt;）&lt;/li&gt; 
-&lt;/ul&gt; 
-&lt;p&gt;變更日誌：&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fgithub.com%2Fapache%2Fapisix%2Fblob%2Fmaster%2FCHANGELOG.md%233130" target="_blank"&gt;https://github.com/apache/apisix/blob/master/CHANGELOG.md#3130&lt;/a&gt;&lt;/p&gt;
-                                                                                &lt;/div&gt;
-                                                                            </description>
-      <link>https://www.oschina.net/news/357637/apache-apisix-3-13-0-released</link>
-      <guid isPermaLink="false">https://www.oschina.net/news/357637/apache-apisix-3-13-0-released</guid>
-      <pubDate>Fri, 09 May 2025 10:28:00 GMT</pubDate>
-      <author>來源: OSCHINA</author>
-    </item>
-    <item>
-      <title>OpenDeepWiki 多輪對話全新升級，輕鬆接入您的項目</title>
-      <description>&lt;div class="content"&gt;
-                                                                    
-                                                        &lt;h1&gt;多輪對話全新升級&lt;/h1&gt; 
-&lt;p&gt;OpenDeepWiki 現已支持更智能的多輪對話能力，讓您可以與代碼庫進行深入交流，像與真人對話一樣理解代碼邏輯和架構。新的對話系統能夠保持上下文連貫性，理解複雜查詢，並提供更精準的回答。&lt;/p&gt; 
-&lt;p&gt;&lt;img height="1032" src="https://oscimg.oschina.net/oscnet/up-e330da016632cd20a2b49bb081ebd8da29a.png" width="1132" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;p&gt;&lt;img height="1032" src="https://oscimg.oschina.net/oscnet/up-848608f26fae793dca9fcc65a9702dc09c1.png" width="1132" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;h2&gt;系統接入能力&lt;/h2&gt; 
-&lt;p&gt;現在您可以輕鬆將 OpenDeepWiki 接入到您自己的系統中，為您的應用提供強大的代碼理解和對話能力。通過簡單的 API 集成，您的系統可以立即獲得 AI 驅動的代碼知識庫功能。&lt;/p&gt; 
-&lt;p&gt;&lt;img height="1032" src="https://oscimg.oschina.net/oscnet/up-534b45c1afcc5af185b7f6d85c27b2bfe23.png" width="1132" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;ul&gt; 
- &lt;li&gt;支持 Github、Gitlab、Gitee、Gitea 等代碼倉庫快速轉換&lt;/li&gt; 
- &lt;li&gt;支持所有編程語言的代碼分析和文檔生成&lt;/li&gt; 
- &lt;li&gt;自動生成 Mermaid 圖表，可視化代碼結構&lt;/li&gt; 
- &lt;li&gt;支持自定義模型和 API，按需擴展&lt;/li&gt; 
- &lt;li&gt;基於 AI 的代碼分析和代碼關係理解&lt;/li&gt; 
- &lt;li&gt;使用 Next.js 生成 SEO 友好的文檔和知識庫&lt;/li&gt; 
- &lt;li&gt;支持 Model Context Protocol，可作為其他 AI 模型的知識來源&lt;/li&gt; 
-&lt;/ul&gt; 
-&lt;p&gt;OpenDeepWiki 是一個強大的 AI 驅動工具，持續進化以提供更優質的代碼知識管理體驗。&lt;/p&gt; 
-&lt;p&gt;🌟 如果您覺得這個項目有用，請在 &lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fgithub.com%2FAIDotNet%2FOpenDeepWiki" target="_blank"&gt;GitHub&lt;/a&gt; 上給我們點個 Star！&lt;/p&gt; 
-&lt;p&gt;🔗 在線體驗：&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fopendeep.wiki" target="_blank"&gt;https://opendeep.wiki&lt;/a&gt;&lt;/p&gt;
-                                                                                &lt;/div&gt;
-                                                                            </description>
-      <link>https://www.oschina.net/news/357635</link>
-      <guid isPermaLink="false">https://www.oschina.net/news/357635</guid>
-      <pubDate>Fri, 09 May 2025 10:10:00 GMT</pubDate>
-      <author>來源: 投稿</author>
-    </item>
-    <item>
-      <title>MCMS 6.0.1 已經發布，銘飛內容管理系統</title>
-      <description>&lt;div class="content"&gt;
-                                                                    
-                                                        &lt;p&gt;MCMS 6.0.1 已經發布，銘飛內容管理系統&lt;/p&gt; 
-&lt;p&gt;此版本更新內容包括：&lt;/p&gt; 
-&lt;ul&gt; 
- &lt;li&gt;【新增】上傳路徑支持指定絕對路徑&lt;/li&gt; 
- &lt;li&gt;【修復】修復單篇使用模型問題&lt;/li&gt; 
- &lt;li&gt;【優化】context-path 配置優化&lt;/li&gt; 
- &lt;li&gt;【優化】日誌管理記錄優化&lt;/li&gt; 
- &lt;li&gt;【優化】異常處理優化&lt;/li&gt; 
- &lt;li&gt;【優化】業務表單邊界優化&lt;/li&gt; 
- &lt;li&gt;【優化】基礎結構代碼優化&lt;/li&gt; 
-&lt;/ul&gt; 
-&lt;p&gt;詳情查看：&lt;a href="https://gitee.com/mingSoft/MCMS/releases/6.0.1"&gt;https://gitee.com/mingSoft/MCMS/releases/6.0.1&lt;/a&gt;&lt;/p&gt;
-                                                                                &lt;/div&gt;
-                                                                            </description>
-      <link>https://www.oschina.net/news/357628/mcms-6-0-1-released</link>
-      <guid isPermaLink="false">https://www.oschina.net/news/357628/mcms-6-0-1-released</guid>
-      <pubDate>Fri, 09 May 2025 09:37:00 GMT</pubDate>
-      <author>來源: 投稿</author>
-    </item>
-    <item>
-      <title>全新 ioc 框架 loveqq-framework，教你白嫖 SpringBoot 的插件的配置文件自動提示</title>
-      <description>&lt;div class="content"&gt;
-                                                                    
-                                                        &lt;p&gt;全新輕量級 ioc/aop 框架 loveqq-framework 現已支持在 idea ide 下，application.yaml 配置文件的智能提示。&lt;/p&gt; 
-&lt;p&gt;該智能提示的實現完全複用了 idea 自帶的 springboot 支持插件。只需要引入 loveqq-boot-starter-test 依賴可使用智能提示。&lt;/p&gt; 
-&lt;p&gt;下面介紹下非 springboot 項目如何能夠快捷複用 springboot 插件，從而實現配置文件的智能提示。&lt;/p&gt; 
-&lt;p&gt;首先引入下面的依賴，注意依賴作用域最好是 test，因為我們只需要智能提示，編譯和運行都需要他們，test 作用域也方便打包時進行排除，從而也不會增加打包體積：&lt;/p&gt; 
-&lt;pre&gt;&lt;code class="language-xml"&gt;&amp;lt;dependency&amp;gt;
-  &amp;lt;groupId&amp;gt;org.springframework.boot&amp;lt;/groupId&amp;gt;
-  &amp;lt;artifactId&amp;gt;spring-boot&amp;lt;/artifactId&amp;gt;
-  &amp;lt;version&amp;gt;3.5.0&amp;lt;/version&amp;gt;
-  &amp;lt;scope&amp;gt;test&amp;lt;/scope&amp;gt;
-  &amp;lt;exclusions&amp;gt;
-&amp;lt;exclusion&amp;gt;
-  &amp;lt;groupId&amp;gt;org.springframework&amp;lt;/groupId&amp;gt;
-  &amp;lt;artifactId&amp;gt;spring-context&amp;lt;/artifactId&amp;gt;
-&amp;lt;/exclusion&amp;gt;
-&amp;lt;exclusion&amp;gt;
-  &amp;lt;groupId&amp;gt;org.springframework&amp;lt;/groupId&amp;gt;
-  &amp;lt;artifactId&amp;gt;spring-jcl&amp;lt;/artifactId&amp;gt;
-&amp;lt;/exclusion&amp;gt;
-  &amp;lt;/exclusions&amp;gt;
-&amp;lt;/dependency&amp;gt;&lt;/code&gt;&lt;/pre&gt; 
-&lt;p&gt;然後編寫&amp;nbsp;spring-configuration-metadata.json 配置文件放入&amp;nbsp;META-INF 文件夾下即可。&lt;/p&gt; 
-&lt;p&gt;當然手動編寫可能很繁複，大家可以複用 loveqq-framework 的自動構建的代碼：&lt;/p&gt; 
-&lt;pre&gt;&lt;code&gt;com.kfyty.loveqq.framework.core.support.task.BuildConfigurationMetadataAntTask&lt;/code&gt;&lt;/pre&gt; 
-&lt;p&gt;然後在 maven 中添加如下插件：&lt;/p&gt; 
-&lt;pre&gt;&lt;code class="language-xml"&gt;&amp;lt;plugin&amp;gt;
-&amp;lt;artifactId&amp;gt;maven-antrun-plugin&amp;lt;/artifactId&amp;gt;
-&amp;lt;version&amp;gt;3.1.0&amp;lt;/version&amp;gt;
-&amp;lt;executions&amp;gt;
-  &amp;lt;execution&amp;gt;
-&amp;lt;id&amp;gt;build configuration metadata&amp;lt;/id&amp;gt;
-&amp;lt;phase&amp;gt;verify&amp;lt;/phase&amp;gt;
-&amp;lt;goals&amp;gt;
-  &amp;lt;goal&amp;gt;run&amp;lt;/goal&amp;gt;
-&amp;lt;/goals&amp;gt;
-&amp;lt;configuration&amp;gt;
-  &amp;lt;target name="metadata"&amp;gt;
-&amp;lt;java fork="true" classname="com.kfyty.loveqq.framework.core.support.task.BuildConfigurationMetadataAntTask" classpathref="maven.compile.classpath"&amp;gt;
-  &amp;lt;arg value="-OUTPUT_TYPE=${project.packaging}" /&amp;gt;
-  &amp;lt;arg value="-OUTPUT_DIRECTORY=${project.build.directory}" /&amp;gt;
-  &amp;lt;arg value="-OUTPUT_JAR=${project.build.finalName}.jar" /&amp;gt;
-  &amp;lt;arg value="-OUTPUT_DEFAULT_JAR=${project.artifactId}-${project.version}.jar" /&amp;gt;
-  &amp;lt;jvmarg value="--add-opens=java.base/sun.reflect.annotation=ALL-UNNAMED" /&amp;gt;
-&amp;lt;/java&amp;gt;
-  &amp;lt;/target&amp;gt;
-&amp;lt;/configuration&amp;gt;
-  &amp;lt;/execution&amp;gt;
-&amp;lt;/executions&amp;gt;
-
-&amp;lt;dependencies&amp;gt;
-  &amp;lt;dependency&amp;gt;
-&amp;lt;groupId&amp;gt;org.apache.ant&amp;lt;/groupId&amp;gt;
-&amp;lt;artifactId&amp;gt;ant&amp;lt;/artifactId&amp;gt;
-&amp;lt;version&amp;gt;1.10.14&amp;lt;/version&amp;gt;
-  &amp;lt;/dependency&amp;gt;
-&amp;lt;/dependencies&amp;gt;
-&amp;lt;/plugin&amp;gt;&lt;/code&gt;&lt;/pre&gt; 
-&lt;p&gt;然後運行 mvn&amp;nbsp;install&amp;nbsp;就可以自動生成 spring-configuration-metadata.json 配置文件並寫入 jar 包了。&lt;/p&gt; 
-&lt;p&gt;然後就可以愉快的使用智能提示了~&lt;/p&gt;
-                                                                                &lt;/div&gt;
-                                                                            </description>
-      <link>https://www.oschina.net/news/357596</link>
-      <guid isPermaLink="false">https://www.oschina.net/news/357596</guid>
-      <pubDate>Fri, 09 May 2025 07:53:00 GMT</pubDate>
-      <author>來源: 投稿</author>
-    </item>
-    <item>
-      <title>BBS-GO v4.1.0 版本發佈 - 全面支持國際化與富文本編輯體驗升級</title>
-      <description>&lt;div class="content"&gt;
-                                                                    
-                                                        &lt;h2&gt;🎉 版本亮點&lt;/h2&gt; 
-&lt;p style="color:#40485b; margin-left:0; margin-right:0; text-align:start"&gt;我們很高興地宣佈 BBS-GO v4.1.0 正式發佈！這是一個具有里程碑意義的版本，帶來了兩個重要的功能升級：&lt;/p&gt; 
-&lt;h3&gt;🌍 國際化支持 (i18n)&lt;/h3&gt; 
-&lt;ul&gt; 
- &lt;li&gt;&lt;strong&gt;多語言界面&lt;/strong&gt;：新增完整的中英文雙語支持&lt;/li&gt; 
- &lt;li&gt;&lt;strong&gt;語言切換&lt;/strong&gt;：用户可自由切換界面語言，提供更好的國際化體驗&lt;/li&gt; 
- &lt;li&gt;&lt;strong&gt;本地化數據&lt;/strong&gt;：支持多語言數據庫初始化，包括節點、角色等基礎數據&lt;/li&gt; 
- &lt;li&gt;&lt;strong&gt;管理後台&lt;/strong&gt;：管理界面同步支持多語言，方便不同地區的管理員使用&lt;/li&gt; 
-&lt;/ul&gt; 
-&lt;h3&gt;✍️ 全新富文本編輯器&lt;/h3&gt; 
-&lt;ul&gt; 
- &lt;li&gt;&lt;strong&gt;現代化設計&lt;/strong&gt;：採用基於 TipTap 的全新富文本編輯器，界面更加美觀現代&lt;/li&gt; 
- &lt;li&gt;&lt;strong&gt;豐富功能&lt;/strong&gt;：支持標題、列表、表格、代碼塊、引用、鏈接等多種排版元素&lt;/li&gt; 
- &lt;li&gt;&lt;strong&gt;主題適配&lt;/strong&gt;：完美支持明暗主題切換，自動適應用户系統偏好&lt;/li&gt; 
- &lt;li&gt;&lt;strong&gt;圖片處理&lt;/strong&gt;：優化圖片上傳和顯示，支持拖拽上傳和可調整大小&lt;/li&gt; 
- &lt;li&gt;&lt;strong&gt;移動友好&lt;/strong&gt;：響應式設計，在移動設備上同樣提供出色的編輯體驗&lt;/li&gt; 
-&lt;/ul&gt; 
-&lt;h2&gt;🚀 項目簡介&lt;/h2&gt; 
-&lt;p style="color:#40485b; margin-left:0; margin-right:0; text-align:start"&gt;BBS-GO 是一個基於 Go 語言開發的現代化開源社區論壇系統。我們的設計哲學是輕量、高效、易於擴展和部署，旨在為開發者和社區管理者提供一個強大的在線社區解決方案。&lt;/p&gt; 
-&lt;h3&gt;🎯 核心特性&lt;/h3&gt; 
-&lt;ul&gt; 
- &lt;li&gt;&lt;strong&gt;🚀 高性能&lt;/strong&gt;：基於 Go 語言的併發特性，確保在高負載下也能提供流暢的用户體驗&lt;/li&gt; 
- &lt;li&gt;&lt;strong&gt;🔧 高度靈活&lt;/strong&gt;：支持豐富的自定義配置和插件擴展，輕鬆滿足不同場景的業務需求&lt;/li&gt; 
- &lt;li&gt;&lt;strong&gt;👨‍💼 簡單易用&lt;/strong&gt;：擁有設計簡潔、功能強大的管理後台，讓社區管理變得輕鬆高效&lt;/li&gt; 
- &lt;li&gt;&lt;strong&gt;🛡️ 穩定可靠&lt;/strong&gt;：經過充分測試，確保系統穩定性和良好的可擴展性&lt;/li&gt; 
- &lt;li&gt;&lt;strong&gt;📱 響應式設計&lt;/strong&gt;：完美適配桌面和移動設備，為用户提供一致的訪問體驗&lt;/li&gt; 
-&lt;/ul&gt; 
-&lt;h3&gt;🏗️ 技術架構&lt;/h3&gt; 
-&lt;p style="color:#40485b; margin-left:0; margin-right:0; text-align:start"&gt;&lt;strong&gt;後端 (Server)&lt;/strong&gt;&lt;/p&gt; 
-&lt;ul&gt; 
- &lt;li&gt;基於 Go 語言 + Iris 框架構建&lt;/li&gt; 
- &lt;li&gt;使用 GORM 作為 ORM 框架&lt;/li&gt; 
- &lt;li&gt;支持 MySQL 數據庫&lt;/li&gt; 
- &lt;li&gt;提供完整的 RESTful API&lt;/li&gt; 
-&lt;/ul&gt; 
-&lt;p style="color:#40485b; margin-left:0; margin-right:0; text-align:start"&gt;&lt;strong&gt;前端 (Site)&lt;/strong&gt;&lt;/p&gt; 
-&lt;ul&gt; 
- &lt;li&gt;基於 Vue.js + Nuxt.js 構建&lt;/li&gt; 
- &lt;li&gt;服務端渲染 (SSR)，優化 SEO 和加載速度&lt;/li&gt; 
- &lt;li&gt;響應式設計，支持多終端訪問&lt;/li&gt; 
-&lt;/ul&gt; 
-&lt;p style="color:#40485b; margin-left:0; margin-right:0; text-align:start"&gt;&lt;strong&gt;管理後台 (Admin)&lt;/strong&gt;&lt;/p&gt; 
-&lt;ul&gt; 
- &lt;li&gt;基於 Vue.js + Arco Design 構建&lt;/li&gt; 
- &lt;li&gt;功能完整的管理界面&lt;/li&gt; 
- &lt;li&gt;支持用户管理、內容審核、系統配置等&lt;/li&gt; 
-&lt;/ul&gt; 
-&lt;h2&gt;🌟 功能展示&lt;/h2&gt; 
-&lt;p style="color:#333333; margin-left:0; margin-right:0; text-align:left"&gt;&lt;img height="2518" src="https://oscimg.oschina.net/oscnet/up-c2c565122d2d0a51d6ed22cdfcb59e7e0f7.png" width="3940" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;p style="color:#333333; margin-left:0; margin-right:0; text-align:left"&gt;&lt;img height="2518" src="https://oscimg.oschina.net/oscnet/up-aca702ba61c84fb2b2272849b1d4c923c0a.png" width="3940" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;p style="color:#333333; margin-left:0; margin-right:0; text-align:left"&gt;&lt;img height="2518" src="https://oscimg.oschina.net/oscnet/up-82de54a1ed9d52713aad4b09e683f3b71fd.png" width="3940" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;p style="color:#333333; margin-left:0; margin-right:0; text-align:left"&gt;&lt;img height="2518" src="https://oscimg.oschina.net/oscnet/up-de6ff0fbc7a761df69405794d1f8f0807df.png" width="3940" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;h2&gt;🔗 相關鏈接&lt;/h2&gt; 
-&lt;ul&gt; 
- &lt;li&gt;幫助文檔：https://bbs-go.com&lt;/li&gt; 
- &lt;li&gt;官網交流：https://bbs.bbs-go.com&lt;/li&gt; 
- &lt;li&gt;gitee 地址：&lt;a href="https://gitee.com/mlogclub/bbs-go"&gt;https://gitee.com/mlogclub/bbs-go&lt;/a&gt;&lt;/li&gt; 
- &lt;li&gt;github 地址：&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fgithub.com%2Fmlogclub%2Fbbs-go" target="_blank"&gt;https://github.com/mlogclub/bbs-go&lt;/a&gt;&lt;/li&gt; 
-&lt;/ul&gt; 
-&lt;h2&gt;🤝 參與貢獻&lt;/h2&gt; 
-&lt;p style="color:#40485b; margin-left:0; margin-right:0; text-align:start"&gt;BBS-GO 是一個充滿活力的開源項目，我們歡迎任何形式的貢獻：&lt;/p&gt; 
-&lt;ul&gt; 
- &lt;li&gt;🐛 Bug 反饋&lt;/li&gt; 
- &lt;li&gt;💡 功能建議&lt;/li&gt; 
- &lt;li&gt;📝 文檔完善&lt;/li&gt; 
- &lt;li&gt;💻 代碼貢獻&lt;/li&gt; 
- &lt;li&gt;🌍 多語言翻譯&lt;/li&gt; 
-&lt;/ul&gt;
-                                                                                &lt;/div&gt;
-                                                                            </description>
-      <link>https://www.oschina.net/news/357592/bbs-go-4-1-0-released</link>
-      <guid isPermaLink="false">https://www.oschina.net/news/357592/bbs-go-4-1-0-released</guid>
-      <pubDate>Fri, 09 May 2025 07:30:00 GMT</pubDate>
-      <author>來源: 投稿</author>
-    </item>
-    <item>
-      <title>Rust 1.88.0 發佈：引入裸函數 (Naked Functions)、改進鏈式 let 語句</title>
-      <description>&lt;div class="content"&gt;
-                                                                    
-                                                        &lt;p&gt;Rust 1.88.0 已正式&lt;u&gt;&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fblog.rust-lang.org%2F2025%2F06%2F26%2FRust-1.88.0%2F" target="_blank"&gt;發佈&lt;/a&gt;&lt;/u&gt;。&lt;/p&gt; 
-&lt;p&gt;Rust 1.88 引入了支持編寫沒有編譯器生成和前導代碼的裸函數，以允許對該函數生成的彙編代碼擁有完全控制。裸函數使用 &lt;code&gt;_#\[unsafe(naked)\]_&lt;/code&gt; 屬性進行標記。&lt;/p&gt; 
-&lt;p&gt;&lt;img alt="" src="https://oscimg.oschina.net/oscnet/up-2fe189cbfe1916654a90d164d7b95825701.png" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;p&gt;Rust 1.88 還添加了在 if 和 while 語句中使用 "&amp;amp;&amp;amp;" 鏈式連接 let 語句的支持。&lt;/p&gt; 
-&lt;p&gt;在 Cargo 方面，Rust 1.88 為 Cargo 帶來了自動緩存清理功能，通過在主目錄內運行垃圾回收來清理緩存。Cargo 目前設置為在三個月內未被訪問的從網絡下載的文件將被刪除。&lt;/p&gt; 
-&lt;p&gt;Rust 1.88 還為 cfg 條件謂詞語言引入了布爾字面量的支持，並穩定了一些 API，同時將 i686-pc-windows-gnu 目標降級為二級架構。&lt;/p&gt; 
-&lt;p&gt;&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fblog.rust-lang.org%2F2025%2F06%2F26%2FRust-1.88.0%2F" target="_blank"&gt;詳情查看發佈公告&lt;/a&gt;。&lt;/p&gt;
-                                                                                &lt;/div&gt;
-                                                                            </description>
-      <link>https://www.oschina.net/news/357590/rust-1-88-0</link>
-      <guid isPermaLink="false">https://www.oschina.net/news/357590/rust-1-88-0</guid>
-      <pubDate>Fri, 09 May 2025 07:24:00 GMT</pubDate>
-      <author>來源: OSCHINA</author>
-    </item>
-    <item>
-      <title>調問更新 6.20~6.27：考試時長限制+分頁時長限制+2 項功能新增+9 項功能優化+4 項 BugFix</title>
-      <description>&lt;div class="content"&gt;
-                                                                    
-                                                        &lt;div&gt;
- &lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span style="background-color:#ffffff"&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span style="color:#40485b"&gt;&lt;span&gt;&lt;span&gt;調問自開源以來一直堅持前後端所有代碼 100% 開源💯，保證所有功能的穩定與可改造能力👏。&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;
-&lt;/div&gt; 
-&lt;div&gt; 
- &lt;ul&gt; 
-  &lt;li style="margin-left: 0px; margin-right: 0px; text-align: left;"&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span style="background-color:#ffffff"&gt;&lt;span&gt;&lt;strong&gt;&lt;span&gt;&lt;span style="color:#40485b"&gt;&lt;span&gt;&lt;span&gt;🔥 安裝下載地址（安裝包）：&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/strong&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;a href="https://gitee.com/link?target=https%3A%2F%2Fwww.diaowen.net%2Finstall%2Fdocker"&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;u&gt;&lt;span style="color:#1e6fff"&gt;&lt;span&gt;&lt;span&gt;https://www.diaowen.net/install/docker&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/u&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/a&gt;&lt;/span&gt;&lt;/span&gt;&lt;/li&gt; 
-  &lt;li style="margin-left: 0px; margin-right: 0px; text-align: left;"&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span style="background-color:#ffffff"&gt;&lt;span&gt;&lt;strong&gt;&lt;span&gt;&lt;span style="color:#40485b"&gt;&lt;span&gt;&lt;span&gt;🔥 源碼下載地址： &lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/strong&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;a href="https://gitee.com/wkeyuan/DWSurvey"&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;u&gt;&lt;span style="color:#1e6fff"&gt;&lt;span&gt;&lt;span&gt;https://gitee.com/wkeyuan/DWSurvey&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/u&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/a&gt;&lt;/span&gt;&lt;/span&gt;&lt;/li&gt; 
- &lt;/ul&gt; 
- &lt;p style="margin-left:0; margin-right:0; text-align:justify"&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span style="color:#333333"&gt;&lt;span&gt;&lt;span&gt;本週針對考試場景下的的客户需求，在細節能力上又進行了進一步的功能增加和優化，其中包括&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;span style="color:#1abc9c"&gt;&lt;strong&gt;考試總時長限制&lt;/strong&gt;&lt;/span&gt;&lt;span style="color:#333333"&gt;&lt;span&gt;&lt;span&gt;，目前可以控制考試總時長，並且可以設置倒計時，這個能力是考試場景下的剛需，調問在客户的不斷支持下，現在也具備了這個能力&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span style="color:#333333"&gt;&lt;span&gt;&lt;span&gt;。&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/p&gt; 
- &lt;p style="margin-left:0; margin-right:0; text-align:justify"&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span style="color:#333333"&gt;&lt;span&gt;&lt;span&gt;此外，還可以根據&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;strong&gt;&lt;span style="color:#1abc9c"&gt;每一頁進行時長限制&lt;/span&gt;&lt;/strong&gt;&lt;span style="color:#333333"&gt;&lt;span&gt;&lt;span&gt;，可以配置每一頁的最短時間，這樣可以防止胡亂答題的情況，讓用户認真對待每一份問卷：&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/p&gt; 
- &lt;p style="margin-left:0; margin-right:0; text-align:justify"&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span style="color:#000000"&gt;&lt;span&gt;&lt;span&gt;歡迎夥伴們，在 surveyform.cn 上進行體驗、試用！！！&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fsurveyform.cn%2F" target="_blank"&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;u&gt;&lt;span style="color:#1e6fff"&gt;&lt;span&gt;&lt;span&gt;https://www.surveyform.cn&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/u&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/a&gt;&lt;/span&gt;&lt;/span&gt;&lt;/p&gt; 
- &lt;p style="margin-left:0; margin-right:0; text-align:justify"&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;strong&gt;&lt;span&gt;&lt;span style="color:#000000"&gt;&lt;span&gt;&lt;span&gt;本週更新：&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/strong&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/p&gt; 
- &lt;p style="margin-left:0; margin-right:0; text-align:justify"&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;strong&gt;&lt;span&gt;&lt;span style="color:#1abc9c"&gt;&lt;span&gt;&lt;span&gt;功能新增：&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/strong&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/p&gt; 
- &lt;ul&gt; 
-  &lt;li&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span style="color:#333333"&gt;&lt;span&gt;&lt;span&gt;考試場景下，增加考試時長限制（倒計時）能力，可以控制配置考試時間；&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/li&gt; 
-  &lt;li&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span style="color:#333333"&gt;&lt;span&gt;&lt;span&gt;增加分頁限制（每頁最短時長，最大）能力，限制每頁顯示時間。&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/li&gt; 
- &lt;/ul&gt; 
- &lt;p style="margin-left:0; margin-right:0; text-align:justify"&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;strong&gt;&lt;span&gt;&lt;span style="color:#1abc9c"&gt;&lt;span&gt;&lt;span&gt;功能優化：&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/strong&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/p&gt; 
- &lt;ul&gt; 
-  &lt;li&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span style="color:#333333"&gt;&lt;span&gt;&lt;span&gt;實現每頁一題，打完後自動下一頁；&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/li&gt; 
-  &lt;li&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span style="color:#333333"&gt;&lt;span&gt;&lt;span&gt;管理後台看到答卷中可以看維度量表信息；&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/li&gt; 
-  &lt;li&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span style="color:#333333"&gt;&lt;span&gt;&lt;span&gt;添加 DSL 單選題賦值功能，實現 DSL 可以設置除填空題值後，也可以配置選擇題；&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/li&gt; 
-  &lt;li&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span style="color:#333333"&gt;&lt;span&gt;&lt;span&gt;DSL 驗證文本，自定義驗證錯誤信息文本；&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/li&gt; 
-  &lt;li&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span style="color:#333333"&gt;&lt;span&gt;&lt;span&gt;可以給答卷限定特定的地區，防止其它地區參考答卷；&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/li&gt; 
-  &lt;li&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span style="color:#333333"&gt;&lt;span&gt;&lt;span&gt;答卷時支持清空答案，重新填寫；&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/li&gt; 
-  &lt;li&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span style="color:#333333"&gt;&lt;span&gt;&lt;span&gt;優化打包部署方式，通過 JAR 包部署可以自定義配置文件；&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/li&gt; 
-  &lt;li&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span style="color:#333333"&gt;&lt;span&gt;&lt;span&gt;優化 API 自動登錄流程；&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/li&gt; 
-  &lt;li&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span style="color:#333333"&gt;&lt;span&gt;&lt;span&gt;優化 webhook 推送方案。&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/li&gt; 
- &lt;/ul&gt; 
- &lt;p style="margin-left:0; margin-right:0; text-align:justify"&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;strong&gt;&lt;span&gt;&lt;span style="color:#1abc9c"&gt;&lt;span&gt;&lt;span&gt;BUG 修復：&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/strong&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/p&gt; 
- &lt;ul&gt; 
-  &lt;li&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span style="color:#333333"&gt;&lt;span&gt;&lt;span&gt;修復點擊下一頁時，如果題目過多能自動跳到第一題的問題；&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/li&gt; 
-  &lt;li&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span style="color:#333333"&gt;&lt;span&gt;&lt;span&gt;解決新包在下載原始數據時，權限信息丟失問題；&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/li&gt; 
-  &lt;li&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span style="color:#333333"&gt;&lt;span&gt;&lt;span&gt;修復題目標記在不顯示答題卡時仍然顯示的問題；&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/li&gt; 
-  &lt;li&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span style="color:#333333"&gt;&lt;span&gt;&lt;span&gt;修復題型名稱在移動端不顯示問題。&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/li&gt; 
- &lt;/ul&gt; 
-&lt;/div&gt;
-                                                                                &lt;/div&gt;
-                                                                            </description>
-      <link>https://www.oschina.net/news/357585/dwsurvey-updated</link>
-      <guid isPermaLink="false">https://www.oschina.net/news/357585/dwsurvey-updated</guid>
-      <pubDate>Fri, 09 May 2025 07:07:00 GMT</pubDate>
-      <author>來源: 投稿</author>
-    </item>
-    <item>
-      <title>Jakarta EE 11 發佈，增強企業 Java 開發人員生產力和性能</title>
-      <description>&lt;div class="content"&gt;
-                                                                    
-                                                        &lt;p style="margin-left:0; margin-right:0; text-align:start"&gt;&lt;span style="color:#4c4d4e"&gt;Eclipse 基金會&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fblogs.eclipse.org%2Fpost%2Ftatjana-obradovic%2Fjakarta-ee-11-empowering-enterprise-java-developers-enhanced-productivity" target="_blank"&gt;宣佈&lt;/a&gt;發佈&amp;nbsp;&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fjakarta.ee%2Frelease%2F11%2F" target="_blank"&gt;Jakarta EE 11&lt;/a&gt;平台，該平台基於之前的核心配置文件 (2024 年 12 月) 和 Web 配置文件 (2025 年 3 月) 版本構建。&amp;nbsp;&lt;/span&gt;&lt;/p&gt; 
-&lt;p style="margin-left:0; margin-right:0; text-align:start"&gt;&lt;span style="color:#4c4d4e"&gt;此版本標誌着企業級 Java 在簡化開發、提升開發人員生產力和整體性能方面的進步。主要亮點包括：現代化的測試兼容性工具包 (TCK)、全新 Jakarta Data 規範的引入、對現有規範的重大更新以及對最新 Java LTS 版本的支持，使開發人員能夠充分利用 Java 21 中的增強功能，包括虛擬線程。&lt;/span&gt;&lt;/p&gt; 
-&lt;h4 style="text-align:start"&gt;&lt;strong&gt;&lt;span style="color:#272726"&gt;Jakarta EE 11 的主要功能&lt;/span&gt;&lt;/strong&gt;&lt;/h4&gt; 
-&lt;p style="margin-left:0; margin-right:0; text-align:start"&gt;&lt;span style="color:#4c4d4e"&gt;&lt;strong&gt;自 Jakarta EE 10 發佈以來，企業級 Java 復興進程持續加速。Jakarta EE 11 在此基礎上進一步提升性能，並在 Jakarta Data 規範&lt;/strong&gt;的引入下，進一步提升了開發人員的工作效率&amp;nbsp;。&lt;/span&gt;&lt;/p&gt; 
-&lt;p style="margin-left:0; margin-right:0; text-align:start"&gt;&lt;span style="color:#4c4d4e"&gt;Jakarta Data 在簡化企業應用程序持久化邏輯方面邁出了重要一步。主要功能包括：&lt;/span&gt;&lt;/p&gt; 
-&lt;ul&gt; 
- &lt;li&gt;&lt;strong&gt;BasicRepository&amp;nbsp;&lt;/strong&gt;：基礎存儲庫接口，為基本數據操作提供開箱即用的支持，減少樣板和設置時間。&lt;/li&gt; 
- &lt;li&gt;&lt;strong&gt;CrudRepository&amp;nbsp;&lt;/strong&gt;：在 BasicRepository 的基礎上提供完整的創建、讀取、更新和刪除 (CRUD) 功能，實現乾淨、直觀的數據庫交互。&lt;/li&gt; 
- &lt;li&gt;&lt;strong&gt;Pagination&lt;/strong&gt;：包括對基於偏移量和基於遊標的分頁支持，為開發人員提供靈活的工具來有效地管理大型數據集。&lt;/li&gt; 
- &lt;li&gt;&lt;strong&gt;Query Language&lt;/strong&gt;：引入一種簡潔、專用的查詢語言，可直接簡化 Jakarta 數據存儲庫中的方法級查詢定義。&lt;/li&gt; 
-&lt;/ul&gt; 
-&lt;h4 style="text-align:start"&gt;&lt;strong&gt;&lt;span style="color:#272726"&gt;TCK 的現代化&lt;/span&gt;&lt;/strong&gt;&lt;/h4&gt; 
-&lt;p style="margin-left:0; margin-right:0; text-align:start"&gt;&lt;span style="color:#4c4d4e"&gt;此次發佈的一大亮點是對 Jakarta EE 平台測試兼容性套件 (TCK) 的現代化升級和增強。通過整合 JUnit 5 和 Maven 等現代測試工具，這項舉措提升了可維護性和靈活性，使 TCK 能夠更輕鬆地與平台一同發展。&lt;/span&gt;&lt;/p&gt; 
-&lt;p style="margin-left:0; margin-right:0; text-align:start"&gt;&lt;span style="color:#4c4d4e"&gt;這些更新簡化了兼容性測試，降低了貢獻新測試的門檻，有助於推動 Jakarta EE 生態系統未來的創新。因此，貢獻者可以更輕鬆地上手，而有意參與的新供應商或開發者也將發現加入和貢獻的便捷性顯著提升。有意參與的人士可以通過&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fprojects.eclipse.org%2Fprojects%2Fee4j.jakartaee-tck" target="_blank"&gt;&amp;nbsp;Jakarta EE TCK 項目頁面&lt;/a&gt;瞭解更多信息並積極參與。&amp;nbsp;&lt;/span&gt;&lt;/p&gt; 
-&lt;h4 style="text-align:start"&gt;&lt;strong&gt;&lt;span style="color:#272726"&gt;精簡規範&lt;/span&gt;&lt;/strong&gt;&lt;/h4&gt; 
-&lt;p style="margin-left:0; margin-right:0; text-align:start"&gt;&lt;span style="color:#4c4d4e"&gt;一項顯著的變化是&amp;nbsp;&lt;strong&gt;移除了已棄用的託管 Bean 規範&lt;/strong&gt;，該規範早已被更靈活、更強大的替代方案所取代。此次清理有助於降低遺留系統的複雜性，並明確了未來推薦的編程模型。&lt;/span&gt;&lt;/p&gt; 
-&lt;p style="margin-left:0; margin-right:0; text-align:start"&gt;&lt;span style="color:#4c4d4e"&gt;為此，該平台高度重視&amp;nbsp;&lt;strong&gt;上下文和依賴注入 (CDI)&amp;nbsp;&lt;/strong&gt;作為核心編程模型。Jakarta EE 11 進一步增強了 CDI，使其成為託管 Bean 的標準替代方案。該版本還通過&amp;nbsp;&lt;strong&gt;支持各種規範（例如 Jakarta Bean Validation）的 Java Records 功能，進一步強化了其對現代 Java 特性的承諾&lt;/strong&gt;。&lt;/span&gt;&lt;/p&gt; 
-&lt;p style="margin-left:0; margin-right:0; text-align:start"&gt;&lt;span style="color:#4c4d4e"&gt;最後，Jakarta EE 11 與 Java 平台的方向保持一致，&amp;nbsp;&lt;strong&gt;刪除了對 Java SE SecurityManager 的所有引用&lt;/strong&gt;，遵循了 JEP 411 中概述的棄用規定。&lt;/span&gt;&lt;/p&gt; 
-&lt;h4 style="text-align:start"&gt;&lt;strong&gt;&lt;span style="color:#272726"&gt;Leveraging Java 21 Enhancements&lt;/span&gt;&lt;/strong&gt;&lt;/h4&gt; 
-&lt;p style="margin-left:0; margin-right:0; text-align:start"&gt;&lt;span style="color:#4c4d4e"&gt;Jakarta EE 11 支持 Java 17 或更高版本，併為 Java 21 用户提供了獨特的增強功能。其中最顯著的功能之一是更新的併發規範，使開發人員能夠利用 Java 21 中的虛擬線程。這可以高效處理併發任務，而無需承擔傳統線程管理的開銷，從而顯著提升性能。&lt;/span&gt;&lt;/p&gt; 
-&lt;h4 style="margin-left:0px; margin-right:0px; text-align:start"&gt;&lt;strong&gt;&lt;span style="color:#4c4d4e"&gt;接下來&lt;/span&gt;&lt;/strong&gt;&lt;/h4&gt; 
-&lt;p style="margin-left:0; margin-right:0; text-align:start"&gt;&lt;span style="color:#4c4d4e"&gt;Jakarta EE 12 的開發工作已在進行中，計劃於 2026 年發佈。下一版本旨在將平台的 API 源代碼級別提升至 Java SE 21，並瞄準 Java SE 25 的運行時支持。社區正在積極推進多項規範的增強，包括可能引入 Jakarta Query 和 Jakarta MVC 等功能，並持續改進 Jakarta NoSQL。Jakarta EE 秉承既定的兩年發佈週期，繼續優先考慮長期規劃和持續創新。&lt;/span&gt;&lt;/p&gt;
-                                                                                &lt;/div&gt;
-                                                                            </description>
-      <link>https://www.oschina.net/news/357577/jakarta-ee-11</link>
-      <guid isPermaLink="false">https://www.oschina.net/news/357577/jakarta-ee-11</guid>
-      <pubDate>Fri, 09 May 2025 06:41:00 GMT</pubDate>
-      <author>來源: OSCHINA</author>
-    </item>
-    <item>
-      <title>開源的 OA 辦公系統 — 勾股 OA 5.8 發佈</title>
-      <description>&lt;div class="content"&gt;
-                                                                    
-                                                        &lt;p style="color:#40485b; margin-left:0; margin-right:0; text-align:start"&gt;勾股 OA 辦公系統是一款簡單實用的開源的企業辦公系統。系統集成了系統設置、附件管理、人事管理、行政管理、消息管理、企業公告、知識網盤、審批流程設置、辦公審批、日常辦公、財務管理、客户管理、合同管理、項目管理、任務管理等功能模塊。系統簡約，易於功能擴展，方便二次開發，可以用來做日常 OA，CRM，ERP，業務管理等系統。&lt;/p&gt; 
-&lt;p style="color:#40485b; margin-left:0; margin-right:0; text-align:start"&gt;勾股 OA5.8 版，主要更是日常的功能優化、小 bug 修復，屬於小版本的更新升級，升級前記得先備份，本次更新需要更新數據庫文件（具體查看文件目錄的文件：\update_sql\v5.7.6 升級到 v5.8.sql）。另外，本次更新涉及到靜態文件更新，更新完畢後，記得 ctrl+f5 去一下瀏覽器緩存&lt;/p&gt; 
-&lt;p style="color:#40485b; margin-left:0; margin-right:0; text-align:start"&gt;1、優化：審批模塊、支持設置是否開啓抄送人、是否支持撤回、是否支持審批時上傳附件&lt;br&gt; 2、修復：多層級側邊欄，無法查看附件的問題&lt;br&gt; 3、修復：文件大小格式化時，可能傳入參數是字符串引起的計算 bug&lt;br&gt; 4、修復：移動端 mbui 選擇人員控件選擇所在部門錯誤的問題&lt;br&gt; 5、優化：移動端 mbui 加載數據控件&lt;br&gt; 6、升級：layui 升級到最新的 v2.11.4 穩定版本&lt;br&gt; 7、優化：部門層級支持到 5 層級&lt;br&gt; 9、新增：項目新增完成狀態可反確認功能&lt;br&gt; 10、新增：項目時項目階段可選擇操作&lt;br&gt; 11、新增：項目文檔可上傳附件功能&lt;br&gt; 12、優化：優化表單表格樣式&lt;br&gt; 13、修復：審批類型設置狀態方法命名錯誤問題修復。&lt;br&gt; 14、優化：去除 4.0 版本以前無用的代碼&lt;br&gt; 15、修復：thinkph-orm 新版不兼容消息處理的一個問題修復。&lt;br&gt; 16、優化：完善部分已知的問題或者細節小調整。&lt;/p&gt; 
-&lt;p style="color:#40485b; margin-left:0; margin-right:0; text-align:start"&gt;勾股 OA5.8，具體看如下功能導圖：&lt;/p&gt; 
-&lt;p style="color:#40485b; margin-left:0; margin-right:0; text-align:start"&gt;&lt;img alt="" src="https://oscimg.oschina.net/oscnet/up-d392f9dab84420e6bcfbbd83491fc34c7c0.png" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;h3&gt;內置模塊&lt;/h3&gt; 
-&lt;ul&gt; 
- &lt;li&gt;配置管理：對系統的常規配置信息進行維護，網站配置管理功能統一維護。&lt;/li&gt; 
- &lt;li&gt;用户管理：維護管理系統的用户，常規信息的維護與賬號設置。&lt;/li&gt; 
- &lt;li&gt;菜單管理：配置系統菜單，操作權限，按鈕權限標識等。&lt;/li&gt; 
- &lt;li&gt;權限角色：角色菜單管理與權限分配、設置角色所擁有的菜單權限。&lt;/li&gt; 
- &lt;li&gt;部門管理：管理系統組織架構，對組織架構進行統一管理維護。&lt;/li&gt; 
- &lt;li&gt;崗位管理：管理用户擔任的崗位。&lt;/li&gt; 
- &lt;li&gt;操作日誌：系統正常操作日誌記錄和查詢；系統異常信息日誌記錄和查詢。&lt;/li&gt; 
- &lt;li&gt;基礎數據：對系統中常用的較為固定的數據進行統一維護管理。&lt;/li&gt; 
- &lt;li&gt;消息通知：系統通知私信、消息等管理。&lt;/li&gt; 
- &lt;li&gt;企業公告：企業公告信息發佈維護。&lt;/li&gt; 
- &lt;li&gt;&lt;span style="background-color:#ffffff; color:#40485b"&gt;辦公審批：&lt;/span&gt;支持人事、財務、行政、業務等多審批流程。&lt;/li&gt; 
- &lt;li&gt;&lt;span style="background-color:#ffffff; color:#40485b"&gt;日常辦公：&lt;/span&gt;日程、計劃、週報、日報、月報等信息化辦公工具。&lt;/li&gt; 
- &lt;li&gt;&lt;span style="background-color:#ffffff; color:#40485b"&gt;財務管理：&lt;/span&gt;財務報銷、開票、收票、到賬，付款財務數據規範化管理。&lt;/li&gt; 
- &lt;li&gt;&lt;span style="background-color:#ffffff; color:#40485b"&gt;客户管理：&lt;/span&gt;統一管理客户，沉澱客户資產，避免客户流失。&lt;/li&gt; 
- &lt;li&gt;&lt;span style="background-color:#ffffff; color:#40485b"&gt;合同管理：&lt;/span&gt;合同維護、審批、執行、變更、關閉全流程管理。&lt;/li&gt; 
- &lt;li&gt;&lt;span style="background-color:#ffffff; color:#40485b"&gt;項目管理：&lt;/span&gt;項目操作記錄全覆蓋跟蹤，項目進度一目瞭然，任務分派，工時記錄。&lt;/li&gt; 
- &lt;li&gt;&lt;span style="background-color:#ffffff; color:#40485b"&gt;知識網盤：工作經驗、行業知識、文件歸類管理。&lt;/span&gt;&lt;/li&gt; 
-&lt;/ul&gt; 
-&lt;h3&gt;軟件信息&lt;/h3&gt; 
-&lt;ul&gt; 
- &lt;li&gt;軟件名稱：勾股 OA&lt;/li&gt; 
- &lt;li&gt;開源地址：&lt;a href="https://gitee.com/gouguopen/office"&gt;https://gitee.com/gouguopen/office&lt;/a&gt;&lt;/li&gt; 
- &lt;li&gt;官網網址：&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fwww.gougucms.com%2Fhome%2Fpages%2Fdetail%2Fs%2Fgouguoa.html" target="_blank"&gt;https://www.gougucms.com/home/pages/detail/s/gouguoa.html&lt;/a&gt;&lt;/li&gt; 
- &lt;li&gt;文檔網址：&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fblog.gougucms.com%2Fhome%2Fbook%2Fdetail%2Fbid%2F3.html" target="_blank"&gt;https://blog.gougucms.com/home/book/detail/bid/3.html&lt;/a&gt;&lt;/li&gt; 
-&lt;/ul&gt; 
-&lt;h3&gt;系統預覽&lt;/h3&gt; 
-&lt;p style="color:#333333; margin-left:0; margin-right:0; text-align:left"&gt;&lt;img alt="" height="688" src="https://oscimg.oschina.net/oscnet/up-114ac577175174bd2d0e57babceb6711d72.jpg" width="700" referrerpolicy="no-referrer"&gt;&lt;/p&gt;
-                                                                                &lt;/div&gt;
-                                                                            </description>
-      <link>https://www.oschina.net/news/357564/gouguopen-5-8-released</link>
-      <guid isPermaLink="false">https://www.oschina.net/news/357564/gouguopen-5-8-released</guid>
-      <pubDate>Fri, 09 May 2025 05:51:00 GMT</pubDate>
-      <author>來源: 投稿</author>
-    </item>
-    <item>
-      <title>Notepad-- v3.4 已經發布，文本編輯器</title>
-      <description>&lt;div class="content"&gt;
-                                                                    
-                                                        &lt;p&gt;Notepad-- v3.4 已經發布，文本編輯器&lt;/p&gt;
-&lt;p&gt;此版本更新內容包括：&lt;/p&gt;
-&lt;p&gt;&lt;strong&gt;windows&lt;/strong&gt;&lt;/p&gt; 
-&lt;p&gt;Notepad--v3.4.0-plugin-Installer.exe 是 win10 下面的插件版安裝包，會關聯右鍵菜單等。 Notepad--v3.4.0-win10-portable.zip 是綠色免安裝版本，解壓即用，不會關聯右鍵菜單註冊表。&lt;/p&gt; 
-&lt;p&gt;Ndd-quick-v3.3.0-win10-single-portable.zip 是單文件綠色免安裝版，只包含皮膚和 vc 依賴庫，不含插件、不含文件對比，主推輕量級、快速反應。適合只需要純粹、輕快級，文本編輯器的用户。不定期發佈。&lt;/p&gt; 
-&lt;p&gt;&lt;strong&gt;MacOS 版本&lt;/strong&gt;&lt;/p&gt; 
-&lt;p&gt;Notepad--v3.4.0-mac_x64_12.3.dmg 是 macos 12.x 及以後的版本。&lt;/p&gt; 
-&lt;p&gt;Notepad--v3.4.0-mac_arm64_12.3.dmg 是 macos 12.x 及以後 arm64 m1/m2 芯片，的版本。第一次安裝時，需要在設置偏好裏面，放開蘋果的安裝限制，才能正常識別，請自行放開設置一下。&lt;/p&gt; 
-&lt;p&gt;如果還是有問題，參考帖子：#I8JTJN:macOS Sonoma 14.1.1 安裝提示已損壞&lt;/p&gt; 
-&lt;p&gt;&lt;strong&gt;uos&lt;/strong&gt;&lt;/p&gt; 
-&lt;p&gt;com.hmja.notepad_3.4.0.0_amd64.deb 是 x64 cpu 架構的 uos 系統對應的 ndd 版本。&lt;/p&gt; 
-&lt;p&gt;其餘系統版本後續會發布。&lt;/p&gt; 
-&lt;p&gt;&lt;strong&gt;3.4 修改如下：&lt;/strong&gt;&lt;/p&gt; 
-&lt;p&gt;1 支持文件標籤拖入拖出到新窗口的效果。&lt;/p&gt; 
-&lt;p&gt;2 windows 下修改快捷鍵放開。&lt;/p&gt; 
-&lt;p&gt;3 按行號切分大文件。&lt;/p&gt; 
-&lt;p&gt;4 大文件打開時，在文件夾查找所在目錄，macos 下可能會崩潰問題。&lt;/p&gt; 
-&lt;p&gt;5 目錄右鍵增加刪除文件、文件夾功能。&lt;/p&gt; 
-&lt;p&gt;6 補充深色主題下 rust 語法高亮; lisp 語法失效問題。&lt;/p&gt; 
-&lt;p&gt;7 linux 下信號打開文件，不拿鎖，打開文件在消息隊列中去做。&lt;/p&gt; 
-&lt;p&gt;8 黑色模式下默認 tab 未修改圖標錯誤。&lt;/p&gt; 
-&lt;p&gt;9 對比查找框支持 esc 退出。&lt;/p&gt; 
-&lt;p&gt;10 對比時對齊的部分不使用行號&lt;/p&gt; 
-&lt;p&gt;11 改善 markdown 每次從頭預覽顯示的問題&lt;/p&gt; 
-&lt;p&gt;12 關閉時新增全部不保存按鈕&lt;/p&gt; 
-&lt;p&gt;13 查找結果是否自動摺疊提供可配置。&lt;/p&gt; 
-&lt;p&gt;14 普通文本限制放大到 200M；批量編碼轉換限制放大到 200M&lt;/p&gt; 
-&lt;p&gt;15 查找結果的行號右對齊，讓右邊文本能夠對齊顯示&lt;/p&gt; 
-&lt;p&gt;16 解決深色背景下，第一次打開如果不重新激活，標題欄還是白色的問題&lt;/p&gt;
-&lt;p&gt;詳情查看：&lt;a href="https://gitee.com/cxasm/notepad--/releases/v3.4" rel="nofollow"&gt;https://gitee.com/cxasm/notepad--/releases/v3.4&lt;/a&gt;&lt;/p&gt;
-                                                                                &lt;/div&gt;
-                                                                            </description>
-      <link>https://www.oschina.net/news/357546</link>
-      <guid isPermaLink="false">https://www.oschina.net/news/357546</guid>
-      <pubDate>Fri, 09 May 2025 03:47:00 GMT</pubDate>
-      <author>來源: 投稿</author>
-    </item>
-    <item>
-      <title>MariaDB 12.1 預覽版發佈</title>
-      <description>&lt;div class="content"&gt;
-                                                                    
-                                                        &lt;p&gt;&lt;span style="color:#111111"&gt;&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fmariadb.com%2Fdocs%2Frelease-notes%2Fmariadb-community-server-release-notes%2Frelease-notes-mariadb-12.1-rolling-releases" target="_blank"&gt;MariaDB 12.1&lt;/a&gt;&amp;nbsp;系列現已推出預覽版。新版本引入了許多新功能，一些亮點如下：&lt;/span&gt;&lt;/p&gt; 
-&lt;p style="margin-left:0px; margin-right:0px; text-align:start"&gt;&lt;span style="color:#000000"&gt;&lt;strong&gt;性能改進&lt;/strong&gt;&lt;/span&gt;&lt;/p&gt; 
-&lt;ul style="margin-left:0; margin-right:0"&gt; 
- &lt;li&gt;Aria 的分段密鑰緩存（&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fjira.mariadb.org%2Fbrowse%2FMDEV-24" target="_blank"&gt;MDEV-24&lt;/a&gt;）&lt;/li&gt; 
- &lt;li&gt;MDL 可擴展性改進（&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fjira.mariadb.org%2Fbrowse%2FMDEV-19749" target="_blank"&gt;MDEV-19749&lt;/a&gt;）&lt;/li&gt; 
- &lt;li&gt;Galera replicas 的並行複製（&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fjira.mariadb.org%2Fbrowse%2FMDEV-20065" target="_blank"&gt;MDEV-20065&lt;/a&gt;）&lt;/li&gt; 
- &lt;li&gt;審計插件的緩衝日誌記錄（&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fjira.mariadb.org%2Fbrowse%2FMDEV-34680" target="_blank"&gt;MDEV-34680&lt;/a&gt;）&lt;/li&gt; 
- &lt;li&gt;通過外推法更快地計算向量距離（&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fjira.mariadb.org%2Fbrowse%2FMDEV-36205" target="_blank"&gt;MDEV-36205&lt;/a&gt;）&lt;/li&gt; 
-&lt;/ul&gt; 
-&lt;p style="margin-left:0px; margin-right:0px; text-align:start"&gt;&lt;span style="color:#000000"&gt;&lt;strong&gt;兼容性功能&lt;/strong&gt;&lt;/span&gt;&lt;/p&gt; 
-&lt;ul style="margin-left:0; margin-right:0"&gt; 
- &lt;li&gt;caching_sha2_password 插件（&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fjira.mariadb.org%2Fbrowse%2FMDEV-9804" target="_blank"&gt;MDEV-9804&lt;/a&gt;）&lt;/li&gt; 
- &lt;li&gt;( + )&amp;nbsp;用於外連接語法（&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fjira.mariadb.org%2Fbrowse%2FMDEV-13817" target="_blank"&gt;MDEV-13817&lt;/a&gt;）&lt;/li&gt; 
- &lt;li&gt;rpl_semi_sync_master_wait_for_slave_count (&amp;nbsp;&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fjira.mariadb.org%2Fbrowse%2FMDEV-18983" target="_blank"&gt;MDEV-18983&lt;/a&gt;&amp;nbsp;)&lt;/li&gt; 
- &lt;li&gt;關聯數組：DECLARE TYPE..TABLE OF..INDEX BY（&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fjira.mariadb.org%2Fbrowse%2FMDEV-34319" target="_blank"&gt;MDEV-34319&lt;/a&gt;）&lt;/li&gt; 
- &lt;li&gt;如果用户有活動會話，則 DROP USER 失敗（&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fjira.mariadb.org%2Fbrowse%2FMDEV-35617" target="_blank"&gt;MDEV-35617&lt;/a&gt;）&lt;/li&gt; 
- &lt;li&gt;Optimizer hints：[NO_]JOIN_INDEX、[NO_]GROUP_INDEX、[NO_]ORDER_INDEX、[NO_]INDEX（&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fjira.mariadb.org%2Fbrowse%2FMDEV-35856" target="_blank"&gt;MDEV-35856&lt;/a&gt;）&lt;/li&gt; 
- &lt;li&gt;Optimizer hints：[NO_]SPLIT_MATERIALIZED (&amp;nbsp;&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fjira.mariadb.org%2Fbrowse%2FMDEV-36092" target="_blank"&gt;MDEV-36092&lt;/a&gt;&amp;nbsp;)&lt;/li&gt; 
- &lt;li&gt;Optimizer hints：[NO_]DERIVED_CONDITION_PUSHDOWN、[NO_]MERGE（&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fjira.mariadb.org%2Fbrowse%2FMDEV-36106" target="_blank"&gt;MDEV-36106&lt;/a&gt;）&lt;/li&gt; 
-&lt;/ul&gt; 
-&lt;p style="margin-left:0px; margin-right:0px; text-align:start"&gt;&lt;strong&gt;&lt;span style="color:#000000"&gt;其他&lt;/span&gt;&lt;/strong&gt;&lt;/p&gt; 
-&lt;ul style="margin-left:0; margin-right:0"&gt; 
- &lt;li&gt;重試在 galera 節點上應用寫入集（&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fjira.mariadb.org%2Fbrowse%2FMDEV-36077" target="_blank"&gt;MDEV-36077&lt;/a&gt;）&lt;/li&gt; 
- &lt;li&gt;mariadb-dump 中的通配符支持（&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fjira.mariadb.org%2Fbrowse%2FMDEV-21376" target="_blank"&gt;MDEV-21376&lt;/a&gt;）&lt;/li&gt; 
- &lt;li&gt;每個表唯一的 FOREIGN KEY 約束名稱（&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fjira.mariadb.org%2Fbrowse%2FMDEV-28933" target="_blank"&gt;MDEV-28933&lt;/a&gt;）&lt;/li&gt; 
- &lt;li&gt;刪除 JSON 函數的深度限制（&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fjira.mariadb.org%2Fbrowse%2FMDEV-32854" target="_blank"&gt;MDEV-32854&lt;/a&gt;）&lt;/li&gt; 
- &lt;li&gt;支持 GROUP/ORDER BY 中的功能索引（&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fjira.mariadb.org%2Fbrowse%2FMDEV-36132" target="_blank"&gt;MDEV-36132&lt;/a&gt;）&lt;/li&gt; 
- &lt;li&gt;在 optimizer trace 中包含表和視圖的定義（&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fjira.mariadb.org%2Fbrowse%2FMDEV-36483" target="_blank"&gt;MDEV-36483&lt;/a&gt;）&lt;/li&gt; 
-&lt;/ul&gt; 
-&lt;p&gt;&lt;span style="color:#000000"&gt;發佈公告：&lt;/span&gt;&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fmariadb.org%2Fmariadb-12-1-preview-available%2F" target="_blank"&gt;https://mariadb.org/mariadb-12-1-preview-available/&lt;/a&gt;&lt;/p&gt;
-                                                                                &lt;/div&gt;
-                                                                            </description>
-      <link>https://www.oschina.net/news/357545/mariadb-12-1-preview</link>
-      <guid isPermaLink="false">https://www.oschina.net/news/357545/mariadb-12-1-preview</guid>
-      <pubDate>Fri, 09 May 2025 03:47:00 GMT</pubDate>
-      <author>來源: OSCHINA</author>
-    </item>
-    <item>
-      <title>字節跳動旗下開源多模態智能體 Agent TARS 發佈 Beta 版本</title>
-      <description>&lt;div class="content"&gt;
-                                                                    
-                                                        &lt;p&gt;字節跳動正式&lt;u&gt;&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fagent-tars.com%2Fzh%2Fblog%2F2025-06-25-introducing-agent-tars-beta.html" target="_blank"&gt;發佈&lt;/a&gt;&lt;/u&gt;了&amp;nbsp;Agent TARS&amp;nbsp;的 Beta 版本，將其定位為一個開源的多模態&amp;nbsp;AI Agent&amp;nbsp;工具，旨在提供與各種現實世界工具的無縫集成能力，並實現「隨時隨地可用」。&lt;/p&gt; 
-&lt;p&gt;&lt;img alt="" src="https://oscimg.oschina.net/oscnet/up-de6be480af81939d00d5c997035bf46b81b.png" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;p&gt;Agent TARS&amp;nbsp;的早期預覽版已於三月份開源。此次 Beta 版本的發佈得益於&amp;nbsp;Seed&amp;nbsp;多模態模型（如&amp;nbsp;UI-TARS 1.5&amp;nbsp;和&amp;nbsp;Doubao 1.5 VL）的逐步增強，並解決了早期架構中&amp;nbsp;Agent UI&amp;nbsp;未解耦等挑戰。&lt;/p&gt; 
-&lt;p&gt;新版本引入了全新的多層分層架構，其核心構建在一個基於事件流驅動的&amp;nbsp;Agent Kernel&amp;nbsp;上。Agent TARS&amp;nbsp;的設計原則包括：&lt;/p&gt; 
-&lt;ul&gt; 
- &lt;li&gt;&lt;strong&gt;上下文工程 (Context Engineering)&lt;/strong&gt;：為構建長時間運行的 Agent，新版本對 Agent Loop 的內存進行了動態優化，針對不同模態內容採用不同的滑動窗口，並面向上下文窗口進行優化和計算，以解決上下文溢出問題。&lt;/li&gt; 
- &lt;li&gt;&lt;strong&gt;MCP (多模態通信協議) 的洞察&lt;/strong&gt;：Agent TARS 團隊認為 MCP 應作為標準化的工具分發協議，而非自由拓展工具的方式，並計劃建立 MCP 工具的基準測試，以評估其模型兼容性、上下文壓縮率和性能等。&lt;/li&gt; 
- &lt;li&gt;&lt;strong&gt;上下文壓縮 (Context Compress)&lt;/strong&gt;：正在推動多級內存設計（L0 永久記憶、L1 會話記憶、L2 循環記憶、L3 臨時記憶），並結合選擇性上下文和 LLM/SLM 摘要等策略進行壓縮。&lt;/li&gt; 
- &lt;li&gt;&lt;strong&gt;可觀測與可評估 (Observable and Evaluable)&lt;/strong&gt;：引入了 Snapshot 框架，能夠在運行時將 Agent 依賴的環境保存為快照，用於回放和調試，已驅動持續集成和測試。同時，通過 Agent 與 UI 分層的新架構，實現了 Headless 運行模式，使得自動化評測成為可能，並參考 OpenAI 的 simple-evals 實現了 browsecomp 評測方案。&lt;/li&gt; 
- &lt;li&gt;&lt;strong&gt;易於構建應用 (Easy to build applications)&lt;/strong&gt;：引入了 Agent Event Stream，將 Agent 的狀態、工具調用細節、最終回覆和環境信息等以流式方式輸出，使得用户可以輕鬆構建自定義 Agent UI。Agent TARS Server 與 Web UI 的架構設計也因此變得簡潔。&lt;/li&gt; 
-&lt;/ul&gt; 
-&lt;p&gt;&lt;img alt="" src="https://oscimg.oschina.net/oscnet/up-35f79b54f76d476c905a32d464b7cf6e45a.png" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;p&gt;同時，Agent TARS 關注並學習了 AG-UI 協議，並説明瞭 Agent Event Stream 在構建上下文方面的差異化優勢。&lt;/p&gt; 
-&lt;p&gt;新版本的主要特性包括：&lt;/p&gt; 
-&lt;ul&gt; 
- &lt;li&gt; &lt;p&gt;&lt;strong&gt;Agent TARS CLI&lt;/strong&gt;：取代了&amp;nbsp;&lt;code&gt;Electron&lt;/code&gt;&amp;nbsp;應用，具有更容易更新迭代和顯著減小的安裝體積優勢。&lt;/p&gt; &lt;/li&gt; 
- &lt;li&gt; &lt;p&gt;&lt;strong&gt;混合瀏覽器 GUI Agent&lt;/strong&gt;：結合了基於&amp;nbsp;&lt;code&gt;DOM&lt;/code&gt;&amp;nbsp;分析的&amp;nbsp;&lt;code&gt;Browser Use&lt;/code&gt;&amp;nbsp;和基於&amp;nbsp;&lt;code&gt;UI-TARS&lt;/code&gt;/&lt;code&gt;Doubao 1.5 VL&lt;/code&gt;&amp;nbsp;的視覺控制方案，操作邏輯更接近人類理解屏幕的方式。提供了&amp;nbsp;&lt;code&gt;dom&lt;/code&gt;、&lt;code&gt;visual-grounding&lt;/code&gt;&amp;nbsp;和&amp;nbsp;&lt;code&gt;hybrid&lt;/code&gt;&amp;nbsp;三種操作方案。&lt;/p&gt; &lt;/li&gt; 
- &lt;li&gt; &lt;p&gt;&lt;strong&gt;更好的跨模型兼容性&lt;/strong&gt;：完全重寫了&amp;nbsp;&lt;code&gt;Model Provider&lt;/code&gt;&amp;nbsp;層，現在支持&amp;nbsp;&lt;code&gt;Volcengine (Seed1.5-VL)&lt;/code&gt;、&lt;code&gt;Anthropic (Claude-3.7-Sonnet)&lt;/code&gt;&amp;nbsp;和&amp;nbsp;&lt;code&gt;OpenAI (GPT-4o)&lt;/code&gt;&amp;nbsp;等模型提供商。&lt;/p&gt; &lt;/li&gt; 
- &lt;li&gt; &lt;p&gt;&lt;strong&gt;原生流式傳輸 (Native Streaming)&lt;/strong&gt;：整個架構構建在流式傳輸之上，顯著提升了複雜任務的交互體驗。&lt;/p&gt; &lt;/li&gt; 
- &lt;li&gt; &lt;p&gt;&lt;strong&gt;Web UI&lt;/strong&gt;：得益於&amp;nbsp;&lt;code&gt;Agent Event Stream&lt;/code&gt;，&lt;code&gt;Web UI&lt;/code&gt;&amp;nbsp;可以完全獨立開發，支持&amp;nbsp;&lt;code&gt;GUI Grounding Transition&lt;/code&gt;（實時鼠標追蹤）、&lt;code&gt;Replay&lt;/code&gt;&amp;nbsp;保存與分享，並實現了通用的多模態內容渲染器。&lt;/p&gt; &lt;/li&gt; 
-&lt;/ul&gt; 
-&lt;p&gt;Agent TARS 團隊還展示了多項內部開發者示例，包括 UI 復刻、先寫遊戲再玩遊戲，以及圖文並茂的報告生成等，這些都得益於模型能力和上下文工程的提升。Agent TARS 仍在快速發展中，未來將推出帶有動態規劃推理的版本，並致力於成為隨時隨地可用的 Agent 開發者工具。&lt;/p&gt;
-                                                                                &lt;/div&gt;
-                                                                            </description>
-      <link>https://www.oschina.net/news/357518/agent-tars-beta</link>
-      <guid isPermaLink="false">https://www.oschina.net/news/357518/agent-tars-beta</guid>
-      <pubDate>Fri, 09 May 2025 02:22:00 GMT</pubDate>
-      <author>來源: OSCHINA</author>
-    </item>
-    <item>
-      <title>VTJ.PRO 的 AI+低代碼設計器和渲染器技術架構和實現原理</title>
-      <description>&lt;div class="content"&gt;
-                                                                    
-                                                        &lt;p style="margin-left:0; margin-right:0"&gt;本文介紹支持 VTJ.PRO 低代碼體驗的可視化設計環境 （&lt;code&gt;@vtj/designer&lt;/code&gt;） 和運行時渲染系統 （&lt;code&gt;@vtj/renderer&lt;/code&gt;）。Designer 提供了交互式可視化編輯環境，用户可以在其中拖放和配置組件，而 Renderer 在設計時預覽和運行時環境中執行生成的 DSL 架構。&lt;/p&gt; 
-&lt;p style="margin-left:0; margin-right:0"&gt;有關這些系統運行的核心引擎和數據模型的信息，請參閲&lt;strong&gt;引擎、提供程序和服務層&lt;/strong&gt;&lt;span&gt; &lt;/span&gt;。有關提供實際小組件的 UI 組件庫的詳細信息，請參閲&lt;span&gt; &lt;/span&gt;&lt;strong&gt;UI 組件庫&lt;/strong&gt;&lt;span&gt; &lt;/span&gt;。&lt;/p&gt; 
-&lt;h2&gt;Designer 架構&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fvtj.pro%2Fwiki%2Fpackage%2Fdesigner-and-renderer.html%23designer-%25E6%259E%25B6%25E6%259E%2584" target="_blank"&gt;&lt;/a&gt;&lt;/h2&gt; 
-&lt;p style="margin-left:0; margin-right:0"&gt;Designer 系統通過以&lt;span&gt; &lt;/span&gt;&lt;code&gt;Designer&lt;/code&gt;&lt;span&gt; &lt;/span&gt;類及其與仿真環境的集成為中心的複雜事件驅動架構提供交互式可視化編輯功能。&lt;/p&gt; 
-&lt;h3&gt;Core Designer 類&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fvtj.pro%2Fwiki%2Fpackage%2Fdesigner-and-renderer.html%23core-designer-%25E7%25B1%25BB" target="_blank"&gt;&lt;/a&gt;&lt;/h3&gt; 
-&lt;p style="margin-left:0; margin-right:0"&gt;&lt;code&gt;Designer&lt;/code&gt;&lt;span&gt; &lt;/span&gt;類充當所有設計時交互的中心編排器，管理鼠標事件、拖放作、元素選擇和視覺反饋系統。&lt;/p&gt; 
-&lt;p style="margin-left:0; margin-right:0"&gt;&lt;img alt="" src="https://oscimg.oschina.net/oscnet//05010de879d43b96f68f8cac262bee37.png" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;p style="margin-left:0; margin-right:0"&gt;Designer 通過對具有特殊屬性 （&lt;code&gt;__vtj__&lt;/code&gt;、&lt;code&gt;__context__&lt;/code&gt;） 的 DOM 元素進行檢測來運行，這些屬性使其能夠在可視元素及其相應的數據模型之間進行映射。&lt;/p&gt; 
-&lt;h3&gt;事件處理系統&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fvtj.pro%2Fwiki%2Fpackage%2Fdesigner-and-renderer.html%23%25E4%25BA%258B%25E4%25BB%25B6%25E5%25A4%2584%25E7%2590%2586%25E7%25B3%25BB%25E7%25BB%259F" target="_blank"&gt;&lt;/a&gt;&lt;/h3&gt; 
-&lt;p style="margin-left:0; margin-right:0"&gt;Designer 實現了一個全面的事件處理系統，該系統可以捕獲用户交互並將其轉換為設計作：&lt;/p&gt; 
-&lt;p style="margin-left:0; margin-right:0"&gt;&lt;img alt="" src="https://oscimg.oschina.net/oscnet//ef1a4b256c3eed48a11a91f75601b83e.png" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;h3&gt;視覺反饋組件&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fvtj.pro%2Fwiki%2Fpackage%2Fdesigner-and-renderer.html%23%25E8%25A7%2586%25E8%25A7%2589%25E5%258F%258D%25E9%25A6%2588%25E7%25BB%2584%25E4%25BB%25B6" target="_blank"&gt;&lt;/a&gt;&lt;/h3&gt; 
-&lt;p style="margin-left:0; margin-right:0"&gt;Designer 系統通過突出顯示交互式元素的疊加組件提供實時視覺反饋：&lt;/p&gt; 
-&lt;h2&gt;渲染器架構&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fvtj.pro%2Fwiki%2Fpackage%2Fdesigner-and-renderer.html%23%25E6%25B8%25B2%25E6%259F%2593%25E5%2599%25A8%25E6%259E%25B6%25E6%259E%2584" target="_blank"&gt;&lt;/a&gt;&lt;/h2&gt; 
-&lt;p style="margin-left:0; margin-right:0"&gt;Renderer 系統為 VTJ DSL 模式提供運行時執行環境，支持多種執行模式和上下文。&lt;/p&gt; 
-&lt;h3&gt;上下文系統&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fvtj.pro%2Fwiki%2Fpackage%2Fdesigner-and-renderer.html%23%25E4%25B8%258A%25E4%25B8%258B%25E6%2596%2587%25E7%25B3%25BB%25E7%25BB%259F" target="_blank"&gt;&lt;/a&gt;&lt;/h3&gt; 
-&lt;p style="margin-left:0; margin-right:0"&gt;&lt;code&gt;Context&lt;/code&gt;&lt;span&gt; &lt;/span&gt;類充當運行時執行環境，為組件實例提供對狀態、props、生命週期方法和實用程序函數的訪問：&lt;/p&gt; 
-&lt;p style="margin-left:0; margin-right:0"&gt;&lt;img alt="" src="https://oscimg.oschina.net/oscnet//b053bdd59830ab949e97dfc731235450.png" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;p style="margin-left:0; margin-right:0"&gt;Context 系統支持三種不同的執行模式：&lt;/p&gt; 
-&lt;ul&gt; 
- &lt;li&gt;&lt;strong&gt;設計模式&lt;/strong&gt;&lt;span&gt; &lt;/span&gt;：用於設計時交互的 Instruments 元素&lt;/li&gt; 
- &lt;li&gt;&lt;strong&gt;運行模式&lt;/strong&gt;&lt;span&gt; &lt;/span&gt;：提供生產執行環境&lt;/li&gt; 
- &lt;li&gt;&lt;strong&gt;VNode 模式&lt;/strong&gt;&lt;span&gt; &lt;/span&gt;：支持無 refs 的虛擬節點渲染&lt;/li&gt; 
-&lt;/ul&gt; 
-&lt;h3&gt;多模式渲染&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fvtj.pro%2Fwiki%2Fpackage%2Fdesigner-and-renderer.html%23%25E5%25A4%259A%25E6%25A8%25A1%25E5%25BC%258F%25E6%25B8%25B2%25E6%259F%2593" target="_blank"&gt;&lt;/a&gt;&lt;/h3&gt; 
-&lt;p style="margin-left:0; margin-right:0"&gt;Renderer 支持通過 Context 系統在設計時和運行時模式之間無縫切換：&lt;/p&gt; 
-&lt;p style="margin-left:0; margin-right:0"&gt;&lt;img alt="" src="https://oscimg.oschina.net/oscnet//c9a5959e3c493abbfe9aebba842450b0.png" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;h2&gt;設計時集成&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fvtj.pro%2Fwiki%2Fpackage%2Fdesigner-and-renderer.html%23%25E8%25AE%25BE%25E8%25AE%25A1%25E6%2597%25B6%25E9%259B%2586%25E6%2588%2590" target="_blank"&gt;&lt;/a&gt;&lt;/h2&gt; 
-&lt;p style="margin-left:0; margin-right:0"&gt;Designer 和 Renderer 系統通過基於 iframe 的共享模擬環境進行集成，該環境支持實時預覽和交互。&lt;/p&gt; 
-&lt;h3&gt;模擬器架構&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fvtj.pro%2Fwiki%2Fpackage%2Fdesigner-and-renderer.html%23%25E6%25A8%25A1%25E6%258B%259F%25E5%2599%25A8%25E6%259E%25B6%25E6%259E%2584" target="_blank"&gt;&lt;/a&gt;&lt;/h3&gt; 
-&lt;p style="margin-left:0; margin-right:0"&gt;&lt;img alt="" src="https://oscimg.oschina.net/oscnet//e059163c63246e9ea099ceea511c2597.png" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;h3&gt;元件檢測&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fvtj.pro%2Fwiki%2Fpackage%2Fdesigner-and-renderer.html%23%25E5%2585%2583%25E4%25BB%25B6%25E6%25A3%2580%25E6%25B5%258B" target="_blank"&gt;&lt;/a&gt;&lt;/h3&gt; 
-&lt;p style="margin-left:0; margin-right:0"&gt;在設計模式下，Renderer 使用特殊屬性檢測 DOM 元素，使 Designer 能夠跟蹤和作它們：&lt;/p&gt; 
-&lt;p style="margin-left:0; margin-right:0"&gt;&lt;img alt="" src="https://oscimg.oschina.net/oscnet//35e8660da19e5361de71bddb62f84af2.png" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;h2&gt;視口和響應式設計&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fvtj.pro%2Fwiki%2Fpackage%2Fdesigner-and-renderer.html%23%25E8%25A7%2586%25E5%258F%25A3%25E5%2592%258C%25E5%2593%258D%25E5%25BA%2594%25E5%25BC%258F%25E8%25AE%25BE%25E8%25AE%25A1" target="_blank"&gt;&lt;/a&gt;&lt;/h2&gt; 
-&lt;p style="margin-left:0; margin-right:0"&gt;Designer 提供了一個複雜的視口系統，該系統支持多種設備模式和自定義大小調整，以便進行響應式設計測試。&lt;/p&gt; 
-&lt;h3&gt;視口模式&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fvtj.pro%2Fwiki%2Fpackage%2Fdesigner-and-renderer.html%23%25E8%25A7%2586%25E5%258F%25A3%25E6%25A8%25A1%25E5%25BC%258F" target="_blank"&gt;&lt;/a&gt;&lt;/h3&gt; 
-&lt;p style="margin-left:0; margin-right:0"&gt;&lt;img alt="" src="https://oscimg.oschina.net/oscnet//6ee43b64521f23c8c941a1168cd5a29b.png" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;h2&gt;運行時性能優化&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fvtj.pro%2Fwiki%2Fpackage%2Fdesigner-and-renderer.html%23%25E8%25BF%2590%25E8%25A1%258C%25E6%2597%25B6%25E6%2580%25A7%25E8%2583%25BD%25E4%25BC%2598%25E5%258C%2596" target="_blank"&gt;&lt;/a&gt;&lt;/h2&gt; 
-&lt;p style="margin-left:0; margin-right:0"&gt;Renderer 系統包括針對運行時性能的多項優化，用於區分設計時插樁和生產執行。&lt;/p&gt; 
-&lt;p style="margin-left:0; margin-right:0"&gt;&lt;img alt="" src="https://oscimg.oschina.net/oscnet//fd21715b2388c67e35deed2e7443e1b6.png" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;p style="margin-left:0; margin-right:0"&gt;Context 系統會自動管理 Vue 實例生命週期、引用跟蹤和清理，以確保在不同執行模式下的最佳性能，同時保持設計時插樁所需的靈活性。&lt;/p&gt;
-                                                                                &lt;/div&gt;
-                                                                            </description>
-      <link>https://www.oschina.net/news/357511</link>
-      <guid isPermaLink="false">https://www.oschina.net/news/357511</guid>
-      <pubDate>Fri, 09 May 2025 01:41:00 GMT</pubDate>
-      <author>來源: 投稿</author>
-    </item>
-    <item>
-      <title>Bean Searcher v4.4.2 已發佈</title>
-      <description>&lt;div class="content"&gt;
-                                                                    
-                                                        &lt;h2&gt;Bean Searcher 是什麼？&lt;/h2&gt; 
-&lt;p style="color:#333333; margin-left:0; margin-right:0; text-align:left"&gt;它是一款專注高級查詢的只讀 ORM，&lt;span style="background-color:#ffffff; color:rgba(60, 60, 67, 0.78)"&gt;只需一行代碼&lt;/span&gt;，即可為應用賦能高級查詢。&lt;/p&gt; 
-&lt;ul&gt; 
- &lt;li&gt;快來看它如何讓你的效率提升 100 倍：&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fjuejin.cn%2Fpost%2F7027733039299952676" target="_blank"&gt;https://juejin.cn/post/7027733039299952676&lt;/a&gt;&lt;/li&gt; 
- &lt;li&gt;快來看它為何不能被 MP 替代：&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fjuejin.cn%2Fpost%2F7092411551507808264" target="_blank"&gt;https://juejin.cn/post/7092411551507808264&lt;/a&gt;&lt;/li&gt; 
- &lt;li&gt;超詳細文檔：&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fbs.zhxu.cn%2F" target="_blank"&gt;https://bs.zhxu.cn/&lt;/a&gt;&lt;/li&gt; 
-&lt;/ul&gt; 
-&lt;p style="color:#333333; margin-left:0; margin-right:0; text-align:left"&gt;如果覺得不錯點個 STAR 吧 ^_^：&lt;/p&gt; 
-&lt;ul&gt; 
- &lt;li&gt;Github:&lt;span&gt;&amp;nbsp;&lt;/span&gt;&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fgithub.com%2Ftroyzhxu%2Fbean-searcher" target="_blank"&gt;https://github.com/troyzhxu/bean-searcher&lt;/a&gt;&lt;/li&gt; 
- &lt;li&gt;Gitee:&amp;nbsp; &amp;nbsp;&lt;a href="https://gitee.com/troyzhxu/bean-searcher"&gt;https://gitee.com/troyzhxu/bean-searcher&lt;/a&gt;&lt;/li&gt; 
-&lt;/ul&gt; 
-&lt;h2&gt;本次更新內容&lt;/h2&gt; 
-&lt;h2&gt;✨ Features&lt;/h2&gt; 
-&lt;ul&gt; 
- &lt;li&gt;增強&lt;span&gt;&amp;nbsp;&lt;/span&gt;&lt;code&gt;MapUtils&lt;/code&gt;&lt;span&gt;&amp;nbsp;&lt;/span&gt;工具類 
-  &lt;ul&gt; 
-   &lt;li&gt;添加&lt;span&gt;&amp;nbsp;&lt;/span&gt;&lt;code&gt;flat(Map&amp;lt;String, String[]&amp;gt; map, boolean urlDecode)&lt;/code&gt;&lt;span&gt;&amp;nbsp;&lt;/span&gt;方法，支持，指定知否進行 URL 解碼&lt;/li&gt; 
-   &lt;li&gt;添加&lt;span&gt;&amp;nbsp;&lt;/span&gt;&lt;code&gt;flatBuilder(Map&amp;lt;String, String[]&amp;gt; map, boolean urlDecode)&lt;/code&gt;&lt;span&gt;&amp;nbsp;&lt;/span&gt;支持，指定知否進行 URL 解碼&lt;/li&gt; 
-   &lt;li&gt;原&lt;span&gt;&amp;nbsp;&lt;/span&gt;&lt;code&gt;flat(Map&amp;lt;String, String[]&amp;gt; map)&lt;/code&gt;&lt;span&gt;&amp;nbsp;&lt;/span&gt;方法，默認進行 URL 解碼&lt;/li&gt; 
-   &lt;li&gt;原&lt;span&gt;&amp;nbsp;&lt;/span&gt;&lt;code&gt;flatBuilder(Map&amp;lt;String, String[]&amp;gt; map)&lt;/code&gt;&lt;span&gt;&amp;nbsp;&lt;/span&gt;方法，默認進行 URL 解碼&lt;/li&gt; 
-  &lt;/ul&gt; &lt;/li&gt; 
-&lt;/ul&gt;
-                                                                                &lt;/div&gt;
-                                                                            </description>
-      <link>https://www.oschina.net/news/357505/bean-searcher-4-4-2-released</link>
-      <guid isPermaLink="false">https://www.oschina.net/news/357505/bean-searcher-4-4-2-released</guid>
-      <pubDate>Fri, 09 May 2025 01:02:00 GMT</pubDate>
-      <author>來源: 投稿</author>
-    </item>
-    <item>
-      <title>DjangoAdmin 敏捷開發框架 Tornado+AntdVue 版本 v2.3.0 發佈</title>
-      <description>&lt;div class="content"&gt;
-                                                                    
-                                                        &lt;p&gt;&lt;span style="background-color:#ffffff; color:#333333"&gt;v2.3.0 更新內容：&lt;/span&gt;&lt;br&gt; &lt;span style="background-color:#ffffff; color:#333333"&gt;1、新增用户重置密碼功能；&lt;/span&gt;&lt;br&gt; &lt;span style="background-color:#ffffff; color:#333333"&gt;2、優化菜單管理模塊，提供用户操作體驗；&lt;/span&gt;&lt;br&gt; &lt;span style="background-color:#ffffff; color:#333333"&gt;3、移除項目中廢棄代碼，調整代碼結構；&lt;/span&gt;&lt;br&gt; &lt;span style="background-color:#ffffff; color:#333333"&gt;4、修復近期用户使用過程中反饋的問題；&lt;/span&gt;&lt;/p&gt; 
-&lt;div&gt; 
- &lt;div&gt; 
-  &lt;div&gt; 
-   &lt;div&gt; 
-    &lt;div&gt; 
-     &lt;div&gt; 
-      &lt;div&gt; 
-       &lt;div&gt; 
-        &lt;div&gt; 
-         &lt;div&gt; 
-          &lt;div&gt; 
-           &lt;div&gt; 
-            &lt;p style="margin-left:0; margin-right:0"&gt;&lt;span style="background-color:#ffffff; color:#40485b"&gt;一款 Python 語言基於 Tornado、Vue3、AntDesign、MySQL 等框架精心打造的一款模塊化、高性能、企業級的敏捷開發框架，本着簡化開發、提升開發效率的初衷觸發，框架自研了一套個性化的組件，實現了可插拔的組件式開發方式：單圖上傳、多圖上傳等一系列個性化、輕量級的組件，是一款真正意義上實現組件化開發的敏捷開發框架。&lt;/span&gt;&lt;/p&gt; 
-            &lt;h2&gt;軟件信息&lt;/h2&gt; 
-            &lt;ul&gt; 
-             &lt;li&gt;軟件名稱：DjangoAdmin 敏捷開發框架 Tornado+AntdVue 版本&lt;/li&gt; 
-             &lt;li&gt;官網網址：&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fwww.djangoadmin.cn" target="_blank"&gt;https://www.djangoadmin.cn&lt;/a&gt;&lt;/li&gt; 
-             &lt;li&gt;文檔網址：&lt;a href="https://www.oschina.net/action/GoToLink?url=http%3A%2F%2Fdocs.tornado.antdvue.djangoadmin.cn" target="_blank"&gt;http://docs.tornado.antdvue.djangoadmin.cn&lt;/a&gt;&lt;/li&gt; 
-             &lt;li&gt;演示地址：&lt;a href="https://www.oschina.net/action/GoToLink?url=http%3A%2F%2Fmanage.tornado.antdvue.djangoadmin.cn" target="_blank"&gt;http://manage.tornado.antdvue.djangoadmin.cn&lt;/a&gt;&lt;/li&gt; 
-            &lt;/ul&gt; 
-            &lt;h2&gt;版本説明&lt;/h2&gt; 
-            &lt;table cellspacing="0" style="-webkit-text-stroke-width:0px; background-color:#ffffff; border-collapse:collapse; border-spacing:0px; border:none; box-sizing:border-box; color:#40485b; display:block; font-family:-apple-system,BlinkMacSystemFont,&amp;quot;Segoe UI&amp;quot;,Helvetica,Arial,&amp;quot;Apple Color Emoji&amp;quot;,&amp;quot;Segoe UI Emoji&amp;quot;,&amp;quot;Segoe UI Symbol&amp;quot;,&amp;quot;Liberation Sans&amp;quot;,&amp;quot;PingFang SC&amp;quot;,&amp;quot;Microsoft YaHei&amp;quot;,&amp;quot;Hiragino Sans GB&amp;quot;,&amp;quot;Wenquanyi Micro Hei&amp;quot;,&amp;quot;WenQuanYi Zen Hei&amp;quot;,&amp;quot;ST Heiti&amp;quot;,SimHei,SimSun,&amp;quot;WenQuanYi Zen Hei Sharp&amp;quot;,sans-serif; font-size:16px; font-style:normal; font-variant-caps:normal; font-variant-ligatures:normal; font-weight:400; letter-spacing:normal; line-height:inherit; margin:0px 0px 16px; max-width:100%; orphans:2; overflow:auto; text-align:left; text-decoration-color:initial; text-decoration-style:initial; text-decoration-thickness:initial; text-transform:none; white-space:normal; widows:2; width:635px; word-break:initial; word-spacing:0px"&gt; 
-             &lt;tbody&gt; 
-              &lt;tr&gt; 
-               &lt;th&gt;版本名稱&lt;/th&gt; 
-               &lt;th&gt;版本説明&lt;/th&gt; 
-               &lt;th&gt;版本地址&lt;/th&gt; 
-              &lt;/tr&gt; 
-             &lt;/tbody&gt; 
-             &lt;tbody&gt; 
-              &lt;tr&gt; 
-               &lt;td style="border-color:#dfe2e5; border-style:solid; border-width:1px"&gt;Django+Layui 混編版&lt;/td&gt; 
-               &lt;td style="border-color:#dfe2e5; border-style:solid; border-width:1px"&gt;採用 Django、Layui 等框架研發&lt;/td&gt; 
-               &lt;td style="border-color:#dfe2e5; border-style:solid; border-width:1px"&gt;&lt;a href="https://gitee.com/djangoadmin/DjangoAdmin_Django_Layui"&gt;https://gitee.com/djangoadmin/DjangoAdmin_Django_Layui&lt;/a&gt;&lt;/td&gt; 
-              &lt;/tr&gt; 
-              &lt;tr&gt; 
-               &lt;td style="border-color:#dfe2e5; border-style:solid; border-width:1px"&gt;Flask+Layui 混編版&lt;/td&gt; 
-               &lt;td style="border-color:#dfe2e5; border-style:solid; border-width:1px"&gt;採用 Flask、Layui 等框架研發&lt;/td&gt; 
-               &lt;td style="border-color:#dfe2e5; border-style:solid; border-width:1px"&gt;&lt;a href="https://gitee.com/djangoadmin/DjangoAdmin_Flask_Layui"&gt;https://gitee.com/djangoadmin/DjangoAdmin_Flask_Layui&lt;/a&gt;&lt;/td&gt; 
-              &lt;/tr&gt; 
-              &lt;tr&gt; 
-               &lt;td style="border-color:#dfe2e5; border-style:solid; border-width:1px"&gt;FastAPI+Layui 混編版&lt;/td&gt; 
-               &lt;td style="border-color:#dfe2e5; border-style:solid; border-width:1px"&gt;採用 FastAPI、Layui 等框架研發&lt;/td&gt; 
-               &lt;td style="border-color:#dfe2e5; border-style:solid; border-width:1px"&gt;&lt;a href="https://gitee.com/djangoadmin/DjangoAdmin_Fastapi_Layui"&gt;https://gitee.com/djangoadmin/DjangoAdmin_Fastapi_Layui&lt;/a&gt;&lt;/td&gt; 
-              &lt;/tr&gt; 
-              &lt;tr&gt; 
-               &lt;td style="border-color:#dfe2e5; border-style:solid; border-width:1px"&gt;Tornado+Layui 混編版&lt;/td&gt; 
-               &lt;td style="border-color:#dfe2e5; border-style:solid; border-width:1px"&gt;採用 Tornado、Layui 等框架研發&lt;/td&gt; 
-               &lt;td style="border-color:#dfe2e5; border-style:solid; border-width:1px"&gt;&lt;a href="https://gitee.com/djangoadmin/DjangoAdmin_Tornado_Layui"&gt;https://gitee.com/djangoadmin/DjangoAdmin_Tornado_Layui&lt;/a&gt;&lt;/td&gt; 
-              &lt;/tr&gt; 
-              &lt;tr&gt; 
-               &lt;td style="border-color:#dfe2e5; border-style:solid; border-width:1px"&gt;Django+EleVue 前後端分離版&lt;/td&gt; 
-               &lt;td style="border-color:#dfe2e5; border-style:solid; border-width:1px"&gt;採用 Django、Vue2.x、ElementUI 等框架研發前後端分離版本&lt;/td&gt; 
-               &lt;td style="border-color:#dfe2e5; border-style:solid; border-width:1px"&gt;&lt;a href="https://gitee.com/djangoadmin/DjangoAdmin_Django_EleVue"&gt;https://gitee.com/djangoadmin/DjangoAdmin_Django_EleVue&lt;/a&gt;&lt;/td&gt; 
-              &lt;/tr&gt; 
-              &lt;tr&gt; 
-               &lt;td style="border-color:#dfe2e5; border-style:solid; border-width:1px"&gt;Flask+EleVue 前後端分離版&lt;/td&gt; 
-               &lt;td style="border-color:#dfe2e5; border-style:solid; border-width:1px"&gt;採用 Flask、Vue2.x、ElementUI 等框架研發前後端分離版本&lt;/td&gt; 
-               &lt;td style="border-color:#dfe2e5; border-style:solid; border-width:1px"&gt;&lt;a href="https://gitee.com/djangoadmin/DjangoAdmin_Flask_EleVue"&gt;https://gitee.com/djangoadmin/DjangoAdmin_Flask_EleVue&lt;/a&gt;&lt;/td&gt; 
-              &lt;/tr&gt; 
-              &lt;tr&gt; 
-               &lt;td style="border-color:#dfe2e5; border-style:solid; border-width:1px"&gt;FastAPI+EleVue 前後端分離版&lt;/td&gt; 
-               &lt;td style="border-color:#dfe2e5; border-style:solid; border-width:1px"&gt;採用 FastAPI、Vue2.x、ElementUI 等框架研發前後端分離版本&lt;/td&gt; 
-               &lt;td style="border-color:#dfe2e5; border-style:solid; border-width:1px"&gt;&lt;a href="https://gitee.com/djangoadmin/DjangoAdmin_Fastapi_EleVue"&gt;https://gitee.com/djangoadmin/DjangoAdmin_Fastapi_EleVue&lt;/a&gt;&lt;/td&gt; 
-              &lt;/tr&gt; 
-              &lt;tr&gt; 
-               &lt;td style="border-color:#dfe2e5; border-style:solid; border-width:1px"&gt;Tornado+EleVue 前後端分離版&lt;/td&gt; 
-               &lt;td style="border-color:#dfe2e5; border-style:solid; border-width:1px"&gt;採用 Tornado、Vue2.x、ElementUI 等框架研發前後端分離版本&lt;/td&gt; 
-               &lt;td style="border-color:#dfe2e5; border-style:solid; border-width:1px"&gt;&lt;a href="https://gitee.com/djangoadmin/DjangoAdmin_Tornado_EleVue"&gt;https://gitee.com/djangoadmin/DjangoAdmin_Tornado_EleVue&lt;/a&gt;&lt;/td&gt; 
-              &lt;/tr&gt; 
-              &lt;tr&gt; 
-               &lt;td style="border-color:#dfe2e5; border-style:solid; border-width:1px"&gt;Django+AntdVue 前後端分離版&lt;/td&gt; 
-               &lt;td style="border-color:#dfe2e5; border-style:solid; border-width:1px"&gt;採用 Django、Vue3.x、AntDesign 等框架研發前後端分離版本&lt;/td&gt; 
-               &lt;td style="border-color:#dfe2e5; border-style:solid; border-width:1px"&gt;&lt;a href="https://gitee.com/djangoadmin/DjangoAdmin_Django_AntdVue"&gt;https://gitee.com/djangoadmin/DjangoAdmin_Django_AntdVue&lt;/a&gt;&lt;/td&gt; 
-              &lt;/tr&gt; 
-              &lt;tr&gt; 
-               &lt;td style="border-color:#dfe2e5; border-style:solid; border-width:1px"&gt;Flask+AntdVue 前後端分離版&lt;/td&gt; 
-               &lt;td style="border-color:#dfe2e5; border-style:solid; border-width:1px"&gt;採用 Flask、Vue3.x、AntDesign 等框架研發前後端分離版本&lt;/td&gt; 
-               &lt;td style="border-color:#dfe2e5; border-style:solid; border-width:1px"&gt;&lt;a href="https://gitee.com/djangoadmin/DjangoAdmin_Flask_AntdVue"&gt;https://gitee.com/djangoadmin/DjangoAdmin_Flask_AntdVue&lt;/a&gt;&lt;/td&gt; 
-              &lt;/tr&gt; 
-              &lt;tr&gt; 
-               &lt;td style="border-color:#dfe2e5; border-style:solid; border-width:1px"&gt;FastAPI+AntdVue 前後端分離版&lt;/td&gt; 
-               &lt;td style="border-color:#dfe2e5; border-style:solid; border-width:1px"&gt;採用 FastAPI、Vue3.x、AntDesign 等框架研發前後端分離版本&lt;/td&gt; 
-               &lt;td style="border-color:#dfe2e5; border-style:solid; border-width:1px"&gt;&lt;a href="https://gitee.com/djangoadmin/DjangoAdmin_Fastapi_AntdVue"&gt;https://gitee.com/djangoadmin/DjangoAdmin_Fastapi_AntdVue&lt;/a&gt;&lt;/td&gt; 
-              &lt;/tr&gt; 
-              &lt;tr&gt; 
-               &lt;td style="border-color:#dfe2e5; border-style:solid; border-width:1px"&gt;Tornado+AntdVue 前後端分離版&lt;/td&gt; 
-               &lt;td style="border-color:#dfe2e5; border-style:solid; border-width:1px"&gt;採用 Tornado、Vue、AntDesign 等框架研發前後端分離版本&lt;/td&gt; 
-               &lt;td style="border-color:#dfe2e5; border-style:solid; border-width:1px"&gt;&lt;a href="https://gitee.com/djangoadmin/DjangoAdmin_Tornado_AntdVue"&gt;https://gitee.com/djangoadmin/DjangoAdmin_Tornado_AntdVue&lt;/a&gt;&lt;/td&gt; 
-              &lt;/tr&gt; 
-             &lt;/tbody&gt; 
-            &lt;/table&gt; 
-            &lt;h2&gt;模塊展示&lt;/h2&gt; 
-            &lt;p style="margin-left:0; margin-right:0"&gt;&lt;img alt="" height="1080" src="https://oscimg.oschina.net/oscnet/up-7d010e6980e11a2900f552d415e4fb3a6ca.png" width="1920" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-           &lt;/div&gt; 
-          &lt;/div&gt; 
-         &lt;/div&gt; 
-        &lt;/div&gt; 
-       &lt;/div&gt; 
-      &lt;/div&gt; 
-     &lt;/div&gt; 
-    &lt;/div&gt; 
-   &lt;/div&gt; 
-  &lt;/div&gt; 
- &lt;/div&gt; 
-&lt;/div&gt;
-                                                                                &lt;/div&gt;
-                                                                            </description>
-      <link>https://www.oschina.net/news/357503</link>
-      <guid isPermaLink="false">https://www.oschina.net/news/357503</guid>
-      <pubDate>Fri, 09 May 2025 00:47:00 GMT</pubDate>
+      <pubDate>Fri, 09 May 2025 10:23:00 GMT</pubDate>
       <author>來源: 投稿</author>
     </item>
   </channel>
