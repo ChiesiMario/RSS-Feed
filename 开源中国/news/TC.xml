@@ -7,8 +7,697 @@
     <generator>RSSHub</generator>
     <webMaster>contact@rsshub.app (RSSHub)</webMaster>
     <language>zh-tw</language>
-    <lastBuildDate>Tue, 01 Jul 2025 07:48:21 GMT</lastBuildDate>
+    <lastBuildDate>Tue, 01 Jul 2025 12:47:47 GMT</lastBuildDate>
     <ttl>5</ttl>
+    <item>
+      <title>Iceberg 在圖靈落地應用</title>
+      <description>&lt;div class="content"&gt;
+                                                                                                                    
+                                                                                                                                                    &lt;span id="OSC_h1_1"&gt;&lt;/span&gt; 
+&lt;h1&gt;導讀&lt;/h1&gt; 
+&lt;p&gt;百度 MEG 上一代大數據產品存在平台分散、易用性差等問題，導致開發效率低下、學習成本高，業務需求響應遲緩。為瞭解決這些問題，百度 MEG 內部開發了圖靈 3.0 生態系統，包括 Turing Data Engine(TDE) 計算&amp;amp;存儲引擎、Turing Data Studio(TDS) 數據開發治理平台和 Turing Data Analysis(TDA) 可視化 BI 產品。依託圖靈 3.0 生態，我們引入了數據湖表格式：Apache Iceberg，利用其特性並在多種業務場景下進行優化實踐，解決圖靈數倉業務實時數據入湖，數據表歷史記錄更新效率低等多個痛點問題。&lt;/p&gt; 
+&lt;span id="OSC_h1_2"&gt;&lt;/span&gt; 
+&lt;h1&gt;01 背景&lt;/h1&gt; 
+&lt;span id="OSC_h2_3"&gt;&lt;/span&gt; 
+&lt;h2&gt;&lt;strong&gt;1.1 圖靈 3.0 生態概述&lt;/strong&gt;&lt;/h2&gt; 
+&lt;p&gt;由於百度 MEG 上一代大數據產品存在平台多、易用性差及數據流轉繁瑣等問題。這些問題導致開發人員研發效率低及多平台間高昂的學習成本；業務部門的感知則是需求交付遲緩、數據產出延遲及數據質量低等問題。為瞭解決上述問題，我們構建了新一代大數據解決方案——"圖靈 3.0"，旨在覆蓋數據全生命週期，支持全鏈路數據操作，提供高效敏捷且統一的強大數據生態系統，其中包括數據計算引擎、數據開發和數據分析三個核心部分：&lt;/p&gt; 
+&lt;p&gt;1. TDE（Turing Data Engine）：&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fmp.weixin.qq.com%2Fs%3F__biz%3DMzg5MjU0NTI5OQ%3D%3D%26mid%3D2247581388%26idx%3D1%26sn%3De71a4f3c4ca283ac6e8fe51d0a45a02b%26scene%3D21%23wechat_redirect" target="_blank"&gt;圖靈生態的計算引擎&lt;/a&gt;，包含基於 Hive、Iceberg 進行數據處理的 Spark 和&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fmp.weixin.qq.com%2Fs%3F__biz%3DMzg5MjU0NTI5OQ%3D%3D%26mid%3D2247601378%26idx%3D1%26sn%3D9234aeef05c3813cfb34d9a064261984%26scene%3D21%23wechat_redirect" target="_blank"&gt;ClickHouse 高性能計算引擎&lt;/a&gt;。&lt;/p&gt; 
+&lt;p&gt;2. TDS（Turing Data Studio）：&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fmp.weixin.qq.com%2Fs%3F__biz%3DMzg5MjU0NTI5OQ%3D%3D%26mid%3D2247599508%26idx%3D1%26sn%3D19094522609ca58528295a8ccbb061bd%26scene%3D21%23wechat_redirect" target="_blank"&gt;一站式數據開發治理平台&lt;/a&gt;。&lt;/p&gt; 
+&lt;p&gt;3. TDA（Turing Data Analysis）：&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fmp.weixin.qq.com%2Fs%3F__biz%3DMzg5MjU0NTI5OQ%3D%3D%26mid%3D2247584876%26idx%3D1%26sn%3D7bf459415ef8d51685d4e1c335b0603e%26scene%3D21%23wechat_redirect" target="_blank"&gt;新一代可視化 BI 產品&lt;/a&gt;。&lt;/p&gt; 
+&lt;p&gt;本文主要介紹數據湖表格式 Iceberg 在圖靈 3.0 生態下的應用與實踐。&lt;/p&gt; 
+&lt;p&gt;&lt;img alt="" src="https://oscimg.oschina.net/oscnet/up-1764b56858226d39002905e95ec9f32e1d2.jpg" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p&gt;△圖靈 3.0 生態產品&lt;/p&gt; 
+&lt;span id="OSC_h2_4"&gt;&lt;/span&gt; 
+&lt;h2&gt;&lt;strong&gt;1.2 問題&lt;/strong&gt;&lt;/h2&gt; 
+&lt;p&gt;MEG 數據中台基於 Hive 構建了離線數據倉庫，已支持手百，搜索，商業，貼吧，小説，用增架構，銷售等多個業務需求，但隨着業務的發展，業務對數據的實時性以及查詢性能等有更高要求，當前主要存在以下幾個問題：&lt;/p&gt; 
+&lt;p&gt;1. 商業、電商、銷售等業務，週期性地更新行業等信息，單次更新數據量佔比小、字段少，但是基於 Hive 的數據更新（以下簡稱：數據回溯）只能通過全量覆蓋寫的方式實現，數據回溯週期長、效率低、成本高。&lt;/p&gt; 
+&lt;p&gt;2. 由於 Hive 在實時數據更新以及事務支持上存在一定侷限性，無法有效滿足業務構建實時數倉的需求。&lt;/p&gt; 
+&lt;p&gt;3. 在處理大規模數據集上，Hive 的查詢性能受到如元數據的加載解析以及每次訪問數據都需通過分佈式文件系統 listFile 遍歷文件列表等問題的影響，導致性能降低。&lt;/p&gt; 
+&lt;p&gt;基於上述問題，我們通過技術調研，最終引入了開源的數據湖表格式 Iceberg，構建數據湖存儲服務，並藉助大數據生態的 Spark、Flink 等計算引擎來實現數據湖的分析，將其無縫集成到圖靈生態中，幫助業務提效降本，構建更快速、更高效、更低成本的數據中台產品。&lt;/p&gt; 
+&lt;span id="OSC_h2_5"&gt;&lt;/span&gt; 
+&lt;h2&gt;&lt;strong&gt;1.3 Hive 和 Iceberg 對比&lt;/strong&gt;&lt;/h2&gt; 
+&lt;p&gt;Hive 作為一個基於 Hadoop 生態系統的開源數據倉庫工具，主要用於對大規模結構化數據進行存儲、查詢和分析。而 Iceberg 作為新一代數據湖表格式，提供了類似傳統數據庫的事務性，保證和數據一致性，並支持複雜的數據操作，如行級更新和刪除等，更加適合實時更新，流批一體數據場景，下表列出 Hive 和 Iceberg 一些主要特性對比：&lt;/p&gt; 
+&lt;div&gt; 
+ &lt;div&gt; 
+  &lt;div&gt; 
+   &lt;table border="1" cellspacing="0" style="border-collapse:collapse; border:1px solid #dcdde0"&gt; 
+    &lt;tbody&gt; 
+     &lt;tr&gt; 
+      &lt;td colspan="1" rowspan="1" style="background-color:#d5e7fb; border-style:solid; border-width:1px; vertical-align:middle"&gt; 
+       &lt;div&gt; 
+        &lt;div style="text-align:center"&gt; 
+         &lt;span&gt;特性&lt;/span&gt; 
+         &lt;div&gt;
+           &amp;nbsp; 
+         &lt;/div&gt; 
+        &lt;/div&gt; 
+       &lt;/div&gt; &lt;/td&gt; 
+      &lt;td colspan="1" rowspan="1" style="background-color:#d5e7fb; border-style:solid; border-width:1px; vertical-align:middle"&gt; 
+       &lt;div&gt; 
+        &lt;div style="text-align:center"&gt; 
+         &lt;span&gt;Hive&lt;/span&gt; 
+         &lt;div&gt;
+           &amp;nbsp; 
+         &lt;/div&gt; 
+        &lt;/div&gt; 
+       &lt;/div&gt; &lt;/td&gt; 
+      &lt;td colspan="1" rowspan="1" style="background-color:#d5e7fb; border-style:solid; border-width:1px; vertical-align:middle"&gt; 
+       &lt;div&gt; 
+        &lt;div style="text-align:center"&gt; 
+         &lt;span&gt;Iceberg&lt;/span&gt; 
+         &lt;div&gt;
+           &amp;nbsp; 
+         &lt;/div&gt; 
+        &lt;/div&gt; 
+       &lt;/div&gt; &lt;/td&gt; 
+     &lt;/tr&gt; 
+     &lt;tr&gt; 
+      &lt;td colspan="1" rowspan="1" style="border-style:solid; border-width:1px; vertical-align:middle"&gt; 
+       &lt;div&gt; 
+        &lt;div style="text-align:center"&gt; 
+         &lt;span&gt;行級更新&lt;/span&gt; 
+         &lt;div&gt;
+           &amp;nbsp; 
+         &lt;/div&gt; 
+        &lt;/div&gt; 
+       &lt;/div&gt; &lt;/td&gt; 
+      &lt;td colspan="1" rowspan="1" style="border-style:solid; border-width:1px; vertical-align:middle"&gt; 
+       &lt;div&gt; 
+        &lt;div style="text-align:center"&gt; 
+         &lt;span&gt;不支持&lt;/span&gt; 
+         &lt;div&gt;
+           &amp;nbsp; 
+         &lt;/div&gt; 
+        &lt;/div&gt; 
+       &lt;/div&gt; &lt;/td&gt; 
+      &lt;td colspan="1" rowspan="1" style="border-style:solid; border-width:1px; vertical-align:middle"&gt; 
+       &lt;div&gt; 
+        &lt;div style="text-align:center"&gt; 
+         &lt;span&gt;支持 merge into、&lt;/span&gt; 
+         &lt;span&gt;upsert&lt;/span&gt; 
+         &lt;span&gt;等語法進行行級別更新能力&lt;/span&gt; 
+         &lt;div&gt;
+           &amp;nbsp; 
+         &lt;/div&gt; 
+        &lt;/div&gt; 
+       &lt;/div&gt; &lt;/td&gt; 
+     &lt;/tr&gt; 
+     &lt;tr&gt; 
+      &lt;td colspan="1" rowspan="1" style="border-style:solid; border-width:1px; vertical-align:middle"&gt; 
+       &lt;div&gt; 
+        &lt;div style="text-align:center"&gt; 
+         &lt;span&gt;時效性&lt;/span&gt; 
+         &lt;div&gt;
+           &amp;nbsp; 
+         &lt;/div&gt; 
+        &lt;/div&gt; 
+       &lt;/div&gt; &lt;/td&gt; 
+      &lt;td colspan="1" rowspan="1" style="border-style:solid; border-width:1px; vertical-align:middle"&gt; 
+       &lt;div&gt; 
+        &lt;div style="text-align:center"&gt; 
+         &lt;span&gt;小時級別/天級&lt;/span&gt; 
+         &lt;div&gt;
+           &amp;nbsp; 
+         &lt;/div&gt; 
+        &lt;/div&gt; 
+       &lt;/div&gt; &lt;/td&gt; 
+      &lt;td colspan="1" rowspan="1" style="border-style:solid; border-width:1px; vertical-align:middle"&gt; 
+       &lt;div&gt; 
+        &lt;div style="text-align:center"&gt; 
+         &lt;span&gt;分鐘級&lt;/span&gt; 
+         &lt;div&gt;
+           &amp;nbsp; 
+         &lt;/div&gt; 
+        &lt;/div&gt; 
+       &lt;/div&gt; &lt;/td&gt; 
+     &lt;/tr&gt; 
+     &lt;tr&gt; 
+      &lt;td colspan="1" rowspan="1" style="border-style:solid; border-width:1px; vertical-align:middle"&gt; 
+       &lt;div&gt; 
+        &lt;div style="text-align:center"&gt; 
+         &lt;span&gt;事務&lt;/span&gt; 
+         &lt;div&gt;
+           &amp;nbsp; 
+         &lt;/div&gt; 
+        &lt;/div&gt; 
+       &lt;/div&gt; &lt;/td&gt; 
+      &lt;td colspan="1" rowspan="1" style="border-style:solid; border-width:1px; vertical-align:middle"&gt; 
+       &lt;div&gt; 
+        &lt;div style="text-align:center"&gt; 
+         &lt;span&gt;非完整的 ACID 事務&lt;/span&gt; 
+         &lt;div&gt;
+           &amp;nbsp; 
+         &lt;/div&gt; 
+        &lt;/div&gt; 
+       &lt;/div&gt; &lt;/td&gt; 
+      &lt;td colspan="1" rowspan="1" style="border-style:solid; border-width:1px; vertical-align:middle"&gt; 
+       &lt;div&gt; 
+        &lt;div style="text-align:center"&gt; 
+         &lt;span&gt;支持完整的 ACID 事務，同時使用多快照提供了讀寫分離的特性&lt;/span&gt; 
+         &lt;div&gt;
+           &amp;nbsp; 
+         &lt;/div&gt; 
+        &lt;/div&gt; 
+       &lt;/div&gt; &lt;/td&gt; 
+     &lt;/tr&gt; 
+     &lt;tr&gt; 
+      &lt;td colspan="1" rowspan="1" style="border-style:solid; border-width:1px; vertical-align:middle"&gt; 
+       &lt;div&gt; 
+        &lt;div style="text-align:center"&gt; 
+         &lt;span&gt;元數據管理方式&lt;/span&gt; 
+         &lt;div&gt;
+           &amp;nbsp; 
+         &lt;/div&gt; 
+        &lt;/div&gt; 
+       &lt;/div&gt; &lt;/td&gt; 
+      &lt;td colspan="1" rowspan="1" style="border-style:solid; border-width:1px; vertical-align:middle"&gt; 
+       &lt;div&gt; 
+        &lt;div style="text-align:center"&gt; 
+         &lt;span&gt;基於 Mysql 進行元數據存儲&lt;/span&gt; 
+         &lt;div&gt;
+           &amp;nbsp; 
+         &lt;/div&gt; 
+        &lt;/div&gt; 
+       &lt;/div&gt; &lt;/td&gt; 
+      &lt;td colspan="1" rowspan="1" style="border-style:solid; border-width:1px; vertical-align:middle"&gt; 
+       &lt;div&gt; 
+        &lt;div style="text-align:center"&gt; 
+         &lt;span&gt;通過文件組織管理，直接存儲數據文件元數據&lt;/span&gt; 
+         &lt;div&gt;
+           &amp;nbsp; 
+         &lt;/div&gt; 
+        &lt;/div&gt; 
+       &lt;/div&gt; &lt;/td&gt; 
+     &lt;/tr&gt; 
+     &lt;tr&gt; 
+      &lt;td colspan="1" rowspan="1" style="border-style:solid; border-width:1px; vertical-align:middle"&gt; 
+       &lt;div&gt; 
+        &lt;div style="text-align:center"&gt; 
+         &lt;span&gt;數據版本控制&lt;/span&gt; 
+         &lt;div&gt;
+           &amp;nbsp; 
+         &lt;/div&gt; 
+        &lt;/div&gt; 
+       &lt;/div&gt; &lt;/td&gt; 
+      &lt;td colspan="1" rowspan="1" style="border-style:solid; border-width:1px; vertical-align:middle"&gt; 
+       &lt;div&gt; 
+        &lt;div style="text-align:center"&gt; 
+         &lt;span&gt;無&lt;/span&gt; 
+         &lt;div&gt;
+           &amp;nbsp; 
+         &lt;/div&gt; 
+        &lt;/div&gt; 
+       &lt;/div&gt; &lt;/td&gt; 
+      &lt;td colspan="1" rowspan="1" style="border-style:solid; border-width:1px; vertical-align:middle"&gt; 
+       &lt;div&gt; 
+        &lt;div style="text-align:center"&gt; 
+         &lt;span&gt;支持時間旅⾏(Time travel) 特性，可基於快照進行歷史數據版本管理和訪問&lt;/span&gt; 
+         &lt;div&gt;
+           &amp;nbsp; 
+         &lt;/div&gt; 
+        &lt;/div&gt; 
+       &lt;/div&gt; &lt;/td&gt; 
+     &lt;/tr&gt; 
+    &lt;/tbody&gt; 
+   &lt;/table&gt; 
+  &lt;/div&gt; 
+  &lt;div&gt;
+    &amp;nbsp; 
+  &lt;/div&gt; 
+ &lt;/div&gt; 
+&lt;/div&gt; 
+&lt;p&gt;&amp;nbsp;&lt;/p&gt; 
+&lt;span id="OSC_h2_6"&gt;&lt;/span&gt; 
+&lt;h2&gt;&lt;strong&gt;1.4 Iceberg 的組織結構&lt;/strong&gt;&lt;/h2&gt; 
+&lt;p&gt;Iceberg 文件組織分為元數據層和數據層，主要包含 version-hint，metadata file、snapshot file、manifest file 和 data file 文件類型，具體如下：&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt;metadata 元數據層&lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;p&gt;a. version-hint：該文件作為元數據索引初始文件，記錄了 Iceberg 表的版本號，通過版本號找到對應的 metadata file。&lt;/p&gt; 
+&lt;p&gt;b. metadata file：記錄了 Iceberg 表的 schemas、properties 以及快照等信息。&lt;/p&gt; 
+&lt;p&gt;c. snapshot file（manifest-list）：每次數據 commit 會生成一個新的快照，保存了該快照下每個 manifest file 路徑及對應的分區範圍。&lt;/p&gt; 
+&lt;p&gt;d. manifest file：記錄數據文件元信息，包含每個數據文件的路徑、文件的大小等一系列統計信息（如文件每列的最大最小值、空值數等），實現元數據和數據文件的關聯。&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt;data 數據層&lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;p&gt;data file：實際的數據文件，以 parquet 等列存格式存儲數據。&lt;/p&gt; 
+&lt;p&gt;&lt;img alt="" src="https://oscimg.oschina.net/oscnet/up-f4a0f78b290db1caccb1aa213d0eb2ebc13.jpg" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p&gt;△Iceberg 表結構&lt;/p&gt; 
+&lt;p&gt;&lt;img alt="" src="https://oscimg.oschina.net/oscnet/up-f506fa444f1e285b84c15e9adb1fd379988.png" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p&gt;△Iceberg 文件組織結構&lt;/p&gt; 
+&lt;p&gt;通過上述 Iceberg 元數據文件組織結構，Iceberg 實現了文件級的元信息統計及版本化管理。&lt;/p&gt; 
+&lt;span id="OSC_h1_7"&gt;&lt;/span&gt; 
+&lt;h1&gt;02 Iceberg 能力建設與應用&lt;/h1&gt; 
+&lt;span id="OSC_h2_8"&gt;&lt;/span&gt; 
+&lt;h2&gt;&lt;strong&gt;2.1 圖靈生態能力適配&lt;/strong&gt;&lt;/h2&gt; 
+&lt;span id="OSC_h3_9"&gt;&lt;/span&gt; 
+&lt;h3&gt;2.1.1 統一元數據服務&lt;/h3&gt; 
+&lt;p&gt;由於原生 iceberg 缺少元數據的可視化管理能力，我們通過構建統一的元數據微服務，將 Iceberg 表和 Hive 表元數據進行管理，對應用層提供相關表和分區的增刪改查等接口，統一數據存儲的元數據操作入口。&lt;/p&gt; 
+&lt;p&gt;該微服務主要包含常駐 SparkSession 模塊，EngineMetaService 模塊和元數據模塊，通過將 SparkSession 常駐，為用戶提供 Iceberg 表和 Hive 表元數據和分區數據的增刪改查功能，以及可視化的元數據管理界面。&lt;/p&gt; 
+&lt;p&gt;&lt;img alt="" src="https://oscimg.oschina.net/oscnet/up-76e46b4f67c2c75cd8176866ca4893e5c2e.jpg" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p&gt;△統一元數據服務架構&lt;/p&gt; 
+&lt;span id="OSC_h3_10"&gt;&lt;/span&gt; 
+&lt;h3&gt;2.1.2 打通 Iceberg 和 Hive 聯邦查詢&lt;/h3&gt; 
+&lt;p&gt;為了兼容歷史業務存量 Hive 表，同時降低用戶使用 Iceberg 的成本。我們在計算引擎層面打通 Iceberg 和 Hive 聯邦查詢能力，並保證了 Iceberg 表與原有方式語法一致。&lt;/p&gt; 
+&lt;p&gt;通常在一條 SQL 執行過程中，主要可簡化以下 Parse、Analyzer、Optimizer、CBO 四個流程。通過在 Analyzer 和 Plan 階段進行改進優化，來打通 Iceberg 和 Hive 表聯邦查詢。&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt; &lt;p&gt;Analyzer 階段：該階段主要是將 spark 未解析的邏輯計劃進行解析，我們通過對 SparkSessionCatalog 加載方式改造，優先加載 iceberg 表使用的 catalog 類型，如果用戶 SQL 使用的是 Iceberg 表，則對應會使用 IcebergCatalog 和 iceberg 數據源訪問，否則使用 SessionCatalog 與 Hive 數據源訪問。&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;Optimizer 階段：為加強數據安全管理，我們進一步打通 Iceberg 表鑑權能力，在基於邏輯計劃生成物理計劃階段，解析注入表、字段信息以及表操作類型規則，並與公司內數管平台交互，實現對 Iceberg 表和字段的鑑權&lt;/p&gt; &lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;p&gt;&lt;img alt="" src="https://oscimg.oschina.net/oscnet/up-a5292d689d944eafa1fc34ca2637e610b9f.jpg" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p&gt;△Iceberg 和 Hive 聯邦查詢適配流程&lt;/p&gt; 
+&lt;span id="OSC_h2_11"&gt;&lt;/span&gt; 
+&lt;h2&gt;&lt;strong&gt;2.2 存量 Hive 低成本遷移 Iceberg&lt;/strong&gt;&lt;/h2&gt; 
+&lt;p&gt;現有數倉業務數據主要存儲於 Hive 表，為支持業務快速切換 Iceberg 應用新技術，我們建設了存量 Hive 表低成本遷移至 Iceberg 表的能力。&lt;/p&gt; 
+&lt;p&gt;以下是在實踐過程中的兩種遷移方案對比：&lt;/p&gt; 
+&lt;p&gt;方式 1：使用 Iceberg 功能 migrate 進行原地遷移，通過社區提供的 CALL migrate 語法，直接執行如下示例的 SQL 語句，即可將 Hive 表升級為 Iceberg 表。&lt;/p&gt; 
+&lt;pre&gt;&lt;code&gt;CALL&amp;nbsp;catalog_name.system.migrate('db.sample', map('foo',&amp;nbsp;'bar'));﻿
+
+
+&lt;/code&gt;&lt;/pre&gt; 
+&lt;p&gt;該方案操作簡單且可回滾，但這種方式在圖靈生態落地過程中也存在一些問題：&lt;/p&gt; 
+&lt;p&gt;該方式會基於原 Hive 表的數據信息構建 Iceberg 元數據信息，並將原 Hive 表名重命名為 sample_backup_，同時數據路徑也進行重命名。&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt; &lt;p&gt;下游無法讀：在執行遷移過程中，原 Hive 表對應的路徑已經被重命名，進而導致下游業務無法正常讀取正在遷移中的表。&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;多表掛載衝突：在業務的使用場景中，存在同一份物理數據被多個 Hive 表掛載可能，直接修改路徑會導致其他表失效。&lt;/p&gt; &lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;p&gt;方式 2：基於上述問題，我們進一步對現有方案進行優化，不改變 Hive 表原有的數據路徑，來實現 Hive 低成本遷移 Iceberg，具體流程如下：&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt; &lt;p&gt;構建 Iceberg 元數據：直接複用 Hive 的分區數據，新建同名的 Iceberg 表，並重建 Iceberg 元數據，最終新 Iceberg 表的元數據信息實際指向是 Hive 分區數據存儲位置。&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;數據校驗：當 Iceberg 元數據構建完成後，查詢 Iceberg 表中字段數據，和遷移之前 Hive 表字段數據，進行一致性校驗，驗證遷移是否符合預期。&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;讀寫切換：數據校驗完成後，我們只需要將對應表的屬性更新為 Iceberg。因為我們已經打通了 Iceberg 和 Hive 的查詢，且遷移後表名未變，業務可正常使用原有表名及語法進行查詢和寫入，降低遷移成本。&lt;/p&gt; &lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;p&gt;&lt;img alt="" src="https://oscimg.oschina.net/oscnet/up-eea52f5d044ee6bc0ba16749ae9f4589492.png" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p&gt;△Hive 遷移 Iceberg 整體實現流程&lt;/p&gt; 
+&lt;span id="OSC_h2_12"&gt;&lt;/span&gt; 
+&lt;h2&gt;&lt;strong&gt;2.3 Iceberg 在圖靈的應用和性能優化&lt;/strong&gt;&lt;/h2&gt; 
+&lt;span id="OSC_h3_13"&gt;&lt;/span&gt; 
+&lt;h3&gt;2.3.1 圖靈實時數倉應用&lt;/h3&gt; 
+&lt;p&gt;在圖靈數倉大部分場景中，用戶主要依託天級或小時級運行的離線 Spark 任務來完成數據入倉。在這種模式下，難以滿足部分對數據實時性要求較高的需求。&lt;/p&gt; 
+&lt;p&gt;為解決該問題，我們基於 Iceberg+Flink 構建的圖靈實時湖倉架構，整體重構流程如下圖所示。該架構模式實現了數據分鐘級別實時入倉，顯著提升了數據入倉的時效性。進一步擴展了整個圖靈的應用場景。&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt; &lt;p&gt;針對數據分析和 case 排查等場景，業務可基於圖靈常駐計算引擎進行實時查詢，快速獲取所需要的數據支持業務分析決策；&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;針對策略迭代、特徵生產以及機器學習等複雜計算場景，可基於 spark 例行任務進行加工生產；&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;針對策略數據調研分析、科學計算等複雜場景通過數據交互計算引擎 Jupyter 進行數據計算。通過構建圖靈實時湖倉架構，既保證了數據分析的時效性又兼顧了複雜計算任務的處理能力，有效提升了業務的數據處理效率和分析決策能力。&lt;/p&gt; &lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;p&gt;&lt;img alt="" src="https://oscimg.oschina.net/oscnet/up-fabfc35e204c90fdf9ccd937438c044d8c6.jpg" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p&gt;△圖靈實時湖倉架構演變&lt;/p&gt; 
+&lt;span id="OSC_h3_14"&gt;&lt;/span&gt; 
+&lt;h3&gt;2.3.2 行級更新策略&lt;/h3&gt; 
+&lt;p&gt;在圖靈數倉業務場景下，商業、搜索、電商、銷售等業務，週期性地更新行業等信息。而 Hive 在該場景下支持相對較弱，需通過全量覆蓋寫方式刷新數據，這種方式在大數據量場景下，回溯數據週期長，消耗資源大，所需要的人力時間成本也高。我們通過利用 Iceberg 行級更新的特性，基於 update、merge into 等方式回溯進行字段變更，能夠很大程度的提高回溯效率，降低資源和人力成本。&lt;/p&gt; 
+&lt;p&gt;針對數據行級更新，Iceberg 提供了兩種策略，分別為 COW(Copy on Write： 寫時複製) 或 MOR (Merge on Read：讀時合併)，其中 MOR 根據其標記刪除文件的區別又細分了兩種方式（Equality Delete File 和 Position Delete File）。&lt;/p&gt; 
+&lt;div&gt; 
+ &lt;div&gt; 
+  &lt;div&gt; 
+   &lt;table border="1" cellspacing="0" style="border-collapse:collapse; border:1px solid #dcdde0"&gt; 
+    &lt;tbody&gt; 
+     &lt;tr&gt; 
+      &lt;td colspan="1" rowspan="1" style="background-color:#d5e7fb; border-style:solid; border-width:1px; vertical-align:top"&gt; 
+       &lt;div&gt; 
+        &lt;div&gt; 
+         &lt;span&gt;更新策略&lt;/span&gt; 
+         &lt;div&gt;
+           &amp;nbsp; 
+         &lt;/div&gt; 
+        &lt;/div&gt; 
+       &lt;/div&gt; &lt;/td&gt; 
+      &lt;td colspan="1" rowspan="1" style="background-color:#d5e7fb; border-style:solid; border-width:1px; vertical-align:top"&gt; 
+       &lt;div&gt; 
+        &lt;div&gt; 
+         &lt;span&gt;更新後的讀取效率&lt;/span&gt; 
+         &lt;div&gt;
+           &amp;nbsp; 
+         &lt;/div&gt; 
+        &lt;/div&gt; 
+       &lt;/div&gt; &lt;/td&gt; 
+      &lt;td colspan="1" rowspan="1" style="background-color:#d5e7fb; border-style:solid; border-width:1px; vertical-align:top"&gt; 
+       &lt;div&gt; 
+        &lt;div&gt; 
+         &lt;span&gt;更新時寫入效率&lt;/span&gt; 
+         &lt;div&gt;
+           &amp;nbsp; 
+         &lt;/div&gt; 
+        &lt;/div&gt; 
+       &lt;/div&gt; &lt;/td&gt; 
+      &lt;td colspan="1" rowspan="1" style="background-color:#d5e7fb; border-style:solid; border-width:1px; vertical-align:top"&gt; 
+       &lt;div&gt; 
+        &lt;div&gt; 
+         &lt;span&gt;適用場景&lt;/span&gt; 
+         &lt;div&gt;
+           &amp;nbsp; 
+         &lt;/div&gt; 
+        &lt;/div&gt; 
+       &lt;/div&gt; &lt;/td&gt; 
+      &lt;td colspan="1" rowspan="1" style="background-color:#d5e7fb; border-style:solid; border-width:1px; vertical-align:top"&gt; 
+       &lt;div&gt; 
+        &lt;div&gt; 
+         &lt;span&gt;備註&lt;/span&gt; 
+         &lt;div&gt;
+           &amp;nbsp; 
+         &lt;/div&gt; 
+        &lt;/div&gt; 
+       &lt;/div&gt; &lt;/td&gt; 
+     &lt;/tr&gt; 
+     &lt;tr&gt; 
+      &lt;td colspan="1" rowspan="1" style="border-style:solid; border-width:1px; vertical-align:top"&gt; 
+       &lt;div&gt; 
+        &lt;div&gt; 
+         &lt;span&gt;COW&lt;/span&gt; 
+         &lt;div&gt;
+           &amp;nbsp; 
+         &lt;/div&gt; 
+        &lt;/div&gt; 
+       &lt;/div&gt; &lt;/td&gt; 
+      &lt;td colspan="1" rowspan="1" style="border-style:solid; border-width:1px; vertical-align:top"&gt; 
+       &lt;div&gt; 
+        &lt;div&gt; 
+         &lt;span&gt;最快&lt;/span&gt; 
+         &lt;div&gt;
+           &amp;nbsp; 
+         &lt;/div&gt; 
+        &lt;/div&gt; 
+       &lt;/div&gt; &lt;/td&gt; 
+      &lt;td colspan="1" rowspan="1" style="border-style:solid; border-width:1px; vertical-align:top"&gt; 
+       &lt;div&gt; 
+        &lt;div&gt; 
+         &lt;span&gt;最慢&lt;/span&gt; 
+         &lt;div&gt;
+           &amp;nbsp; 
+         &lt;/div&gt; 
+        &lt;/div&gt; 
+       &lt;/div&gt; &lt;/td&gt; 
+      &lt;td colspan="1" rowspan="1" style="border-style:solid; border-width:1px; vertical-align:top"&gt; 
+       &lt;div&gt; 
+        &lt;div&gt; 
+         &lt;span&gt;讀多寫少場景&lt;/span&gt; 
+         &lt;div&gt;
+           &amp;nbsp; 
+         &lt;/div&gt; 
+        &lt;/div&gt; 
+       &lt;/div&gt; &lt;/td&gt; 
+      &lt;td colspan="1" rowspan="1" style="border-style:solid; border-width:1px; vertical-align:top"&gt; 
+       &lt;div&gt; 
+        &lt;div&gt; 
+         &lt;span&gt;﻿&lt;/span&gt; 
+         &lt;div&gt;
+           &amp;nbsp; 
+         &lt;/div&gt; 
+        &lt;/div&gt; 
+       &lt;/div&gt; &lt;/td&gt; 
+     &lt;/tr&gt; 
+     &lt;tr&gt; 
+      &lt;td colspan="1" rowspan="1" style="border-style:solid; border-width:1px; vertical-align:top"&gt; 
+       &lt;div&gt; 
+        &lt;div&gt; 
+         &lt;span&gt;MOR 標記條件刪除（&lt;/span&gt; 
+         &lt;span&gt;&lt;span style="color:#191b1f"&gt;&lt;span&gt;Equality Delete File&lt;/span&gt;&lt;/span&gt;&lt;/span&gt; 
+         &lt;span&gt;）&lt;/span&gt; 
+         &lt;div&gt;
+           &amp;nbsp; 
+         &lt;/div&gt; 
+        &lt;/div&gt; 
+       &lt;/div&gt; &lt;/td&gt; 
+      &lt;td colspan="1" rowspan="1" style="border-style:solid; border-width:1px; vertical-align:top"&gt; 
+       &lt;div&gt; 
+        &lt;div&gt; 
+         &lt;span&gt;較快&lt;/span&gt; 
+         &lt;div&gt;
+           &amp;nbsp; 
+         &lt;/div&gt; 
+        &lt;/div&gt; 
+       &lt;/div&gt; &lt;/td&gt; 
+      &lt;td colspan="1" rowspan="1" style="border-style:solid; border-width:1px; vertical-align:top"&gt; 
+       &lt;div&gt; 
+        &lt;div&gt; 
+         &lt;span&gt;最快&lt;/span&gt; 
+         &lt;div&gt;
+           &amp;nbsp; 
+         &lt;/div&gt; 
+        &lt;/div&gt; 
+       &lt;/div&gt; &lt;/td&gt; 
+      &lt;td colspan="1" rowspan="1" style="border-style:solid; border-width:1px; vertical-align:top"&gt; 
+       &lt;div&gt; 
+        &lt;div&gt; 
+         &lt;span&gt;寫入多、讀取少場景&lt;/span&gt; 
+         &lt;div&gt;
+           &amp;nbsp; 
+         &lt;/div&gt; 
+        &lt;/div&gt; 
+       &lt;/div&gt; &lt;/td&gt; 
+      &lt;td colspan="1" rowspan="1" style="border-style:solid; border-width:1px; vertical-align:top"&gt; 
+       &lt;div&gt; 
+        &lt;div&gt; 
+         &lt;span&gt;讀開銷：每次讀取數據需要額外讀取標記刪除列數據進行比較。&lt;/span&gt; 
+         &lt;div&gt;
+           &amp;nbsp; 
+         &lt;/div&gt; 
+        &lt;/div&gt; 
+        &lt;div&gt; 
+         &lt;span&gt;寫開銷：只需要存儲標記過濾數據的條件，寫入成本極低。&lt;/span&gt; 
+         &lt;div&gt;
+           &amp;nbsp; 
+         &lt;/div&gt; 
+        &lt;/div&gt; 
+       &lt;/div&gt; &lt;/td&gt; 
+     &lt;/tr&gt; 
+     &lt;tr&gt; 
+      &lt;td colspan="1" rowspan="1" style="border-style:solid; border-width:1px; vertical-align:top"&gt; 
+       &lt;div&gt; 
+        &lt;div&gt; 
+         &lt;span&gt;MOR 標記位置刪除（Position Delete File）&lt;/span&gt; 
+         &lt;div&gt;
+           &amp;nbsp; 
+         &lt;/div&gt; 
+        &lt;/div&gt; 
+       &lt;/div&gt; &lt;/td&gt; 
+      &lt;td colspan="1" rowspan="1" style="border-style:solid; border-width:1px; vertical-align:top"&gt; 
+       &lt;div&gt; 
+        &lt;div&gt; 
+         &lt;span&gt;快（依賴更新數據量）&lt;/span&gt; 
+         &lt;div&gt;
+           &amp;nbsp; 
+         &lt;/div&gt; 
+        &lt;/div&gt; 
+       &lt;/div&gt; &lt;/td&gt; 
+      &lt;td colspan="1" rowspan="1" style="border-style:solid; border-width:1px; vertical-align:top"&gt; 
+       &lt;div&gt; 
+        &lt;div&gt; 
+         &lt;span&gt;較快&lt;/span&gt; 
+         &lt;div&gt;
+           &amp;nbsp; 
+         &lt;/div&gt; 
+        &lt;/div&gt; 
+       &lt;/div&gt; &lt;/td&gt; 
+      &lt;td colspan="1" rowspan="1" style="border-style:solid; border-width:1px; vertical-align:top"&gt; 
+       &lt;div&gt; 
+        &lt;div&gt; 
+         &lt;span&gt;少量數據更新、讀取少場景&lt;/span&gt; 
+         &lt;div&gt;
+           &amp;nbsp; 
+         &lt;/div&gt; 
+        &lt;/div&gt; 
+       &lt;/div&gt; &lt;/td&gt; 
+      &lt;td colspan="1" rowspan="1" style="border-style:solid; border-width:1px; vertical-align:top"&gt; 
+       &lt;div&gt; 
+        &lt;div&gt; 
+         &lt;span&gt;讀開銷：加載每個文件需過濾的數據行號。（刪除行過多，影響性能）&lt;/span&gt; 
+         &lt;div&gt;
+           &amp;nbsp; 
+         &lt;/div&gt; 
+        &lt;/div&gt; 
+        &lt;div&gt; 
+         &lt;span&gt;寫開銷：需要掃描一遍原數據，找出待刪除數據的行號。&lt;/span&gt; 
+         &lt;div&gt;
+           &amp;nbsp; 
+         &lt;/div&gt; 
+        &lt;/div&gt; 
+       &lt;/div&gt; &lt;/td&gt; 
+     &lt;/tr&gt; 
+    &lt;/tbody&gt; 
+   &lt;/table&gt; 
+  &lt;/div&gt; 
+  &lt;div&gt;
+    &amp;nbsp; 
+  &lt;/div&gt; 
+ &lt;/div&gt; 
+&lt;/div&gt; 
+&lt;p&gt;&lt;span&gt;﻿&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;關於 COW 和 MOR 更新策略的文件表現形式如下圖所示，我們針對不同場景採用不同更新策略：&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt; &lt;p&gt;對於日常數據查詢分析場景，小時級&amp;amp;天級離線例行生成加工場景，由於查詢次數會遠多於數據更新次數，可默認採用 COW 策略；&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;針對一些業務更新少量字段進行長週期回溯場景，以及實時場景，寫入頻繁，通過使用 MOR 策略，來支持用戶進行數據回溯變更字段信息，以提升數據更新效率並節省資源。&lt;/p&gt; &lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;p&gt;&lt;img alt="" src="https://oscimg.oschina.net/oscnet/up-082e448b69e5bbdb64cc8dbc417fdcbe04d.jpg" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p&gt;△COW 和 MOR 兩種更新策略對比&lt;/p&gt; 
+&lt;p&gt;&lt;img alt="" src="https://oscimg.oschina.net/oscnet/up-45b92197037fdcbd76356145ee09137730c.jpg" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p&gt;△MOR 兩種刪除文件類型&amp;amp;更新字段示例&lt;/p&gt; 
+&lt;p&gt;在業務進行數據回溯應用過程中，我們採用 MOR(Position Delete File) 進行行級數據更新，通過原 Hive 回溯和新 Iceberg 回溯兩種方式對比，在一天 24 小時不同分區上，驗證了 Hive 和 Iceberg 新舊的回溯效率，如下圖所示，業務回溯效率整體可平均提升 50%+；進一步地對比單次回溯一年數據消耗的計算資源量對比，平均整體降低 70%+的計算資源消耗，整體上極大提升回溯效率，並降低資源成本。&lt;/p&gt; 
+&lt;p&gt;&lt;img alt="" src="https://oscimg.oschina.net/oscnet/up-ec2f7bfd27359aea682e96ed16bd8438b28.jpg" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p&gt;△ Hive 和 Iceberg 回溯效率對比&lt;/p&gt; 
+&lt;span id="OSC_h3_15"&gt;&lt;/span&gt; 
+&lt;h3&gt;2.3.3 Iceberg 表生命週期管理和性能優化&lt;/h3&gt; 
+&lt;p&gt;在 Iceberg 應用實踐的過程中，針對不同業務場景遇到的問題，我們彙總如下：&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt; &lt;p&gt;小文件過多：在實時湖倉業務場景，為了要保證數據的時效性，通常是分鐘級別的 commit 操作，在這種場景下，單個作業執行一天，則需要 1440 個 commit，如果執行時間更長，則會產生更多的 commit，隨着時間的累積，元數據以及數據文件等都會產生大量的小文件，對於整體查詢的性能會產生一定的影響。&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;存儲資源增加：如果 iceberg 表的快照不及時進行清理，可能會造成數據存儲增加，導致存儲賬號資源緊張。&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;缺乏分區數據統一管理：在一些業務場景，只需要保存一定天數的分區數據，針對無用數據需要進行刪除處理。&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;數據文件組織不均衡且無序：由於表數據寫入是隨機無序，且針對表數據文件大小會存在不均衡的情況。&lt;/p&gt; &lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;p&gt;針對上述問題，我們通過對 Iceberg 表進行全生命週期管理，並結合 Iceberg 特性優化表查詢性能，保障整個數據鏈路的穩定性，整體框架如下圖所示：&lt;/p&gt; 
+&lt;p&gt;&lt;img alt="" src="https://oscimg.oschina.net/oscnet/up-6f3d4d018567c082ed09d5addc93eb145e6.jpg" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p&gt;△Iceberg 表生命週期管理和性能優化流程&lt;/p&gt; 
+&lt;p&gt;以上流程主要包含表數據生命週期管理和表性能優化兩部分。&lt;/p&gt; 
+&lt;p&gt;一方面，對於表數據生命週期管理，我們通過在線服務執行定時任務，來實現對錶數據和元數據進行全生命週期監控，具體如下：&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt; &lt;p&gt;數據分區過期：基於用戶配置的表生命週期，進行分區數據刪除，保證數據文件按期清理。&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;元數據快照清理：為用戶提供按照時間維度天級別和按照個數維度小時級別兩種快照過期策略，精細化元數據快照過期處理，實現存儲資源的高效利用。&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;元數據孤兒文件清理：通過天級例行任務來觸發清理由於計算引擎執行任務失敗等情況產生的一些沒有被引用的孤兒文件，避免元數據累積影響性能。&lt;/p&gt; &lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;p&gt;另一方面，在表性能優化方面，我們結合圖靈數倉表使用情況，並基於 Iceberg 原生特性，為用戶在平台側提供 Iceberg 表優化算子（如下圖示例），主要包含以下兩種能力：&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt; &lt;p&gt;小文件合併：通過制定合併文件大小，對錶數據文件進行重寫合併，避免產生大量小文件。&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;z-order 排序優化：實現對錶相關字段進行重排序，提升查詢性能。&lt;/p&gt; &lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;p&gt;&lt;img alt="" src="https://oscimg.oschina.net/oscnet/up-ba76a39d6a2f835b0d8fb1866416f21a652.jpg" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p&gt;△Iceberg 表優化算子任務創建示例&lt;/p&gt; 
+&lt;p&gt;我們通過對 Iceberg 表整體的生命週期管理，實現了數據和元數據的統一治理，表元數據小文件數萬個降低到數百級別，合理控制了元數據產生的數量，並解決了數據頻繁回溯場景下存儲快速增加的問題。而在表查詢優化方面，通過在一些表的數據重分佈和字段重排序應用，在部分業務表查詢性能提速 50%。&lt;/p&gt; 
+&lt;span id="OSC_h1_16"&gt;&lt;/span&gt; 
+&lt;h1&gt;03 未來規劃&lt;/h1&gt; 
+&lt;p&gt;Iceberg 作為圖靈 3.0 生態中的重要組成部分，基於其高時效性、行級更新能力、小文件合併以及 Z-order 等成體系的數據優化的技術解決方案，為 MEG 數據中台業務提供構建湖倉一體，解決數據回溯等痛點問題的能力。目前 Iceberg 的應用已覆蓋搜索，商業，銷售，用增架構等多個業務線，通過低成本助力業務將存量 Hive 遷移 Iceberg 表，為業務提供高性能數據查詢，同時實現對業務的降本增效。此外，我們也在不斷完善 Iceberg 數據存儲引擎的各項能力，包含表數據智能治理、查詢優化、智能索引以及特定場景的性能問題等，並不斷擴大 Iceberg 的業務覆蓋範圍。&lt;/p&gt;
+                                                                                    &lt;/div&gt;
+                                                                            </description>
+      <link>https://my.oschina.net/u/4939618/blog/18679436</link>
+      <guid isPermaLink="false">https://my.oschina.net/u/4939618/blog/18679436</guid>
+      <pubDate>Sun, 11 May 2025 10:17:00 GMT</pubDate>
+      <author>原創</author>
+    </item>
+    <item>
+      <title>aps 高級排產排程系統 2.0.1 版本重磅更新，助力生產管理升級</title>
+      <description>&lt;div class="content"&gt;
+                                                                    
+                                                        &lt;div&gt; 
+ &lt;p&gt;&amp;nbsp;&lt;/p&gt; 
+&lt;/div&gt; 
+&lt;div&gt;
+ &amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;各位開發者、使用者，aps 高級排產排程系統迎來了 2.0.1 版本的重大升級！本次更新聚焦系統穩定性提升與功能強化，在修復已知問題的同時，新增排產後齊套檢查與齊套模板配置功能，為企業智能化生產管理注入新動能，以下是詳細更新內容。
+&lt;/div&gt; 
+&lt;div&gt; 
+ &lt;h2&gt;一、修復已知 BUG&lt;/h2&gt; 
+&lt;/div&gt; 
+&lt;div&gt;
+ &amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;在 2.0.0 版本的使用過程中，我們積極收集用戶反饋與建議，對系統進行全方位 「體檢」。本次修復工作覆蓋數據顯示異常、操作流程卡頓、邏輯錯誤等多方面的已知軟件漏洞與異常問題。例如，解決了部分複雜生產計劃數據顯示錯位的情況，優化了多任務並行操作時的卡頓問題。通過這些修復，系統運行更加穩定可靠，大幅減少因系統 BUG 導致的生產計劃偏差，讓用戶擁有更流暢、準確的使用體驗。
+&lt;/div&gt; 
+&lt;div&gt; 
+ &lt;h2&gt;二、新增排產後齊套檢查功能&lt;/h2&gt; 
+&lt;/div&gt; 
+&lt;div&gt; 
+ &lt;h3&gt;（一）功能概述&lt;/h3&gt; 
+&lt;/div&gt; 
+&lt;div&gt;
+ &amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;排產後齊套檢查功能是本次更新的核心亮點。在完成生產排產後，該功能會對指定日期生產訂單所需的資源、物料等進行深度覈查，快速判斷生產任務是否滿足齊套條件。一旦發現物料短缺、版本不匹配等潛在風險，系統將立即發出預警，幫助企業提前規劃應對策略，避免生產進度受阻。
+&lt;/div&gt; 
+&lt;div&gt; 
+ &lt;h3&gt;（二）齊套檢查具體內容&lt;/h3&gt; 
+&lt;/div&gt; 
+&lt;ol&gt; 
+ &lt;li&gt;&lt;strong&gt;齊套版本列表展示&lt;/strong&gt;：系統會對生產任務中涉及的各零部件、物料版本進行全面梳理，生成詳細的齊套版本列表。在列表中，清晰呈現每個版本的具體信息，如版本號、適用產品型號等。通過該列表，企業可直觀瞭解生產任務中版本使用情況，及時發現版本混用等問題，從源頭上規避因版本不一致引發的產品質量問題與裝配難題。&lt;/li&gt; 
+&lt;/ol&gt; 
+&lt;ol&gt; 
+ &lt;li&gt;&lt;strong&gt;齊套版本齊套率&lt;/strong&gt;：系統通過計算實際符合生產要求的版本數量與應使用版本數量的比例，得出齊套版本齊套率。該指標以量化的方式展現生產任務在版本一致性方面的狀況，當齊套率較低時，企業可迅速鎖定問題版本，協調資源進行更新或替換，保障生產流程順暢。&lt;/li&gt; 
+&lt;/ol&gt; 
+&lt;ol&gt; 
+ &lt;li&gt;&lt;strong&gt;訂單齊套率&lt;/strong&gt;：從訂單整體維度出發，對訂單所需的全部物料、零部件進行檢查。通過計算訂單中已具備的物料數量與訂單所需物料總數量的比例，得出訂單齊套率。藉助這一指標，企業能夠清晰掌握每個訂單的齊套情況，優先安排齊套率高的訂單投入生產，合理調配資源，減少因物料短缺導致的生產線閒置或訂單延誤，顯著提升生產效率與訂單交付率。&lt;/li&gt; 
+&lt;/ol&gt; 
+&lt;ol&gt; 
+ &lt;li&gt;&lt;strong&gt;零件缺失展示&lt;/strong&gt;：一旦檢測到零件缺失，系統會以直觀明瞭的方式呈現具體缺失信息，包括零件名稱、缺失數量等關鍵數據。企業可依據這些信息，及時啓動補貨流程，避免因零件缺失影響生產進度。&lt;/li&gt; 
+&lt;/ol&gt; 
+&lt;div&gt; 
+ &lt;h2&gt;三、新增齊套模板配置功能&lt;/h2&gt; 
+&lt;/div&gt; 
+&lt;div&gt;
+ &amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;為滿足企業多樣化的業務需求，2.0.1 版本新增齊套模板配置功能。用戶可根據實際業務場景，靈活配置在生成齊套檢查時需要展示的訂單字段信息。例如，企業可將訂單編號、客戶名稱、交貨日期、產品規格等重要字段添加到齊套檢查模板中。在進行齊套檢查時，系統將按照預設模板，精準展示相關訂單字段信息，方便用戶快速獲取關鍵數據，提升生產計劃制定與執行過程中的信息處理效率，使齊套檢查結果更貼合企業實際管理需求。
+&lt;/div&gt; 
+&lt;div&gt;
+ &amp;nbsp;
+&lt;/div&gt; 
+&lt;div&gt;
+ &amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;此次 aps 高級排產排程系統 2.0.1 版本更新，是我們持續優化產品、服務用戶的重要成果。未來，我們將持續關注用戶反饋，不斷迭代升級系統功能，為企業打造更強大、更智能的生產管理解決方案。如果您在使用過程中有任何疑問或建議，歡迎隨時與我們聯繫！
+&lt;/div&gt; 
+&lt;div&gt;
+ &amp;nbsp;
+&lt;/div&gt; 
+&lt;p&gt;&amp;nbsp;&lt;/p&gt;
+                                                                                &lt;/div&gt;
+                                                                            </description>
+      <link>https://www.oschina.net/news/358198</link>
+      <guid isPermaLink="false">https://www.oschina.net/news/358198</guid>
+      <pubDate>Sun, 11 May 2025 09:25:00 GMT</pubDate>
+      <author>來源: 資訊</author>
+    </item>
+    <item>
+      <title>Ubuntu Debcrafters 團隊成立，旨在維護 Ubuntu 檔案庫健康</title>
+      <description>&lt;div class="content"&gt;
+                                                                    
+                                                        &lt;p&gt;&lt;span style="color:#000000"&gt;Canonical 工程副總裁 Jon Seager 發文&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fdiscourse.ubuntu.com%2Ft%2Fintroducing-debcrafters%2F63674" target="_blank"&gt;宣佈&lt;/a&gt;&amp;nbsp;Ubuntu Debcrafters 團隊的成立。主要目標在於維護 Ubuntu 檔案庫的健康，但也旨在吸引廣泛的 Linux 發行版專業人才。&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;span style="color:#000000"&gt;Seager 表示，其鼓勵 Debian、Arch Linux、NixOS 等發行版的貢獻者加入 Debcrafters&amp;nbsp;團隊，貢獻的同時還可以獲得報酬，並促進學習和想法共享。該團隊由 Debian 開發人員、穩定版本更新 (SRU) 團隊成員和檔案管理員組成，並於 2025 年 5 月初首次開始合作。&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;img height="250" src="https://oscimg.oschina.net/oscnet/up-0e0b14cf8de1e9a97b9c9dba65bf6513bb0.png" width="700" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;span style="color:#000000"&gt;Seager 在 Debcrafters 公告中解釋道：&lt;/span&gt;&lt;/p&gt; 
+&lt;blockquote&gt; 
+ &lt;p&gt;&lt;span style="color:#000000"&gt;Debcrafters 的主要使命是維護 Ubuntu 檔案的健康。&lt;/span&gt;&lt;/p&gt; 
+ &lt;p&gt;&lt;span style="color:#000000"&gt;該團隊將負責同步和合並來自 Debian 的軟件包、審查提議的遷移問題、上游 Ubuntu 增量，並負責重大轉變，例如升級到 glibc 和過去的示例，例如 t64 和 python3 轉變。&lt;/span&gt;&lt;/p&gt; 
+ &lt;p&gt;&lt;span style="color:#000000"&gt;他們將管理存檔測試重建的調度、觸發和報告，這些重建工作在我們對關鍵軟件包進行重大更改時進行。我們在默認啓用框架指針時以及切換 coreutils 到 uutilsUbuntu 25.10 中的實現時都執行了這些操作。&lt;/span&gt;&lt;/p&gt; 
+ &lt;p&gt;&lt;span style="color:#000000"&gt;他們將負責 autopkgtestUbuntu 基礎架構的演變和維護，並在引入更多發行版規模的集成測試方面發揮重要作用。&lt;/span&gt;&lt;/p&gt; 
+ &lt;p&gt;&lt;span style="color:#000000"&gt;他們將致力於改進 Ubuntu 檔案庫、其貢獻者和狀態的報告和儀錶板，並對塑造我們用於構建和塑造 Ubuntu 的工具產生更廣泛的興趣。&lt;/span&gt;&lt;/p&gt; 
+ &lt;p&gt;&lt;span style="color:#000000"&gt;這支團隊與桌面、服務器和基礎團隊的不同之處在於，他們處理的軟件包範圍非常廣泛。Debcrafters 團隊的成員每個週期都會遷移數千個軟件包——其中許多軟件包他們並不十分熟悉，但他們將運用不斷提升的發行版維護和打包技能，在沒有其他明確或現有所有者的情況下進行維護。&lt;/span&gt;&lt;/p&gt; 
+&lt;/blockquote&gt;
+                                                                                &lt;/div&gt;
+                                                                            </description>
+      <link>https://www.oschina.net/news/358188/ubuntu-debcrafters</link>
+      <guid isPermaLink="false">https://www.oschina.net/news/358188/ubuntu-debcrafters</guid>
+      <pubDate>Sun, 11 May 2025 08:19:00 GMT</pubDate>
+      <author>來源: OSCHINA</author>
+    </item>
+    <item>
+      <title>微軟被曝將「AI 使用量」納入員工考覈，直接掛鈎績效</title>
+      <description>&lt;div class="content"&gt;
+                                                                    
+                                                        &lt;p&gt;&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fwww.businessinsider.com%2Fmicrosoft-internal-memo-using-ai-no-longer-optional-github-copilot-2025-6" target="_blank"&gt;根據《商業內幕》的報道&lt;/a&gt;，微軟開發者工具部門總裁 Julia Liuson 最近發出內部郵件，要求各級主管在評估員工績效時，將其使用 GitHub Copilot 等內部 AI 工具的情況納入考量。&lt;/p&gt; 
+&lt;p&gt;Liuson 表示，AI 已成為微軟日常工作的核心，就像團隊協作、數據導向思維和溝通能力一樣，使用 AI 不再是選擇題，而是每個崗位的基本要求。她指出，員工是否有效使用 AI，應該被納入對其整體表現和影響力的全面評估之中。&lt;/p&gt; 
+&lt;p&gt;具體執行框架如下：&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt;&lt;strong&gt;基礎合規層&lt;/strong&gt; ：要求員工在郵件撰寫、會議記錄、代碼開發等高頻場景 100% 啓用 Copilot 基礎功能，系統自動記錄使用時長和任務覆蓋率。&lt;/li&gt; 
+ &lt;li&gt;&lt;strong&gt;效能增值層&lt;/strong&gt; ：按崗位類型設定差異化 KPI，如開發人員需實現 30% 代碼由 Copilot 生成，銷售部門需達成 AI 優化提案的成交率提升指標。&lt;/li&gt; 
+ &lt;li&gt;&lt;strong&gt;創新應用層&lt;/strong&gt; ：將員工使用 Copilot 開發新工作流程或業務解決方案的實踐成果，納入晉升評估加分項。&lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;p&gt;知情人士透露，微軟各團隊的績效考覈標準不盡相同，目前已有部分團隊考慮在下一個財年正式將 AI 工具使用情況作為績效指標之一。另據兩位瞭解內情的人士稱，這一改變旨在應對微軟內部 Copilot 服務推廣緩慢的問題。微軟希望提升整體使用率，也希望產品開發人員更深入理解自家 AI 工具的運作方式。&lt;/p&gt;
+                                                                                &lt;/div&gt;
+                                                                            </description>
+      <link>https://www.oschina.net/news/358184/ms-internal-memo-using-ai-no-longer-optional-github-copilot</link>
+      <guid isPermaLink="false">https://www.oschina.net/news/358184/ms-internal-memo-using-ai-no-longer-optional-github-copilot</guid>
+      <pubDate>Sun, 11 May 2025 08:05:00 GMT</pubDate>
+      <author>來源: OSCHINA</author>
+    </item>
+    <item>
+      <title>Meta 將其 AI 部門重組為 「超級智能實驗室」</title>
+      <description>&lt;div class="content"&gt;
+                                                                    
+                                                        &lt;p&gt;&lt;span style="color:#000000"&gt;Meta 公司首席執行官馬克-扎克伯格（Mark Zuckerberg）正在重組公司的人工智能工作，以打造人工智能 「superintelligence」為中心。&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;span style="color:#000000"&gt;據&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fwww.bloomberg.com%2Fnews%2Farticles%2F2025-06-30%2Fzuckerberg-announces-meta-superintelligence-effort-more-hires%3Fsrnd%3Dundefined" target="_blank"&gt;彭博社&lt;/a&gt;報道，其從該公司於週一發出的一份內部備忘錄得知，Meta 公司所有從事人工智能工作的團隊今後都將隸屬於一個名為 Meta 超級智能實驗室（Meta Superintelligence Labs）的新團隊。&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;img height="366" src="https://oscimg.oschina.net/oscnet/up-44145dfdb97dd1159efb1314b8297ede5e1.png" width="700" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;span style="color:#000000"&gt;「超級智能實驗室」 將由前 Scale AI 首席執行官亞歷山大・王（Alexandr Wang）擔任首席人工智能官，負責整體方向與管理。他將與 GitHub 前首席執行官納特-弗裏德曼（Nat Friedman）合作，後者將負責 Meta 的人工智能產品和應用研究。&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;span style="color:#000000"&gt;扎克伯格一直在努力在人工通用智能（AGI）競賽中取得領先，主要是通過收購人工智能公司和頂級人工智能公司的員工。本月早些時候，Meta 向 Scale AI 投資了 143 億美元，並在此過程中引入了 Wang。&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;strong&gt;&lt;span style="color:#000000"&gt;相關閲讀：&lt;/span&gt;&lt;/strong&gt;&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt;&lt;a href="https://www.oschina.net/news/357367/metas-recruiting-three-openai-researchers" target="news"&gt;Meta 成功挖角三名 OpenAI 研究人員&lt;/a&gt;&lt;/li&gt; 
+ &lt;li&gt;&lt;a href="https://www.oschina.net/news/357940" target="news"&gt;OpenAI 被曝將重新調整薪酬以應對 Meta 挖人&lt;/a&gt;&lt;/li&gt; 
+&lt;/ul&gt;
+                                                                                &lt;/div&gt;
+                                                                            </description>
+      <link>https://www.oschina.net/news/358181/meta-superintelligence-labs</link>
+      <guid isPermaLink="false">https://www.oschina.net/news/358181/meta-superintelligence-labs</guid>
+      <pubDate>Sun, 11 May 2025 07:49:00 GMT</pubDate>
+      <author>來源: OSCHINA</author>
+    </item>
     <item>
       <title>微軟開源 GitHub Copilot Chat 的 VS Code 擴展</title>
       <description>&lt;div class="content"&gt;
@@ -27,7 +716,7 @@
                                                                             </description>
       <link>https://www.oschina.net/news/358178</link>
       <guid isPermaLink="false">https://www.oschina.net/news/358178</guid>
-      <pubDate>Tue, 01 Jul 2025 07:31:35 GMT</pubDate>
+      <pubDate>Sun, 11 May 2025 07:31:00 GMT</pubDate>
       <author>來源: OSCHINA</author>
     </item>
     <item>
@@ -553,144 +1242,6 @@ v = ln_v(tanh(v_up(v(x))) * v_emb(idx))
       <link>https://www.oschina.net/news/358019</link>
       <guid isPermaLink="false">https://www.oschina.net/news/358019</guid>
       <pubDate>Sat, 10 May 2025 09:19:00 GMT</pubDate>
-      <author>來源: OSCHINA</author>
-    </item>
-    <item>
-      <title>悟了，多模態才是智能應用爆發的關鍵</title>
-      <description>&lt;div class="content"&gt;
-                                                                                                                    
-                                                                                                                                                    &lt;p&gt;此前，快手發佈 2025 年一季度財報時，一個數字引發關注：成立僅兩年的 AI 業務線「可靈 AI」單季度貢獻營收 1.5 億元，同比增長 320%。而可靈 AI 正是一個多模態應用的典型產品，涉及到語言、視頻、音頻等交互。&lt;/p&gt; 
-&lt;p&gt;前不久，在 OSCHINA 和小度教育技術負責人丁小晶的&lt;a href="https://my.oschina.net/u/4489239/blog/18426743" rel="nofollow"&gt;對話&lt;/a&gt;中。丁小晶表示，多模態技術非常重要，甚至可以説，沒有多模態技術效果的快速提升，教育行業不可能如此迅猛發展。比如 AI 作業批改和 AI 講題答疑方向的應用，完全靠純文本大模型是無法滿足需求的，非常依賴對大模型的圖片理解能力。還比如超擬人 AI 老師，語音情感大模型就起來非常關鍵的作用。&lt;/p&gt; 
-&lt;p&gt;百度最新發布的發佈文心快碼 Comate AI IDE 產品，其中也提到了多模態能力的增強，比如支持 Figma 設計稿一鍵轉換為高可用代碼，能實現圖層的精準還原。百度工程效能部前端研發經理楊經緯告訴開源中國，無論是從自然語言、圖片還是設計稿生成代碼，最終都是為了能更加接近人類工程的意圖，因為人類去描述自己想要實現的想法的方式與形態是多種多樣的，也就對應了研發過程中的多模態形式。&lt;/p&gt; 
-&lt;p style="text-align:center"&gt;&lt;img height="210" src="https://oscimg.oschina.net/oscnet/up-db06f16dbd4e854566d762bff8c3dfe1e5f.png" width="800" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;p&gt;人類從不會只用一種感官認知世界。人工智能也勢必不能僅有一種交互途徑。&lt;/p&gt; 
-&lt;p&gt;我們聞到咖啡香氣的瞬間，腦海裏會立刻浮現深褐色液體與白瓷杯的畫面；聽到「貓」這個詞時，腦海中自動補全毛茸茸的觸感和呼嚕聲。這種多模態信息融合，正是人類智能的底層邏輯。而單一模態交換的 AI 模型的信息處理能力有限，例如文本生成模型難以理解圖像語義，無法根據文字生成圖像，視頻生成工具則無法同步解析聲音與畫面邏輯。這種時候，就需要多模態模型或是能力的配合。&lt;/p&gt; 
-&lt;span id="OSC_h2_1"&gt;&lt;/span&gt; 
-&lt;h2&gt;多模態，比文本慢一步&lt;/h2&gt; 
-&lt;p&gt;智源研究院院長王仲遠不久前公開&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fwww.msn.cn%2Fzh-cn%2F%25E6%258A%2580%25E6%259C%25AF%2F%25E6%258A%2580%25E6%259C%25AF%25E5%2585%25AC%25E5%258F%25B8%2F%25E8%2581%259A%25E7%2584%25A6%25E5%25A4%259A%25E6%25A8%25A1%25E6%2580%2581-chatgpt%25E6%2597%25B6%25E5%2588%25BB%25E6%259C%25AA%25E5%2588%25B0-2025%25E5%25A4%25A7%25E6%25A8%25A1%25E5%259E%258B-%25E5%258F%2598%25E6%2585%25A2-%25E4%25BA%2586%25E5%2590%2597%2Far-AA1GjaHk%3Focid%3DBingNewsSerp" rel="nofollow" target="_blank"&gt;指出&lt;/a&gt;，當前多模態大模型的學習路徑，尤其是多模態理解模型，通常是先將語言模型訓練到很強的程度，再學習其他模態信息。在這個過程中，模型的能力可能會出現下降。&lt;/p&gt; 
-&lt;p&gt;比單一模態更難的是，多模態模型還需解決一個核心問題：如何將圖像、文本、音頻等異構數據在語義層面對齊並融合。&lt;/p&gt; 
-&lt;p&gt;文本、圖像、聲音等模態的數據結構天然異構——文本是離散符號序列，圖像是連續像素矩陣，音頻是時間序列信號。比如要讓模型理解「貓」的文本描述與貓的圖片、叫聲之間的關聯，需構建跨模態的共享語義空間。&lt;/p&gt; 
-&lt;p&gt;早期，有研究嘗試通過數據級拼接，將圖像像素和文本特徵直接拼接，實現跨模態融合，但由於圖像和文本的時空特性差異較大，導致特徵對齊困難，最終效果不佳。直到對比學習和注意力機制的出現，才實現跨模態語義映射。比如 OpenAI 2021 年推出的一種基於對比學習只的多模態預訓練模型 CLIP，它通過大規模的圖像和文本數據進行訓練，使得模型能夠理解圖像內容和相關文本之間的語義關係。CLIP 的核心貢獻在於它打破了傳統的固定類別標籤範式，通過對比學習的方式，將圖像和文本映射到同一個向量空間中，從而實現跨模態的檢索和分類。但是 CLIP 模型的訓練數據規模龐大，據 OpenAI 披露，其使用了約 4 億圖像-文本對進行訓練，訓練成本高達數千 GPU 日，遠超 GPT-3 等純文本模型。&lt;/p&gt; 
-&lt;p style="text-align:center"&gt;&lt;img height="304" src="https://oscimg.oschina.net/oscnet/up-4ad6b286433edebde043654fd53af191e30.png" width="800" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;p style="text-align:center"&gt;&lt;span style="color:#8f959e"&gt;&lt;em&gt;CLIP 模型方法概述 &lt;/em&gt;&lt;/span&gt;&lt;span style="color:#8f959e"&gt;&lt;u&gt;&lt;em&gt;&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Farxiv.org%2Fabs%2F2103.00020" rel="nofollow" target="_blank"&gt;Learning Transferable Visual Models From Natural Language Supervision&lt;/a&gt;&lt;/em&gt;&lt;/u&gt;&lt;/span&gt;&lt;/p&gt; 
-&lt;p&gt;多模態融合需處理高維數據，如 4K 視頻的像素量是文本的百萬倍，傳統 Transformer 的二次方計算複雜度成為致命短板。對此，業界也有一些解決方式，比如此前 Mamba 架構通過狀態空間模型 SSM 將計算複雜度降至線性，2025 年擴展動態融合模塊&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fzhuanlan.zhihu.com%2Fp%2F2985554863" rel="nofollow" target="_blank"&gt; FusionMamba&lt;/a&gt;，在其中實現多模態特徵高效交互，推理速度提升 3 倍。&lt;/p&gt; 
-&lt;p&gt;不僅如此，相較於文本的資料庫和數據集，高質量多模態數據集也更加稀缺，收集難度更大。比如醫療影像、工業質檢的報告中的缺陷描述等，就需專家級別的標註人員。&lt;/p&gt; 
-&lt;span id="OSC_h2_2"&gt;&lt;/span&gt; 
-&lt;h2&gt;落地需求更多&lt;/h2&gt; 
-&lt;p&gt;雖然技術上還有諸多難點，但是多模態能力正在逐步提升，並且帶來非常可觀的價值和效果。&lt;/p&gt; 
-&lt;p&gt;比如，從圖片或者是 Figma 設計稿直接生成代碼可以幫助許多開發者或是產品經理完成一些開發工作。這項能力此前在一些低代碼或是輔助編程工具中也存在，但往往是通過 Figma DSL 進行設計稿解析，通過節點虛擬化技術實現像素級還原，其不足在於不一定適配當前項目，比如轉了一套 Vue 框架的代碼，就無法在 React 框架項目中使用。&lt;/p&gt; 
-&lt;p&gt;楊經緯介紹，此次文心快碼 Comate AI IDE 的發佈以及相關功能更新後，通過大模型能力增強了 Figma to Code 和當前項目的融合度。首先在 IDE 裏進行操作，天然就可以理解用戶當前環境和本地優勢，而 IDE 內智能體 Zulu 的接入，會更深入到本地項目中瞭解當前的框架、能力、代碼風格等，再結合 Image to Code 的能力，可以實現較高的還原度，並且適配當前的項目。&lt;/p&gt; 
-&lt;p&gt;而根據一些公開信息顯示，可靈 AI 的多模態技術，支持通過圖片、文字、聲音甚至手繪軌跡等輸入生成視頻。在上半年的 2.0 模型的迭代中，可靈 AI 也發佈了 AI 視頻生成的全新交互理念 Multi-modal Visual Language（MVL），讓用戶能夠結合圖像參考、視頻片段等多模態信息，將腦海中包含身份、外觀、風格、場景、動作、表情、運鏡在內的多維度複雜創意，直接高效地傳達給 AI。MVL 由 TXT（Pure Text，語義骨架）和 MMW（Multi-modal-document as a Word，多模態描述子）組成，能從視頻生成設定的基礎方向以及精細控制這兩個層面。此外，其技術也結合了類 Sora 的 DiT 結構和 Flow 擴散模型，提升在物理模擬和細節上的表現。&lt;/p&gt; 
-&lt;p&gt;基於這些技術特徵。商業化層面，截至今年 6 月，可靈 AI 已為超過 1 萬家企業客戶提供 API 服務，覆蓋廣告營銷、影視動畫等領域，企業客戶續費率較高。&lt;/p&gt; 
-&lt;p&gt;此外，一些傳統行業或場景也在結合多模態能力，實現與 AI 的加速融合。比如迪瑞醫療近期採用的多模態 AI 大模型算法技術為臨牀診斷帶來了重要的技術革新，結合多種檢測結果和患者的多維信息，如尿常規、血常規、生化和化學發光免疫，以及患者的個人背景、臨牀表現、現病史與既往病史等，進行全面分析。&lt;/p&gt; 
-&lt;p&gt;這種跨學科的信息整合使得診斷提示更加精準，對於減少漏診、誤診的概率具有顯著的作用，並進一步提升了醫療診療的整體效率。大洋彼岸，斯坦福醫學院的科研團隊研發出了一種名為&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fmp.weixin.qq.com%2Fs%3F__biz%3DMzkxMTM0OTQzNQ%3D%3D%26mid%3D2247486194%26idx%3D1%26sn%3D5ac605d67ca7019b3b2e524d65b0f88e%26chksm%3Dc0eed67e545679711993370e69032cc62e9d4fc0c6ff3e283c43854fd93355eae8a07b4fcb02%23rd" rel="nofollow" target="_blank"&gt; MUSK 的 AI 模型&lt;/a&gt;，將視覺數據，如病理圖像和文本數據的病歷和臨牀記錄相結合，為癌症治療帶來了新的可能。MUSK 模型不僅提高了預測癌症患者預後和治療反應的準確性，而且通過分析數千個數據點，更準確地確定了哪些療法對個體患者最有效。&lt;/p&gt; 
-&lt;p style="text-align:center"&gt;&lt;img height="285" src="https://oscimg.oschina.net/oscnet/up-196e0ee8b1058ba8ee70698e626a846fe72.png" width="800" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;p style="text-align:center"&gt;&lt;span style="background-color:#f2f3f5"&gt;&lt;em&gt;視覺問答測試，圖片來源於網絡&lt;/em&gt;&lt;/span&gt;&lt;/p&gt; 
-&lt;p style="text-align:left"&gt;在金融領域。江蘇銀行通過本地化部署微調 DeepSeek-VL2 多模態模型、輕量 DeepSeek-R1 推理模型，分別運用於智能合同質檢和自動化估值對賬場景中，通過對海量金融數據的挖掘與分析，重塑金融服務模式，實現金融語義理解準確率與業務效率雙突破。具體而言，DeepSeek-VL2 多模態模型採用了最新的 Transformer 架構，結合多層次的特徵融合機制，有效提升了金融合同、賬單等複雜文本與圖像信息的理解能力。模型在智能合同質檢場景中表現出色，準確率較傳統方法提升了 15% 以上，顯著降低了人工審核成本。同時，輕量化的 DeepSeek-R1 推理模型則在自動化估值與對賬場景中展現出極佳的實時響應能力，推理速度提升了 30%，為金融業務流程的自動化提供了堅實支撐。&lt;/p&gt; 
-&lt;span id="OSC_h2_3"&gt;&lt;/span&gt; 
-&lt;h2&gt;新的基礎設施&lt;/h2&gt; 
-&lt;p&gt;應用邊界在不斷拓寬的同時，多模態模型的能力也在成長。&lt;/p&gt; 
-&lt;p style="text-align:left"&gt;而隨着應用場景的深化，模型架構也在同步進化，從基礎感知邁向複雜推理成為必然趨勢。OpenAI 在 2025 年 4 月發佈了多模態模型 O3 和 O4-mini，實現了「用圖像思考」的突破性能力。這些模型不僅能夠識別圖像內容，還能將圖像信息整合進推理思維鏈，支持多步推理和因果分析，比如夠處理模糊、倒置或複雜的圖像輸入，並給出合理的推理結果。&lt;/p&gt; 
-&lt;p style="text-align:left"&gt;其背後的關鍵技術包括分層注意力機制，將圖像分解為局部細節、全局關係和時序邏輯三層結構，從而提升對圖像內容的理解能力；動態工具鏈調用，在推理過程中，模型可以自主選擇 Python 分析、知識圖譜檢索、圖像生成等工具輔助決策，以及安全約束模塊，通過對抗訓練減少模型的幻覺輸出。&lt;/p&gt; 
-&lt;p&gt;就在本月，中國科學院自動化研究所等單位的科研人員&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fkw.beijing.gov.cn%2Fxwdt%2Fkcyx%2Fxwdtkjqy%2F202506%2Ft20250611_4111006.html" rel="nofollow" target="_blank"&gt;首次證實&lt;/a&gt;，多模態大語言模型在訓練過程中自己學會了「理解」事物，而且這種理解方式和人類非常像。&lt;/p&gt; 
-&lt;p&gt;科研人員借鑑人腦認知的原理，設計了一個巧妙的實驗：讓大模型和人類玩「找不同」遊戲。實驗人員會給出三個物品概念（選自 1854 種常見物品），要求選出最不搭的那個。通過分析高達 470 萬次的判斷數據，科研人員繪製出了大模型的「思維導圖」——「概念地圖」。通過實驗證實多模態大模型具備類人「概念理解」能力。研究團隊設計「找不同」遊戲，基於 470 萬次判斷數據繪製大模型「概念地圖」，提煉 66 個理解維度（如物體功能、文化意義），發現其與人腦神經活動高度一致，證明多模態模型比純文本模型更接近人類思維模式。&lt;/p&gt; 
-&lt;p&gt;據谷歌雲在 2024 年年底發佈的&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fnews.qq.com%2Frain%2Fa%2F20241219A07AW200" rel="nofollow" target="_blank"&gt;《2025 年人工智能商業趨勢報告》&lt;/a&gt;，預測到 2025 年，多模態 AI 將成為企業採用 AI 的主要驅動力。這種技術通過整合圖像、視頻、音頻和文本等多種數據源，使 AI 能夠以前所未有的準確性從更廣泛的上下文源中學習，提供更精確、定製化的輸出，創造自然直觀的體驗。報告預計，全球多模態 AI 市場規模將在 2025 年達到 24 億美元，到 2037 年底達到 989 億美元。&lt;/p&gt; 
-&lt;p&gt;2025 進度已經過半，我們也能看到市面上許多多模態技術和產品的進展，而這場變革的終極圖景，或許正是讓 AI 真正成為理解世界、服務人類的「多模態智能夥伴」。&lt;/p&gt;
-                                                                                    &lt;/div&gt;
-                                                                            </description>
-      <link>https://my.oschina.net/u/4489239/blog/18679654</link>
-      <guid isPermaLink="false">https://my.oschina.net/u/4489239/blog/18679654</guid>
-      <pubDate>Sat, 10 May 2025 09:07:00 GMT</pubDate>
-      <author>原創</author>
-    </item>
-    <item>
-      <title>Mozilla 修復 Firefox 140 在 Windows 上出現的崩潰問題</title>
-      <description>&lt;div class="content"&gt;
-                                                                    
-                                                        &lt;p&gt;Mozilla 正在為 Firefox 瀏覽器推出又一次更新。140.0.2 版本是剛剛發佈的 140.0.1 版本之後的又一次更新，旨在修復更多導致 Windows 在某些情況下崩潰的錯誤。&lt;/p&gt; 
-&lt;p&gt;發行説明內容如下：&lt;/p&gt; 
-&lt;ul&gt; 
- &lt;li&gt;&lt;strong&gt;修復了某些用戶在 Windows 上遇到的啓動崩潰問題。&lt;/strong&gt;（&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fbugzilla.mozilla.org%2Fshow_bug.cgi%3Fid%3D1974259"&gt;1974259&lt;/a&gt;）&lt;/li&gt; 
-&lt;/ul&gt; 
-&lt;p&gt;根據 Mozilla 的 Firefox 漏洞追蹤器&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fbugzilla.mozilla.org%2Fshow_bug.cgi%3Fid%3D1974259"&gt;Bugzilla 上的一篇文章&lt;/a&gt;，瀏覽器會因 ERROR_INVALID_HANDLE 或 ERROR_INVALID_PARAMETER 錯誤而崩潰。這種情況發生在 Windows 安全設置中啓用了 「漏洞利用保護」 時。&lt;/p&gt; 
-&lt;p&gt;雖然普通用戶不太可能會碰這個功能，但微軟商店中的應用程序已啓用漏洞保護。因此，從 Microsoft Store 下載 Firefox 的用戶最有可能發生崩潰不過，如果全局啓用了漏洞保護，從官方網站下載的 「標準」 Firefox 也會失敗。&lt;/p&gt; 
-&lt;p&gt;請注意，該漏洞不會影響較新版本的 Firefox。現在，隨着 Firefox 140.0.2 的發佈，無論您的安全設置或瀏覽器來源如何，瀏覽器都不會再崩潰。作為參考，您可以&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fwww.mozilla.org%2Fen-US%2Ffirefox%2F140.0.2%2Freleasenotes%2F"&gt;在此處&lt;/a&gt;找到最新更新的發行説明。&lt;/p&gt; 
-&lt;p&gt;與往常一樣，您可以通過前往菜單 &amp;gt; 幫助 &amp;gt; 關於 Firefox 來更新 Firefox。該瀏覽器可&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fwww.mozilla.org%2Fen-US%2Ffirefox%2Fwindows%2F"&gt;在官方網站&lt;/a&gt;、 Windows 10 和 11 用戶&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fapps.microsoft.com%2Fdetail%2F9NZVDKPMR9RD"&gt;的 Microsoft Store&lt;/a&gt;下載。&lt;/p&gt;
-                                                                                &lt;/div&gt;
-                                                                            </description>
-      <link>https://www.oschina.net/news/358008</link>
-      <guid isPermaLink="false">https://www.oschina.net/news/358008</guid>
-      <pubDate>Sat, 10 May 2025 08:38:00 GMT</pubDate>
-      <author>來源: OSCHINA</author>
-    </item>
-    <item>
-      <title>ECMAScript 2025 標準正式發佈</title>
-      <description>&lt;div class="content"&gt;
-                                                                    
-                                                        &lt;p&gt;ECMAScript 2025 現已獲得 ECMA International 的&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fecma-international.org%2Fnews%2Fecma-international-approves-new-standards-11%2F" target="_blank"&gt;批准&lt;/a&gt;。&lt;/p&gt; 
-&lt;p&gt;&lt;img height="1444" src="https://static.oschina.net/uploads/space/2025/0630/161138_aINy_2720166.png" width="2342" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;p&gt;以下是主要新特性：&lt;/p&gt; 
-&lt;h3&gt;異步處理改進&lt;/h3&gt; 
-&lt;ul&gt; 
- &lt;li&gt;&lt;strong&gt;新增 Promise.try() 方法&lt;/strong&gt; ：用於統一封裝同步返回值或拋錯的函數，相比以往的 Promise.resolve().then(fn) 或 new Promise(resolve =&amp;gt; resolve(fn()))，Promise.try(fn) 更簡潔高效。例如，對於一個可能會拋出異常的函數，使用 Promise.try() 可以更方便地進行錯誤處理。&lt;/li&gt; 
- &lt;li&gt;&lt;strong&gt;可立即拋出同步異常&lt;/strong&gt; ：使用 Promise.try() 時，若函數同步拋出異常，能夠立即捕獲並處理，避免了使用 Promise.resolve().then(fn) 時引入的微任務延遲，提高了錯誤可見性與調試效率，適用於封裝第三方同步 API，使其具備統一的異步處理能力。&lt;/li&gt; 
-&lt;/ul&gt; 
-&lt;h3&gt;集合操作增強&lt;/h3&gt; 
-&lt;ul&gt; 
- &lt;li&gt;&lt;strong&gt;新增 Set 實例方法&lt;/strong&gt; ：為 Set 實例新增了七個方法，包括集合運算方法 intersection()（交集）、union()（並集）、difference()（差集）、symmetricDifference()（對稱差集），以及集合關係方法 isSubsetOf()（是否為子集）、isSupersetOf()（是否為超集）、isDisjointFrom()（是否無交集），使集合操作更加方便快捷，符合數學上的集合運算邏輯。&lt;/li&gt; 
-&lt;/ul&gt; 
-&lt;h3&gt;迭代器功能擴展&lt;/h3&gt; 
-&lt;ul&gt; 
- &lt;li&gt;&lt;strong&gt;新增同步迭代器輔助函數&lt;/strong&gt; ：為所有同步迭代器添加了一系列輔助方法，如 .map(fn)、.filter(fn)、.flatMap(fn)、.some(fn)、.every(fn)、.find(fn)、.reduce(fn, init)、.forEach(fn)、.drop(n)、.take(n)、.toArray() 等。這些方法支持鏈式調用，可用於鏈式處理可迭代對象的數據，實現惰性求值，避免創建多箇中間數組，提升內存效率，特別適合處理大型或無限可迭代數據，如生成器、流數據等。&lt;/li&gt; 
-&lt;/ul&gt; 
-&lt;h3&gt;正則表達式增強&lt;/h3&gt; 
-&lt;ul&gt; 
- &lt;li&gt;&lt;strong&gt;新增 RegExp.escape() 方法&lt;/strong&gt; ：可將字符串中的正則元字符轉義，使其能夠安全地嵌入正則表達式中，避免動態生成正則表達式時出現語法錯誤，防止正則注入漏洞，替代手動維護的轉義函數。&lt;/li&gt; 
- &lt;li&gt;&lt;strong&gt;正則表達式內聯標誌&lt;/strong&gt; ：允許在正則表達式內部使用內聯語法 (?flags:...) 或 (?flags1-flags2:...) 以局部開啓或關閉某些標誌位，如 i、m、s 等。例如，在正則 /^x(?i:HELLO)x$/ 中，整個表達式外部沒有 i 標誌，而只對子串 HELLO 應用忽略大小寫，避免了正則拆分與多輪匹配邏輯。&lt;/li&gt; 
- &lt;li&gt;&lt;strong&gt;重複命名捕獲組&lt;/strong&gt; ：允許在正則表達式的不同分支中使用相同的命名捕獲組名稱，只要這些同名組不可能同時匹配。這便於對形式不同但結構類似的文本進行統一處理，如解析多種日期格式、鍵值對格式等，可簡化後續處理邏輯，避免代碼冗餘。&lt;/li&gt; 
-&lt;/ul&gt; 
-&lt;h3&gt;模塊系統優化&lt;/h3&gt; 
-&lt;p&gt;新增導入屬性，允許在 import 語句中指定附加信息，以指定如何加載模塊，主要用於引入非 JavaScript 資源，如 JSON 文件或 CSS 模塊。靜態導入時，可在路徑後加上 with 選項；動態導入時，將其放在第二個參數的 with 字段中，使用起來更加方便簡潔，可直接像引用 JS 模塊一樣使用 JSON 數據等。&lt;/p&gt; 
-&lt;h3&gt;數值表示擴展&lt;/h3&gt; 
-&lt;p&gt;提供對 16 位浮點數的原生支持，包括 Float16Array、DataView.prototype.getFloat16()/setFloat16() 以及 Math.f16round(number)。這在 WebGPU / WebGL 中可節省帶寬與內存，在深度學習中便於傳遞模型參數，也可用於模擬硬件精度限制。&lt;/p&gt; 
-&lt;h3&gt;其他特性&lt;/h3&gt; 
-&lt;ul&gt; 
- &lt;li&gt;&lt;strong&gt;後置檢查的聲明式控制流&lt;/strong&gt; ：引入了 checked { }塊和 assert 關鍵字，在 checked 塊中的操作會在執行後立即檢查是否出界等，assert 用於斷言，若條件不成立會直接拋出異常，為開發者提供了更靈活的錯誤檢查方式。&lt;/li&gt; 
- &lt;li&gt;&lt;strong&gt;ArrayBuffer 的構造共享數組&lt;/strong&gt; ：新增了 ArrayBuffer 構造函數的 shared 構造標誌，可創建一個共享的 ArrayBuffer，其視圖成為共享數組，所有代理都具有相同的內存視圖，允許多個 JavaScript 工作線程之間共享和傳遞 ArrayBuffer，提高了數據共享和傳遞的效率。&lt;/li&gt; 
-&lt;/ul&gt; 
-&lt;p&gt;詳情查看&amp;nbsp;&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fecma-international.org%2Fpublications-and-standards%2Fstandards%2Fecma-262%2F" target="_blank"&gt;https://ecma-international.org/publications-and-standards/standards/ecma-262/&lt;/a&gt;&lt;/p&gt;
-                                                                                &lt;/div&gt;
-                                                                            </description>
-      <link>https://www.oschina.net/news/358006/ecma-international-approves-ecma-262-standards</link>
-      <guid isPermaLink="false">https://www.oschina.net/news/358006/ecma-international-approves-ecma-262-standards</guid>
-      <pubDate>Sat, 10 May 2025 08:16:00 GMT</pubDate>
-      <author>來源: OSCHINA</author>
-    </item>
-    <item>
-      <title>AI 造物社區作品分享——靈韻啓航者 V1.0 模塊化多主控嵌入式學習擴展平台</title>
-      <description/>
-      <link>https://www.oschina.net/ai-creation/details/2063</link>
-      <guid isPermaLink="false">https://www.oschina.net/ai-creation/details/2063</guid>
-      <pubDate>Sat, 10 May 2025 07:33:00 GMT</pubDate>
-    </item>
-    <item>
-      <title>Linux 6.16-rc4 發佈</title>
-      <description>&lt;div class="content"&gt;
-                                                                    
-                                                        &lt;p&gt;Linux 6.16-rc4 已發佈，這意味着距離最終內核版本的發佈僅剩一半的時間，屆時我們將在三到四周內獲得最終版本。&lt;/p&gt; 
-&lt;p&gt;Linus Torvalds &lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Flore.kernel.org%2Flkml%2FCAHk-%3DwjqJeFHs_CsO2MeFLi-qceFM7_dVfKBMH4B7oVJaH6tHQ%40mail.gmail.com%2FT%2F%23u" target="_blank"&gt;表示&lt;/a&gt;，此次更新的合併窗口相當大，但同時表示候選版本發佈進程仍然保持平穩，這正是我們希望看到的。&lt;/p&gt; 
-&lt;p&gt;&lt;img src="https://static.oschina.net/uploads/space/2025/0630/150013_dqUh_2720166.png" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;p&gt;Linux 內核開發週期通常會在上一個版本發佈後的兩週內推出新功能，之後每週都會發佈一個新的候選版本，修復新功能和現有功能。穩定版本會在七八個候選版本發佈後發佈。&lt;/p&gt; 
-&lt;p&gt;本週，Torvalds 表示，三分之一的更新涉及文件系統更新，重點關注 bcachefs，以及一些 SMB 和 Btrfs 修復。另外三分之一是驅動程序更新，特別是由於一些性能問題而恢復到設備映射器。&lt;/p&gt; 
-&lt;p&gt;最後三分之一的更改是雜項更改，包括文檔更新、架構修復（LoongArch、UM、x86）、自檢以及各種其他常規修復。與往常一樣，Torvalds 請求社區繼續測試內核，以便在穩定版本發佈時能夠保持更好的狀態。&lt;/p&gt; 
-&lt;p&gt;Linux 6.16 發佈後不久，用戶就能獲得它，尤其是那些運行 Arch 和 Fedora 等尖端 Linux 發行版的用戶。如果你有一些目前與 Linux 不兼容的新硬件，請務必在 7 月底左右 Linux 6.16 發佈時進行測試，看看是否有任何變化。&lt;/p&gt; 
-&lt;p&gt;&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fwww.phoronix.com%2Fnews%2FLinux-6.16-Features-Early-Look" target="_blank"&gt;據 Phoronix 報道，Linux 6.16 內核預計將帶來一些重大的硬件改進，包括對&lt;/a&gt;&lt;a href="https://www.oschina.net/action/GoToLink?url=http%3A%2F%2Fwww.nvidia.com%2F" target="_blank"&gt;NVIDIA&lt;/a&gt;的開源驅動程序支持 Blackwell 和 Hopper GPU，以及英特爾&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fx.com%2Fx86deadandback%2Fstatus%2F1869428945420202447" target="_blank"&gt;Wildcat Lake 處理器&lt;/a&gt;。&lt;/p&gt; 
-&lt;p&gt;雖然 Torvalds 呼籲測試人員試用候選版本，但運行與發行版附帶的內核不同的內核並不是一件容易的事，所以不要在生產機器上亂用候選版本。&lt;/p&gt;
-                                                                                &lt;/div&gt;
-                                                                            </description>
-      <link>https://www.oschina.net/news/357985</link>
-      <guid isPermaLink="false">https://www.oschina.net/news/357985</guid>
-      <pubDate>Sat, 10 May 2025 06:57:00 GMT</pubDate>
       <author>來源: OSCHINA</author>
     </item>
   </channel>
