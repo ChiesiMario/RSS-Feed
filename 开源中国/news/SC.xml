@@ -7,8 +7,223 @@
     <generator>RSSHub</generator>
     <webMaster>contact@rsshub.app (RSSHub)</webMaster>
     <language>zh-cn</language>
-    <lastBuildDate>Wed, 02 Jul 2025 02:50:11 GMT</lastBuildDate>
+    <lastBuildDate>Wed, 02 Jul 2025 07:48:33 GMT</lastBuildDate>
     <ttl>5</ttl>
+    <item>
+      <title>TDMQ RabbitMQ Serverless 版限流机制深度解析与实践指南</title>
+      <description>&lt;div class="content"&gt;
+                                                                                                                                                                                                                                        &lt;h2&gt;导语&lt;/h2&gt; 
+&lt;p&gt;分布式集群限流是保障云服务高可用性的核心技术手段，其意义不仅在于防止系统过载，更是构建弹性架构、优化资源效率、实现业务可持续性的关键策略。未来，随着边缘计算和 Serverless 的普及，限流技术将进一步与底层基础设施深度融合，成为构建下一代高可用架构的核心基石。&lt;/p&gt; 
+&lt;p&gt;腾讯云 TDMQ RabbitMQ Serverless 版作为一款极致弹性、高性能且高可靠的消息中间件，通过提供稳定低延迟的消息服务，助力企业实现系统异步解耦并高效应对海量消息堆积。然而，在高并发、大流量的实际业务中，如何科学分配资源、规避系统过载风险，已成为保障服务稳定性的关键。为此，腾讯云 TDMQ RabbitMQ Serverless 版引入了集群级别的分布式限流机制，通过动态调控集群的发送与消费速率，确保集群在高负载下仍能稳定运行。&lt;/p&gt; 
+&lt;p&gt;本文将深度剖析腾讯云 TDMQ RabbitMQ Serverless 版的限流机制，涵盖限流策略设计、触发机制及底层实现逻辑。通过真实场景案例解析与实践指南，系统讲解如何通过客户端优化来降低限流影响，同时帮助客户精准掌握集群限流相关服务端配置技巧，有效规避因流控策略不当引发的业务中断风险，全面提升高并发场景下的系统稳定性与可靠性。&lt;/p&gt; 
+&lt;h2&gt;概要设计&lt;/h2&gt; 
+&lt;h3&gt;分布式限流的必要性&lt;/h3&gt; 
+&lt;p&gt;&lt;strong&gt;资源瓶颈的不可预测性&lt;/strong&gt;&lt;/p&gt; 
+&lt;p&gt;在分布式系统中，单节点流量可能因负载均衡策略（如 Round-Robin）不均导致倾斜。例如，某台服务器因硬件故障触发重试风暴，流量突增 300%，若无全局视角的限流，可能引发级联雪崩。&lt;/p&gt; 
+&lt;p&gt;&lt;strong&gt;长尾延迟的放大效应&lt;/strong&gt;&lt;/p&gt; 
+&lt;p&gt;当某服务节点响应延迟升高（如磁盘刷写延迟增大），后续请求堆积导致线程池耗尽，触发上游重试，形成恶性循环。&lt;/p&gt; 
+&lt;p&gt;&lt;strong&gt;突发流量冲击&lt;/strong&gt;&lt;/p&gt; 
+&lt;p&gt;秒杀活动、热点新闻等场景下，流量可能在毫秒级陡增数十倍。例如，某电商平台大促期间，订单服务 QPS 从 5k 飙升至 80k，若未通过分布式限流拦截异常流量，核心计算资源将被瞬间打满，导致服务不可用。&lt;/p&gt; 
+&lt;h3&gt;TDMQ RabbitMQ Serverless 版限流规则&lt;/h3&gt; 
+&lt;p&gt;腾讯云 TDMQ RabbitMQ Serverless 版为超大规模、低时延、高可用性要求的在线业务提供专业级消息服务。客户端通过 RabbitMQ SDK 与 TDMQ RabbitMQ Serverless 版集群建立长连接，实现高效的消息收发操作，同时动态占用集群的计算、存储及网络带宽等关键资源。在此背景下，为确保消息服务的高性能与稳定性，在应对高并发、大流量场景时，必须对集群的负载水位进行精细化管理。 基于集群的资源配置上限，服务端支持动态调控客户端的每秒消息发送与消费能力（TPS），确保系统在高负载下依然保持稳定运行。&lt;/p&gt; 
+&lt;p&gt;为实现资源隔离与灵活适配的双重目标，系统对发送消息与消费消息的 TPS 配额进行独立分配，并支持用户按需配置配额比例，从而实现精细化资源管理与业务场景的精准匹配（默认配额比例为 1 : 1 也即 50%）。业务可以根据实际的收发比例进行调整，可调整的收发消息比例范围在 20%-80%（服务端支持动态调整该区间）之间。&lt;/p&gt; 
+&lt;p&gt;&lt;img src="https://oscimg.oschina.net/oscnet/up-7e99eeeb65ba2619e29a1109b273abf1cd8.jpg" alt="" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;h3&gt;TDMQ RabbitMQ Serverless 版限流行为&lt;/h3&gt; 
+&lt;p&gt;腾讯云 TDMQ RabbitMQ Serverless 版采用 Fail-Fast 限流机制，即当客户端请求速率触及预设上限时，服务端会即时返回错误响应。在响应时间敏感的在线业务场景中，该机制可使客户端实时感知限流事件并主动介入处理，从而有效避免因资源竞争导致的端到端时延长尾，保障业务连续性与系统稳定性。&lt;/p&gt; 
+&lt;p&gt;以 1000TPS 规格的基础集群为例（假设收发 TPS 比例为 1:1 也即 50%），客户端视角下的限流行为：&lt;/p&gt; 
+&lt;p&gt;| &lt;strong&gt;说明&lt;/strong&gt; | &lt;strong&gt;发送消息限流&lt;/strong&gt; | &lt;strong&gt;消费消息限流&lt;/strong&gt; | | ------------ | ------------ | ------------ | | 触发限流情景 | 所有连接该集群的发送客户端每秒最多可发送 TPS 总和为 500 条，发送速率达到限制后，超限的发送请求会失败。 | 所有连接该集群的消费客户端每秒最多可消费 TPS 总和为 500 条，消费速率达到限制后，消息的消费延迟会增加。 | | 触发限流时 SDK 日志关键词 | com.rabbitmq.client.AlreadyClosedException: channel is already closed due to channel error; protocol method: #method&amp;lt;channel.close&amp;gt;(reply-code=530, reply-text=[requestId: 3143682333552716694] Action: pub rate limited by cluster on instance:xxx reason:PublishMessage, class-id=60, method-id=40) | 消费超过阈值以后，客户端使用 BasicGet 拉取消息时，会出现：com.rabbitmq.client.AlreadyClosedException: channel is already closed due to channel error; protocol method: #method&amp;lt;channel.close&amp;gt;(reply-code=530, reply-text=[requestId: 31436823332424324] Action: BasicGet rate limited by cluster rate limiter vhost: xxx. queue: xxx.当客户端使用 BasicConsume 消费消息时，服务端会抑制向客户端 DeliverMessage 的速率，客户端不会感知到明显的 Channel 断开的错误，整体表现为类似 AMQP 协议消费者 QOS 的行为，会抑制推送到消费者消息的速率，此时消费延迟会增加，可以通过调整限流比例或者增大购买的 TPS 来解决。消费的总 TPS 主要由 BasicGet 和 DeliverMessage 的调用 TPS 次数共享。 | | 触发限流时 SDK 重试机制 | 客户端 SDK 业务侧需要处理连接断开的行为，需要对发送错误被限流的消息重新建立 Channel 连接然后进行发送重试。 | 客户端 SDK 业务消费侧会感知到延迟增加。若使用拉取 BasicGet 拉取消息，会感知到 Channel 连接断开，需要业务上主动重试。 |&lt;/p&gt; 
+&lt;h2&gt;详细设计与实现&lt;/h2&gt; 
+&lt;h3&gt;架构设计&lt;/h3&gt; 
+&lt;p&gt;腾讯云 TDMQ RabbitMQ Serverless 版采用双模式限流架构，兼顾节点级保护与集群级协同：&lt;/p&gt; 
+&lt;p&gt;&lt;strong&gt;单机限流（Node-Level Throttling）&lt;/strong&gt;&lt;/p&gt; 
+&lt;p&gt;用于节点级资源保护，通过限制 CPU、内存、线程等关键资源的使用，防止单节点因过载导致服务不可用。&lt;/p&gt; 
+&lt;p&gt;&lt;strong&gt;分布式限流（Cluster-Level Throttling）&lt;/strong&gt;&lt;/p&gt; 
+&lt;p&gt;基于集群全局视角，通过多节点流量协同管理，保护共享存储资源（如 Broker）及后端系统稳定性。该模式通过使用分布式限流系统实现。&lt;/p&gt; 
+&lt;p&gt;&lt;img src="https://oscimg.oschina.net/oscnet/up-cab8876ba86ab2c10b491074cac992a20d0.jpg" alt="" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;h3&gt;限流实现&lt;/h3&gt; 
+&lt;p&gt;腾讯云 TDMQ RabbitMQ Serverless 版通过在计算层 （TDMQ RabbitMQ Serverless 版集群）接入分布式限流系统实现集群级读写流量控制，其核心机制是：TDMQ RabbitMQ Serverless 版集群节点在处理 BasicPublish / BasicGet / DeliverMessage 请求前，需通过集成的限流 SDK 向限流 Server 异步上报与申请 Token。&lt;/p&gt; 
+&lt;p&gt;&lt;strong&gt;生产端限流&lt;/strong&gt; ：若 BasicPublish 申请失败，则立即拒绝生产消息请求并返回错误。 &lt;strong&gt;消费端限流&lt;/strong&gt;：若 BasicGet 申请失败，则立即拒绝拉取消息请求并返回错误。若 DeliverMessage 申请失败，则抑制推送到消费者的消息速率，实现消费端不断连接的流控，此时类似于 RabbitMQ 开源的实现，此时该消费者处于 Flow 状态。&lt;/p&gt; 
+&lt;p&gt;TDMQ RabbitMQ Serverless 版集群内部集成限流 SDK，该 SDK 提供 Token 申请 API，并负责与限流 Server 通信，通过这种集中式 Token 管理实现对核心存储层 (底座 Broker 集群) 的保护。&lt;/p&gt; 
+&lt;h3&gt;限流实现难点一：如何平衡性能与精度&lt;/h3&gt; 
+&lt;p&gt;使用 TDMQ RabbitMQ Serverless 版的各类在线业务通常对时延比较敏感，如果计算层节点处理每次读写请求都执行一次 Limiter RPC 调用（SDK -&amp;gt; Server）的话，虽然 Limiter Server 内部处理耗时几乎可以忽略，但两次 RPC 的网络 IO 耗时对消息端到端时延的影响是不能忽视的。&lt;/p&gt; 
+&lt;p&gt;实际上从服务端的角度看， TDMQ RabbitMQ Serverless 版执行限流的主要目的是防止核心存储层过载，而非追求 100% 精准的流量控制，即 SDK 与 Server 之间的强同步并不是必须的。因此，为了在限流性能和限流精度之间取得平衡，Limiter 采用了一种【先消费后结算】的 Token 管理机制，Token 申请过程在限流 SDK 内部闭环，SDK 会周期性（周期大概在 50ms 以内，上报周期越短，限流越敏感）地向限流 Server 异步上报 Token 使用量并同步配额。&lt;/p&gt; 
+&lt;p&gt;腾讯云 TDMQ RabbitMQ Serverless 版的限流机制通过以下四大核心特性，在保障系统稳定性的同时实现高性能与低时延的平衡：&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt;&lt;strong&gt;内存级处理，主链路零干扰&lt;/strong&gt;&lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;p&gt;&lt;strong&gt;执行机制&lt;/strong&gt;：限流判断为纯内存操作，不涉及外部 RPC 调用，确保消息处理流程完全不受阻塞。&lt;/p&gt; 
+&lt;p&gt;&lt;strong&gt;性能优势&lt;/strong&gt;：主链路延迟无感知，适用于对响应时间要求严苛的在线业务场景。&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt;&lt;strong&gt;先消费后结算，消除误限流风险&lt;/strong&gt;&lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;p&gt;&lt;strong&gt;设计原理&lt;/strong&gt; ：采用异步 Token 核销机制，客户端可先执行操作，限流 SDK 后续异步周期性同步配额消耗。 &lt;strong&gt;效果保障&lt;/strong&gt;：杜绝因限流判断延迟导致的正常请求被误拒，确保业务连续性。&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt;&lt;strong&gt;短暂超限容忍，资源缓冲池兜底&lt;/strong&gt;&lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;p&gt;&lt;strong&gt;场景说明&lt;/strong&gt; ：在流量毛刺等突发场景中，可能出现瞬时配额超限，由于先消费后结算的机制导致。 &lt;strong&gt;容错机制&lt;/strong&gt;：通过服务端资源预留 Buffer 吸收流量波动，避免因短暂超限触发系统风险。&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt;&lt;strong&gt;弹性容错设计，弱耦合架构保障可用性&lt;/strong&gt;&lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;p&gt;&lt;strong&gt;故障降级策略&lt;/strong&gt; ：当限流 Server 服务异常时，系统自动切换至单机 Sentinel 组件实现基础单机限流功能。 &lt;strong&gt;依赖特性&lt;/strong&gt;：对限流 Server 服务实现弱耦合架构，可以通过随时动态降级来避免限流 Server 服务异常导致的服务异常，确保分布式限流服务的高可用。&lt;/p&gt; 
+&lt;h3&gt;限流实现难点二：如何平滑限流毛刺&lt;/h3&gt; 
+&lt;p&gt;腾讯云 TDMQ RabbitMQ Serverless 版采用 TPS 作为集群规格单位，用于衡量集群的吞吐能力。例如，1000TPS 表示集群每秒可处理 1000 条 TPS（即综合生产、消费等操作的加权计算）。在分布式限流系统中，这一规格对应每秒分配 1000 个 Token，其中 "一秒"即为默认的限流计数周期，用于动态控制流量配额。&lt;/p&gt; 
+&lt;p&gt;在使用限流服务的实际运维中发现：&lt;/p&gt; 
+&lt;p&gt;&lt;strong&gt;短周期（如 1 秒）&lt;/strong&gt;： 优势：对流量波动敏感，可快速响应潜在过载风险； 缺陷：易因短暂毛刺误触限流，影响正常业务波动场景。&lt;/p&gt; 
+&lt;p&gt;&lt;strong&gt;长周期（如 10 秒）&lt;/strong&gt;： 优势：容忍毛刺，降低误控率； 缺陷：服务端资源需承受更高瞬时冲击风险。&lt;/p&gt; 
+&lt;p&gt;为平衡流量控制精度与用户体验，腾讯云 TDMQ RabbitMQ Serverless 版将默认限流计数周期从 1 秒调整为 10 秒。这样既降低了用户因毛刺导致的限流困扰，又通过利用少量的服务器预留资源 Buffer 来承载瞬时流量冲击，为高并发场景下的消息处理提供了可靠的支撑。&lt;/p&gt; 
+&lt;h3&gt;限流实现难点三：如何实现消费端限流&lt;/h3&gt; 
+&lt;p&gt;腾讯云 TDMQ RabbitMQ Serverless 版集群使用 AMQP 协议与客户端交互，然而 AMQP 协议中并没有定义很好的处理 Fail-Fast 限流错误的帧，因此在发送消息被限流的情况下，只能通过关闭 Channel 连接来通知到客户端，此时客户端会收到相应的 AlreadyClosedException 异常，然后业务需要通过重试来解决当前时间窗口内消息发送被限流的问题。&lt;/p&gt; 
+&lt;p&gt;而在消费端限流的情况下，分为两种情况，AMQP 协议中支持两种消费模式，BasicGet（拉模式) 和 BasicConsume（推模式）。 此时对消费端的限流就需要考虑消费的连续性和延迟。针对 BasicGet 模式，是客户端发起的主动同步拉取消息的命令，此时客户端每一次拉取消息是可以直接感知到是否被限流的，更好的方式是通过关闭连接来让客户端感知到限流，从而让业务上通过重试来解决拉取当前时间窗口内消息消费被限流的问题。&lt;/p&gt; 
+&lt;p&gt;但是针对 BasicConsume（推模式）, 同时也是 AMQP 客户端最普遍的使用方式，考虑到客户端开启一个长连接监听相应队列上的消息，此时如果因为限流粗暴地关闭 Channel 连接, 此时的客户端往往不能实时感知到连接 Channel 断开，增加了客户端业务上处理的复杂度，同时消费侧重建 Channel 连接也会让消费流量充满毛刺和消费延迟增加。因此腾讯云 TDMQ RabbitMQ Serverless 版在推模式下使用消费抑制的方式来实现消费端限流，当消费 TPS 超过阈值时，会减少推送到客户端的频率，保证了在连接 Channel 不断开的情况下，消费流量的平稳，尽量减少因为限流导致的消费延迟。&lt;/p&gt; 
+&lt;h2&gt;客户端实践教程&lt;/h2&gt; 
+&lt;h3&gt;规划集群限流负载&lt;/h3&gt; 
+&lt;p&gt;腾讯云 TDMQ RabbitMQ Serverless 版的限流机制旨在保障服务稳定性与可靠性。防止在集群高负载时出现服务响应长尾毛刺，最终导致请求成功率下降，业务受损等问题。因此，在接入时建议：客户侧需要提前规划集群负载，依据当前规模和未来趋势预测来充分评估业务 TPS， 如果业务流量具有波动特性，应以峰值 TPS 为准，根据相应的评估后的 TPS 购买相应规格的实例集群。&lt;/p&gt; 
+&lt;h3&gt;限流相关告警配置&lt;/h3&gt; 
+&lt;p&gt;腾讯云 TDMQ RabbitMQ Serverless 版默认接入了腾讯云监控的能力，可以利用腾讯云 TDMQ RabbitMQ Serverless 版控制枱的监控告警能力实现对集群负载的实时观测，提前发现 TPS 水位风险并及时操作升配来避免触发限流导致业务受损。告警策略建议：&lt;/p&gt; 
+&lt;ol&gt; 
+ &lt;li&gt;发送和消费 TPS 水位超过容量的 70% 时触发告警，提醒进行升配评估。&lt;/li&gt; 
+ &lt;li&gt;出现发送限流时触发告警，警告业务发送消息可能失败风险。&lt;/li&gt; 
+&lt;/ol&gt; 
+&lt;h3&gt;客户端限流异常处理&lt;/h3&gt; 
+&lt;p&gt;业务代码通过 RabbitMQ SDK 发送消息时，需要捕获包括限流错误在内的异常，并保存必要的上下文信息，以便人工介入恢复业务。当腾讯云 TDMQ RabbitMQ Serverless 版实例的 TPS 流量峰值超过腾讯云控制枱所购买实例的 TPS 规格上限时，业务侧生产消费流量会被限流。&lt;/p&gt; 
+&lt;p&gt;&lt;strong&gt;限流后的行为如下&lt;/strong&gt;：&lt;/p&gt; 
+&lt;p&gt;腾讯云 TDMQ RabbitMQ Serverless 版服务端会返回错误码信息。&lt;/p&gt; 
+&lt;p&gt;腾讯云 TDMQ RabbitMQ Serverless 版服务端关闭当前请求的 Channel 连接，代码中可以捕获异常并重新打开 Channel 连接，具体请参见错误码处理示例代码章节。&lt;/p&gt; 
+&lt;p&gt;&lt;strong&gt;错误码信息&lt;/strong&gt;： 错误码：reply-code=530&lt;/p&gt; 
+&lt;p&gt;错误信息：reply-text=[requestId: 3143682333552716694] Action: pub rate limited by cluster on instance:xxx reason:PublishMessage, class-id=60, method-id=40)&lt;/p&gt; 
+&lt;p&gt;&lt;strong&gt;错误堆栈&lt;/strong&gt;：&lt;/p&gt; 
+&lt;pre&gt;&lt;code&gt;Suppressed: com.rabbitmq.client.AlreadyClosedException: channel is already closed due to channel error; protocol method: #method&amp;lt;channel.close&amp;gt;(reply-code=530, reply-text=[requestId: 3143682333552716694] Action: pub rate limited by cluster on instance:amqp-autotest reason:PublishMessage, class-id=60, method-id=40)
+at com.rabbitmq.client.impl.AMQChannel.processShutdownSignal(AMQChannel.java:437)
+at com.rabbitmq.client.impl.ChannelN.startProcessShutdownSignal(ChannelN.java:295)
+at com.rabbitmq.client.impl.ChannelN.close(ChannelN.java:624)
+at com.rabbitmq.client.impl.ChannelN.close(ChannelN.java:557)
+at com.rabbitmq.client.impl.ChannelN.close(ChannelN.java:550)
+at com.rabbitmq.client.impl.recovery.AutorecoveringChannel.lambda$close$0(AutorecoveringChannel.java:74)
+at com.rabbitmq.client.impl.recovery.AutorecoveringChannel.executeAndClean(AutorecoveringChannel.java:102)
+at com.rabbitmq.client.impl.recovery.AutorecoveringChannel.close(AutorecoveringChannel.java:74)
+&lt;/code&gt;&lt;/pre&gt; 
+&lt;p&gt;RabbitMQ AMQP Java SDK 业界使用的比较广泛，因此使用该 SDK 作为示例，RabbitMQ AMQP Java SDK 不会对限流错误进行自动重试，因此业务代码需要捕获异常并进行处理，示例代码如下：&lt;/p&gt; 
+&lt;pre&gt;&lt;code&gt;private static final int MAX_RETRIES = 5; // 最大重试次数
+private static final long WAIT_TIME_MS = 2000; // 每次重试的等待时间（以毫秒为单位）
+private void doAnythingWithReopenChannels(Connection connection, Channel channel) {
+    try {
+        // ......
+        // 在当前通道 channel 下执行的任何操作
+        // 例如消息发送、消费等
+        // ......
+    } catch (AlreadyClosedException e) {
+        String message = e.getMessage();
+        if (isChannelClosed(message)) {
+            // 如果通道已经关闭，关闭并重新创建通道
+            channel = createChannelWithRetry(connection); 
+            // 在重连后可以继续执行其它操作
+            // ......
+        } else {
+            throw e;
+        }
+    }
+}
+private Channel createChannelWithRetry(Connection connection) {
+    for (int attempt = 1; attempt &amp;lt;= MAX_RETRIES; attempt++) {
+        try {
+            return connection.createChannel();
+        } catch (Exception e) {
+            System.err.println("Failed to create channel. Attempt " + attempt + " of " + MAX_RETRIES);
+            // 检查错误, 若仍是被限流导致的关闭错误，则可以等待后继续重试
+            // 也可移除本部分重试逻辑
+            if (attempt &amp;lt; MAX_RETRIES) {
+                try {
+                    Thread.sleep(WAIT_TIME_MS);
+                } catch (InterruptedException ie) {
+                    Thread.currentThread().interrupt(); // 还原中断状态
+                }
+            } else {
+                throw new RuntimeException("Exceeded maximum retries to create channel", e);
+            }
+        }
+    }
+    throw new RuntimeException("This line should never be reached"); // 理论上不会到达这里
+}
+private boolean isChannelClosed(String errorMsg) {
+    // 判断是否包含 channel.close 报错，该报错代表通道已关闭。
+    // 可能涵盖 530，541 等错误信息。
+    if (errorMsg != null &amp;amp;&amp;amp; errorMsg.contains("channel.close")) {
+        System.out.println("[ChannelClosed] Error details: " + errorMsg);
+        return true;
+    }
+    return false;
+}
+&lt;/code&gt;&lt;/pre&gt; 
+&lt;h2&gt;总结&lt;/h2&gt; 
+&lt;p&gt;腾讯云 TDMQ RabbitMQ Serverless 版通过分布式限流架构为在线业务提供高可用的消息服务保障。在分布式限流模式下，服务端通过集中式 Token 管理系统（限流 Limiter）动态分配资源配额，防止因突发流量冲击导致核心存储层（底座 Broker 集群）过载来提高系统稳定性，同时采用 【先消费后结算】的异步处理模式，客户端在限流 SDK 内部闭环完成 Token 申请，避免阻塞主链路，确保限流调用接口低延时，限流 SDK 周期性同步 Token 消耗数据至限流 Server，最终平衡了限流精度与调用限流服务的性能开销。同时针对消费端的限流可以实现不断 Channel 连接，实现了消费端在限流毛刺与消费延迟之间的双重保证，此外，面对限流 Server 服务不可用的情况，系统能够自动动态降级为单机限流模式，确保客户端请求的连续性，保持对限流服务的弱依赖设计来实现系统解耦。&lt;/p&gt; 
+&lt;p&gt;在实际应用与运维中，同时也需要客户业务方的配合，在接入腾讯云 TDMQ RabbitMQ Serverless 版服务时，业务方客户需要根据业务规模和未来趋势合理规划集群，预留足够的 TPS 配额以应对突发流量，防患于未然。同时腾讯云 TDMQ RabbitMQ Serverless 版提供了服务端完善的监控和告警，支持客户通过监控告警能力实时订阅集群负载，提前发现 TPS 水位风险并及时进行升配等操作。在客户端业务代码层面，需要捕获限流异常并处理，保证代码的健壮性，同时保存必要的上下文信息，以便人工查看相关日志最终介入来恢复业务。&lt;/p&gt; 
+&lt;p&gt;通过本文对腾讯云 TDMQ RabbitMQ Serverless 版的限流机制的介绍与实践教程，相信读者对腾讯云 TDMQ RabbitMQ Serverless 版的限流机制有了更深入的理解，并能够在实际项目中灵活应用，最终为业务的高并发、大流量场景提供稳定的支持。&lt;/p&gt;
+                                                                                    &lt;/div&gt;
+                                                                            </description>
+      <link>https://my.oschina.net/u/4587289/blog/18638288</link>
+      <guid isPermaLink="false">https://my.oschina.net/u/4587289/blog/18638288</guid>
+      <pubDate>Wed, 02 Jul 2025 07:34:47 GMT</pubDate>
+      <author>原创</author>
+    </item>
+    <item>
+      <title>百度搜索迎来十年来最大改版：AI 智能框、百看、AI 助手全面进化</title>
+      <description>&lt;div class="content"&gt;
+                                                                    
+                                                        &lt;p&gt;&lt;span style="color:#000000"&gt;在近日的百度 AI Day 开放日上，百度搜索宣布进行了其十年来最大规模的改版，此次革新涵盖了搜索框、搜索结果页以及整个搜索生态。&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;img height="262" src="https://oscimg.oschina.net/oscnet/up-98d15d20c6065a79b817c094d1a37c4066c.png" width="700" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;span style="color:#000000"&gt;升级后的百度搜索框被命名为「智能框」，显著增强了其输入能力，现在可支持超过千字的文本输入。同时，拍照、语音、视频等多种输入方式也得到全面加强，并能直接调取 AI 写作、AI 作图等创作工具，极大地丰富了用户与搜索的交互方式。&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;span style="color:#000000"&gt;「百看」功能也在此次改版中实现了全面升级，不仅支持图文、音视频的混合内容输出，还创新性地接入了智能体和真人服务等功能，旨在提供更丰富、多元的信息呈现形式。&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;span style="color:#000000"&gt;「AI 助手」的升级是本次改版的另一大亮点，新增了视频通话功能，并显著提升了多模态输入、富媒体输出、一站式工作台及深度搜索能力，使其成为更全面的 AI 辅助工具。&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;span style="color:#000000"&gt;此外，智能创作能力也得到大幅提升，用户现在只需一句话即可生成三分钟的创意视频，并支持分镜编辑和自定义画面内容。截至目前，百度搜索开放平台已成功接入 1.8 万多个优质 MCP（多媒体内容提供商），使其成为国内最大的 AI 生态系统。&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;span style="color:#000000"&gt;值得一提的是，此次百度搜索还接入了商业研发团队自研的视频生成模型 MuseSteamer 及其创作平台「绘想」。据了解，MuseSteamer 是全球首个实现中文音视频一体化生成的视频模型。&lt;/span&gt;&lt;/p&gt;
+                                                                                &lt;/div&gt;
+                                                                            </description>
+      <link>https://www.oschina.net/news/358379</link>
+      <guid isPermaLink="false">https://www.oschina.net/news/358379</guid>
+      <pubDate>Wed, 02 Jul 2025 07:20:47 GMT</pubDate>
+      <author>来源: OSCHINA</author>
+    </item>
+    <item>
+      <title>Anthropic 年化收入达 40 亿美元，较年初增长近 4 倍</title>
+      <description>&lt;div class="content"&gt;
+                                                                    
+                                                        &lt;p&gt;&lt;span style="color:#000000"&gt;Information 援引知情人士称，「AI 独角兽」Anthropic 年化收入已达到每年 40 亿美元，即每月 3.33 亿美元，较今年年初增长了近四倍。与此同时，Anthropic 的竞争对手 Cursor 也在积极扩展业务，双方之间的竞争愈加激烈。&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;img height="269" src="https://oscimg.oschina.net/oscnet/up-2307b0436f3618822c9987fadd1eedab2af.png" width="500" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;span style="color:#000000"&gt;Cursor 是一款由 Anthropic 提供人工智能技术支持的编程应用程序，旨在帮助开发者提高工作效率。然而，Cursor 的背后并不仅仅依赖于 Anthropic 的技术。近期，Cursor 公司还招募了 Anthropic 的两位高管。这两位高管曾负责 Anthropic 的编程产品 Claude Code，他们的加入可能会进一步增强 Cursor 在市场上的竞争力。&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;span style="color:#000000"&gt;Anthropic 自成立以来，凭借其先进的人工智能技术和强大的研发团队，迅速占领了市场。然而，随着 Cursor 的崛起，Anthropic 面临着新的挑战。Cursor 虽然依赖于 Anthropic 的技术，但通过引入高管和不断创新，Cursor 希望能在市场上占据一席之地。&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;span style="color:#000000"&gt;不仅如此，人工智能技术的快速发展，也使得编程工具的需求不断增加。市场对智能编程工具的热情高涨，各家公司都在努力争取更大的市场份额。面对这样的市场环境，Anthropic 和 Cursor 之间的竞争将会更加白热化。&lt;/span&gt;&lt;/p&gt;
+                                                                                &lt;/div&gt;
+                                                                            </description>
+      <link>https://www.oschina.net/news/358314</link>
+      <guid isPermaLink="false">https://www.oschina.net/news/358314</guid>
+      <pubDate>Sun, 11 May 2025 03:22:00 GMT</pubDate>
+      <author>来源: OSCHINA</author>
+    </item>
+    <item>
+      <title>前 5 个月我国软件业务收入 55788 亿元</title>
+      <description>&lt;div class="content"&gt;
+                                                                    
+                                                        &lt;p&gt;&lt;span style="background-color:#ffffff; color:#000000"&gt;工业和信息化部运行监测协调局公告&lt;/span&gt;&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fwww.miit.gov.cn%2Fjgsj%2Fyxj%2Fxxfb%2Fart%2F2025%2Fart_451a835829c54325a8316fa9dd2a9d32.html" target="_blank"&gt;指出&lt;/a&gt;&lt;span style="background-color:#ffffff; color:#000000"&gt;，&lt;/span&gt;&lt;span style="color:#000000"&gt;2025 年前 5 个月，我国软件和信息技术服务业（以下简称「软件业」）运行态势良好，软件业务收入稳健增长，利润总额保持两位数增长，软件业务出口保持正增长。&amp;nbsp;&amp;nbsp;&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;img height="237" src="https://oscimg.oschina.net/oscnet/up-1716524be9e23b5228867787d358aa2a175.png" width="500" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p style="margin-left:0px; margin-right:0px; text-align:justify"&gt;&lt;strong&gt;&lt;span style="color:#000000"&gt;一、总体运行情况&lt;/span&gt;&lt;/strong&gt;&lt;/p&gt; 
+&lt;p style="color:#070707; margin-left:0; margin-right:0; text-align:justify"&gt;&lt;span style="color:#000000"&gt;软件业务收入稳健增长。前&lt;/span&gt;&lt;span style="color:#000000"&gt;5 个月，软件业务收入 55788 亿元，同比增长 11.2%。&lt;/span&gt;&lt;/p&gt; 
+&lt;p style="color:#070707; margin-left:0; margin-right:0; text-align:justify"&gt;&lt;span style="color:#000000"&gt;利润总额增速保持两位数增长。前&lt;/span&gt;&lt;span style="color:#000000"&gt;5 个月，软件业利润总额 6721 亿元，同比增长 12.8%。&lt;/span&gt;&lt;/p&gt; 
+&lt;p style="color:#070707; margin-left:0; margin-right:0; text-align:justify"&gt;&lt;span style="color:#000000"&gt;软件业务出口保持正增长。前&lt;/span&gt;&lt;span style="color:#000000"&gt;5 个月，软件业务出口 227&lt;/span&gt;&lt;span style="color:#000000"&gt;.1&lt;/span&gt;&lt;span style="color:#000000"&gt;亿美元，同比增长 3.3%。&lt;/span&gt;&lt;/p&gt; 
+&lt;p style="margin-left:0px; margin-right:0px; text-align:justify"&gt;&lt;strong&gt;&lt;span style="color:#000000"&gt;二、分领域运行情况&lt;/span&gt;&lt;/strong&gt;&lt;/p&gt; 
+&lt;p style="color:#070707; margin-left:0; margin-right:0; text-align:justify"&gt;&lt;span style="color:#000000"&gt;软件产品收入稳定增长。前&lt;/span&gt;&lt;span style="color:#000000"&gt;5 个月，软件产品收入 12478 亿元，同比增长 9.8%，占全行业收入的 22.4%。其中，基础软件收入 704 亿元，同比增长 10&lt;/span&gt;&lt;span style="color:#000000"&gt;.0&lt;/span&gt;&lt;span style="color:#000000"&gt;%；工业软件产品收入 1138 亿元，同比增长 7&lt;/span&gt;&lt;span style="color:#000000"&gt;.0&lt;/span&gt;&lt;span style="color:#000000"&gt;%。&lt;/span&gt;&lt;/p&gt; 
+&lt;p style="color:#070707; margin-left:0; margin-right:0; text-align:justify"&gt;&lt;span style="color:#000000"&gt;信息技术服务收入保持两位数增长。前&lt;/span&gt;&lt;span style="color:#000000"&gt;5 个月，信息技术服务收入 38096 亿元，同比增长 12&lt;/span&gt;&lt;span style="color:#000000"&gt;.0&lt;/span&gt;&lt;span style="color:#000000"&gt;%，占全行业收入的 68.3%。其中，云计算、大数据服务共实现收入 5855 亿元，同比增长 11.2%，占信息技术服务收入的 15.4%；集成电路设计收入 1516 亿元，同比增长 15.2%；电子商务平台技术服务收入 4355 亿元，同比增长 7.8%。&lt;/span&gt;&lt;/p&gt; 
+&lt;p style="color:#070707; margin-left:0; margin-right:0; text-align:justify"&gt;&lt;span style="color:#000000"&gt;信息安全收入稳定增长。前&lt;/span&gt;&lt;span style="color:#000000"&gt;5 个月，信息安全产品和服务收入 787 亿元，同比增长 8.4%。&lt;/span&gt;&lt;/p&gt; 
+&lt;p style="color:#070707; margin-left:0; margin-right:0; text-align:justify"&gt;&lt;span style="color:#000000"&gt;嵌入式系统软件收入稳定增长。前&lt;/span&gt;&lt;span style="color:#000000"&gt;5 个月，嵌入式系统软件收入 4428 亿元，同比增长 8.9%。&lt;/span&gt;&lt;/p&gt; 
+&lt;p style="margin-left:0px; margin-right:0px; text-align:justify"&gt;&lt;strong&gt;&lt;span style="color:#000000"&gt;三、分地区运行情况&lt;/span&gt;&lt;/strong&gt;&lt;/p&gt; 
+&lt;p style="color:#070707; margin-left:0; margin-right:0; text-align:justify"&gt;&lt;span style="color:#000000"&gt;前 5 个月，东部地区、中部地区、西部地区和东北地区分别同比增长 11.3%、11.8%、11.0% 和 9.2%。东部地区占全国软件业务总收入的 84.2%。&lt;/span&gt;&lt;/p&gt; 
+&lt;p style="color:#070707; margin-left:0; margin-right:0; text-align:justify"&gt;&lt;span style="color:#000000"&gt;京津冀地区软件业务收入同比增长 12.3%，长三角地区软件业务收入同比增长 11.9%。北京、广东、江苏、山东、上海软件业务收入居全国前 5，同比分别增长 12.7%、8.5%、12.3%、12.1% 和 15.1%。&lt;/span&gt;&lt;/p&gt;
+                                                                                &lt;/div&gt;
+                                                                            </description>
+      <link>https://www.oschina.net/news/358308</link>
+      <guid isPermaLink="false">https://www.oschina.net/news/358308</guid>
+      <pubDate>Sun, 11 May 2025 03:06:00 GMT</pubDate>
+      <author>来源: OSCHINA</author>
+    </item>
     <item>
       <title>1-5 月我国互联网业务收入 7735 亿元</title>
       <description>&lt;div class="content"&gt;
@@ -27,7 +242,7 @@
                                                                             </description>
       <link>https://www.oschina.net/news/358301</link>
       <guid isPermaLink="false">https://www.oschina.net/news/358301</guid>
-      <pubDate>Wed, 02 Jul 2025 02:42:14 GMT</pubDate>
+      <pubDate>Sun, 11 May 2025 02:42:00 GMT</pubDate>
       <author>来源: OSCHINA</author>
     </item>
     <item>
@@ -49,7 +264,7 @@
                                                                             </description>
       <link>https://www.oschina.net/news/358292</link>
       <guid isPermaLink="false">https://www.oschina.net/news/358292</guid>
-      <pubDate>Wed, 02 Jul 2025 02:27:14 GMT</pubDate>
+      <pubDate>Sun, 11 May 2025 02:26:00 GMT</pubDate>
       <author>来源: OSCHINA</author>
     </item>
     <item>
@@ -1097,87 +1312,6 @@ Forest.get(&lt;span style="color:#98c379"&gt;"/{a ?? `?b={b}&amp;amp;c={c}`}"&lt
       <link>https://www.oschina.net/news/358116</link>
       <guid isPermaLink="false">https://www.oschina.net/news/358116</guid>
       <pubDate>Sat, 10 May 2025 02:24:00 GMT</pubDate>
-      <author>来源: OSCHINA</author>
-    </item>
-    <item>
-      <title>豆包上线「深入研究」功能</title>
-      <description>&lt;div class="content"&gt;
-                                                                    
-                                                        &lt;p&gt;豆包「深入研究」功能已经在豆包 App、网页版及电脑版正式开启测试，用户可免费体验。&lt;/p&gt; 
-&lt;p&gt;基于模型的搜索、推理及 Agent 能力，「深入研究」可以帮助用户更快速、全面和结构化地处理高难度的复杂任务。针对长途旅行攻略、复杂购买决策、最新政策解读、商业科技趋势发展等需要获取大量资料、长时间研究的问题，借助「深入研究」能力，几分钟即可完成初步方案。&lt;/p&gt; 
-&lt;p&gt;&lt;img alt="" src="https://oscimg.oschina.net/oscnet/up-9f6c1c14ffd9352f40ee1c98040fd7cff53.png" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;p&gt;同时，豆包还支持以可视化网页和报告文档两种方式呈现研究结果。&lt;/p&gt; 
-&lt;p&gt;据介绍，将豆包更新至最新版后，打开 App 或电脑版，选择「深入研究」，输入详细指令或一句话 prompt，等待几分钟，即可生成一份报告。使用豆包 App 生成报告后，还可以打开报告内容，选择右上角「听」按钮，一键转成播客，随时听。&lt;/p&gt;
-                                                                                &lt;/div&gt;
-                                                                            </description>
-      <link>https://www.oschina.net/news/358039</link>
-      <guid isPermaLink="false">https://www.oschina.net/news/358039</guid>
-      <pubDate>Fri, 09 May 2025 11:18:00 GMT</pubDate>
-      <author>来源: OSCHINA</author>
-    </item>
-    <item>
-      <title>德国要求苹果和谷歌从应用商店下架 DeepSeek</title>
-      <description>&lt;div class="content"&gt;
-                                                                    
-                                                        &lt;p&gt;&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fwww.reuters.com%2Fsustainability%2Fboards-policy-regulation%2Fdeepseek-faces-expulsion-app-stores-germany-2025-06-27%2F" target="_blank"&gt;据路透社报道&lt;/a&gt;，德国数据保护专员梅克·坎普发布声明，宣称已要求苹果和谷歌公司从其在德国的应用商店中下架中国初创公司自主研发的人工智能（AI）大语言模型「深度求索」（DeepSeek）的应用。他给出的理由是所谓的数据安全担忧。&lt;/p&gt; 
-&lt;p&gt;坎普在声明中指控 DeepSeek「非法将用户个人数据传输至中国」，并要求苹果与谷歌尽快审查这一要求，以决定是否在德国封禁该应用，不过并未设定具体的处理时限。&lt;/p&gt; 
-&lt;p&gt;媒体报道显示，谷歌公司证实已收到相关通知，目前正在进行评估；而苹果公司则暂未对此作出回应。&lt;/p&gt; 
-&lt;p&gt;此前，DeepSeek 也因所谓数据安全问题，在欧美多地遭遇审查。另据媒体报道，意大利已于今年稍早以「个人数据使用不透明」为由，将 DeepSeek 应用从应用商店下架；荷兰则禁止政府设备使用该应用；比利时也建议政府官员避免使用 DeepSeek，并表示相关评估仍在进行中。与此同时，美国国会议员正计划提出法案，禁止联邦政府机构使用任何中国开发的 AI 模型。&lt;/p&gt; 
-&lt;p&gt;针对部分国家传出禁止或限制使用 DeepSeek 的消息，中国外交部发言人此前已作出回应。在今年 2 月 6 日的例行记者会上，外交部发言人表示，中国政府始终高度重视数据隐私和安全保护，并依法开展相关工作，从未要求且将来也不会要求企业或个人以违法形式采集或存储数据。&lt;/p&gt; 
-&lt;p&gt;此外，在今年 3 月 18 日的例行记者会上，另一位外交部发言人再次强调，中方一贯反对泛化国家安全概念、将经贸科技问题政治化的做法，并将坚定维护中国企业的合法权益。&lt;/p&gt;
-                                                                                &lt;/div&gt;
-                                                                            </description>
-      <link>https://www.oschina.net/news/358029</link>
-      <guid isPermaLink="false">https://www.oschina.net/news/358029</guid>
-      <pubDate>Fri, 09 May 2025 10:36:00 GMT</pubDate>
-      <author>来源: OSCHINA</author>
-    </item>
-    <item>
-      <title>RWKV-8 系列之 DeepEmbedAttention：精简 KV 缓存，尤其适合混合模型</title>
-      <description>&lt;div class="content"&gt;
-                                                                    
-                                                        &lt;p&gt;5 月 27 日，我们公开了 &lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fmp.weixin.qq.com%2Fs%2FYl79XfbMCO6ecAdKGzboRg" target="_blank"&gt;RWKV-8 首个新特性 DeepEmbed：对端侧友好的稀疏设计，解决 MoE 显存占用&lt;/a&gt;。&lt;/p&gt; 
-&lt;p&gt;今天，我们公开与其相关的另一个新特性：&lt;strong&gt;DeepEmbedAttention（DEA）&lt;/strong&gt; ，这是一种基于 RWKV-8 的 DeepEmbed 思路构建的注意力变体，拥有&lt;strong&gt;极小的 KV 缓存&lt;/strong&gt; ，尤其适合&lt;strong&gt;混合模型&lt;/strong&gt;（例如后续的 RWKV-7s 混合模型），可将它们的长上下文性能提升到 Transformer 水准。&lt;/p&gt; 
-&lt;p&gt;DEA 的结构定义例子：&lt;/p&gt; 
-&lt;pre&gt;&lt;code&gt;# q: D =&amp;gt; 256
-# k: D =&amp;gt; 32, k_up: 32 =&amp;gt; 256, k_emb: V =&amp;gt; 256
-# v: D =&amp;gt; 32, vup: 32 =&amp;gt; D, v_emb: V =&amp;gt; D
-q = ln_q(q(x))
-k = ln_k(k_up(k(x)) * k_emb(idx))
-v = ln_v(tanh(v_up(v(x))) * v_emb(idx))   
-&lt;/code&gt;&lt;/pre&gt; 
-&lt;p&gt;然后将 QKV 的输出加到 RWKV-7 的输出上。这适合并行计算，例如可在不同设备（或异构计算）计算 QKV 和 RWKV-7 部分。&lt;/p&gt; 
-&lt;p&gt;这个注意力头的维度是 256，但由于 DEA 的 &lt;code&gt;key&lt;/code&gt; 和 &lt;code&gt;value&lt;/code&gt; 只需缓存 32 维，KV 总共只需缓存 64 个值（32+32）。&lt;/p&gt; 
-&lt;p&gt;对于 RWKV-7，只需在每层加上一个 DEA head，就能显著增强长上下文能力。因此，对比现有的高效注意力机制（例如 MLA 使用 576 个值），&lt;strong&gt;DEA 的 KV 缓存进一步缩小到 64/576 = 1/9&lt;/strong&gt;，实现了极致效率。&lt;/p&gt; 
-&lt;p&gt;&lt;img alt="" src="https://oscimg.oschina.net/oscnet/up-c7be8702b07a9534c09539a5fa78e2cdc44.png" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;p&gt;图中 loss delta 图的横轴是随着前文长度增加时 token 的位置（token_pos），纵轴表示两种架构在不同 token 位置的 loss 差值（token_loss delta）。&lt;/p&gt; 
-&lt;p&gt;实验结果显示：随着前文长度增加，RWKV-7s（加入 DeepEmbed 和 DEA）在越来越长前文的 loss &lt;strong&gt;相较原版 RWKV-7 持续下降&lt;/strong&gt;，从 -0.13 降至 -0.17。&lt;/p&gt; 
-&lt;blockquote&gt; 
- &lt;p&gt;这意味着 RWKV-7s 这类添加了 DEA 的混合模型，在处理长上下文时表现更好。因为 token 越靠后，所依赖的前文也越长，而 loss 差值持续扩大，代表 RWKV-7s 对比 RWKV-7 更有能力利用越来越长的前文所包含的越来越多的信息，语言建模能力越来越强。&lt;/p&gt; 
-&lt;/blockquote&gt; 
-&lt;p&gt;最后，尽管 DEA 的 KV 缓存非常小，但它仍会随上下文长度而缓慢增长。&lt;strong&gt;RWKV-8 的目标，是在完全无 KV 缓存的情况下也能实现强上下文能力&lt;/strong&gt;，且我们也有方法，后续逐步公布，欢迎大家关注。&lt;/p&gt;
-                                                                                &lt;/div&gt;
-                                                                            </description>
-      <link>https://www.oschina.net/news/358026</link>
-      <guid isPermaLink="false">https://www.oschina.net/news/358026</guid>
-      <pubDate>Fri, 09 May 2025 10:11:00 GMT</pubDate>
-      <author>来源: 资讯</author>
-    </item>
-    <item>
-      <title>欧洲首台百万兆次级超级计算机 JUPITER 启用</title>
-      <description>&lt;div class="content"&gt;
-                                                                    
-                                                        &lt;p&gt;&lt;span style="color:#000000"&gt;位于德国的于利希超级计算中心（Jülich Supercomputing Center）近日&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fspectrum.ieee.org%2Fjupiter-exascale-supercomputer-europe" target="_blank"&gt;推出&lt;/a&gt;了欧洲首台百万兆次级超级计算机 JUPITER (木星)。&lt;/span&gt;&lt;/p&gt; 
-&lt;p&gt;&lt;img height="312" src="https://oscimg.oschina.net/oscnet/up-37c973b7767f9f8d83e4f3ade8a1fabef7f.png" width="500" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;p style="color:#242424; margin-left:0; margin-right:0; text-align:left"&gt;&lt;span style="color:#000000"&gt;JUPITER 于 2025 年 6 月首次亮相于全球最强大计算机系统的 TOP500 排行榜上，位列第四。它拥有 5900 个加速计算节点，配备了约 24000 颗 Nvidia Grace-Hopper&amp;nbsp;超级芯片和 1300 个使用 Rhea1 处理器的节点。此外，JUPITER 还采用了 InfiniBand NDR 网络来确保高速数据传输。该计算机的设计旨在支持复杂的科学计算任务，推动气候模型和天气预报的研究。&lt;/span&gt;&lt;/p&gt; 
-&lt;p style="color:#242424; margin-left:0; margin-right:0; text-align:left"&gt;&lt;span style="color:#000000"&gt;这个项目旨在创建一个地球系统的数字复制品，以更好地监测和预测自然现象与人类活动的相互作用。研究者们表示，需要这样一台大型机器来处理气候和大气数据，JUPITER 能以 700 米的分辨率展示这些物理现象，从而为气象学和气候科学提供更深入的洞察。&lt;/span&gt;&lt;/p&gt; 
-&lt;p style="color:#242424; margin-left:0; margin-right:0; text-align:left"&gt;&lt;span style="color:#000000"&gt;此外，德国伊尔梅瑙工业大学的物理学家们也在利用 JUPITER 进行研究。他们专注于可视化热羽流，探讨流体和气体的对流与湍流现象。科学家们通过这台超级计算机的强大运算能力，能够呈现出以前无法获得的细节，进一步理解自然界中复杂的流动模式。&lt;/span&gt;&lt;/p&gt; 
-&lt;p style="color:#242424; margin-left:0; margin-right:0; text-align:left"&gt;&lt;span style="color:#000000"&gt;JUPITER 的建设始于 2018 年，经过多次升级和完善，在 2024 年计划推出的 JEDI 原型机和 JETI 过渡系统模块的支持下，最终在 2025 年全面投入使用。该计算机的能效设计也备受关注，其制冷系统利用附近的鲁尔河水，为校园建筑提供取暖，展现出对能源消耗的关注和可持续发展理念。&lt;/span&gt;&lt;/p&gt;
-                                                                                &lt;/div&gt;
-                                                                            </description>
-      <link>https://www.oschina.net/news/358021/jupiter-exascale-supercomputer-europe</link>
-      <guid isPermaLink="false">https://www.oschina.net/news/358021/jupiter-exascale-supercomputer-europe</guid>
-      <pubDate>Fri, 09 May 2025 09:38:00 GMT</pubDate>
       <author>来源: OSCHINA</author>
     </item>
   </channel>
