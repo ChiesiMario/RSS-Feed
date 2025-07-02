@@ -7,8 +7,223 @@
     <generator>RSSHub</generator>
     <webMaster>contact@rsshub.app (RSSHub)</webMaster>
     <language>zh-tw</language>
-    <lastBuildDate>Wed, 02 Jul 2025 02:50:11 GMT</lastBuildDate>
+    <lastBuildDate>Wed, 02 Jul 2025 07:48:33 GMT</lastBuildDate>
     <ttl>5</ttl>
+    <item>
+      <title>TDMQ RabbitMQ Serverless 版限流機制深度解析與實踐指南</title>
+      <description>&lt;div class="content"&gt;
+                                                                                                                                                                                                                                        &lt;h2&gt;導語&lt;/h2&gt; 
+&lt;p&gt;分佈式集羣限流是保障雲服務高可用性的核心技術手段，其意義不僅在於防止系統過載，更是構建彈性架構、優化資源效率、實現業務可持續性的關鍵策略。未來，隨着邊緣計算和 Serverless 的普及，限流技術將進一步與底層基礎設施深度融合，成為構建下一代高可用架構的核心基石。&lt;/p&gt; 
+&lt;p&gt;騰訊雲 TDMQ RabbitMQ Serverless 版作為一款極致彈性、高性能且高可靠的消息中間件，通過提供穩定低延遲的消息服務，助力企業實現系統異步解耦並高效應對海量消息堆積。然而，在高併發、大流量的實際業務中，如何科學分配資源、規避系統過載風險，已成為保障服務穩定性的關鍵。為此，騰訊雲 TDMQ RabbitMQ Serverless 版引入了集羣級別的分佈式限流機制，通過動態調控集羣的發送與消費速率，確保集羣在高負載下仍能穩定運行。&lt;/p&gt; 
+&lt;p&gt;本文將深度剖析騰訊雲 TDMQ RabbitMQ Serverless 版的限流機制，涵蓋限流策略設計、觸發機制及底層實現邏輯。通過真實場景案例解析與實踐指南，系統講解如何通過客戶端優化來降低限流影響，同時幫助客戶精準掌握集羣限流相關服務端配置技巧，有效規避因流控策略不當引發的業務中斷風險，全面提升高併發場景下的系統穩定性與可靠性。&lt;/p&gt; 
+&lt;h2&gt;概要設計&lt;/h2&gt; 
+&lt;h3&gt;分佈式限流的必要性&lt;/h3&gt; 
+&lt;p&gt;&lt;strong&gt;資源瓶頸的不可預測性&lt;/strong&gt;&lt;/p&gt; 
+&lt;p&gt;在分佈式系統中，單節點流量可能因負載均衡策略（如 Round-Robin）不均導致傾斜。例如，某台服務器因硬件故障觸發重試風暴，流量突增 300%，若無全局視角的限流，可能引發級聯雪崩。&lt;/p&gt; 
+&lt;p&gt;&lt;strong&gt;長尾延遲的放大效應&lt;/strong&gt;&lt;/p&gt; 
+&lt;p&gt;當某服務節點響應延遲升高（如磁盤刷寫延遲增大），後續請求堆積導致線程池耗盡，觸發上游重試，形成惡性循環。&lt;/p&gt; 
+&lt;p&gt;&lt;strong&gt;突發流量衝擊&lt;/strong&gt;&lt;/p&gt; 
+&lt;p&gt;秒殺活動、熱點新聞等場景下，流量可能在毫秒級陡增數十倍。例如，某電商平台大促期間，訂單服務 QPS 從 5k 飆升至 80k，若未通過分佈式限流攔截異常流量，核心計算資源將被瞬間打滿，導致服務不可用。&lt;/p&gt; 
+&lt;h3&gt;TDMQ RabbitMQ Serverless 版限流規則&lt;/h3&gt; 
+&lt;p&gt;騰訊雲 TDMQ RabbitMQ Serverless 版為超大規模、低時延、高可用性要求的在線業務提供專業級消息服務。客戶端通過 RabbitMQ SDK 與 TDMQ RabbitMQ Serverless 版集羣建立長連接，實現高效的消息收發操作，同時動態佔用集羣的計算、存儲及網絡帶寬等關鍵資源。在此背景下，為確保消息服務的高性能與穩定性，在應對高併發、大流量場景時，必須對集羣的負載水位進行精細化管理。 基於集羣的資源配置上限，服務端支持動態調控客戶端的每秒消息發送與消費能力（TPS），確保系統在高負載下依然保持穩定運行。&lt;/p&gt; 
+&lt;p&gt;為實現資源隔離與靈活適配的雙重目標，系統對發送消息與消費消息的 TPS 配額進行獨立分配，並支持用戶按需配置配額比例，從而實現精細化資源管理與業務場景的精準匹配（默認配額比例為 1 : 1 也即 50%）。業務可以根據實際的收發比例進行調整，可調整的收發消息比例範圍在 20%-80%（服務端支持動態調整該區間）之間。&lt;/p&gt; 
+&lt;p&gt;&lt;img src="https://oscimg.oschina.net/oscnet/up-7e99eeeb65ba2619e29a1109b273abf1cd8.jpg" alt="" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;h3&gt;TDMQ RabbitMQ Serverless 版限流行為&lt;/h3&gt; 
+&lt;p&gt;騰訊雲 TDMQ RabbitMQ Serverless 版採用 Fail-Fast 限流機制，即當客戶端請求速率觸及預設上限時，服務端會即時返回錯誤響應。在響應時間敏感的在線業務場景中，該機制可使客戶端實時感知限流事件並主動介入處理，從而有效避免因資源競爭導致的端到端時延長尾，保障業務連續性與系統穩定性。&lt;/p&gt; 
+&lt;p&gt;以 1000TPS 規格的基礎集羣為例（假設收發 TPS 比例為 1:1 也即 50%），客戶端視角下的限流行為：&lt;/p&gt; 
+&lt;p&gt;| &lt;strong&gt;説明&lt;/strong&gt; | &lt;strong&gt;發送消息限流&lt;/strong&gt; | &lt;strong&gt;消費消息限流&lt;/strong&gt; | | ------------ | ------------ | ------------ | | 觸發限流情景 | 所有連接該集羣的發送客戶端每秒最多可發送 TPS 總和為 500 條，發送速率達到限制後，超限的發送請求會失敗。 | 所有連接該集羣的消費客戶端每秒最多可消費 TPS 總和為 500 條，消費速率達到限制後，消息的消費延遲會增加。 | | 觸發限流時 SDK 日誌關鍵詞 | com.rabbitmq.client.AlreadyClosedException: channel is already closed due to channel error; protocol method: #method&amp;lt;channel.close&amp;gt;(reply-code=530, reply-text=[requestId: 3143682333552716694] Action: pub rate limited by cluster on instance:xxx reason:PublishMessage, class-id=60, method-id=40) | 消費超過閾值以後，客戶端使用 BasicGet 拉取消息時，會出現：com.rabbitmq.client.AlreadyClosedException: channel is already closed due to channel error; protocol method: #method&amp;lt;channel.close&amp;gt;(reply-code=530, reply-text=[requestId: 31436823332424324] Action: BasicGet rate limited by cluster rate limiter vhost: xxx. queue: xxx.當客戶端使用 BasicConsume 消費消息時，服務端會抑制向客戶端 DeliverMessage 的速率，客戶端不會感知到明顯的 Channel 斷開的錯誤，整體表現為類似 AMQP 協議消費者 QOS 的行為，會抑制推送到消費者消息的速率，此時消費延遲會增加，可以通過調整限流比例或者增大購買的 TPS 來解決。消費的總 TPS 主要由 BasicGet 和 DeliverMessage 的調用 TPS 次數共享。 | | 觸發限流時 SDK 重試機制 | 客戶端 SDK 業務側需要處理連接斷開的行為，需要對發送錯誤被限流的消息重新建立 Channel 連接然後進行發送重試。 | 客戶端 SDK 業務消費側會感知到延遲增加。若使用拉取 BasicGet 拉取消息，會感知到 Channel 連接斷開，需要業務上主動重試。 |&lt;/p&gt; 
+&lt;h2&gt;詳細設計與實現&lt;/h2&gt; 
+&lt;h3&gt;架構設計&lt;/h3&gt; 
+&lt;p&gt;騰訊雲 TDMQ RabbitMQ Serverless 版採用雙模式限流架構，兼顧節點級保護與集羣級協同：&lt;/p&gt; 
+&lt;p&gt;&lt;strong&gt;單機限流（Node-Level Throttling）&lt;/strong&gt;&lt;/p&gt; 
+&lt;p&gt;用於節點級資源保護，通過限制 CPU、內存、線程等關鍵資源的使用，防止單節點因過載導致服務不可用。&lt;/p&gt; 
+&lt;p&gt;&lt;strong&gt;分佈式限流（Cluster-Level Throttling）&lt;/strong&gt;&lt;/p&gt; 
+&lt;p&gt;基於集羣全局視角，通過多節點流量協同管理，保護共享存儲資源（如 Broker）及後端系統穩定性。該模式通過使用分佈式限流系統實現。&lt;/p&gt; 
+&lt;p&gt;&lt;img src="https://oscimg.oschina.net/oscnet/up-cab8876ba86ab2c10b491074cac992a20d0.jpg" alt="" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;h3&gt;限流實現&lt;/h3&gt; 
+&lt;p&gt;騰訊雲 TDMQ RabbitMQ Serverless 版通過在計算層 （TDMQ RabbitMQ Serverless 版集羣）接入分佈式限流系統實現集羣級讀寫流量控制，其核心機制是：TDMQ RabbitMQ Serverless 版集羣節點在處理 BasicPublish / BasicGet / DeliverMessage 請求前，需通過集成的限流 SDK 向限流 Server 異步上報與申請 Token。&lt;/p&gt; 
+&lt;p&gt;&lt;strong&gt;生產端限流&lt;/strong&gt; ：若 BasicPublish 申請失敗，則立即拒絕生產消息請求並返回錯誤。 &lt;strong&gt;消費端限流&lt;/strong&gt;：若 BasicGet 申請失敗，則立即拒絕拉取消息請求並返回錯誤。若 DeliverMessage 申請失敗，則抑制推送到消費者的消息速率，實現消費端不斷連接的流控，此時類似於 RabbitMQ 開源的實現，此時該消費者處於 Flow 狀態。&lt;/p&gt; 
+&lt;p&gt;TDMQ RabbitMQ Serverless 版集羣內部集成限流 SDK，該 SDK 提供 Token 申請 API，並負責與限流 Server 通信，通過這種集中式 Token 管理實現對核心存儲層 (底座 Broker 集羣) 的保護。&lt;/p&gt; 
+&lt;h3&gt;限流實現難點一：如何平衡性能與精度&lt;/h3&gt; 
+&lt;p&gt;使用 TDMQ RabbitMQ Serverless 版的各類在線業務通常對時延比較敏感，如果計算層節點處理每次讀寫請求都執行一次 Limiter RPC 調用（SDK -&amp;gt; Server）的話，雖然 Limiter Server 內部處理耗時幾乎可以忽略，但兩次 RPC 的網絡 IO 耗時對消息端到端時延的影響是不能忽視的。&lt;/p&gt; 
+&lt;p&gt;實際上從服務端的角度看， TDMQ RabbitMQ Serverless 版執行限流的主要目的是防止核心存儲層過載，而非追求 100% 精準的流量控制，即 SDK 與 Server 之間的強同步並不是必須的。因此，為了在限流性能和限流精度之間取得平衡，Limiter 採用了一種【先消費後結算】的 Token 管理機制，Token 申請過程在限流 SDK 內部閉環，SDK 會週期性（週期大概在 50ms 以內，上報週期越短，限流越敏感）地向限流 Server 異步上報 Token 使用量並同步配額。&lt;/p&gt; 
+&lt;p&gt;騰訊雲 TDMQ RabbitMQ Serverless 版的限流機制通過以下四大核心特性，在保障系統穩定性的同時實現高性能與低時延的平衡：&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt;&lt;strong&gt;內存級處理，主鏈路零幹擾&lt;/strong&gt;&lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;p&gt;&lt;strong&gt;執行機制&lt;/strong&gt;：限流判斷為純內存操作，不涉及外部 RPC 調用，確保消息處理流程完全不受阻塞。&lt;/p&gt; 
+&lt;p&gt;&lt;strong&gt;性能優勢&lt;/strong&gt;：主鏈路延遲無感知，適用於對響應時間要求嚴苛的在線業務場景。&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt;&lt;strong&gt;先消費後結算，消除誤限流風險&lt;/strong&gt;&lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;p&gt;&lt;strong&gt;設計原理&lt;/strong&gt; ：採用異步 Token 核銷機制，客戶端可先執行操作，限流 SDK 後續異步週期性同步配額消耗。 &lt;strong&gt;效果保障&lt;/strong&gt;：杜絕因限流判斷延遲導致的正常請求被誤拒，確保業務連續性。&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt;&lt;strong&gt;短暫超限容忍，資源緩衝池兜底&lt;/strong&gt;&lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;p&gt;&lt;strong&gt;場景説明&lt;/strong&gt; ：在流量毛刺等突發場景中，可能出現瞬時配額超限，由於先消費後結算的機制導致。 &lt;strong&gt;容錯機制&lt;/strong&gt;：通過服務端資源預留 Buffer 吸收流量波動，避免因短暫超限觸發系統風險。&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt;&lt;strong&gt;彈性容錯設計，弱耦合架構保障可用性&lt;/strong&gt;&lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;p&gt;&lt;strong&gt;故障降級策略&lt;/strong&gt; ：當限流 Server 服務異常時，系統自動切換至單機 Sentinel 組件實現基礎單機限流功能。 &lt;strong&gt;依賴特性&lt;/strong&gt;：對限流 Server 服務實現弱耦合架構，可以通過隨時動態降級來避免限流 Server 服務異常導致的服務異常，確保分佈式限流服務的高可用。&lt;/p&gt; 
+&lt;h3&gt;限流實現難點二：如何平滑限流毛刺&lt;/h3&gt; 
+&lt;p&gt;騰訊雲 TDMQ RabbitMQ Serverless 版採用 TPS 作為集羣規格單位，用於衡量集羣的吞吐能力。例如，1000TPS 表示集羣每秒可處理 1000 條 TPS（即綜合生產、消費等操作的加權計算）。在分佈式限流系統中，這一規格對應每秒分配 1000 個 Token，其中 "一秒"即為默認的限流計數週期，用於動態控制流量配額。&lt;/p&gt; 
+&lt;p&gt;在使用限流服務的實際運維中發現：&lt;/p&gt; 
+&lt;p&gt;&lt;strong&gt;短週期（如 1 秒）&lt;/strong&gt;： 優勢：對流量波動敏感，可快速響應潛在過載風險； 缺陷：易因短暫毛刺誤觸限流，影響正常業務波動場景。&lt;/p&gt; 
+&lt;p&gt;&lt;strong&gt;長週期（如 10 秒）&lt;/strong&gt;： 優勢：容忍毛刺，降低誤控率； 缺陷：服務端資源需承受更高瞬時衝擊風險。&lt;/p&gt; 
+&lt;p&gt;為平衡流量控制精度與用戶體驗，騰訊雲 TDMQ RabbitMQ Serverless 版將默認限流計數週期從 1 秒調整為 10 秒。這樣既降低了用戶因毛刺導致的限流困擾，又通過利用少量的服務器預留資源 Buffer 來承載瞬時流量衝擊，為高併發場景下的消息處理提供了可靠的支撐。&lt;/p&gt; 
+&lt;h3&gt;限流實現難點三：如何實現消費端限流&lt;/h3&gt; 
+&lt;p&gt;騰訊雲 TDMQ RabbitMQ Serverless 版集羣使用 AMQP 協議與客戶端交互，然而 AMQP 協議中並沒有定義很好的處理 Fail-Fast 限流錯誤的幀，因此在發送消息被限流的情況下，只能通過關閉 Channel 連接來通知到客戶端，此時客戶端會收到相應的 AlreadyClosedException 異常，然後業務需要通過重試來解決當前時間窗口內消息發送被限流的問題。&lt;/p&gt; 
+&lt;p&gt;而在消費端限流的情況下，分為兩種情況，AMQP 協議中支持兩種消費模式，BasicGet（拉模式) 和 BasicConsume（推模式）。 此時對消費端的限流就需要考慮消費的連續性和延遲。針對 BasicGet 模式，是客戶端發起的主動同步拉取消息的命令，此時客戶端每一次拉取消息是可以直接感知到是否被限流的，更好的方式是通過關閉連接來讓客戶端感知到限流，從而讓業務上通過重試來解決拉取當前時間窗口內消息消費被限流的問題。&lt;/p&gt; 
+&lt;p&gt;但是針對 BasicConsume（推模式）, 同時也是 AMQP 客戶端最普遍的使用方式，考慮到客戶端開啓一個長連接監聽相應隊列上的消息，此時如果因為限流粗暴地關閉 Channel 連接, 此時的客戶端往往不能實時感知到連接 Channel 斷開，增加了客戶端業務上處理的複雜度，同時消費側重建 Channel 連接也會讓消費流量充滿毛刺和消費延遲增加。因此騰訊雲 TDMQ RabbitMQ Serverless 版在推模式下使用消費抑制的方式來實現消費端限流，當消費 TPS 超過閾值時，會減少推送到客戶端的頻率，保證了在連接 Channel 不斷開的情況下，消費流量的平穩，儘量減少因為限流導致的消費延遲。&lt;/p&gt; 
+&lt;h2&gt;客戶端實踐教程&lt;/h2&gt; 
+&lt;h3&gt;規劃集羣限流負載&lt;/h3&gt; 
+&lt;p&gt;騰訊雲 TDMQ RabbitMQ Serverless 版的限流機制旨在保障服務穩定性與可靠性。防止在集羣高負載時出現服務響應長尾毛刺，最終導致請求成功率下降，業務受損等問題。因此，在接入時建議：客戶側需要提前規劃集羣負載，依據當前規模和未來趨勢預測來充分評估業務 TPS， 如果業務流量具有波動特性，應以峯值 TPS 為準，根據相應的評估後的 TPS 購買相應規格的實例集羣。&lt;/p&gt; 
+&lt;h3&gt;限流相關告警配置&lt;/h3&gt; 
+&lt;p&gt;騰訊雲 TDMQ RabbitMQ Serverless 版默認接入了騰訊雲監控的能力，可以利用騰訊雲 TDMQ RabbitMQ Serverless 版控制枱的監控告警能力實現對集羣負載的實時觀測，提前發現 TPS 水位風險並及時操作升配來避免觸發限流導致業務受損。告警策略建議：&lt;/p&gt; 
+&lt;ol&gt; 
+ &lt;li&gt;發送和消費 TPS 水位超過容量的 70% 時觸發告警，提醒進行升配評估。&lt;/li&gt; 
+ &lt;li&gt;出現發送限流時觸發告警，警告業務發送消息可能失敗風險。&lt;/li&gt; 
+&lt;/ol&gt; 
+&lt;h3&gt;客戶端限流異常處理&lt;/h3&gt; 
+&lt;p&gt;業務代碼通過 RabbitMQ SDK 發送消息時，需要捕獲包括限流錯誤在內的異常，並保存必要的上下文信息，以便人工介入恢復業務。當騰訊雲 TDMQ RabbitMQ Serverless 版實例的 TPS 流量峯值超過騰訊雲控制枱所購買實例的 TPS 規格上限時，業務側生產消費流量會被限流。&lt;/p&gt; 
+&lt;p&gt;&lt;strong&gt;限流後的行為如下&lt;/strong&gt;：&lt;/p&gt; 
+&lt;p&gt;騰訊雲 TDMQ RabbitMQ Serverless 版服務端會返回錯誤碼信息。&lt;/p&gt; 
+&lt;p&gt;騰訊雲 TDMQ RabbitMQ Serverless 版服務端關閉當前請求的 Channel 連接，代碼中可以捕獲異常並重新打開 Channel 連接，具體請參見錯誤碼處理示例代碼章節。&lt;/p&gt; 
+&lt;p&gt;&lt;strong&gt;錯誤碼信息&lt;/strong&gt;： 錯誤碼：reply-code=530&lt;/p&gt; 
+&lt;p&gt;錯誤信息：reply-text=[requestId: 3143682333552716694] Action: pub rate limited by cluster on instance:xxx reason:PublishMessage, class-id=60, method-id=40)&lt;/p&gt; 
+&lt;p&gt;&lt;strong&gt;錯誤堆棧&lt;/strong&gt;：&lt;/p&gt; 
+&lt;pre&gt;&lt;code&gt;Suppressed: com.rabbitmq.client.AlreadyClosedException: channel is already closed due to channel error; protocol method: #method&amp;lt;channel.close&amp;gt;(reply-code=530, reply-text=[requestId: 3143682333552716694] Action: pub rate limited by cluster on instance:amqp-autotest reason:PublishMessage, class-id=60, method-id=40)
+at com.rabbitmq.client.impl.AMQChannel.processShutdownSignal(AMQChannel.java:437)
+at com.rabbitmq.client.impl.ChannelN.startProcessShutdownSignal(ChannelN.java:295)
+at com.rabbitmq.client.impl.ChannelN.close(ChannelN.java:624)
+at com.rabbitmq.client.impl.ChannelN.close(ChannelN.java:557)
+at com.rabbitmq.client.impl.ChannelN.close(ChannelN.java:550)
+at com.rabbitmq.client.impl.recovery.AutorecoveringChannel.lambda$close$0(AutorecoveringChannel.java:74)
+at com.rabbitmq.client.impl.recovery.AutorecoveringChannel.executeAndClean(AutorecoveringChannel.java:102)
+at com.rabbitmq.client.impl.recovery.AutorecoveringChannel.close(AutorecoveringChannel.java:74)
+&lt;/code&gt;&lt;/pre&gt; 
+&lt;p&gt;RabbitMQ AMQP Java SDK 業界使用的比較廣泛，因此使用該 SDK 作為示例，RabbitMQ AMQP Java SDK 不會對限流錯誤進行自動重試，因此業務代碼需要捕獲異常並進行處理，示例代碼如下：&lt;/p&gt; 
+&lt;pre&gt;&lt;code&gt;private static final int MAX_RETRIES = 5; // 最大重試次數
+private static final long WAIT_TIME_MS = 2000; // 每次重試的等待時間（以毫秒為單位）
+private void doAnythingWithReopenChannels(Connection connection, Channel channel) {
+    try {
+        // ......
+        // 在當前通道 channel 下執行的任何操作
+        // 例如消息發送、消費等
+        // ......
+    } catch (AlreadyClosedException e) {
+        String message = e.getMessage();
+        if (isChannelClosed(message)) {
+            // 如果通道已經關閉，關閉並重新創建通道
+            channel = createChannelWithRetry(connection); 
+            // 在重連後可以繼續執行其它操作
+            // ......
+        } else {
+            throw e;
+        }
+    }
+}
+private Channel createChannelWithRetry(Connection connection) {
+    for (int attempt = 1; attempt &amp;lt;= MAX_RETRIES; attempt++) {
+        try {
+            return connection.createChannel();
+        } catch (Exception e) {
+            System.err.println("Failed to create channel. Attempt " + attempt + " of " + MAX_RETRIES);
+            // 檢查錯誤, 若仍是被限流導致的關閉錯誤，則可以等待後繼續重試
+            // 也可移除本部分重試邏輯
+            if (attempt &amp;lt; MAX_RETRIES) {
+                try {
+                    Thread.sleep(WAIT_TIME_MS);
+                } catch (InterruptedException ie) {
+                    Thread.currentThread().interrupt(); // 還原中斷狀態
+                }
+            } else {
+                throw new RuntimeException("Exceeded maximum retries to create channel", e);
+            }
+        }
+    }
+    throw new RuntimeException("This line should never be reached"); // 理論上不會到達這裏
+}
+private boolean isChannelClosed(String errorMsg) {
+    // 判斷是否包含 channel.close 報錯，該報錯代表通道已關閉。
+    // 可能涵蓋 530，541 等錯誤信息。
+    if (errorMsg != null &amp;amp;&amp;amp; errorMsg.contains("channel.close")) {
+        System.out.println("[ChannelClosed] Error details: " + errorMsg);
+        return true;
+    }
+    return false;
+}
+&lt;/code&gt;&lt;/pre&gt; 
+&lt;h2&gt;總結&lt;/h2&gt; 
+&lt;p&gt;騰訊雲 TDMQ RabbitMQ Serverless 版通過分佈式限流架構為在線業務提供高可用的消息服務保障。在分佈式限流模式下，服務端通過集中式 Token 管理系統（限流 Limiter）動態分配資源配額，防止因突發流量衝擊導致核心存儲層（底座 Broker 集羣）過載來提高系統穩定性，同時採用 【先消費後結算】的異步處理模式，客戶端在限流 SDK 內部閉環完成 Token 申請，避免阻塞主鏈路，確保限流調用接口低延時，限流 SDK 週期性同步 Token 消耗數據至限流 Server，最終平衡了限流精度與調用限流服務的性能開銷。同時針對消費端的限流可以實現不斷 Channel 連接，實現了消費端在限流毛刺與消費延遲之間的雙重保證，此外，面對限流 Server 服務不可用的情況，系統能夠自動動態降級為單機限流模式，確保客戶端請求的連續性，保持對限流服務的弱依賴設計來實現系統解耦。&lt;/p&gt; 
+&lt;p&gt;在實際應用與運維中，同時也需要客戶業務方的配合，在接入騰訊雲 TDMQ RabbitMQ Serverless 版服務時，業務方客戶需要根據業務規模和未來趨勢合理規劃集羣，預留足夠的 TPS 配額以應對突發流量，防患於未然。同時騰訊雲 TDMQ RabbitMQ Serverless 版提供了服務端完善的監控和告警，支持客戶通過監控告警能力實時訂閲集羣負載，提前發現 TPS 水位風險並及時進行升配等操作。在客戶端業務代碼層面，需要捕獲限流異常並處理，保證代碼的健壯性，同時保存必要的上下文信息，以便人工查看相關日誌最終介入來恢復業務。&lt;/p&gt; 
+&lt;p&gt;通過本文對騰訊雲 TDMQ RabbitMQ Serverless 版的限流機制的介紹與實踐教程，相信讀者對騰訊雲 TDMQ RabbitMQ Serverless 版的限流機制有了更深入的理解，並能夠在實際項目中靈活應用，最終為業務的高併發、大流量場景提供穩定的支持。&lt;/p&gt;
+                                                                                    &lt;/div&gt;
+                                                                            </description>
+      <link>https://my.oschina.net/u/4587289/blog/18638288</link>
+      <guid isPermaLink="false">https://my.oschina.net/u/4587289/blog/18638288</guid>
+      <pubDate>Wed, 02 Jul 2025 07:34:47 GMT</pubDate>
+      <author>原創</author>
+    </item>
+    <item>
+      <title>百度搜索迎來十年來最大改版：AI 智能框、百看、AI 助手全面進化</title>
+      <description>&lt;div class="content"&gt;
+                                                                    
+                                                        &lt;p&gt;&lt;span style="color:#000000"&gt;在近日的百度 AI Day 開放日上，百度搜索宣佈進行了其十年來最大規模的改版，此次革新涵蓋了搜索框、搜索結果頁以及整個搜索生態。&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;img height="262" src="https://oscimg.oschina.net/oscnet/up-98d15d20c6065a79b817c094d1a37c4066c.png" width="700" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;span style="color:#000000"&gt;升級後的百度搜索框被命名為「智能框」，顯著增強了其輸入能力，現在可支持超過千字的文本輸入。同時，拍照、語音、視頻等多種輸入方式也得到全面加強，並能直接調取 AI 寫作、AI 作圖等創作工具，極大地豐富了用戶與搜索的交互方式。&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;span style="color:#000000"&gt;「百看」功能也在此次改版中實現了全面升級，不僅支持圖文、音視頻的混合內容輸出，還創新性地接入了智能體和真人服務等功能，旨在提供更豐富、多元的信息呈現形式。&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;span style="color:#000000"&gt;「AI 助手」的升級是本次改版的另一大亮點，新增了視頻通話功能，並顯著提升了多模態輸入、富媒體輸出、一站式工作台及深度搜索能力，使其成為更全面的 AI 輔助工具。&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;span style="color:#000000"&gt;此外，智能創作能力也得到大幅提升，用戶現在只需一句話即可生成三分鐘的創意視頻，並支持分鏡編輯和自定義畫面內容。截至目前，百度搜索開放平台已成功接入 1.8 萬多個優質 MCP（多媒體內容提供商），使其成為國內最大的 AI 生態系統。&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;span style="color:#000000"&gt;值得一提的是，此次百度搜索還接入了商業研發團隊自研的視頻生成模型 MuseSteamer 及其創作平台「繪想」。據瞭解，MuseSteamer 是全球首個實現中文音視頻一體化生成的視頻模型。&lt;/span&gt;&lt;/p&gt;
+                                                                                &lt;/div&gt;
+                                                                            </description>
+      <link>https://www.oschina.net/news/358379</link>
+      <guid isPermaLink="false">https://www.oschina.net/news/358379</guid>
+      <pubDate>Wed, 02 Jul 2025 07:20:47 GMT</pubDate>
+      <author>來源: OSCHINA</author>
+    </item>
+    <item>
+      <title>Anthropic 年化收入達 40 億美元，較年初增長近 4 倍</title>
+      <description>&lt;div class="content"&gt;
+                                                                    
+                                                        &lt;p&gt;&lt;span style="color:#000000"&gt;Information 援引知情人士稱，「AI 獨角獸」Anthropic 年化收入已達到每年 40 億美元，即每月 3.33 億美元，較今年年初增長了近四倍。與此同時，Anthropic 的競爭對手 Cursor 也在積極擴展業務，雙方之間的競爭愈加激烈。&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;img height="269" src="https://oscimg.oschina.net/oscnet/up-2307b0436f3618822c9987fadd1eedab2af.png" width="500" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;span style="color:#000000"&gt;Cursor 是一款由 Anthropic 提供人工智能技術支持的編程應用程序，旨在幫助開發者提高工作效率。然而，Cursor 的背後並不僅僅依賴於 Anthropic 的技術。近期，Cursor 公司還招募了 Anthropic 的兩位高管。這兩位高管曾負責 Anthropic 的編程產品 Claude Code，他們的加入可能會進一步增強 Cursor 在市場上的競爭力。&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;span style="color:#000000"&gt;Anthropic 自成立以來，憑藉其先進的人工智能技術和強大的研發團隊，迅速佔領了市場。然而，隨着 Cursor 的崛起，Anthropic 面臨着新的挑戰。Cursor 雖然依賴於 Anthropic 的技術，但通過引入高管和不斷創新，Cursor 希望能在市場上佔據一席之地。&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;span style="color:#000000"&gt;不僅如此，人工智能技術的快速發展，也使得編程工具的需求不斷增加。市場對智能編程工具的熱情高漲，各家公司都在努力爭取更大的市場份額。面對這樣的市場環境，Anthropic 和 Cursor 之間的競爭將會更加白熱化。&lt;/span&gt;&lt;/p&gt;
+                                                                                &lt;/div&gt;
+                                                                            </description>
+      <link>https://www.oschina.net/news/358314</link>
+      <guid isPermaLink="false">https://www.oschina.net/news/358314</guid>
+      <pubDate>Sun, 11 May 2025 03:22:00 GMT</pubDate>
+      <author>來源: OSCHINA</author>
+    </item>
+    <item>
+      <title>前 5 個月我國軟件業務收入 55788 億元</title>
+      <description>&lt;div class="content"&gt;
+                                                                    
+                                                        &lt;p&gt;&lt;span style="background-color:#ffffff; color:#000000"&gt;工業和信息化部運行監測協調局公告&lt;/span&gt;&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fwww.miit.gov.cn%2Fjgsj%2Fyxj%2Fxxfb%2Fart%2F2025%2Fart_451a835829c54325a8316fa9dd2a9d32.html" target="_blank"&gt;指出&lt;/a&gt;&lt;span style="background-color:#ffffff; color:#000000"&gt;，&lt;/span&gt;&lt;span style="color:#000000"&gt;2025 年前 5 個月，我國軟件和信息技術服務業（以下簡稱「軟件業」）運行態勢良好，軟件業務收入穩健增長，利潤總額保持兩位數增長，軟件業務出口保持正增長。&amp;nbsp;&amp;nbsp;&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;img height="237" src="https://oscimg.oschina.net/oscnet/up-1716524be9e23b5228867787d358aa2a175.png" width="500" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p style="margin-left:0px; margin-right:0px; text-align:justify"&gt;&lt;strong&gt;&lt;span style="color:#000000"&gt;一、總體運行情況&lt;/span&gt;&lt;/strong&gt;&lt;/p&gt; 
+&lt;p style="color:#070707; margin-left:0; margin-right:0; text-align:justify"&gt;&lt;span style="color:#000000"&gt;軟件業務收入穩健增長。前&lt;/span&gt;&lt;span style="color:#000000"&gt;5 個月，軟件業務收入 55788 億元，同比增長 11.2%。&lt;/span&gt;&lt;/p&gt; 
+&lt;p style="color:#070707; margin-left:0; margin-right:0; text-align:justify"&gt;&lt;span style="color:#000000"&gt;利潤總額增速保持兩位數增長。前&lt;/span&gt;&lt;span style="color:#000000"&gt;5 個月，軟件業利潤總額 6721 億元，同比增長 12.8%。&lt;/span&gt;&lt;/p&gt; 
+&lt;p style="color:#070707; margin-left:0; margin-right:0; text-align:justify"&gt;&lt;span style="color:#000000"&gt;軟件業務出口保持正增長。前&lt;/span&gt;&lt;span style="color:#000000"&gt;5 個月，軟件業務出口 227&lt;/span&gt;&lt;span style="color:#000000"&gt;.1&lt;/span&gt;&lt;span style="color:#000000"&gt;億美元，同比增長 3.3%。&lt;/span&gt;&lt;/p&gt; 
+&lt;p style="margin-left:0px; margin-right:0px; text-align:justify"&gt;&lt;strong&gt;&lt;span style="color:#000000"&gt;二、分領域運行情況&lt;/span&gt;&lt;/strong&gt;&lt;/p&gt; 
+&lt;p style="color:#070707; margin-left:0; margin-right:0; text-align:justify"&gt;&lt;span style="color:#000000"&gt;軟件產品收入穩定增長。前&lt;/span&gt;&lt;span style="color:#000000"&gt;5 個月，軟件產品收入 12478 億元，同比增長 9.8%，佔全行業收入的 22.4%。其中，基礎軟件收入 704 億元，同比增長 10&lt;/span&gt;&lt;span style="color:#000000"&gt;.0&lt;/span&gt;&lt;span style="color:#000000"&gt;%；工業軟件產品收入 1138 億元，同比增長 7&lt;/span&gt;&lt;span style="color:#000000"&gt;.0&lt;/span&gt;&lt;span style="color:#000000"&gt;%。&lt;/span&gt;&lt;/p&gt; 
+&lt;p style="color:#070707; margin-left:0; margin-right:0; text-align:justify"&gt;&lt;span style="color:#000000"&gt;信息技術服務收入保持兩位數增長。前&lt;/span&gt;&lt;span style="color:#000000"&gt;5 個月，信息技術服務收入 38096 億元，同比增長 12&lt;/span&gt;&lt;span style="color:#000000"&gt;.0&lt;/span&gt;&lt;span style="color:#000000"&gt;%，佔全行業收入的 68.3%。其中，雲計算、大數據服務共實現收入 5855 億元，同比增長 11.2%，佔信息技術服務收入的 15.4%；集成電路設計收入 1516 億元，同比增長 15.2%；電子商務平台技術服務收入 4355 億元，同比增長 7.8%。&lt;/span&gt;&lt;/p&gt; 
+&lt;p style="color:#070707; margin-left:0; margin-right:0; text-align:justify"&gt;&lt;span style="color:#000000"&gt;信息安全收入穩定增長。前&lt;/span&gt;&lt;span style="color:#000000"&gt;5 個月，信息安全產品和服務收入 787 億元，同比增長 8.4%。&lt;/span&gt;&lt;/p&gt; 
+&lt;p style="color:#070707; margin-left:0; margin-right:0; text-align:justify"&gt;&lt;span style="color:#000000"&gt;嵌入式系統軟件收入穩定增長。前&lt;/span&gt;&lt;span style="color:#000000"&gt;5 個月，嵌入式系統軟件收入 4428 億元，同比增長 8.9%。&lt;/span&gt;&lt;/p&gt; 
+&lt;p style="margin-left:0px; margin-right:0px; text-align:justify"&gt;&lt;strong&gt;&lt;span style="color:#000000"&gt;三、分地區運行情況&lt;/span&gt;&lt;/strong&gt;&lt;/p&gt; 
+&lt;p style="color:#070707; margin-left:0; margin-right:0; text-align:justify"&gt;&lt;span style="color:#000000"&gt;前 5 個月，東部地區、中部地區、西部地區和東北地區分別同比增長 11.3%、11.8%、11.0% 和 9.2%。東部地區佔全國軟件業務總收入的 84.2%。&lt;/span&gt;&lt;/p&gt; 
+&lt;p style="color:#070707; margin-left:0; margin-right:0; text-align:justify"&gt;&lt;span style="color:#000000"&gt;京津冀地區軟件業務收入同比增長 12.3%，長三角地區軟件業務收入同比增長 11.9%。北京、廣東、江蘇、山東、上海軟件業務收入居全國前 5，同比分別增長 12.7%、8.5%、12.3%、12.1% 和 15.1%。&lt;/span&gt;&lt;/p&gt;
+                                                                                &lt;/div&gt;
+                                                                            </description>
+      <link>https://www.oschina.net/news/358308</link>
+      <guid isPermaLink="false">https://www.oschina.net/news/358308</guid>
+      <pubDate>Sun, 11 May 2025 03:06:00 GMT</pubDate>
+      <author>來源: OSCHINA</author>
+    </item>
     <item>
       <title>1-5 月我國互聯網業務收入 7735 億元</title>
       <description>&lt;div class="content"&gt;
@@ -27,7 +242,7 @@
                                                                             </description>
       <link>https://www.oschina.net/news/358301</link>
       <guid isPermaLink="false">https://www.oschina.net/news/358301</guid>
-      <pubDate>Wed, 02 Jul 2025 02:42:14 GMT</pubDate>
+      <pubDate>Sun, 11 May 2025 02:42:00 GMT</pubDate>
       <author>來源: OSCHINA</author>
     </item>
     <item>
@@ -49,7 +264,7 @@
                                                                             </description>
       <link>https://www.oschina.net/news/358292</link>
       <guid isPermaLink="false">https://www.oschina.net/news/358292</guid>
-      <pubDate>Wed, 02 Jul 2025 02:27:14 GMT</pubDate>
+      <pubDate>Sun, 11 May 2025 02:26:00 GMT</pubDate>
       <author>來源: OSCHINA</author>
     </item>
     <item>
@@ -1097,87 +1312,6 @@ Forest.get(&lt;span style="color:#98c379"&gt;"/{a ?? `?b={b}&amp;amp;c={c}`}"&lt
       <link>https://www.oschina.net/news/358116</link>
       <guid isPermaLink="false">https://www.oschina.net/news/358116</guid>
       <pubDate>Sat, 10 May 2025 02:24:00 GMT</pubDate>
-      <author>來源: OSCHINA</author>
-    </item>
-    <item>
-      <title>豆包上線「深入研究」功能</title>
-      <description>&lt;div class="content"&gt;
-                                                                    
-                                                        &lt;p&gt;豆包「深入研究」功能已經在豆包 App、網頁版及電腦版正式開啓測試，用戶可免費體驗。&lt;/p&gt; 
-&lt;p&gt;基於模型的搜索、推理及 Agent 能力，「深入研究」可以幫助用戶更快速、全面和結構化地處理高難度的複雜任務。針對長途旅行攻略、複雜購買決策、最新政策解讀、商業科技趨勢發展等需要獲取大量資料、長時間研究的問題，藉助「深入研究」能力，幾分鐘即可完成初步方案。&lt;/p&gt; 
-&lt;p&gt;&lt;img alt="" src="https://oscimg.oschina.net/oscnet/up-9f6c1c14ffd9352f40ee1c98040fd7cff53.png" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;p&gt;同時，豆包還支持以可視化網頁和報告文檔兩種方式呈現研究結果。&lt;/p&gt; 
-&lt;p&gt;據介紹，將豆包更新至最新版後，打開 App 或電腦版，選擇「深入研究」，輸入詳細指令或一句話 prompt，等待幾分鐘，即可生成一份報告。使用豆包 App 生成報告後，還可以打開報告內容，選擇右上角「聽」按鈕，一鍵轉成播客，隨時聽。&lt;/p&gt;
-                                                                                &lt;/div&gt;
-                                                                            </description>
-      <link>https://www.oschina.net/news/358039</link>
-      <guid isPermaLink="false">https://www.oschina.net/news/358039</guid>
-      <pubDate>Fri, 09 May 2025 11:18:00 GMT</pubDate>
-      <author>來源: OSCHINA</author>
-    </item>
-    <item>
-      <title>德國要求蘋果和谷歌從應用商店下架 DeepSeek</title>
-      <description>&lt;div class="content"&gt;
-                                                                    
-                                                        &lt;p&gt;&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fwww.reuters.com%2Fsustainability%2Fboards-policy-regulation%2Fdeepseek-faces-expulsion-app-stores-germany-2025-06-27%2F" target="_blank"&gt;據路透社報道&lt;/a&gt;，德國數據保護專員梅克·坎普發佈聲明，宣稱已要求蘋果和谷歌公司從其在德國的應用商店中下架中國初創公司自主研發的人工智能（AI）大語言模型「深度求索」（DeepSeek）的應用。他給出的理由是所謂的數據安全擔憂。&lt;/p&gt; 
-&lt;p&gt;坎普在聲明中指控 DeepSeek「非法將用戶個人數據傳輸至中國」，並要求蘋果與谷歌儘快審查這一要求，以決定是否在德國封禁該應用，不過並未設定具體的處理時限。&lt;/p&gt; 
-&lt;p&gt;媒體報道顯示，谷歌公司證實已收到相關通知，目前正在進行評估；而蘋果公司則暫未對此作出回應。&lt;/p&gt; 
-&lt;p&gt;此前，DeepSeek 也因所謂數據安全問題，在歐美多地遭遇審查。另據媒體報道，意大利已於今年稍早以「個人數據使用不透明」為由，將 DeepSeek 應用從應用商店下架；荷蘭則禁止政府設備使用該應用；比利時也建議政府官員避免使用 DeepSeek，並表示相關評估仍在進行中。與此同時，美國國會議員正計劃提出法案，禁止聯邦政府機構使用任何中國開發的 AI 模型。&lt;/p&gt; 
-&lt;p&gt;針對部分國家傳出禁止或限制使用 DeepSeek 的消息，中國外交部發言人此前已作出回應。在今年 2 月 6 日的例行記者會上，外交部發言人表示，中國政府始終高度重視數據隱私和安全保護，並依法開展相關工作，從未要求且將來也不會要求企業或個人以違法形式採集或存儲數據。&lt;/p&gt; 
-&lt;p&gt;此外，在今年 3 月 18 日的例行記者會上，另一位外交部發言人再次強調，中方一貫反對泛化國家安全概念、將經貿科技問題政治化的做法，並將堅定維護中國企業的合法權益。&lt;/p&gt;
-                                                                                &lt;/div&gt;
-                                                                            </description>
-      <link>https://www.oschina.net/news/358029</link>
-      <guid isPermaLink="false">https://www.oschina.net/news/358029</guid>
-      <pubDate>Fri, 09 May 2025 10:36:00 GMT</pubDate>
-      <author>來源: OSCHINA</author>
-    </item>
-    <item>
-      <title>RWKV-8 系列之 DeepEmbedAttention：精簡 KV 緩存，尤其適合混合模型</title>
-      <description>&lt;div class="content"&gt;
-                                                                    
-                                                        &lt;p&gt;5 月 27 日，我們公開了 &lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fmp.weixin.qq.com%2Fs%2FYl79XfbMCO6ecAdKGzboRg" target="_blank"&gt;RWKV-8 首個新特性 DeepEmbed：對端側友好的稀疏設計，解決 MoE 顯存佔用&lt;/a&gt;。&lt;/p&gt; 
-&lt;p&gt;今天，我們公開與其相關的另一個新特性：&lt;strong&gt;DeepEmbedAttention（DEA）&lt;/strong&gt; ，這是一種基於 RWKV-8 的 DeepEmbed 思路構建的注意力變體，擁有&lt;strong&gt;極小的 KV 緩存&lt;/strong&gt; ，尤其適合&lt;strong&gt;混合模型&lt;/strong&gt;（例如後續的 RWKV-7s 混合模型），可將它們的長上下文性能提升到 Transformer 水準。&lt;/p&gt; 
-&lt;p&gt;DEA 的結構定義例子：&lt;/p&gt; 
-&lt;pre&gt;&lt;code&gt;# q: D =&amp;gt; 256
-# k: D =&amp;gt; 32, k_up: 32 =&amp;gt; 256, k_emb: V =&amp;gt; 256
-# v: D =&amp;gt; 32, vup: 32 =&amp;gt; D, v_emb: V =&amp;gt; D
-q = ln_q(q(x))
-k = ln_k(k_up(k(x)) * k_emb(idx))
-v = ln_v(tanh(v_up(v(x))) * v_emb(idx))   
-&lt;/code&gt;&lt;/pre&gt; 
-&lt;p&gt;然後將 QKV 的輸出加到 RWKV-7 的輸出上。這適合並行計算，例如可在不同設備（或異構計算）計算 QKV 和 RWKV-7 部分。&lt;/p&gt; 
-&lt;p&gt;這個注意力頭的維度是 256，但由於 DEA 的 &lt;code&gt;key&lt;/code&gt; 和 &lt;code&gt;value&lt;/code&gt; 只需緩存 32 維，KV 總共只需緩存 64 個值（32+32）。&lt;/p&gt; 
-&lt;p&gt;對於 RWKV-7，只需在每層加上一個 DEA head，就能顯著增強長上下文能力。因此，對比現有的高效注意力機制（例如 MLA 使用 576 個值），&lt;strong&gt;DEA 的 KV 緩存進一步縮小到 64/576 = 1/9&lt;/strong&gt;，實現了極致效率。&lt;/p&gt; 
-&lt;p&gt;&lt;img alt="" src="https://oscimg.oschina.net/oscnet/up-c7be8702b07a9534c09539a5fa78e2cdc44.png" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;p&gt;圖中 loss delta 圖的橫軸是隨着前文長度增加時 token 的位置（token_pos），縱軸表示兩種架構在不同 token 位置的 loss 差值（token_loss delta）。&lt;/p&gt; 
-&lt;p&gt;實驗結果顯示：隨着前文長度增加，RWKV-7s（加入 DeepEmbed 和 DEA）在越來越長前文的 loss &lt;strong&gt;相較原版 RWKV-7 持續下降&lt;/strong&gt;，從 -0.13 降至 -0.17。&lt;/p&gt; 
-&lt;blockquote&gt; 
- &lt;p&gt;這意味着 RWKV-7s 這類添加了 DEA 的混合模型，在處理長上下文時表現更好。因為 token 越靠後，所依賴的前文也越長，而 loss 差值持續擴大，代表 RWKV-7s 對比 RWKV-7 更有能力利用越來越長的前文所包含的越來越多的信息，語言建模能力越來越強。&lt;/p&gt; 
-&lt;/blockquote&gt; 
-&lt;p&gt;最後，儘管 DEA 的 KV 緩存非常小，但它仍會隨上下文長度而緩慢增長。&lt;strong&gt;RWKV-8 的目標，是在完全無 KV 緩存的情況下也能實現強上下文能力&lt;/strong&gt;，且我們也有方法，後續逐步公佈，歡迎大家關注。&lt;/p&gt;
-                                                                                &lt;/div&gt;
-                                                                            </description>
-      <link>https://www.oschina.net/news/358026</link>
-      <guid isPermaLink="false">https://www.oschina.net/news/358026</guid>
-      <pubDate>Fri, 09 May 2025 10:11:00 GMT</pubDate>
-      <author>來源: 資訊</author>
-    </item>
-    <item>
-      <title>歐洲首台百萬兆次級超級計算機 JUPITER 啓用</title>
-      <description>&lt;div class="content"&gt;
-                                                                    
-                                                        &lt;p&gt;&lt;span style="color:#000000"&gt;位於德國的於利希超級計算中心（Jülich Supercomputing Center）近日&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fspectrum.ieee.org%2Fjupiter-exascale-supercomputer-europe" target="_blank"&gt;推出&lt;/a&gt;了歐洲首台百萬兆次級超級計算機 JUPITER (木星)。&lt;/span&gt;&lt;/p&gt; 
-&lt;p&gt;&lt;img height="312" src="https://oscimg.oschina.net/oscnet/up-37c973b7767f9f8d83e4f3ade8a1fabef7f.png" width="500" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;p style="color:#242424; margin-left:0; margin-right:0; text-align:left"&gt;&lt;span style="color:#000000"&gt;JUPITER 於 2025 年 6 月首次亮相於全球最強大計算機系統的 TOP500 排行榜上，位列第四。它擁有 5900 個加速計算節點，配備了約 24000 顆 Nvidia Grace-Hopper&amp;nbsp;超級芯片和 1300 個使用 Rhea1 處理器的節點。此外，JUPITER 還採用了 InfiniBand NDR 網絡來確保高速數據傳輸。該計算機的設計旨在支持複雜的科學計算任務，推動氣候模型和天氣預報的研究。&lt;/span&gt;&lt;/p&gt; 
-&lt;p style="color:#242424; margin-left:0; margin-right:0; text-align:left"&gt;&lt;span style="color:#000000"&gt;這個項目旨在創建一個地球系統的數字複製品，以更好地監測和預測自然現象與人類活動的相互作用。研究者們表示，需要這樣一台大型機器來處理氣候和大氣數據，JUPITER 能以 700 米的分辨率展示這些物理現象，從而為氣象學和氣候科學提供更深入的洞察。&lt;/span&gt;&lt;/p&gt; 
-&lt;p style="color:#242424; margin-left:0; margin-right:0; text-align:left"&gt;&lt;span style="color:#000000"&gt;此外，德國伊爾梅瑙工業大學的物理學家們也在利用 JUPITER 進行研究。他們專注於可視化熱羽流，探討流體和氣體的對流與湍流現象。科學家們通過這台超級計算機的強大運算能力，能夠呈現出以前無法獲得的細節，進一步理解自然界中複雜的流動模式。&lt;/span&gt;&lt;/p&gt; 
-&lt;p style="color:#242424; margin-left:0; margin-right:0; text-align:left"&gt;&lt;span style="color:#000000"&gt;JUPITER 的建設始於 2018 年，經過多次升級和完善，在 2024 年計劃推出的 JEDI 原型機和 JETI 過渡系統模塊的支持下，最終在 2025 年全面投入使用。該計算機的能效設計也備受關注，其製冷系統利用附近的魯爾河水，為校園建築提供取暖，展現出對能源消耗的關注和可持續發展理念。&lt;/span&gt;&lt;/p&gt;
-                                                                                &lt;/div&gt;
-                                                                            </description>
-      <link>https://www.oschina.net/news/358021/jupiter-exascale-supercomputer-europe</link>
-      <guid isPermaLink="false">https://www.oschina.net/news/358021/jupiter-exascale-supercomputer-europe</guid>
-      <pubDate>Fri, 09 May 2025 09:38:00 GMT</pubDate>
       <author>來源: OSCHINA</author>
     </item>
   </channel>
