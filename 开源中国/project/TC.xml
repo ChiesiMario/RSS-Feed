@@ -7,7 +7,7 @@
     <generator>RSSHub</generator>
     <webMaster>contact@rsshub.app (RSSHub)</webMaster>
     <language>zh-tw</language>
-    <lastBuildDate>Mon, 14 Jul 2025 07:45:16 GMT</lastBuildDate>
+    <lastBuildDate>Mon, 14 Jul 2025 12:48:27 GMT</lastBuildDate>
     <ttl>5</ttl>
     <item>
       <title>Snow 編程語言 v0.4.2 發佈: 實現類型間全轉換能力</title>
@@ -89,6 +89,492 @@
       <link>https://www.oschina.net/news/359880</link>
       <guid isPermaLink="false">https://www.oschina.net/news/359880</guid>
       <pubDate>Fri, 11 Jul 2025 09:01:00 GMT</pubDate>
+      <author>來源: 資訊</author>
+    </item>
+    <item>
+      <title>SnailJob 客戶端又添新成員</title>
+      <description>&lt;div class="content"&gt;
+                                                                    
+                                                        &lt;p&gt;繼 Python 、Go、jdk17、jdk8 後 SnailJob 又添 Solon 客戶端，下面我們學習如何在 solon 生態中使用 snail-job 客戶端 ，完整享受 snail-job 提供的分佈式定時任務&lt;/p&gt; 
+&lt;h1&gt;&lt;strong&gt;引入依賴&lt;/strong&gt;&lt;/h1&gt; 
+&lt;pre&gt;&lt;code&gt;&amp;lt;dependency&amp;gt;
+&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;lt;groupId&amp;gt;com.aizuda&amp;lt;/groupId&amp;gt;
+&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;lt;artifactId&amp;gt;snail-job-client-starter&amp;lt;/artifactId&amp;gt;
+&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;lt;version&amp;gt;1.0.0-solon&amp;lt;/version&amp;gt;
+&amp;lt;/dependency&amp;gt;
+
+&lt;/code&gt;&lt;/pre&gt; 
+&lt;h1&gt;&lt;strong&gt;客戶端配置&lt;/strong&gt;&lt;/h1&gt; 
+&lt;pre&gt;&lt;code&gt;snail-job:
+&amp;nbsp;&amp;nbsp;&lt;span style="color:#e6c07b"&gt;enable&lt;/span&gt;:&amp;nbsp;&lt;span style="color:#56b6c2"&gt;true&lt;/span&gt;
+&amp;nbsp;&amp;nbsp;&lt;em&gt;#&amp;nbsp;任務調度服務器信息&lt;/em&gt;
+&amp;nbsp;&amp;nbsp;server:
+&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&lt;em&gt;#&amp;nbsp;服務器 IP 地址（或域名）；集羣時建議通過&amp;nbsp;nginx&amp;nbsp;做負載均衡&lt;/em&gt;
+&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;host:&amp;nbsp;127.0.0.1
+&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&lt;em&gt;#&amp;nbsp;服務器通訊端口（不是後台管理頁面服務端口）&lt;/em&gt;
+&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;port:&amp;nbsp;17888
+&amp;nbsp;&amp;nbsp;&lt;em&gt;#&amp;nbsp;命名空間&amp;nbsp;【上面配置的空間的唯一標識】&lt;/em&gt;
+&amp;nbsp;&amp;nbsp;namespace:&amp;nbsp;dev
+&amp;nbsp;&amp;nbsp;&lt;em&gt;#&amp;nbsp;接入組名【上面配置的組名稱】注意:&amp;nbsp;若通過註解配置了這裏的配置不生效&lt;/em&gt;
+&amp;nbsp;&amp;nbsp;group:&amp;nbsp;&lt;span style="color:#e6c07b"&gt;test&lt;/span&gt;
+&amp;nbsp;&amp;nbsp;&lt;em&gt;#&amp;nbsp;接入組&amp;nbsp;token&amp;nbsp;【上面配置的 token 信息】&lt;/em&gt;
+&amp;nbsp;&amp;nbsp;token:&amp;nbsp;SJ_Wyz3dmsdbDOkDujOTSSoBjGQP1BMsVnj
+&amp;nbsp;&amp;nbsp;&lt;em&gt;#&amp;nbsp;客戶端綁定 IP，必須服務器可以訪問到；默認自動推斷，在服務器無法調度客戶端時需要手動配置&lt;/em&gt;
+&amp;nbsp;&amp;nbsp;
+&amp;nbsp;&amp;nbsp;host:&amp;nbsp;127.0.0.1
+&amp;nbsp;&amp;nbsp;&lt;em&gt;#&amp;nbsp;客戶端通訊端口，默認&amp;nbsp;1789&lt;/em&gt;
+&amp;nbsp;&amp;nbsp;port:&amp;nbsp;1789
+&lt;/code&gt;&lt;/pre&gt; 
+&lt;h1&gt;&lt;strong&gt;常見問題&lt;/strong&gt;&lt;/h1&gt; 
+&lt;p style="color:#000000; margin-left:0px; margin-right:0px; text-align:left"&gt;使用 mysql-connector-java 數據庫驅動，會引入 protobuf-java 導致的依賴問題，而無法使用，異常報錯 CANCELLED: Failed to stream message 因引入 grpc 一定要注意依賴 grpc protobuf 得依賴問題&lt;/p&gt; 
+&lt;pre&gt;&lt;code&gt;&amp;lt;dependency&amp;gt;
+&amp;nbsp;&amp;nbsp;&amp;lt;groupId&amp;gt;mysql&amp;lt;/groupId&amp;gt;
+&amp;nbsp;&amp;nbsp;&amp;lt;artifactId&amp;gt;mysql-connector-java&amp;lt;/artifactId&amp;gt;
+&amp;nbsp;&amp;nbsp;&amp;lt;exclusions&amp;gt;
+&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;lt;exclusion&amp;gt;
+&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;lt;groupId&amp;gt;com.google.protobuf&amp;lt;/groupId&amp;gt;
+&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;lt;artifactId&amp;gt;protobuf-java&amp;lt;/artifactId&amp;gt;
+&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;lt;/exclusion&amp;gt;
+&amp;nbsp;&amp;nbsp;&amp;lt;/exclusions&amp;gt;
+&amp;lt;/dependency&amp;gt;
+&lt;/code&gt;&lt;/pre&gt; 
+&lt;ul&gt; 
+ &lt;li&gt; &lt;p&gt;開源地址: https://gitee.com/aizuda/snail-job/tree/client-solon/&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;如果使用遇到問題可以去 https://openhives.com/tags/snail-job 提問，有問必答&lt;/p&gt; &lt;/li&gt; 
+&lt;/ul&gt;
+                                                                                &lt;/div&gt;
+                                                                            </description>
+      <link>https://www.oschina.net/news/360283</link>
+      <guid isPermaLink="false">https://www.oschina.net/news/360283</guid>
+      <pubDate>Fri, 11 Jul 2025 08:41:00 GMT</pubDate>
+      <author>來源: 資訊</author>
+    </item>
+    <item>
+      <title>Vue 低代碼可視化表單設計器 FcDesigner v3.3 版本發佈！表格佈局升級</title>
+      <description>&lt;div class="content"&gt;
+                                                                    
+                                                        &lt;p&gt;&lt;strong&gt;FcDesigner 版是一款基於 Vue 的低代碼可視化表單設計器工具，通過數據驅動表單渲染。可以通過拖拽的方式快速創建表單，提高開發者對錶單的開發效率，節省開發者的時間。並廣泛應用於在政務系統、OA 系統、ERP 系統、電商系統、流程管理等領域。&lt;/strong&gt;&lt;/p&gt; 
+&lt;p style="color:#333333; margin-left:0; margin-right:0; text-align:left"&gt;源碼地址:&lt;span&gt;&amp;nbsp;&lt;/span&gt;&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fgithub.com%2Fxaboy%2Fform-create-designer" target="_blank"&gt;Github&lt;/a&gt;&lt;span&gt;&amp;nbsp;&lt;/span&gt;|&lt;span&gt;&amp;nbsp;&lt;/span&gt;&lt;a href="https://gitee.com/xaboy/form-create-designer"&gt;Gitee&lt;/a&gt;&lt;span&gt;&amp;nbsp;&lt;/span&gt;|&lt;span&gt;&amp;nbsp;&lt;/span&gt;&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fview.form-create.com%2F" target="_blank"&gt;文檔&lt;/a&gt;&lt;span&gt;&amp;nbsp;&lt;/span&gt;|&lt;span&gt;&amp;nbsp;&lt;/span&gt;&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fform-create.com%2Fv3%2Fdesigner%2F" target="_blank"&gt;在線演示&lt;/a&gt;&lt;/p&gt; 
+&lt;h2&gt;核心功能🔥&lt;/h2&gt; 
+&lt;ul&gt; 
+ &lt;li&gt;內置表單多語言體系，輕鬆打破語言隔閡。&lt;/li&gt; 
+ &lt;li&gt;提供 30+ 常用組件，涵蓋表單組件、佈局組件、輔助類組件等各類實用模塊。&lt;/li&gt; 
+ &lt;li&gt;支持靈活擴展自定義組件，個性化開發輕鬆拿捏。支持二次擴展開發，深度定製不在話下。&lt;/li&gt; 
+ &lt;li&gt;支持組件樣式配置，動態調整組件尺寸、顏色、間距等樣式屬性。&lt;/li&gt; 
+ &lt;li&gt;支持事件交互配置，靈活配置組件事件響應邏輯，實現複雜交互場景。&lt;/li&gt; 
+ &lt;li&gt;表單大綱、操作記錄、數據錄入、組件生成、事件配置、表單驗證、柵格佈局、表格佈局等。&lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;h2&gt;&lt;strong&gt;3.3 版本更新內容&lt;/strong&gt;&lt;/h2&gt; 
+&lt;h3&gt;✨ 新增功能:&lt;/h3&gt; 
+&lt;ul&gt; 
+ &lt;li&gt; &lt;p&gt;增強表格佈局組件, 支持批量操作格子樣式,清空,合併等操作, 雙擊快速添加內容, 支持通過拖動設置格子寬和高&lt;/p&gt; &lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;p&gt;&lt;img height="585" src="https://oscimg.oschina.net/oscnet/up-1ea465bbeef1d829eb165508877fce132d2.png" width="1080" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt; &lt;p&gt;操作權限控制&lt;/p&gt; 
+  &lt;ul&gt; 
+   &lt;li&gt; &lt;p&gt;&lt;code&gt;config&lt;/code&gt;增加&lt;code&gt;componentPermission&lt;/code&gt;配置,可精確控制每個組件的可見配置項和允許的操作&lt;/p&gt; &lt;/li&gt; 
+   &lt;li&gt; &lt;p&gt;&lt;code&gt;config&lt;/code&gt;增加&lt;code&gt;beforeRemoveRule&lt;/code&gt;和&lt;code&gt;beforeActiveRule&lt;/code&gt;回調控制組件是否可以刪除和選中&lt;/p&gt; &lt;/li&gt; 
+   &lt;li&gt; &lt;p&gt;拖拽規則增加&lt;code&gt;allowDragTo&lt;/code&gt;配置項, 控制當前組件允許拖入到那些組件中&lt;/p&gt; &lt;/li&gt; 
+   &lt;li&gt; &lt;p&gt;拖拽規則增加&lt;code&gt;maxChildren&lt;/code&gt;配置項, 限制子組件拖入數量&lt;/p&gt; &lt;/li&gt; 
+   &lt;li&gt; &lt;p&gt;拖拽規則和&lt;code&gt;config&lt;/code&gt;增加&lt;code&gt;checkDrag&lt;/code&gt;回調控制組件是否可以拖入&lt;/p&gt; &lt;/li&gt; 
+  &lt;/ul&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;增加手寫簽名組件和標題組件&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;左右兩側板塊增加展開收齊按鈕&lt;/p&gt; &lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;p&gt;&lt;img height="648" src="https://oscimg.oschina.net/oscnet/up-2f758df80cd8c8d665a34a3609b8544666b.png" width="1080" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt; &lt;p&gt;完善快捷鍵&lt;/p&gt; &lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;p&gt;&lt;img height="999" src="https://oscimg.oschina.net/oscnet/up-e421d3826ff3d2fffda27d9fe311a2d89e9.png" width="1080" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt; &lt;p&gt;增加 getHtml 方法, 導出 Html&lt;/p&gt; &lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;div&gt; 
+ &lt;pre&gt;&lt;span style="color:var(--color-prettylights-syntax-comment)"&gt;// 將表單導出為 HTML&lt;/span&gt;
+&lt;span style="color:var(--color-prettylights-syntax-storage-modifier-import)"&gt;this&lt;/span&gt;&lt;span&gt;.&lt;/span&gt;&lt;span style="color:var(--color-prettylights-syntax-constant)"&gt;$refs&lt;/span&gt;&lt;span&gt;.&lt;/span&gt;&lt;span style="color:var(--color-prettylights-syntax-constant)"&gt;designer&lt;/span&gt;&lt;span&gt;.&lt;/span&gt;&lt;span style="color:var(--color-prettylights-syntax-entity)"&gt;getHtml&lt;/span&gt;&lt;span&gt;(&lt;/span&gt;&lt;span&gt;)&lt;/span&gt;&lt;/pre&gt; 
+ &lt;div&gt;
+  &amp;nbsp;
+ &lt;/div&gt; 
+&lt;/div&gt; 
+&lt;ul&gt; 
+ &lt;li&gt; &lt;p&gt;增加標題和手寫簽名組件&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;遠程請求支持前置處理回調&lt;/p&gt; &lt;p&gt;&lt;img height="792" src="https://oscimg.oschina.net/oscnet/up-4ae3fe7beee035ca298da79766bd9a84ccc.png" width="1080" referrerpolicy="no-referrer"&gt;&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;完善表格表單組件, 新增最小行, 是否可刪除開關,是否可新增開關和標題位置的配置項&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;增加&lt;span&gt;&amp;nbsp;&lt;/span&gt;&lt;code&gt;previewSubmit&lt;/code&gt;&lt;span&gt;&amp;nbsp;&lt;/span&gt;和&lt;span&gt;&amp;nbsp;&lt;/span&gt;&lt;code&gt;previewReset&lt;/code&gt;&lt;span&gt;&amp;nbsp;&lt;/span&gt;事件, 預覽彈窗表單提交和重置時觸發&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;&lt;code&gt;config&lt;/code&gt;&lt;span&gt;&amp;nbsp;&lt;/span&gt;增加&lt;span&gt;&amp;nbsp;&lt;/span&gt;&lt;code&gt;beforeRemoveRule&lt;/code&gt;&lt;span&gt;&amp;nbsp;&lt;/span&gt;和&lt;span&gt;&amp;nbsp;&lt;/span&gt;&lt;code&gt;beforeActiveRule&lt;/code&gt;&lt;span&gt;&amp;nbsp;&lt;/span&gt;回調控制組件是否可以刪除和選中&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;表單增加&lt;span&gt;&amp;nbsp;&lt;/span&gt;&lt;code&gt;beforeSubmit&lt;/code&gt;&lt;span&gt;&amp;nbsp;&lt;/span&gt;事件&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;增加&lt;span&gt;&amp;nbsp;&lt;/span&gt;&lt;code&gt;changeField&lt;/code&gt;&lt;span&gt;&amp;nbsp;&lt;/span&gt;事件, 監聽組件的字段 ID 變化&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;增加&lt;span&gt;&amp;nbsp;&lt;/span&gt;&lt;code&gt;showMenuBar&lt;/code&gt;&lt;span&gt;&amp;nbsp;&lt;/span&gt;配置項, 控制是否顯示最左側菜單欄&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;增加&lt;span&gt;&amp;nbsp;&lt;/span&gt;&lt;code&gt;showPreviewBtn&lt;/code&gt;配置項, 控制是否顯示預覽按鈕&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;增加&lt;code&gt;exitConfirm&lt;/code&gt;配置項,控制關閉設計器時是否彈出確認操作彈窗&lt;/p&gt; &lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;h3&gt;🔧 功能優化:&lt;/h3&gt; 
+&lt;ul&gt; 
+ &lt;li&gt; &lt;p&gt;隱藏多語言後同步隱藏多語言選擇&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;修改上傳組件事件配置參數 (⚠️不兼容)&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;表單事件列表增加事件是否定義的狀態&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;&lt;code&gt;menu&lt;/code&gt;&lt;span&gt;&amp;nbsp;&lt;/span&gt;增加&lt;span&gt;&amp;nbsp;&lt;/span&gt;&lt;code&gt;before&lt;/code&gt;&lt;span&gt;&amp;nbsp;&lt;/span&gt;參數, 可以顯示在頂部&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;優化事件配置&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;修改彈出框寬度為&lt;strong&gt;1080px&lt;/strong&gt;&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;支持配置事件的描述&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;優化設計器樣式&lt;/p&gt; &lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;h3&gt;🐞 問題修復：&lt;/h3&gt; 
+&lt;ul&gt; 
+ &lt;li&gt; &lt;p&gt;✅ 修復，預覽 json 時函數解析問題&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;✅ 修復，事件保存時可能報錯問題&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;✅ 修復，自定義屬性可能保存失敗問題&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;✅ 修復，默認表單配置項可能不生效問題&lt;/p&gt; &lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;h2&gt;&lt;strong&gt;配置面板&lt;/strong&gt;&lt;/h2&gt; 
+&lt;p&gt;您可以根據業務需求隨心定製設計器界面和功能組合啦，系統會自動生成對應的配置參數，簡直不要太方便！&lt;/p&gt; 
+&lt;p&gt;&lt;img height="1958" src="https://oscimg.oschina.net/oscnet/up-db5fada34dd362b1736d3cf1e150c695884.png" width="3592" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;img height="1920" src="https://oscimg.oschina.net/oscnet/up-a53a9915ef87a448b44ad985f203d11be24.jpg" width="4602" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p&gt;&amp;nbsp;&lt;/p&gt; 
+&lt;h1&gt;Element UI 版本表單設計器&lt;/h1&gt; 
+&lt;p&gt;&lt;img height="930" src="https://oscimg.oschina.net/oscnet/up-6810fa75de9133a0d935e8d2b4bdde2ba79.png" width="1800" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p style="color:#3e3e3e; text-align:start"&gt;本項目採用 Vue2.7 和 Element UI 進行頁面構建，內置多語言解決方案，支持二次擴展開發，支持自定義組件擴展。&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fwww.form-create.com%2Fdesigner%2F" target="_blank"&gt;演示站&lt;/a&gt;&lt;/p&gt; 
+&lt;h2&gt;安裝&lt;/h2&gt; 
+&lt;p style="color:#3e3e3e; text-align:start"&gt;要開始使用&lt;span&gt;&amp;nbsp;&lt;/span&gt;&lt;strong&gt;@form-create/designer&lt;/strong&gt;，首先需要將其安裝到您的項目中。可以通過 npm 安裝：&lt;/p&gt; 
+&lt;pre&gt;&lt;code class="language-bash"&gt;npm install @form-create/designer@^1
+npm install @form-create/element-ui@^2.7
+npm install element-ui&lt;/code&gt;&lt;/pre&gt; 
+&lt;p style="color:#3e3e3e; text-align:start"&gt;如已安裝舊版本渲染器，請執行以下命令更新至最新版：&lt;/p&gt; 
+&lt;pre&gt;&lt;code class="language-shell"&gt;&lt;span style="background-color:inherit"&gt;npm update @form-create/element-ui@^2.7&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt; 
+&lt;p style="color:#3e3e3e; text-align:start"&gt;&lt;strong&gt;請檢查當前 Vue 版本，若版本低於 2.7，請執行以下升級命令：&lt;/strong&gt;&lt;/p&gt; 
+&lt;pre&gt;&lt;code class="language-shell"&gt;&lt;span style="background-color:inherit"&gt;npm update vue@^2.7&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt; 
+&lt;h2&gt;引入&lt;/h2&gt; 
+&lt;p style="color:#3e3e3e; text-align:start"&gt;&lt;strong&gt;Node.js 引入&lt;/strong&gt;&lt;/p&gt; 
+&lt;p style="color:#3e3e3e; text-align:start"&gt;對於 Node.js 項目，您需要通過 npm 安裝相關依賴，並在您的項目中引入並配置它們。&lt;/p&gt; 
+&lt;pre&gt;&lt;code class="language-javascript"&gt;import Vue from 'vue';
+import FcDesigner from '@form-create/designer';
+import ELEMENT from 'element-ui';
+import 'element-ui/lib/theme-chalk/index.css';
+// 使用 Element UI
+Vue.use(ELEMENT);
+// 使用 form-create 和 designer
+Vue.use(FcDesigner);
+Vue.use(FcDesigner.formCreate);&lt;/code&gt;&lt;/pre&gt; 
+&lt;p style="color:#3e3e3e; text-align:start"&gt;&lt;strong&gt;CDN 引入&lt;/strong&gt;&lt;/p&gt; 
+&lt;p style="color:#3e3e3e; text-align:start"&gt;如果您希望通過 CDN 方式引入&lt;span&gt;&amp;nbsp;&lt;/span&gt;&lt;strong&gt;FcDesigner&lt;/strong&gt;，請確保先引入 Vue.js 和 Element UI。然後引入&lt;span&gt;&amp;nbsp;&lt;/span&gt;&lt;strong&gt;@form-create/element-ui&lt;/strong&gt;&lt;span&gt;&amp;nbsp;&lt;/span&gt;和&lt;span&gt;&amp;nbsp;&lt;/span&gt;&lt;strong&gt;@form-create/designer&lt;/strong&gt;，並在 Vue 實例中進行配置&lt;/p&gt; 
+&lt;pre&gt;&lt;code class="language-html"&gt;&amp;lt;!-- 引入 Vue.js --&amp;gt;
+&amp;lt;script src="https://unpkg.com/vue@2.7.16/dist/vue.js"&amp;gt;&amp;lt;/script&amp;gt;
+&amp;lt;!-- 引入 Element UI 樣式 --&amp;gt;
+&amp;lt;link rel="stylesheet" href="https://unpkg.com/element-ui/lib/theme-chalk/index.css"&amp;gt;
+&amp;lt;!-- 引入 Element UI --&amp;gt;
+&amp;lt;script src="https://unpkg.com/element-ui/lib/index.js"&amp;gt;&amp;lt;/script&amp;gt;
+&amp;lt;!-- 引入 form-create 和 designer --&amp;gt;
+&amp;lt;script src="https://unpkg.com/@form-create/element-ui/dist/form-create.min.js"&amp;gt;&amp;lt;/script&amp;gt;
+&amp;lt;script src="https://unpkg.com/@form-create/designer/dist/index.min.js"&amp;gt;&amp;lt;/script&amp;gt;
+&amp;lt;div id="app"&amp;gt;
+    &amp;lt;fc-designer height="100vh"&amp;gt;&amp;lt;/fc-designer&amp;gt;
+&amp;lt;/div&amp;gt;
+&amp;lt;script&amp;gt;
+    Vue.use(FcDesigner);
+    Vue.use(FcDesigner.formCreate);
+    new Vue().$mount('#app');
+&amp;lt;/script&amp;gt;&lt;/code&gt;&lt;/pre&gt; 
+&lt;p style="color:#3e3e3e; text-align:start"&gt;&lt;strong&gt;使用&lt;/strong&gt;&lt;/p&gt; 
+&lt;p style="color:#3e3e3e; text-align:start"&gt;在 Vue 組件中，您可以像下面這樣使用 fc-designer 組件：&lt;/p&gt; 
+&lt;pre&gt;&lt;code class="language-html"&gt;&lt;span style="background-color:inherit"&gt;&lt;span style="color:navy"&gt;&amp;lt;&lt;span style="color:navy"&gt;template&lt;/span&gt;&amp;gt;&lt;/span&gt;&lt;/span&gt;
+&lt;span style="background-color:inherit"&gt;&lt;span style="color:navy"&gt;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;lt;&lt;span style="color:navy"&gt;fc-designer&lt;/span&gt; &lt;span style="color:teal"&gt;ref&lt;/span&gt;=&lt;span style="color:#dd1144"&gt;"designer"&lt;/span&gt; &lt;span style="color:teal"&gt;height&lt;/span&gt;=&lt;span style="color:#dd1144"&gt;"100vh"&lt;/span&gt; /&amp;gt;
+&amp;lt;/&lt;span style="color:navy"&gt;template&lt;/span&gt;&amp;gt;&lt;/span&gt;&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt; 
+&lt;p&gt;&amp;nbsp;&lt;/p&gt; 
+&lt;h1&gt;Element Plus 版本表單設計器&lt;/h1&gt; 
+&lt;p style="color:#3e3e3e; text-align:start"&gt;@form-create/designer 支持 Vue 3 環境，以下是如何在 Vue 3 項目中安裝和使用該庫的指南。&lt;/p&gt; 
+&lt;p style="color:#3e3e3e; text-align:start"&gt;&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fwww.form-create.com%2Fvue3%2Fdesigner%2F" target="_blank"&gt;演示站&lt;/a&gt;&lt;/p&gt; 
+&lt;h2&gt;安裝&lt;/h2&gt; 
+&lt;p style="color:#3e3e3e; text-align:start"&gt;首先，安裝&lt;span&gt;&amp;nbsp;&lt;/span&gt;&lt;strong&gt;@form-create/designer&lt;/strong&gt;&lt;span&gt;&amp;nbsp;&lt;/span&gt;的 Vue 3 版本&lt;/p&gt; 
+&lt;pre&gt;&lt;code class="language-bash"&gt;npm install @form-create/designer@^3
+npm install @form-create/element-ui@^3
+npm install element-plus&lt;/code&gt;&lt;/pre&gt; 
+&lt;p style="color:#3e3e3e; text-align:start"&gt;如已安裝舊版本渲染器，請執行以下命令更新至最新版：&lt;/p&gt; 
+&lt;pre&gt;&lt;code class="language-shell"&gt;&lt;span style="background-color:inherit"&gt;npm update @form-create/element-ui@^3&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt; 
+&lt;h2&gt;引入&lt;/h2&gt; 
+&lt;p style="color:#3e3e3e; text-align:start"&gt;&lt;strong&gt;Node.js 引入&lt;/strong&gt;&lt;/p&gt; 
+&lt;p style="color:#3e3e3e; text-align:start"&gt;對於使用 Node.js 的項目，按照以下步驟在您的 Vue 3 項目中引入並配置：&lt;/p&gt; 
+&lt;pre&gt;&lt;code class="language-javascript"&gt;import { createApp } from 'vue';
+import FcDesigner from '@form-create/designer';
+import ElementPlus from 'element-plus';
+import 'element-plus/dist/index.css';
+// 創建 Vue 應用
+const app = createApp(App);
+// 使用 Element Plus 和 FcDesigner
+app.use(ElementPlus);
+app.use(FcDesigner);
+app.use(FcDesigner.formCreate);
+// 掛載應用
+app.mount('#app');&lt;/code&gt;&lt;/pre&gt; 
+&lt;p style="color:#3e3e3e; text-align:start"&gt;&lt;strong&gt;CDN 引入&lt;/strong&gt;&lt;/p&gt; 
+&lt;p style="color:#3e3e3e; text-align:start"&gt;如果您選擇使用 CDN，可以按照以下步驟在 HTML 文件中引入相關依賴：&lt;/p&gt; 
+&lt;pre&gt;&lt;code class="language-html"&gt;&amp;lt;!-- 引入 Element Plus 樣式 --&amp;gt;
+&amp;lt;link href="https://unpkg.com/element-plus/dist/index.css" rel="stylesheet" /&amp;gt;
+&amp;lt;!-- 引入 Vue 3 --&amp;gt;
+&amp;lt;script src="https://unpkg.com/vue"&amp;gt;&amp;lt;/script&amp;gt;
+&amp;lt;!-- 引入 Element Plus --&amp;gt;
+&amp;lt;script src="https://unpkg.com/element-plus/dist/index.full.js"&amp;gt;&amp;lt;/script&amp;gt;
+&amp;lt;!-- 引入 form-create 和 designer --&amp;gt;
+&amp;lt;script src="https://unpkg.com/@form-create/element-ui@next/dist/form-create.min.js"&amp;gt;&amp;lt;/script&amp;gt;
+&amp;lt;script src="https://unpkg.com/@form-create/designer@next/dist/index.umd.js"&amp;gt;&amp;lt;/script&amp;gt;
+&amp;lt;div id="app"&amp;gt;
+    &amp;lt;fc-designer height="100vh"&amp;gt;&amp;lt;/fc-designer&amp;gt;
+&amp;lt;/div&amp;gt;
+&amp;lt;script&amp;gt;
+    const { createApp } = Vue;
+    const app = createApp({});
+    app.use(ElementPlus);
+    app.use(FcDesigner);
+    app.use(FcDesigner.formCreate);
+    app.mount('#app');
+&amp;lt;/script&amp;gt;&lt;/code&gt;&lt;/pre&gt; 
+&lt;h2&gt;使用&lt;/h2&gt; 
+&lt;p style="color:#3e3e3e; text-align:start"&gt;在 Vue 3 組件中，您可以通過以下方式使用 fc-designer 組件：&lt;/p&gt; 
+&lt;pre&gt;&lt;code class="language-html"&gt;&amp;lt;template&amp;gt;
+    &amp;lt;fc-designer ref="designer" height="100vh" /&amp;gt;
+&amp;lt;/template&amp;gt;
+&amp;lt;script setup&amp;gt;
+    import { ref } from 'vue';
+    // 可以在此處獲取設計器實例或進行其他操作
+    const designer = ref(null);
+&amp;lt;/script&amp;gt;&lt;/code&gt;&lt;/pre&gt; 
+&lt;h1&gt;AntDesignVue 版本 PC 端表單設計器&lt;/h1&gt; 
+&lt;p style="text-align:start"&gt;&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fform-create.com%2Fv3%2Fantd%2Fdesigner%2F" target="_blank"&gt;演示站&lt;/a&gt;&lt;/p&gt; 
+&lt;p style="color:#3e3e3e; text-align:start"&gt;本項目採用 Vue3.0 和 Ant Design Vue 進行頁面構建，內置多語言解決方案，支持二次擴展開發，支持自定義組件擴展。&lt;/p&gt; 
+&lt;p style="color:#3e3e3e; text-align:start"&gt;&lt;img src="https://oscimg.oschina.net/oscnet//ebbe75a61ba6e5f09589e76dec7c91ec.gif" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;h2&gt;安裝&lt;/h2&gt; 
+&lt;p style="color:#3e3e3e; text-align:start"&gt;首先，安裝&lt;span&gt;&amp;nbsp;&lt;/span&gt;&lt;strong&gt;@form-create/antd-designer&lt;/strong&gt;&lt;/p&gt; 
+&lt;pre&gt;&lt;code class="language-bash"&gt;npm install @form-create/antd-designer@^3
+npm install @form-create/ant-design-vue@^3
+npm install ant-design-vue&lt;/code&gt;&lt;/pre&gt; 
+&lt;p style="color:#3e3e3e; text-align:start"&gt;如已安裝舊版本渲染器，請執行以下命令更新至最新版：&lt;/p&gt; 
+&lt;pre&gt;&lt;code class="language-shell"&gt;&lt;span style="background-color:inherit"&gt;npm update @form-create/ant-design-vue@^3&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt; 
+&lt;h2&gt;引入&lt;/h2&gt; 
+&lt;p style="color:#3e3e3e; text-align:start"&gt;&lt;strong&gt;Node.js 引入&lt;/strong&gt;&lt;/p&gt; 
+&lt;p style="color:#3e3e3e; text-align:start"&gt;對於使用 Node.js 的項目，按照以下步驟在您的 Vue 3 項目中引入並配置：&lt;/p&gt; 
+&lt;pre&gt;&lt;code class="language-javascript"&gt;import FcDesigner from '@form-create/antd-designer'
+import antd from 'ant-design-vue';
+import 'ant-design-vue/dist/reset.css';
+// 創建 Vue 應用
+const app = createApp(App);
+app.use(antd)
+app.use(FcDesigner)
+app.use(FcDesigner.formCreate)
+// 掛載應用
+app.mount('#app');&lt;/code&gt;&lt;/pre&gt; 
+&lt;p style="color:#3e3e3e; text-align:start"&gt;&lt;strong&gt;CDN 引入&lt;/strong&gt;&lt;/p&gt; 
+&lt;p style="color:#3e3e3e; text-align:start"&gt;如果您選擇使用 CDN，可以按照以下步驟在 HTML 文件中引入相關依賴：&lt;/p&gt; 
+&lt;pre&gt;&lt;code class="language-html"&gt;&amp;lt;link rel="stylesheet" href="https://unpkg.com/ant-design-vue@4/dist/reset.css"&amp;gt;&amp;lt;/link&amp;gt;
+&amp;lt;link rel="stylesheet" href="https://fastly.jsdelivr.net/npm/vant@4/lib/index.css"&amp;gt;&amp;lt;/link&amp;gt;
+&amp;lt;!-- 引入 Vue 及所需組件 --&amp;gt;
+&amp;lt;script src="https://unpkg.com/dayjs/dayjs.min.js"&amp;gt;&amp;lt;/script&amp;gt;
+&amp;lt;script src="https://unpkg.com/dayjs/plugin/customParseFormat.js"&amp;gt;&amp;lt;/script&amp;gt;
+&amp;lt;script src="https://unpkg.com/dayjs/plugin/weekday.js"&amp;gt;&amp;lt;/script&amp;gt;
+&amp;lt;script src="https://unpkg.com/dayjs/plugin/localeData.js"&amp;gt;&amp;lt;/script&amp;gt;
+&amp;lt;script src="https://unpkg.com/dayjs/plugin/weekOfYear.js"&amp;gt;&amp;lt;/script&amp;gt;
+&amp;lt;script src="https://unpkg.com/dayjs/plugin/weekYear.js"&amp;gt;&amp;lt;/script&amp;gt;
+&amp;lt;script src="https://unpkg.com/dayjs/plugin/advancedFormat.js"&amp;gt;&amp;lt;/script&amp;gt;
+&amp;lt;script src="https://unpkg.com/dayjs/plugin/quarterOfYear.js"&amp;gt;&amp;lt;/script&amp;gt;
+&amp;lt;script src="https://unpkg.com/vue"&amp;gt;&amp;lt;/script&amp;gt;
+&amp;lt;script src="https://unpkg.com/ant-design-vue@4/dist/antd.min.js"&amp;gt;&amp;lt;/script&amp;gt;
+&amp;lt;script src="https://fastly.jsdelivr.net/npm/vant@4/lib/vant.min.js"&amp;gt;&amp;lt;/script&amp;gt;
+
+
+&amp;lt;!-- 引入 form-create 及 fcDesigner --&amp;gt;
+&amp;lt;script src="https://unpkg.com/@form-create/ant-design-vue@^3/dist/form-create.min.js"&amp;gt;&amp;lt;/script&amp;gt;
+&amp;lt;script src="https://unpkg.com/@form-create/vant@^3/dist/form-create.min.js"&amp;gt;&amp;lt;/script&amp;gt;
+&amp;lt;script src="https://unpkg.com/@form-create/antd-designer@^3/dist/index.umd.js"&amp;gt;&amp;lt;/script&amp;gt;
+
+
+&amp;lt;div id="app"&amp;gt;
+    &amp;lt;fc-designer height="100vh"&amp;gt;&amp;lt;/fc-designer&amp;gt;
+&amp;lt;/div&amp;gt;
+&amp;lt;!-- 掛載組件 --&amp;gt;
+&amp;lt;script&amp;gt;
+    // 創建 Vue 應用實例
+    const app = Vue.createApp({});
+    // 掛載 AntDesignVue
+    app.use(antd);
+    // 掛載 fcDesignerPro 組件
+    app.use(FcDesigner);
+    // 掛載 formCreate
+    app.use(FcDesigner.formCreate);
+    // 掛載 Vue 應用
+    app.mount('#app');
+&amp;lt;/script&amp;gt;&lt;/code&gt;&lt;/pre&gt; 
+&lt;h2&gt;使用&lt;/h2&gt; 
+&lt;p style="color:#3e3e3e; text-align:start"&gt;在 Vue 3 組件中，您可以通過以下方式使用 fc-designer 組件：&lt;/p&gt; 
+&lt;pre&gt;&lt;code class="language-html"&gt;&amp;lt;template&amp;gt;
+    &amp;lt;fc-designer ref="designer" height="100vh" /&amp;gt;
+&amp;lt;/template&amp;gt;
+&amp;lt;script setup&amp;gt;
+    import { ref } from 'vue';
+    // 可以在此處獲取設計器實例或進行其他操作
+    const designer = ref(null);
+&amp;lt;/script&amp;gt;&lt;/code&gt;&lt;/pre&gt; 
+&lt;ul&gt; 
+&lt;/ul&gt; 
+&lt;ul&gt; 
+&lt;/ul&gt; 
+&lt;h1&gt;移動端表單設計器&lt;/h1&gt; 
+&lt;p style="color:#3e3e3e; text-align:start"&gt;&lt;img alt="demo1" src="https://oscimg.oschina.net/oscnet//553df6fe6b76e08367d09a395ede86f6.jpg" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p style="text-align:start"&gt;&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fform-create.com%2Fv3%2Fmobile%2F" target="_blank"&gt;演示站&lt;/a&gt;&lt;/p&gt; 
+&lt;p style="color:#3e3e3e; text-align:start"&gt;本項目採用 Vue3.0 和 ElementPlus 進行移動端頁面構建，移動端使用的是 vant4.0 版本，內置多語言解決方案，支持二次擴展開發，支持自定義組件擴展。&lt;/p&gt; 
+&lt;h2&gt;安裝&lt;/h2&gt; 
+&lt;p style="color:#3e3e3e; text-align:start"&gt;首先，安裝&lt;span&gt;&amp;nbsp;&lt;/span&gt;&lt;strong&gt;@form-create/vant-designer&lt;/strong&gt;&lt;/p&gt; 
+&lt;pre&gt;&lt;code class="language-bash"&gt;npm install @form-create/vant-designer@^3
+npm install @form-create/element-ui@^3
+npm install @form-create/vant@^3
+npm install element-plus
+npm install vant&lt;/code&gt;&lt;/pre&gt; 
+&lt;p style="color:#3e3e3e; text-align:start"&gt;如已安裝舊版本渲染器，請執行以下命令更新至最新版：&lt;/p&gt; 
+&lt;pre&gt;&lt;code class="language-bash"&gt;npm update @form-create/element-ui@^3
+npm update @form-create/vant@^3&lt;/code&gt;&lt;/pre&gt; 
+&lt;h2&gt;引入&lt;/h2&gt; 
+&lt;p style="color:#3e3e3e; text-align:start"&gt;&lt;strong&gt;Node.js 引入&lt;/strong&gt;&lt;/p&gt; 
+&lt;p style="color:#3e3e3e; text-align:start"&gt;對於使用 Node.js 的項目，按照以下步驟在您的 Vue 3 項目中引入並配置：&lt;/p&gt; 
+&lt;pre&gt;&lt;code class="language-javascript"&gt;import FcDesignerMobile from '@form-create/vant-designer'
+import ELEMENT from 'element-plus';
+import vant from 'vant';
+import 'vant/lib/index.css';
+import 'element-plus/dist/index.css';
+// 創建 Vue 應用
+const app = createApp(App);
+app.use(ELEMENT)
+app.use(vant)
+app.use(FcDesignerMobile)
+app.use(FcDesignerMobile.formCreate)
+// 掛載應用
+app.mount('#app');&lt;/code&gt;&lt;/pre&gt; 
+&lt;p style="color:#3e3e3e; text-align:start"&gt;&lt;strong&gt;CDN 引入&lt;/strong&gt;&lt;/p&gt; 
+&lt;p style="color:#3e3e3e; text-align:start"&gt;如果您選擇使用 CDN，可以按照以下步驟在 HTML 文件中引入相關依賴：&lt;/p&gt; 
+&lt;pre&gt;&lt;code class="language-html"&gt;&amp;lt;link rel="stylesheet" href="https://unpkg.com/element-plus/dist/index.css"&amp;gt;&amp;lt;/link&amp;gt;
+&amp;lt;link rel="stylesheet" href="https://unpkg.com/vant@4/lib/index.css"/&amp;gt;
+&amp;lt;script src="https://unpkg.com/vue"&amp;gt;&amp;lt;/script&amp;gt;
+&amp;lt;script src="https://unpkg.com/element-plus/dist/index.full.js"&amp;gt;&amp;lt;/script&amp;gt;
+&amp;lt;script src="https://unpkg.com/vant@4/lib/vant.min.js"&amp;gt;&amp;lt;/script&amp;gt;
+&amp;lt;script src="https://unpkg.com/@form-create/element-ui@next/dist/form-create.min.js"&amp;gt;&amp;lt;/script&amp;gt;
+&amp;lt;script src="https://unpkg.com/@form-create/vant@next/dist/form-create.min.js"&amp;gt;&amp;lt;/script&amp;gt;
+&amp;lt;script src="https://unpkg.com/@form-create/vant-designer@next/dist/index.umd.js"&amp;gt;&amp;lt;/script&amp;gt;
+&amp;lt;div id="app"&amp;gt;
+    &amp;lt;fc-designer-mobile height="100vh"&amp;gt;&amp;lt;/fc-designer-mobile&amp;gt;
+&amp;lt;/div&amp;gt;
+&amp;lt;script&amp;gt;
+    const { createApp } = Vue;
+    const app = createApp({});
+    app.use(ElementPlus);
+    app.use(vant);
+    app.use(FcDesignerMobile);
+    app.use(FcDesignerMobile.formCreate);
+    app.mount('#app');
+&amp;lt;/script&amp;gt;&lt;/code&gt;&lt;/pre&gt; 
+&lt;h2&gt;使用&lt;/h2&gt; 
+&lt;p style="color:#3e3e3e; text-align:start"&gt;在 Vue 3 組件中，您可以通過以下方式使用 fc-designer 組件：&lt;/p&gt; 
+&lt;pre&gt;&lt;code class="language-html"&gt;&amp;lt;template&amp;gt;
+    &amp;lt;fc-designer-mobile ref="designer" height="100vh" /&amp;gt;
+&amp;lt;/template&amp;gt;
+&amp;lt;script setup&amp;gt;
+    import { ref } from 'vue';
+    // 可以在此處獲取設計器實例或進行其他操作
+    const designer = ref(null);
+&amp;lt;/script&amp;gt;&lt;/code&gt;&lt;/pre&gt; 
+&lt;p style="color:#3e3e3e; text-align:start"&gt;&amp;nbsp;&lt;/p&gt; 
+&lt;div&gt; 
+ &lt;h2&gt;獲取設計表單的數據&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fview.form-create.com%2Frender%23%25E8%258E%25B7%25E5%258F%2596%25E8%25AE%25BE%25E8%25AE%25A1%25E8%25A1%25A8%25E5%258D%2595%25E7%259A%2584%25E6%2595%25B0%25E6%258D%25AE" target="_blank"&gt;&lt;/a&gt;&lt;/h2&gt; 
+ &lt;p style="color:#3c3c43; margin-left:0; margin-right:0; text-align:start"&gt;在表單設計器中，可以通過以下方法獲取表單的生成規則和配置，這些數據通常會被保存到數據庫中，以便後續加載和回顯。&lt;/p&gt; 
+ &lt;div&gt; 
+  &lt;pre&gt;&lt;code class="language-javascript"&gt;&lt;span style="color:#6a737d"&gt;//獲取表單的生成規則&lt;/span&gt;
+&lt;span style="color:#d73a49"&gt;const&lt;/span&gt; ruleJson = &lt;span style="color:#d73a49"&gt;this&lt;/span&gt;.$refs.designer.getJson();
+&lt;span style="color:#6a737d"&gt;//獲取表單的配置&lt;/span&gt;
+&lt;span style="color:#d73a49"&gt;const&lt;/span&gt; optionsJson = &lt;span style="color:#d73a49"&gt;this&lt;/span&gt;.$refs.designer.getOptionsJson();
+
+
+&lt;span style="color:#6a737d"&gt;//todo 保存 JSON 數據到數據庫中&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt; 
+  &lt;p style="margin-left:0; margin-right:0"&gt;這些數據可以用來保存到數據庫中，確保表單的狀態和配置可以在頁面刷新或重新加載時恢復。&lt;/p&gt; 
+ &lt;/div&gt; 
+ &lt;h2&gt;回顯設計表單&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fview.form-create.com%2Frender%23%25E5%259B%259E%25E6%2598%25BE%25E8%25AE%25BE%25E8%25AE%25A1%25E8%25A1%25A8%25E5%258D%2595" target="_blank"&gt;&lt;/a&gt;&lt;/h2&gt; 
+ &lt;p style="color:#3c3c43; margin-left:0; margin-right:0; text-align:start"&gt;當需要回顯設計好的表單時，您需要加載之前保存的 JSON 規則和配置，並將其應用到設計器中。&lt;/p&gt; 
+ &lt;div&gt; 
+  &lt;pre&gt;&lt;code class="language-javascript"&gt;&lt;span style="color:#6a737d"&gt;//todo 加載表單 JSON 規則&lt;/span&gt;
+
+
+&lt;span style="color:#6a737d"&gt;//回顯表單&lt;/span&gt;
+&lt;span style="color:#d73a49"&gt;this&lt;/span&gt;.$refs.designer.setOptions(optionsJson);
+&lt;span style="color:#d73a49"&gt;this&lt;/span&gt;.$refs.designer.setRule(ruleJson);&lt;/code&gt;&lt;/pre&gt; 
+ &lt;/div&gt; 
+ &lt;p style="color:#3c3c43; margin-left:0; margin-right:0; text-align:start"&gt;通過這些方法，可以將之前保存的表單規則和配置應用到設計器中，從而恢復表單的狀態。&lt;/p&gt; 
+ &lt;h2&gt;表單渲染&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fview.form-create.com%2Frender%23%25E8%25A1%25A8%25E5%258D%2595%25E6%25B8%25B2%25E6%259F%2593-1" target="_blank"&gt;&lt;/a&gt;&lt;/h2&gt; 
+ &lt;p style="color:#3c3c43; margin-left:0; margin-right:0; text-align:start"&gt;要渲染表單，您需要掛載 form-create 到 Vue 應用中，並加載表單規則和配置。&lt;/p&gt; 
+ &lt;div&gt; 
+  &lt;pre&gt;&lt;code class="language-javascript"&gt;&lt;span style="color:#6a737d"&gt;//從設計器中導入 formCreate&lt;/span&gt;
+&lt;span style="color:#d73a49"&gt;import&lt;/span&gt; {formCreate} &lt;span style="color:#d73a49"&gt;from&lt;/span&gt; &lt;span style="color:#032f62"&gt;'@form-create/designer'&lt;/span&gt;;
+&lt;span style="color:#6a737d"&gt;//掛載 formCreate&lt;/span&gt;
+app.use(formCreate);&lt;/code&gt;&lt;/pre&gt; 
+ &lt;/div&gt; 
+ &lt;p style="color:#3c3c43; margin-left:0; margin-right:0; text-align:start"&gt;&lt;strong&gt;表單渲染示例&lt;/strong&gt;&lt;/p&gt; 
+ &lt;div&gt; 
+  &lt;pre&gt;&lt;code class="language-html"&gt;&lt;span style="color:#333333"&gt;&amp;lt;&lt;span style="color:#22863a"&gt;template&lt;/span&gt;&amp;gt;&lt;/span&gt;
+    &lt;span style="color:#333333"&gt;&amp;lt;&lt;span style="color:#22863a"&gt;div&lt;/span&gt; &lt;span style="color:#6f42c1"&gt;id&lt;/span&gt;=&lt;span style="color:#032f62"&gt;"app"&lt;/span&gt;&amp;gt;&lt;/span&gt;
+        &lt;span style="color:#333333"&gt;&amp;lt;&lt;span style="color:#22863a"&gt;form-create&lt;/span&gt; &lt;span style="color:#6f42c1"&gt;v-model&lt;/span&gt;=&lt;span style="color:#032f62"&gt;"formData"&lt;/span&gt; &lt;span style="color:#6f42c1"&gt;v-model:api&lt;/span&gt;=&lt;span style="color:#032f62"&gt;"fApi"&lt;/span&gt; &lt;span style="color:#6f42c1"&gt;:rule&lt;/span&gt;=&lt;span style="color:#032f62"&gt;"rule"&lt;/span&gt; &lt;span style="color:#6f42c1"&gt;:option&lt;/span&gt;=&lt;span style="color:#032f62"&gt;"option"&lt;/span&gt;&amp;gt;&lt;/span&gt;&lt;span style="color:#333333"&gt;&amp;lt;/&lt;span style="color:#22863a"&gt;form-create&lt;/span&gt;&amp;gt;&lt;/span&gt;
+    &lt;span style="color:#333333"&gt;&amp;lt;/&lt;span style="color:#22863a"&gt;div&lt;/span&gt;&amp;gt;&lt;/span&gt;
+&lt;span style="color:#333333"&gt;&amp;lt;/&lt;span style="color:#22863a"&gt;template&lt;/span&gt;&amp;gt;&lt;/span&gt;
+&lt;span style="color:#333333"&gt;&amp;lt;&lt;span style="color:#22863a"&gt;script&lt;/span&gt;&amp;gt;&lt;/span&gt;&lt;span&gt;
+    &lt;span style="color:#d73a49"&gt;import&lt;/span&gt; {formCreate} &lt;span style="color:#d73a49"&gt;from&lt;/span&gt; &lt;span style="color:#032f62"&gt;'@form-create/designer'&lt;/span&gt;;
+    &lt;span style="color:#d73a49"&gt;export&lt;/span&gt; &lt;span style="color:#d73a49"&gt;default&lt;/span&gt; {
+        data() {
+            &lt;span style="color:#d73a49"&gt;return&lt;/span&gt; {
+                &lt;span style="color:#6a737d"&gt;//實例對象&lt;/span&gt;
+                &lt;span style="color:#6f42c1"&gt;fApi&lt;/span&gt;: {},
+                &lt;span style="color:#6a737d"&gt;//表單數據&lt;/span&gt;
+                &lt;span style="color:#6f42c1"&gt;formData&lt;/span&gt;: {},
+                &lt;span style="color:#6a737d"&gt;//表單生成規則&lt;/span&gt;
+                &lt;span style="color:#6f42c1"&gt;rule&lt;/span&gt;: [],
+                &lt;span style="color:#6a737d"&gt;//組件參數配置&lt;/span&gt;
+                &lt;span style="color:#6f42c1"&gt;option&lt;/span&gt;: {}
+            }
+        },
+        beforeCreate(){
+            &lt;span style="color:#d73a49"&gt;const&lt;/span&gt; rule,option;
+            &lt;span style="color:#6a737d"&gt;// todo 加載表單 JSON 規則&lt;/span&gt;
+            &lt;span style="color:#d73a49"&gt;this&lt;/span&gt;.rule = formCreate.parseJson(rule);
+            &lt;span style="color:#d73a49"&gt;this&lt;/span&gt;.option = formCreate.parseJson(option);
+        }
+    }
+&lt;/span&gt;&lt;span style="color:#333333"&gt;&amp;lt;/&lt;span style="color:#22863a"&gt;script&lt;/span&gt;&amp;gt;&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt; 
+ &lt;/div&gt; 
+ &lt;h2&gt;動態加載和保存表單配置&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fview.form-create.com%2Frender%23%25E5%258A%25A8%25E6%2580%2581%25E5%258A%25A0%25E8%25BD%25BD%25E5%2592%258C%25E4%25BF%259D%25E5%25AD%2598%25E8%25A1%25A8%25E5%258D%2595%25E9%2585%258D%25E7%25BD%25AE" target="_blank"&gt;&lt;/a&gt;&lt;/h2&gt; 
+ &lt;p style="color:#3c3c43; margin-left:0; margin-right:0; text-align:start"&gt;可以通過 API 請求動態加載表單規則和配置，並將表單數據保存到服務器。&lt;/p&gt; 
+ &lt;div&gt; 
+  &lt;pre&gt;&lt;code class="language-javascript"&gt;&lt;span style="color:#d73a49"&gt;import&lt;/span&gt; axios &lt;span style="color:#d73a49"&gt;from&lt;/span&gt; &lt;span style="color:#032f62"&gt;'axios'&lt;/span&gt;;
+
+
+&lt;span style="color:#6a737d"&gt;// 加載表單配置&lt;/span&gt;
+&lt;span style="color:#d73a49"&gt;async&lt;/span&gt; &lt;span&gt;&lt;span style="color:#d73a49"&gt;function&lt;/span&gt; &lt;span style="color:#6f42c1"&gt;loadFormConfig&lt;/span&gt;() &lt;/span&gt;{
+    &lt;span style="color:#d73a49"&gt;try&lt;/span&gt; {
+        &lt;span style="color:#d73a49"&gt;const&lt;/span&gt; response = &lt;span style="color:#d73a49"&gt;await&lt;/span&gt; axios.get(&lt;span style="color:#032f62"&gt;'/api/form-config'&lt;/span&gt;);
+        &lt;span style="color:#d73a49"&gt;return&lt;/span&gt; response.data;
+    } &lt;span style="color:#d73a49"&gt;catch&lt;/span&gt; (error) {
+        &lt;span&gt;console&lt;/span&gt;.error(&lt;span style="color:#032f62"&gt;'加載表單配置失敗'&lt;/span&gt;, error);
+        &lt;span style="color:#d73a49"&gt;return&lt;/span&gt; { &lt;span style="color:#6f42c1"&gt;rule&lt;/span&gt;: [], &lt;span style="color:#6f42c1"&gt;option&lt;/span&gt;: {} };
+    }
+}
+
+
+&lt;span style="color:#6a737d"&gt;// 保存表單配置&lt;/span&gt;
+&lt;span style="color:#d73a49"&gt;async&lt;/span&gt; &lt;span&gt;&lt;span style="color:#d73a49"&gt;function&lt;/span&gt; &lt;span style="color:#6f42c1"&gt;saveFormConfig&lt;/span&gt;(&lt;span&gt;ruleJson, optionsJson&lt;/span&gt;) &lt;/span&gt;{
+    &lt;span style="color:#d73a49"&gt;try&lt;/span&gt; {
+        &lt;span style="color:#d73a49"&gt;await&lt;/span&gt; axios.post(&lt;span style="color:#032f62"&gt;'/api/form-config'&lt;/span&gt;, { &lt;span style="color:#6f42c1"&gt;rule&lt;/span&gt;: ruleJson, &lt;span style="color:#6f42c1"&gt;options&lt;/span&gt;: optionsJson });
+    } &lt;span style="color:#d73a49"&gt;catch&lt;/span&gt; (error) {
+        &lt;span&gt;console&lt;/span&gt;.error(&lt;span style="color:#032f62"&gt;'保存表單配置失敗'&lt;/span&gt;, error);
+    }
+}&lt;/code&gt;&lt;/pre&gt; 
+ &lt;/div&gt; 
+&lt;/div&gt;
+                                                                                &lt;/div&gt;
+                                                                            </description>
+      <link>https://www.oschina.net/news/360276/fcdesigner-3-3-released</link>
+      <guid isPermaLink="false">https://www.oschina.net/news/360276/fcdesigner-3-3-released</guid>
+      <pubDate>Fri, 11 Jul 2025 08:07:00 GMT</pubDate>
       <author>來源: 資訊</author>
     </item>
     <item>
@@ -262,205 +748,6 @@
       <author>來源: OSCHINA</author>
     </item>
     <item>
-      <title>微語 0.8.7 發佈，開源工單系統</title>
-      <description>&lt;div class="content"&gt;
-                                                                    
-                                                        &lt;p style="color:#40485b; margin-left:0; margin-right:0; text-align:left"&gt;企業級多租戶團隊協作工具，免費開源 N 件套：企業 IM、在線客服、企業知識庫/幫助文檔、客戶之聲、工單系統、AI 對話、工作流、項目管理、呼叫中心、視頻客服、視頻會議...。&lt;/p&gt; 
-&lt;h2&gt;語言&lt;/h2&gt; 
-&lt;ul&gt; 
- &lt;li&gt;&lt;a href="https://gitee.com/270580156/weiyu/blob/main/README.md"&gt;English&lt;/a&gt;&lt;/li&gt; 
- &lt;li&gt;&lt;a href="https://gitee.com/270580156/weiyu/blob/main/README.zh.md"&gt;中文&lt;/a&gt;&lt;/li&gt; 
-&lt;/ul&gt; 
-&lt;p style="color:#40485b; margin-left:0; margin-right:0; text-align:left"&gt;&lt;img alt="weiyu" src="https://oscimg.oschina.net/oscnet//f8bd7c3a75a97ab2a16cb5f522684a09.png" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;h2&gt;管理端&lt;/h2&gt; 
-&lt;p style="color:#40485b; margin-left:0; margin-right:0; text-align:left"&gt;&lt;img alt="chat" src="https://oscimg.oschina.net/oscnet//2cd6d4d4997505af7ee1826a6d2e2f40.png" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;h2&gt;多渠道&lt;/h2&gt; 
-&lt;p style="color:#40485b; margin-left:0; margin-right:0; text-align:left"&gt;&lt;img alt="channel" src="https://oscimg.oschina.net/oscnet//296fe477de07e0741e875c425929c31d.png" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;h2&gt;客服端&lt;/h2&gt; 
-&lt;p style="color:#40485b; margin-left:0; margin-right:0; text-align:left"&gt;&lt;img alt="agent" src="https://oscimg.oschina.net/oscnet//78a093161903bc33f36c7d0b5f824f3f.png" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;h2&gt;介紹&lt;/h2&gt; 
-&lt;h3&gt;&lt;a href="https://gitee.com/270580156/weiyu/blob/main/modules/team/readme.zh.md"&gt;企業 IM&lt;/a&gt;&lt;/h3&gt; 
-&lt;ul&gt; 
- &lt;li&gt;局域網即時通訊&lt;/li&gt; 
- &lt;li&gt;企業成員管理&lt;/li&gt; 
- &lt;li&gt;聊天記錄監控&lt;/li&gt; 
- &lt;li&gt;...&lt;/li&gt; 
-&lt;/ul&gt; 
-&lt;h3&gt;&lt;a href="https://gitee.com/270580156/weiyu/blob/main/modules/service/readme.zh.md"&gt;全渠道客服&lt;/a&gt;&lt;/h3&gt; 
-&lt;ul&gt; 
- &lt;li&gt;多渠道接入&lt;/li&gt; 
- &lt;li&gt;人工客服&lt;/li&gt; 
- &lt;li&gt;客服 Agent 智能體，對接自有數據，自動執行操作&lt;/li&gt; 
- &lt;li&gt;...&lt;/li&gt; 
-&lt;/ul&gt; 
-&lt;h3&gt;&lt;a href="https://gitee.com/270580156/weiyu/blob/main/modules/kbase/readme.zh.md"&gt;知識庫&lt;/a&gt;&lt;/h3&gt; 
-&lt;ul&gt; 
- &lt;li&gt;對接大模型&lt;/li&gt; 
- &lt;li&gt;自定義知識庫&lt;/li&gt; 
- &lt;li&gt;Function Calling&lt;/li&gt; 
- &lt;li&gt;Mcp&lt;/li&gt; 
- &lt;li&gt;...&lt;/li&gt; 
-&lt;/ul&gt; 
-&lt;h3&gt;&lt;a href="https://gitee.com/270580156/weiyu/blob/main/modules/ticket/readme.zh.md"&gt;工單系統&lt;/a&gt;&lt;/h3&gt; 
-&lt;ul&gt; 
- &lt;li&gt;工單管理&lt;/li&gt; 
- &lt;li&gt;工單 SLA 管理&lt;/li&gt; 
- &lt;li&gt;工單統計和報表&lt;/li&gt; 
- &lt;li&gt;...&lt;/li&gt; 
-&lt;/ul&gt; 
-&lt;h3&gt;&lt;a href="https://gitee.com/270580156/weiyu/blob/main/modules/ai/readme.zh.md"&gt;AI Agent&lt;/a&gt;&lt;/h3&gt; 
-&lt;ul&gt; 
- &lt;li&gt;Ollama/DeepSeek/ZhipuAI/...&lt;/li&gt; 
- &lt;li&gt;智能體&lt;/li&gt; 
- &lt;li&gt;工作流&lt;/li&gt; 
- &lt;li&gt;...&lt;/li&gt; 
-&lt;/ul&gt; 
-&lt;h3&gt;工作流&lt;/h3&gt; 
-&lt;ul&gt; 
- &lt;li&gt;自定義表單&lt;/li&gt; 
- &lt;li&gt;自定義流程&lt;/li&gt; 
- &lt;li&gt;工單流程可視化&lt;/li&gt; 
- &lt;li&gt;...&lt;/li&gt; 
-&lt;/ul&gt; 
-&lt;h3&gt;&lt;a href="https://gitee.com/270580156/weiyu/blob/main/modules/voc/readme.zh.md"&gt;客戶之聲&lt;/a&gt;&lt;/h3&gt; 
-&lt;ul&gt; 
- &lt;li&gt;意見反饋&lt;/li&gt; 
- &lt;li&gt;服務投訴&lt;/li&gt; 
- &lt;li&gt;問卷調查&lt;/li&gt; 
- &lt;li&gt;...&lt;/li&gt; 
-&lt;/ul&gt; 
-&lt;h3&gt;&lt;a href="https://gitee.com/270580156/weiyu/blob/main/plugins/freeswitch/readme.zh.md"&gt;呼叫中心&lt;/a&gt;&lt;/h3&gt; 
-&lt;ul&gt; 
- &lt;li&gt;基於 FreeSwitch 的專業呼叫平台&lt;/li&gt; 
- &lt;li&gt;支持來電彈屏、自動分配、通話錄音&lt;/li&gt; 
- &lt;li&gt;數據統計，語音與文字服務無縫集成&lt;/li&gt; 
-&lt;/ul&gt; 
-&lt;h3&gt;&lt;a href="https://gitee.com/270580156/weiyu/blob/main/plugins/webrtc/readme.zh.md"&gt;視頻客服&lt;/a&gt;&lt;/h3&gt; 
-&lt;ul&gt; 
- &lt;li&gt;基於 WebRTC 技術的高清視頻通話&lt;/li&gt; 
- &lt;li&gt;支持一鍵視頻對話與屏幕共享&lt;/li&gt; 
- &lt;li&gt;適用於需要直觀展示的服務場景&lt;/li&gt; 
-&lt;/ul&gt; 
-&lt;h3&gt;&lt;a href="https://gitee.com/270580156/weiyu/blob/main/plugins/jitsi/readme.zh.md"&gt;視頻會議&lt;/a&gt;&lt;/h3&gt; 
-&lt;ul&gt; 
- &lt;li&gt;集成 Jitsi 的專業會議平台&lt;/li&gt; 
- &lt;li&gt;支持多人在線會議、屏幕共享&lt;/li&gt; 
- &lt;li&gt;會議錄製等功能，滿足遠程協作需求&lt;/li&gt; 
-&lt;/ul&gt; 
-&lt;h3&gt;&lt;a href="https://gitee.com/270580156/weiyu/blob/main/plugins/kanban/readme.zh.md"&gt;項目看板&lt;/a&gt;&lt;/h3&gt; 
-&lt;ul&gt; 
- &lt;li&gt;支持任務創建、分配、進度監控&lt;/li&gt; 
- &lt;li&gt;文件共享與團隊協作功能&lt;/li&gt; 
- &lt;li&gt;幫助團隊高效完成項目目標&lt;/li&gt; 
-&lt;/ul&gt; 
-&lt;h3&gt;&lt;a href="https://gitee.com/270580156/weiyu/blob/main/modules/social/readme.zh.md"&gt;社交羣組&lt;/a&gt;&lt;/h3&gt; 
-&lt;ul&gt; 
- &lt;li&gt;類似 Discord&lt;/li&gt; 
- &lt;li&gt;...&lt;/li&gt; 
-&lt;/ul&gt; 
-&lt;h3&gt;多租戶&lt;/h3&gt; 
-&lt;ul&gt; 
- &lt;li&gt;多租戶管理&lt;/li&gt; 
- &lt;li&gt;租戶隔離&lt;/li&gt; 
- &lt;li&gt;租戶統計&lt;/li&gt; 
- &lt;li&gt;...&lt;/li&gt; 
-&lt;/ul&gt; 
-&lt;h2&gt;Docker 快速開始&lt;/h2&gt; 
-&lt;h3&gt;方法一：克隆項目並啓動 docker compose 容器，需要另行安裝 ollama，默認使用 qwen3:0.6b 模型&lt;/h3&gt; 
-&lt;div&gt; 
- &lt;pre&gt;&lt;code&gt;git &lt;span style="color:#0086b3"&gt;clone&lt;/span&gt; https://gitee.com/270580156/weiyu.git &amp;amp;&amp;amp; &lt;span style="color:#0086b3"&gt;cd&lt;/span&gt; weiyu/deploy/docker &amp;amp;&amp;amp; docker compose -p weiyu -f docker-compose.yaml up -d
-&lt;/code&gt;&lt;/pre&gt; 
- &lt;div&gt;
-  &amp;nbsp;
- &lt;/div&gt; 
-&lt;/div&gt; 
-&lt;h4&gt;因項目默認使用 ollama qwen3:0.6b 模型，所以需要提前拉取模型。配置文件中可以配置其他模型，如 deepseek-r1 等&lt;/h4&gt; 
-&lt;div&gt; 
- &lt;pre&gt;&lt;code&gt;&lt;em&gt;# 對話 Chat 模型&lt;/em&gt;
-ollama pull qwen3:0.6b
-&lt;em&gt;# 嵌入 Embedding 模型&lt;/em&gt;
-ollama pull bge-m3:latest
-&lt;em&gt;# 重新排序 Rerank 模型&lt;/em&gt;
-ollama pull linux6200/bge-reranker-v2-m3:latest
-&lt;em&gt;# 或者從 huggingface 下載模型&lt;/em&gt;
-&lt;em&gt;# ollama pull hf.co/&amp;lt;username&amp;gt;/&amp;lt;model-repository&amp;gt;&lt;/em&gt;
-&lt;/code&gt;&lt;/pre&gt; 
- &lt;div&gt;
-  &amp;nbsp;
- &lt;/div&gt; 
-&lt;/div&gt; 
-&lt;h3&gt;方法二：使用 docker compose ollama，默認安裝 ollama，默認使用 qwen3:0.6b 模型&lt;/h3&gt; 
-&lt;div&gt; 
- &lt;pre&gt;&lt;code&gt;git &lt;span style="color:#0086b3"&gt;clone&lt;/span&gt; https://gitee.com/270580156/weiyu.git &amp;amp;&amp;amp; &lt;span style="color:#0086b3"&gt;cd&lt;/span&gt; weiyu/deploy/docker &amp;amp;&amp;amp; docker compose -p weiyu -f docker-compose-ollama.yaml up -d
-&lt;/code&gt;&lt;/pre&gt; 
- &lt;div&gt;
-  &amp;nbsp;
- &lt;/div&gt; 
-&lt;/div&gt; 
-&lt;h4&gt;docker 拉取 ollama 模型。配置文件中可以配置其他模型，如 deepseek-r1 等&lt;/h4&gt; 
-&lt;div&gt; 
- &lt;pre&gt;&lt;code&gt;&lt;em&gt;# 對話模型&lt;/em&gt;
-docker &lt;span style="color:#0086b3"&gt;exec&lt;/span&gt; ollama-bytedesk ollama pull qwen3:0.6b
-&lt;em&gt;# 嵌入模型&lt;/em&gt;
-docker &lt;span style="color:#0086b3"&gt;exec&lt;/span&gt; ollama-bytedesk ollama pull bge-m3:latest
-&lt;em&gt;# 重新排序 Rerank 模型&lt;/em&gt;
-docker &lt;span style="color:#0086b3"&gt;exec&lt;/span&gt; ollama-bytedesk ollama pull linux6200/bge-reranker-v2-m3:latest
-&lt;em&gt;# 或者從 huggingface 下載模型&lt;/em&gt;
-&lt;em&gt;# docker exec ollama-bytedesk ollama pull hf.co/&amp;lt;username&amp;gt;/&amp;lt;model-repository&amp;gt;&lt;/em&gt;
-&lt;/code&gt;
-&lt;/pre&gt; 
-&lt;/div&gt; 
-&lt;h4&gt;停止容器&lt;/h4&gt; 
-&lt;div&gt; 
- &lt;pre&gt;&lt;code&gt;docker compose -p weiyu -f docker-compose.yaml stop
-&lt;/code&gt;&lt;/pre&gt; 
-&lt;/div&gt; 
-&lt;h4&gt;修改配置，否則上傳圖片、文件和知識庫無法正常顯示&lt;/h4&gt; 
-&lt;ul&gt; 
- &lt;li&gt;修改&lt;span&gt;&amp;nbsp;&lt;/span&gt;&lt;code&gt;docker-compose.yaml&lt;/code&gt;&lt;span&gt;&amp;nbsp;&lt;/span&gt;文件，或&lt;span&gt;&amp;nbsp;&lt;/span&gt;&lt;code&gt;docker-compose-ollama.yaml&lt;/code&gt;&lt;span&gt;&amp;nbsp;&lt;/span&gt;文件，修改以下配置項：&lt;/li&gt; 
-&lt;/ul&gt; 
-&lt;div&gt; 
- &lt;pre&gt;&lt;code&gt;&lt;em&gt;# 請將服務器 127.0.0.1 替換為你的服務器 ip&lt;/em&gt;
-BYTEDESK_UPLOAD_URL: http://127.0.0.1:9003
-BYTEDESK_KBASE_API_URL: http://127.0.0.1:9003&lt;/code&gt;&lt;/pre&gt; 
-&lt;/div&gt; 
-&lt;h3&gt;方法三：寶塔面板&lt;/h3&gt; 
-&lt;ul&gt; 
- &lt;li&gt;&lt;a href="https://gitee.com/link?target=https%3A%2F%2Fwww.weiyuai.cn%2Fdocs%2Fzh-CN%2Fdocs%2Fdeploy%2Fbaota" target="_blank"&gt;寶塔面板部署&lt;/a&gt;&lt;/li&gt; 
-&lt;/ul&gt; 
-&lt;h3&gt;方法四：源碼啓動&lt;/h3&gt; 
-&lt;ul&gt; 
- &lt;li&gt;&lt;a href="https://gitee.com/link?target=https%3A%2F%2Fwww.weiyuai.cn%2Fdocs%2Fzh-CN%2Fdocs%2Fdeploy%2Fsource" target="_blank"&gt;源碼啓動&lt;/a&gt;&lt;/li&gt; 
-&lt;/ul&gt; 
-&lt;h2&gt;演示&lt;/h2&gt; 
-&lt;p style="color:#40485b; margin-left:0; margin-right:0; text-align:left"&gt;本地預覽&lt;/p&gt; 
-&lt;div&gt; 
- &lt;pre&gt;&lt;code&gt;&lt;em&gt;# 請將 127.0.0.1 替換為你的服務器 ip&lt;/em&gt;
-http://127.0.0.1:9003/
-&lt;em&gt;# 開放端口：9003, 9885&lt;/em&gt;
-默認用戶名: admin@email.com
-默認密碼: admin&lt;/code&gt;&lt;/pre&gt; 
-&lt;/div&gt; 
-&lt;h2&gt;試用&lt;/h2&gt; 
-&lt;div&gt; 
- &lt;pre&gt;&lt;code&gt;&lt;em&gt;# 社區版，永久有效&lt;/em&gt;
-bytedesk.appkey=ZjoyMDI1LTA4LTA2OkNPTU1VTklUWTo6Ojo=
-BYTEDESK_APPKEY: ZjoyMDI1LTA4LTA2OkNPTU1VTklUWTo6Ojo=
-&lt;em&gt;# 企業版，試用，有效期：2025-08-06&lt;/em&gt;
-bytedesk.appkey=ZjoyMDI1LTA4LTA2OkVOVEVSUFJJU0U6Ojo6
-BYTEDESK_APPKEY: ZjoyMDI1LTA4LTA2OkVOVEVSUFJJU0U6Ojo6
-&lt;em&gt;# 平台版，試用，有效期: 2025-08-06&lt;/em&gt;
-bytedesk.appkey=ZjoyMDI1LTA4LTA2OlBMQVRGT1JNOjo6Og==
-BYTEDESK_APPKEY: ZjoyMDI1LTA4LTA2OlBMQVRGT1JNOjo6Og==&lt;/code&gt;&lt;/pre&gt; 
-&lt;/div&gt;
-                                                                                &lt;/div&gt;
-                                                                            </description>
-      <link>https://www.oschina.net/news/359820/weiyu-im-0-8-7-released</link>
-      <guid isPermaLink="false">https://www.oschina.net/news/359820/weiyu-im-0-8-7-released</guid>
-      <pubDate>Fri, 11 Jul 2025 05:02:00 GMT</pubDate>
-      <author>來源: 資訊</author>
-    </item>
-    <item>
       <title>Claude Code 1.0.51 發佈，原生支持 Windows</title>
       <description>&lt;div class="content"&gt;
                                                                     
@@ -496,40 +783,6 @@ BYTEDESK_APPKEY: ZjoyMDI1LTA4LTA2OlBMQVRGT1JNOjo6Og==&lt;/code&gt;&lt;/pre&gt;
       <link>https://www.oschina.net/news/360233/claude-code-1-0-51</link>
       <guid isPermaLink="false">https://www.oschina.net/news/360233/claude-code-1-0-51</guid>
       <pubDate>Fri, 11 Jul 2025 04:04:00 GMT</pubDate>
-      <author>來源: OSCHINA</author>
-    </item>
-    <item>
-      <title>Visual Studio Code 1.102 發佈</title>
-      <description>&lt;div class="content"&gt;
-                                                                    
-                                                        &lt;p&gt;&lt;span style="color:#000000"&gt;Visual Studio Code 1.102 現已&lt;/span&gt;&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fcode.visualstudio.com%2Fupdates%2Fv1_102" target="_blank"&gt;發佈&lt;/a&gt;&lt;span style="color:#000000"&gt;，此版本包含多項更新。具體更新內容如下：&lt;/span&gt;&lt;/p&gt; 
-&lt;ul&gt; 
- &lt;li&gt; &lt;p style="margin-left:0; margin-right:0"&gt;&lt;span style="color:#333333"&gt;Chat&lt;/span&gt;&lt;/p&gt; 
-  &lt;ul&gt; 
-   &lt;li&gt;探索併為開源 GitHub Copilot Chat 擴展做出貢獻（&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fcode.visualstudio.com%2Fblogs%2F2025%2F06%2F30%2FopenSourceAIEditorFirstMilestone" target="_blank"&gt;閲讀博客文章&lt;/a&gt;）。&lt;/li&gt; 
-   &lt;li&gt;生成反映項目慣例的自定義説明（&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fcode.visualstudio.com%2Fupdates%2Fv1_102%23_generate-custom-instructions" target="_blank"&gt;顯示更多&lt;/a&gt;）。&lt;/li&gt; 
-   &lt;li&gt;使用自定義模式來定製聊天以適應規劃或研究等任務（&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fcode.visualstudio.com%2Fupdates%2Fv1_102%23_chat-mode-improvements" target="_blank"&gt;顯示更多&lt;/a&gt;）。&lt;/li&gt; 
-   &lt;li&gt;自動批准選定的終端命令（&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fcode.visualstudio.com%2Fupdates%2Fv1_102%23_terminal-auto-approval-experimental" target="_blank"&gt;顯示更多&lt;/a&gt;）。&lt;/li&gt; 
-   &lt;li&gt;編輯並重新提交之前的聊天請求（&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fcode.visualstudio.com%2Fupdates%2Fv1_102%23_edit-previous-requests-experimental" target="_blank"&gt;顯示更多&lt;/a&gt;）。&lt;/li&gt; 
-  &lt;/ul&gt; &lt;/li&gt; 
- &lt;li&gt; &lt;p style="margin-left:0; margin-right:0"&gt;&lt;strong&gt;MCP&lt;/strong&gt;&lt;/p&gt; 
-  &lt;ul&gt; 
-   &lt;li&gt;MCP 支持現已在 VS Code 中普遍可用（&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fcode.visualstudio.com%2Fupdates%2Fv1_102%23_mcp-support-in-vs-code-is-generally-available" target="_blank"&gt;顯示更多&lt;/a&gt;）。&lt;/li&gt; 
-   &lt;li&gt;使用 MCP 視圖和圖庫輕鬆安裝和管理 MCP 服務器（&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fcode.visualstudio.com%2Fupdates%2Fv1_102%23_mcp-server-discovery-and-installation" target="_blank"&gt;顯示更多&lt;/a&gt;）。&lt;/li&gt; 
-   &lt;li&gt;MCP 服務器作為配置文件和 Settings Sync 中的一流資源（&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fcode.visualstudio.com%2Fupdates%2Fv1_102%23_mcp-servers-as-first-class-resources" target="_blank"&gt;顯示更多&lt;/a&gt;）。&lt;/li&gt; 
-  &lt;/ul&gt; &lt;/li&gt; 
- &lt;li&gt; &lt;p style="margin-left:0; margin-right:0"&gt;&lt;strong&gt;Editor experience&lt;/strong&gt;&lt;/p&gt; 
-  &lt;ul&gt; 
-   &lt;li&gt;將任務委託給 Copilot coding agent 並讓其在後台處理（&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fcode.visualstudio.com%2Fupdates%2Fv1_102%23_start-a-coding-agent-session-preview" target="_blank"&gt;顯示更多&lt;/a&gt;）。&lt;/li&gt; 
-   &lt;li&gt;單擊鼠標中鍵滾動編輯器（&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fcode.visualstudio.com%2Fupdates%2Fv1_102%23_scroll-on-middle-click" target="_blank"&gt;顯示更多&lt;/a&gt;）。&lt;/li&gt; 
-  &lt;/ul&gt; &lt;/li&gt; 
-&lt;/ul&gt; 
-&lt;p&gt;&lt;span style="color:#333333"&gt;更多詳情可&lt;/span&gt;&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fcode.visualstudio.com%2Fupdates%2Fv1_102" target="_blank"&gt;查看官方公告&lt;/a&gt;&lt;span style="color:#333333"&gt;。&lt;/span&gt;&lt;/p&gt;
-                                                                                &lt;/div&gt;
-                                                                            </description>
-      <link>https://www.oschina.net/news/359807/vs-code-1-102-released</link>
-      <guid isPermaLink="false">https://www.oschina.net/news/359807/vs-code-1-102-released</guid>
-      <pubDate>Fri, 11 Jul 2025 03:25:00 GMT</pubDate>
       <author>來源: OSCHINA</author>
     </item>
     <item>
