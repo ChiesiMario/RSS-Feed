@@ -7,8 +7,588 @@
     <generator>RSSHub</generator>
     <webMaster>contact@rsshub.app (RSSHub)</webMaster>
     <language>zh-hk</language>
-    <lastBuildDate>Fri, 18 Jul 2025 02:43:41 GMT</lastBuildDate>
+    <lastBuildDate>Fri, 18 Jul 2025 07:44:31 GMT</lastBuildDate>
     <ttl>5</ttl>
+    <item>
+      <title>美團開源 OIBench 與 CoreCodeBench</title>
+      <description>&lt;div class="content"&gt;
+                                                                                                                    
+                                                                                                                                                    &lt;blockquote&gt; 
+ &lt;p&gt;Meituan-M17 團隊聯合上海交大等機構，分別推出了 OIBench（聚焦高區分度算法題評測）與 CoreCodeBench（聚焦多場景工程級代碼基準）兩大數據集，旨在揭示大模型編程能力真實水平，這兩大數據集已分別在 GitHub 和 Huggingface 上進行開源。&lt;/p&gt; 
+&lt;/blockquote&gt; 
+&lt;p&gt;&lt;img src="https://oscimg.oschina.net/oscnet/up-03ba67b8aecb4f3bfded919a2a68ff949fc.png" alt="" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p&gt;當前，大語言模型（LLMs）在編程領域的能力宣稱引人矚目——DeepMind 的 AlphaCode 曾對標人類競技編程選手，OpenAI 頂尖模型屢被報道通過谷歌面試、挑戰 LeetCode 表現不俗。然而，當深入審視這些模型在真實、複雜場景下的表現時，現有評估體系的深層侷限性便暴露無遺，形成了顯著的「宣傳與現實的認知鴻溝」。&lt;/p&gt; 
+&lt;p&gt;一方面，在&lt;strong&gt;算法能力評估&lt;/strong&gt;上，儘管模型在傳統基準（如 HumanEval、MBPP）上通過率高達 90%，但移植到更高難度的信息學奧賽或 Codeforces Div.2 C 級題目時，頂尖模型的通過率驟降至個位數或不足 15%，遠遜於人類選手（如 ACM 校隊成員平均 70%），動態規劃等題型錯誤率甚至超 80%。傳統評測集已「飽和」且區分度不足，新引入的高難度題目又面臨數據「泄漏」風險和人機對比（Elo）的復現性差、效率指標粗略等問題。&lt;/p&gt; 
+&lt;p&gt;另一方面，轉向&lt;strong&gt;真實工程能力評估&lt;/strong&gt;，問題同樣嚴峻。現有工程基準（如 FullStackBench、SWEBench）雖在多樣性和語言覆蓋上有進展，但其任務類型主要集中於單段落代碼生成，難以覆蓋真實開發中跨文件協作、代碼修復（BugFix）、測試驅動開發、多函數協同等核心環節。數據構建方法也受限於隨機挖空（易忽略核心邏輯）或依賴稀缺的 GitHub PR 記錄（需大量人工清洗標註），導致評測「偏科」，無法科學、全面地評估模型在複雜工程中的準確性、健壯性和適用性。&lt;/p&gt; 
+&lt;p&gt;為了系統性地解決這兩大評估困境——&lt;strong&gt;更真實地衡量頂尖模型的算法推理能力與更全面地評估其工程級代碼能力&lt;/strong&gt;——Meituan-M17 團隊聯合上海交大等機構，分別推出了 OIBench（聚焦高區分度算法題評測）與 CoreCodeBench（聚焦多場景工程級代碼基準）兩大數據集，並託管於 AGI-Eval 評測社區。下文將詳細介紹它們的構建理念、評測方法及對主流大模型能力的深度剖析。&lt;/p&gt; 
+&lt;h1&gt;OIBench 篇&lt;/h1&gt; 
+&lt;p&gt;&lt;img src="https://p0.meituan.net/meituantechblog/707a2d1d2bf198c2510043dcd4fb1663877512.png" alt="" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;h2&gt;背景：評測集侷限性的深層分析&lt;/h2&gt; 
+&lt;p&gt;儘管 GPT-4o 模型被冠以 "競賽級" 頭銜，甚至有聲音稱其算法水平接近 ACM 區域賽金牌選手，但實際在面對未經大量公開數據訓練的、更高難度的信息學奧賽級別問題時，其通過率卻往往低至個位數，與 985 級別高校 ACM 校隊成員的平均通過率存在顯著差距。&lt;/p&gt; 
+&lt;p&gt;當部分評測宣稱 Claude 3.5 Sonnet 可替代中級開發人員時，它在動態規劃等高難度題型中錯誤率卻高達 80% 以上，且無法獨立完成需數學建模的複雜競賽題。&lt;/p&gt; 
+&lt;p&gt;諸如文心一言、通義千問等模型在 MBPP 基礎題庫中通過率可達 90% 以上，但移植至 Codeforces Div.2 C 級題目時，通過率卻不足 15%，遠低於人類選手平均 70% 的水平。&lt;/p&gt; 
+&lt;p&gt;這些鮮明的對比，共同指向一個核心問題：當前對 LLM 編程能力的評估，存在明顯的 "宣傳與現實的認知鴻溝"。這種差異不僅源於模型能力邊界的複雜性，也暴露出現有評估體系的諸多侷限性。具體表現為：&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt;&lt;strong&gt;評測集 「飽和」 與區分度不足&lt;/strong&gt;：傳統評測集（如 HumanEval、MBPP）由於模型能力的快速提升，通過率普遍超過 90%，已無法有效區分最先進模型的細微優劣。&lt;/li&gt; 
+ &lt;li&gt;&lt;strong&gt;數據 「泄漏」 風險&lt;/strong&gt;： 儘管一些新評測集（如 Codeforces、USACO、LeetCode）引入了高難度題目，但由於大模型預訓練數據包含大量互聯網公開內容，這些題目可能已被模型 「見過」，導致評測結果虛高，無法真實反映其推理能力。&lt;/li&gt; 
+ &lt;li&gt;&lt;strong&gt;人機對比的侷限性&lt;/strong&gt;：現有基於 Elo 評分體系的模型與真人選手對比方法，存在週期長、選手水平波動大、復現性差等問題，難以提供精確且可靠的評估。&lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;p&gt;效率指標的粗略性： 部分評測雖引入運行時間、內存等效率指標，但通常僅為粗略的平均分，無法細緻反映模型在不同類型題目上的性能差異。&lt;/p&gt; 
+&lt;p&gt;為瞭解決上述這些評估困境、評測出全球頂尖模型真實的編程能力，&amp;nbsp;Meituan-M17 團隊推出了&lt;strong&gt;更真實、更具區分度的評估基準 OIBench 數據集，並託管於 AGI-Eval 評測社區&lt;/strong&gt;，並在 &lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fhuggingface.co%2Fdatasets%2Fmeituan%2FOIBench" target="_blank"&gt;Huggingface&lt;/a&gt; 和 &lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fgithub.com%2FAGI-Eval-Official%2FOIBench" target="_blank"&gt;GitHub&lt;/a&gt; 上開源。基於此數據集，我們對全球 18 個主流大模型的算法編程能力進行了系統評測並量化得分，詳細評分榜單如下所示，可以看到全球頂尖大模型距離以往所宣稱的編程能力還存在很大差距，哪怕是最高分的 o4-mini-high 也僅僅只有 36.35 分，距離人類競賽選手的水平還相差甚遠，甚至很多模型只有個位數的得分。&lt;/p&gt; 
+&lt;p&gt;&lt;img src="https://p1.meituan.net/meituantechblog/c15ae4d3cace0307a614ece0854b52e071970.png" alt="表 1: OIBench AC Rate 表" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p&gt;OIBench 的評測榜單未來將由 AGI-Eval 評測社區長期維護更新，歡迎持續關注。榜單地址如下：&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt;&lt;strong&gt;網頁端地址&lt;/strong&gt;：&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fagi-eval.cn%2Fevaluation%2Fdetail%3Fid%3D60" target="_blank"&gt;https://agi-eval.cn/evaluation/detail?id=60&lt;/a&gt;&lt;/li&gt; 
+ &lt;li&gt;&lt;strong&gt;微信公眾號文章&lt;/strong&gt;：&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fmp.weixin.qq.com%2Fs%2FqjZLqHVz-BxQweApyUEtDw" target="_blank"&gt;AGI-Eval 大模型評測&lt;/a&gt;&lt;/li&gt; 
+ &lt;li&gt;&lt;strong&gt;論文地址&lt;/strong&gt;：&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Farxiv.org%2Fabs%2F2506.10481" target="_blank"&gt;https://arxiv.org/abs/2506.10481&lt;/a&gt;&lt;/li&gt; 
+ &lt;li&gt;&lt;strong&gt;Github 地址&lt;/strong&gt;：&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fgithub.com%2FAGI-Eval-Official%2FOIBench" target="_blank"&gt;https://github.com/AGI-Eval-Official/OIBench&lt;/a&gt;&lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;p&gt;本文數據均引用自 OIBench v1.0 論文（arxiv:2506.10481v3），發佈日期 2025 年 6 月 13 日。&lt;/p&gt; 
+&lt;p&gt;接下來為大家詳細介紹 OIBench 數據集是如何構建以及如何對大模型進行評測的。&lt;/p&gt; 
+&lt;h2&gt;1. OIBench 的構建與創新&lt;/h2&gt; 
+&lt;p&gt;OIBench 是一個高質量、私有且極具挑戰性的信息學奧賽級別算法題庫，旨在提供一個更真實、更具區分度的評估基準。該數據集的算法題主要來源於中國 ACM-ICPC 隊伍和信息學奧賽的高校教練團隊精心編纂，他們擁有豐富的高難度算法題設計經驗和獨到見解。&lt;/p&gt; 
+&lt;p&gt;為了確保 OIBench 題目的高質量和高挑戰性，我們制定了三條嚴格的准入標準，OIBench 具備以下關鍵特性：&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt;&lt;strong&gt;原創性與私有性&lt;/strong&gt;：OIBench 包含 250 道候選題目，經難度驗證後保留 212 道高難度、防泄漏的信息學奧賽題目（IOI Level）。所有題目在發佈前都經過嚴格檢索，確保未在任何公開平台出現，最大程度避免數據污染風險。&lt;/li&gt; 
+ &lt;li&gt;&lt;strong&gt;難度分級與把控&lt;/strong&gt;：每道題目都參照信息學競賽和 Codeforces 難度評級進行標註。同時，為避免主觀偏差，我們引入了自動化驗證機制 —— 只有當 GPT-4o、Qwen2.5-Coder-32B、Doubao-32k-pro、Llama3.1-405B 這幾個標杆大模型中 「最多隻有一個模型能解出」 時，該題才會被收錄，從而確保了題目的 「硬核」 難度。&lt;/li&gt; 
+ &lt;li&gt;&lt;strong&gt;高標準測試用例與標準解答&lt;/strong&gt;：每道題都配備覆蓋大數據量、邊界情況等多樣的測試用例，力求暴露代碼在時間和空間上的潛在瓶頸。同時，每道題都必須配備經過所有測試用例嚴格驗證的 C++ 標準解答，以確保題目本身的準確性及評測的公正性。&lt;/li&gt; 
+ &lt;li&gt;&lt;strong&gt;中英文雙語支持&lt;/strong&gt;： 數據集提供中英文雙語版本，方便全球大模型從業者使用。&lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;p&gt;我們還在論文中展示了 OIBench 與其他主流評測集的對比（見下表），可以看到 OIBench 在題目難度和測試用例規模上都相對更高。&lt;/p&gt; 
+&lt;p&gt;&lt;img src="https://p0.meituan.net/meituantechblog/ad5a7a3767a8e629b0b759e2c2b7cea864999.png" alt="表 2: OIBench 與其他代碼評測集基礎統計信息表" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p&gt;OIBench 在題目難度和測試用例規模上顯著領先於其他主流評測集。例如，在其他榜單上表現較好的 GPT-4o 模型在 OIBench 上僅能答對 2.6% 的題目，同時 OIBench 的測試用例數量大幅超過了其他算法競賽基準，對標真實的競賽環境。&lt;/p&gt; 
+&lt;p&gt;&lt;img src="https://p1.meituan.net/meituantechblog/18647fd505aefa45fcc54194188f0ef121519.png" alt="表 3: GPT-4o 模型在 OIBench 與其他評測集通過率對比表 " referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;strong&gt;強抗數據污染能力&lt;/strong&gt;：在評測集設計中，「同源污染」 是一個重要挑戰。由於大模型的預訓練和微調數據往往會爬取大量互聯網內容，容易出現模型在訓練階段就見過類似題目的情況，從而導致評測分數虛高，無法真實反映模型實際能力。雖然 OIBench 在數據構造時極力避免使用互聯網可公開檢索的題目，但一些相近的題目仍可能在大模型的預訓練或微調階段帶來數據污染。為此，我們專門設計了實驗來驗證 OIBench 的抗污染能力：&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt;&lt;strong&gt;具體做法&lt;/strong&gt;：我們從 OIBench 中抽取部分題目，模擬它們在模型訓練數據中 「泄漏」 的場景，並與常規訓練數據混合，對比模型在 OIBench 上的表現提升。&lt;/li&gt; 
+ &lt;li&gt;&lt;strong&gt;實驗證明&lt;/strong&gt;：即使模擬少量題目 「泄漏」 到模型的訓練數據中，OIBench 的得分提升也極為有限，風險分數幾乎為零，表明其對數據污染具有很強的魯棒性。&lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;h2&gt;2. OIBench 評測結果與發現&lt;/h2&gt; 
+&lt;p&gt;&lt;strong&gt;參評模型與評測方式&lt;/strong&gt;&lt;/p&gt; 
+&lt;p&gt;OIBench 對 18 個主流大模型（包括 14 個指令微調模型和 4 個基礎模型）進行了 zero-shot 評測，涵蓋 C++、Python、Java、JavaScript 四種語言。&lt;/p&gt; 
+&lt;p&gt;&lt;img src="https://p0.meituan.net/meituantechblog/eb24e8bc42ce3120a20be682dae41ff3240284.png" alt="表 4:  OIBench 上基座模型、指令微調模型、推理模型的表現" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;strong&gt;主榜單結果&lt;/strong&gt;&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt;&lt;strong&gt;推理模型表現突出&lt;/strong&gt;：推理類模型（如 o4-mini-high）在 OIBench 上的平均得分高達 21.4%，遠高於普通指令微調模型（約 3.6%）。這表明 OIBench 能有效區分模型的推理和鏈式思考能力，且 o4-mini-high 在所有語言和任務上表現最優。&lt;/li&gt; 
+ &lt;li&gt;&lt;strong&gt;閉源模型優勢明顯&lt;/strong&gt;：閉源模型平均得分 14.5%，顯著高於開源模型（6.3%），這主要得益於閉源模型在算力和數據質量上的優勢。&lt;/li&gt; 
+ &lt;li&gt;&lt;strong&gt;基礎模型決定上限&lt;/strong&gt;：指令微調模型在 OIBench 上的表現高度依賴其基礎模型的能力，説明基礎模型的預訓練質量是決定代碼能力的關鍵。&lt;/li&gt; 
+ &lt;li&gt;&lt;strong&gt;DeepSeek-V3-0324 的亮點&lt;/strong&gt;：作為非推理模型，DeepSeek-V3-0324 表現突出，得益於其採用了 DeepSeek-R1 的鏈式推理蒸餾方案，推理能力大幅提升。&lt;/li&gt; 
+ &lt;li&gt;&lt;strong&gt;語言偏好與中英文差異&lt;/strong&gt;： 模型在 JavaScript 和 Python 上的表現平均比 C++ 和 Java 低 10% 以上，可能與訓練數據分佈有關；中英文題目表現差異極小，甚至中文略優。&lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;p&gt;&lt;strong&gt;偽代碼（Pseudocode）提示的積極作用&lt;/strong&gt;&lt;/p&gt; 
+&lt;p&gt;OIBench 的高難度對普通模型來説挑戰巨大。為了更細緻地分析模型的能力，我們還引入了 「偽代碼提示」 評測：將標準解答轉為偽代碼並作為提示輸入，考查模型理解和復現解題思路的能力。&lt;/p&gt; 
+&lt;p&gt;結果顯示，所有模型在有偽代碼提示時表現均有明顯提升，尤其是強推理模型（如 o3-mini-high 和 o4-mini-high）提升尤為顯著。這説明偽代碼極大降低了題目的推理難度，更能考查模型的代碼理解與生成能力。同時，推理模型在理解解題思路方面依然具備優勢。進一步分析發現，指令微調模型的表現與其基礎模型高度相關，説明代碼生成能力主要取決於預訓練水平。&lt;/p&gt; 
+&lt;p&gt;在提供偽代碼提示後，所有模型表現均有明顯提升，尤其是強推理模型，這説明偽代碼能有效降低推理難度，更能考查模型的代碼理解與生成能力。&lt;/p&gt; 
+&lt;p&gt;&lt;strong&gt;推理效率&lt;/strong&gt;：隨着 「測試時推理」 成為提升大模型能力的重要手段， OpenAI-o1、DeepSeek-R1 等模型在解題時會生成大量推理內容。我們統計了各模型推理時的 Token 消耗與通過率的關係，發現 o4-mini-high 能以更少的 Token 解出更多題目，推理效率最高；DeepSeek-V3-0324 雖然表現不俗，但推理 Token 數量也最多，體現其長鏈推理的特點。&lt;/p&gt; 
+&lt;p&gt;&lt;img src="https://p0.meituan.net/meituantechblog/ea497e4d24ab1e6451de79600bcf9a9d150460.png" alt="圖 1: OIBench 模型通過率與推理消耗 Token 量關係圖" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;h2&gt;3. 模型與人類選手的對比&lt;/h2&gt; 
+&lt;p&gt;許多技術人員都關心：現在的大語言模型在算法編程題上的表現，和真正的競賽選手相比到底如何？OpenAI、 DeepSeek 會用線上編程平台 Codeforces 的 Elo 評分體系來做模型與人類的對比，並報告自家模型最新的 Elo 分數，但這種方式存在一些問題：比如數據時間跨度長（一般需要半年以上的參賽記錄）、在線選手水平波動大，導致對比結果不夠精確，也不容易復現。&lt;/p&gt; 
+&lt;p&gt;&lt;strong&gt;OIBench 創新性地採用了更可控的方法&lt;/strong&gt;：邀請了中國 985 級別高校 ACM 校隊選手參與部分題目的作答，並將其成績與大模型直接對比，提供了更精準、可復現的人機對比數據；我們用小提琴圖展示了每個模型在所有人類選手中的排名分佈，能直觀反映模型與人類在不同題目上的表現差異。&lt;/p&gt; 
+&lt;p&gt;&lt;strong&gt;排名規則參考了信息學奧賽（IOI）的標準&lt;/strong&gt;：先比較通過的測試用例數量，數量相同則按運行時間排序（越快越高）。&lt;/p&gt; 
+&lt;p&gt;&lt;strong&gt;提交標準&lt;/strong&gt;：人類選手的答案以最後一次提交為準。&lt;/p&gt; 
+&lt;p&gt;&lt;strong&gt;人類解答開源&lt;/strong&gt;: 分析中所涉及的人類解答記錄也將匿名化並開源，便於後續研究和復現。&lt;/p&gt; 
+&lt;p&gt;&lt;img src="https://p0.meituan.net/meituantechblog/364b49bcc6369d303486297b86de3364257727.png" alt="圖 2: 模型與人類選手的對比關係圖" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p&gt;在小提琴圖中，各模型在每道題中的人類排名位置會作為一個數據點，這些數據點形成的概率密度圖就是小提琴圖中的「琴身」。「琴身」的寬度顯示模型排名分佈的密度，越寬表示模型在對應的排名區間內出現的頻率越高，從而直觀地反映出模型排名表現的集中趨勢。中央的框線代表排名數據最集中的區域，以 o4-mini-high 舉例，它的排名大致超過了 42% 的人類選手。&lt;/p&gt; 
+&lt;p&gt;&lt;strong&gt;三種類型的模型表現&lt;/strong&gt;&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt;&lt;strong&gt;低谷型&lt;/strong&gt;： 多數題目排名靠後，只能超越不到 20% 的人類選手，多為沒有長鏈推理能力的模型。&lt;/li&gt; 
+ &lt;li&gt;&lt;strong&gt;雙峯型&lt;/strong&gt;： 在部分題目上能超越一半人類選手，但在另一些題目上表現較差，多數支持長鏈推理的模型屬於此類型，顯示其在特定題型上的優勢和短板。&lt;/li&gt; 
+ &lt;li&gt;&lt;strong&gt;橄欖型&lt;/strong&gt;： 排名分佈更均勻，表現更接近人類整體能力分佈，目前只有 o4-mini-high 具備這種全面和穩定的推理特徵。&lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;h2&gt;4. OIBench 總結與展望&lt;/h2&gt; 
+&lt;p&gt;本文深入分析了當前大模型編程能力評估中存在的認知鴻溝，揭示了 "宣傳" 與 "現實" 之間的差距。Meituan-M17 團隊，通過 OIBench 這一高質量、高區分度的私有數據集，清晰揭示了頂級 LLM 在面對複雜算法挑戰時，與人類頂尖水平之間的真實差距。不僅為大語言模型的算法推理能力評測樹立了一個全新標杆，也為整個行業帶來了更多思考。&lt;/p&gt; 
+&lt;p&gt;它讓我們看到：即使在模型能力突飛猛進的今天，真正高質量、高難度的算法挑戰依然能夠 "難倒" 最先進的 AI。尤為重要的是，希望 OIBench 的開源和透明能夠為社區協作和持續創新做出一些貢獻。我們期待它能成為連接學術、產業和開發者的橋樑，推動大模型在算法智能領域邁向新高度。未來，隨着模型能力和評測需求的不斷演進，OIBench 也會持續迭代，與大家共同見證 AI 推理的進化之路。&lt;/p&gt; 
+&lt;p&gt;與此同時，我們也觀察到，對於大多數人類開發者來説，即使他們接受過專業的算法設計訓練，面對高難度算法和複雜系統設計，同樣需要工具和智能助手的輔助才能更上一層樓。大模型的強大推理和代碼生成能力，正好能為人類開發者提供有力支持，幫助他們提升算法設計和代碼實現的效率。OIBench 促使我們深入思考：&lt;strong&gt;未來的代碼開發，已超越 "人" 或 "模型" 單打獨鬥的模式，轉變為人機協同、優勢互補的新範式&lt;/strong&gt;。&lt;/p&gt; 
+&lt;h1&gt;CoreCodeBench 篇&lt;/h1&gt; 
+&lt;p&gt;&lt;img src="https://oscimg.oschina.net/oscnet/up-ceb6f19f2da88e2f684c177f14580a6a10d.png" alt="" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;h2&gt;背景：工程級代碼評估的挑戰&lt;/h2&gt; 
+&lt;p&gt;研究發現，現有的代碼基準數據集在面對複雜的工程場景時普遍存在缺乏多樣性和可控性的雙重問題：&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt;&lt;strong&gt;工程開發環節覆蓋有限&lt;/strong&gt;：儘管現有基準（如 FullStackBench、SWEBench）在領域和語言多樣性上取得進展，但其任務類型仍主要集中於單段落代碼生成。而真實工程實踐通常涉及跨文件、跨模塊的協同，以及代碼修復、測試驅動開發、多函數協作等複雜任務，這些都應被工程級基準全面覆蓋。&lt;/li&gt; 
+ &lt;li&gt;&lt;strong&gt;數據構建方法侷限&lt;/strong&gt;：大多數數據集採用隨機挖空或從代碼倉庫的歷史&amp;nbsp;PR&amp;nbsp;記錄中提取修改點（如 GitHub 的 Pull Request）。前者容易忽略項目的核心邏輯代碼段，後者不僅數據量稀少，還需投入大量人工進行數據清洗和標註，難以規模化構建高質量的評測題目。&lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;p&gt;總之，我們發現現有的代碼基準測試大多「偏科」了。它們要麼只關注單個函數的補全，忽略了開發者修復 Bug 、根據單元測試反向開發的真實場景；要麼採用隨機挖空的方式，難以觸及代碼的核心邏輯。這導致我們無法科學、完整、全面地測評 LLM 在真實工程場景中的代碼能力，尤其是在可靠性和適用性方面，我們亟需一個能解決此難題的方案。&lt;/p&gt; 
+&lt;p&gt;為了應對上述挑戰，&amp;nbsp;Meituan-M17 團隊、上海交大聯合發佈了一個全新的&lt;strong&gt;大模型工程級別代碼基準測試&amp;nbsp;CoreCodeBench 數據集，託管到 AGI-Eval 社區&lt;/strong&gt;。&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt;&lt;strong&gt;CoreCodeBench 榜單地址&lt;/strong&gt;：&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fagi-eval.cn%2Fevaluation%2Fdetail%3Fid%3D64" target="_blank"&gt;https://agi-eval.cn/evaluation/detail?id=64&lt;/a&gt;&lt;/li&gt; 
+ &lt;li&gt;&lt;strong&gt;微信公眾號文章&lt;/strong&gt;：&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fmp.weixin.qq.com%2Fs%2FihNeyk1RauSUicBcGWI2pA" target="_blank"&gt;AGI-Eval 模型評測&lt;/a&gt;&lt;/li&gt; 
+ &lt;li&gt;&lt;strong&gt;論文預印版&lt;/strong&gt;：《CoreCodeBench: A Configurable Multi-Scenario Repository-Level Benchmark》。&lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;p&gt;&lt;img src="https://p0.meituan.net/meituantechblog/6db13f36c76ac08f4e76f2301112430f132450.png" alt="" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt; &lt;p&gt;&lt;strong&gt;論文地址&lt;/strong&gt;：&lt;a href="https://www.oschina.net/action/GoToLink?url=http%3A%2F%2Farxiv.org%2Fabs%2F2507.05281" target="_blank"&gt;http://arxiv.org/abs/2507.05281&lt;/a&gt;&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;&lt;strong&gt;GitHub 地址&lt;/strong&gt;：&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fgithub.com%2FAGI-Eval-Official%2FCoreCodeBench" target="_blank"&gt;https://github.com/AGI-Eval-Official/CoreCodeBench&lt;/a&gt;&lt;/p&gt; &lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;p&gt;它專注於評估大語言模型在真實工程項目中的綜合代碼能力，覆蓋了從代碼開發到代碼修正的多個核心階段。&lt;/p&gt; 
+&lt;p&gt;&lt;img src="https://p0.meituan.net/meituantechblog/d00f4a444d9cce46b92a9ca1c04ff32b141353.png" alt="圖 3: CoreCodeBench 題型展示" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;img src="https://p1.meituan.net/meituantechblog/e7d7f6245abec170dad5a1910d4aecf963987.png" alt="圖 4: CoreCodeBench 模型能力榜單" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p&gt;通過在 CoreCodeBench 上對當前主流大語言模型的全面評測，我們得出了以下關鍵結論：&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt;&lt;strong&gt;大模型編程能力迭代進步顯著，但發展不均衡&lt;/strong&gt;：較新的模型 {如 Claude 3.7 、o4 mini（high）} 相較於前代產品表現出明顯進步。然而，受測模型在代碼修正（BugFix）任務上表現欠佳，尤其是單函數任務場景下，修正任務的成功率全部低於開發任務，這揭示了當前 LLM 在理解和修復深層邏輯錯誤方面存在的普遍短板。&lt;/li&gt; 
+ &lt;li&gt;&lt;strong&gt;多函數協作是當前大模型編程場景的主要瓶頸&lt;/strong&gt;：幾乎所有模型在處理多函數任務時的表現都顯著劣於單函數任務。這表明，當需要同時處理多個函數間的依賴關係、調用邏輯和協同實現時，當前大模型的跨函數推理和規劃能力尚顯不足。&lt;/li&gt; 
+ &lt;li&gt;&lt;strong&gt;大模型編程場景普遍缺乏靈活的規劃與分層推理能力&lt;/strong&gt;：在多函數代碼生成任務中，我們觀察到大多數模型嚴格遵循輸入提示中的函數順序生成代碼，而非像人類工程師那樣，基於功能依賴（如先實現被調用的工具函數）進行優化。這一現象反映了當前模型在面對複雜任務時，傾向於採用默認的順序策略，缺乏主動規劃的意識。&lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;h2&gt;1. 基準構建方法與實驗分析&lt;/h2&gt; 
+&lt;p&gt;&lt;strong&gt;數據集構建方法：CorePipe 流程&lt;/strong&gt;&lt;/p&gt; 
+&lt;p&gt;為了構建一個既關注多樣化工程問題，又聚焦於核心代碼的基準，CoreCodeBench 中設計了從工程代碼倉庫到多種函數題型的全自動化構建流程 CorePipe。&lt;/p&gt; 
+&lt;p&gt;&lt;img src="https://p0.meituan.net/meituantechblog/c0fafa80ae9fcd7b85d7bca671ec2934319541.png" alt="圖 5: CorePipe 自動化生產數據流程示意圖" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p&gt;如上圖所示，CorePipe 基於函數調用樹，系統化地生成覆蓋三大核心場景的單函數與多函數題目，確保每一道題目都直擊「要害」：&lt;/p&gt; 
+&lt;p&gt;&lt;strong&gt;精選真實項目&lt;/strong&gt;：我們從 PyPI 對應的 GitHub 倉庫中篩選出高活躍度、高測試覆蓋率和高技術複雜度的頂級開源項目。&lt;/p&gt; 
+&lt;p&gt;&lt;strong&gt;定位核心代碼&lt;/strong&gt;：通過動態和靜態追蹤代碼的執行，我們首先構建函數調用圖，再利用抽象語法樹（AST）抽取出關鍵函數中的核心代碼，精準定位項目中那些「牽一髮而動全身」的核心代碼塊。我們能精準定位項目中那些「牽一髮而動全身」的核心函數。&lt;/p&gt; 
+&lt;p&gt;&lt;strong&gt;模擬三大真實場景&lt;/strong&gt;：&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt;&lt;strong&gt;直接開發&lt;/strong&gt;（Development）：&amp;nbsp;不僅僅是填空，我們利用 GPT-4o 生成高質量的函數功能描述，並由 Claude 3.5 Sonnet 進行「挑刺」和審核，確保模型是在理解真正需求的前提下進行開發。&lt;/li&gt; 
+ &lt;li&gt;&lt;strong&gt;代碼修正&lt;/strong&gt;（BugFix）：告別簡單的語法錯誤，轉而使用 LLM 生成更隱蔽、更復雜的邏輯錯誤，真實模擬了開發中那些令人頭疼的 Bug 。&lt;/li&gt; 
+ &lt;li&gt;&lt;strong&gt;測試驅動開發&lt;/strong&gt;（TDD）：提供完整的單元測試，要求模型根據測試用例反向開發功能代碼，考察其遵循現代開發範式的能力。&lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;p&gt;&lt;strong&gt;引入多函數難題&lt;/strong&gt;&lt;/p&gt; 
+&lt;p&gt;我們將上述單函數問題按照真實的函數調用關係組合起來，創造出更復雜的多函數題目，全面考驗模型在宏觀層面的代碼組織和規劃能力。&lt;/p&gt; 
+&lt;h2&gt;2. 實驗結果與深度分析&lt;/h2&gt; 
+&lt;p&gt;為確保評測的科學性，我們採用了信息增益分數（IG Score）作為核心指標，並通過&amp;nbsp;&lt;strong&gt;IG Filter（信息增益過濾）和專業工程師人工審核（最終合格率 78.55%）&lt;/strong&gt; 對題目質量進行充分的監測，兼具&lt;strong&gt;可讀性、準確性和完整性&lt;/strong&gt;。&lt;/p&gt; 
+&lt;h3&gt;2.1 單函數與多函數任務分析&lt;/h3&gt; 
+&lt;p&gt;&lt;img src="https://p0.meituan.net/meituantechblog/3880e195179b9c7170e4b2dc56760d0e155540.jpg" alt="表 5: CoreCodeBench 單函數和多函數任務榜單" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p&gt;如上圖可以看出，實驗結果有力地支持了我們的核心結論， Claude 3.7 在所有任務中表現突出。&lt;/p&gt; 
+&lt;p&gt;但所有模型在多函數任務上的普遍表現下滑差於單模型任務，這可能是因為多函數任務需同時處理多個函數間的依賴關係、調用邏輯和協同實現，對大語言模型的跨函數推理和規劃能力要求更高，以及在 BugFix 任務上的集體短板，清晰地勾勒出當前技術的能力邊界。&lt;/p&gt; 
+&lt;h3&gt;2.2 模型規劃能力洞察&lt;/h3&gt; 
+&lt;p&gt;多函數任務的實驗分析揭示，&lt;strong&gt;模型缺乏對實現順序的規劃能力&lt;/strong&gt;。&lt;/p&gt; 
+&lt;p&gt;大多數模型嚴格遵循輸入提示中的函數順序生成代碼。當前模型在多函數代碼生成時缺乏靈活規劃能力與分層推理能力，往往採用默認的順序輸出策略，而非基於邏輯或功能依賴進行優化。&lt;/p&gt; 
+&lt;p&gt;這種「順序執行」而非「邏輯執行」的策略，是其與人類工程師在解決複雜問題思路上的一大差異。&lt;/p&gt; 
+&lt;h3&gt;2.3 極限挑戰&lt;/h3&gt; 
+&lt;p&gt;&lt;img src="https://p0.meituan.net/meituantechblog/014baa15a3e9fa538f8946e1ef87a6cc169891.png" alt="圖 6: CoreCodeBench-Difficult 數據集的模型結果" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p&gt;我們通過放寬多函數問題的複雜度限制，構建了&amp;nbsp;CoreCodeBench-Difficult&amp;nbsp;數據集。&lt;/p&gt; 
+&lt;p&gt;在該測試中，所有模型的通過率均低於 30%，這不僅印證了該基準在揭示模型侷限性方面的有效性，也為未來技術的突破提供了嚴苛的測試平台。&lt;/p&gt; 
+&lt;h3&gt;2.4 LLM 代碼能力全景雷達圖&lt;/h3&gt; 
+&lt;p&gt;&lt;img src="https://p0.meituan.net/meituantechblog/968a856ea20107dbef5236fbb904b6f8249232.png" alt="圖 7: 前沿 LLM 代碼能力雷達圖" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p&gt;我們將模型的六個核心場景表現繪製成雷達圖，可以直觀地看到：&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt;沒有一個模型能在所有場景中獨佔鰲頭，證明瞭 CoreCodeBench&amp;nbsp;&lt;strong&gt;評估維度的全面性&lt;/strong&gt;。&lt;/li&gt; 
+ &lt;li&gt;開發（Development）和測試驅動開發（TDD）任務中，單/多函數表現並不完全相關，説明&lt;strong&gt;開發多關聯函數需要額外的規劃能力&lt;/strong&gt;。&lt;/li&gt; 
+ &lt;li&gt;代碼修正（BugFix）任務中，單/多函數表現高度相關，這説明&lt;strong&gt;調試更依賴於一種通用的、局部的錯誤修正技能&lt;/strong&gt;。&lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;p&gt;為進一步分析各評測維度之間的關係，我們計算了所有模型在六個維度上的皮爾遜相關係數並繪製熱力圖。&lt;/p&gt; 
+&lt;p&gt;&lt;img src="https://p0.meituan.net/meituantechblog/855a4c86166ab69686d5b2daa2504e56137569.png" alt="圖 8: 代碼能力項相關度分析" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p&gt;如上圖所示可以觀察得到，相關係數的測算結果表明，CoreCodeBench 的六個核心場景之間既存在一定的&lt;strong&gt;相關性&lt;/strong&gt;，也體現出各自的&lt;strong&gt;差異性&lt;/strong&gt;：&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt;Single-function 任務之間相關性較高，表現出&lt;strong&gt;單函數任務在基礎編程、理解和實現能力上的共性&lt;/strong&gt;。&lt;/li&gt; 
+ &lt;li&gt;Multi-TDD 和 Multi-Development 存在一定的相關性，這是因為&amp;nbsp;&lt;strong&gt;Multi-function 任務通常考察模型在更復雜場景下的綜合能力&lt;/strong&gt;，包括多步推理、實現規劃等，與單函數任務所需的基礎能力存在明顯區別。&lt;/li&gt; 
+ &lt;li&gt;Multi-BugFix&amp;nbsp;雖然屬於多函數任務，但它和單函數任務相關性高，反而和 Multi-TDD、Multi-Development 相關性低。這是因為&amp;nbsp;&lt;strong&gt;Multi-BugFix&amp;nbsp;任務的本質更接近於「單點排查」，它更側重於具體細節或某一局部的能力考察，而與需要全局綜合能力的多函數任務存在差異&lt;/strong&gt;。&lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;h2&gt;3. CoreCodeBench 總結與展望&lt;/h2&gt; 
+&lt;p&gt;CoreCodeBench&amp;nbsp;的構建與應用，旨在為大語言模型的代碼能力評估提供一把更科學、更全面、更貼近真實的「工程標尺」。回顧我們的研究，我們系統性地揭示了當前頂尖 LLM 在真實工程場景中的核心短板：&lt;strong&gt;無論是多麼先進的模型，都在邏輯錯誤修復方面步履維艱；在面對多函數協同任務時，其跨函數推理與規劃能力都顯得捉襟見肘；並且，它們普遍缺乏人類工程師所具備的靈活規劃與分層推理能力&lt;/strong&gt;。&lt;/p&gt; 
+&lt;p&gt;然而，這些被揭示的侷限性並非技術的終點，而是為下一代大語言模型的發展指明瞭清晰的優化方向。我們相信，通過在 CoreCodeBench 這類更貼近真實工程需求的基準上進行訓練和迭代，大語言模型將能更快地從一個「代碼片段生成器」，進化成一個真正具備分析、規劃和解決複雜工程問題的「虛擬軟件工程師」，從而在軟件開發領域釋放出更深遠的變革力量。&lt;/p&gt; 
+&lt;h2&gt;總結&lt;/h2&gt; 
+&lt;p&gt;通過 OIBench 和 CoreCodeBench 兩大基準的構建和評測，Meituan-M17 團隊系統性地揭示了當前大語言模型在編程領域的真實能力邊界。這兩個數據集不僅填補了現有評估體系的空白，更重要的是為整個行業提供了一面"照妖鏡"，讓我們能夠更清晰地看到頂尖 AI 模型與人類專業水平之間的真實差距。&lt;/p&gt; 
+&lt;p&gt;&lt;strong&gt;核心發現包括&lt;/strong&gt;：&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt;即使是最強的推理模型，在複雜算法挑戰面前仍顯不足，距離真正的競賽選手水平還有很大差距；&lt;/li&gt; 
+ &lt;li&gt;在工程級代碼任務中，模型普遍在代碼修復和多函數協作方面存在明顯短板；&lt;/li&gt; 
+ &lt;li&gt;現有模型缺乏人類工程師所具備的靈活規劃和分層推理能力。&lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;h2&gt;展望未來&lt;/h2&gt; 
+&lt;p&gt;這些發現並非技術發展的終點，而是為下一代大語言模型的優化指明瞭明確方向。我們相信，通過在更貼近真實需求的基準上持續訓練和迭代，AI 將逐步從"代碼生成工具"進化為真正的"智能開發夥伴"，與人類開發者形成優勢互補的協作關係。&lt;/p&gt; 
+&lt;p&gt;Meituan-M17 團隊將持續致力於高質量評估研究，推動大語言模型技術向更廣闊的未來發展。&lt;/p&gt; 
+&lt;h2&gt;One More Thing - 從大模型到 Code Agent 的評測範式遷移&lt;/h2&gt; 
+&lt;p&gt;當前大量湧現的 Code Agent 類框架與產品，使得人機協作解決更加複雜的工程問題成為可能，這預示着對 Code Agent 在實際工程場景中與人類協作能力的評估，將變得日益關鍵。然而，現有的 Code Agent 評測基準（如 SWE-bench 系列）存在一個核心問題：&lt;strong&gt;它們將人類開發者完全排除在評估流程之外&lt;/strong&gt;。這種 「端到端」 的自動化評測，雖然能比較容易的量化模型在封閉任務上的表現，卻無法回答一個更關鍵的問題：在真實、開放的開發環境中，Code Agent 能否與人類高效協作？當前多數 Code Agent 框架在交互設計上對人機交互的忽視，導致其評測結果與實際應用價值之間存在明顯脱節。&lt;/p&gt; 
+&lt;p&gt;結合 OIBench 引發的關於人機協同、優勢互補的思考，Meituan-M17 團隊也開始關注人機協作評測這一新的評測範式在 Code Agent 場景的應用，進而彌補當前範式引起的評測結果與實際應用價值間的鴻溝。基於此，我們與 AGI-Eval 評測社區合作，設計並計劃舉辦一項創新的人機協作編程競賽。&lt;/p&gt; 
+&lt;p&gt;&lt;strong&gt;競賽核心設計如下&lt;/strong&gt;：&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt;&lt;strong&gt;評測目標&lt;/strong&gt;：競賽旨在真實模擬人類開發者與搭載不同大模型的 Code Agent 協作解決複雜工程任務的全過程。我們關注的不再僅僅是任務的最終成敗，而是&lt;strong&gt;整個協作流程的質量與效率&lt;/strong&gt;。&lt;/li&gt; 
+ &lt;li&gt;&lt;strong&gt;關鍵指標&lt;/strong&gt;：我們將記錄並分析一系列過程性指標，包括：模型的意圖理解準確度、需求澄清的有效性、交互輪次、決策效率以及最終任務完成的質量與速度。&lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;p&gt;&lt;strong&gt;評測流程如下&lt;/strong&gt;：&lt;/p&gt; 
+&lt;p&gt;&lt;img src="https://p0.meituan.net/meituantechblog/63a5fc4a1f67b4be5f31828f032fa30518009.png" alt="圖 9: Code Agent 評估流程圖" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;strong&gt;價值與產出&lt;/strong&gt;&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt;&lt;strong&gt;首個人機協作榜單&lt;/strong&gt;：我們將產出首個聚焦人機協作效能的 Code Agent 性能榜單，從模型硬實力（自主解決問題的能力）與協作流暢度（與人交互的體驗）兩大維度進行評估。&lt;/li&gt; 
+ &lt;li&gt;&lt;strong&gt;深度洞察與改進&lt;/strong&gt;：這些寶貴的數據和洞察，將揭示當前 Code Agent 在真實協作場景下的優勢與短板，為打造更智能、更實用的下一代開發工具提供堅實的實證依據，真正推動人機協同編程走向成熟。&lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;p&gt;這項競賽不僅填補了現有評測體系的空白，更為探索未來人機協作的無限可能提供了寶貴的數據和實踐參考。對這項比賽感興趣的小夥伴，歡迎前往 AGI-Eval 評測社區瞭解詳情。&lt;/p&gt; 
+&lt;p&gt;&lt;img src="https://p0.meituan.net/meituantechblog/1c438755881e6541eff96bc9f0845d652459748.png" alt="" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;strong&gt;網頁端地址&lt;/strong&gt;：&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fagi-eval.cn%2Fcompetition%2Factivity" target="_blank"&gt;https://agi-eval.cn/competition/activity&lt;/a&gt;&lt;/p&gt; 
+&lt;h2&gt;招聘信息&lt;/h2&gt; 
+&lt;p&gt;&lt;strong&gt;崗位名稱：【北斗計劃】基座大模型算法研究員（評測與探索）&lt;/strong&gt;&lt;/p&gt; 
+&lt;p&gt;隨着 AI 下半場的到來，傳統的評測範式已經無法適配持續提升的模型能力，針對 ChatBot 模型的 Arena 評測的有效性也遭到質疑，如何面向現階段以及未來的模型能力進行科學有效的評估本身也是個極具挑戰和價值的研究方向。OpenAI 研究者也表示，AI 接下來比拼的不是訓練，而是「如何定義並評估真正有用的任務」。&lt;/p&gt; 
+&lt;p&gt;在這樣的背景下，美團大模型評測團隊以指引通往 AGI &lt;a href="https://www.oschina.net/action/GoToLink?url=mailto%3A%E7%9A%84%E9%81%93%E8%B7%AF%E4%B8%BA%E7%9B%AE%E6%A0%87%EF%BC%8C%E6%B7%B1%E8%80%95%E6%A8%A1%E5%9E%8B%E8%AF%84%E6%B5%8B%E7%A0%94%E7%A9%B6%EF%BC%8C%E7%B3%BB%E7%BB%9F%E6%80%A7%E7%9A%84%E7%90%86%E8%A7%A3%E5%A4%A7%E6%A8%A1%E5%9E%8B%E5%BD%93%E5%89%8D%E8%83%BD%E5%8A%9B%E6%B0%B4%E5%B9%B3%E5%8F%8A%E6%9C%AA%E6%9D%A5%E6%8A%80%E6%9C%AF%E5%8F%91%E5%B1%95%E6%96%B9%E5%90%91%EF%BC%8C%E5%B9%B6%E4%BB%A5%E6%AD%A4%E4%B8%BA%E5%9F%BA%E7%A1%80%E5%AE%8C%E5%96%84%E6%A8%A1%E5%9E%8B%E8%AF%84%E6%B5%8B%E8%83%BD%E5%8A%9B%E7%9F%A9%E9%98%B5%E3%80%82%E6%AC%A2%E8%BF%8E%E5%90%84%E8%B7%AF%E8%8B%B1%E6%89%8D%E5%8A%A0%E5%85%A5%EF%BC%8C%E8%81%94%E7%B3%BB%E6%96%B9%E5%BC%8F%EF%BC%9Aliuxingyu10%40meituan.com%E3%80%82" target="_blank"&gt;的道路為目標，深耕模型評測研究，系統性的理解大模型當前能力水平及未來技術發展方向，並以此為基礎完善模型評測能力矩陣。歡迎各路英才加入，聯繫方式：liuxingyu10@meituan.com。&lt;/a&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;strong&gt;閲讀更多&lt;/strong&gt;&lt;/p&gt; 
+&lt;p&gt;| 關注「美團技術團隊」微信公眾號，在公眾號菜單欄對話框回覆【2024 年貨】、【2023 年貨】、【2022 年貨】、【2021 年貨】、【2020 年貨】、【2019 年貨】、【2018 年貨】、【2017 年貨】等關鍵詞，可查看美團技術團隊歷年技術文章合集。&lt;/p&gt; 
+&lt;p&gt;&lt;img src="https://p0.meituan.net/meituantechblog/b0364d579285ab22aa6235bd100d7c22178175.png" alt="" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p&gt;| 本文系美團技術團隊出品，著作權歸屬美團。歡迎出於分享和交流等非商業目的轉載或使用本文內容，敬請註明 "內容轉載自美團技術團隊"。本文未經許可，不得進行商業性轉載或者使用。任何商用行為，請發送郵件至 &lt;a href="https://www.oschina.net/action/GoToLink?url=mailto%3Atech%40meituan.com" target="_blank"&gt;tech@meituan.com&lt;/a&gt; 申請授權。&lt;/p&gt;
+                                                                                    &lt;/div&gt;
+                                                                            </description>
+      <link>https://my.oschina.net/meituantech/blog/18685058</link>
+      <guid isPermaLink="false">https://my.oschina.net/meituantech/blog/18685058</guid>
+      <pubDate>Fri, 18 Jul 2025 07:21:29 GMT</pubDate>
+      <author>原創</author>
+    </item>
+    <item>
+      <title>2025 全球數字經濟大會拉薩高層論壇盛大開幕，共繪高原數智發展新藍圖</title>
+      <description>&lt;div class="content"&gt;
+                                                                    
+                                                        &lt;p style="color:#333333; margin-left:0; margin-right:0; text-align:left"&gt;&lt;span&gt;&lt;span&gt;7 月 17 日，由拉薩市人民政府主辦，拉薩高新區管委會、拉薩市經濟和信息化局、拉薩市投資促進局承辦的 2025 全球數字經濟大會拉薩高層論壇開幕。論壇以「數聚拉薩·協同發展」為主題，吸引了中國移動、中國電信、東方財富、中國人壽等來自區內外數字經濟重點企業的數百位代表齊聚高原，共話數智未來、共繪發展藍圖。&lt;/span&gt;&lt;/span&gt;&lt;/p&gt; 
+&lt;p style="color:#333333; margin-left:0; margin-right:0; text-align:center"&gt;&lt;img alt="image.png" src="https://oscimg.oschina.net/oscnet//732f801d3e4cc9560eb8fbfbedf1e0c3.png" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p style="color:#333333; margin-left:0; margin-right:0; text-align:left"&gt;&lt;span&gt;&lt;span&gt;出席本次論壇的領導和嘉賓包括：西藏自治區黨委常委、拉薩市委書記肖友才，北京市經濟和信息化局二級巡視員汪劍波，自治區經信廳黨組書記郭翔，新華社西藏分社社長儲國強，以及來自自治區各地市、區縣、園區的有關部門代表，數字經濟領域的知名企業家、行業精英和媒體代表。&lt;/span&gt;&lt;/span&gt;&lt;/p&gt; 
+&lt;p style="color:#333333; margin-left:0; margin-right:0; text-align:left"&gt;&lt;span&gt;&lt;span&gt;開幕現場，數控矩陣球光影秀震撼全場。流動的光點如數字洪流翻湧而來，構建起一幅幅&lt;/span&gt;&lt;span&gt;「科技+文化」的奇觀畫卷，既有拉薩城廓的歷史印記，也有未來城市的數智躍遷——這是一次傳統與現代的共鳴，更是高原數字經濟的預演。與此同時，現場同步播放《2025 全球數字經濟大會拉薩高層論壇》主題宣傳片，以沉浸式視聽語言，全景展現拉薩「數興城」的嶄新圖景與潛力。&lt;/span&gt;&lt;/span&gt;&lt;/p&gt; 
+&lt;p style="color:#333333; margin-left:0; margin-right:0; text-align:left"&gt;&lt;span&gt;&lt;span&gt;開幕式上，主持人拉薩市委副書記市長王強指出，如今的拉薩正聚合氣候、能源、碳匯、政策、成本五大獨特優勢，以&lt;/span&gt;&lt;span&gt;「離天近、離數更近」的姿態，在「日光城」書寫「&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;數興城&lt;/span&gt;&lt;span&gt;」的嶄新篇章。期待廣大企業家積極參與拉薩數字新基建、產業轉型與場景應用，共享機遇、共創生態。&lt;/span&gt;&lt;/span&gt;&lt;/p&gt; 
+&lt;p style="color:#333333; margin-left:0; margin-right:0; text-align:left"&gt;&lt;span&gt;&lt;span&gt;自治區黨委常委、拉薩市委書記肖友在致辭中表示，數字經濟正在重塑世界經濟格局，也為高原城市的跨越式發展提供了歷史性機遇。拉薩既有得天獨厚的綠色能源優勢，更有開放包容的發展胸懷。我們誠摯邀請各界數字經濟領域的英才俊傑，以本次論壇為契機，在這片充滿希望的土地上共話合作、共謀發展，讓數字技術與高原特色深度融合，讓數字經濟成為高原高質量發展的&lt;/span&gt;&lt;span&gt;「新引擎」，共同書寫新時代拉薩高質量發展的嶄新篇章。&lt;/span&gt;&lt;/span&gt;&lt;/p&gt; 
+&lt;p style="color:#333333; margin-left:0; margin-right:0; text-align:left"&gt;&lt;span&gt;&lt;span&gt;北京市經濟和信息化局二級巡視員汪劍波、西藏自治區經信廳黨組書記郭翔、新華社西藏分社社長儲國強分別致辭，圍繞&lt;/span&gt;&lt;span&gt;「京藏協同發展」「產業政策引導」「媒體賦能數字生態建設」等話題分享了政策趨勢與實踐經驗，為拉薩拓展數字產業空間、優化發展路徑提供了寶貴思&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;路。&lt;/span&gt;&lt;/span&gt;&lt;/p&gt; 
+&lt;p style="color:#333333; margin-left:0; margin-right:0; text-align:left"&gt;&lt;span&gt;&lt;span&gt;在主旨演講環節，來自華為技術有限公司、江蘇未來網絡集團和&lt;/span&gt;&lt;span&gt;「杭州六小龍」之一杭州雲深處科技有限公司的三家數字領軍企業，分別圍繞技術底座構建、協同架構設計與應用創新落地等核心議題，分享了前沿洞察與典型案例，深入探討數字經濟在高原生態環境中的實踐路徑，啓發與會者共思共創。&lt;/span&gt;&lt;/span&gt;&lt;/p&gt; 
+&lt;p style="color:#333333; margin-left:0; margin-right:0; text-align:left"&gt;&lt;span&gt;&lt;span&gt;拉薩高新區管委會&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;主任次仁卓嘎在&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;「百億場景引領與基金、政策賦能」重要環節中&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;圍繞&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;「1+6+N」政策體系、15 億元產業強市母基金、百億級數字應用場景建設等方面進行了詳細解讀，充分展現了拉薩加快發展數字經濟的堅定信心與強勁動能。&lt;/span&gt;&lt;/span&gt;&lt;/p&gt; 
+&lt;p style="color:#333333; margin-left:0; margin-right:0; text-align:left"&gt;&lt;span&gt;&lt;span&gt;在簽約環節，紫金物流、中國電信西藏公司、西藏中倉數科科技有限公司、中企雲鏈股份有限公司等&lt;/span&gt;&lt;span&gt;12 家企業與拉薩高新區、經開區達成合作協議。此次簽約聚焦產業實際需求與區域發展重點，呈現出「簽約即推進、落地即見效」的務實特點，進一步夯實了拉薩數字經濟發展的產業基礎與資源支撐。&lt;/span&gt;&lt;/span&gt;&lt;/p&gt; 
+&lt;p style="color:#333333; margin-left:0; margin-right:0; text-align:center"&gt;&lt;img alt="image.png" src="https://oscimg.oschina.net/oscnet//ffc2301cee6d51fdcbd0bd94a0af2146.png" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p style="color:#333333; margin-left:0; margin-right:0; text-align:center"&gt;&lt;img alt="image.png" src="https://oscimg.oschina.net/oscnet//3c89991315992a3fd5115b5f6b239bda.png" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p style="color:#333333; margin-left:0; margin-right:0; text-align:left"&gt;&lt;span&gt;&lt;span&gt;同時，本次論壇還將同步舉辦數字金融、低空經濟、算力賦能等多個分論壇活動，並設立全息投影、雷達觸屏、&lt;/span&gt;&lt;span&gt;VR 體驗區以及數字經濟+低空經濟創新成果體驗展示區，通過全方位展示拉薩數字經濟發展的最新實踐與前沿成果，進一步推動政企對接、項目落地、資源匯聚，全面釋放數字經濟發展潛能。&lt;/span&gt;&lt;/span&gt;&lt;/p&gt; 
+&lt;p style="color:#333333; margin-left:0; margin-right:0; text-align:left"&gt;&lt;span&gt;&lt;span&gt;本次論壇的成功舉辦，不僅為政企交流搭建了高端平台，有效促進了項目對接與資源整合，更向全球清晰傳遞了拉薩市大力發展數字經濟、優化營商環境的堅定決心和強大吸引力，為釋放拉薩數字經濟發展潛能、打造高原數字經濟創新發展高地注入了強勁動力。&lt;/span&gt;&lt;/span&gt;&lt;/p&gt; 
+&lt;p style="color:#333333; margin-left:0; margin-right:0; text-align:center"&gt;&lt;img alt="image.png" src="https://oscimg.oschina.net/oscnet//5a9f132f2d201b84a66919405a6dfb0e.png" referrerpolicy="no-referrer"&gt;&lt;/p&gt;
+                                                                                &lt;/div&gt;
+                                                                            </description>
+      <link>https://www.oschina.net/news/361025</link>
+      <guid isPermaLink="false">https://www.oschina.net/news/361025</guid>
+      <pubDate>Fri, 18 Jul 2025 07:13:29 GMT</pubDate>
+      <author>作者: 開源科技</author>
+    </item>
+    <item>
+      <title>報告：71% 的人不願聘用不具備 AI 技能的開發人員</title>
+      <description>&lt;div class="content"&gt;
+                                                                    
+                                                        &lt;p&gt;&lt;span style="color:#000000"&gt;Infragistics 最新發布的一項&lt;/span&gt;&lt;span&gt;&lt;span&gt;&lt;span style="color:#585858"&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span style="background-color:#ffffff"&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fwww.appbuilder.dev%2F2025-app-development-trends-part-2" target="_blank"&gt;&lt;span&gt;&lt;span&gt;《2025 年應用開發趨勢報告》&lt;/span&gt;&lt;/span&gt;&lt;/a&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;span style="color:#000000"&gt;顯示，71％ 的受訪者表示，他們不會聘請不具備 AI 技能的開發人員。&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;span style="color:#000000"&gt;30% 的受訪者表示，今年他們面臨的最大挑戰之一是招聘合格的開發人員。除了招聘 AI 領域人才外，53% 的領導者還尋求具備雲計算技能的人才，35% 的領導者在尋求具備解決問題的能力的人，35% 的領導者尋求採用安全編碼實踐的開發人員。&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;span style="color:#000000"&gt;Infragistics 首席運營官 Jason Beres 表示：「AI 正在迅速改變企業開發應用程序的方式——從簡化工作流程到降低安全風險——但如果沒有一支技術精湛的團隊，單憑技術本身是不夠的。隨着企業尋求在業務中擴大 AI 的應用，聘請精通 AI 和機器學習的開發人員，並投資於技能提升，對於推動創新和保持競爭力至關重要。」&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;span style="color:#000000"&gt;此外，受訪者表示面臨的一些其他主要挑戰是網絡安全威脅（45%）、實施人工智能（37%）和留住合格的開發人員（35%）。&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;span style="color:#000000"&gt;調查發現，目前有 87% 的團隊在開發過程中使用 AI，而目前尚未使用 AI 的公司中，有 45% 表示他們可能會在明年內開始使用。AI 在開發領域最大的應用場景是自動化重複性任務（40%）、創建佈局和頁面（34%）以及檢測錯誤。約三分之一的領導者認為，AI 可以讓開發人員騰出時間去做更有意義的工作。&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;span style="color:#000000"&gt;幾乎所有（99%）在應用程序開發過程中使用 AI 的公司都將 AI 工具用於安全目的。64% 的公司使用 AI 工具進行安全評估、60% 用於測試代碼、59% 用於識別趨勢以檢測安全漏洞，58% 用於掃描代碼以查找漏洞。&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;img height="275" src="https://oscimg.oschina.net/oscnet/up-00357b61dccfee8da65a90bca27b3134624.png" width="700" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;span style="color:#000000"&gt;近一半（45%）的受訪者表示，網絡安全威脅是他們在 2025 年面臨的首要挑戰之一。低代碼與 AI 的結合不僅使應用程序開發更高效，而且更安全。&lt;/span&gt;還有 76% 的技術領導者認為 AI 將提高低代碼工具的效率，只有 16% 的人認為 AI 將取代低代碼開發。&lt;/p&gt; 
+&lt;p&gt;更多詳情可查看&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fwww.appbuilder.dev%2F2025-app-development-trends-part-2" target="_blank"&gt;此處&lt;/a&gt;。&lt;/p&gt;
+                                                                                &lt;/div&gt;
+                                                                            </description>
+      <link>https://www.oschina.net/news/361019</link>
+      <guid isPermaLink="false">https://www.oschina.net/news/361019</guid>
+      <pubDate>Fri, 18 Jul 2025 07:02:29 GMT</pubDate>
+      <author>來源: OSCHINA</author>
+    </item>
+    <item>
+      <title>IntelliJ IDEA 從 2025.3 版本開始只提供單一安裝程序</title>
+      <description>&lt;div class="content"&gt;
+                                                                    
+                                                        &lt;p&gt;JetBrains &lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fblog.jetbrains.com%2Fzh-hans%2Fidea%2F2025%2F07%2Fintellij-idea-unified-distribution-plan%2F" target="_blank"&gt;宣佈了&lt;/a&gt; IntelliJ IDEA 遷移到統一發行版的計劃：「&lt;strong&gt;以後將只有一個 IntelliJ IDEA 安裝程序，取代分別下載的 Community Edition 和 Ultimate Edition&lt;/strong&gt;。」&lt;/p&gt; 
+&lt;p&gt;&lt;img alt="" src="https://oscimg.oschina.net/oscnet/up-958f541e5ae8e14a12c6ab5ca622afdf89f.png" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p&gt;從&amp;nbsp;2025.3 版本開始，&lt;strong&gt;IntelliJ IDEA Community Edition 將不再作為單獨的產品發行&lt;/strong&gt;。所有用户都將下載單個 IntelliJ IDEA 發行版：一個安裝程序，一個更新流。&lt;/p&gt; 
+&lt;p&gt;對於 Ultimate 用户來説：&lt;strong&gt;IDE 將被簡稱為 IntelliJ IDEA，不帶「Ultimate」後綴&lt;/strong&gt;。&lt;/p&gt; 
+&lt;p&gt;在這種新設置中，所有 Ultimate 功能仍然需要訂閲才能解鎖。 但即使沒有訂閲，IDE 仍將保持完整功能，可供商業和非商業項目免費使用，並將包含比當前 Community Edition 更多的功能。&lt;/p&gt; 
+&lt;p&gt;詳情查看&amp;nbsp;&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fblog.jetbrains.com%2Fzh-hans%2Fidea%2F2025%2F07%2Fintellij-idea-unified-distribution-plan%2F" target="_blank"&gt;官方公告&lt;/a&gt;。&lt;/p&gt;
+                                                                                &lt;/div&gt;
+                                                                            </description>
+      <link>https://www.oschina.net/news/361007/intellij-idea-unified-distribution-plan</link>
+      <guid isPermaLink="false">https://www.oschina.net/news/361007/intellij-idea-unified-distribution-plan</guid>
+      <pubDate>Thu, 17 Jul 2025 06:25:00 GMT</pubDate>
+      <author>來源: OSCHINA</author>
+    </item>
+    <item>
+      <title>​首個基於 AI 的惡意軟件 LameHug 現身，竊取 Windows 設備數據</title>
+      <description>&lt;div class="content"&gt;
+                                                                    
+                                                        &lt;p style="color:#242424; margin-left:0; margin-right:0; text-align:left"&gt;科技媒體 &lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fwww.bleepingcomputer.com%2Fnews%2Fsecurity%2Flamehug-malware-uses-ai-llm-to-craft-windows-data-theft-commands-in-real-time%2F" target="_blank"&gt;BleepingComputer&lt;/a&gt; 報道了一種新型惡意軟件 LameHug 的出現，該軟件利用了阿里開源的 Qwen2.5-Coder-32B-Instruct 大型語言模型，針對 Windows10 和 Windows11 設備進行數據竊取。&lt;/p&gt; 
+&lt;p style="color:#242424; margin-left:0; margin-right:0; text-align:left"&gt;&lt;img height="345" src="https://oscimg.oschina.net/oscnet/up-eec711f70b3c1570b78cf188268fca9dee1.png" width="500" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p style="color:#242424; margin-left:0; margin-right:0; text-align:left"&gt;LameHug 的獨特之處在於它採用了大型語言模型生成攻擊指令，進而搜刮受害者設備上的敏感數據。根據 CERT-UA（烏克蘭國家網絡安全事件響應團隊）的報告，LameHug 是用 Python 編寫的，依賴於 Hugging Face API 與 Qwen LLM 進行交互。惡意軟件通過特定的提示詞，動態生成竊取數據的指令。&lt;/p&gt; 
+&lt;p style="color:#242424; margin-left:0; margin-right:0; text-align:left"&gt;LameHug 通過惡意電子郵件傳播，通常郵件內附有一個 ZIP 文件，其中包含 LameHug 的加載器。CERT-UA 已經識別出至少三種不同的變體，包括名為 「Attachment.pif」、「AI_generator_uncensored_Canvas_PRO_v0..9.exe」 和 「image.py」 的文件。在具體的攻擊過程中，LameHug 會執行系統偵察和數據竊取命令，這些命令均是通過提示詞動態生成的。&lt;/p&gt; 
+&lt;p style="color:#242424; margin-left:0; margin-right:0; text-align:left"&gt;生成的命令主要用於收集系統信息並保存到一個文本文件（info.txt）中。它會在關鍵的 Windows 目錄 (如文檔、桌面和下載) 中搜索敏感文件，並通過 SFTP 或 HTTP POST 請求將這些數據發送給攻擊者。這種利用 AI 技術的惡意軟件的出現，可能引發一種新的攻擊模式，為網絡安全帶來了更大的挑戰。&lt;/p&gt; 
+&lt;p style="color:#242424; margin-left:0; margin-right:0; text-align:left"&gt;隨着 LameHug 的廣泛傳播，安全專家提醒用户要提高警惕，及時更新防病毒軟件和系統補丁，謹慎處理陌生郵件和附件，以防止此類惡意軟件的侵害。對於廣大用户而言，網絡安全意識的提升顯得尤為重要。&lt;/p&gt;
+                                                                                &lt;/div&gt;
+                                                                            </description>
+      <link>https://www.oschina.net/news/361006</link>
+      <guid isPermaLink="false">https://www.oschina.net/news/361006</guid>
+      <pubDate>Thu, 17 Jul 2025 06:21:00 GMT</pubDate>
+      <author>來源: OSCHINA</author>
+    </item>
+    <item>
+      <title>Meta 在挖走蘋果 AI 部門主管後，再次挖走兩名核心專家</title>
+      <description>&lt;div class="content"&gt;
+                                                                    
+                                                        &lt;p&gt;彭博社記者馬克・古爾曼&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fwww.bloomberg.com%2Fnews%2Farticles%2F2025-07-17%2Fmeta-hires-two-key-apple-ai-experts-after-poaching-their-boss" target="_blank"&gt;透露&lt;/a&gt;，Meta 又挖走了蘋果公司的兩位關鍵人工智能研究人員，此前不久 Meta 剛剛從蘋果挖走了其 AI 王牌——人工智能模型負責人龐若鳴（Ruoming Pang），也就是這兩名研究人員的主管。&lt;/p&gt; 
+&lt;p&gt;報道稱，Meta 聘請了蘋果公司的 Mark Lee 和 Tom Gunter 加入其超級智能實驗室 (Superintelligence Labs) 團隊。Lee 在近日離開蘋果後已入職 Meta，而 Gunter 將在不久的將來入職。且 Gunter 上個月就已經從蘋果離開，之後曾在另一家人工智能公司工作，並於最近幾天離職。&lt;/p&gt; 
+&lt;p&gt;&lt;img height="251" src="https://oscimg.oschina.net/oscnet/up-6a4af53d5d0f57a57747c4bc6cec56f5b24.png" width="500" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p&gt;本月早些時候，蘋果公司人工智能模型負責人龐若鳴被 Meta 挖走。據悉，為了爭取龐若鳴的加入，Meta 提供了一份價值超 2 億美元的多年薪酬方案。&lt;/p&gt; 
+&lt;p&gt;龐若鳴於 2021 年從 Alphabet 離職並加入蘋果，領導蘋果基礎模型團隊。Lee 和 Gunter 此前均為該團隊成員。該團隊約有 100 人，主要負責開發支持蘋果設備上 「Apple Intelligence」 及其它 AI 功能的核心基礎模型。&lt;/p&gt; 
+&lt;p&gt;據悉，Meta 承諾的薪酬比蘋果支付給其基礎模型團隊工程師的薪酬要高出數倍。為了防止更多人離職，蘋果已經開始為該團隊中的一些工程師提供加薪，以吸引他們留下。&lt;/p&gt; 
+&lt;p&gt;儘管如此，這與 Meta 的出價仍相去甚遠。例如，Gunter 即將加入一個由數位人工智能專家組成的團隊，這些專家都獲得了價值超 1 億美元的多年期薪酬包。&lt;/p&gt; 
+&lt;p&gt;&lt;strong&gt;相關閲讀：&lt;/strong&gt;&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li style="text-align:start"&gt;&lt;a href="https://www.oschina.net/news/359359/meta-recruits-apples-head-of-ai-models" target="_blank"&gt;消息稱 Meta 招募了蘋果的 AI 模型高管&lt;/a&gt;&lt;/li&gt; 
+&lt;/ul&gt;
+                                                                                &lt;/div&gt;
+                                                                            </description>
+      <link>https://www.oschina.net/news/360982</link>
+      <guid isPermaLink="false">https://www.oschina.net/news/360982</guid>
+      <pubDate>Thu, 17 Jul 2025 03:38:00 GMT</pubDate>
+      <author>來源: OSCHINA</author>
+    </item>
+    <item>
+      <title>Jason Wei 提出「驗證者定律」：所有可能解決且易於驗證的任務都將被人工智能解決</title>
+      <description>&lt;div class="content"&gt;
+                                                                    
+                                                        &lt;p&gt;Jason Wei（OpenAI 核心科學家、思維鏈提示詞核心作者、o1 關鍵人物）近期&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fx.com%2F_jasonwei%2Fstatus%2F1945287045251052007" target="_blank"&gt;提出&lt;/a&gt;驗證不對稱性理論及&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fwww.jasonwei.net%2Fblog%2Fasymmetry-of-verification-and-verifiers-law" target="_blank"&gt;「驗證者定律」（Verifier's Law）&lt;/a&gt;，其核心觀點是：訓練 AI 解決一個任務的難易程度與該任務的可驗證性成正比，所有可能解決且易於驗證的任務，終將都被 AI 攻克。&lt;/p&gt; 
+&lt;blockquote&gt; 
+ &lt;p&gt;驗證的不對稱性指的是有些任務驗證起來比解決起來容易得多。隨着強化學習的普遍應用，這個概念變得越來越重要。&lt;/p&gt; 
+ &lt;p&gt;比如：數獨謎題、編寫 Instagram 網頁代碼、或 BrowseComp 問題（找到答案很難，但驗證起來非常簡單）。&lt;/p&gt; 
+ &lt;p&gt;有的任務則接近對稱，比如計算兩個 900 位數字之和。還有些任務提出方案容易，但驗證卻很難（比如核實一篇長文章的事實，或提出「只吃野牛」的新飲食法）。&lt;/p&gt; 
+&lt;/blockquote&gt; 
+&lt;p&gt;具體而言，任務的可驗證性取決於以下五個關鍵屬性：&lt;/p&gt; 
+&lt;ol&gt; 
+ &lt;li&gt;&lt;strong&gt;客觀真理&lt;/strong&gt;：所有人對「好」的解決方案有普遍共識。&lt;/li&gt; 
+ &lt;li&gt;&lt;strong&gt;快速驗證&lt;/strong&gt;：任何給定的解決方案可在幾秒鐘內完成驗證。&lt;/li&gt; 
+ &lt;li&gt;&lt;strong&gt;可擴展驗證&lt;/strong&gt;：可同時驗證大量解決方案。&lt;/li&gt; 
+ &lt;li&gt;&lt;strong&gt;低噪聲&lt;/strong&gt;：驗證結果與解決方案質量高度相關。&lt;/li&gt; 
+ &lt;li&gt;&lt;strong&gt;連續獎勵&lt;/strong&gt;：可對多個解決方案進行優劣排序 。&lt;/li&gt; 
+&lt;/ol&gt; 
+&lt;p&gt;&lt;img alt="" src="https://oscimg.oschina.net/oscnet/up-7387b887042eaf1d9e3b0a62295b13721e4.png" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p&gt;Jason Wei 指出，過去十年中，大多數 AI 基準測試都符合前四條標準（因此已被解決），而符合這些標準的任務將推動 AI 快速進步，而難以驗證的任務則進展緩慢。&lt;/p&gt; 
+&lt;p&gt;此外，驗證者定律也揭示了未來人類與 AI 協作的核心：將複雜、模糊的現實問題轉化為 AI 可理解和優化的、可清晰驗證的任務。&lt;/p&gt;
+                                                                                &lt;/div&gt;
+                                                                            </description>
+      <link>https://www.oschina.net/news/360981/asymmetry-of-verification-and-verifiers-law</link>
+      <guid isPermaLink="false">https://www.oschina.net/news/360981/asymmetry-of-verification-and-verifiers-law</guid>
+      <pubDate>Thu, 17 Jul 2025 03:37:00 GMT</pubDate>
+      <author>來源: OSCHINA</author>
+    </item>
+    <item>
+      <title>字節視覺大模型負責人楊建朝宣佈「暫時休息」</title>
+      <description>&lt;div class="content"&gt;
+                                                                    
+                                                        &lt;p&gt;&lt;span style="color:#000000"&gt;網易科技獲悉，字節跳動豆包大模型視覺多模態生成方向負責人楊建朝於 7 月 17 日上午在公司內部宣佈「暫時休息」，相關工作已完成交接。&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;span style="color:#000000"&gt;據多位接近字節的人士透露，目前仍能在字節內部系統中查到楊建朝的信息。消息人士稱，楊建朝的工作將由周暢（花名「時光」）接手。目前，周暢所在架構仍為「多模態交互與世界模型」部門，向吳永輝彙報。&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;span style="color:#000000"&gt;關於此次人事變動的原因，有知情人士向網易科技表示為「家庭因素」，此前也有傳言稱其因無法兼顧北美與國內的工作節奏，長期處於高強度壓力下，身心俱疲，也有版本稱其為「提前退休」。&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;span style="color:#000000"&gt;實際上，早前就有楊建朝計劃「休息」的傳聞，而選擇在此時正式官宣，消息人士表示可能是考慮到上半年績效考核剛剛結束，為下半年重新安排工作提供空間。&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;img height="323" src="https://oscimg.oschina.net/oscnet/up-e084d80744b14ca7360272b901a726c9179.png" width="500" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;span style="color:#000000"&gt;網易科技瞭解到，Seed 視覺模型研究團隊，辦公地點分佈在北美聖何塞、新加坡和中國多個城市，涵蓋圖片生成、視頻生成及視覺模型基礎研究等方向。&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;span style="color:#000000"&gt;自 2025 年 2 月谷歌 DeepMind 研究副總裁吳永輝加入字節、擔任 Seed 基礎研究負責人以來，Seed 內部的組織與權責結構便發生了一系列深層調整。&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;span style="color:#000000"&gt;在大模型競爭進入深水區的背景下，核心技術負責人的異動，令外界對字節內部 AI 技術路線的穩定性產生更多關注。不過，也有知情人士表示，字節在內部多次強調對基礎研究的長期投入不會動搖。&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;span style="color:#000000"&gt;楊建朝是字節 AI 體系內公認的「技術大牛」。2006 年，他曾獲得中國科學技術大學郭沫若獎學金，後赴美深造，師從「計算機視覺之父」Thomas Huang（黃煦濤），在伊利諾伊大學香檳分校完成博士後研究。他曾在 Adobe、Snapchat 等公司從事視覺算法研究，2018 年加入字節跳動 AI Lab 任研發總監，後負責智能創作團隊，2023 年起帶領 Seed 視覺部門。&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;span style="color:#000000"&gt;接任者周暢同樣是國內技術領域的重要人物。本科畢業於復旦大學，博士就讀於北京大學，曾擔任阿里巴巴通義千問大模型的技術負責人，主導開發了 2021 年發佈的 M6 多模態預訓練模型。這是阿里與清華聯合推出的中文語境下最大規模 AI 模型，被視為阿里大模型戰略的重要里程碑。&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;span style="color:#000000"&gt;2025 年 7 月，周暢從阿里離職，引發廣泛猜測，曾一度傳出其將創業的消息。最終據多方確認，他選擇加入字節跳動，加入 Seed 團隊。&lt;/span&gt;&lt;/p&gt;
+                                                                                &lt;/div&gt;
+                                                                            </description>
+      <link>https://www.oschina.net/news/360974</link>
+      <guid isPermaLink="false">https://www.oschina.net/news/360974</guid>
+      <pubDate>Thu, 17 Jul 2025 03:14:00 GMT</pubDate>
+      <author>來源: OSCHINA</author>
+    </item>
+    <item>
+      <title>OpenAI o1 核心貢獻者把 AI 定義為「第四種槓桿」</title>
+      <description>&lt;div class="content"&gt;
+                                                                    
+                                                        &lt;p&gt;近期，前 OpenAI 研究員 Hyung Won Chung 在離職消息曝光後，首次系統性地&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fx.com%2Fhwchung27%2Fstatus%2F1945355238187393257" target="_blank"&gt;分享了他對 AI 的長期思考&lt;/a&gt;，塑造了一個新的想法：「AI 槓桿機制」。&lt;/p&gt; 
+&lt;p&gt;&lt;img src="https://static.oschina.net/uploads/space/2025/0718/111013_yM8G_2720166.png" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p&gt;在傳統經濟學裏，人類只擁有三種槓桿：&lt;/p&gt; 
+&lt;ol&gt; 
+ &lt;li&gt; &lt;p&gt;人力槓桿：讓別人替你幹活。&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;資本槓桿：讓錢替你生錢。&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;代碼槓桿：讓軟件替你規模化。&lt;/p&gt; &lt;/li&gt; 
+&lt;/ol&gt; 
+&lt;p&gt;Hyung Won Chung 認為，&lt;strong&gt;AI 正在成為第四種槓桿&lt;/strong&gt;，具備前三者從未同時擁有的三大特性：&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt; &lt;p&gt;&lt;strong&gt;組合性&lt;/strong&gt;——多個 AI Agent 可以任意拼接，形成「複合槓桿」；&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;&lt;strong&gt;可擴展性&lt;/strong&gt;——複製 1 萬份拷貝的邊際成本趨近於零；&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;&lt;strong&gt;自治性&lt;/strong&gt;——Agent 可以自主規劃、執行、糾錯，甚至自我複製。&lt;/p&gt; &lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;p&gt;因此，AI 槓桿的「放大係數」遠超傳統槓桿：&lt;/p&gt; 
+&lt;blockquote&gt; 
+ &lt;p&gt;1 個 Agent ≈ 1 名員工；&lt;br&gt; 10 個 Agent ≠ 10 倍成本，而是 10 倍產出且零額外協調開銷。&lt;/p&gt; 
+&lt;/blockquote&gt; 
+&lt;p&gt;在 Chung 看來，人工智能並不僅僅是一種工具，而是一種史無前例的「槓桿機制」——可以以極低的輸入，撬動巨大的價值輸出，從個人到文明層面，全面重塑創造力的來源。&lt;/p&gt; 
+&lt;p&gt;另外，Chung 還提出了一個設問：「如果把整個人類文明看作一個系統，它的目標是什麼？」他的答案是：持續發現新知識，也就是科學進步。&lt;/p&gt; 
+&lt;p&gt;在他構想中，AI 不僅是個工具，更是連接人類知識尖峯的殼層。今天的科學知識被分佈在不同領域、不同學者之間，彼此割裂，合作成本極高。而 AI 能將這些高維孤島串聯起來，像細菌的質粒一樣，進行「知識的水平基因轉移」。&lt;/p&gt;
+                                                                                &lt;/div&gt;
+                                                                            </description>
+      <link>https://www.oschina.net/news/360973</link>
+      <guid isPermaLink="false">https://www.oschina.net/news/360973</guid>
+      <pubDate>Thu, 17 Jul 2025 03:10:00 GMT</pubDate>
+      <author>來源: OSCHINA</author>
+    </item>
+    <item>
+      <title>社區搜索離線回溯系統設計：架構、挑戰與性能優化</title>
+      <description>&lt;div class="content"&gt;
+                                                                                                                    
+                                                                                                                                                    &lt;span id="OSC_h1_1"&gt;&lt;/span&gt; 
+&lt;h1&gt;一、項目背景&lt;/h1&gt; 
+&lt;p&gt;&lt;span style="color:#3e3e3e"&gt;在社區場景中，我們積累了豐富的用户互動數據。這些歷史互動信息對 CTR/CVR 預估建模具有重要參考價值，用户的每次互動都反映了其特定維度的偏好特徵。當前，已在多個業務實踐中驗證，基於用户歷史互動特徵進行未來行為預測是有效的。用户互動序列越長，包含的偏好特徵就越豐富，但同時也帶來了更大的技術挑戰。&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;span style="color:#3e3e3e"&gt;目前社區搜索領域已經在序列建模方向取得了一些應用成果，顯著提升了搜索效率，但在該方向上仍有優化空間，主要體現在：&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;span style="color:#3e3e3e"&gt;&lt;strong&gt;算法精排模型現狀：&lt;/strong&gt;長週期的用户互動特徵尚未被充分利用，現有模型僅使用了基礎標識信息，泛化能力有待提升。我們計劃引入 SIM 方案來增強個性化序列建模能力，推動搜索效率提升。&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;span style="color:#3e3e3e"&gt;&lt;strong&gt;迭代效率優化：&lt;/strong&gt;當前互動特徵優化依賴於實時數據採集鏈路，新增特徵需要長時間數據積累（2 個月以上）才能驗證效果。我們計劃建設用户特徵離線回溯服務，降低算法優化對實時數據的依賴，加快項目迭代速度，提高實驗效率。&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;span style="color:#3e3e3e"&gt;離線回溯主要解決迭代效率問題，本文重點探討在社區搜索場景下開發離線回溯，並做離線一致性驗證過程中發現的一些問題，針對這些問題做了哪些優化措施及思考。&lt;/span&gt;&lt;/p&gt; 
+&lt;span id="OSC_h1_2"&gt;&lt;/span&gt; 
+&lt;h1&gt;二、架構設計&lt;/h1&gt; 
+&lt;span id="OSC_h2_3"&gt;&lt;/span&gt; 
+&lt;h2&gt;&lt;span style="color:#000000"&gt;全局架構&lt;/span&gt;&lt;/h2&gt; 
+&lt;p&gt;&lt;span style="color:#000000"&gt;&lt;strong&gt;序列產出流程鏈路&lt;/strong&gt;&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;u&gt;&lt;span style="color:#000000"&gt;&lt;strong&gt;※ &amp;nbsp;在線流程鏈路&lt;/strong&gt;&lt;/span&gt;&lt;/u&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;span style="color:#3e3e3e"&gt;在線鏈路通過實時數倉提供全量表和實時流兩種數據源，在特徵平台下構建 1w 長度的實時用户畫像，召回階段 SP，將畫像傳給 SIM 引擎，在引擎中完成對用户序列 hard/soft search 等異步加工，最終傳給 Nuroe，完成在線序列 dump 落表。&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;u&gt;&lt;span style="color:#000000"&gt;&lt;strong&gt;※ &amp;nbsp;離線流程鏈路&lt;/strong&gt;&lt;/span&gt;&lt;/u&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;span style="color:#3e3e3e"&gt;離線鏈路通過仿真在線的處理邏輯，利用請求 pv 表和離線數倉提供的 10w 原始序列，模擬在線序列 10w-&amp;gt;1w-&amp;gt;100 的過程，最終產出離線回溯序列。&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;span style="color:#3e3e3e"&gt;最終通過在線/離線全鏈路數據的一致性驗證，確認全流程數據無 diff（或 diff 可解釋），序列流程可靠性達標，可交付算法團隊用於模型訓練。&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;img src="https://oscimg.oschina.net/oscnet//5a43670aaaf2d538a4f675c1683bcd08.png" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;span style="color:#a0a0a0"&gt;序列產出全局架構&lt;/span&gt;&lt;/p&gt; 
+&lt;span id="OSC_h2_4"&gt;&lt;/span&gt; 
+&lt;h2&gt;&lt;span style="color:#000000"&gt;在線架構&lt;/span&gt;&lt;/h2&gt; 
+&lt;p&gt;&lt;span style="color:#3e3e3e"&gt;在線側抽象 GSU 模塊支持社區搜索和增長搜索等多場景複用。該模塊在 QP（Query Processing）階段後，通過外調基於 DSearch 構建的 SIM 引擎進行用户序列處理。SIM 引擎內完成 hard/soft search 等用户序列加工，在精排階段前獲取 topk 序列特徵及對應 sideinfo，並將其透傳給精排模塊，最終實現用户序列的落表存儲。&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;img src="https://oscimg.oschina.net/oscnet//5d0ecb14f2c2907387d1c1d0c8aae445.png" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;span style="color:#a0a0a0"&gt;在線通用 GSU 模塊&lt;/span&gt;&lt;/p&gt; 
+&lt;span id="OSC_h2_5"&gt;&lt;/span&gt; 
+&lt;h2&gt;&lt;span style="color:#000000"&gt;離線鏈路&lt;/span&gt;&lt;/h2&gt; 
+&lt;p&gt;&lt;span style="color:#000000"&gt;&lt;strong&gt;數據產出三階段&lt;/strong&gt;&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;u&gt;&lt;span style="color:#000000"&gt;&lt;strong&gt;※ &amp;nbsp;原始序列預處理階段&lt;/strong&gt;&lt;/span&gt;&lt;/u&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;span style="color:#3e3e3e"&gt;通過收集一個用户，按照 [月初 ts+1w, &amp;nbsp;月末 ts] 將序列進行預處理。&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;u&gt;&lt;span style="color:#000000"&gt;&lt;strong&gt;※ &amp;nbsp;pv 表合併序列表階段&lt;/strong&gt;&lt;/span&gt;&lt;/u&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;span style="color:#3e3e3e"&gt;按照 user_id 將畫像和 pv 表合併，將每個 request_id 的數據按照 request_time 過濾處理。&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;u&gt;&lt;span style="color:#000000"&gt;&lt;strong&gt;※ &amp;nbsp;用户序列加工階段&lt;/strong&gt;&lt;/span&gt;&lt;/u&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;span style="color:#3e3e3e"&gt;完成 hard/soft search 等用户序列加工邏輯處理，包括對長期序列按照相似度過濾，對短期序列按照時間過濾等。&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;img src="https://oscimg.oschina.net/oscnet//11339d8e2dbad7a6c7820310e64eb360.png" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;span style="color:#a0a0a0"&gt;離線回溯鏈路圖&lt;/span&gt;&lt;/p&gt; 
+&lt;span id="OSC_h1_6"&gt;&lt;/span&gt; 
+&lt;h1&gt;三、問題與挑戰&lt;/h1&gt; 
+&lt;p&gt;&lt;span style="color:#3e3e3e"&gt;在離線回溯開發階段，主要面臨以下挑戰。&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;span style="color:#000000"&gt;&lt;strong&gt;挑戰&lt;/strong&gt;&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;u&gt;&lt;span style="color:#000000"&gt;&lt;strong&gt;※ &amp;nbsp;任務執行問題&lt;/strong&gt;&lt;/span&gt;&lt;/u&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;span style="color:#3e3e3e"&gt;任務頻繁失敗或執行效率低下，數據規模達單表數 TB 級別，且序列分佈不均，部分長尾用户序列過長導致嚴重數據傾斜；&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;u&gt;&lt;span style="color:#000000"&gt;&lt;strong&gt;※ &amp;nbsp;一致性校驗階段問題&lt;/strong&gt;&lt;/span&gt;&lt;/u&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;span style="color:#3e3e3e"&gt;異常類型複雜多樣，累計發現 25+種異常原因，導致數據 diff 形態複雜，一致性原因分析困難。修復鏈路冗長，涉及問題修復、在線索引重建、數據累計和離線數據回補，單次修復週期約需一週。&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;img src="https://oscimg.oschina.net/oscnet//868464bb108cf35c3b3a1de8196faf23.png" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;span id="OSC_h1_7"&gt;&lt;/span&gt; 
+&lt;h1&gt;四、從踩雷到填坑的實戰記錄&lt;/h1&gt; 
+&lt;span id="OSC_h2_8"&gt;&lt;/span&gt; 
+&lt;h2&gt;&lt;span style="color:#000000"&gt;離線任務運行耗時長的問題&lt;/span&gt;&lt;/h2&gt; 
+&lt;p&gt;&lt;span style="color:#000000"&gt;&lt;strong&gt;問題説明&lt;/strong&gt;&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;span style="color:#3e3e3e"&gt;初步方案運行時存在兩大問題：&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;span style="color:#3e3e3e"&gt;1.任務處理延遲顯著，單個任務運行 3-8 小時。&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;span style="color:#3e3e3e"&gt;2.任務處理無法運行成功頻繁 OOM。&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;img src="https://oscimg.oschina.net/oscnet//f18ed0476e47272382816f78e6bac457.png" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;span style="color:#a0a0a0"&gt;任務執行慢&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;img src="https://oscimg.oschina.net/oscnet//190795e2a1b4e19f24bcd7a80bc0f1d0.png" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;span style="color:#a0a0a0"&gt;任務頻繁 OOM&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;span style="color:#000000"&gt;&lt;strong&gt;解決方案&lt;/strong&gt;&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;u&gt;&lt;span style="color:#000000"&gt;&lt;strong&gt;※ 方案優化&lt;/strong&gt;&lt;/span&gt;&lt;/u&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;span style="color:#3e3e3e"&gt;任務執行慢主要是有長尾用户打滿 10w 長序列，出現數據傾斜問題甚至 oom。&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;span style="color:#3e3e3e"&gt;通過對鏈路優化，先將原始 10w 長序列做預處理，由於回溯一般按照一個月跑數據，可以利用 pv 表先統計有哪些有效用户，對有效用户按照 【月初 ts+1w, &amp;nbsp;月末 ts】截取原始序列，獲取相對較短的預處理隊列。&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;img src="https://oscimg.oschina.net/oscnet//e803521ebf9b49c3ded61c3cab526b74.png" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;span style="color:#a0a0a0"&gt;任務傾斜&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;img src="https://oscimg.oschina.net/oscnet//02626be3811dec82df6178b5a78c6c6d.png" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;span style="color:#a0a0a0"&gt;原始序列預處理&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;u&gt;&lt;span style="color:#000000"&gt;&lt;strong&gt;※ &amp;nbsp;ODPS 任務性能調優&lt;/strong&gt;&lt;/span&gt;&lt;/u&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;span style="color:#3e3e3e"&gt;a. 按照&amp;nbsp;&lt;strong&gt;CPU :&amp;nbsp;MEM&amp;nbsp;=&amp;nbsp;&amp;nbsp;1 : 4 調整計算和存儲的比例，可以最大化利用資源，因為我們申請的資源池都是按照這個固定比例來的。&lt;/strong&gt;&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;img src="https://oscimg.oschina.net/oscnet//d41848eb7dafa12617af771a7b4550c7.png" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;span style="color:#a0a0a0"&gt;資源沒有最大化使用&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;span style="color:#3e3e3e"&gt;b. 在固化計算/存儲比例參數後，可以通過 xxx.split.size 和 xxx.num 共同調優。xxx.split.size 可以實現輸入分片大小，減少 oom 機會。xxx.num 可以實現擴大併發數，加快任務的執行（xxx 代表 mapper、reducer、joiner 幾個階段）。&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;img src="https://oscimg.oschina.net/oscnet//7cd197902a7b9b9cee16229cb8a8cd71.png" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;span style="color:#a0a0a0"&gt;分批次完成階段處理&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;span style="color:#3e3e3e"&gt;c. 減少自定義&lt;strong&gt;UDF&lt;/strong&gt;使用。在離線任務中有部分邏輯比較複雜，可能需要數據平鋪、聚合、再內置函數等。最好的使用原則是內置函數&amp;gt;「數據平鋪+內置函數」&amp;gt;自定義&lt;strong&gt;UDF&lt;/strong&gt;。由於自定義&lt;strong&gt;UDF&lt;/strong&gt;運行在 Java 沙箱環境中，需通過多層抽象層 （序列化/反序列化、類型轉換），測試發現大數據量處理過程性能相對最差。&lt;/span&gt;&lt;/p&gt; 
+&lt;span id="OSC_h2_9"&gt;&lt;/span&gt; 
+&lt;h2&gt;&lt;span style="color:#000000"&gt;一致性驗證歸因難的問題&lt;/span&gt;&lt;/h2&gt; 
+&lt;p&gt;&lt;span style="color:#000000"&gt;&lt;strong&gt;問題説明&lt;/strong&gt;&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;span style="color:#3e3e3e"&gt;在線/離線全鏈路數據的一致性驗證過程中，由於按照天級全量 dump 序列，需要驗證 15 個序列，每個序列 diff 量在 10w～50w 不等，這種多序列大規模的 diff 問題人工核驗效率太慢。&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;span style="color:#000000"&gt;&lt;strong&gt;解決方案&lt;/strong&gt;&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;u&gt;&lt;span style="color:#000000"&gt;&lt;strong&gt;※ &amp;nbsp;整體 diff 率分析&lt;/strong&gt;&lt;/span&gt;&lt;/u&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;span style="color:#3e3e3e"&gt;通過統計全序列 diff 率並聚類分析高 diff 樣本，定位共性根因，實現以點帶面的高效問題修復。&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;u&gt;&lt;span style="color:#000000"&gt;&lt;strong&gt;※ &amp;nbsp;diff 歸因工具&lt;/strong&gt;&lt;/span&gt;&lt;/u&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;span style="color:#3e3e3e"&gt;通過建立數據 diff 的歸因分類體系（如排序不穩定、特徵穿越等），並標註標準化歸因碼，實現對 diff 問題的快速定位與根因分析，顯著提升排查效率。&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;img src="https://oscimg.oschina.net/oscnet//bfa7752adc3c9bec1d33d01dc53a525d.png" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;span style="color:#a0a0a0"&gt;歸因碼分類&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;u&gt;&lt;span style="color:#000000"&gt;&lt;strong&gt;※ &amp;nbsp;重複度統計工具&lt;/strong&gt;&lt;/span&gt;&lt;/u&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;span style="color:#3e3e3e"&gt;由於在線受當時環境的影響，離線回溯無法 100% 復現原始序列，一致性差異在所難免。我們通過聚焦主要特徵並統計其重複度，結合「diff 率+重複度」雙維度評估方案，為算法決策提供量化依據，有效減少無效迭代。&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;img src="https://oscimg.oschina.net/oscnet//372dbe821f76c8f1f2373c21db4a6244.jpeg" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;span style="color:#a0a0a0"&gt;重複度統計&lt;/span&gt;&lt;/p&gt; 
+&lt;span id="OSC_h2_10"&gt;&lt;/span&gt; 
+&lt;h2&gt;&lt;span style="color:#000000"&gt;現狀梳理不足的問題&lt;/span&gt;&lt;/h2&gt; 
+&lt;p&gt;&lt;span style="color:#000000"&gt;&lt;strong&gt;問題説明&lt;/strong&gt;&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;span style="color:#3e3e3e"&gt;由於前期對業務場景理解不足（如用户行為模式、異常數據、測試賬户等），部分潛在問題未在開發階段充分識別，直至數據一致性驗證時才集中暴露，導致需緊急調整數據處理邏輯。由於單次全鏈路修復需 3-5 天，進而對項目進度造成一定延遲。&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;問題 case1：滑動圖片：離線回溯數據分析時發現序列中大量重複且佔比很高，後確定為滑動圖片行為&lt;/p&gt; 
+&lt;p&gt;解決方案：對滑動圖片操作連續多次修改為只記錄第一次&lt;/p&gt; 
+&lt;p&gt;問題 case2：合併下單：測試購買序列有 id 重複，實時數倉反饋購買有合併下單的情況，ts 會相同&lt;/p&gt; 
+&lt;p&gt;解決方案：為了保持離線回刷數據穩定性，將序列按照 ts/id 雙維度排序&lt;/p&gt; 
+&lt;p&gt;問題 case3：異常數據：有行為時間戳超過當前時間的異常數據&lt;/p&gt; 
+&lt;p&gt;解決方案：數倉對異常數據丟棄&lt;/p&gt; 
+&lt;p&gt;問題 case4：測試賬户：數據不規範導致數據 diff&lt;/p&gt; 
+&lt;p&gt;解決方案：測試賬户數據忽略&lt;/p&gt; 
+&lt;p&gt;問題 case5：query 問題：取歸一化後還是原始的 query、空字符串問題&lt;/p&gt; 
+&lt;p&gt;解決方案：query 為空過濾修復&lt;/p&gt; 
+&lt;p&gt;問題 case6：數據穿越問題：畫像原始數據 request_time 取 neuron 時間導致&lt;/p&gt; 
+&lt;p&gt;&lt;img src="https://oscimg.oschina.net/oscnet//56d1c5feb7fd51e49bce353209d2e663.png" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p&gt;&amp;nbsp;&lt;/p&gt; 
+&lt;p&gt;解決方案：在線修改 request_time 獲取時間，離線回溯前置 3s&lt;/p&gt; 
+&lt;span id="OSC_h2_11"&gt;&lt;/span&gt; 
+&lt;h2&gt;&lt;span style="color:#000000"&gt;修復週期長的問題&lt;/span&gt;&lt;/h2&gt; 
+&lt;p&gt;&lt;span style="color:#000000"&gt;&lt;strong&gt;問題説明&lt;/strong&gt;&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;span style="color:#3e3e3e"&gt;數據問題的完整修複流程包含三個階段，全流程通常需要 5-7 個工作日完成。&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;img src="https://oscimg.oschina.net/oscnet//17e2b0e9b943517817ed845680b945ea.png" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;u&gt;&lt;span style="color:#000000"&gt;&lt;strong&gt;※ &amp;nbsp;Diff 歸因階段（1-3 日）&lt;/strong&gt;&lt;/span&gt;&lt;/u&gt;&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt; &lt;p&gt;需要定位數據差異的根本原因，區分是數據異常、處理邏輯錯誤還是業務規則變更導致&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;涉及多團隊協作排查（數據/算法/工程）&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;複雜問題可能需要多次驗證&lt;/p&gt; &lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;p&gt;&lt;u&gt;&lt;span style="color:#000000"&gt;&lt;strong&gt;※ &amp;nbsp;問題修復階段（1-3 日）&lt;/strong&gt;&lt;/span&gt;&lt;/u&gt;&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt; &lt;p&gt;根據歸因結果修改代碼邏輯或數據處理流程&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;可能涉及歷史數據修正&lt;/p&gt; &lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;p&gt;&lt;u&gt;&lt;span style="color:#000000"&gt;&lt;strong&gt;※ &amp;nbsp;數據迭代階段（2-3 日）&lt;/strong&gt;&lt;/span&gt;&lt;/u&gt;&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt; &lt;p&gt;在線畫像引擎部署新數據&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;累計在線數據&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;離線畫像回補數據&lt;/p&gt; &lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;p&gt;&lt;span style="color:#000000"&gt;&lt;strong&gt;解決方案&lt;/strong&gt;&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;span style="color:#3e3e3e"&gt;受限於初期人力投入，我們在當前方案基礎上通過多輪版本迭代逐步完成數據一致性驗證。後續將通過工具升級（數據邊界劃分+自動化校驗框架）和數據採樣策略，實現驗證到修復的階躍式提升。&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;u&gt;&lt;span style="color:#000000"&gt;&lt;strong&gt;※ &amp;nbsp;數據邊界劃分&lt;/strong&gt;&lt;/span&gt;&lt;/u&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;span style="color:#3e3e3e"&gt;現行方案離線鏈路都是算法工程來維護，排查鏈路太長，需要數據源有穩定的保障機制。後續將劃分數據邊界，各團隊維護並保障數據模塊在離線的一致性。&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;img src="https://oscimg.oschina.net/oscnet//d8954fead9ed0a6fe71a6206b53da6e3.png" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;span style="color:#a0a0a0"&gt;數據邊界劃分&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;u&gt;&lt;span style="color:#000000"&gt;&lt;strong&gt;※ &amp;nbsp;全鏈路採樣方案減少驗證時間&lt;/strong&gt;&lt;/span&gt;&lt;/u&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;span style="color:#3e3e3e"&gt;離在線一致性驗證方面耗時較長，主要在於數據量太大，在數倉構建、特徵平台構建、累計數據等流程消耗大量的時間，如果全鏈路先針對少量用户走通全鏈路，能快速驗證流程可行性。&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;img src="https://oscimg.oschina.net/oscnet//0069ba0e0a9bd6833a6ec35cda0e6dc5.png" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;span style="color:#a0a0a0"&gt;採樣方案&lt;/span&gt;&lt;/p&gt; 
+&lt;span id="OSC_h2_12"&gt;&lt;/span&gt; 
+&lt;h2&gt;&lt;span style="color:#000000"&gt;平台基建的問題&lt;/span&gt;&lt;/h2&gt; 
+&lt;p&gt;&lt;span style="color:#000000"&gt;&lt;strong&gt;問題説明&lt;/strong&gt;&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;span style="color:#3e3e3e"&gt;首次構建序列建模體系，由於缺乏標準化基礎設施，被迫採用煙囱式開發模式，導致多鏈路驗證複雜且問題頻發。&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;span style="color:#000000"&gt;&lt;strong&gt;平台待建能力&lt;/strong&gt;&lt;/span&gt;&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt; &lt;p&gt;特徵平台排序功能不足，只支持單一字段排序，不支持多字段聯合排序，導致排序結果不穩定。&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;特徵平台過濾功能限制，僅支持毫秒級時間戳過濾。&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;索引構建效率低,個性化行為序列表數據量過大（3TB），導致索引構建壓力大，初始構建耗時約 28 小時。升級至 FS3 集羣後，構建時間降至 12 小時左右,最短至 7 小時，但仍未達理想效率。&lt;/p&gt; &lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;span id="OSC_h1_13"&gt;&lt;/span&gt; 
+&lt;h1&gt;五、展望與總結&lt;/h1&gt; 
+&lt;p&gt;&lt;span style="color:#3e3e3e"&gt;後續我們將深入研究行業內的優秀解決方案，並結合我們的業務特性進行有針對性的優化。&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;span style="color:#3e3e3e"&gt;例如，我們會嘗試實施離在線數據與邏輯一致性方案，這種方案包括以下幾個特點：&lt;/span&gt;&lt;/p&gt; 
+&lt;ol&gt; 
+ &lt;li&gt; &lt;p&gt;數據一致性：離線與在線共用同一套原始畫像，能夠解決數據源不一致導致的差異問題。&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;邏輯一致性：離線與在線都調用 GSU 服務，實現統一的序列邏輯處理，避免邏輯差異。&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;技術架構複雜性：新方案帶來了新的技術挑戰，比如在線處理 10 萬序列可能引發的 I/O 問題、離在線的 sim 引擎採用存算一體和存算分離架構。&lt;/p&gt; &lt;/li&gt; 
+&lt;/ol&gt; 
+&lt;p&gt;&lt;span style="color:#3e3e3e"&gt;綜上，沒有絕對完美的技術方案，最終都是在成本、性能和效率多方面權衡後的相對最優解。&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;img src="https://oscimg.oschina.net/oscnet//31bf9f3c1ef93545432b5e221bd97fd5.png" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;span style="color:#a0a0a0"&gt;離在線數據與邏輯一致性方案&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;span style="color:#3e3e3e"&gt;本次特徵回溯雖面臨性能與數據對齊等挑戰，但團隊通過攻堅積累了經驗，為特徵平台後續特徵回溯工具化打下基礎，也期待能為後續算法模型迭代帶來質的飛躍。&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&amp;nbsp;&lt;/p&gt; 
+&lt;p&gt;&lt;strong&gt;往期回顧&lt;/strong&gt;&lt;/p&gt; 
+&lt;p&gt;&amp;nbsp;&lt;/p&gt; 
+&lt;p&gt;&lt;span style="color:#6a6a6a"&gt;1.從 「卡頓」 到 「秒開」：外投首屏性能優化的 6 個實戰錦囊｜得物技術&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;span style="color:#6a6a6a"&gt;2.從 Rust 模塊化探索到 DLB 2.0 實踐｜得物技術&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;span style="color:#6a6a6a"&gt;3.eBPF 助力 NAS 分鐘級別 Pod 實例溯源｜得物技術&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;span style="color:#6a6a6a"&gt;4.正品庫拍照 PWA 應用的實現與性能優化｜得物技術&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;span style="color:#6a6a6a"&gt;5.匯金資損防控體系建設及實踐 | 得物技術&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&amp;nbsp;&lt;/p&gt; 
+&lt;p&gt;&lt;span style="color:#3e3e3e"&gt;文 / 野雨&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&amp;nbsp;&lt;/p&gt; 
+&lt;p&gt;&lt;span style="color:#3e3e3e"&gt;關注得物技術，每週更新技術乾貨&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;span style="color:#3e3e3e"&gt;要是覺得文章對你有幫助的話，歡迎評論轉發點贊～&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;span style="color:#3e3e3e"&gt;未經得物技術許可嚴禁轉載，否則依法追究法律責任。&lt;/span&gt;&lt;/p&gt;
+                                                                                    &lt;/div&gt;
+                                                                            </description>
+      <link>https://my.oschina.net/u/5783135/blog/18684911</link>
+      <guid isPermaLink="false">https://my.oschina.net/u/5783135/blog/18684911</guid>
+      <pubDate>Thu, 17 Jul 2025 02:55:00 GMT</pubDate>
+      <author>原創</author>
+    </item>
     <item>
       <title>OpenAI 發佈 ChatGPT agent</title>
       <description>&lt;div class="content"&gt;
@@ -22,22 +602,25 @@
                                                                             </description>
       <link>https://www.oschina.net/news/360965/openai-chatgpt-agent</link>
       <guid isPermaLink="false">https://www.oschina.net/news/360965/openai-chatgpt-agent</guid>
-      <pubDate>Fri, 18 Jul 2025 02:15:38 GMT</pubDate>
+      <pubDate>Thu, 17 Jul 2025 02:15:00 GMT</pubDate>
       <author>來源: OSCHINA</author>
     </item>
     <item>
       <title>​特朗普宣佈 900 億美元 AI 中心投資計劃，谷歌和黑石集團領投</title>
       <description>&lt;div class="content"&gt;
                                                                     
-                                                        ********************************************************************************************************************
-    ********************************************************************************************************************
-    ********************************************************************************************************************
-    ********************************************************************************************************************
+                                                        &lt;p&gt;&lt;span style="color:#000000"&gt;在賓夕法尼亞州舉辦的首屆能源與創新峯會上，美國總統特朗普&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fwww.whitehouse.gov%2Farticles%2F2025%2F07%2Fpresident-trump-solidifies-u-s-position-as-leader-in-ai%2F" target="_blank"&gt;宣佈&lt;/a&gt;了一項重磅投資計劃，總額超過 900 億美元，旨在將賓夕法尼亞州打造成美國人工智能的核心地帶。此次投資不僅涵蓋數據中心的建設，還包括能源基礎設施的提升及人工智能相關人才的培訓。&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;img height="381" src="https://oscimg.oschina.net/oscnet/up-4901dd844e39e6fc8f183bf10024f52004c.png" width="500" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;span style="color:#000000"&gt;在這一投資計劃中，谷歌作為主要參與者，將投資於建設大型數據中心，並已與當地的水電站簽署了一項為期 20 年的供電協議。此外，黑石集團也表示將投資 250 億美元，與公用事業公司 PPL 合作，共同在賓夕法尼亞州東北部建設能源和數據基礎設施。這些項目預計將為當地創造數千個就業機會。&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;span style="color:#000000"&gt;核心參與者 CoreWeave 也宣佈將在蘭卡斯特投資 60 億美元，建立一個最高可達 300 兆瓦的數據中心，該中心的建設預計將創造 600 個建築工人和 175 個全職運營崗位。此項投資計劃不僅有助於滿足日益增長的數據需求，還將大幅推動當地經濟的發展。&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;span style="color:#000000"&gt;此次峯會還強調了 「能源安全人工智能」 的理念，賓夕法尼亞州正被重新定位為數據中心能源的引擎，許多項目如核電升級和天然氣發電廠的改造正在進行中。這些舉措將為賓夕法尼亞州的電力供應注入新的活力。&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;span style="color:#000000"&gt;各大企業也紛紛響應這一投資計劃。例如，黑石集團宣佈將投資 250 億美元開發數據中心與能源基礎設施，預計將創造 6000 個建築工作崗位和 3000 個新的永久性崗位。而布魯克菲爾德則與谷歌達成了 30 億美元的協議，重新啓動兩個水電設施，預計將保護 300 個新工作崗位。&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;span style="color:#000000"&gt;其他企業如安橋、Equinor 和第一能源公司等也紛紛參與投資，進一步擴大賓夕法尼亞州在能源和人工智能領域的影響力。特朗普的這一計劃，不僅將為當地帶來豐厚的經濟收益，也將推動美國在人工智能領域的發展。&lt;/span&gt;&lt;/p&gt;
                                                                                 &lt;/div&gt;
                                                                             </description>
       <link>https://www.oschina.net/news/360962</link>
       <guid isPermaLink="false">https://www.oschina.net/news/360962</guid>
-      <pubDate>Fri, 18 Jul 2025 02:08:38 GMT</pubDate>
+      <pubDate>Thu, 17 Jul 2025 02:07:00 GMT</pubDate>
       <author>來源: OSCHINA</author>
     </item>
     <item>
@@ -201,329 +784,6 @@
       <link>https://www.oschina.net/news/360844</link>
       <guid isPermaLink="false">https://www.oschina.net/news/360844</guid>
       <pubDate>Wed, 16 Jul 2025 06:08:00 GMT</pubDate>
-      <author>來源: OSCHINA</author>
-    </item>
-    <item>
-      <title>Crabc 助力接口開發效率</title>
-      <description>&lt;div class="content"&gt;
-                                                                    
-                                                        &lt;p&gt;&lt;strong&gt;為什麼企業需要更敏捷的 API 開發方式？&lt;/strong&gt;&lt;/p&gt; 
-&lt;p&gt;在數字化轉型浪潮下，數據已成為企業核心資產，而 API 是連接數據與業務的關鍵橋樑。然而，傳統 API 開發面臨諸多挑戰：&lt;br&gt; ✅&amp;nbsp;&lt;strong&gt;開發週期長&lt;/strong&gt;：從需求評審、編碼、測試到上線，流程繁瑣&lt;br&gt; ✅&amp;nbsp;&lt;strong&gt;技術門檻高&lt;/strong&gt;：需要前後端協作，依賴專業開發人員&lt;br&gt; ✅&amp;nbsp;&lt;strong&gt;維護成本大&lt;/strong&gt;：接口變更需重新部署，靈活性不足&lt;/p&gt; 
-&lt;h2&gt;&lt;strong&gt;crabc：SQL 秒變 API，讓數據服務觸手可及&lt;/strong&gt;&lt;/h2&gt; 
-&lt;p&gt;Crabc 是一款開源的&lt;strong&gt;API 接口在線開發平台&lt;/strong&gt;，只需編寫 SQL，即可自動生成標準化 REST API，極大提升數據服務的開發效率。&lt;/p&gt; 
-&lt;h3&gt;&lt;strong&gt;💡 核心優勢&lt;/strong&gt;&lt;/h3&gt; 
-&lt;p&gt;✔&amp;nbsp;&lt;strong&gt;零代碼開發&lt;/strong&gt;：無需編寫 Java 代碼，SQL 即 API&lt;br&gt; ✔&amp;nbsp;&lt;strong&gt;實時發佈&lt;/strong&gt;：保存即生效，無需等待部署&lt;br&gt; ✔&amp;nbsp;&lt;strong&gt;多數據源支持&lt;/strong&gt;：MySQL、PostgreSQL、Oracle、ES 等主流數據庫&lt;br&gt; ✔&amp;nbsp;&lt;strong&gt;企業級安全&lt;/strong&gt;：權限管控、SQL 防注入、訪問限流&lt;br&gt; ✔&amp;nbsp;&lt;strong&gt;自動文檔&lt;/strong&gt;：一鍵生成 API 文檔，快速接入數據&lt;/p&gt; 
-&lt;hr&gt; 
-&lt;h2&gt;&lt;strong&gt;典型應用場景&lt;/strong&gt;&lt;/h2&gt; 
-&lt;h3&gt;&lt;strong&gt;1. 業務報表 API 化（分鐘級上線）&lt;/strong&gt;&lt;/h3&gt; 
-&lt;p&gt;市場團隊需要實時銷售數據看板？數據分析師寫好 SQL，Crabc 自動生成 API，前端直接調用：&lt;/p&gt; 
-&lt;pre&gt;&lt;code&gt;SELECT region, SUM(sales) as total_sales 
-FROM orders 
-WHERE date = #{data}
-GROUP BY region&lt;/code&gt;&lt;/pre&gt; 
-&lt;p&gt;→&amp;nbsp;&lt;strong&gt;傳統開發 2 天 vs Crabc 5 分鐘&lt;/strong&gt;&lt;/p&gt; 
-&lt;h3&gt;&lt;strong&gt;2. 跨系統數據聚合（告別 ETL 複雜流程）&lt;/strong&gt;&lt;/h3&gt; 
-&lt;p&gt;企業 CRM、ERP、訂單系統數據分散？直接在 Crabc 編寫 JOIN 查詢，生成統一 API：&lt;/p&gt; 
-&lt;pre&gt;&lt;code&gt;SELECT 
-    u.user_id, u.name, 
-    o.last_order_date, 
-    p.payment_balance
-FROM users u
-LEFT JOIN orders o ON u.user_id = o.user_id
-LEFT JOIN payment p ON u.user_id = p.user_id
-WHERE u.user_id = #{user_id}&lt;/code&gt;&lt;/pre&gt; 
-&lt;p&gt;→&amp;nbsp;&lt;strong&gt;無需數據同步，實時獲取關聯數據&lt;/strong&gt;&lt;/p&gt; 
-&lt;h3&gt;&lt;strong&gt;3. 微服務快速搭建&lt;/strong&gt;&lt;/h3&gt; 
-&lt;p&gt;前端需要定製化數據格式？用 Crabc 靈活組合數據，替代部分後端開發工作：&lt;/p&gt; 
-&lt;pre&gt;&lt;code&gt;SELECT 
-    banners, 
-    promotions, 
-    recommended_products
-FROM home_page_data 
-WHERE user_type = #{user_type}&lt;/code&gt;&lt;/pre&gt; 
-&lt;p&gt;→&amp;nbsp;&lt;strong&gt;降低前後端聯調成本，提升迭代速度&lt;/strong&gt;&lt;/p&gt; 
-&lt;hr&gt; 
-&lt;h2&gt;&lt;strong&gt;企業收益&lt;/strong&gt;&lt;/h2&gt; 
-&lt;p&gt;🔹&amp;nbsp;&lt;strong&gt;開發效率提升 80%&lt;/strong&gt;：從"天級"交付到"分鐘級"發佈&lt;br&gt; 🔹&amp;nbsp;&lt;strong&gt;運維成本降低 60%&lt;/strong&gt;：無需管理服務器和代碼&lt;br&gt; 🔹&amp;nbsp;&lt;strong&gt;業務響應更快&lt;/strong&gt;：產品、運營可自主獲取數據&lt;br&gt; 🔹&amp;nbsp;&lt;strong&gt;技術債務減少&lt;/strong&gt;：SQL 維護比代碼更直觀&lt;/p&gt; 
-&lt;hr&gt; 
-&lt;h2&gt;&lt;strong&gt;誰適合使用 Crabc？&lt;/strong&gt;&lt;/h2&gt; 
-&lt;p&gt;👉&amp;nbsp;&lt;strong&gt;IT 部門&lt;/strong&gt;：快速響應業務數據需求，減少重複開發&lt;br&gt; 👉&amp;nbsp;&lt;strong&gt;數據分析團隊&lt;/strong&gt;：自助式 API 發佈，讓數據更易用&lt;br&gt; 👉&amp;nbsp;&lt;strong&gt;產品/業務部門&lt;/strong&gt;：無需依賴開發，直接獲取所需數據&lt;br&gt; 👉&amp;nbsp;&lt;strong&gt;初創公司&lt;/strong&gt;：低成本構建數據服務，聚焦核心業務&lt;/p&gt; 
-&lt;hr&gt; 
-&lt;h2&gt;開源地址&lt;/h2&gt; 
-&lt;p&gt;&lt;img src="https://oscimg.oschina.net/oscnet/up-f5c1529db83d584e7a2e604fc6cf6bdec2e.png" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;ul&gt; 
- &lt;li&gt;開源地址:&amp;nbsp;&lt;a href="https://gitee.com/linebyte/crabc"&gt;crabc-api&lt;/a&gt;&lt;/li&gt; 
- &lt;li&gt;官網地址:&amp;nbsp;&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fwww.crabc.cn%2F" target="_blank"&gt;crabc&lt;/a&gt;&lt;/li&gt; 
-&lt;/ul&gt;
-                                                                                &lt;/div&gt;
-                                                                            </description>
-      <link>https://www.oschina.net/news/360841</link>
-      <guid isPermaLink="false">https://www.oschina.net/news/360841</guid>
-      <pubDate>Wed, 16 Jul 2025 05:51:00 GMT</pubDate>
-      <author>來源: 資訊</author>
-    </item>
-    <item>
-      <title>AI 編程工具 Windsurf 重新上線 Claude Sonnet 4 模型</title>
-      <description>&lt;div class="content"&gt;
-                                                                    
-                                                        &lt;p&gt;AI 編程工具&amp;nbsp;Windsurf&amp;nbsp;&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fx.com%2Fwindsurf_ai%2Fstatus%2F1945599013954490523"&gt;宣佈&lt;/a&gt;，Anthropic 官方支持的 Claude Sonnet 4 模型已在該平台重新上線。&lt;/p&gt; 
-&lt;blockquote&gt; 
- &lt;p&gt;&lt;img alt="" src="https://static.oschina.net/uploads/space/2025/0717/104801_7g3W_2720166.png" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;/blockquote&gt; 
-&lt;p&gt;Pro 和 Teams 用户現在可以使用該模型，在限時折扣期間，每次請求消耗 2 個積分，相當於每月可進行 250 次請求。&lt;/p&gt; 
-&lt;p&gt;就在上個月，Anthropic 在幾乎沒有預先通知的情況下切斷了 Windsurf 的 API 訪問權限。&lt;/p&gt; 
-&lt;p style="color:#333333; margin-left:0; margin-right:0; text-align:left"&gt;&lt;img src="https://static.oschina.net/uploads/space/2025/0604/143502_jh84_2720166.png" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;p style="color:#333333; margin-left:0; margin-right:0; text-align:left"&gt;根據 Windsurf 的聲明，Anthropic 在提前不到一週的通知時間內，切斷了其幾乎所有 Claude 3.x 模型的直接訪問權限 (first-party capacity)，具體涉及的模型包括：&lt;/p&gt; 
-&lt;ul style="list-style-type:disc; margin-left:0; margin-right:0"&gt; 
- &lt;li&gt;Claude 3.5 Sonnet&lt;/li&gt; 
- &lt;li&gt;Claude 3.7 Sonnet&lt;/li&gt; 
- &lt;li&gt;Claude 3.7 Sonnet Thinking&lt;/li&gt; 
-&lt;/ul&gt;
-                                                                                &lt;/div&gt;
-                                                                            </description>
-      <link>https://www.oschina.net/news/360817</link>
-      <guid isPermaLink="false">https://www.oschina.net/news/360817</guid>
-      <pubDate>Wed, 16 Jul 2025 02:51:00 GMT</pubDate>
-      <author>來源: OSCHINA</author>
-    </item>
-    <item>
-      <title>MiniMax Agent 全棧開發功能正式發佈</title>
-      <description>&lt;div class="content"&gt;
-                                                                    
-                                                        &lt;p&gt;國產 AI 公司 MiniMax&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fmp.weixin.qq.com%2Fs%2F5vPnhZW_j0diRqGvLQ663A" target="_blank"&gt;正式發佈&lt;/a&gt;Agent 全棧開發功能，允許用户通過自然語言對話一鍵構建包含前端和後端的完整應用。&lt;/p&gt; 
-&lt;p&gt;該功能支持 Supabase 後端託管、Stripe 支付集成、cron job 定時任務和長鏈接維持等技術，能夠實現 API 調用、實時數據處理、支付、LLM 集成、定時任務和用户認證等複雜操作，且無需人工編寫代碼。&lt;/p&gt; 
-&lt;p&gt;Minimax 提供的一個案例如下：&lt;/p&gt; 
-&lt;blockquote&gt; 
- &lt;p&gt;投資者需要跟蹤全球 50 只科技股票的最新價格和行業新聞？任何實時看板，Agent 都可以為你隨手定製了，全部是真實、準確、實時的金融數據，還能每天 07:00、12:00 和 17:00 更新。&lt;/p&gt; 
- &lt;p&gt;&lt;img height="1790" src="https://static.oschina.net/uploads/space/2025/0717/104317_AQ4J_2720166.png" width="3294" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
- &lt;p&gt;https://pza7q8sbnm.space.minimax.io/&lt;/p&gt; 
-&lt;/blockquote&gt; 
-&lt;p&gt;MiniMax 透露，該系統採用模塊化 Agent 架構，包含三個核心子 Agent：&lt;/p&gt; 
-&lt;ul&gt; 
- &lt;li&gt;負責需求分析和方案生成的調研子 Agent&lt;/li&gt; 
- &lt;li&gt;負責代碼生成和功能開發的全棧開發 Agent&lt;/li&gt; 
- &lt;li&gt;負責測試和調試的測試子 Agent。&lt;/li&gt; 
-&lt;/ul&gt; 
-&lt;p&gt;同時，MiniMax 還上線了 MCP builder 功能，支持企業級應用開發。&lt;/p&gt; 
-&lt;p&gt;體驗：https://agent.minimax.io/&lt;/p&gt;
-                                                                                &lt;/div&gt;
-                                                                            </description>
-      <link>https://www.oschina.net/news/360816</link>
-      <guid isPermaLink="false">https://www.oschina.net/news/360816</guid>
-      <pubDate>Wed, 16 Jul 2025 02:40:00 GMT</pubDate>
-      <author>來源: OSCHINA</author>
-    </item>
-    <item>
-      <title>月之暗面回應 Kimi K2 API 速度慢：訪問量大+模型體積大，正全力優化</title>
-      <description>&lt;div class="content"&gt;
-                                                                    
-                                                        &lt;p&gt;月之暗面 Kimi 官方近日回應了 Kimi K2 API 速度慢的情況。&lt;/p&gt; 
-&lt;p&gt;&lt;img alt="" src="https://oscimg.oschina.net/oscnet/up-979c4d5772660ea80d3a413ebfefa4d4d33.png" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;p&gt;月之暗面表示，主要問題是訪問量大 +模型體積大。月之暗面正在全力優化推理效率，也在加卡加機器。預計這幾天內速度會有明顯提升。同時，Kimi K2 是完全開源的，大家也可以通過其他模型供應商接入使用（比如硅基流動、無問芯穹等），歡迎自行部署。&lt;/p&gt; 
-&lt;hr&gt; 
-&lt;p&gt;模力方舟現已上線 Kimi-K2-Instruct，開發者可以直接接入使用：&lt;/p&gt; 
-&lt;p&gt;&lt;a href="https://ai.gitee.com/serverless-api?model=kimi-k2-instruct"&gt;https://ai.gitee.com/serverless-api?model=kimi-k2-instruct&lt;/a&gt;&lt;/p&gt;
-                                                                                &lt;/div&gt;
-                                                                            </description>
-      <link>https://www.oschina.net/news/360812</link>
-      <guid isPermaLink="false">https://www.oschina.net/news/360812</guid>
-      <pubDate>Wed, 16 Jul 2025 02:29:00 GMT</pubDate>
-      <author>來源: OSCHINA</author>
-    </item>
-    <item>
-      <title>Scale AI 裁員 14%、終止 500 名承包商</title>
-      <description>&lt;div class="content"&gt;
-                                                                    
-                                                        &lt;p&gt;&lt;span style="color:#000000"&gt;彭博社報道稱，美國數據標註初創公司 Scale AI 正面臨重大調整，宣佈裁員約 14%（約 200 人），同時終止與 500 名全球承包商的合作。&lt;/span&gt;&lt;/p&gt; 
-&lt;p&gt;&lt;img height="360" src="https://oscimg.oschina.net/oscnet/up-db7f23d7bc3401a608555d74ac26b7a14d0.png" width="700" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;p&gt;&lt;span style="color:#000000"&gt;此次調整正值高層人事鉅變之後——上月，Meta 以 143 億美元，的估值聘請了 Scale AI 原首席執行官亞歷山大·王（Alexandr Wang），引發外界對其公司未來走向的猜測。現任臨時 CEO Jason Droege 在內部備忘錄中坦言，公司核心數據標註業務擴張過快，已不再適應當下市場節奏。&lt;/span&gt;&lt;/p&gt; 
-&lt;p&gt;&lt;span style="color:#000000"&gt;備忘錄指出，Scale AI 將轉向加強企業和政府銷售部門，聚焦更高附加值的 B 端服務。這意味着，公司將逐步擺脱其曾經引以為傲的數據標註「流水線」模式。&lt;/span&gt;&lt;/p&gt; 
-&lt;p&gt;&lt;span style="color:#000000"&gt;這一動向也與近期多家 AI 初創公司「反向收購」後的戰略調整如出一轍。例如 Inflection AI 被微軟收購後，其技術和團隊也被整合進大廠體系，原有產品線逐漸被邊緣化。&lt;/span&gt;&lt;/p&gt; 
-&lt;p&gt;&lt;span style="color:#000000"&gt;值得注意的是，有消息稱 Meta 的入局導致 Scale AI 部分大客户終止合作關係。作為數據服務商，Scale AI 面臨的不僅是 AI 模型訓練方式的變化，更是合作信任和中立地位的動搖。&lt;/span&gt;&lt;/p&gt;
-                                                                                &lt;/div&gt;
-                                                                            </description>
-      <link>https://www.oschina.net/news/360809/scale-ai-lays-off-14-of-staff</link>
-      <guid isPermaLink="false">https://www.oschina.net/news/360809/scale-ai-lays-off-14-of-staff</guid>
-      <pubDate>Wed, 16 Jul 2025 02:18:00 GMT</pubDate>
-      <author>來源: OSCHINA</author>
-    </item>
-    <item>
-      <title>Zadig 支持 Microsoft Teams 集成，實時通知觸手可及</title>
-      <description>&lt;div class="content"&gt;
-                                                                                                                    
-                                                                                                                                                    &lt;p&gt;&lt;img height="798" src="https://oscimg.oschina.net/oscnet/up-750406a973e02f1db05b87c2d7948324716.png" width="1876" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;p&gt;在現代開發流程裏，實時掌握系統狀態與接收通知，是保障團隊高效協作的關鍵要素。Zadig 作為功能強大的 DevOps 平台，如今已支持與 Microsoft Teams 進行集成，開發者可以通過 Teams 實時獲取 Zadig 的工作流動態，團隊成員能夠實時掌握最新信息，進而提升整體協作效率。&lt;/p&gt; 
-&lt;span id="OSC_h1_1"&gt;&lt;/span&gt; 
-&lt;h1&gt;Zadig 與 Microsoft Teams 集成的優勢&lt;/h1&gt; 
-&lt;p&gt;通過將 Zadig 與 Microsoft Teams 集成，團隊可以享受以下優勢：&lt;/p&gt; 
-&lt;ol&gt; 
- &lt;li&gt;&lt;strong&gt;實時通知&lt;/strong&gt;：Zadig 的工作流狀態和關鍵事件會實時推送到 Teams 頻道，確保團隊成員第一時間獲取信息。&lt;/li&gt; 
- &lt;li&gt;&lt;strong&gt;靈活配置&lt;/strong&gt;：支持自定義通知內容和接收人，滿足不同團隊的需求。&lt;/li&gt; 
- &lt;li&gt;&lt;strong&gt;無縫集成&lt;/strong&gt;：無需複雜配置，快速實現 Zadig 與 Teams 的對接。&lt;/li&gt; 
-&lt;/ol&gt; 
-&lt;span id="OSC_h1_2"&gt;&lt;/span&gt; 
-&lt;h1&gt;集成步驟詳解&lt;/h1&gt; 
-&lt;span id="OSC_h2_3"&gt;&lt;/span&gt; 
-&lt;h2&gt;步驟 1：在 Teams 中創建 Workflow&lt;/h2&gt; 
-&lt;div&gt; 
- &lt;div&gt;
-   在 Microsoft Teams 中，進入頻道或者聊天，找到 Workflow App，基於「Post to a channel when a webhook request is received」模板創建新的 Workflow，按照 Teams 官方文檔（ 
-  &lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fsupport.microsoft.com%2Fen-us%2Foffice%2Fcreate-incoming-webhooks-with-workflows-for-microsoft-teams-8ae491c7-0394-4861-ba59-055e33f75498" rel="nofollow" target="_blank"&gt;https://support.microsoft.com/en-us/office/create-incoming-webhooks-with-workflows-for-microsoft-teams-8ae491c7-0394-4861-ba59-055e33f75498&lt;/a&gt;）的指引完成基本配置。 
- &lt;/div&gt; 
- &lt;div&gt; 
-  &lt;img height="1580" src="https://oscimg.oschina.net/oscnet/up-8712ed5a81aa970827b6285f30c46c21c6d.png" width="2176" referrerpolicy="no-referrer"&gt; 
- &lt;/div&gt; 
- &lt;div&gt; 
-  &lt;img height="1680" src="https://oscimg.oschina.net/oscnet/up-6efae2a5954d14474dc732ec9b0bfe54387.png" width="2944" referrerpolicy="no-referrer"&gt; 
- &lt;/div&gt; 
-&lt;/div&gt; 
-&lt;p&gt;&amp;nbsp;&lt;/p&gt; 
-&lt;p&gt;&amp;nbsp;&lt;/p&gt; 
-&lt;p&gt;&amp;nbsp;&lt;/p&gt; 
-&lt;span id="OSC_h2_4"&gt;&lt;/span&gt; 
-&lt;h2&gt;步驟 2：獲取 Webhook 地址&lt;/h2&gt; 
-&lt;p&gt;在 Workflow 創建完成後，系統會生成一個唯一的 Webhook 地址，將此地址保存，後續將用於 Zadig 的配置。&lt;/p&gt; 
-&lt;p&gt;&lt;img height="1680" src="https://oscimg.oschina.net/oscnet/up-3977eef0e7b8941a9eba70827be88c650fe.png" width="2944" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;span id="OSC_h2_5"&gt;&lt;/span&gt; 
-&lt;h2&gt;步驟 3：在 Zadig 中配置 Teams 通知&lt;/h2&gt; 
-&lt;p&gt;訪問 Zadig 系統，進入需要配置通知的工作流。在工作流配置頁面，找到通知設置，選擇「Microsoft Teams」作為通知方式。&lt;/p&gt; 
-&lt;p&gt;&lt;img height="1516" src="https://oscimg.oschina.net/oscnet/up-3c411beebb12ef62619ac79eb8178c48f26.png" width="2944" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;ol&gt; 
- &lt;li&gt;&lt;strong&gt;Webhook 地址&lt;/strong&gt;：填寫從步驟 2 中獲取的 Webhook 地址。&lt;/li&gt; 
- &lt;li&gt;&lt;strong&gt;@指定成員（可選）&lt;/strong&gt; ：如需通知特定成員，輸入 Teams 用户的 email，多個用户用 &lt;code&gt;;&lt;/code&gt; 分隔。&lt;/li&gt; 
- &lt;li&gt;&lt;strong&gt;通知事件&lt;/strong&gt;：根據工作流狀態（如成功、失敗等）配置觸發通知的事件。&lt;/li&gt; 
-&lt;/ol&gt; 
-&lt;span id="OSC_h1_6"&gt;&lt;/span&gt; 
-&lt;h1&gt;通知效果&lt;/h1&gt; 
-&lt;p&gt;配置完成後，當 Zadig 的工作流狀態滿足觸發事件時，相關通知會實時推送到 Teams 的指定頻道。通知內容清晰明瞭，團隊成員可以快速瞭解工作流的狀態，及時採取行動。&lt;/p&gt; 
-&lt;p&gt;&lt;img height="1580" src="https://oscimg.oschina.net/oscnet/up-a5fdf1d9928bc6a0f577eca8d91b44add0a.png" width="2176" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;span id="OSC_h1_7"&gt;&lt;/span&gt; 
-&lt;h1&gt;結語&lt;/h1&gt; 
-&lt;p&gt;通過 Zadig 與 Microsoft Teams 的深度集成，團隊能夠實時獲取工作流狀態，快速響應問題，提升協作效率。未來，Zadig 將持續探索更多協作工具的集成可能性，為企業打造更智能、更高效的開發與交付生態。&lt;/p&gt; 
-&lt;p style="color:#ff4c88; margin-left:0; margin-right:0; text-align:center"&gt;&lt;strong&gt;即日起，Zadig 新版發佈&lt;br&gt; 掃碼諮詢搶先體驗&lt;/strong&gt;&lt;/p&gt; 
-&lt;p style="color:#191b1f; margin-left:0; margin-right:0; text-align:center"&gt;&lt;img height="943" src="https://oscimg.oschina.net/oscnet/up-0c7876673ed701ed97107bb53b607d661dd.png" width="1797" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;div&gt; 
- &lt;p style="color:#333333; margin-left:0; margin-right:0; text-align:center"&gt;&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fgithub.com%2Fkoderover%2Fzadig" target="_blank" rel="nofollow"&gt;Zadig 在 Github&lt;/a&gt;&amp;nbsp;/&amp;nbsp;&lt;a href="https://gitee.com/koderover/zadig" rel="nofollow"&gt;Zadig 在 Gitee&lt;/a&gt;&lt;/p&gt; 
-&lt;/div&gt; 
-&lt;div&gt; 
- &lt;div&gt; 
-  &lt;strong&gt;&lt;span&gt;推薦閲讀：&lt;/span&gt;&lt;/strong&gt; 
- &lt;/div&gt; 
- &lt;div&gt; 
-  &lt;p style="color:#002a64; margin-left:0; margin-right:0"&gt;&lt;a href="https://my.oschina.net/koderover/blog/17622087" target="_blank" rel="nofollow"&gt;Zadig：首個深度集成 DeepSeek 的 DevOps 平台&lt;/a&gt;&amp;nbsp;/&amp;nbsp;&lt;a href="https://my.oschina.net/koderover/blog/11210095" target="_blank" rel="nofollow"&gt;Zadig 官網博客正式發佈，技術乾貨實踐管飽&lt;/a&gt;&amp;nbsp;/&amp;nbsp;&lt;a href="https://my.oschina.net/koderover/blog/16492101" target="_blank" rel="nofollow"&gt;流水線早已 out 了？你需要更高效能的工作流&lt;/a&gt;&amp;nbsp;/&lt;span style="background-color:#ffffff; color:#002a64"&gt;&amp;nbsp;&lt;/span&gt;&lt;a href="https://my.oschina.net/koderover/blog/10316143" target="_blank" rel="nofollow"&gt;Jenkins 遷移 Zadig，新項目實施上線效率提升 6 倍&lt;/a&gt;&amp;nbsp;/&lt;a href="https://my.oschina.net/koderover/blog/17644385" target="_blank" rel="nofollow"&gt;Zadig 辭舊迎新發布 V3.3，更好看更好用超穩定&lt;/a&gt;&lt;/p&gt; 
- &lt;/div&gt; 
-&lt;/div&gt;
-                                                                                    &lt;/div&gt;
-                                                                            </description>
-      <link>https://my.oschina.net/koderover/blog/18044129</link>
-      <guid isPermaLink="false">https://my.oschina.net/koderover/blog/18044129</guid>
-      <pubDate>Wed, 16 Jul 2025 01:56:00 GMT</pubDate>
-      <author>原創</author>
-    </item>
-    <item>
-      <title>前 OpenAI 工程師長文回顧工作一年經歷</title>
-      <description>&lt;div class="content"&gt;
-                                                                    
-                                                        &lt;p&gt;Calvin French-Oven 是前 OpenAI 工程師，曾參與開發編程 Agent「Codex」項目，三週前從 OpenAI 離職。&lt;/p&gt; 
-&lt;p&gt;&lt;img src="https://static.oschina.net/uploads/space/2025/0716/191337_xiwe_2720166.png" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;p&gt;近日，Calvin 通過一篇博客長文&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fcalv.info%2Fopenai-reflections" target="_blank"&gt;回顧&lt;/a&gt;了自己在老東家工作一年的經歷，包括為了打造編程產品 Codex 而經歷的高強度開發過程。&lt;/p&gt; 
-&lt;p&gt;&lt;img src="https://static.oschina.net/uploads/space/2025/0716/191652_sQJB_2720166.png" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;p&gt;French-Owen 強調，他離職&lt;strong&gt;並非因為任何「內部矛盾」&lt;/strong&gt;，而是因為他希望&lt;strong&gt;重新踏上創業之路&lt;/strong&gt;。在入職 OpenAI 之前，他曾是客户數據公司 Segment 的聯合創始人。&lt;/p&gt; 
-&lt;p&gt;在他 OpenAI 期間，OpenAI 的員工人數&lt;strong&gt;從 1000 人激增至 3000 人&lt;/strong&gt;。OpenAI 擁有史上增長最快的消費產品之一，而其競爭對手也在迅猛發展。今年 3 月，公司宣佈 ChatGPT 的活躍用户已突破 5 億，並仍在快速增長。&lt;/p&gt; 
-&lt;p&gt;他提到：「當你以如此速度擴張時，&lt;strong&gt;幾乎所有系統都會失效&lt;/strong&gt;：公司內部的溝通機制、彙報結構、產品發佈流程、人員管理方式、招聘流程等等，都會出現問題。」&lt;/p&gt; 
-&lt;p&gt;儘管如此，OpenAI 仍然&lt;strong&gt;保留着初創公司的自由文化&lt;/strong&gt;，員工可以快速推進自己的想法，幾乎不受流程限制。但這也帶來了重複勞動的問題。「我至少看到過&lt;strong&gt;六七個用於隊列管理或代理循環的代碼庫&lt;/strong&gt;。」&lt;/p&gt; 
-&lt;p&gt;工程師的&lt;strong&gt;水平也參差不齊&lt;/strong&gt;，從能處理十億級用户系統的資深谷歌工程師，到剛畢業的博士都有。再加上 Python 語言本身的靈活性，導致整個後端系統「&lt;strong&gt;更像是一個代碼垃圾場&lt;/strong&gt;」：系統經常出錯，運行效率也不高。但他也指出，公司高層已經意識到問題，並在積極優化。&lt;/p&gt; 
-&lt;p&gt;他指出，OpenAI 還&lt;strong&gt;未完全適應自己作為大公司&lt;/strong&gt;的身份，甚至連內部溝通都完全依賴 Slack。他形容這家公司像早期 Facebook 時期的 Meta，&lt;strong&gt;充滿「快速推進、打破常規」的風格&lt;/strong&gt;，而且公司中也有不少來自 Meta 的員工。&lt;/p&gt; 
-&lt;p&gt;據瞭解，French-Owen 所在的高級團隊擁有&lt;strong&gt;八名工程師、四名研究人員、兩名設計師、兩名市場人員和一名產品經理&lt;/strong&gt;。據其回憶，團隊僅用七週時間且「幾乎沒怎麼睡覺」，就&lt;strong&gt;完成了 Codex 從開發到上線的全過程&lt;/strong&gt;。&lt;/p&gt; 
-&lt;p&gt;但這次發佈堪稱奇蹟。產品一上線就迅速獲得用户。「我從沒見過一個產品&lt;strong&gt;僅因出現在左側邊欄就能獲得如此迅速的採納率&lt;/strong&gt;，這正是 ChatGPT 的魔力。」&lt;/p&gt; 
-&lt;p&gt;作為一家備受矚目的公司，OpenAI 對信息保密極為重視，內部形成了濃厚的保密文化，以防止信息外泄。與此同時，公司也&lt;strong&gt;密切關注 X 上的動態&lt;/strong&gt;。一旦某條推文爆火，OpenAI 很可能會看到並作出回應。「一位朋友開玩笑説，這家公司靠&lt;strong&gt;推特情緒&lt;/strong&gt;運轉。」&lt;/p&gt; 
-&lt;p&gt;French-Owen 認為，外界對 OpenAI 最大的誤解是&lt;strong&gt;它不重視 AI 安全&lt;/strong&gt;。「事實上，包括前員工在內的許多 AI 安全專家都曾對 OpenAI 的安全機制提出過批評。」&lt;/p&gt; 
-&lt;p&gt;雖然外界關注的是「AI 會毀滅人類」這類理論性風險，但在公司內部，員工更關注&lt;strong&gt;現實層面的安全問題&lt;/strong&gt;，比如「仇恨言論、濫用、政治偏見操控、生物武器生成、自殘行為、提示注入攻擊」等。&lt;/p&gt; 
-&lt;p&gt;他強調，OpenAI 並未忽視 AI 的長期影響。公司有專門的研究團隊在研究這些潛在風險，並意識到其語言模型如今已被數億人用於各種場景，從醫療建議到心理治療都有。&lt;/p&gt;
-                                                                                &lt;/div&gt;
-                                                                            </description>
-      <link>https://www.oschina.net/news/360714/openai-reflections</link>
-      <guid isPermaLink="false">https://www.oschina.net/news/360714/openai-reflections</guid>
-      <pubDate>Tue, 15 Jul 2025 11:21:00 GMT</pubDate>
-      <author>來源: OSCHINA</author>
-    </item>
-    <item>
-      <title>Browserless —— 將沒有 UI 界面的瀏覽器部署在 Docker 中</title>
-      <description>&lt;div class="content"&gt;
-                                                                                                                                                                        
-                                                                                    &lt;p&gt;&lt;span style="background-color:#ffffff; color:#1f2328"&gt;Browserless 允許遠程客户端連接並執行 headless 工作，所有這些都在 docker 內部完成。它支持標準的、未分叉的 Puppeteer 和 Playwright 庫，並提供基於 REST 的 API 用於數據收集、PDF 生成等常見操作。&lt;/span&gt;&lt;/p&gt;
-
-&lt;p&gt;特性&lt;/p&gt;
-
-&lt;p&gt;&lt;strong&gt;General&lt;/strong&gt;&lt;/p&gt;
-
-&lt;ul&gt;
-&lt;li&gt;並行性和請求排隊是內置的+可配置的。&lt;/li&gt;
-&lt;li&gt;字體和表情符號開箱即用。&lt;/li&gt;
-&lt;li&gt;調試查看器用於主動查看/調試正在運行的會話。&lt;/li&gt;
-&lt;li&gt;交互式 &lt;span style="background-color:#ffffff; color:#1f2328"&gt;puppeteer debugger&lt;/span&gt;，因此你可以看到 headless 瀏覽器正在做什麼並使用其 DevTools。&lt;/li&gt;
-&lt;li&gt;與未分叉的 Puppeteer 和 Playwright 合作。&lt;/li&gt;
-&lt;li&gt;可配置的會話計時器和健康檢查以確保一切順利運行。&lt;/li&gt;
-&lt;li&gt;容錯：如果 Chrome 死機，它不會。&lt;/li&gt;
-&lt;li&gt;支持在 Apple M1 機器上運行和開發&lt;/li&gt;
-&lt;/ul&gt;
-
-&lt;div style="text-align:start"&gt;
-&lt;p style="text-align:start"&gt;&lt;strong&gt;Cloud-only&lt;/strong&gt;&lt;/p&gt;
-&lt;/div&gt;
-
-&lt;p style="text-align:start"&gt;&lt;span&gt;&lt;span&gt;&lt;span style="color:#1f2328"&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span style="background-color:#ffffff"&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;a href="https://www.browserless.io/pricing/"&gt;雲帳户&lt;/a&gt;包含所有常規功能以及附加功能，例如：&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/p&gt;
-
-&lt;ul&gt;
-&lt;li&gt;用於避免檢測器和解決驗證碼&lt;a href="https://www.browserless.io/feature/browserql"&gt;的 BrowserQL&lt;/a&gt;&lt;/li&gt;
-&lt;li&gt;腳本期間流式登錄窗口的&lt;a href="https://www.browserless.io/blog/hybrid-automations-for-puppeteer/"&gt;混合自動化&lt;/a&gt;&lt;/li&gt;
-&lt;li&gt;&lt;a href="https://www.browserless.io/blog/reconnect-api"&gt;/reconnect API&lt;/a&gt;&amp;nbsp;用於保持瀏覽器處於活動狀態以供重複使用&lt;/li&gt;
-&lt;li&gt;用於檢索 HTML、PDF 或 Lighthouse 指標等任務的&lt;a href="https://www.browserless.io/feature/rest-apis"&gt;REST API&lt;/a&gt;&lt;/li&gt;
-&lt;li&gt;內置&lt;span style="background-color:#ffffff; color:#1f2328"&gt;&lt;span&gt;&amp;nbsp;&lt;/span&gt;&lt;/span&gt;&lt;a href="https://www.browserless.io/blog/residential-proxying/"&gt;residential proxy&lt;/a&gt;&lt;/li&gt;
-&lt;li&gt;SSO、令牌和用户角色&lt;/li&gt;
-&lt;/ul&gt;
-
-                                                                    &lt;/div&gt;
-                                                                </description>
-      <link>https://www.oschina.net/p/browserless</link>
-      <guid isPermaLink="false">https://www.oschina.net/p/browserless</guid>
-      <pubDate>Tue, 15 Jul 2025 10:42:00 GMT</pubDate>
-    </item>
-    <item>
-      <title>AI 操作系統 NeuralOS 開源，完美模擬 Windows 界面</title>
-      <description>&lt;div class="content"&gt;
-                                                                    
-                                                        &lt;p style="color:#242424; margin-left:0; margin-right:0; text-align:left"&gt;來自華人團隊的開源 AI 操作系統 NeuralOS 已經開源發佈。這一系統的設計靈感源於&lt;span&gt;著名&lt;/span&gt;科學家卡帕西對未來圖形用户界面（GUI）的大膽預言，令人矚目的是，它能夠實時預測並模擬 Windows 操作界面，甚至能準確顯示每個用户的操作反饋。&lt;/p&gt; 
-&lt;p style="color:#242424; margin-left:0; margin-right:0; text-align:left"&gt;&lt;strong&gt;在線體驗地址：&lt;/strong&gt;&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fneural-os.com%2F" target="_blank"&gt;https://neural-os.com/&lt;/a&gt;&lt;/p&gt; 
-&lt;p style="color:#242424; margin-left:0; margin-right:0; text-align:left"&gt;在 NeuralOS 中，用户只需輕鬆移動鼠標、點擊圖標或輸入文字，神經網絡便能迅速反應，展示出與我們熟悉的電腦界面幾乎一模一樣的效果。這一創新實現了卡帕西在今年早些時候提出的 「AI 時代 GUI」 構想，他認為，未來的 GUI 將會是一個個性化的、流動的、互動的畫布。&lt;/p&gt; 
-&lt;p style="color:#242424; margin-left:0; margin-right:0; text-align:left"&gt;&lt;img alt="" src="https://oscimg.oschina.net/oscnet/up-aad2e4a05f90a720a30a88e8fbe8bec0ecc.gif" width="500" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;p style="color:#242424; margin-left:0; margin-right:0; text-align:left"&gt;NeuralOS 的運作機制相當獨特，依賴於兩個核心模塊:循環神經網絡（RNN）和基於擴散的神經渲染器 (Renderer)。RNN 負責實時跟蹤計算機狀態變化，確保系統反應靈敏且流暢，而 Renderer 則將用户的操作轉化為屏幕上的具體視覺表現，例如窗口的彈出和圖標的變化。&lt;/p&gt; 
-&lt;p style="color:#242424; margin-left:0; margin-right:0; text-align:left"&gt;為了讓 NeuralOS 高效學習，開發團隊使用了大量的操作錄像，分為隨機交互和真實交互兩種類型。經過精心訓練，NeuralOS 現在可以準確預測用户的每一次操作，但在處理快速鍵盤輸入時仍存在一些挑戰。&lt;/p&gt; 
-&lt;p style="color:#242424; margin-left:0; margin-right:0; text-align:left"&gt;目前，NeuralOS 的團隊已經提供了在線體驗版本，用户可以通過簡單的操作與 AI 進行互動，實時感受這個新興操作系統的魅力。儘管目前系統仍在不斷優化，但它展示了未來操作系統將不再是簡單的按鈕和菜單，而是能夠由 AI 動態生成的全新體驗。&lt;/p&gt;
-                                                                                &lt;/div&gt;
-                                                                            </description>
-      <link>https://www.oschina.net/news/360706</link>
-      <guid isPermaLink="false">https://www.oschina.net/news/360706</guid>
-      <pubDate>Tue, 15 Jul 2025 10:29:00 GMT</pubDate>
-      <author>來源: OSCHINA</author>
-    </item>
-    <item>
-      <title>AI 寫代碼導致開發者效率下降 19%</title>
-      <description>&lt;div class="content"&gt;
-                                                                    
-                                                        &lt;p&gt;一項由非營利性 AI 研究機構 METR 完成的隨機對照實驗（RCT）&lt;u&gt;&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fmetr.org%2Fblog%2F2025-07-10-early-2025-ai-experienced-os-dev-study%2F" target="_blank"&gt;發現&lt;/a&gt;&lt;/u&gt;，經驗豐富的開源開發者在使用 AI 編程工具（如 Cursor Pro 或 Anthropic Claude）時，&lt;strong&gt;實際完成任務的時間比不使用 AI 工具時平均增長了 19%&lt;/strong&gt;。&lt;/p&gt; 
-&lt;p&gt;儘管開發者預期 AI 工具能節省 24% 的時間，甚至事後仍認為 AI 工具提高了 20% 的效率，但實際數據表明 AI 工具拖慢了開發速度。&lt;/p&gt; 
-&lt;p&gt;研究追蹤了 16 名資深開源開發者完成的 246 項任務，這些任務涉及大型、複雜且已有 10 年曆史的代碼庫（平均代碼量超過 100 萬行）。AI 工具雖減少了編寫代碼、測試/調試及信息搜索時間，但增加了審查 AI 輸出、提示 AI 系統、等待生成以及因任務中斷導致的空閒時間。&lt;/p&gt; 
-&lt;p&gt;&lt;img alt="" src="https://oscimg.oschina.net/oscnet/up-55b2da8fc330b97149b00755aad8883bda4.png" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;p&gt;&lt;img alt="" src="https://oscimg.oschina.net/oscnet/up-e3e24dfe0e4b003f6a8cc9239a90d0ee9cc.png" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;p&gt;開發者最終接受並無需修改的 AI 生成代碼比例不到 44%，且約 9% 的任務時間用於審查和修改 AI 生成的代碼。&lt;/p&gt; 
-&lt;p&gt;研究指出，當前 AI 工具在高質量標準、複雜項目或隱含要求較多的環境中存在侷限性，可能不適用於資深開發者熟悉的複雜代碼庫，但對初級開發者或不熟悉代碼庫的工程師影響可能較小。&lt;/p&gt; 
-&lt;p&gt;研究人員認為，未來 AI 工具（如通過改進可靠性、降低延遲或增強上下文相關性）可能帶來效率提升。&lt;/p&gt;
-                                                                                &lt;/div&gt;
-                                                                            </description>
-      <link>https://www.oschina.net/news/360692</link>
-      <guid isPermaLink="false">https://www.oschina.net/news/360692</guid>
-      <pubDate>Tue, 15 Jul 2025 09:47:00 GMT</pubDate>
       <author>來源: OSCHINA</author>
     </item>
   </channel>
