@@ -7,8 +7,772 @@
     <generator>RSSHub</generator>
     <webMaster>contact@rsshub.app (RSSHub)</webMaster>
     <language>zh-cn</language>
-    <lastBuildDate>Fri, 18 Jul 2025 02:46:31 GMT</lastBuildDate>
+    <lastBuildDate>Fri, 18 Jul 2025 07:47:48 GMT</lastBuildDate>
     <ttl>5</ttl>
+    <item>
+      <title>美团开源 OIBench 与 CoreCodeBench</title>
+      <description>&lt;div class="content"&gt;
+                                                                                                                    
+                                                                                                                                                    &lt;blockquote&gt; 
+ &lt;p&gt;Meituan-M17 团队联合上海交大等机构，分别推出了 OIBench（聚焦高区分度算法题评测）与 CoreCodeBench（聚焦多场景工程级代码基准）两大数据集，旨在揭示大模型编程能力真实水平，这两大数据集已分别在 GitHub 和 Huggingface 上进行开源。&lt;/p&gt; 
+&lt;/blockquote&gt; 
+&lt;p&gt;&lt;img src="https://oscimg.oschina.net/oscnet/up-03ba67b8aecb4f3bfded919a2a68ff949fc.png" alt="" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p&gt;当前，大语言模型（LLMs）在编程领域的能力宣称引人瞩目——DeepMind 的 AlphaCode 曾对标人类竞技编程选手，OpenAI 顶尖模型屡被报道通过谷歌面试、挑战 LeetCode 表现不俗。然而，当深入审视这些模型在真实、复杂场景下的表现时，现有评估体系的深层局限性便暴露无遗，形成了显著的「宣传与现实的认知鸿沟」。&lt;/p&gt; 
+&lt;p&gt;一方面，在&lt;strong&gt;算法能力评估&lt;/strong&gt;上，尽管模型在传统基准（如 HumanEval、MBPP）上通过率高达 90%，但移植到更高难度的信息学奥赛或 Codeforces Div.2 C 级题目时，顶尖模型的通过率骤降至个位数或不足 15%，远逊于人类选手（如 ACM 校队成员平均 70%），动态规划等题型错误率甚至超 80%。传统评测集已「饱和」且区分度不足，新引入的高难度题目又面临数据「泄漏」风险和人机对比（Elo）的复现性差、效率指标粗略等问题。&lt;/p&gt; 
+&lt;p&gt;另一方面，转向&lt;strong&gt;真实工程能力评估&lt;/strong&gt;，问题同样严峻。现有工程基准（如 FullStackBench、SWEBench）虽在多样性和语言覆盖上有进展，但其任务类型主要集中於单段落代码生成，难以覆盖真实开发中跨文件协作、代码修复（BugFix）、测试驱动开发、多函数协同等核心环节。数据构建方法也受限于随机挖空（易忽略核心逻辑）或依赖稀缺的 GitHub PR 记录（需大量人工清洗标注），导致评测「偏科」，无法科学、全面地评估模型在复杂工程中的准确性、健壮性和适用性。&lt;/p&gt; 
+&lt;p&gt;为了系统性地解决这两大评估困境——&lt;strong&gt;更真实地衡量顶尖模型的算法推理能力与更全面地评估其工程级代码能力&lt;/strong&gt;——Meituan-M17 团队联合上海交大等机构，分别推出了 OIBench（聚焦高区分度算法题评测）与 CoreCodeBench（聚焦多场景工程级代码基准）两大数据集，并托管于 AGI-Eval 评测社区。下文将详细介绍它们的构建理念、评测方法及对主流大模型能力的深度剖析。&lt;/p&gt; 
+&lt;h1&gt;OIBench 篇&lt;/h1&gt; 
+&lt;p&gt;&lt;img src="https://p0.meituan.net/meituantechblog/707a2d1d2bf198c2510043dcd4fb1663877512.png" alt="" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;h2&gt;背景：评测集局限性的深层分析&lt;/h2&gt; 
+&lt;p&gt;尽管 GPT-4o 模型被冠以 "竞赛级" 头衔，甚至有声音称其算法水平接近 ACM 区域赛金牌选手，但实际在面对未经大量公开数据训练的、更高难度的信息学奥赛级别问题时，其通过率却往往低至个位数，与 985 级别高校 ACM 校队成员的平均通过率存在显著差距。&lt;/p&gt; 
+&lt;p&gt;当部分评测宣称 Claude 3.5 Sonnet 可替代中级开发人员时，它在动态规划等高难度题型中错误率却高达 80% 以上，且无法独立完成需数学建模的复杂竞赛题。&lt;/p&gt; 
+&lt;p&gt;诸如文心一言、通义千问等模型在 MBPP 基础题库中通过率可达 90% 以上，但移植至 Codeforces Div.2 C 级题目时，通过率却不足 15%，远低于人类选手平均 70% 的水平。&lt;/p&gt; 
+&lt;p&gt;这些鲜明的对比，共同指向一个核心问题：当前对 LLM 编程能力的评估，存在明显的 "宣传与现实的认知鸿沟"。这种差异不仅源于模型能力边界的复杂性，也暴露出现有评估体系的诸多局限性。具体表现为：&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt;&lt;strong&gt;评测集 「饱和」 与区分度不足&lt;/strong&gt;：传统评测集（如 HumanEval、MBPP）由于模型能力的快速提升，通过率普遍超过 90%，已无法有效区分最先进模型的细微优劣。&lt;/li&gt; 
+ &lt;li&gt;&lt;strong&gt;数据 「泄漏」 风险&lt;/strong&gt;： 尽管一些新评测集（如 Codeforces、USACO、LeetCode）引入了高难度题目，但由于大模型预训练数据包含大量互联网公开内容，这些题目可能已被模型 「见过」，导致评测结果虚高，无法真实反映其推理能力。&lt;/li&gt; 
+ &lt;li&gt;&lt;strong&gt;人机对比的局限性&lt;/strong&gt;：现有基于 Elo 评分体系的模型与真人选手对比方法，存在周期长、选手水平波动大、复现性差等问题，难以提供精确且可靠的评估。&lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;p&gt;效率指标的粗略性： 部分评测虽引入运行时间、内存等效率指标，但通常仅为粗略的平均分，无法细致反映模型在不同类型题目上的性能差异。&lt;/p&gt; 
+&lt;p&gt;为了解决上述这些评估困境、评测出全球顶尖模型真实的编程能力，&amp;nbsp;Meituan-M17 团队推出了&lt;strong&gt;更真实、更具区分度的评估基准 OIBench 数据集，并托管于 AGI-Eval 评测社区&lt;/strong&gt;，并在 &lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fhuggingface.co%2Fdatasets%2Fmeituan%2FOIBench" target="_blank"&gt;Huggingface&lt;/a&gt; 和 &lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fgithub.com%2FAGI-Eval-Official%2FOIBench" target="_blank"&gt;GitHub&lt;/a&gt; 上开源。基于此数据集，我们对全球 18 个主流大模型的算法编程能力进行了系统评测并量化得分，详细评分榜单如下所示，可以看到全球顶尖大模型距离以往所宣称的编程能力还存在很大差距，哪怕是最高分的 o4-mini-high 也仅仅只有 36.35 分，距离人类竞赛选手的水平还相差甚远，甚至很多模型只有个位数的得分。&lt;/p&gt; 
+&lt;p&gt;&lt;img src="https://p1.meituan.net/meituantechblog/c15ae4d3cace0307a614ece0854b52e071970.png" alt="表 1: OIBench AC Rate 表" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p&gt;OIBench 的评测榜单未来将由 AGI-Eval 评测社区长期维护更新，欢迎持续关注。榜单地址如下：&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt;&lt;strong&gt;网页端地址&lt;/strong&gt;：&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fagi-eval.cn%2Fevaluation%2Fdetail%3Fid%3D60" target="_blank"&gt;https://agi-eval.cn/evaluation/detail?id=60&lt;/a&gt;&lt;/li&gt; 
+ &lt;li&gt;&lt;strong&gt;微信公众号文章&lt;/strong&gt;：&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fmp.weixin.qq.com%2Fs%2FqjZLqHVz-BxQweApyUEtDw" target="_blank"&gt;AGI-Eval 大模型评测&lt;/a&gt;&lt;/li&gt; 
+ &lt;li&gt;&lt;strong&gt;论文地址&lt;/strong&gt;：&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Farxiv.org%2Fabs%2F2506.10481" target="_blank"&gt;https://arxiv.org/abs/2506.10481&lt;/a&gt;&lt;/li&gt; 
+ &lt;li&gt;&lt;strong&gt;Github 地址&lt;/strong&gt;：&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fgithub.com%2FAGI-Eval-Official%2FOIBench" target="_blank"&gt;https://github.com/AGI-Eval-Official/OIBench&lt;/a&gt;&lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;p&gt;本文数据均引用自 OIBench v1.0 论文（arxiv:2506.10481v3），发布日期 2025 年 6 月 13 日。&lt;/p&gt; 
+&lt;p&gt;接下来为大家详细介绍 OIBench 数据集是如何构建以及如何对大模型进行评测的。&lt;/p&gt; 
+&lt;h2&gt;1. OIBench 的构建与创新&lt;/h2&gt; 
+&lt;p&gt;OIBench 是一个高质量、私有且极具挑战性的信息学奥赛级别算法题库，旨在提供一个更真实、更具区分度的评估基准。该数据集的算法题主要来源于中国 ACM-ICPC 队伍和信息学奥赛的高校教练团队精心编纂，他们拥有丰富的高难度算法题设计经验和独到见解。&lt;/p&gt; 
+&lt;p&gt;为了确保 OIBench 题目的高质量和高挑战性，我们制定了三条严格的准入标准，OIBench 具备以下关键特性：&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt;&lt;strong&gt;原创性与私有性&lt;/strong&gt;：OIBench 包含 250 道候选题目，经难度验证后保留 212 道高难度、防泄漏的信息学奥赛题目（IOI Level）。所有题目在发布前都经过严格检索，确保未在任何公开平台出现，最大程度避免数据污染风险。&lt;/li&gt; 
+ &lt;li&gt;&lt;strong&gt;难度分级与把控&lt;/strong&gt;：每道题目都参照信息学竞赛和 Codeforces 难度评级进行标注。同时，为避免主观偏差，我们引入了自动化验证机制 —— 只有当 GPT-4o、Qwen2.5-Coder-32B、Doubao-32k-pro、Llama3.1-405B 这几个标杆大模型中 「最多只有一个模型能解出」 时，该题才会被收录，从而确保了题目的 「硬核」 难度。&lt;/li&gt; 
+ &lt;li&gt;&lt;strong&gt;高标准测试用例与标准解答&lt;/strong&gt;：每道题都配备覆盖大数据量、边界情况等多样的测试用例，力求暴露代码在时间和空间上的潜在瓶颈。同时，每道题都必须配备经过所有测试用例严格验证的 C++ 标准解答，以确保题目本身的准确性及评测的公正性。&lt;/li&gt; 
+ &lt;li&gt;&lt;strong&gt;中英文双语支持&lt;/strong&gt;： 数据集提供中英文双语版本，方便全球大模型从业者使用。&lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;p&gt;我们还在论文中展示了 OIBench 与其他主流评测集的对比（见下表），可以看到 OIBench 在题目难度和测试用例规模上都相对更高。&lt;/p&gt; 
+&lt;p&gt;&lt;img src="https://p0.meituan.net/meituantechblog/ad5a7a3767a8e629b0b759e2c2b7cea864999.png" alt="表 2: OIBench 与其他代码评测集基础统计信息表" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p&gt;OIBench 在题目难度和测试用例规模上显著领先于其他主流评测集。例如，在其他榜单上表现较好的 GPT-4o 模型在 OIBench 上仅能答对 2.6% 的题目，同时 OIBench 的测试用例数量大幅超过了其他算法竞赛基准，对标真实的竞赛环境。&lt;/p&gt; 
+&lt;p&gt;&lt;img src="https://p1.meituan.net/meituantechblog/18647fd505aefa45fcc54194188f0ef121519.png" alt="表 3: GPT-4o 模型在 OIBench 与其他评测集通过率对比表 " referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;strong&gt;强抗数据污染能力&lt;/strong&gt;：在评测集设计中，「同源污染」 是一个重要挑战。由于大模型的预训练和微调数据往往会爬取大量互联网内容，容易出现模型在训练阶段就见过类似题目的情况，从而导致评测分数虚高，无法真实反映模型实际能力。虽然 OIBench 在数据构造时极力避免使用互联网可公开检索的题目，但一些相近的题目仍可能在大模型的预训练或微调阶段带来数据污染。为此，我们专门设计了实验来验证 OIBench 的抗污染能力：&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt;&lt;strong&gt;具体做法&lt;/strong&gt;：我们从 OIBench 中抽取部分题目，模拟它们在模型训练数据中 「泄漏」 的场景，并与常规训练数据混合，对比模型在 OIBench 上的表现提升。&lt;/li&gt; 
+ &lt;li&gt;&lt;strong&gt;实验证明&lt;/strong&gt;：即使模拟少量题目 「泄漏」 到模型的训练数据中，OIBench 的得分提升也极为有限，风险分数几乎为零，表明其对数据污染具有很强的鲁棒性。&lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;h2&gt;2. OIBench 评测结果与发现&lt;/h2&gt; 
+&lt;p&gt;&lt;strong&gt;参评模型与评测方式&lt;/strong&gt;&lt;/p&gt; 
+&lt;p&gt;OIBench 对 18 个主流大模型（包括 14 个指令微调模型和 4 个基础模型）进行了 zero-shot 评测，涵盖 C++、Python、Java、JavaScript 四种语言。&lt;/p&gt; 
+&lt;p&gt;&lt;img src="https://p0.meituan.net/meituantechblog/eb24e8bc42ce3120a20be682dae41ff3240284.png" alt="表 4:  OIBench 上基座模型、指令微调模型、推理模型的表现" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;strong&gt;主榜单结果&lt;/strong&gt;&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt;&lt;strong&gt;推理模型表现突出&lt;/strong&gt;：推理类模型（如 o4-mini-high）在 OIBench 上的平均得分高达 21.4%，远高于普通指令微调模型（约 3.6%）。这表明 OIBench 能有效区分模型的推理和链式思考能力，且 o4-mini-high 在所有语言和任务上表现最优。&lt;/li&gt; 
+ &lt;li&gt;&lt;strong&gt;闭源模型优势明显&lt;/strong&gt;：闭源模型平均得分 14.5%，显著高于开源模型（6.3%），这主要得益于闭源模型在算力和数据质量上的优势。&lt;/li&gt; 
+ &lt;li&gt;&lt;strong&gt;基础模型决定上限&lt;/strong&gt;：指令微调模型在 OIBench 上的表现高度依赖其基础模型的能力，说明基础模型的预训练质量是决定代码能力的关键。&lt;/li&gt; 
+ &lt;li&gt;&lt;strong&gt;DeepSeek-V3-0324 的亮点&lt;/strong&gt;：作为非推理模型，DeepSeek-V3-0324 表现突出，得益于其采用了 DeepSeek-R1 的链式推理蒸馏方案，推理能力大幅提升。&lt;/li&gt; 
+ &lt;li&gt;&lt;strong&gt;语言偏好与中英文差异&lt;/strong&gt;： 模型在 JavaScript 和 Python 上的表现平均比 C++ 和 Java 低 10% 以上，可能与训练数据分布有关；中英文题目表现差异极小，甚至中文略优。&lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;p&gt;&lt;strong&gt;伪代码（Pseudocode）提示的积极作用&lt;/strong&gt;&lt;/p&gt; 
+&lt;p&gt;OIBench 的高难度对普通模型来说挑战巨大。为了更细致地分析模型的能力，我们还引入了 「伪代码提示」 评测：将标准解答转为伪代码并作为提示输入，考查模型理解和复现解题思路的能力。&lt;/p&gt; 
+&lt;p&gt;结果显示，所有模型在有伪代码提示时表现均有明显提升，尤其是强推理模型（如 o3-mini-high 和 o4-mini-high）提升尤为显著。这说明伪代码极大降低了题目的推理难度，更能考查模型的代码理解与生成能力。同时，推理模型在理解解题思路方面依然具备优势。进一步分析发现，指令微调模型的表现与其基础模型高度相关，说明代码生成能力主要取决于预训练水平。&lt;/p&gt; 
+&lt;p&gt;在提供伪代码提示后，所有模型表现均有明显提升，尤其是强推理模型，这说明伪代码能有效降低推理难度，更能考查模型的代码理解与生成能力。&lt;/p&gt; 
+&lt;p&gt;&lt;strong&gt;推理效率&lt;/strong&gt;：随着 「测试时推理」 成为提升大模型能力的重要手段， OpenAI-o1、DeepSeek-R1 等模型在解题时会生成大量推理内容。我们统计了各模型推理时的 Token 消耗与通过率的关系，发现 o4-mini-high 能以更少的 Token 解出更多题目，推理效率最高；DeepSeek-V3-0324 虽然表现不俗，但推理 Token 数量也最多，体现其长链推理的特点。&lt;/p&gt; 
+&lt;p&gt;&lt;img src="https://p0.meituan.net/meituantechblog/ea497e4d24ab1e6451de79600bcf9a9d150460.png" alt="图 1: OIBench 模型通过率与推理消耗 Token 量关系图" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;h2&gt;3. 模型与人类选手的对比&lt;/h2&gt; 
+&lt;p&gt;许多技术人员都关心：现在的大语言模型在算法编程题上的表现，和真正的竞赛选手相比到底如何？OpenAI、 DeepSeek 会用线上编程平台 Codeforces 的 Elo 评分体系来做模型与人类的对比，并报告自家模型最新的 Elo 分数，但这种方式存在一些问题：比如数据时间跨度长（一般需要半年以上的参赛记录）、在线选手水平波动大，导致对比结果不够精确，也不容易复现。&lt;/p&gt; 
+&lt;p&gt;&lt;strong&gt;OIBench 创新性地采用了更可控的方法&lt;/strong&gt;：邀请了中国 985 级别高校 ACM 校队选手参与部分题目的作答，并将其成绩与大模型直接对比，提供了更精准、可复现的人机对比数据；我们用小提琴图展示了每个模型在所有人类选手中的排名分布，能直观反映模型与人类在不同题目上的表现差异。&lt;/p&gt; 
+&lt;p&gt;&lt;strong&gt;排名规则参考了信息学奥赛（IOI）的标准&lt;/strong&gt;：先比较通过的测试用例数量，数量相同则按运行时间排序（越快越高）。&lt;/p&gt; 
+&lt;p&gt;&lt;strong&gt;提交标准&lt;/strong&gt;：人类选手的答案以最后一次提交为准。&lt;/p&gt; 
+&lt;p&gt;&lt;strong&gt;人类解答开源&lt;/strong&gt;: 分析中所涉及的人类解答记录也将匿名化并开源，便于后续研究和复现。&lt;/p&gt; 
+&lt;p&gt;&lt;img src="https://p0.meituan.net/meituantechblog/364b49bcc6369d303486297b86de3364257727.png" alt="图 2: 模型与人类选手的对比关系图" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p&gt;在小提琴图中，各模型在每道题中的人类排名位置会作为一个数据点，这些数据点形成的概率密度图就是小提琴图中的「琴身」。「琴身」的宽度显示模型排名分布的密度，越宽表示模型在对应的排名区间内出现的频率越高，从而直观地反映出模型排名表现的集中趋势。中央的框线代表排名数据最集中的区域，以 o4-mini-high 举例，它的排名大致超过了 42% 的人类选手。&lt;/p&gt; 
+&lt;p&gt;&lt;strong&gt;三种类型的模型表现&lt;/strong&gt;&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt;&lt;strong&gt;低谷型&lt;/strong&gt;： 多数题目排名靠后，只能超越不到 20% 的人类选手，多为没有长链推理能力的模型。&lt;/li&gt; 
+ &lt;li&gt;&lt;strong&gt;双峰型&lt;/strong&gt;： 在部分题目上能超越一半人类选手，但在另一些题目上表现较差，多数支持长链推理的模型属于此类型，显示其在特定题型上的优势和短板。&lt;/li&gt; 
+ &lt;li&gt;&lt;strong&gt;橄榄型&lt;/strong&gt;： 排名分布更均匀，表现更接近人类整体能力分布，目前只有 o4-mini-high 具备这种全面和稳定的推理特征。&lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;h2&gt;4. OIBench 总结与展望&lt;/h2&gt; 
+&lt;p&gt;本文深入分析了当前大模型编程能力评估中存在的认知鸿沟，揭示了 "宣传" 与 "现实" 之间的差距。Meituan-M17 团队，通过 OIBench 这一高质量、高区分度的私有数据集，清晰揭示了顶级 LLM 在面对复杂算法挑战时，与人类顶尖水平之间的真实差距。不仅为大语言模型的算法推理能力评测树立了一个全新标杆，也为整个行业带来了更多思考。&lt;/p&gt; 
+&lt;p&gt;它让我们看到：即使在模型能力突飞猛进的今天，真正高质量、高难度的算法挑战依然能够 "难倒" 最先进的 AI。尤为重要的是，希望 OIBench 的开源和透明能够为社区协作和持续创新做出一些贡献。我们期待它能成为连接学术、产业和开发者的桥梁，推动大模型在算法智能领域迈向新高度。未来，随着模型能力和评测需求的不断演进，OIBench 也会持续迭代，与大家共同见证 AI 推理的进化之路。&lt;/p&gt; 
+&lt;p&gt;与此同时，我们也观察到，对于大多数人类开发者来说，即使他们接受过专业的算法设计训练，面对高难度算法和复杂系统设计，同样需要工具和智能助手的辅助才能更上一层楼。大模型的强大推理和代码生成能力，正好能为人类开发者提供有力支持，帮助他们提升算法设计和代码实现的效率。OIBench 促使我们深入思考：&lt;strong&gt;未来的代码开发，已超越 "人" 或 "模型" 单打独斗的模式，转变为人机协同、优势互补的新范式&lt;/strong&gt;。&lt;/p&gt; 
+&lt;h1&gt;CoreCodeBench 篇&lt;/h1&gt; 
+&lt;p&gt;&lt;img src="https://oscimg.oschina.net/oscnet/up-ceb6f19f2da88e2f684c177f14580a6a10d.png" alt="" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;h2&gt;背景：工程级代码评估的挑战&lt;/h2&gt; 
+&lt;p&gt;研究发现，现有的代码基准数据集在面对复杂的工程场景时普遍存在缺乏多样性和可控性的双重问题：&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt;&lt;strong&gt;工程开发环节覆盖有限&lt;/strong&gt;：尽管现有基准（如 FullStackBench、SWEBench）在领域和语言多样性上取得进展，但其任务类型仍主要集中於单段落代码生成。而真实工程实践通常涉及跨文件、跨模块的协同，以及代码修复、测试驱动开发、多函数协作等复杂任务，这些都应被工程级基准全面覆盖。&lt;/li&gt; 
+ &lt;li&gt;&lt;strong&gt;数据构建方法局限&lt;/strong&gt;：大多数数据集采用随机挖空或从代码仓库的历史&amp;nbsp;PR&amp;nbsp;记录中提取修改点（如 GitHub 的 Pull Request）。前者容易忽略项目的核心逻辑代码段，后者不仅数据量稀少，还需投入大量人工进行数据清洗和标注，难以规模化构建高质量的评测题目。&lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;p&gt;总之，我们发现现有的代码基准测试大多「偏科」了。它们要么只关注单个函数的补全，忽略了开发者修复 Bug 、根据单元测试反向开发的真实场景；要么采用随机挖空的方式，难以触及代码的核心逻辑。这导致我们无法科学、完整、全面地测评 LLM 在真实工程场景中的代码能力，尤其是在可靠性和适用性方面，我们亟需一个能解决此难题的方案。&lt;/p&gt; 
+&lt;p&gt;为了应对上述挑战，&amp;nbsp;Meituan-M17 团队、上海交大联合发布了一个全新的&lt;strong&gt;大模型工程级别代码基准测试&amp;nbsp;CoreCodeBench 数据集，托管到 AGI-Eval 社区&lt;/strong&gt;。&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt;&lt;strong&gt;CoreCodeBench 榜单地址&lt;/strong&gt;：&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fagi-eval.cn%2Fevaluation%2Fdetail%3Fid%3D64" target="_blank"&gt;https://agi-eval.cn/evaluation/detail?id=64&lt;/a&gt;&lt;/li&gt; 
+ &lt;li&gt;&lt;strong&gt;微信公众号文章&lt;/strong&gt;：&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fmp.weixin.qq.com%2Fs%2FihNeyk1RauSUicBcGWI2pA" target="_blank"&gt;AGI-Eval 模型评测&lt;/a&gt;&lt;/li&gt; 
+ &lt;li&gt;&lt;strong&gt;论文预印版&lt;/strong&gt;：《CoreCodeBench: A Configurable Multi-Scenario Repository-Level Benchmark》。&lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;p&gt;&lt;img src="https://p0.meituan.net/meituantechblog/6db13f36c76ac08f4e76f2301112430f132450.png" alt="" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt; &lt;p&gt;&lt;strong&gt;论文地址&lt;/strong&gt;：&lt;a href="https://www.oschina.net/action/GoToLink?url=http%3A%2F%2Farxiv.org%2Fabs%2F2507.05281" target="_blank"&gt;http://arxiv.org/abs/2507.05281&lt;/a&gt;&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;&lt;strong&gt;GitHub 地址&lt;/strong&gt;：&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fgithub.com%2FAGI-Eval-Official%2FCoreCodeBench" target="_blank"&gt;https://github.com/AGI-Eval-Official/CoreCodeBench&lt;/a&gt;&lt;/p&gt; &lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;p&gt;它专注于评估大语言模型在真实工程项目中的综合代码能力，覆盖了从代码开发到代码修正的多个核心阶段。&lt;/p&gt; 
+&lt;p&gt;&lt;img src="https://p0.meituan.net/meituantechblog/d00f4a444d9cce46b92a9ca1c04ff32b141353.png" alt="图 3: CoreCodeBench 题型展示" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;img src="https://p1.meituan.net/meituantechblog/e7d7f6245abec170dad5a1910d4aecf963987.png" alt="图 4: CoreCodeBench 模型能力榜单" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p&gt;通过在 CoreCodeBench 上对当前主流大语言模型的全面评测，我们得出了以下关键结论：&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt;&lt;strong&gt;大模型编程能力迭代进步显著，但发展不均衡&lt;/strong&gt;：较新的模型 {如 Claude 3.7 、o4 mini（high）} 相较于前代产品表现出明显进步。然而，受测模型在代码修正（BugFix）任务上表现欠佳，尤其是单函数任务场景下，修正任务的成功率全部低于开发任务，这揭示了当前 LLM 在理解和修复深层逻辑错误方面存在的普遍短板。&lt;/li&gt; 
+ &lt;li&gt;&lt;strong&gt;多函数协作是当前大模型编程场景的主要瓶颈&lt;/strong&gt;：几乎所有模型在处理多函数任务时的表现都显著劣於单函数任务。这表明，当需要同时处理多个函数间的依赖关系、调用逻辑和协同实现时，当前大模型的跨函数推理和规划能力尚显不足。&lt;/li&gt; 
+ &lt;li&gt;&lt;strong&gt;大模型编程场景普遍缺乏灵活的规划与分层推理能力&lt;/strong&gt;：在多函数代码生成任务中，我们观察到大多数模型严格遵循输入提示中的函数顺序生成代码，而非像人类工程师那样，基于功能依赖（如先实现被调用的工具函数）进行优化。这一现象反映了当前模型在面对复杂任务时，倾向于采用默认的顺序策略，缺乏主动规划的意识。&lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;h2&gt;1. 基准构建方法与实验分析&lt;/h2&gt; 
+&lt;p&gt;&lt;strong&gt;数据集构建方法：CorePipe 流程&lt;/strong&gt;&lt;/p&gt; 
+&lt;p&gt;为了构建一个既关注多样化工程问题，又聚焦于核心代码的基准，CoreCodeBench 中设计了从工程代码仓库到多种函数题型的全自动化构建流程 CorePipe。&lt;/p&gt; 
+&lt;p&gt;&lt;img src="https://p0.meituan.net/meituantechblog/c0fafa80ae9fcd7b85d7bca671ec2934319541.png" alt="图 5: CorePipe 自动化生产数据流程示意图" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p&gt;如上图所示，CorePipe 基于函数调用树，系统化地生成覆盖三大核心场景的单函数与多函数题目，确保每一道题目都直击「要害」：&lt;/p&gt; 
+&lt;p&gt;&lt;strong&gt;精选真实项目&lt;/strong&gt;：我们从 PyPI 对应的 GitHub 仓库中筛选出高活跃度、高测试覆盖率和高技术复杂度的顶级开源项目。&lt;/p&gt; 
+&lt;p&gt;&lt;strong&gt;定位核心代码&lt;/strong&gt;：通过动态和静态追踪代码的执行，我们首先构建函数调用图，再利用抽象语法树（AST）抽取出关键函数中的核心代码，精准定位项目中那些「牵一发而动全身」的核心代码块。我们能精准定位项目中那些「牵一发而动全身」的核心函数。&lt;/p&gt; 
+&lt;p&gt;&lt;strong&gt;模拟三大真实场景&lt;/strong&gt;：&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt;&lt;strong&gt;直接开发&lt;/strong&gt;（Development）：&amp;nbsp;不仅仅是填空，我们利用 GPT-4o 生成高质量的函数功能描述，并由 Claude 3.5 Sonnet 进行「挑刺」和审核，确保模型是在理解真正需求的前提下进行开发。&lt;/li&gt; 
+ &lt;li&gt;&lt;strong&gt;代码修正&lt;/strong&gt;（BugFix）：告别简单的语法错误，转而使用 LLM 生成更隐蔽、更复杂的逻辑错误，真实模拟了开发中那些令人头疼的 Bug 。&lt;/li&gt; 
+ &lt;li&gt;&lt;strong&gt;测试驱动开发&lt;/strong&gt;（TDD）：提供完整的单元测试，要求模型根据测试用例反向开发功能代码，考察其遵循现代开发范式的能力。&lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;p&gt;&lt;strong&gt;引入多函数难题&lt;/strong&gt;&lt;/p&gt; 
+&lt;p&gt;我们将上述单函数问题按照真实的函数调用关系组合起来，创造出更复杂的多函数题目，全面考验模型在宏观层面的代码组织和规划能力。&lt;/p&gt; 
+&lt;h2&gt;2. 实验结果与深度分析&lt;/h2&gt; 
+&lt;p&gt;为确保评测的科学性，我们采用了信息增益分数（IG Score）作为核心指标，并通过&amp;nbsp;&lt;strong&gt;IG Filter（信息增益过滤）和专业工程师人工审核（最终合格率 78.55%）&lt;/strong&gt; 对题目质量进行充分的监测，兼具&lt;strong&gt;可读性、准确性和完整性&lt;/strong&gt;。&lt;/p&gt; 
+&lt;h3&gt;2.1 单函数与多函数任务分析&lt;/h3&gt; 
+&lt;p&gt;&lt;img src="https://p0.meituan.net/meituantechblog/3880e195179b9c7170e4b2dc56760d0e155540.jpg" alt="表 5: CoreCodeBench 单函数和多函数任务榜单" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p&gt;如上图可以看出，实验结果有力地支持了我们的核心结论， Claude 3.7 在所有任务中表现突出。&lt;/p&gt; 
+&lt;p&gt;但所有模型在多函数任务上的普遍表现下滑差於单模型任务，这可能是因为多函数任务需同时处理多个函数间的依赖关系、调用逻辑和协同实现，对大语言模型的跨函数推理和规划能力要求更高，以及在 BugFix 任务上的集体短板，清晰地勾勒出当前技术的能力边界。&lt;/p&gt; 
+&lt;h3&gt;2.2 模型规划能力洞察&lt;/h3&gt; 
+&lt;p&gt;多函数任务的实验分析揭示，&lt;strong&gt;模型缺乏对实现顺序的规划能力&lt;/strong&gt;。&lt;/p&gt; 
+&lt;p&gt;大多数模型严格遵循输入提示中的函数顺序生成代码。当前模型在多函数代码生成时缺乏灵活规划能力与分层推理能力，往往采用默认的顺序输出策略，而非基于逻辑或功能依赖进行优化。&lt;/p&gt; 
+&lt;p&gt;这种「顺序执行」而非「逻辑执行」的策略，是其与人类工程师在解决复杂问题思路上的一大差异。&lt;/p&gt; 
+&lt;h3&gt;2.3 极限挑战&lt;/h3&gt; 
+&lt;p&gt;&lt;img src="https://p0.meituan.net/meituantechblog/014baa15a3e9fa538f8946e1ef87a6cc169891.png" alt="图 6: CoreCodeBench-Difficult 数据集的模型结果" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p&gt;我们通过放宽多函数问题的复杂度限制，构建了&amp;nbsp;CoreCodeBench-Difficult&amp;nbsp;数据集。&lt;/p&gt; 
+&lt;p&gt;在该测试中，所有模型的通过率均低于 30%，这不仅印证了该基准在揭示模型局限性方面的有效性，也为未来技术的突破提供了严苛的测试平台。&lt;/p&gt; 
+&lt;h3&gt;2.4 LLM 代码能力全景雷达图&lt;/h3&gt; 
+&lt;p&gt;&lt;img src="https://p0.meituan.net/meituantechblog/968a856ea20107dbef5236fbb904b6f8249232.png" alt="图 7: 前沿 LLM 代码能力雷达图" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p&gt;我们将模型的六个核心场景表现绘制成雷达图，可以直观地看到：&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt;没有一个模型能在所有场景中独占鳌头，证明了 CoreCodeBench&amp;nbsp;&lt;strong&gt;评估维度的全面性&lt;/strong&gt;。&lt;/li&gt; 
+ &lt;li&gt;开发（Development）和测试驱动开发（TDD）任务中，单/多函数表现并不完全相关，说明&lt;strong&gt;开发多关联函数需要额外的规划能力&lt;/strong&gt;。&lt;/li&gt; 
+ &lt;li&gt;代码修正（BugFix）任务中，单/多函数表现高度相关，这说明&lt;strong&gt;调试更依赖于一种通用的、局部的错误修正技能&lt;/strong&gt;。&lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;p&gt;为进一步分析各评测维度之间的关系，我们计算了所有模型在六个维度上的皮尔逊相关系数并绘制热力图。&lt;/p&gt; 
+&lt;p&gt;&lt;img src="https://p0.meituan.net/meituantechblog/855a4c86166ab69686d5b2daa2504e56137569.png" alt="图 8: 代码能力项相关度分析" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p&gt;如上图所示可以观察得到，相关系数的测算结果表明，CoreCodeBench 的六个核心场景之间既存在一定的&lt;strong&gt;相关性&lt;/strong&gt;，也体现出各自的&lt;strong&gt;差异性&lt;/strong&gt;：&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt;Single-function 任务之间相关性较高，表现出&lt;strong&gt;单函数任务在基础编程、理解和实现能力上的共性&lt;/strong&gt;。&lt;/li&gt; 
+ &lt;li&gt;Multi-TDD 和 Multi-Development 存在一定的相关性，这是因为&amp;nbsp;&lt;strong&gt;Multi-function 任务通常考察模型在更复杂场景下的综合能力&lt;/strong&gt;，包括多步推理、实现规划等，与单函数任务所需的基础能力存在明显区别。&lt;/li&gt; 
+ &lt;li&gt;Multi-BugFix&amp;nbsp;虽然属于多函数任务，但它和单函数任务相关性高，反而和 Multi-TDD、Multi-Development 相关性低。这是因为&amp;nbsp;&lt;strong&gt;Multi-BugFix&amp;nbsp;任务的本质更接近于「单点排查」，它更侧重于具体细节或某一局部的能力考察，而与需要全局综合能力的多函数任务存在差异&lt;/strong&gt;。&lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;h2&gt;3. CoreCodeBench 总结与展望&lt;/h2&gt; 
+&lt;p&gt;CoreCodeBench&amp;nbsp;的构建与应用，旨在为大语言模型的代码能力评估提供一把更科学、更全面、更贴近真实的「工程标尺」。回顾我们的研究，我们系统性地揭示了当前顶尖 LLM 在真实工程场景中的核心短板：&lt;strong&gt;无论是多么先进的模型，都在逻辑错误修复方面步履维艰；在面对多函数协同任务时，其跨函数推理与规划能力都显得捉襟见肘；并且，它们普遍缺乏人类工程师所具备的灵活规划与分层推理能力&lt;/strong&gt;。&lt;/p&gt; 
+&lt;p&gt;然而，这些被揭示的局限性并非技术的终点，而是为下一代大语言模型的发展指明了清晰的优化方向。我们相信，通过在 CoreCodeBench 这类更贴近真实工程需求的基准上进行训练和迭代，大语言模型将能更快地从一个「代码片段生成器」，进化成一个真正具备分析、规划和解决复杂工程问题的「虚拟软件工程师」，从而在软件开发领域释放出更深远的变革力量。&lt;/p&gt; 
+&lt;h2&gt;总结&lt;/h2&gt; 
+&lt;p&gt;通过 OIBench 和 CoreCodeBench 两大基准的构建和评测，Meituan-M17 团队系统性地揭示了当前大语言模型在编程领域的真实能力边界。这两个数据集不仅填补了现有评估体系的空白，更重要的是为整个行业提供了一面"照妖镜"，让我们能够更清晰地看到顶尖 AI 模型与人类专业水平之间的真实差距。&lt;/p&gt; 
+&lt;p&gt;&lt;strong&gt;核心发现包括&lt;/strong&gt;：&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt;即使是最强的推理模型，在复杂算法挑战面前仍显不足，距离真正的竞赛选手水平还有很大差距；&lt;/li&gt; 
+ &lt;li&gt;在工程级代码任务中，模型普遍在代码修复和多函数协作方面存在明显短板；&lt;/li&gt; 
+ &lt;li&gt;现有模型缺乏人类工程师所具备的灵活规划和分层推理能力。&lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;h2&gt;展望未来&lt;/h2&gt; 
+&lt;p&gt;这些发现并非技术发展的终点，而是为下一代大语言模型的优化指明了明确方向。我们相信，通过在更贴近真实需求的基准上持续训练和迭代，AI 将逐步从"代码生成工具"进化为真正的"智能开发伙伴"，与人类开发者形成优势互补的协作关系。&lt;/p&gt; 
+&lt;p&gt;Meituan-M17 团队将持续致力于高质量评估研究，推动大语言模型技术向更广阔的未来发展。&lt;/p&gt; 
+&lt;h2&gt;One More Thing - 从大模型到 Code Agent 的评测范式迁移&lt;/h2&gt; 
+&lt;p&gt;当前大量涌现的 Code Agent 类框架与产品，使得人机协作解决更加复杂的工程问题成为可能，这预示着对 Code Agent 在实际工程场景中与人类协作能力的评估，将变得日益关键。然而，现有的 Code Agent 评测基准（如 SWE-bench 系列）存在一个核心问题：&lt;strong&gt;它们将人类开发者完全排除在评估流程之外&lt;/strong&gt;。这种 「端到端」 的自动化评测，虽然能比较容易的量化模型在封闭任务上的表现，却无法回答一个更关键的问题：在真实、开放的开发环境中，Code Agent 能否与人类高效协作？当前多数 Code Agent 框架在交互设计上对人机交互的忽视，导致其评测结果与实际应用价值之间存在明显脱节。&lt;/p&gt; 
+&lt;p&gt;结合 OIBench 引发的关于人机协同、优势互补的思考，Meituan-M17 团队也开始关注人机协作评测这一新的评测范式在 Code Agent 场景的应用，进而弥补当前范式引起的评测结果与实际应用价值间的鸿沟。基于此，我们与 AGI-Eval 评测社区合作，设计并计划举办一项创新的人机协作编程竞赛。&lt;/p&gt; 
+&lt;p&gt;&lt;strong&gt;竞赛核心设计如下&lt;/strong&gt;：&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt;&lt;strong&gt;评测目标&lt;/strong&gt;：竞赛旨在真实模拟人类开发者与搭载不同大模型的 Code Agent 协作解决复杂工程任务的全过程。我们关注的不再仅仅是任务的最终成败，而是&lt;strong&gt;整个协作流程的质量与效率&lt;/strong&gt;。&lt;/li&gt; 
+ &lt;li&gt;&lt;strong&gt;关键指标&lt;/strong&gt;：我们将记录并分析一系列过程性指标，包括：模型的意图理解准确度、需求澄清的有效性、交互轮次、决策效率以及最终任务完成的质量与速度。&lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;p&gt;&lt;strong&gt;评测流程如下&lt;/strong&gt;：&lt;/p&gt; 
+&lt;p&gt;&lt;img src="https://p0.meituan.net/meituantechblog/63a5fc4a1f67b4be5f31828f032fa30518009.png" alt="图 9: Code Agent 评估流程图" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;strong&gt;价值与产出&lt;/strong&gt;&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt;&lt;strong&gt;首个人机协作榜单&lt;/strong&gt;：我们将产出首个聚焦人机协作效能的 Code Agent 性能榜单，从模型硬实力（自主解决问题的能力）与协作流畅度（与人交互的体验）两大维度进行评估。&lt;/li&gt; 
+ &lt;li&gt;&lt;strong&gt;深度洞察与改进&lt;/strong&gt;：这些宝贵的数据和洞察，将揭示当前 Code Agent 在真实协作场景下的优势与短板，为打造更智能、更实用的下一代开发工具提供坚实的实证依据，真正推动人机协同编程走向成熟。&lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;p&gt;这项竞赛不仅填补了现有评测体系的空白，更为探索未来人机协作的无限可能提供了宝贵的数据和实践参考。对这项比赛感兴趣的小伙伴，欢迎前往 AGI-Eval 评测社区了解详情。&lt;/p&gt; 
+&lt;p&gt;&lt;img src="https://p0.meituan.net/meituantechblog/1c438755881e6541eff96bc9f0845d652459748.png" alt="" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;strong&gt;网页端地址&lt;/strong&gt;：&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fagi-eval.cn%2Fcompetition%2Factivity" target="_blank"&gt;https://agi-eval.cn/competition/activity&lt;/a&gt;&lt;/p&gt; 
+&lt;h2&gt;招聘信息&lt;/h2&gt; 
+&lt;p&gt;&lt;strong&gt;岗位名称：【北斗计划】基座大模型算法研究员（评测与探索）&lt;/strong&gt;&lt;/p&gt; 
+&lt;p&gt;随着 AI 下半场的到来，传统的评测范式已经无法适配持续提升的模型能力，针对 ChatBot 模型的 Arena 评测的有效性也遭到质疑，如何面向现阶段以及未来的模型能力进行科学有效的评估本身也是个极具挑战和价值的研究方向。OpenAI 研究者也表示，AI 接下来比拼的不是训练，而是「如何定义并评估真正有用的任务」。&lt;/p&gt; 
+&lt;p&gt;在这样的背景下，美团大模型评测团队以指引通往 AGI &lt;a href="https://www.oschina.net/action/GoToLink?url=mailto%3A%E7%9A%84%E9%81%93%E8%B7%AF%E4%B8%BA%E7%9B%AE%E6%A0%87%EF%BC%8C%E6%B7%B1%E8%80%95%E6%A8%A1%E5%9E%8B%E8%AF%84%E6%B5%8B%E7%A0%94%E7%A9%B6%EF%BC%8C%E7%B3%BB%E7%BB%9F%E6%80%A7%E7%9A%84%E7%90%86%E8%A7%A3%E5%A4%A7%E6%A8%A1%E5%9E%8B%E5%BD%93%E5%89%8D%E8%83%BD%E5%8A%9B%E6%B0%B4%E5%B9%B3%E5%8F%8A%E6%9C%AA%E6%9D%A5%E6%8A%80%E6%9C%AF%E5%8F%91%E5%B1%95%E6%96%B9%E5%90%91%EF%BC%8C%E5%B9%B6%E4%BB%A5%E6%AD%A4%E4%B8%BA%E5%9F%BA%E7%A1%80%E5%AE%8C%E5%96%84%E6%A8%A1%E5%9E%8B%E8%AF%84%E6%B5%8B%E8%83%BD%E5%8A%9B%E7%9F%A9%E9%98%B5%E3%80%82%E6%AC%A2%E8%BF%8E%E5%90%84%E8%B7%AF%E8%8B%B1%E6%89%8D%E5%8A%A0%E5%85%A5%EF%BC%8C%E8%81%94%E7%B3%BB%E6%96%B9%E5%BC%8F%EF%BC%9Aliuxingyu10%40meituan.com%E3%80%82" target="_blank"&gt;的道路为目标，深耕模型评测研究，系统性的理解大模型当前能力水平及未来技术发展方向，并以此为基础完善模型评测能力矩阵。欢迎各路英才加入，联系方式：liuxingyu10@meituan.com。&lt;/a&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;strong&gt;阅读更多&lt;/strong&gt;&lt;/p&gt; 
+&lt;p&gt;| 关注「美团技术团队」微信公众号，在公众号菜单栏对话框回复【2024 年货】、【2023 年货】、【2022 年货】、【2021 年货】、【2020 年货】、【2019 年货】、【2018 年货】、【2017 年货】等关键词，可查看美团技术团队历年技术文章合集。&lt;/p&gt; 
+&lt;p&gt;&lt;img src="https://p0.meituan.net/meituantechblog/b0364d579285ab22aa6235bd100d7c22178175.png" alt="" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p&gt;| 本文系美团技术团队出品，著作权归属美团。欢迎出于分享和交流等非商业目的转载或使用本文内容，敬请注明 "内容转载自美团技术团队"。本文未经许可，不得进行商业性转载或者使用。任何商用行为，请发送邮件至 &lt;a href="https://www.oschina.net/action/GoToLink?url=mailto%3Atech%40meituan.com" target="_blank"&gt;tech@meituan.com&lt;/a&gt; 申请授权。&lt;/p&gt;
+                                                                                    &lt;/div&gt;
+                                                                            </description>
+      <link>https://my.oschina.net/meituantech/blog/18685058</link>
+      <guid isPermaLink="false">https://my.oschina.net/meituantech/blog/18685058</guid>
+      <pubDate>Fri, 18 Jul 2025 07:21:29 GMT</pubDate>
+      <author>原创</author>
+    </item>
+    <item>
+      <title>报告：71% 的人不愿聘用不具备 AI 技能的开发人员</title>
+      <description>&lt;div class="content"&gt;
+                                                                    
+                                                        &lt;p&gt;&lt;span style="color:#000000"&gt;Infragistics 最新发布的一项&lt;/span&gt;&lt;span&gt;&lt;span&gt;&lt;span style="color:#585858"&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span style="background-color:#ffffff"&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fwww.appbuilder.dev%2F2025-app-development-trends-part-2" target="_blank"&gt;&lt;span&gt;&lt;span&gt;《2025 年应用开发趋势报告》&lt;/span&gt;&lt;/span&gt;&lt;/a&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;span style="color:#000000"&gt;显示，71％ 的受访者表示，他们不会聘请不具备 AI 技能的开发人员。&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;span style="color:#000000"&gt;30% 的受访者表示，今年他们面临的最大挑战之一是招聘合格的开发人员。除了招聘 AI 领域人才外，53% 的领导者还寻求具备云计算技能的人才，35% 的领导者在寻求具备解决问题的能力的人，35% 的领导者寻求采用安全编码实践的开发人员。&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;span style="color:#000000"&gt;Infragistics 首席运营官 Jason Beres 表示：「AI 正在迅速改变企业开发应用程序的方式——从简化工作流程到降低安全风险——但如果没有一支技术精湛的团队，单凭技术本身是不够的。随着企业寻求在业务中扩大 AI 的应用，聘请精通 AI 和机器学习的开发人员，并投资于技能提升，对于推动创新和保持竞争力至关重要。」&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;span style="color:#000000"&gt;此外，受访者表示面临的一些其他主要挑战是网络安全威胁（45%）、实施人工智能（37%）和留住合格的开发人员（35%）。&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;span style="color:#000000"&gt;调查发现，目前有 87% 的团队在开发过程中使用 AI，而目前尚未使用 AI 的公司中，有 45% 表示他们可能会在明年内开始使用。AI 在开发领域最大的应用场景是自动化重复性任务（40%）、创建布局和页面（34%）以及检测错误。约三分之一的领导者认为，AI 可以让开发人员腾出时间去做更有意义的工作。&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;span style="color:#000000"&gt;几乎所有（99%）在应用程序开发过程中使用 AI 的公司都将 AI 工具用于安全目的。64% 的公司使用 AI 工具进行安全评估、60% 用于测试代码、59% 用于识别趋势以检测安全漏洞，58% 用于扫描代码以查找漏洞。&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;img height="275" src="https://oscimg.oschina.net/oscnet/up-00357b61dccfee8da65a90bca27b3134624.png" width="700" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;span style="color:#000000"&gt;近一半（45%）的受访者表示，网络安全威胁是他们在 2025 年面临的首要挑战之一。低代码与 AI 的结合不仅使应用程序开发更高效，而且更安全。&lt;/span&gt;还有 76% 的技术领导者认为 AI 将提高低代码工具的效率，只有 16% 的人认为 AI 将取代低代码开发。&lt;/p&gt; 
+&lt;p&gt;更多详情可查看&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fwww.appbuilder.dev%2F2025-app-development-trends-part-2" target="_blank"&gt;此处&lt;/a&gt;。&lt;/p&gt;
+                                                                                &lt;/div&gt;
+                                                                            </description>
+      <link>https://www.oschina.net/news/361019</link>
+      <guid isPermaLink="false">https://www.oschina.net/news/361019</guid>
+      <pubDate>Fri, 18 Jul 2025 07:02:29 GMT</pubDate>
+      <author>来源: OSCHINA</author>
+    </item>
+    <item>
+      <title>IntelliJ IDEA 从 2025.3 版本开始只提供单一安装程序</title>
+      <description>&lt;div class="content"&gt;
+                                                                    
+                                                        &lt;p&gt;JetBrains &lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fblog.jetbrains.com%2Fzh-hans%2Fidea%2F2025%2F07%2Fintellij-idea-unified-distribution-plan%2F" target="_blank"&gt;宣布了&lt;/a&gt; IntelliJ IDEA 迁移到统一发行版的计划：「&lt;strong&gt;以后将只有一个 IntelliJ IDEA 安装程序，取代分别下载的 Community Edition 和 Ultimate Edition&lt;/strong&gt;。」&lt;/p&gt; 
+&lt;p&gt;&lt;img alt="" src="https://oscimg.oschina.net/oscnet/up-958f541e5ae8e14a12c6ab5ca622afdf89f.png" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p&gt;从&amp;nbsp;2025.3 版本开始，&lt;strong&gt;IntelliJ IDEA Community Edition 将不再作为单独的产品发行&lt;/strong&gt;。所有用户都将下载单个 IntelliJ IDEA 发行版：一个安装程序，一个更新流。&lt;/p&gt; 
+&lt;p&gt;对于 Ultimate 用户来说：&lt;strong&gt;IDE 将被简称为 IntelliJ IDEA，不带「Ultimate」后缀&lt;/strong&gt;。&lt;/p&gt; 
+&lt;p&gt;在这种新设置中，所有 Ultimate 功能仍然需要订阅才能解锁。 但即使没有订阅，IDE 仍将保持完整功能，可供商业和非商业项目免费使用，并将包含比当前 Community Edition 更多的功能。&lt;/p&gt; 
+&lt;p&gt;详情查看&amp;nbsp;&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fblog.jetbrains.com%2Fzh-hans%2Fidea%2F2025%2F07%2Fintellij-idea-unified-distribution-plan%2F" target="_blank"&gt;官方公告&lt;/a&gt;。&lt;/p&gt;
+                                                                                &lt;/div&gt;
+                                                                            </description>
+      <link>https://www.oschina.net/news/361007/intellij-idea-unified-distribution-plan</link>
+      <guid isPermaLink="false">https://www.oschina.net/news/361007/intellij-idea-unified-distribution-plan</guid>
+      <pubDate>Thu, 17 Jul 2025 06:25:00 GMT</pubDate>
+      <author>来源: OSCHINA</author>
+    </item>
+    <item>
+      <title>​首个基于 AI 的恶意软件 LameHug 现身，窃取 Windows 设备数据</title>
+      <description>&lt;div class="content"&gt;
+                                                                    
+                                                        &lt;p style="color:#242424; margin-left:0; margin-right:0; text-align:left"&gt;科技媒体 &lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fwww.bleepingcomputer.com%2Fnews%2Fsecurity%2Flamehug-malware-uses-ai-llm-to-craft-windows-data-theft-commands-in-real-time%2F" target="_blank"&gt;BleepingComputer&lt;/a&gt; 报道了一种新型恶意软件 LameHug 的出现，该软件利用了阿里开源的 Qwen2.5-Coder-32B-Instruct 大型语言模型，针对 Windows10 和 Windows11 设备进行数据窃取。&lt;/p&gt; 
+&lt;p style="color:#242424; margin-left:0; margin-right:0; text-align:left"&gt;&lt;img height="345" src="https://oscimg.oschina.net/oscnet/up-eec711f70b3c1570b78cf188268fca9dee1.png" width="500" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p style="color:#242424; margin-left:0; margin-right:0; text-align:left"&gt;LameHug 的独特之处在于它采用了大型语言模型生成攻击指令，进而搜刮受害者设备上的敏感数据。根据 CERT-UA（乌克兰国家网络安全事件响应团队）的报告，LameHug 是用 Python 编写的，依赖于 Hugging Face API 与 Qwen LLM 进行交互。恶意软件通过特定的提示词，动态生成窃取数据的指令。&lt;/p&gt; 
+&lt;p style="color:#242424; margin-left:0; margin-right:0; text-align:left"&gt;LameHug 通过恶意电子邮件传播，通常邮件内附有一个 ZIP 文件，其中包含 LameHug 的加载器。CERT-UA 已经识别出至少三种不同的变体，包括名为 「Attachment.pif」、「AI_generator_uncensored_Canvas_PRO_v0..9.exe」 和 「image.py」 的文件。在具体的攻击过程中，LameHug 会执行系统侦察和数据窃取命令，这些命令均是通过提示词动态生成的。&lt;/p&gt; 
+&lt;p style="color:#242424; margin-left:0; margin-right:0; text-align:left"&gt;生成的命令主要用于收集系统信息并保存到一个文本文件（info.txt）中。它会在关键的 Windows 目录 (如文档、桌面和下载) 中搜索敏感文件，并通过 SFTP 或 HTTP POST 请求将这些数据发送给攻击者。这种利用 AI 技术的恶意软件的出现，可能引发一种新的攻击模式，为网络安全带来了更大的挑战。&lt;/p&gt; 
+&lt;p style="color:#242424; margin-left:0; margin-right:0; text-align:left"&gt;随着 LameHug 的广泛传播，安全专家提醒用户要提高警惕，及时更新防病毒软件和系统补丁，谨慎处理陌生邮件和附件，以防止此类恶意软件的侵害。对于广大用户而言，网络安全意识的提升显得尤为重要。&lt;/p&gt;
+                                                                                &lt;/div&gt;
+                                                                            </description>
+      <link>https://www.oschina.net/news/361006</link>
+      <guid isPermaLink="false">https://www.oschina.net/news/361006</guid>
+      <pubDate>Thu, 17 Jul 2025 06:21:00 GMT</pubDate>
+      <author>来源: OSCHINA</author>
+    </item>
+    <item>
+      <title>微语 0.8.8 发布，开源 AI 问答平台</title>
+      <description>&lt;div class="content"&gt;
+                                                                    
+                                                        &lt;p style="color:#40485b; margin-left:0; margin-right:0; text-align:left"&gt;企业级多租户团队协作工具，免费开源 N 件套：企业 IM、在线客服、企业知识库/帮助文档、客户之声、工单系统、AI 对话、工作流、呼叫中心、视频客服、开放平台。&lt;/p&gt; 
+&lt;h2&gt;语言&lt;/h2&gt; 
+&lt;ul&gt; 
+ &lt;li&gt;&lt;a href="https://gitee.com/270580156/weiyu/blob/main/README.md"&gt;English&lt;/a&gt;&lt;/li&gt; 
+ &lt;li&gt;&lt;a href="https://gitee.com/270580156/weiyu/blob/main/README.zh.md"&gt;中文&lt;/a&gt;&lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;p style="color:#40485b; margin-left:0; margin-right:0; text-align:left"&gt;&lt;img alt="weiyu" src="https://oscimg.oschina.net/oscnet//93c656e542bc2bd566c502c9fa67a081.png" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;h2&gt;管理端&lt;/h2&gt; 
+&lt;p style="color:#40485b; margin-left:0; margin-right:0; text-align:left"&gt;&lt;img alt="chat" src="https://oscimg.oschina.net/oscnet//c085beb04c0303db9403ad1d101f4851.png" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;h2&gt;多渠道&lt;/h2&gt; 
+&lt;p style="color:#40485b; margin-left:0; margin-right:0; text-align:left"&gt;&lt;img alt="channel" src="https://oscimg.oschina.net/oscnet//af716261fd2adef709f3c64b7b532e02.png" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;h2&gt;客服端&lt;/h2&gt; 
+&lt;p style="color:#40485b; margin-left:0; margin-right:0; text-align:left"&gt;&lt;img alt="agent" src="https://oscimg.oschina.net/oscnet//50cacebdda154723bc173cc05cdb67e6.png" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;h2&gt;介绍&lt;/h2&gt; 
+&lt;h3&gt;&lt;a href="https://gitee.com/270580156/weiyu/blob/main/modules/team/readme.zh.md"&gt;企业 IM&lt;/a&gt;&lt;/h3&gt; 
+&lt;ul&gt; 
+ &lt;li&gt;局域网即时通讯&lt;/li&gt; 
+ &lt;li&gt;企业成员管理&lt;/li&gt; 
+ &lt;li&gt;聊天记录监控&lt;/li&gt; 
+ &lt;li&gt;...&lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;h3&gt;&lt;a href="https://gitee.com/270580156/weiyu/blob/main/modules/service/readme.zh.md"&gt;全渠道客服&lt;/a&gt;&lt;/h3&gt; 
+&lt;ul&gt; 
+ &lt;li&gt;多渠道接入&lt;/li&gt; 
+ &lt;li&gt;人工客服&lt;/li&gt; 
+ &lt;li&gt;客服 Agent 智能体，对接自有数据，自动执行操作&lt;/li&gt; 
+ &lt;li&gt;...&lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;h3&gt;&lt;a href="https://gitee.com/270580156/weiyu/blob/main/modules/kbase/readme.zh.md"&gt;知识库&lt;/a&gt;&lt;/h3&gt; 
+&lt;ul&gt; 
+ &lt;li&gt;对接大模型&lt;/li&gt; 
+ &lt;li&gt;自定义知识库&lt;/li&gt; 
+ &lt;li&gt;Function Calling&lt;/li&gt; 
+ &lt;li&gt;Mcp&lt;/li&gt; 
+ &lt;li&gt;...&lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;h3&gt;&lt;a href="https://gitee.com/270580156/weiyu/blob/main/modules/ticket/readme.zh.md"&gt;工单系统&lt;/a&gt;&lt;/h3&gt; 
+&lt;ul&gt; 
+ &lt;li&gt;工单管理&lt;/li&gt; 
+ &lt;li&gt;工单 SLA 管理&lt;/li&gt; 
+ &lt;li&gt;工单统计和报表&lt;/li&gt; 
+ &lt;li&gt;...&lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;h3&gt;&lt;a href="https://gitee.com/270580156/weiyu/blob/main/modules/ai/readme.zh.md"&gt;AI Agent&lt;/a&gt;&lt;/h3&gt; 
+&lt;ul&gt; 
+ &lt;li&gt;Ollama/DeepSeek/ZhipuAI/...&lt;/li&gt; 
+ &lt;li&gt;智能体&lt;/li&gt; 
+ &lt;li&gt;工作流&lt;/li&gt; 
+ &lt;li&gt;...&lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;h3&gt;&lt;a href="https://gitee.com/270580156/weiyu/blob/main/modules/core/readme.workflow.md"&gt;工作流&lt;/a&gt;&lt;/h3&gt; 
+&lt;ul&gt; 
+ &lt;li&gt;自定义表单&lt;/li&gt; 
+ &lt;li&gt;自定义流程&lt;/li&gt; 
+ &lt;li&gt;工单流程可视化&lt;/li&gt; 
+ &lt;li&gt;...&lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;h3&gt;&lt;a href="https://gitee.com/270580156/weiyu/blob/main/modules/voc/readme.zh.md"&gt;客户之声&lt;/a&gt;&lt;/h3&gt; 
+&lt;ul&gt; 
+ &lt;li&gt;意见反馈&lt;/li&gt; 
+ &lt;li&gt;服务投诉&lt;/li&gt; 
+ &lt;li&gt;问卷调查&lt;/li&gt; 
+ &lt;li&gt;...&lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;h3&gt;&lt;a href="https://gitee.com/270580156/weiyu/blob/main/plugins/freeswitch/readme.zh.md"&gt;呼叫中心&lt;/a&gt;&lt;/h3&gt; 
+&lt;ul&gt; 
+ &lt;li&gt;基于 FreeSwitch 的专业呼叫平台&lt;/li&gt; 
+ &lt;li&gt;支持来电弹屏、自动分配、通话录音&lt;/li&gt; 
+ &lt;li&gt;数据统计，语音与文字服务无缝集成&lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;h3&gt;&lt;a href="https://gitee.com/270580156/weiyu/blob/main/plugins/webrtc/readme.zh.md"&gt;视频客服&lt;/a&gt;&lt;/h3&gt; 
+&lt;ul&gt; 
+ &lt;li&gt;基于 WebRTC 技术的高清视频通话&lt;/li&gt; 
+ &lt;li&gt;支持一键视频对话与屏幕共享&lt;/li&gt; 
+ &lt;li&gt;适用于需要直观展示的服务场景&lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;h3&gt;开放平台&lt;/h3&gt; 
+&lt;h2&gt;Docker 快速开始&lt;/h2&gt; 
+&lt;h3&gt;方法一：克隆项目并启动 docker compose 容器，默认使用云模型，智谱 AI&lt;/h3&gt; 
+&lt;div&gt; 
+ &lt;pre&gt;&lt;code&gt;git &lt;span style="color:#0086b3"&gt;clone&lt;/span&gt; https://gitee.com/270580156/weiyu.git &amp;amp;&amp;amp; &lt;span style="color:#0086b3"&gt;cd&lt;/span&gt; weiyu/deploy/docker &amp;amp;&amp;amp; docker compose -p weiyu -f docker-compose.yaml up -d
+&lt;/code&gt;&lt;/pre&gt; 
+ &lt;div&gt;
+  &amp;nbsp;
+ &lt;/div&gt; 
+&lt;/div&gt; 
+&lt;h4&gt;申请智谱 AI&lt;span&gt;&amp;nbsp;&lt;/span&gt;&lt;a href="https://gitee.com/link?target=https%3A%2F%2Fwww.bigmodel.cn%2Fusercenter%2Fproj-mgmt%2Fapikeys" target="_blank"&gt;API Key&lt;/a&gt;&lt;/h4&gt; 
+&lt;div&gt; 
+ &lt;pre&gt;&lt;code&gt;&lt;em&gt;# zhipuai&lt;/em&gt;
+&lt;em&gt;# SPRING_AI_ZHIPUAI_BASE_URL: https://open.bigmodel.cn/api/paas&lt;/em&gt;
+SPRING_AI_ZHIPUAI_API_KEY: &lt;span style="color:#dd1144"&gt;'sk-xxx'&lt;/span&gt; // 替换为智谱 AI API Key
+SPRING_AI_ZHIPUAI_CHAT_ENABLED: &lt;span style="color:#dd1144"&gt;"true"&lt;/span&gt;
+SPRING_AI_ZHIPUAI_CHAT_OPTIONS_MODEL: glm-4-flash
+SPRING_AI_ZHIPUAI_CHAT_OPTIONS_TEMPERATURE: 0.7
+SPRING_AI_ZHIPUAI_EMBEDDING_ENABLED: &lt;span style="color:#dd1144"&gt;"true"&lt;/span&gt;
+SPRING_AI_ZHIPUAI_EMBEDDING_OPTIONS_MODEL: embedding-2
+&lt;/code&gt;&lt;/pre&gt; 
+ &lt;div&gt;
+  &amp;nbsp;
+ &lt;/div&gt; 
+&lt;/div&gt; 
+&lt;h3&gt;方法二：使用 docker compose ollama，默认安装 ollama，默认使用 qwen3:0.6b 模型&lt;/h3&gt; 
+&lt;div&gt; 
+ &lt;pre&gt;&lt;code&gt;git &lt;span style="color:#0086b3"&gt;clone&lt;/span&gt; https://gitee.com/270580156/weiyu.git &amp;amp;&amp;amp; &lt;span style="color:#0086b3"&gt;cd&lt;/span&gt; weiyu/deploy/docker &amp;amp;&amp;amp; docker compose -p weiyu -f docker-compose-ollama.yaml up -d
+&lt;/code&gt;&lt;/pre&gt; 
+ &lt;div&gt;
+  &amp;nbsp;
+ &lt;/div&gt; 
+&lt;/div&gt; 
+&lt;h4&gt;docker 拉取 ollama 模型。配置文件中可以配置其他模型，如 deepseek-r1 等&lt;/h4&gt; 
+&lt;div&gt; 
+ &lt;pre&gt;&lt;code&gt;&lt;em&gt;# 对话模型&lt;/em&gt;
+docker &lt;span style="color:#0086b3"&gt;exec&lt;/span&gt; ollama-bytedesk ollama pull qwen3:0.6b
+&lt;em&gt;# 嵌入模型&lt;/em&gt;
+docker &lt;span style="color:#0086b3"&gt;exec&lt;/span&gt; ollama-bytedesk ollama pull bge-m3:latest
+&lt;em&gt;# 重新排序 Rerank 模型&lt;/em&gt;
+docker &lt;span style="color:#0086b3"&gt;exec&lt;/span&gt; ollama-bytedesk ollama pull linux6200/bge-reranker-v2-m3:latest
+&lt;em&gt;# 或者从 huggingface 下载模型&lt;/em&gt;
+&lt;em&gt;# docker exec ollama-bytedesk ollama pull hf.co/&amp;lt;username&amp;gt;/&amp;lt;model-repository&amp;gt;&lt;/em&gt;
+&lt;/code&gt;&lt;/pre&gt; 
+ &lt;div&gt;
+  &amp;nbsp;
+ &lt;/div&gt; 
+&lt;/div&gt; 
+&lt;h4&gt;停止容器&lt;/h4&gt; 
+&lt;div&gt; 
+ &lt;pre&gt;&lt;code&gt;docker compose -p weiyu -f docker-compose.yaml stop
+&lt;/code&gt;&lt;/pre&gt; 
+ &lt;div&gt;
+  &amp;nbsp;
+ &lt;/div&gt; 
+&lt;/div&gt; 
+&lt;h4&gt;修改配置，否则上传图片、文件和知识库无法正常显示&lt;/h4&gt; 
+&lt;ul&gt; 
+ &lt;li&gt;修改&lt;span&gt;&amp;nbsp;&lt;/span&gt;&lt;code&gt;docker-compose.yaml&lt;/code&gt;&lt;span&gt;&amp;nbsp;&lt;/span&gt;文件，或&lt;span&gt;&amp;nbsp;&lt;/span&gt;&lt;code&gt;docker-compose-ollama.yaml&lt;/code&gt;&lt;span&gt;&amp;nbsp;&lt;/span&gt;文件，修改以下配置项：&lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;div&gt; 
+ &lt;pre&gt;&lt;code&gt;&lt;em&gt;# 请将服务器 127.0.0.1 替换为你的服务器 ip&lt;/em&gt;
+&lt;em&gt;# 头像的访问地址，请修改为服务器实际的地址&lt;/em&gt;
+BYTEDESK_FEATURES_AVATAR_BASE_URL: http://127.0.0.1:9003
+&lt;em&gt;# 文件上传的访问地址，请修改为服务器实际的地址&lt;/em&gt;
+BYTEDESK_UPLOAD_URL: http://127.0.0.1:9003
+&lt;em&gt;# 知识库的访问地址，请修改为服务器实际的地址&lt;/em&gt;
+BYTEDESK_KBASE_API_URL: http://127.0.0.1:9003
+&lt;/code&gt;&lt;/pre&gt; 
+ &lt;div&gt;
+  &amp;nbsp;
+ &lt;/div&gt; 
+&lt;/div&gt; 
+&lt;h3&gt;方法三：宝塔面板&lt;/h3&gt; 
+&lt;ul&gt; 
+ &lt;li&gt;&lt;a href="https://gitee.com/link?target=https%3A%2F%2Fwww.weiyuai.cn%2Fdocs%2Fzh-CN%2Fdocs%2Fdeploy%2Fbaota" target="_blank"&gt;宝塔面板部署&lt;/a&gt;&lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;h3&gt;方法四：源码启动&lt;/h3&gt; 
+&lt;ul&gt; 
+ &lt;li&gt;&lt;a href="https://gitee.com/link?target=https%3A%2F%2Fwww.weiyuai.cn%2Fdocs%2Fzh-CN%2Fdocs%2Fdeploy%2Fsource" target="_blank"&gt;源码启动&lt;/a&gt;&lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;h2&gt;演示&lt;/h2&gt; 
+&lt;p style="color:#40485b; margin-left:0; margin-right:0; text-align:left"&gt;本地预览&lt;/p&gt; 
+&lt;div&gt; 
+ &lt;pre&gt;&lt;code&gt;&lt;em&gt;# 请将 127.0.0.1 替换为你的服务器 ip&lt;/em&gt;
+http://127.0.0.1:9003/
+&lt;em&gt;# 开放端口：9003, 9885&lt;/em&gt;
+默认用户名: admin@email.com
+默认密码: admin&lt;/code&gt;&lt;/pre&gt; 
+&lt;/div&gt;
+                                                                                &lt;/div&gt;
+                                                                            </description>
+      <link>https://www.oschina.net/news/360990</link>
+      <guid isPermaLink="false">https://www.oschina.net/news/360990</guid>
+      <pubDate>Thu, 17 Jul 2025 04:11:00 GMT</pubDate>
+      <author>来源: 资讯</author>
+    </item>
+    <item>
+      <title>Meta 在挖走苹果 AI 部门主管后，再次挖走两名核心专家</title>
+      <description>&lt;div class="content"&gt;
+                                                                    
+                                                        &lt;p&gt;彭博社记者马克・古尔曼&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fwww.bloomberg.com%2Fnews%2Farticles%2F2025-07-17%2Fmeta-hires-two-key-apple-ai-experts-after-poaching-their-boss" target="_blank"&gt;透露&lt;/a&gt;，Meta 又挖走了苹果公司的两位关键人工智能研究人员，此前不久 Meta 刚刚从苹果挖走了其 AI 王牌——人工智能模型负责人庞若鸣（Ruoming Pang），也就是这两名研究人员的主管。&lt;/p&gt; 
+&lt;p&gt;报道称，Meta 聘请了苹果公司的 Mark Lee 和 Tom Gunter 加入其超级智能实验室 (Superintelligence Labs) 团队。Lee 在近日离开苹果后已入职 Meta，而 Gunter 将在不久的将来入职。且 Gunter 上个月就已经从苹果离开，之后曾在另一家人工智能公司工作，并于最近几天离职。&lt;/p&gt; 
+&lt;p&gt;&lt;img height="251" src="https://oscimg.oschina.net/oscnet/up-6a4af53d5d0f57a57747c4bc6cec56f5b24.png" width="500" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p&gt;本月早些时候，苹果公司人工智能模型负责人庞若鸣被 Meta 挖走。据悉，为了争取庞若鸣的加入，Meta 提供了一份价值超 2 亿美元的多年薪酬方案。&lt;/p&gt; 
+&lt;p&gt;庞若鸣于 2021 年从 Alphabet 离职并加入苹果，领导苹果基础模型团队。Lee 和 Gunter 此前均为该团队成员。该团队约有 100 人，主要负责开发支持苹果设备上 「Apple Intelligence」 及其它 AI 功能的核心基础模型。&lt;/p&gt; 
+&lt;p&gt;据悉，Meta 承诺的薪酬比苹果支付给其基础模型团队工程师的薪酬要高出数倍。为了防止更多人离职，苹果已经开始为该团队中的一些工程师提供加薪，以吸引他们留下。&lt;/p&gt; 
+&lt;p&gt;尽管如此，这与 Meta 的出价仍相去甚远。例如，Gunter 即将加入一个由数位人工智能专家组成的团队，这些专家都获得了价值超 1 亿美元的多年期薪酬包。&lt;/p&gt; 
+&lt;p&gt;&lt;strong&gt;相关阅读：&lt;/strong&gt;&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li style="text-align:start"&gt;&lt;a href="https://www.oschina.net/news/359359/meta-recruits-apples-head-of-ai-models" target="_blank"&gt;消息称 Meta 招募了苹果的 AI 模型高管&lt;/a&gt;&lt;/li&gt; 
+&lt;/ul&gt;
+                                                                                &lt;/div&gt;
+                                                                            </description>
+      <link>https://www.oschina.net/news/360982</link>
+      <guid isPermaLink="false">https://www.oschina.net/news/360982</guid>
+      <pubDate>Thu, 17 Jul 2025 03:38:00 GMT</pubDate>
+      <author>来源: OSCHINA</author>
+    </item>
+    <item>
+      <title>Jason Wei 提出「验证者定律」：所有可能解决且易于验证的任务都将被人工智能解决</title>
+      <description>&lt;div class="content"&gt;
+                                                                    
+                                                        &lt;p&gt;Jason Wei（OpenAI 核心科学家、思维链提示词核心作者、o1 关键人物）近期&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fx.com%2F_jasonwei%2Fstatus%2F1945287045251052007" target="_blank"&gt;提出&lt;/a&gt;验证不对称性理论及&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fwww.jasonwei.net%2Fblog%2Fasymmetry-of-verification-and-verifiers-law" target="_blank"&gt;「验证者定律」（Verifier's Law）&lt;/a&gt;，其核心观点是：训练 AI 解决一个任务的难易程度与该任务的可验证性成正比，所有可能解决且易于验证的任务，终将都被 AI 攻克。&lt;/p&gt; 
+&lt;blockquote&gt; 
+ &lt;p&gt;验证的不对称性指的是有些任务验证起来比解决起来容易得多。随着强化学习的普遍应用，这个概念变得越来越重要。&lt;/p&gt; 
+ &lt;p&gt;比如：数独谜题、编写 Instagram 网页代码、或 BrowseComp 问题（找到答案很难，但验证起来非常简单）。&lt;/p&gt; 
+ &lt;p&gt;有的任务则接近对称，比如计算两个 900 位数字之和。还有些任务提出方案容易，但验证却很难（比如核实一篇长文章的事实，或提出「只吃野牛」的新饮食法）。&lt;/p&gt; 
+&lt;/blockquote&gt; 
+&lt;p&gt;具体而言，任务的可验证性取决于以下五个关键属性：&lt;/p&gt; 
+&lt;ol&gt; 
+ &lt;li&gt;&lt;strong&gt;客观真理&lt;/strong&gt;：所有人对「好」的解决方案有普遍共识。&lt;/li&gt; 
+ &lt;li&gt;&lt;strong&gt;快速验证&lt;/strong&gt;：任何给定的解决方案可在几秒钟内完成验证。&lt;/li&gt; 
+ &lt;li&gt;&lt;strong&gt;可扩展验证&lt;/strong&gt;：可同时验证大量解决方案。&lt;/li&gt; 
+ &lt;li&gt;&lt;strong&gt;低噪声&lt;/strong&gt;：验证结果与解决方案质量高度相关。&lt;/li&gt; 
+ &lt;li&gt;&lt;strong&gt;连续奖励&lt;/strong&gt;：可对多个解决方案进行优劣排序 。&lt;/li&gt; 
+&lt;/ol&gt; 
+&lt;p&gt;&lt;img alt="" src="https://oscimg.oschina.net/oscnet/up-7387b887042eaf1d9e3b0a62295b13721e4.png" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p&gt;Jason Wei 指出，过去十年中，大多数 AI 基准测试都符合前四条标准（因此已被解决），而符合这些标准的任务将推动 AI 快速进步，而难以验证的任务则进展缓慢。&lt;/p&gt; 
+&lt;p&gt;此外，验证者定律也揭示了未来人类与 AI 协作的核心：将复杂、模糊的现实问题转化为 AI 可理解和优化的、可清晰验证的任务。&lt;/p&gt;
+                                                                                &lt;/div&gt;
+                                                                            </description>
+      <link>https://www.oschina.net/news/360981/asymmetry-of-verification-and-verifiers-law</link>
+      <guid isPermaLink="false">https://www.oschina.net/news/360981/asymmetry-of-verification-and-verifiers-law</guid>
+      <pubDate>Thu, 17 Jul 2025 03:37:00 GMT</pubDate>
+      <author>来源: OSCHINA</author>
+    </item>
+    <item>
+      <title>字节视觉大模型负责人杨建朝宣布「暂时休息」</title>
+      <description>&lt;div class="content"&gt;
+                                                                    
+                                                        &lt;p&gt;&lt;span style="color:#000000"&gt;网易科技获悉，字节跳动豆包大模型视觉多模态生成方向负责人杨建朝于 7 月 17 日上午在公司内部宣布「暂时休息」，相关工作已完成交接。&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;span style="color:#000000"&gt;据多位接近字节的人士透露，目前仍能在字节内部系统中查到杨建朝的信息。消息人士称，杨建朝的工作将由周畅（花名「时光」）接手。目前，周畅所在架构仍为「多模态交互与世界模型」部门，向吴永辉汇报。&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;span style="color:#000000"&gt;关于此次人事变动的原因，有知情人士向网易科技表示为「家庭因素」，此前也有传言称其因无法兼顾北美与国内的工作节奏，长期处于高强度压力下，身心俱疲，也有版本称其为「提前退休」。&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;span style="color:#000000"&gt;实际上，早前就有杨建朝计划「休息」的传闻，而选择在此时正式官宣，消息人士表示可能是考虑到上半年绩效考核刚刚结束，为下半年重新安排工作提供空间。&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;img height="323" src="https://oscimg.oschina.net/oscnet/up-e084d80744b14ca7360272b901a726c9179.png" width="500" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;span style="color:#000000"&gt;网易科技了解到，Seed 视觉模型研究团队，办公地点分布在北美圣何塞、新加坡和中国多个城市，涵盖图片生成、视频生成及视觉模型基础研究等方向。&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;span style="color:#000000"&gt;自 2025 年 2 月谷歌 DeepMind 研究副总裁吴永辉加入字节、担任 Seed 基础研究负责人以来，Seed 内部的组织与权责结构便发生了一系列深层调整。&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;span style="color:#000000"&gt;在大模型竞争进入深水区的背景下，核心技术负责人的异动，令外界对字节内部 AI 技术路线的稳定性产生更多关注。不过，也有知情人士表示，字节在内部多次强调对基础研究的长期投入不会动摇。&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;span style="color:#000000"&gt;杨建朝是字节 AI 体系内公认的「技术大牛」。2006 年，他曾获得中国科学技术大学郭沫若奖学金，后赴美深造，师从「计算机视觉之父」Thomas Huang（黄煦涛），在伊利诺伊大学香槟分校完成博士后研究。他曾在 Adobe、Snapchat 等公司从事视觉算法研究，2018 年加入字节跳动 AI Lab 任研发总监，后负责智能创作团队，2023 年起带领 Seed 视觉部门。&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;span style="color:#000000"&gt;接任者周畅同样是国内技术领域的重要人物。本科毕业于复旦大学，博士就读于北京大学，曾担任阿里巴巴通义千问大模型的技术负责人，主导开发了 2021 年发布的 M6 多模态预训练模型。这是阿里与清华联合推出的中文语境下最大规模 AI 模型，被视为阿里大模型战略的重要里程碑。&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;span style="color:#000000"&gt;2025 年 7 月，周畅从阿里离职，引发广泛猜测，曾一度传出其将创业的消息。最终据多方确认，他选择加入字节跳动，加入 Seed 团队。&lt;/span&gt;&lt;/p&gt;
+                                                                                &lt;/div&gt;
+                                                                            </description>
+      <link>https://www.oschina.net/news/360974</link>
+      <guid isPermaLink="false">https://www.oschina.net/news/360974</guid>
+      <pubDate>Thu, 17 Jul 2025 03:14:00 GMT</pubDate>
+      <author>来源: OSCHINA</author>
+    </item>
+    <item>
+      <title>OpenAI o1 核心贡献者把 AI 定义为「第四种杠杆」</title>
+      <description>&lt;div class="content"&gt;
+                                                                    
+                                                        &lt;p&gt;近期，前 OpenAI 研究员 Hyung Won Chung 在离职消息曝光后，首次系统性地&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fx.com%2Fhwchung27%2Fstatus%2F1945355238187393257" target="_blank"&gt;分享了他对 AI 的长期思考&lt;/a&gt;，塑造了一个新的想法：「AI 杠杆机制」。&lt;/p&gt; 
+&lt;p&gt;&lt;img src="https://static.oschina.net/uploads/space/2025/0718/111013_yM8G_2720166.png" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p&gt;在传统经济学里，人类只拥有三种杠杆：&lt;/p&gt; 
+&lt;ol&gt; 
+ &lt;li&gt; &lt;p&gt;人力杠杆：让别人替你干活。&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;资本杠杆：让钱替你生钱。&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;代码杠杆：让软件替你规模化。&lt;/p&gt; &lt;/li&gt; 
+&lt;/ol&gt; 
+&lt;p&gt;Hyung Won Chung 认为，&lt;strong&gt;AI 正在成为第四种杠杆&lt;/strong&gt;，具备前三者从未同时拥有的三大特性：&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt; &lt;p&gt;&lt;strong&gt;组合性&lt;/strong&gt;——多个 AI Agent 可以任意拼接，形成「复合杠杆」；&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;&lt;strong&gt;可扩展性&lt;/strong&gt;——复制 1 万份拷贝的边际成本趋近于零；&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;&lt;strong&gt;自治性&lt;/strong&gt;——Agent 可以自主规划、执行、纠错，甚至自我复制。&lt;/p&gt; &lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;p&gt;因此，AI 杠杆的「放大系数」远超传统杠杆：&lt;/p&gt; 
+&lt;blockquote&gt; 
+ &lt;p&gt;1 个 Agent ≈ 1 名员工；&lt;br&gt; 10 个 Agent ≠ 10 倍成本，而是 10 倍产出且零额外协调开销。&lt;/p&gt; 
+&lt;/blockquote&gt; 
+&lt;p&gt;在 Chung 看来，人工智能并不仅仅是一种工具，而是一种史无前例的「杠杆机制」——可以以极低的输入，撬动巨大的价值输出，从个人到文明层面，全面重塑创造力的来源。&lt;/p&gt; 
+&lt;p&gt;另外，Chung 还提出了一个设问：「如果把整个人类文明看作一个系统，它的目标是什么？」他的答案是：持续发现新知识，也就是科学进步。&lt;/p&gt; 
+&lt;p&gt;在他构想中，AI 不仅是个工具，更是连接人类知识尖峰的壳层。今天的科学知识被分布在不同领域、不同学者之间，彼此割裂，合作成本极高。而 AI 能将这些高维孤岛串联起来，像细菌的质粒一样，进行「知识的水平基因转移」。&lt;/p&gt;
+                                                                                &lt;/div&gt;
+                                                                            </description>
+      <link>https://www.oschina.net/news/360973</link>
+      <guid isPermaLink="false">https://www.oschina.net/news/360973</guid>
+      <pubDate>Thu, 17 Jul 2025 03:10:00 GMT</pubDate>
+      <author>来源: OSCHINA</author>
+    </item>
+    <item>
+      <title>社区搜索离线回溯系统设计：架构、挑战与性能优化</title>
+      <description>&lt;div class="content"&gt;
+                                                                                                                    
+                                                                                                                                                    &lt;span id="OSC_h1_1"&gt;&lt;/span&gt; 
+&lt;h1&gt;一、项目背景&lt;/h1&gt; 
+&lt;p&gt;&lt;span style="color:#3e3e3e"&gt;在社区场景中，我们积累了丰富的用户互动数据。这些历史互动信息对 CTR/CVR 预估建模具有重要参考价值，用户的每次互动都反映了其特定维度的偏好特征。当前，已在多个业务实践中验证，基于用户历史互动特征进行未来行为预测是有效的。用户互动序列越长，包含的偏好特征就越丰富，但同时也带来了更大的技术挑战。&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;span style="color:#3e3e3e"&gt;目前社区搜索领域已经在序列建模方向取得了一些应用成果，显著提升了搜索效率，但在该方向上仍有优化空间，主要体现在：&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;span style="color:#3e3e3e"&gt;&lt;strong&gt;算法精排模型现状：&lt;/strong&gt;长周期的用户互动特征尚未被充分利用，现有模型仅使用了基础标识信息，泛化能力有待提升。我们计划引入 SIM 方案来增强个性化序列建模能力，推动搜索效率提升。&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;span style="color:#3e3e3e"&gt;&lt;strong&gt;迭代效率优化：&lt;/strong&gt;当前互动特征优化依赖于实时数据采集链路，新增特征需要长时间数据积累（2 个月以上）才能验证效果。我们计划建设用户特征离线回溯服务，降低算法优化对实时数据的依赖，加快项目迭代速度，提高实验效率。&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;span style="color:#3e3e3e"&gt;离线回溯主要解决迭代效率问题，本文重点探讨在社区搜索场景下开发离线回溯，并做离线一致性验证过程中发现的一些问题，针对这些问题做了哪些优化措施及思考。&lt;/span&gt;&lt;/p&gt; 
+&lt;span id="OSC_h1_2"&gt;&lt;/span&gt; 
+&lt;h1&gt;二、架构设计&lt;/h1&gt; 
+&lt;span id="OSC_h2_3"&gt;&lt;/span&gt; 
+&lt;h2&gt;&lt;span style="color:#000000"&gt;全局架构&lt;/span&gt;&lt;/h2&gt; 
+&lt;p&gt;&lt;span style="color:#000000"&gt;&lt;strong&gt;序列产出流程链路&lt;/strong&gt;&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;u&gt;&lt;span style="color:#000000"&gt;&lt;strong&gt;※ &amp;nbsp;在线流程链路&lt;/strong&gt;&lt;/span&gt;&lt;/u&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;span style="color:#3e3e3e"&gt;在线链路通过实时数仓提供全量表和实时流两种数据源，在特征平台下构建 1w 长度的实时用户画像，召回阶段 SP，将画像传给 SIM 引擎，在引擎中完成对用户序列 hard/soft search 等异步加工，最终传给 Nuroe，完成在线序列 dump 落表。&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;u&gt;&lt;span style="color:#000000"&gt;&lt;strong&gt;※ &amp;nbsp;离线流程链路&lt;/strong&gt;&lt;/span&gt;&lt;/u&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;span style="color:#3e3e3e"&gt;离线链路通过仿真在线的处理逻辑，利用请求 pv 表和离线数仓提供的 10w 原始序列，模拟在线序列 10w-&amp;gt;1w-&amp;gt;100 的过程，最终产出离线回溯序列。&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;span style="color:#3e3e3e"&gt;最终通过在线/离线全链路数据的一致性验证，确认全流程数据无 diff（或 diff 可解释），序列流程可靠性达标，可交付算法团队用于模型训练。&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;img src="https://oscimg.oschina.net/oscnet//5a43670aaaf2d538a4f675c1683bcd08.png" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;span style="color:#a0a0a0"&gt;序列产出全局架构&lt;/span&gt;&lt;/p&gt; 
+&lt;span id="OSC_h2_4"&gt;&lt;/span&gt; 
+&lt;h2&gt;&lt;span style="color:#000000"&gt;在线架构&lt;/span&gt;&lt;/h2&gt; 
+&lt;p&gt;&lt;span style="color:#3e3e3e"&gt;在线侧抽象 GSU 模块支持社区搜索和增长搜索等多场景复用。该模块在 QP（Query Processing）阶段后，通过外调基于 DSearch 构建的 SIM 引擎进行用户序列处理。SIM 引擎内完成 hard/soft search 等用户序列加工，在精排阶段前获取 topk 序列特征及对应 sideinfo，并将其透传给精排模块，最终实现用户序列的落表存储。&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;img src="https://oscimg.oschina.net/oscnet//5d0ecb14f2c2907387d1c1d0c8aae445.png" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;span style="color:#a0a0a0"&gt;在线通用 GSU 模块&lt;/span&gt;&lt;/p&gt; 
+&lt;span id="OSC_h2_5"&gt;&lt;/span&gt; 
+&lt;h2&gt;&lt;span style="color:#000000"&gt;离线链路&lt;/span&gt;&lt;/h2&gt; 
+&lt;p&gt;&lt;span style="color:#000000"&gt;&lt;strong&gt;数据产出三阶段&lt;/strong&gt;&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;u&gt;&lt;span style="color:#000000"&gt;&lt;strong&gt;※ &amp;nbsp;原始序列预处理阶段&lt;/strong&gt;&lt;/span&gt;&lt;/u&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;span style="color:#3e3e3e"&gt;通过收集一个用户，按照 [月初 ts+1w, &amp;nbsp;月末 ts] 将序列进行预处理。&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;u&gt;&lt;span style="color:#000000"&gt;&lt;strong&gt;※ &amp;nbsp;pv 表合并序列表阶段&lt;/strong&gt;&lt;/span&gt;&lt;/u&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;span style="color:#3e3e3e"&gt;按照 user_id 将画像和 pv 表合并，将每个 request_id 的数据按照 request_time 过滤处理。&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;u&gt;&lt;span style="color:#000000"&gt;&lt;strong&gt;※ &amp;nbsp;用户序列加工阶段&lt;/strong&gt;&lt;/span&gt;&lt;/u&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;span style="color:#3e3e3e"&gt;完成 hard/soft search 等用户序列加工逻辑处理，包括对长期序列按照相似度过滤，对短期序列按照时间过滤等。&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;img src="https://oscimg.oschina.net/oscnet//11339d8e2dbad7a6c7820310e64eb360.png" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;span style="color:#a0a0a0"&gt;离线回溯链路图&lt;/span&gt;&lt;/p&gt; 
+&lt;span id="OSC_h1_6"&gt;&lt;/span&gt; 
+&lt;h1&gt;三、问题与挑战&lt;/h1&gt; 
+&lt;p&gt;&lt;span style="color:#3e3e3e"&gt;在离线回溯开发阶段，主要面临以下挑战。&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;span style="color:#000000"&gt;&lt;strong&gt;挑战&lt;/strong&gt;&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;u&gt;&lt;span style="color:#000000"&gt;&lt;strong&gt;※ &amp;nbsp;任务执行问题&lt;/strong&gt;&lt;/span&gt;&lt;/u&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;span style="color:#3e3e3e"&gt;任务频繁失败或执行效率低下，数据规模达单表数 TB 级别，且序列分布不均，部分长尾用户序列过长导致严重数据倾斜；&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;u&gt;&lt;span style="color:#000000"&gt;&lt;strong&gt;※ &amp;nbsp;一致性校验阶段问题&lt;/strong&gt;&lt;/span&gt;&lt;/u&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;span style="color:#3e3e3e"&gt;异常类型复杂多样，累计发现 25+种异常原因，导致数据 diff 形态复杂，一致性原因分析困难。修复链路冗长，涉及问题修复、在线索引重建、数据累计和离线数据回补，单次修复周期约需一周。&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;img src="https://oscimg.oschina.net/oscnet//868464bb108cf35c3b3a1de8196faf23.png" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;span id="OSC_h1_7"&gt;&lt;/span&gt; 
+&lt;h1&gt;四、从踩雷到填坑的实战记录&lt;/h1&gt; 
+&lt;span id="OSC_h2_8"&gt;&lt;/span&gt; 
+&lt;h2&gt;&lt;span style="color:#000000"&gt;离线任务运行耗时长的问题&lt;/span&gt;&lt;/h2&gt; 
+&lt;p&gt;&lt;span style="color:#000000"&gt;&lt;strong&gt;问题说明&lt;/strong&gt;&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;span style="color:#3e3e3e"&gt;初步方案运行时存在两大问题：&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;span style="color:#3e3e3e"&gt;1.任务处理延迟显著，单个任务运行 3-8 小时。&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;span style="color:#3e3e3e"&gt;2.任务处理无法运行成功频繁 OOM。&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;img src="https://oscimg.oschina.net/oscnet//f18ed0476e47272382816f78e6bac457.png" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;span style="color:#a0a0a0"&gt;任务执行慢&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;img src="https://oscimg.oschina.net/oscnet//190795e2a1b4e19f24bcd7a80bc0f1d0.png" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;span style="color:#a0a0a0"&gt;任务频繁 OOM&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;span style="color:#000000"&gt;&lt;strong&gt;解决方案&lt;/strong&gt;&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;u&gt;&lt;span style="color:#000000"&gt;&lt;strong&gt;※ 方案优化&lt;/strong&gt;&lt;/span&gt;&lt;/u&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;span style="color:#3e3e3e"&gt;任务执行慢主要是有长尾用户打满 10w 长序列，出现数据倾斜问题甚至 oom。&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;span style="color:#3e3e3e"&gt;通过对链路优化，先将原始 10w 长序列做预处理，由于回溯一般按照一个月跑数据，可以利用 pv 表先统计有哪些有效用户，对有效用户按照 【月初 ts+1w, &amp;nbsp;月末 ts】截取原始序列，获取相对较短的预处理队列。&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;img src="https://oscimg.oschina.net/oscnet//e803521ebf9b49c3ded61c3cab526b74.png" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;span style="color:#a0a0a0"&gt;任务倾斜&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;img src="https://oscimg.oschina.net/oscnet//02626be3811dec82df6178b5a78c6c6d.png" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;span style="color:#a0a0a0"&gt;原始序列预处理&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;u&gt;&lt;span style="color:#000000"&gt;&lt;strong&gt;※ &amp;nbsp;ODPS 任务性能调优&lt;/strong&gt;&lt;/span&gt;&lt;/u&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;span style="color:#3e3e3e"&gt;a. 按照&amp;nbsp;&lt;strong&gt;CPU :&amp;nbsp;MEM&amp;nbsp;=&amp;nbsp;&amp;nbsp;1 : 4 调整计算和存储的比例，可以最大化利用资源，因为我们申请的资源池都是按照这个固定比例来的。&lt;/strong&gt;&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;img src="https://oscimg.oschina.net/oscnet//d41848eb7dafa12617af771a7b4550c7.png" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;span style="color:#a0a0a0"&gt;资源没有最大化使用&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;span style="color:#3e3e3e"&gt;b. 在固化计算/存储比例参数后，可以通过 xxx.split.size 和 xxx.num 共同调优。xxx.split.size 可以实现输入分片大小，减少 oom 机会。xxx.num 可以实现扩大并发数，加快任务的执行（xxx 代表 mapper、reducer、joiner 几个阶段）。&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;img src="https://oscimg.oschina.net/oscnet//7cd197902a7b9b9cee16229cb8a8cd71.png" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;span style="color:#a0a0a0"&gt;分批次完成阶段处理&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;span style="color:#3e3e3e"&gt;c. 减少自定义&lt;strong&gt;UDF&lt;/strong&gt;使用。在离线任务中有部分逻辑比较复杂，可能需要数据平铺、聚合、再内置函数等。最好的使用原则是内置函数&amp;gt;「数据平铺+内置函数」&amp;gt;自定义&lt;strong&gt;UDF&lt;/strong&gt;。由于自定义&lt;strong&gt;UDF&lt;/strong&gt;运行在 Java 沙箱环境中，需通过多层抽象层 （序列化/反序列化、类型转换），测试发现大数据量处理过程性能相对最差。&lt;/span&gt;&lt;/p&gt; 
+&lt;span id="OSC_h2_9"&gt;&lt;/span&gt; 
+&lt;h2&gt;&lt;span style="color:#000000"&gt;一致性验证归因难的问题&lt;/span&gt;&lt;/h2&gt; 
+&lt;p&gt;&lt;span style="color:#000000"&gt;&lt;strong&gt;问题说明&lt;/strong&gt;&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;span style="color:#3e3e3e"&gt;在线/离线全链路数据的一致性验证过程中，由于按照天级全量 dump 序列，需要验证 15 个序列，每个序列 diff 量在 10w～50w 不等，这种多序列大规模的 diff 问题人工核验效率太慢。&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;span style="color:#000000"&gt;&lt;strong&gt;解决方案&lt;/strong&gt;&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;u&gt;&lt;span style="color:#000000"&gt;&lt;strong&gt;※ &amp;nbsp;整体 diff 率分析&lt;/strong&gt;&lt;/span&gt;&lt;/u&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;span style="color:#3e3e3e"&gt;通过统计全序列 diff 率并聚类分析高 diff 样本，定位共性根因，实现以点带面的高效问题修复。&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;u&gt;&lt;span style="color:#000000"&gt;&lt;strong&gt;※ &amp;nbsp;diff 归因工具&lt;/strong&gt;&lt;/span&gt;&lt;/u&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;span style="color:#3e3e3e"&gt;通过建立数据 diff 的归因分类体系（如排序不稳定、特征穿越等），并标注标准化归因码，实现对 diff 问题的快速定位与根因分析，显著提升排查效率。&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;img src="https://oscimg.oschina.net/oscnet//bfa7752adc3c9bec1d33d01dc53a525d.png" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;span style="color:#a0a0a0"&gt;归因码分类&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;u&gt;&lt;span style="color:#000000"&gt;&lt;strong&gt;※ &amp;nbsp;重复度统计工具&lt;/strong&gt;&lt;/span&gt;&lt;/u&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;span style="color:#3e3e3e"&gt;由于在线受当时环境的影响，离线回溯无法 100% 复现原始序列，一致性差异在所难免。我们通过聚焦主要特征并统计其重复度，结合「diff 率+重复度」双维度评估方案，为算法决策提供量化依据，有效减少无效迭代。&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;img src="https://oscimg.oschina.net/oscnet//372dbe821f76c8f1f2373c21db4a6244.jpeg" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;span style="color:#a0a0a0"&gt;重复度统计&lt;/span&gt;&lt;/p&gt; 
+&lt;span id="OSC_h2_10"&gt;&lt;/span&gt; 
+&lt;h2&gt;&lt;span style="color:#000000"&gt;现状梳理不足的问题&lt;/span&gt;&lt;/h2&gt; 
+&lt;p&gt;&lt;span style="color:#000000"&gt;&lt;strong&gt;问题说明&lt;/strong&gt;&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;span style="color:#3e3e3e"&gt;由于前期对业务场景理解不足（如用户行为模式、异常数据、测试账户等），部分潜在问题未在开发阶段充分识别，直至数据一致性验证时才集中暴露，导致需紧急调整数据处理逻辑。由於单次全链路修复需 3-5 天，进而对项目进度造成一定延迟。&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;问题 case1：滑动图片：离线回溯数据分析时发现序列中大量重复且占比很高，后确定为滑动图片行为&lt;/p&gt; 
+&lt;p&gt;解决方案：对滑动图片操作连续多次修改为只记录第一次&lt;/p&gt; 
+&lt;p&gt;问题 case2：合并下单：测试购买序列有 id 重复，实时数仓反馈购买有合并下单的情况，ts 会相同&lt;/p&gt; 
+&lt;p&gt;解决方案：为了保持离线回刷数据稳定性，将序列按照 ts/id 双维度排序&lt;/p&gt; 
+&lt;p&gt;问题 case3：异常数据：有行为时间戳超过当前时间的异常数据&lt;/p&gt; 
+&lt;p&gt;解决方案：数仓对异常数据丢弃&lt;/p&gt; 
+&lt;p&gt;问题 case4：测试账户：数据不规范导致数据 diff&lt;/p&gt; 
+&lt;p&gt;解决方案：测试账户数据忽略&lt;/p&gt; 
+&lt;p&gt;问题 case5：query 问题：取归一化后还是原始的 query、空字符串问题&lt;/p&gt; 
+&lt;p&gt;解决方案：query 为空过滤修复&lt;/p&gt; 
+&lt;p&gt;问题 case6：数据穿越问题：画像原始数据 request_time 取 neuron 时间导致&lt;/p&gt; 
+&lt;p&gt;&lt;img src="https://oscimg.oschina.net/oscnet//56d1c5feb7fd51e49bce353209d2e663.png" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p&gt;&amp;nbsp;&lt;/p&gt; 
+&lt;p&gt;解决方案：在线修改 request_time 获取时间，离线回溯前置 3s&lt;/p&gt; 
+&lt;span id="OSC_h2_11"&gt;&lt;/span&gt; 
+&lt;h2&gt;&lt;span style="color:#000000"&gt;修复周期长的问题&lt;/span&gt;&lt;/h2&gt; 
+&lt;p&gt;&lt;span style="color:#000000"&gt;&lt;strong&gt;问题说明&lt;/strong&gt;&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;span style="color:#3e3e3e"&gt;数据问题的完整修复流程包含三个阶段，全流程通常需要 5-7 个工作日完成。&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;img src="https://oscimg.oschina.net/oscnet//17e2b0e9b943517817ed845680b945ea.png" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;u&gt;&lt;span style="color:#000000"&gt;&lt;strong&gt;※ &amp;nbsp;Diff 归因阶段（1-3 日）&lt;/strong&gt;&lt;/span&gt;&lt;/u&gt;&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt; &lt;p&gt;需要定位数据差异的根本原因，区分是数据异常、处理逻辑错误还是业务规则变更导致&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;涉及多团队协作排查（数据/算法/工程）&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;复杂问题可能需要多次验证&lt;/p&gt; &lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;p&gt;&lt;u&gt;&lt;span style="color:#000000"&gt;&lt;strong&gt;※ &amp;nbsp;问题修复阶段（1-3 日）&lt;/strong&gt;&lt;/span&gt;&lt;/u&gt;&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt; &lt;p&gt;根据归因结果修改代码逻辑或数据处理流程&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;可能涉及历史数据修正&lt;/p&gt; &lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;p&gt;&lt;u&gt;&lt;span style="color:#000000"&gt;&lt;strong&gt;※ &amp;nbsp;数据迭代阶段（2-3 日）&lt;/strong&gt;&lt;/span&gt;&lt;/u&gt;&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt; &lt;p&gt;在线画像引擎部署新数据&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;累计在线数据&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;离线画像回补数据&lt;/p&gt; &lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;p&gt;&lt;span style="color:#000000"&gt;&lt;strong&gt;解决方案&lt;/strong&gt;&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;span style="color:#3e3e3e"&gt;受限于初期人力投入，我们在当前方案基础上通过多轮版本迭代逐步完成数据一致性验证。后续将通过工具升级（数据边界划分+自动化校验框架）和数据采样策略，实现验证到修复的阶跃式提升。&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;u&gt;&lt;span style="color:#000000"&gt;&lt;strong&gt;※ &amp;nbsp;数据边界划分&lt;/strong&gt;&lt;/span&gt;&lt;/u&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;span style="color:#3e3e3e"&gt;现行方案离线链路都是算法工程来维护，排查链路太长，需要数据源有稳定的保障机制。后续将划分数据边界，各团队维护并保障数据模块在离线的一致性。&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;img src="https://oscimg.oschina.net/oscnet//d8954fead9ed0a6fe71a6206b53da6e3.png" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;span style="color:#a0a0a0"&gt;数据边界划分&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;u&gt;&lt;span style="color:#000000"&gt;&lt;strong&gt;※ &amp;nbsp;全链路采样方案减少验证时间&lt;/strong&gt;&lt;/span&gt;&lt;/u&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;span style="color:#3e3e3e"&gt;离在线一致性验证方面耗时较长，主要在于数据量太大，在数仓构建、特征平台构建、累计数据等流程消耗大量的时间，如果全链路先针对少量用户走通全链路，能快速验证流程可行性。&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;img src="https://oscimg.oschina.net/oscnet//0069ba0e0a9bd6833a6ec35cda0e6dc5.png" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;span style="color:#a0a0a0"&gt;采样方案&lt;/span&gt;&lt;/p&gt; 
+&lt;span id="OSC_h2_12"&gt;&lt;/span&gt; 
+&lt;h2&gt;&lt;span style="color:#000000"&gt;平台基建的问题&lt;/span&gt;&lt;/h2&gt; 
+&lt;p&gt;&lt;span style="color:#000000"&gt;&lt;strong&gt;问题说明&lt;/strong&gt;&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;span style="color:#3e3e3e"&gt;首次构建序列建模体系，由于缺乏标准化基础设施，被迫采用烟囱式开发模式，导致多链路验证复杂且问题频发。&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;span style="color:#000000"&gt;&lt;strong&gt;平台待建能力&lt;/strong&gt;&lt;/span&gt;&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt; &lt;p&gt;特征平台排序功能不足，只支持单一字段排序，不支持多字段联合排序，导致排序结果不稳定。&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;特征平台过滤功能限制，仅支持毫秒级时间戳过滤。&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;索引构建效率低,个性化行为序列表数据量过大（3TB），导致索引构建压力大，初始构建耗时约 28 小时。升级至 FS3 集群后，构建时间降至 12 小时左右,最短至 7 小时，但仍未达理想效率。&lt;/p&gt; &lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;span id="OSC_h1_13"&gt;&lt;/span&gt; 
+&lt;h1&gt;五、展望与总结&lt;/h1&gt; 
+&lt;p&gt;&lt;span style="color:#3e3e3e"&gt;后续我们将深入研究行业内的优秀解决方案，并结合我们的业务特性进行有针对性的优化。&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;span style="color:#3e3e3e"&gt;例如，我们会尝试实施离在线数据与逻辑一致性方案，这种方案包括以下几个特点：&lt;/span&gt;&lt;/p&gt; 
+&lt;ol&gt; 
+ &lt;li&gt; &lt;p&gt;数据一致性：离线与在线共用同一套原始画像，能够解决数据源不一致导致的差异问题。&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;逻辑一致性：离线与在线都调用 GSU 服务，实现统一的序列逻辑处理，避免逻辑差异。&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;技术架构复杂性：新方案带来了新的技术挑战，比如在线处理 10 万序列可能引发的 I/O 问题、离在线的 sim 引擎采用存算一体和存算分离架构。&lt;/p&gt; &lt;/li&gt; 
+&lt;/ol&gt; 
+&lt;p&gt;&lt;span style="color:#3e3e3e"&gt;综上，没有绝对完美的技术方案，最终都是在成本、性能和效率多方面权衡后的相对最优解。&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;img src="https://oscimg.oschina.net/oscnet//31bf9f3c1ef93545432b5e221bd97fd5.png" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;span style="color:#a0a0a0"&gt;离在线数据与逻辑一致性方案&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;span style="color:#3e3e3e"&gt;本次特征回溯虽面临性能与数据对齐等挑战，但团队通过攻坚积累了经验，为特征平台后续特征回溯工具化打下基础，也期待能为后续算法模型迭代带来质的飞跃。&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&amp;nbsp;&lt;/p&gt; 
+&lt;p&gt;&lt;strong&gt;往期回顾&lt;/strong&gt;&lt;/p&gt; 
+&lt;p&gt;&amp;nbsp;&lt;/p&gt; 
+&lt;p&gt;&lt;span style="color:#6a6a6a"&gt;1.从 「卡顿」 到 「秒开」：外投首屏性能优化的 6 个实战锦囊｜得物技术&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;span style="color:#6a6a6a"&gt;2.从 Rust 模块化探索到 DLB 2.0 实践｜得物技术&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;span style="color:#6a6a6a"&gt;3.eBPF 助力 NAS 分钟级别 Pod 实例溯源｜得物技术&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;span style="color:#6a6a6a"&gt;4.正品库拍照 PWA 应用的实现与性能优化｜得物技术&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;span style="color:#6a6a6a"&gt;5.汇金资损防控体系建设及实践 | 得物技术&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&amp;nbsp;&lt;/p&gt; 
+&lt;p&gt;&lt;span style="color:#3e3e3e"&gt;文 / 野雨&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&amp;nbsp;&lt;/p&gt; 
+&lt;p&gt;&lt;span style="color:#3e3e3e"&gt;关注得物技术，每周更新技术干货&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;span style="color:#3e3e3e"&gt;要是觉得文章对你有帮助的话，欢迎评论转发点赞～&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;span style="color:#3e3e3e"&gt;未经得物技术许可严禁转载，否则依法追究法律责任。&lt;/span&gt;&lt;/p&gt;
+                                                                                    &lt;/div&gt;
+                                                                            </description>
+      <link>https://my.oschina.net/u/5783135/blog/18684911</link>
+      <guid isPermaLink="false">https://my.oschina.net/u/5783135/blog/18684911</guid>
+      <pubDate>Thu, 17 Jul 2025 02:55:00 GMT</pubDate>
+      <author>原创</author>
+    </item>
+    <item>
+      <title>开源 AI 客户端 Cherry Studio 1.5.0 新增「全局记忆」</title>
+      <description>&lt;div class="content"&gt;
+                                                                    
+                                                        &lt;p&gt;开源 AI 助手平台 Cherry Studio 更新至 &lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fmp.weixin.qq.com%2Fs%2FbuAdCwtDYQK3GePzx90THw" target="_blank"&gt;v1.5.0 &lt;/a&gt;版本，新增了&lt;strong&gt;全局记忆 (Global Memory)&lt;/strong&gt;功能。该功能基于 mem0 实现，允许用户为单个助手开启或关闭全局记忆。&lt;/p&gt; 
+&lt;p&gt;目前该功能处于 Beta 阶段，将在 GitHub 上收集反馈并持续优化。&lt;/p&gt; 
+&lt;p&gt;&lt;strong&gt;其他新增功能&lt;/strong&gt;&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt;&lt;strong&gt;Gemini 支持 URL 上下文&lt;/strong&gt;：现在可以让 Gemini 模型直接读取和理解网页内容了。&lt;/li&gt; 
+ &lt;li&gt;&lt;strong&gt;更快的流式响应&lt;/strong&gt;：增强了对 Anthropic 和 OpenAI API 的流式输出支持，打字机效果响应更快，体验更佳。&lt;/li&gt; 
+ &lt;li&gt;&lt;strong&gt;MCP 功能增强&lt;/strong&gt;：在设置中新增了对&amp;nbsp;302AI&amp;nbsp;服务商的支持，并以徽章形式清晰展示当前 MCP server 的版本。&lt;/li&gt; 
+ &lt;li&gt;&lt;strong&gt;DMXAPI 绘画&lt;/strong&gt;：新增了更多绘画模型支持，为你的创作带来更多可能性。&lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;hr&gt; 
+&lt;p&gt;&lt;strong&gt;修复和优化&lt;/strong&gt;&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt;对&lt;strong&gt;助手与话题，列表&lt;/strong&gt;进行了专项性能优化，不仅提升了话题的渲染效率，还修复了删除助手时可能出现的错误，整体使用更流畅。&lt;/li&gt; 
+ &lt;li&gt;修复了从未打开过的话题在导出为 Markdown 文件时内容为空的问题。&lt;/li&gt; 
+ &lt;li&gt;修复了在对话中调用视觉模型时，无法粘贴图片的问题。&lt;/li&gt; 
+ &lt;li&gt;修复并完善了全局快捷键，并为 Linux Wayland 用户提供了更好的支持。&lt;/li&gt; 
+ &lt;li&gt;修复了在网格模式下，消息工具栏按钮有时无法点击的问题。&lt;/li&gt; 
+ &lt;li&gt;修复了 Azure API 在部分场景下的兼容性问题。&lt;/li&gt; 
+ &lt;li&gt;修复了翻译历史记录在特定操作下无法正确设置源语言的问题。&lt;/li&gt; 
+ &lt;li&gt;修复了部分 WebDAV 服务器因不支持流式传输而无法兼容的问题。&lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;p&gt;下载地址：&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fgithub.com%2FCherryHQ%2Fcherry-studio%2Freleases%2Ftag%2Fv1.5.0" target="_blank"&gt;https://github.com/CherryHQ/cherry-studio/releases/tag/v1.5.0&lt;/a&gt;&lt;/p&gt;
+                                                                                &lt;/div&gt;
+                                                                            </description>
+      <link>https://www.oschina.net/news/360969/cherry-studio-1-5-0</link>
+      <guid isPermaLink="false">https://www.oschina.net/news/360969/cherry-studio-1-5-0</guid>
+      <pubDate>Thu, 17 Jul 2025 02:50:00 GMT</pubDate>
+      <author>来源: OSCHINA</author>
+    </item>
     <item>
       <title>OpenAI 发布 ChatGPT agent</title>
       <description>&lt;div class="content"&gt;
@@ -22,22 +786,25 @@
                                                                             </description>
       <link>https://www.oschina.net/news/360965/openai-chatgpt-agent</link>
       <guid isPermaLink="false">https://www.oschina.net/news/360965/openai-chatgpt-agent</guid>
-      <pubDate>Fri, 18 Jul 2025 02:15:38 GMT</pubDate>
+      <pubDate>Thu, 17 Jul 2025 02:15:00 GMT</pubDate>
       <author>来源: OSCHINA</author>
     </item>
     <item>
       <title>​特朗普宣布 900 亿美元 AI 中心投资计划，谷歌和黑石集团领投</title>
       <description>&lt;div class="content"&gt;
                                                                     
-                                                        ********************************************************************************************************************
-    ********************************************************************************************************************
-    ********************************************************************************************************************
-    ********************************************************************************************************************
+                                                        &lt;p&gt;&lt;span style="color:#000000"&gt;在宾夕法尼亚州举办的首届能源与创新峰会上，美国总统特朗普&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fwww.whitehouse.gov%2Farticles%2F2025%2F07%2Fpresident-trump-solidifies-u-s-position-as-leader-in-ai%2F" target="_blank"&gt;宣布&lt;/a&gt;了一项重磅投资计划，总额超过 900 亿美元，旨在将宾夕法尼亚州打造成美国人工智能的核心地带。此次投资不仅涵盖数据中心的建设，还包括能源基础设施的提升及人工智能相关人才的培训。&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;img height="381" src="https://oscimg.oschina.net/oscnet/up-4901dd844e39e6fc8f183bf10024f52004c.png" width="500" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;span style="color:#000000"&gt;在这一投资计划中，谷歌作为主要参与者，将投资于建设大型数据中心，并已与当地的水电站签署了一项为期 20 年的供电协议。此外，黑石集团也表示将投资 250 亿美元，与公用事业公司 PPL 合作，共同在宾夕法尼亚州东北部建设能源和数据基础设施。这些项目预计将为当地创造数千个就业机会。&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;span style="color:#000000"&gt;核心参与者 CoreWeave 也宣布将在兰卡斯特投资 60 亿美元，建立一个最高可达 300 兆瓦的数据中心，该中心的建设预计将创造 600 个建筑工人和 175 个全职运营岗位。此项投资计划不仅有助于满足日益增长的数据需求，还将大幅推动当地经济的发展。&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;span style="color:#000000"&gt;此次峰会还强调了 「能源安全人工智能」 的理念，宾夕法尼亚州正被重新定位为数据中心能源的引擎，许多项目如核电升级和天然气发电厂的改造正在进行中。这些举措将为宾夕法尼亚州的电力供应注入新的活力。&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;span style="color:#000000"&gt;各大企业也纷纷响应这一投资计划。例如，黑石集团宣布将投资 250 亿美元开发数据中心与能源基础设施，预计将创造 6000 个建筑工作岗位和 3000 个新的永久性岗位。而布鲁克菲尔德则与谷歌达成了 30 亿美元的协议，重新启动两个水电设施，预计将保护 300 个新工作岗位。&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;span style="color:#000000"&gt;其他企业如安桥、Equinor 和第一能源公司等也纷纷参与投资，进一步扩大宾夕法尼亚州在能源和人工智能领域的影响力。特朗普的这一计划，不仅将为当地带来丰厚的经济收益，也将推动美国在人工智能领域的发展。&lt;/span&gt;&lt;/p&gt;
                                                                                 &lt;/div&gt;
                                                                             </description>
       <link>https://www.oschina.net/news/360962</link>
       <guid isPermaLink="false">https://www.oschina.net/news/360962</guid>
-      <pubDate>Fri, 18 Jul 2025 02:08:38 GMT</pubDate>
+      <pubDate>Thu, 17 Jul 2025 02:07:00 GMT</pubDate>
       <author>来源: OSCHINA</author>
     </item>
     <item>
@@ -261,539 +1028,6 @@ ON symbol TOLERANCE 1s;&lt;/code&gt;&lt;/pre&gt;
       <link>https://www.oschina.net/news/360846</link>
       <guid isPermaLink="false">https://www.oschina.net/news/360846</guid>
       <pubDate>Wed, 16 Jul 2025 06:25:00 GMT</pubDate>
-      <author>来源: OSCHINA</author>
-    </item>
-    <item>
-      <title>Firefox 141 在 Windows 平台正式支持 WebGPU</title>
-      <description>&lt;div class="content"&gt;
-                                                                    
-                                                        &lt;p&gt;Mozilla Gfx 团队&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fmozillagfx.wordpress.com%2F2025%2F07%2F15%2Fshipping-webgpu-on-windows-in-firefox-141%2F"&gt;宣布&lt;/a&gt;，在即将发布的 Firefox 141 中，会面向 Windows 平台正式发布对高性能 Web API&amp;nbsp;WebGPU 的支持。WebGPU 赋能网页高性能图形和计算，将有效提升游戏、3D 可视化、AI 本地推理等场景的体验。&lt;/p&gt; 
-&lt;blockquote&gt; 
- &lt;p&gt;WebGPU 是由 W3C GPU for the Web 社区组所发布的规范，目标是允许网页代码以高性能且安全可靠的方式访问 GPU 功能。WebGPU 是一套为浏览器设计的图形 API 标准，为了弥合各个平台图形 API 的差异性，它对 DirectX12、Vulkan、Metal 进行了融合和封装。借助 WebGPU，可以充分释放现代 GPU 硬件的强大能力，让开发者可以用 TS/JS 在 Web 端也开发媲美原生表现力的场景，实现更大型更复杂的 3D 场景表现，甚至使用现代 GPU 的通用计算能力完成之前无法想像的复杂计算任务。&lt;/p&gt; 
-&lt;/blockquote&gt; 
-&lt;p&gt;&lt;img alt="" src="https://static.oschina.net/uploads/space/2025/0717/141115_hVCB_2720166.png" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;p&gt;Firefox 的 WebGPU 实现基于 WGPU，这是一个开源 Rust 库（&lt;em&gt;https://github.com/gfx-rs/wgpu&lt;/em&gt;），Mozilla 是 WGPU&amp;nbsp;主要的贡献者之一。它提供了一个统一的、可移植的接口来访问平台的底层图形 API：Direct3D 12、Metal 和 Vulkan。&lt;/p&gt; 
-&lt;p&gt;Mozilla 计划在未来几个月内将 WebGPU 支持扩展到 Mac 和 Linux 平台，并最终支持 Android。&lt;/p&gt;
-                                                                                &lt;/div&gt;
-                                                                            </description>
-      <link>https://www.oschina.net/news/360845/shipping-webgpu-on-windows-in-firefox-141</link>
-      <guid isPermaLink="false">https://www.oschina.net/news/360845/shipping-webgpu-on-windows-in-firefox-141</guid>
-      <pubDate>Wed, 16 Jul 2025 06:18:00 GMT</pubDate>
-      <author>来源: OSCHINA</author>
-    </item>
-    <item>
-      <title>四川某科技公司未落实网安保护义务致数据泄露被罚</title>
-      <description>&lt;div class="content"&gt;
-                                                                    
-                                                        &lt;p&gt;&lt;span style="color:#000000"&gt;四川网安部门近日在工作中发现，成都某科技公司开发的购票管理系统因未落实网络安全防护要求，致使系统内部分数据发生泄露，被不法分子利用实施违法犯罪活动。&lt;/span&gt;&lt;/p&gt; 
-&lt;p&gt;&lt;span style="color:#000000"&gt;经查，该公司作为涉案信息系统的开发主体及实际运营单位，负有网络安全保护工作的法定职责，但未依法履行《中华人民共和国网络安全法》规定的网络安全保护义务，未落实网络安全等级保护制度，未采取必要的技术防护措施，最终引发数据泄露。&lt;/span&gt;&lt;/p&gt; 
-&lt;p&gt;&lt;span style="color:#000000"&gt;四川公安网安部门已依法对涉事企业及直接责任人作出行政处罚。&lt;/span&gt;&lt;/p&gt; 
-&lt;p&gt;&lt;img height="217" src="https://oscimg.oschina.net/oscnet/up-8856b3aa8abb212e686d2ac047e7813d795.png" width="500" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;p&gt;&lt;span style="color:#000000"&gt;《网络安全法》第二十一条规定，网络运营者应当按照网络安全等级保护制度的要求，履行安全保护义务，保障网络免受干扰、破坏或者未经授权的访问，防止网络数据泄露或者被窃取、篡改。&lt;/span&gt;&lt;/p&gt;
-                                                                                &lt;/div&gt;
-                                                                            </description>
-      <link>https://www.oschina.net/news/360844</link>
-      <guid isPermaLink="false">https://www.oschina.net/news/360844</guid>
-      <pubDate>Wed, 16 Jul 2025 06:08:00 GMT</pubDate>
-      <author>来源: OSCHINA</author>
-    </item>
-    <item>
-      <title>OpenCV 4.12.0 发布</title>
-      <description>&lt;div class="content"&gt;
-                                                                    
-                                                        &lt;p&gt;OpenCV 2025 年的夏季更新现已&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fmp.weixin.qq.com%2Fs%2FbM9JtB6kk3dxuO2LKLEchQ" target="_blank"&gt;发布&lt;/a&gt;。此次更新涵盖了&lt;strong&gt;Core&lt;/strong&gt;、&lt;strong&gt;Imgproc&lt;/strong&gt;、&lt;strong&gt;Calib3d&lt;/strong&gt;、&lt;strong&gt;DNN&lt;/strong&gt;、&lt;strong&gt;Objdetect&lt;/strong&gt;、&lt;strong&gt;Photo&lt;/strong&gt;、&lt;strong&gt;VideoIO&lt;/strong&gt;、&lt;strong&gt;Imgcodecs&lt;/strong&gt;、&lt;strong&gt;Highgui&lt;/strong&gt;、&lt;strong&gt;G-API&lt;/strong&gt;、&lt;strong&gt;Video&lt;/strong&gt;和&lt;strong&gt;HAL&lt;/strong&gt;模块，以及 Python、Java 和 JavaScript 语言绑定等众多内容。&lt;/p&gt; 
-&lt;p&gt;&lt;strong&gt;此次更新的亮点包括：&lt;/strong&gt;&lt;/p&gt; 
-&lt;ul&gt; 
- &lt;li&gt;&lt;code&gt;imgcodecs&lt;/code&gt;添加了对&amp;nbsp;&lt;strong&gt;GIF 的编解码支持&lt;/strong&gt;&lt;/li&gt; 
- &lt;li&gt;显著提升了&lt;strong&gt;PNG 和 Animated PNG&lt;/strong&gt;文件的处理能力&lt;/li&gt; 
- &lt;li&gt;增加了对&lt;strong&gt;Animated WebP&lt;/strong&gt;的支持&lt;/li&gt; 
- &lt;li&gt;特别值得一提的是对&amp;nbsp;&lt;strong&gt;RISC-V RVV 1.0 的新 HAL 实现&lt;/strong&gt;&lt;/li&gt; 
-&lt;/ul&gt; 
-&lt;p&gt;&lt;strong&gt;完整的更新日志如下：&lt;/strong&gt;&lt;/p&gt; 
-&lt;p&gt;&lt;strong style="color:rgba(0, 0, 0, 0.9)"&gt;Core 模块&lt;/strong&gt;&lt;/p&gt; 
-&lt;ul&gt; 
- &lt;li&gt;添加了用户自定义的日志回调功能（&lt;a href="javascript:;"&gt;#27154&lt;/a&gt;）&amp;nbsp;&lt;/li&gt; 
- &lt;li&gt;`cv::Mat` 添加了 `reinterpret()` 方法（&lt;a href="javascript:;"&gt;#25394&lt;/a&gt;）&lt;/li&gt; 
- &lt;li&gt;修复了空的 N 维数组构造问题（&lt;a href="javascript:;"&gt;#27362&lt;/a&gt;）&lt;/li&gt; 
- &lt;li&gt;修复了 `FileStorage` 对 `int64` 支持的 bug（&lt;a href="javascript:;"&gt;#26846&lt;/a&gt;）&lt;/li&gt; 
- &lt;li&gt;修复了大图像中 `cv::meanStdDev` 的溢出问题（&lt;a href="javascript:;"&gt;#26867&lt;/a&gt;）&lt;/li&gt; 
- &lt;li&gt;`cv::mean` 函数的 HAL 加速（&lt;a href="javascript:;"&gt;#26895&lt;/a&gt;）&lt;/li&gt; 
- &lt;li&gt;向量化加速 `cv::normalize` 和 `cv::norm`（&lt;a href="javascript:;"&gt;#26885&lt;/a&gt;）&lt;/li&gt; 
- &lt;li&gt;为 `exp` 和 `sqrt` 启用了 `SIMD_SCALABLE`（&lt;a href="javascript:;"&gt;#26886&lt;/a&gt;）&lt;/li&gt; 
- &lt;li&gt;使用通用指令向量化 `normDiff`（&lt;a href="javascript:;"&gt;#27042&lt;/a&gt;）&lt;/li&gt; 
- &lt;li&gt;重构了 `hal_rvv` 中的 `normDiff`，并扩展支持更多数据类型（&lt;a href="javascript:;"&gt;#27115&lt;/a&gt;）&lt;/li&gt; 
- &lt;li&gt;进一步向量化加速带掩码的 `copyTo`（&lt;a href="javascript:;"&gt;#27145&lt;/a&gt;）&lt;/li&gt; 
- &lt;li&gt;修复了 `POWN` 的 OpenCL 实现（&lt;a href="javascript:;"&gt;#27274&lt;/a&gt;）&lt;/li&gt; 
- &lt;li&gt;将遗留的 universal intrinsics 恢复为独立头文件（&lt;a href="javascript:;"&gt;#27327&lt;/a&gt;）&lt;/li&gt; 
- &lt;li&gt;提高了解析三次方程 (`solveCubic`) 的精度（&lt;a href="javascript:;"&gt;#27331&lt;/a&gt;,&amp;nbsp;&lt;a href="javascript:;"&gt;#27347&lt;/a&gt;）&lt;/li&gt; 
- &lt;li&gt;弃用了在 `cv::UMat` 从 `std::vector` 构造时的 `copyData` 参数，并始终复制数据（&lt;a href="javascript:;"&gt;#27408&lt;/a&gt;）&lt;/li&gt; 
-&lt;/ul&gt; 
-&lt;p&gt;&lt;strong&gt;Imgproc 模块&lt;/strong&gt;&lt;/p&gt; 
-&lt;ul&gt; 
- &lt;li&gt;优化并减少了 `cv::findContours` 的内存使用（&lt;a href="javascript:;"&gt;#26690&lt;/a&gt;,&amp;nbsp;&lt;a href="javascript:;"&gt;#26834&lt;/a&gt;）&lt;/li&gt; 
- &lt;li&gt;修复了超大图像中 `cv::HoughLinesProbabilistic` 的整数溢出问题（&lt;a href="javascript:;"&gt;#26744&lt;/a&gt;）&lt;/li&gt; 
- &lt;li&gt;修复了图像变换中多个可能的溢出问题（&lt;a href="javascript:;"&gt;#26765&lt;/a&gt;,&amp;nbsp;&lt;a href="javascript:;"&gt;#26776&lt;/a&gt;）&lt;/li&gt; 
- &lt;li&gt;增强了椭圆拟合的鲁棒性（&lt;a href="javascript:;"&gt;#26773&lt;/a&gt;）&lt;/li&gt; 
- &lt;li&gt;添加 `cv::THRESH_DRYRUN` 标志以在不实际阈值化的情况下获取自适应阈值（&lt;a href="javascript:;"&gt;#26836&lt;/a&gt;）&lt;/li&gt; 
- &lt;li&gt;修复了奇异情况中 `cv::getPerspectiveTransform` 的行为（&lt;a href="javascript:;"&gt;#26926&lt;/a&gt;）&lt;/li&gt; 
- &lt;li&gt;使用 universal intrinsics 优化了 `bayer2Gray`（&lt;a href="javascript:;"&gt;#26868&lt;/a&gt;）&lt;/li&gt; 
- &lt;li&gt;为 `cv::threshold` 添加了可选掩码参数（&lt;a href="javascript:;"&gt;#26842&lt;/a&gt;）&lt;/li&gt; 
- &lt;li&gt;在使用 `cv::WARP_INVERSE_MAP` 时，通过多线程加速 `cv::remap` 计算（&lt;a href="javascript:;"&gt;#27108&lt;/a&gt;）&amp;nbsp;&lt;/li&gt; 
- &lt;li&gt;重构了 OpenCL 中 HSV 色彩转换表的初始化以避免数据错误（&lt;a href="javascript:;"&gt;#27287&lt;/a&gt;）&lt;/li&gt; 
- &lt;li&gt;修复了双边滤波中 `sigmaColor` 和 `sigmaSpace` 的问题（&lt;a href="javascript:;"&gt;#27309&lt;/a&gt;）&lt;/li&gt; 
- &lt;li&gt;提升了中值滤波 (`medianBlur`) 的性能（&lt;a href="javascript:;"&gt;#27299&lt;/a&gt;）&lt;/li&gt; 
- &lt;li&gt;添加了 `cv::getClosestEllipsePoints` 用于获取椭圆上最近的点（&lt;a href="javascript:;"&gt;#26299&lt;/a&gt;）&lt;/li&gt; 
- &lt;li&gt;修正了 `cv::distanceTransform` 在单线程下的 IPP 实现（&lt;a href="javascript:;"&gt;#27432&lt;/a&gt;）&lt;/li&gt; 
- &lt;li&gt;修复了带掩码时 `cv::matchTemplate` 的崩溃（&lt;a href="javascript:;"&gt;#26703&lt;/a&gt;）&lt;/li&gt; 
- &lt;li&gt;为形态学操作添加了菱形结构元素（&lt;a href="javascript:;"&gt;#27441&lt;/a&gt;,&amp;nbsp;&lt;a href="javascript:;"&gt;#27492&lt;/a&gt;）&lt;/li&gt; 
- &lt;li&gt;提升了 `cv::intersectConvexConvex` 在极端情况中的精度（&lt;a href="javascript:;"&gt;#26974&lt;/a&gt;）&lt;/li&gt; 
-&lt;/ul&gt; 
-&lt;p&gt;&lt;strong&gt;Calib3d 模块&lt;/strong&gt;&lt;/p&gt; 
-&lt;ul&gt; 
- &lt;li&gt;修复了单应性估计中的内点更新问题（&lt;a href="javascript:;"&gt;#26742&lt;/a&gt;）&lt;/li&gt; 
- &lt;li&gt;为鱼眼相机模型添加了 `cv::solvePnPRansac` 实现（&lt;a href="javascript:;"&gt;#26669&lt;/a&gt;）&lt;/li&gt; 
- &lt;li&gt;修复了 `cv::findChessboardCornersSBWithMeta` 在使用 `cv::CALIB_CB_LARGER` 标志时的角点顺序问题&lt;/li&gt; 
- &lt;li&gt;修复了 `FilterSpecklesImpl` 中的逻辑错误（&lt;a href="javascript:;"&gt;#26996&lt;/a&gt;）&lt;/li&gt; 
- &lt;li&gt;优化了鱼眼模型下的反畸变点计算（&lt;a href="javascript:;"&gt;#26988&lt;/a&gt;）&lt;/li&gt; 
- &lt;li&gt;优化了新相机矩阵估计及相关函数（&lt;a href="javascript:;"&gt;#27001&lt;/a&gt;）&lt;/li&gt; 
- &lt;li&gt;为 `cv::drawAxes` 投影轴超出相机视野时添加了警告（&lt;a href="javascript:;"&gt;#27311&lt;/a&gt;）&lt;/li&gt; 
- &lt;li&gt;添加图像尺寸检查以避免 `StereoSGBM` 的非正定（&lt;a href="javascript:;"&gt;#27305&lt;/a&gt;）&lt;/li&gt; 
- &lt;li&gt;修复了 SQPNP 正交化相关 bug 并简化了列向量复制（&lt;a href="javascript:;"&gt;#27437&lt;/a&gt;）&lt;/li&gt; 
-&lt;/ul&gt; 
-&lt;p&gt;&lt;strong&gt;DNN 模块&lt;/strong&gt;&lt;/p&gt; 
-&lt;ul&gt; 
- &lt;li&gt;在 TFLite 解析器中添加了对 `StridedSlice`（无 strides，仅切片）的支持，同时支持 TF 的 strides（&lt;a href="javascript:;"&gt;#27273&lt;/a&gt;）&lt;/li&gt; 
- &lt;li&gt;增加了 conv+eltwise 融合的处理器，适用于多输出节点（如 Split）（&lt;a href="javascript:;"&gt;#27326&lt;/a&gt;）&lt;/li&gt; 
- &lt;li&gt;在 TFLite 解析器中新增了若干操作的导入：SUB、SQRT、DIV、NEG、SQUARED\_DIFFERENCE、SUM（&lt;a href="javascript:;"&gt;#27307&lt;/a&gt;）&lt;/li&gt; 
- &lt;li&gt;修复了 TFLite 解析器中标量和一维张量的支持（&lt;a href="javascript:;"&gt;#27307&lt;/a&gt;）&lt;/li&gt; 
- &lt;li&gt;减少了 NHWC&amp;lt;-&amp;gt;NCHW 转换次数（&lt;a href="javascript:;"&gt;#27307&lt;/a&gt;）&lt;/li&gt; 
- &lt;li&gt;在获取网络中最新 layer pin 之前增加了检查（&lt;a href="javascript:;"&gt;#27353&lt;/a&gt;）&lt;/li&gt; 
- &lt;li&gt;添加了 OpenVINO NPU 支持（&lt;a href="javascript:;"&gt;#27363&lt;/a&gt;）&lt;/li&gt; 
- &lt;li&gt;向 CANN 后端添加了更多操作（&lt;a href="javascript:;"&gt;#24756&lt;/a&gt;）&lt;/li&gt; 
-&lt;/ul&gt; 
-&lt;p&gt;&lt;strong&gt;Objdetect 模块&lt;/strong&gt;&lt;/p&gt; 
-&lt;ul&gt; 
- &lt;li&gt;扩展 `ArUcoDetector` 以更高效地支持多字典（&lt;a href="javascript:;"&gt;#26934&lt;/a&gt;）&lt;/li&gt; 
- &lt;li&gt;修复了 Aruco 标记板旋转生成问题（&lt;a href="javascript:;"&gt;#26753&lt;/a&gt;）&lt;/li&gt; 
- &lt;li&gt;修复了图像边缘附近 Aruco 标记检测错误（&lt;a href="javascript:;"&gt;#26968&lt;/a&gt;）&lt;/li&gt; 
- &lt;li&gt;修复了 QR 编码器/解码器中无效向量访问问题（&lt;a href="javascript:;"&gt;#26532&lt;/a&gt;）&lt;/li&gt; 
- &lt;li&gt;修复了 QR 码编码器的自动版本选择（&lt;a href="javascript:;"&gt;#27244&lt;/a&gt;）&lt;/li&gt; 
- &lt;li&gt;添加了 QRCode 的 ECI 编码支持（&lt;a href="javascript:;"&gt;#24426&lt;/a&gt;,&amp;nbsp;&lt;a href="javascript:;"&gt;#27486&lt;/a&gt;）&lt;/li&gt; 
- &lt;li&gt;`ChAruco` 棋盘一致性检查现在可选（#26824）&lt;/li&gt; 
-&lt;/ul&gt; 
-&lt;p&gt;&lt;strong&gt;Photo 模块&lt;/strong&gt;&lt;/p&gt; 
-&lt;ul&gt; 
- &lt;li&gt;为 `cv::fastNlMeansDenoising` 添加了 16 位支持并更新了测试（&lt;a href="javascript:;"&gt;#26831&lt;/a&gt;）&lt;/li&gt; 
- &lt;li&gt;优化了本地去色流程（&lt;a href="javascript:;"&gt;#27041&lt;/a&gt;）&lt;/li&gt; 
- &lt;li&gt;修复了 Debevec 算法使用的三角权重在边缘处不为零的问题（&lt;a href="javascript:;"&gt;#27270&lt;/a&gt;）&lt;/li&gt; 
- &lt;li&gt;修复了 HDR 三角权重和色调映射中的 NaN，并更新了教程中的 LDR Ground Truth（#27396）&lt;/li&gt; 
-&lt;/ul&gt; 
-&lt;p&gt;&lt;strong&gt;VideoIO 模块&lt;/strong&gt;&lt;/p&gt; 
-&lt;ul&gt; 
- &lt;li&gt;修复了通过环境变量提供的 FFmpeg 自定义参数处理无效的问题（&lt;a href="javascript:;"&gt;#26793&lt;/a&gt;）&lt;/li&gt; 
- &lt;li&gt;修复了 `cv::CAP_PROP_ORIENTATION_AUTO` 的默认行为（&lt;a href="javascript:;"&gt;#26800&lt;/a&gt;）&lt;/li&gt; 
- &lt;li&gt;在使用 DShow 后端并提供自定义参数时提高了相机打开性能（&lt;a href="javascript:;"&gt;#26601&lt;/a&gt;）&lt;/li&gt; 
- &lt;li&gt;为安卓原生相机捕捉添加了缩放支持（&lt;a href="javascript:;"&gt;#26837&lt;/a&gt;）&lt;/li&gt; 
- &lt;li&gt;修复了非 BGR 输出时的 V4L 帧尺寸问题（&lt;a href="javascript:;"&gt;#27193&lt;/a&gt;）&lt;/li&gt; 
- &lt;li&gt;添加了对 Orbbec Gemini 330 相机的支持（&lt;a href="javascript:;"&gt;#27230&lt;/a&gt;）&lt;/li&gt; 
- &lt;li&gt;修复了 `cv::VideoWriter` 写入无颜色图像时失败的问题（&lt;a href="javascript:;"&gt;#27153&lt;/a&gt;）&lt;/li&gt; 
- &lt;li&gt;修复了 Android 中 `setCameraIndex` 的问题（#27419）&lt;/li&gt; 
-&lt;/ul&gt; 
-&lt;p&gt;&lt;strong&gt;Imgcodecs 模块&lt;/strong&gt;&lt;/p&gt; 
-&lt;ul&gt; 
- &lt;li&gt;扩展图像 I/O API，支持元数据（&lt;a href="javascript:;"&gt;#27499&lt;/a&gt;）&lt;/li&gt; 
- &lt;li&gt;添加了内存中动画编码和解码功能（&lt;a href="javascript:;"&gt;#27013&lt;/a&gt;）&lt;/li&gt; 
- &lt;li&gt;添加了 Animated PNG 的隐藏帧支持（&lt;a href="javascript:;"&gt;#27127&lt;/a&gt;）&lt;/li&gt; 
- &lt;li&gt;为 imgcodecs 添加了 GIF 编解码支持（多个 PR）&lt;/li&gt; 
- &lt;li&gt;添加了 Animated WebP 支持（&lt;a href="javascript:;"&gt;#25608&lt;/a&gt;,&amp;nbsp;&lt;a href="javascript:;"&gt;#27457&lt;/a&gt;）&lt;/li&gt; 
- &lt;li&gt;添加了 GDAL 多通道支持（&lt;a href="javascript:;"&gt;#27458&lt;/a&gt;）&lt;/li&gt; 
- &lt;li&gt;修复了 Windows 下 AVIF 链接问题（&lt;a href="javascript:;"&gt;#26762&lt;/a&gt;）&lt;/li&gt; 
- &lt;li&gt;显著改进了 PNG 和 Animated PNG 文件的处理（多个 PR）&lt;/li&gt; 
- &lt;li&gt;添加了 libspng 集成的多个修复（&lt;a href="javascript:;"&gt;#27314&lt;/a&gt;）&lt;/li&gt; 
- &lt;li&gt;修复了 JpegXL 解码器中的内存泄漏（&lt;a href="javascript:;"&gt;#26787&lt;/a&gt;）&lt;/li&gt; 
- &lt;li&gt;为 JpegXL 添加了 `cv::IMREAD_UNCHANGED` 和其他标志的支持（&lt;a href="javascript:;"&gt;#26788&lt;/a&gt;）&lt;/li&gt; 
- &lt;li&gt;实现了 JpegXL 的 `imdecode()`，支持从内存直接读取（&lt;a href="javascript:;"&gt;#26844&lt;/a&gt;）&lt;/li&gt; 
- &lt;li&gt;添加了 JpegXL 的无损压缩支持（&lt;a href="javascript:;"&gt;#27384&lt;/a&gt;）&lt;/li&gt; 
- &lt;li&gt;修复了使用 libspng 后端读取 16 位 PNG 的问题（&lt;a href="javascript:;"&gt;#27113&lt;/a&gt;）&lt;/li&gt; 
-&lt;/ul&gt; 
-&lt;p&gt;&lt;strong&gt;Highgui 模块&lt;/strong&gt;&lt;/p&gt; 
-&lt;ul&gt; 
- &lt;li&gt;`displayOverlay` 超时后不再自动消失（&lt;a href="javascript:;"&gt;#27082&lt;/a&gt;）&lt;/li&gt; 
- &lt;li&gt;修复了 Qt 后端关闭窗口的问题（&lt;a href="javascript:;"&gt;#27170&lt;/a&gt;）&lt;/li&gt; 
- &lt;li&gt;修复了 Qt 窗口调整大小的回归问题（#27282）&lt;/li&gt; 
-&lt;/ul&gt; 
-&lt;p&gt;&lt;strong&gt;G-API 模块&lt;/strong&gt;&lt;/p&gt; 
-&lt;ul&gt; 
- &lt;li&gt;为 OpenVINO Execution Provider 的顺利添加引入了绕过方案：提前创建 `Ort::Env`（&lt;a href="javascript:;"&gt;#26983&lt;/a&gt;）&lt;/li&gt; 
- &lt;li&gt;添加了 `AddRgbFeature()`，提升了 `ComputeRgbDistance` 的鲁棒性（&lt;a href="javascript:;"&gt;#26682&lt;/a&gt;）&lt;/li&gt; 
- &lt;li&gt;在 G-API 中添加了 MS Media Foundation 的可用性检查（#27355）&lt;/li&gt; 
-&lt;/ul&gt; 
-&lt;p&gt;&lt;strong&gt;Video 模块&lt;/strong&gt;&lt;/p&gt; 
-&lt;ul&gt; 
- &lt;li&gt;添加了预加载 DNN 模型的追踪器工厂（#26875）&lt;/li&gt; 
-&lt;/ul&gt; 
-&lt;p&gt;&lt;strong&gt;HAL 模块&lt;/strong&gt;&lt;/p&gt; 
-&lt;ul&gt; 
- &lt;li&gt;将 HAL 实现抽出为独立文件夹（&lt;a href="javascript:;"&gt;#27252&lt;/a&gt;）&lt;/li&gt; 
- &lt;li&gt;RISC-V RVV 1.0 实现了新的 HAL&lt;/li&gt; 
- &lt;li&gt;重构 OpenVX 实现为 HAL（多个 PR）&lt;/li&gt; 
- &lt;li&gt;部分重构了 Intel IPP 集成为 HAL（多个 PR）&lt;/li&gt; 
- &lt;li&gt;修复了 HAL 中对 `cv` 命名空间的依赖（&lt;a href="javascript:;"&gt;#26878&lt;/a&gt;）&lt;/li&gt; 
- &lt;li&gt;更新了 ARM 上的 KleidiCV HAL 至版本 0.5&lt;/li&gt; 
- &lt;li&gt;扩展了 Qualcomm 平台的 FastCV HAL（多个 PR）&lt;/li&gt; 
- &lt;li&gt;添加了多个新 HAL 实现（如 `cv::sum`, `copyTo`, `cv::DFT`, `cv::DCT`, `convert`, `cv::norm`, `minMaxIdx`, `cv::calcHist`, `cv::pyrUp`, `cv::remap` 等）&lt;/li&gt; 
-&lt;/ul&gt; 
-&lt;p&gt;&lt;strong&gt;Python, Java, JavaScript 绑定&lt;/strong&gt;&lt;/p&gt; 
-&lt;ul&gt; 
- &lt;li&gt;添加了头文件解析器的条件包含支持（&lt;a href="javascript:;"&gt;#27325&lt;/a&gt;&amp;nbsp;等）&lt;/li&gt; 
- &lt;li&gt;更新了 `predefined_types.py`（&lt;a href="javascript:;"&gt;#26826&lt;/a&gt;）&lt;/li&gt; 
- &lt;li&gt;添加了动画绑定（&lt;a href="javascript:;"&gt;#26813&lt;/a&gt;）&lt;/li&gt; 
- &lt;li&gt;修复了 `cv::imread` 的错误 Python 类型提示（&lt;a href="javascript:;"&gt;#26890&lt;/a&gt;）&lt;/li&gt; 
- &lt;li&gt;将 `tostring()` 和 `fromstring()` 替换为现代 Python 兼容用法（&lt;a href="javascript:;"&gt;#26932&lt;/a&gt;&amp;nbsp;等）&lt;/li&gt; 
- &lt;li&gt;替换 `ndarray.ptp()` 为 `np.ptp()` 以兼容 NumPy 2.0（&lt;a href="javascript:;"&gt;#27133&lt;/a&gt;）&lt;/li&gt; 
- &lt;li&gt;扩展了 Java DNN、Features2d 的绑定（多个 PR）&lt;/li&gt; 
- &lt;li&gt;修复了 JS 中 `std::vector&amp;lt;Point3f&amp;gt;` 的处理（&lt;a href="javascript:;"&gt;#27291&lt;/a&gt;）&lt;/li&gt; 
- &lt;li&gt;为 Java 添加了带缓冲流的 `cv::VideoCapture` 构造器（&lt;a href="javascript:;"&gt;#27284&lt;/a&gt;&amp;nbsp;等）&lt;/li&gt; 
- &lt;li&gt;扩展了 `cv::HoughLinesWithAccumulator` 的绑定（&lt;a href="javascript:;"&gt;#27377&lt;/a&gt;）&lt;/li&gt; 
- &lt;li&gt;修复 Kotlin 2.0 中的不安全强制类型转换错误（&lt;a href="javascript:;"&gt;#26354&lt;/a&gt;）&lt;/li&gt; 
-&lt;/ul&gt; 
-&lt;p&gt;&lt;strong&gt;平台支持&lt;/strong&gt;&lt;/p&gt; 
-&lt;ul&gt; 
- &lt;li&gt;修复了 Linux 上 OpenBLAS 的检测（&lt;a href="javascript:;"&gt;#27029&lt;/a&gt;）&lt;/li&gt; 
- &lt;li&gt;兼容 CMake 4（&lt;a href="javascript:;"&gt;#27192&lt;/a&gt;）&lt;/li&gt; 
- &lt;li&gt;修复了支持 Vulkan 的 Android 构建问题（&lt;a href="javascript:;"&gt;#26765&lt;/a&gt;）&lt;/li&gt; 
- &lt;li&gt;修复了 Power 架构上的 VSX 指令实现（&lt;a href="javascript:;"&gt;#26750&lt;/a&gt;&amp;nbsp;等）&lt;/li&gt; 
- &lt;li&gt;为 POWER 架构添加了 `getauxval` 和 `elf_aux_info` 的 CMake 检查（&lt;a href="javascript:;"&gt;#26798&lt;/a&gt;）&lt;/li&gt; 
- &lt;li&gt;修复了 OpenBSD 的构建问题（&lt;a href="javascript:;"&gt;#26803&lt;/a&gt;）&lt;/li&gt; 
- &lt;li&gt;添加了对 Nvidia Blackwell GPU 架构的初步支持（&lt;a href="javascript:;"&gt;#26820&lt;/a&gt;）&lt;/li&gt; 
- &lt;li&gt;修复了 Carotene HAL 中对 `cv` 命名空间的依赖（&lt;a href="javascript:;"&gt;#26878&lt;/a&gt;）&lt;/li&gt; 
- &lt;li&gt;统一了各模块的 `_DEBUG/NDEBUG` 处理（&lt;a href="javascript:;"&gt;#26151&lt;/a&gt;）&lt;/li&gt; 
- &lt;li&gt;修复了 QNX 7.0 的构建问题（&lt;a href="javascript:;"&gt;#26985&lt;/a&gt;）&lt;/li&gt; 
- &lt;li&gt;切换为静态链接 FastCV（&lt;a href="javascript:;"&gt;#26917&lt;/a&gt;&amp;nbsp;等）&lt;/li&gt; 
- &lt;li&gt;在 CUDA 工具包 ≥ 12.8 时强制启用 C++17 标准（&lt;a href="javascript:;"&gt;#27112&lt;/a&gt;&amp;nbsp;等）&lt;/li&gt; 
- &lt;li&gt;修复了 Windows ARM64EC 的构建（&lt;a href="javascript:;"&gt;#27416&lt;/a&gt;）&lt;/li&gt; 
- &lt;li&gt;修复了 Cygwin 环境下的文件系统支持（&lt;a href="javascript:;"&gt;#27484&lt;/a&gt;）&lt;/li&gt; 
-&lt;/ul&gt; 
-&lt;p&gt;详细信息可参考：&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fgithub.com%2Fopencv%2Fopencv%2Fwiki%2FOpenCV-Change-Logs%23version4120" target="_blank"&gt;https://github.com/opencv/opencv/wiki/OpenCV-Change-Logs#version4120&lt;/a&gt;&lt;/p&gt;
-                                                                                &lt;/div&gt;
-                                                                            </description>
-      <link>https://www.oschina.net/news/360842/opencv-4-12-released</link>
-      <guid isPermaLink="false">https://www.oschina.net/news/360842/opencv-4-12-released</guid>
-      <pubDate>Wed, 16 Jul 2025 05:54:00 GMT</pubDate>
-      <author>来源: OSCHINA</author>
-    </item>
-    <item>
-      <title>AI 编程工具 Windsurf 重新上线 Claude Sonnet 4 模型</title>
-      <description>&lt;div class="content"&gt;
-                                                                    
-                                                        &lt;p&gt;AI 编程工具&amp;nbsp;Windsurf&amp;nbsp;&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fx.com%2Fwindsurf_ai%2Fstatus%2F1945599013954490523"&gt;宣布&lt;/a&gt;，Anthropic 官方支持的 Claude Sonnet 4 模型已在该平台重新上线。&lt;/p&gt; 
-&lt;blockquote&gt; 
- &lt;p&gt;&lt;img alt="" src="https://static.oschina.net/uploads/space/2025/0717/104801_7g3W_2720166.png" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;/blockquote&gt; 
-&lt;p&gt;Pro 和 Teams 用户现在可以使用该模型，在限时折扣期间，每次请求消耗 2 个积分，相当于每月可进行 250 次请求。&lt;/p&gt; 
-&lt;p&gt;就在上个月，Anthropic 在几乎没有预先通知的情况下切断了 Windsurf 的 API 访问权限。&lt;/p&gt; 
-&lt;p style="color:#333333; margin-left:0; margin-right:0; text-align:left"&gt;&lt;img src="https://static.oschina.net/uploads/space/2025/0604/143502_jh84_2720166.png" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;p style="color:#333333; margin-left:0; margin-right:0; text-align:left"&gt;根据 Windsurf 的声明，Anthropic 在提前不到一周的通知时间内，切断了其几乎所有 Claude 3.x 模型的直接访问权限 (first-party capacity)，具体涉及的模型包括：&lt;/p&gt; 
-&lt;ul style="list-style-type:disc; margin-left:0; margin-right:0"&gt; 
- &lt;li&gt;Claude 3.5 Sonnet&lt;/li&gt; 
- &lt;li&gt;Claude 3.7 Sonnet&lt;/li&gt; 
- &lt;li&gt;Claude 3.7 Sonnet Thinking&lt;/li&gt; 
-&lt;/ul&gt;
-                                                                                &lt;/div&gt;
-                                                                            </description>
-      <link>https://www.oschina.net/news/360817</link>
-      <guid isPermaLink="false">https://www.oschina.net/news/360817</guid>
-      <pubDate>Wed, 16 Jul 2025 02:51:00 GMT</pubDate>
-      <author>来源: OSCHINA</author>
-    </item>
-    <item>
-      <title>MiniMax Agent 全栈开发功能正式发布</title>
-      <description>&lt;div class="content"&gt;
-                                                                    
-                                                        &lt;p&gt;国产 AI 公司 MiniMax&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fmp.weixin.qq.com%2Fs%2F5vPnhZW_j0diRqGvLQ663A" target="_blank"&gt;正式发布&lt;/a&gt;Agent 全栈开发功能，允许用户通过自然语言对话一键构建包含前端和后端的完整应用。&lt;/p&gt; 
-&lt;p&gt;该功能支持 Supabase 后端托管、Stripe 支付集成、cron job 定时任务和长链接维持等技术，能够实现 API 调用、实时数据处理、支付、LLM 集成、定时任务和用户认证等复杂操作，且无需人工编写代码。&lt;/p&gt; 
-&lt;p&gt;Minimax 提供的一个案例如下：&lt;/p&gt; 
-&lt;blockquote&gt; 
- &lt;p&gt;投资者需要跟踪全球 50 只科技股票的最新价格和行业新闻？任何实时看板，Agent 都可以为你随手定制了，全部是真实、准确、实时的金融数据，还能每天 07:00、12:00 和 17:00 更新。&lt;/p&gt; 
- &lt;p&gt;&lt;img height="1790" src="https://static.oschina.net/uploads/space/2025/0717/104317_AQ4J_2720166.png" width="3294" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
- &lt;p&gt;https://pza7q8sbnm.space.minimax.io/&lt;/p&gt; 
-&lt;/blockquote&gt; 
-&lt;p&gt;MiniMax 透露，该系统采用模块化 Agent 架构，包含三个核心子 Agent：&lt;/p&gt; 
-&lt;ul&gt; 
- &lt;li&gt;负责需求分析和方案生成的调研子 Agent&lt;/li&gt; 
- &lt;li&gt;负责代码生成和功能开发的全栈开发 Agent&lt;/li&gt; 
- &lt;li&gt;负责测试和调试的测试子 Agent。&lt;/li&gt; 
-&lt;/ul&gt; 
-&lt;p&gt;同时，MiniMax 还上线了 MCP builder 功能，支持企业级应用开发。&lt;/p&gt; 
-&lt;p&gt;体验：https://agent.minimax.io/&lt;/p&gt;
-                                                                                &lt;/div&gt;
-                                                                            </description>
-      <link>https://www.oschina.net/news/360816</link>
-      <guid isPermaLink="false">https://www.oschina.net/news/360816</guid>
-      <pubDate>Wed, 16 Jul 2025 02:40:00 GMT</pubDate>
-      <author>来源: OSCHINA</author>
-    </item>
-    <item>
-      <title>月之暗面回应 Kimi K2 API 速度慢：访问量大+模型体积大，正全力优化</title>
-      <description>&lt;div class="content"&gt;
-                                                                    
-                                                        &lt;p&gt;月之暗面 Kimi 官方近日回应了 Kimi K2 API 速度慢的情况。&lt;/p&gt; 
-&lt;p&gt;&lt;img alt="" src="https://oscimg.oschina.net/oscnet/up-979c4d5772660ea80d3a413ebfefa4d4d33.png" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;p&gt;月之暗面表示，主要问题是访问量大 +模型体积大。月之暗面正在全力优化推理效率，也在加卡加机器。预计这几天内速度会有明显提升。同时，Kimi K2 是完全开源的，大家也可以通过其他模型供应商接入使用（比如硅基流动、无问芯穹等），欢迎自行部署。&lt;/p&gt; 
-&lt;hr&gt; 
-&lt;p&gt;模力方舟现已上线 Kimi-K2-Instruct，开发者可以直接接入使用：&lt;/p&gt; 
-&lt;p&gt;&lt;a href="https://ai.gitee.com/serverless-api?model=kimi-k2-instruct"&gt;https://ai.gitee.com/serverless-api?model=kimi-k2-instruct&lt;/a&gt;&lt;/p&gt;
-                                                                                &lt;/div&gt;
-                                                                            </description>
-      <link>https://www.oschina.net/news/360812</link>
-      <guid isPermaLink="false">https://www.oschina.net/news/360812</guid>
-      <pubDate>Wed, 16 Jul 2025 02:29:00 GMT</pubDate>
-      <author>来源: OSCHINA</author>
-    </item>
-    <item>
-      <title>Scale AI 裁员 14%、终止 500 名承包商</title>
-      <description>&lt;div class="content"&gt;
-                                                                    
-                                                        &lt;p&gt;&lt;span style="color:#000000"&gt;彭博社报道称，美国数据标注初创公司 Scale AI 正面临重大调整，宣布裁员约 14%（约 200 人），同时终止与 500 名全球承包商的合作。&lt;/span&gt;&lt;/p&gt; 
-&lt;p&gt;&lt;img height="360" src="https://oscimg.oschina.net/oscnet/up-db7f23d7bc3401a608555d74ac26b7a14d0.png" width="700" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;p&gt;&lt;span style="color:#000000"&gt;此次调整正值高层人事巨变之后——上月，Meta 以 143 亿美元，的估值聘请了 Scale AI 原首席执行官亚历山大·王（Alexandr Wang），引发外界对其公司未来走向的猜测。现任临时 CEO Jason Droege 在内部备忘录中坦言，公司核心数据标注业务扩张过快，已不再适应当下市场节奏。&lt;/span&gt;&lt;/p&gt; 
-&lt;p&gt;&lt;span style="color:#000000"&gt;备忘录指出，Scale AI 将转向加强企业和政府销售部门，聚焦更高附加值的 B 端服务。这意味着，公司将逐步摆脱其曾经引以为傲的数据标注「流水线」模式。&lt;/span&gt;&lt;/p&gt; 
-&lt;p&gt;&lt;span style="color:#000000"&gt;这一动向也与近期多家 AI 初创公司「反向收购」后的战略调整如出一辙。例如 Inflection AI 被微软收购后，其技术和团队也被整合进大厂体系，原有产品线逐渐被边缘化。&lt;/span&gt;&lt;/p&gt; 
-&lt;p&gt;&lt;span style="color:#000000"&gt;值得注意的是，有消息称 Meta 的入局导致 Scale AI 部分大客户终止合作关系。作为数据服务商，Scale AI 面临的不仅是 AI 模型训练方式的变化，更是合作信任和中立地位的动摇。&lt;/span&gt;&lt;/p&gt;
-                                                                                &lt;/div&gt;
-                                                                            </description>
-      <link>https://www.oschina.net/news/360809/scale-ai-lays-off-14-of-staff</link>
-      <guid isPermaLink="false">https://www.oschina.net/news/360809/scale-ai-lays-off-14-of-staff</guid>
-      <pubDate>Wed, 16 Jul 2025 02:18:00 GMT</pubDate>
-      <author>来源: OSCHINA</author>
-    </item>
-    <item>
-      <title>Zadig 支持 Microsoft Teams 集成，实时通知触手可及</title>
-      <description>&lt;div class="content"&gt;
-                                                                                                                    
-                                                                                                                                                    &lt;p&gt;&lt;img height="798" src="https://oscimg.oschina.net/oscnet/up-750406a973e02f1db05b87c2d7948324716.png" width="1876" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;p&gt;在现代开发流程里，实时掌握系统状态与接收通知，是保障团队高效协作的关键要素。Zadig 作为功能强大的 DevOps 平台，如今已支持与 Microsoft Teams 进行集成，开发者可以通过 Teams 实时获取 Zadig 的工作流动态，团队成员能够实时掌握最新信息，进而提升整体协作效率。&lt;/p&gt; 
-&lt;span id="OSC_h1_1"&gt;&lt;/span&gt; 
-&lt;h1&gt;Zadig 与 Microsoft Teams 集成的优势&lt;/h1&gt; 
-&lt;p&gt;通过将 Zadig 与 Microsoft Teams 集成，团队可以享受以下优势：&lt;/p&gt; 
-&lt;ol&gt; 
- &lt;li&gt;&lt;strong&gt;实时通知&lt;/strong&gt;：Zadig 的工作流状态和关键事件会实时推送到 Teams 频道，确保团队成员第一时间获取信息。&lt;/li&gt; 
- &lt;li&gt;&lt;strong&gt;灵活配置&lt;/strong&gt;：支持自定义通知内容和接收人，满足不同团队的需求。&lt;/li&gt; 
- &lt;li&gt;&lt;strong&gt;无缝集成&lt;/strong&gt;：无需复杂配置，快速实现 Zadig 与 Teams 的对接。&lt;/li&gt; 
-&lt;/ol&gt; 
-&lt;span id="OSC_h1_2"&gt;&lt;/span&gt; 
-&lt;h1&gt;集成步骤详解&lt;/h1&gt; 
-&lt;span id="OSC_h2_3"&gt;&lt;/span&gt; 
-&lt;h2&gt;步骤 1：在 Teams 中创建 Workflow&lt;/h2&gt; 
-&lt;div&gt; 
- &lt;div&gt;
-   在 Microsoft Teams 中，进入频道或者聊天，找到 Workflow App，基于「Post to a channel when a webhook request is received」模板创建新的 Workflow，按照 Teams 官方文档（ 
-  &lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fsupport.microsoft.com%2Fen-us%2Foffice%2Fcreate-incoming-webhooks-with-workflows-for-microsoft-teams-8ae491c7-0394-4861-ba59-055e33f75498" rel="nofollow" target="_blank"&gt;https://support.microsoft.com/en-us/office/create-incoming-webhooks-with-workflows-for-microsoft-teams-8ae491c7-0394-4861-ba59-055e33f75498&lt;/a&gt;）的指引完成基本配置。 
- &lt;/div&gt; 
- &lt;div&gt; 
-  &lt;img height="1580" src="https://oscimg.oschina.net/oscnet/up-8712ed5a81aa970827b6285f30c46c21c6d.png" width="2176" referrerpolicy="no-referrer"&gt; 
- &lt;/div&gt; 
- &lt;div&gt; 
-  &lt;img height="1680" src="https://oscimg.oschina.net/oscnet/up-6efae2a5954d14474dc732ec9b0bfe54387.png" width="2944" referrerpolicy="no-referrer"&gt; 
- &lt;/div&gt; 
-&lt;/div&gt; 
-&lt;p&gt;&amp;nbsp;&lt;/p&gt; 
-&lt;p&gt;&amp;nbsp;&lt;/p&gt; 
-&lt;p&gt;&amp;nbsp;&lt;/p&gt; 
-&lt;span id="OSC_h2_4"&gt;&lt;/span&gt; 
-&lt;h2&gt;步骤 2：获取 Webhook 地址&lt;/h2&gt; 
-&lt;p&gt;在 Workflow 创建完成后，系统会生成一个唯一的 Webhook 地址，将此地址保存，后续将用于 Zadig 的配置。&lt;/p&gt; 
-&lt;p&gt;&lt;img height="1680" src="https://oscimg.oschina.net/oscnet/up-3977eef0e7b8941a9eba70827be88c650fe.png" width="2944" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;span id="OSC_h2_5"&gt;&lt;/span&gt; 
-&lt;h2&gt;步骤 3：在 Zadig 中配置 Teams 通知&lt;/h2&gt; 
-&lt;p&gt;访问 Zadig 系统，进入需要配置通知的工作流。在工作流配置页面，找到通知设置，选择「Microsoft Teams」作为通知方式。&lt;/p&gt; 
-&lt;p&gt;&lt;img height="1516" src="https://oscimg.oschina.net/oscnet/up-3c411beebb12ef62619ac79eb8178c48f26.png" width="2944" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;ol&gt; 
- &lt;li&gt;&lt;strong&gt;Webhook 地址&lt;/strong&gt;：填写从步骤 2 中获取的 Webhook 地址。&lt;/li&gt; 
- &lt;li&gt;&lt;strong&gt;@指定成员（可选）&lt;/strong&gt; ：如需通知特定成员，输入 Teams 用户的 email，多个用户用 &lt;code&gt;;&lt;/code&gt; 分隔。&lt;/li&gt; 
- &lt;li&gt;&lt;strong&gt;通知事件&lt;/strong&gt;：根据工作流状态（如成功、失败等）配置触发通知的事件。&lt;/li&gt; 
-&lt;/ol&gt; 
-&lt;span id="OSC_h1_6"&gt;&lt;/span&gt; 
-&lt;h1&gt;通知效果&lt;/h1&gt; 
-&lt;p&gt;配置完成后，当 Zadig 的工作流状态满足触发事件时，相关通知会实时推送到 Teams 的指定频道。通知内容清晰明了，团队成员可以快速了解工作流的状态，及时采取行动。&lt;/p&gt; 
-&lt;p&gt;&lt;img height="1580" src="https://oscimg.oschina.net/oscnet/up-a5fdf1d9928bc6a0f577eca8d91b44add0a.png" width="2176" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;span id="OSC_h1_7"&gt;&lt;/span&gt; 
-&lt;h1&gt;结语&lt;/h1&gt; 
-&lt;p&gt;通过 Zadig 与 Microsoft Teams 的深度集成，团队能够实时获取工作流状态，快速响应问题，提升协作效率。未来，Zadig 将持续探索更多协作工具的集成可能性，为企业打造更智能、更高效的开发与交付生态。&lt;/p&gt; 
-&lt;p style="color:#ff4c88; margin-left:0; margin-right:0; text-align:center"&gt;&lt;strong&gt;即日起，Zadig 新版发布&lt;br&gt; 扫码咨询抢先体验&lt;/strong&gt;&lt;/p&gt; 
-&lt;p style="color:#191b1f; margin-left:0; margin-right:0; text-align:center"&gt;&lt;img height="943" src="https://oscimg.oschina.net/oscnet/up-0c7876673ed701ed97107bb53b607d661dd.png" width="1797" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;div&gt; 
- &lt;p style="color:#333333; margin-left:0; margin-right:0; text-align:center"&gt;&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fgithub.com%2Fkoderover%2Fzadig" target="_blank" rel="nofollow"&gt;Zadig 在 Github&lt;/a&gt;&amp;nbsp;/&amp;nbsp;&lt;a href="https://gitee.com/koderover/zadig" rel="nofollow"&gt;Zadig 在 Gitee&lt;/a&gt;&lt;/p&gt; 
-&lt;/div&gt; 
-&lt;div&gt; 
- &lt;div&gt; 
-  &lt;strong&gt;&lt;span&gt;推荐阅读：&lt;/span&gt;&lt;/strong&gt; 
- &lt;/div&gt; 
- &lt;div&gt; 
-  &lt;p style="color:#002a64; margin-left:0; margin-right:0"&gt;&lt;a href="https://my.oschina.net/koderover/blog/17622087" target="_blank" rel="nofollow"&gt;Zadig：首个深度集成 DeepSeek 的 DevOps 平台&lt;/a&gt;&amp;nbsp;/&amp;nbsp;&lt;a href="https://my.oschina.net/koderover/blog/11210095" target="_blank" rel="nofollow"&gt;Zadig 官网博客正式发布，技术干货实践管饱&lt;/a&gt;&amp;nbsp;/&amp;nbsp;&lt;a href="https://my.oschina.net/koderover/blog/16492101" target="_blank" rel="nofollow"&gt;流水线早已 out 了？你需要更高效能的工作流&lt;/a&gt;&amp;nbsp;/&lt;span style="background-color:#ffffff; color:#002a64"&gt;&amp;nbsp;&lt;/span&gt;&lt;a href="https://my.oschina.net/koderover/blog/10316143" target="_blank" rel="nofollow"&gt;Jenkins 迁移 Zadig，新项目实施上线效率提升 6 倍&lt;/a&gt;&amp;nbsp;/&lt;a href="https://my.oschina.net/koderover/blog/17644385" target="_blank" rel="nofollow"&gt;Zadig 辞旧迎新发布 V3.3，更好看更好用超稳定&lt;/a&gt;&lt;/p&gt; 
- &lt;/div&gt; 
-&lt;/div&gt;
-                                                                                    &lt;/div&gt;
-                                                                            </description>
-      <link>https://my.oschina.net/koderover/blog/18044129</link>
-      <guid isPermaLink="false">https://my.oschina.net/koderover/blog/18044129</guid>
-      <pubDate>Wed, 16 Jul 2025 01:56:00 GMT</pubDate>
-      <author>原创</author>
-    </item>
-    <item>
-      <title>🎉 对标 Coze 和 Dify，Java 开发的 AIFlowy v1.1.1 发布</title>
-      <description>&lt;div class="content"&gt;
-                                                                    
-                                                        &lt;p style="color:#333333; margin-left:0; margin-right:0; text-align:left"&gt;&lt;img height="1023" src="https://oscimg.oschina.net/oscnet/up-f38e8d2f28faea373ab6b092edc8c77784f.png" width="2700" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;p style="color:#333333; margin-left:0; margin-right:0; text-align:left"&gt;AIFlowy v1.1.1 正式发布了！ 🎉&lt;/p&gt; 
-&lt;p style="color:#333333; margin-left:0; margin-right:0; text-align:left"&gt;如果你也在使用 AIFlowy，欢迎为我们点个 Star 支持一下🌟：&lt;br&gt; 🔗 Gitee 地址：&lt;a href="https://gitee.com/aiflowy/aiflowy"&gt;https://gitee.com/aiflowy/aiflowy&lt;/a&gt;&lt;/p&gt; 
-&lt;p style="color:#333333; margin-left:0; margin-right:0; text-align:left"&gt;你的每一个 Star 都是对我们最大的鼓励，也是让更多人看到 AIFlowy 的关键一步！&lt;/p&gt; 
-&lt;p style="color:#333333; margin-left:0; margin-right:0; text-align:left"&gt;我们的愿景始终如一：&lt;br&gt; &lt;strong&gt;🔹 成为中国最具影响力的人工智能品牌之一&lt;br&gt; 🔹 引领核心技术自主创新&lt;br&gt; 🔹 推动中国 AI 生态繁荣发展，助力科技自立&lt;/strong&gt;&lt;/p&gt; 
-&lt;p style="color:#333333; margin-left:0; margin-right:0; text-align:left"&gt;让我们一起见证 AIFlowy 的成长，也欢迎更多伙伴加入我们，共建更强大的 AI 开源生态🚀！&lt;/p&gt; 
-&lt;p style="color:#333333; margin-left:0; margin-right:0; text-align:left"&gt;AIFlowy v1.1.1 更新详情：&lt;a href="https://gitee.com/aiflowy/aiflowy/releases/tag/v1.1.1"&gt;https://gitee.com/aiflowy/aiflowy/releases/tag/v1.1.1&lt;/a&gt;&lt;/p&gt; 
-&lt;p style="color:#333333; margin-left:0; margin-right:0; text-align:left"&gt;&lt;img height="1080" src="https://oscimg.oschina.net/oscnet/up-c50d9f84345e3d4b5cea71073f0b996aa03.png" width="1920" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;p style="color:#333333; margin-left:0; margin-right:0; text-align:left"&gt;&amp;nbsp;&lt;/p&gt; 
-&lt;p style="color:#333333; margin-left:0; margin-right:0; text-align:left"&gt;&lt;img height="1800" src="https://oscimg.oschina.net/oscnet/up-f79a2712a7c33bc0f0a91f5096775aac0fd.png" width="2880" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;h2&gt;功能列表&lt;/h2&gt; 
-&lt;p style="color:#40485b; margin-left:0; margin-right:0; text-align:left"&gt;&lt;strong&gt;AI 功能&lt;/strong&gt;&lt;/p&gt; 
-&lt;ul&gt; 
- &lt;li&gt;&lt;span&gt;&amp;nbsp;&lt;/span&gt;Bot 应用（已完成）&lt;/li&gt; 
- &lt;li&gt;&lt;span&gt;&amp;nbsp;&lt;/span&gt;Bot 插件（已完成）&lt;/li&gt; 
- &lt;li&gt;&lt;span&gt;&amp;nbsp;&lt;/span&gt;Rag 知识库（已完成）&lt;/li&gt; 
- &lt;li&gt;&lt;span&gt;&amp;nbsp;&lt;/span&gt;AI 工作流编排（已完成）&lt;/li&gt; 
- &lt;li&gt;&lt;span&gt;&amp;nbsp;&lt;/span&gt;大模型配置（已完成）&lt;/li&gt; 
- &lt;li&gt;&lt;span&gt;&amp;nbsp;&lt;/span&gt;大模型市场（已完成）&lt;/li&gt; 
-&lt;/ul&gt; 
-&lt;p style="color:#40485b; margin-left:0; margin-right:0; text-align:left"&gt;&lt;strong&gt;系统管理&lt;/strong&gt;&lt;/p&gt; 
-&lt;ul&gt; 
- &lt;li&gt;&lt;span&gt;&amp;nbsp;&lt;/span&gt;用户管理（已完成）&lt;/li&gt; 
- &lt;li&gt;&lt;span&gt;&amp;nbsp;&lt;/span&gt;角色管理（已完成）&lt;/li&gt; 
- &lt;li&gt;&lt;span&gt;&amp;nbsp;&lt;/span&gt;菜单管理（已完成）&lt;/li&gt; 
- &lt;li&gt;&lt;span&gt;&amp;nbsp;&lt;/span&gt;部门管理（已完成）&lt;/li&gt; 
- &lt;li&gt;&lt;span&gt;&amp;nbsp;&lt;/span&gt;岗位管理（已完成）&lt;/li&gt; 
- &lt;li&gt;&lt;span&gt;&amp;nbsp;&lt;/span&gt;日志管理（已完成）&lt;/li&gt; 
-&lt;/ul&gt; 
-&lt;h2&gt;快速开始&lt;/h2&gt; 
-&lt;div&gt; 
- &lt;pre&gt;&lt;code&gt;&lt;span style="color:#6f42c1"&gt;&lt;span style="color:#6f42c1"&gt;&lt;span style="color:#6f42c1"&gt;&lt;span style="color:#6f42c1"&gt;&lt;span style="color:#6f42c1"&gt;&lt;span style="color:#6f42c1"&gt;&lt;span style="color:#6f42c1"&gt;&lt;span style="color:#6f42c1"&gt;&lt;span style="color:#6f42c1"&gt;&lt;span style="color:#6f42c1"&gt;&lt;span style="color:#6f42c1"&gt;&lt;span style="color:#6f42c1"&gt;git&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt; &lt;span style="color:#032f62"&gt;&lt;span style="color:#032f62"&gt;&lt;span style="color:#032f62"&gt;&lt;span style="color:#032f62"&gt;&lt;span style="color:#032f62"&gt;&lt;span style="color:#032f62"&gt;&lt;span style="color:#032f62"&gt;&lt;span style="color:#032f62"&gt;&lt;span style="color:#032f62"&gt;&lt;span style="color:#032f62"&gt;&lt;span style="color:#032f62"&gt;&lt;span style="color:#032f62"&gt;clone https://gitee.com/aiflowy/aiflowy.git&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;
-
-&lt;span style="color:#6f42c1"&gt;&lt;span style="color:#6f42c1"&gt;&lt;span style="color:#6f42c1"&gt;&lt;span style="color:#6f42c1"&gt;&lt;span style="color:#6f42c1"&gt;&lt;span style="color:#6f42c1"&gt;&lt;span style="color:#6f42c1"&gt;&lt;span style="color:#6f42c1"&gt;&lt;span style="color:#6f42c1"&gt;&lt;span style="color:#6f42c1"&gt;&lt;span style="color:#6f42c1"&gt;&lt;span style="color:#6f42c1"&gt;cd&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt; &lt;span style="color:#032f62"&gt;&lt;span style="color:#032f62"&gt;&lt;span style="color:#032f62"&gt;&lt;span style="color:#032f62"&gt;&lt;span style="color:#032f62"&gt;&lt;span style="color:#032f62"&gt;&lt;span style="color:#032f62"&gt;&lt;span style="color:#032f62"&gt;&lt;span style="color:#032f62"&gt;&lt;span style="color:#032f62"&gt;&lt;span style="color:#032f62"&gt;&lt;span style="color:#032f62"&gt;aiflowy&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;
-&lt;span style="color:#6f42c1"&gt;&lt;span style="color:#6f42c1"&gt;&lt;span style="color:#6f42c1"&gt;&lt;span style="color:#6f42c1"&gt;&lt;span style="color:#6f42c1"&gt;&lt;span style="color:#6f42c1"&gt;&lt;span style="color:#6f42c1"&gt;&lt;span style="color:#6f42c1"&gt;&lt;span style="color:#6f42c1"&gt;&lt;span style="color:#6f42c1"&gt;&lt;span style="color:#6f42c1"&gt;&lt;span style="color:#6f42c1"&gt;mvn&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt; &lt;span style="color:#032f62"&gt;&lt;span style="color:#032f62"&gt;&lt;span style="color:#032f62"&gt;&lt;span style="color:#032f62"&gt;&lt;span style="color:#032f62"&gt;&lt;span style="color:#032f62"&gt;&lt;span style="color:#032f62"&gt;&lt;span style="color:#032f62"&gt;&lt;span style="color:#032f62"&gt;&lt;span style="color:#032f62"&gt;&lt;span style="color:#032f62"&gt;&lt;span style="color:#032f62"&gt;clean package&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;
-
-&lt;span style="color:#6f42c1"&gt;&lt;span style="color:#6f42c1"&gt;&lt;span style="color:#6f42c1"&gt;&lt;span style="color:#6f42c1"&gt;&lt;span style="color:#6f42c1"&gt;&lt;span style="color:#6f42c1"&gt;&lt;span style="color:#6f42c1"&gt;&lt;span style="color:#6f42c1"&gt;&lt;span style="color:#6f42c1"&gt;&lt;span style="color:#6f42c1"&gt;&lt;span style="color:#6f42c1"&gt;&lt;span style="color:#6f42c1"&gt;cd&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt; &lt;span style="color:#032f62"&gt;&lt;span style="color:#032f62"&gt;&lt;span style="color:#032f62"&gt;&lt;span style="color:#032f62"&gt;&lt;span style="color:#032f62"&gt;&lt;span style="color:#032f62"&gt;&lt;span style="color:#032f62"&gt;&lt;span style="color:#032f62"&gt;&lt;span style="color:#032f62"&gt;&lt;span style="color:#032f62"&gt;&lt;span style="color:#032f62"&gt;&lt;span style="color:#032f62"&gt;aiflowy-ui-react&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;
-&lt;span style="color:#6f42c1"&gt;&lt;span style="color:#6f42c1"&gt;&lt;span style="color:#6f42c1"&gt;&lt;span style="color:#6f42c1"&gt;&lt;span style="color:#6f42c1"&gt;&lt;span style="color:#6f42c1"&gt;&lt;span style="color:#6f42c1"&gt;&lt;span style="color:#6f42c1"&gt;&lt;span style="color:#6f42c1"&gt;&lt;span style="color:#6f42c1"&gt;&lt;span style="color:#6f42c1"&gt;&lt;span style="color:#6f42c1"&gt;npm&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt; &lt;span style="color:#032f62"&gt;&lt;span style="color:#032f62"&gt;&lt;span style="color:#032f62"&gt;&lt;span style="color:#032f62"&gt;&lt;span style="color:#032f62"&gt;&lt;span style="color:#032f62"&gt;&lt;span style="color:#032f62"&gt;&lt;span style="color:#032f62"&gt;&lt;span style="color:#032f62"&gt;&lt;span style="color:#032f62"&gt;&lt;span style="color:#032f62"&gt;&lt;span style="color:#032f62"&gt;install&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;
-&lt;span style="color:#6f42c1"&gt;&lt;span style="color:#6f42c1"&gt;&lt;span style="color:#6f42c1"&gt;&lt;span style="color:#6f42c1"&gt;&lt;span style="color:#6f42c1"&gt;&lt;span style="color:#6f42c1"&gt;&lt;span style="color:#6f42c1"&gt;&lt;span style="color:#6f42c1"&gt;&lt;span style="color:#6f42c1"&gt;&lt;span style="color:#6f42c1"&gt;&lt;span style="color:#6f42c1"&gt;&lt;span style="color:#6f42c1"&gt;npm&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt; &lt;span style="color:#032f62"&gt;&lt;span style="color:#032f62"&gt;&lt;span style="color:#032f62"&gt;&lt;span style="color:#032f62"&gt;&lt;span style="color:#032f62"&gt;&lt;span style="color:#032f62"&gt;&lt;span style="color:#032f62"&gt;&lt;span style="color:#032f62"&gt;&lt;span style="color:#032f62"&gt;&lt;span style="color:#032f62"&gt;&lt;span style="color:#032f62"&gt;&lt;span style="color:#032f62"&gt;run dev&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;
-&lt;/code&gt;&lt;/pre&gt; 
- &lt;div&gt;
-  &amp;nbsp;
- &lt;/div&gt; 
-&lt;/div&gt; 
-&lt;p style="color:#40485b; margin-left:0; margin-right:0; text-align:left"&gt;&lt;strong&gt;环境要求&lt;/strong&gt;&lt;/p&gt; 
-&lt;ul&gt; 
- &lt;li&gt;JDK 1.8+&lt;/li&gt; 
- &lt;li&gt;Node.js 20.0+&lt;/li&gt; 
- &lt;li&gt;MySQL 8.0+&lt;/li&gt; 
-&lt;/ul&gt; 
-&lt;h1&gt;v1.1.1&amp;nbsp; 更新内容&lt;/h1&gt; 
-&lt;ul&gt; 
- &lt;li&gt;新增：用户确认节点&lt;/li&gt; 
- &lt;li&gt;新增：新增从缓存中取音频数据接口&lt;/li&gt; 
- &lt;li&gt;新增：bot 聊天新增语音播报暂停/播放按钮&lt;/li&gt; 
- &lt;li&gt;新增：bot 聊天接口实现文本转语音并通过 websocket 发送到前端&lt;/li&gt; 
- &lt;li&gt;新增：接入火山引擎文字转语音&lt;/li&gt; 
- &lt;li&gt;优化：优化 bot 页面&lt;/li&gt; 
- &lt;li&gt;优化：升级 agents-flex 和 TinyFlow 到最新版本&lt;/li&gt; 
- &lt;li&gt;优化：优化知识库页面&lt;/li&gt; 
- &lt;li&gt;优化：增加搜索框隐藏功能， 统一 table 风格&lt;/li&gt; 
- &lt;li&gt;修复：修复知识库不能选择模型问题&lt;/li&gt; 
- &lt;li&gt;修复：优化语音播报吞字问题&lt;/li&gt; 
- &lt;li&gt;修复：修复 bot 聊天语音播报播放/暂停按钮的状态问题&lt;/li&gt; 
- &lt;li&gt;修复：解决 bot 聊天语音播报卡顿的问题&lt;/li&gt; 
- &lt;li&gt;修复：修复菜单栏收起不显示菜单文字问题&lt;/li&gt; 
- &lt;li&gt;文档：动态代码节点内置对象 _result 的说明&lt;/li&gt; 
-&lt;/ul&gt; 
-&lt;h2&gt;开发及产品文档&lt;/h2&gt; 
-&lt;ul&gt; 
- &lt;li&gt;&lt;strong&gt;官方网站：&lt;/strong&gt;&lt;a href="https://gitee.com/link?target=https%3A%2F%2Faiflowy.tech" target="_blank"&gt;https://aiflowy.tech&lt;/a&gt;&lt;span&gt;&amp;nbsp;&lt;/span&gt;&lt;/li&gt; 
- &lt;li&gt;&lt;strong&gt;开源地址：&lt;/strong&gt;&lt;a href="https://gitee.com/aiflowy/aiflowy"&gt;https://gitee.com/aiflowy/aiflowy&lt;/a&gt;&lt;/li&gt; 
-&lt;/ul&gt;
-                                                                                &lt;/div&gt;
-                                                                            </description>
-      <link>https://www.oschina.net/news/360795/aiflowy-1-1-1</link>
-      <guid isPermaLink="false">https://www.oschina.net/news/360795/aiflowy-1-1-1</guid>
-      <pubDate>Wed, 16 Jul 2025 01:52:00 GMT</pubDate>
-      <author>来源: 资讯</author>
-    </item>
-    <item>
-      <title>LinkAndroid v0.7.0 系统兼容性提升，底层基础库优化</title>
-      <description>&lt;div class="content"&gt;
-                                                                    
-                                                        &lt;p style="color:#3f3f3f; margin-left:8px; margin-right:8px; text-align:justify"&gt;在日常工作与生活中，频繁在安卓手机与电脑间切换操作是不是让你感到头疼不已？&lt;br&gt; 文件传输繁琐、应用管理不便、投屏体验不佳…… 这些困扰，&lt;code&gt; LinkAndroid&lt;/code&gt;&lt;span&gt;&amp;nbsp;&lt;/span&gt;&amp;nbsp;帮你统统解决！作为一款强大的连接工具，&lt;code&gt;LinkAndroid&lt;/code&gt;&lt;span&gt;&amp;nbsp;&lt;/span&gt;致力于轻松连接安卓与电脑，为大家带来投屏、文件管理、应用管理、截屏、录屏、安装应用等一站式便捷体验，全面提升工作效率。&lt;br&gt; 现在，我们激动地宣布，&lt;code&gt; LinkAndroid v0.7.0&lt;/code&gt;&lt;span&gt;&amp;nbsp;&lt;/span&gt;&amp;nbsp;新版正式发布啦，一起来看看都有哪些惊喜更新吧！&lt;/p&gt; 
-&lt;p style="color:#3f3f3f; margin-left:8px; margin-right:8px; text-align:justify"&gt;&lt;img alt="" src="https://oscimg.oschina.net/oscnet//73b456f166bf9d2b27700372fcf983ba.png" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;p style="color:#3f3f3f; margin-left:8px; margin-right:8px; text-align:justify"&gt;&lt;code&gt;LinkAndroid&lt;/code&gt;&lt;span&gt;&amp;nbsp;&lt;/span&gt;是一个全能手机连接助手，方便快捷的连接&lt;span&gt;&amp;nbsp;&lt;/span&gt;&lt;code&gt;Android&lt;/code&gt;&lt;span&gt;&amp;nbsp;&lt;/span&gt;和电脑，连接手机后可投屏、&lt;code&gt; GIF/MP4&lt;/code&gt;&lt;span&gt;&amp;nbsp;&lt;/span&gt;录屏、截屏、文件管理、手机操作等功能。&lt;/p&gt; 
-&lt;p style="color:#3f3f3f; margin-left:8px; margin-right:8px; text-align:justify"&gt;&lt;img alt="" src="https://oscimg.oschina.net/oscnet//dfaa6784064517655e9a3a13af967232.png" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;h3&gt;功能特性&lt;/h3&gt; 
-&lt;p style="color:#3f3f3f; margin-left:8px; margin-right:8px; text-align:justify"&gt;支持多手机连接，方便快捷控制多个手机&lt;br&gt; 支持投屏，基于&lt;span&gt;&amp;nbsp;&lt;/span&gt;&lt;code&gt; scrcpy&lt;/code&gt;&lt;span&gt;&amp;nbsp;&lt;/span&gt;，支持手机操作&lt;br&gt; 支持截屏，截屏后会自动打开截屏美化工具&lt;br&gt; 支持&lt;code&gt; GIF/MP4&lt;/code&gt;&lt;span&gt;&amp;nbsp;&lt;/span&gt;录屏，支持录制手机屏幕为&lt;code&gt; GIF 或 MP4&lt;/code&gt;&lt;br&gt; 支持应用管理，支持安装、卸载、启动应用&lt;br&gt; 支持文件管理，支持文件上传、下载、删除&lt;br&gt; 支持命令行，支持&lt;span&gt;&amp;nbsp;&lt;/span&gt;&lt;code&gt; adb、screen&lt;/code&gt;&lt;span&gt;&amp;nbsp;&lt;/span&gt;&amp;nbsp;命令行和手机&lt;span&gt;&amp;nbsp;&lt;/span&gt;&lt;code&gt; shell&lt;/code&gt;&lt;span&gt;&amp;nbsp;&lt;/span&gt;&amp;nbsp;命令行&lt;br&gt; 支持国际化，支持简体中文、英语&lt;/p&gt; 
-&lt;p style="color:#3f3f3f; margin-left:8px; margin-right:8px; text-align:justify"&gt;&lt;img alt="" src="https://oscimg.oschina.net/oscnet//52898f7eb4ffd61d9547e7b19ea210e2.png" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;h3&gt;版本更新 v0.7.0&lt;/h3&gt; 
-&lt;p&gt;系统兼容性提升，底层基础库优化&lt;/p&gt; 
-&lt;p style="color:#3f3f3f; margin-left:8px; margin-right:8px; text-align:justify"&gt;新增：请求重试功能，避免查询失败问题&lt;br&gt; 新增：基础库函数功能升级&lt;br&gt; 修复：&lt;code&gt; windows 11&lt;/code&gt;&lt;span&gt;&amp;nbsp;&lt;/span&gt;&amp;nbsp;最新版本获取系统信息异常&lt;br&gt; 修复：多语言参数为 0 时异常问题&lt;br&gt; 优化：主窗口界面&lt;code&gt; Mac&lt;/code&gt;&lt;span&gt;&amp;nbsp;&lt;/span&gt;支持信号灯按钮&lt;br&gt; 优化：&lt;code&gt;Toast&lt;/code&gt;&lt;span&gt;&amp;nbsp;&lt;/span&gt;弹窗字体设置，避免字体丢失显示异常问题&lt;/p&gt; 
-&lt;h3&gt;功能特性&lt;/h3&gt; 
-&lt;p&gt;高清投屏&lt;/p&gt; 
-&lt;p style="color:#3f3f3f; margin-left:8px; margin-right:8px; text-align:justify"&gt;支持键盘直接输入，支持多设备同时投屏，基于&lt;span&gt;&amp;nbsp;&lt;/span&gt;&lt;code&gt; scrcpy&lt;/code&gt;&lt;span&gt;&amp;nbsp;&lt;/span&gt;&amp;nbsp;开源投屏软件&lt;/p&gt; 
-&lt;p style="color:#3f3f3f; margin-left:8px; margin-right:8px; text-align:justify"&gt;&lt;img alt="" src="https://oscimg.oschina.net/oscnet//8f7507e20801dfcbf6f3c715b859a116.png" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;p&gt;截图美化&lt;/p&gt; 
-&lt;p style="color:#3f3f3f; margin-left:8px; margin-right:8px; text-align:justify"&gt;一键截取当前手机屏幕，默认进入截图编辑美化界面，基于&lt;code&gt; &amp;nbsp;image-beautifier&lt;/code&gt;&lt;span&gt;&amp;nbsp;&lt;/span&gt;&amp;nbsp;开源软件&lt;/p&gt; 
-&lt;p style="color:#3f3f3f; margin-left:8px; margin-right:8px; text-align:justify"&gt;&lt;img alt="" src="https://oscimg.oschina.net/oscnet//b32003c4eddbd34ab25823a35db888a1.png" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;p&gt;屏幕录制&lt;/p&gt; 
-&lt;p style="color:#3f3f3f; margin-left:8px; margin-right:8px; text-align:justify"&gt;支持&lt;span&gt;&amp;nbsp;&lt;/span&gt;&lt;code&gt;GIF、MP4&lt;/code&gt;&lt;span&gt;&amp;nbsp;&lt;/span&gt;格式屏幕录制，&lt;code&gt;MP4&lt;/code&gt;&lt;span&gt;&amp;nbsp;&lt;/span&gt;录制视频导出自动压缩，更多录制参数自定义设置&lt;/p&gt; 
-&lt;p style="color:#3f3f3f; margin-left:8px; margin-right:8px; text-align:justify"&gt;&lt;img alt="" src="https://oscimg.oschina.net/oscnet//78753cd2b12045d1c9931aeb1422baeb.png" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;p&gt;高级命令&lt;/p&gt; 
-&lt;p style="color:#3f3f3f; margin-left:8px; margin-right:8px; text-align:justify"&gt;支持&lt;span&gt;&amp;nbsp;&lt;/span&gt;&lt;code&gt;adb scrcpy&lt;/code&gt;&lt;span&gt;&amp;nbsp;&lt;/span&gt;常见命令运行，一键点击进入手机，&lt;code&gt;shell &lt;/code&gt;交互方式更友好&lt;/p&gt; 
-&lt;p style="color:#3f3f3f; margin-left:8px; margin-right:8px; text-align:justify"&gt;&lt;img alt="" src="https://oscimg.oschina.net/oscnet//67c86bf407ff60e896603fa149ecda90.png" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;p&gt;应用管理&lt;/p&gt; 
-&lt;p style="color:#3f3f3f; margin-left:8px; margin-right:8px; text-align:justify"&gt;支持软件列表查看和搜索，快速安装 APK 软件，常见软件包自动识别名称&lt;/p&gt; 
-&lt;p style="color:#3f3f3f; margin-left:8px; margin-right:8px; text-align:justify"&gt;&lt;img alt="" src="https://oscimg.oschina.net/oscnet//cbf9c929e04f1440cc21c9232c169d13.png" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;p style="color:#3f3f3f; margin-left:8px; margin-right:8px; text-align:justify"&gt;&lt;code&gt;LinkAndroid v0.7.0&lt;/code&gt;&lt;span&gt;&amp;nbsp;&lt;/span&gt;从功能新增、细节优化到问题修复，全方位提升使用体验。还没下载的朋友，可前往官网下载。&lt;br&gt; 正在使用的用户，记得及时更新，享受新功能。若使用中有疑问或建议，欢迎随时反馈，我们会持续优化，让&lt;span&gt;&amp;nbsp;&lt;/span&gt;&lt;code&gt;LinkAndroid&lt;/code&gt;&lt;span&gt;&amp;nbsp;&lt;/span&gt;成为你得力的助手！&lt;/p&gt; 
-&lt;h3&gt;系统演示与文档&lt;/h3&gt; 
-&lt;p&gt;开源官网：&lt;/p&gt; 
-&lt;p style="color:#3f3f3f; margin-left:8px; margin-right:8px; text-align:justify"&gt;https://linkandroid.com&lt;/p&gt; 
-&lt;p&gt;Github 仓库：&lt;/p&gt; 
-&lt;p style="color:#3f3f3f; margin-left:8px; margin-right:8px; text-align:justify"&gt;https://github.com/modstart-lib/linkandroid&lt;/p&gt; 
-&lt;p&gt;Gitee 仓库：&lt;/p&gt; 
-&lt;p style="color:#3f3f3f; margin-left:8px; margin-right:8px; text-align:justify"&gt;https://gitee.com/modstart-lib/linkandroid&lt;/p&gt;
-                                                                                &lt;/div&gt;
-                                                                            </description>
-      <link>https://www.oschina.net/news/360754/linkandroid-0-7-0</link>
-      <guid isPermaLink="false">https://www.oschina.net/news/360754/linkandroid-0-7-0</guid>
-      <pubDate>Tue, 15 Jul 2025 15:20:00 GMT</pubDate>
-      <author>来源: 资讯</author>
-    </item>
-    <item>
-      <title>前 OpenAI 工程师长文回顾工作一年经历</title>
-      <description>&lt;div class="content"&gt;
-                                                                    
-                                                        &lt;p&gt;Calvin French-Oven 是前 OpenAI 工程师，曾参与开发编程 Agent「Codex」项目，三周前从 OpenAI 离职。&lt;/p&gt; 
-&lt;p&gt;&lt;img src="https://static.oschina.net/uploads/space/2025/0716/191337_xiwe_2720166.png" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;p&gt;近日，Calvin 通过一篇博客长文&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fcalv.info%2Fopenai-reflections" target="_blank"&gt;回顾&lt;/a&gt;了自己在老东家工作一年的经历，包括为了打造编程产品 Codex 而经历的高强度开发过程。&lt;/p&gt; 
-&lt;p&gt;&lt;img src="https://static.oschina.net/uploads/space/2025/0716/191652_sQJB_2720166.png" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;p&gt;French-Owen 强调，他离职&lt;strong&gt;并非因为任何「内部矛盾」&lt;/strong&gt;，而是因为他希望&lt;strong&gt;重新踏上创业之路&lt;/strong&gt;。在入职 OpenAI 之前，他曾是客户数据公司 Segment 的联合创始人。&lt;/p&gt; 
-&lt;p&gt;在他 OpenAI 期间，OpenAI 的员工人数&lt;strong&gt;从 1000 人激增至 3000 人&lt;/strong&gt;。OpenAI 拥有史上增长最快的消费产品之一，而其竞争对手也在迅猛发展。今年 3 月，公司宣布 ChatGPT 的活跃用户已突破 5 亿，并仍在快速增长。&lt;/p&gt; 
-&lt;p&gt;他提到：「当你以如此速度扩张时，&lt;strong&gt;几乎所有系统都会失效&lt;/strong&gt;：公司内部的沟通机制、汇报结构、产品发布流程、人员管理方式、招聘流程等等，都会出现问题。」&lt;/p&gt; 
-&lt;p&gt;尽管如此，OpenAI 仍然&lt;strong&gt;保留着初创公司的自由文化&lt;/strong&gt;，员工可以快速推进自己的想法，几乎不受流程限制。但这也带来了重复劳动的问题。「我至少看到过&lt;strong&gt;六七个用于队列管理或代理循环的代码库&lt;/strong&gt;。」&lt;/p&gt; 
-&lt;p&gt;工程师的&lt;strong&gt;水平也参差不齐&lt;/strong&gt;，从能处理十亿级用户系统的资深谷歌工程师，到刚毕业的博士都有。再加上 Python 语言本身的灵活性，导致整个后端系统「&lt;strong&gt;更像是一个代码垃圾场&lt;/strong&gt;」：系统经常出错，运行效率也不高。但他也指出，公司高层已经意识到问题，并在积极优化。&lt;/p&gt; 
-&lt;p&gt;他指出，OpenAI 还&lt;strong&gt;未完全适应自己作为大公司&lt;/strong&gt;的身份，甚至连内部沟通都完全依赖 Slack。他形容这家公司像早期 Facebook 时期的 Meta，&lt;strong&gt;充满「快速推进、打破常规」的风格&lt;/strong&gt;，而且公司中也有不少来自 Meta 的员工。&lt;/p&gt; 
-&lt;p&gt;据了解，French-Owen 所在的高级团队拥有&lt;strong&gt;八名工程师、四名研究人员、两名设计师、两名市场人员和一名产品经理&lt;/strong&gt;。据其回忆，团队仅用七周时间且「几乎没怎么睡觉」，就&lt;strong&gt;完成了 Codex 从开发到上线的全过程&lt;/strong&gt;。&lt;/p&gt; 
-&lt;p&gt;但这次发布堪称奇迹。产品一上线就迅速获得用户。「我从没见过一个产品&lt;strong&gt;仅因出现在左侧边栏就能获得如此迅速的采纳率&lt;/strong&gt;，这正是 ChatGPT 的魔力。」&lt;/p&gt; 
-&lt;p&gt;作为一家备受瞩目的公司，OpenAI 对信息保密极为重视，内部形成了浓厚的保密文化，以防止信息外泄。与此同时，公司也&lt;strong&gt;密切关注 X 上的动态&lt;/strong&gt;。一旦某条推文爆火，OpenAI 很可能会看到并作出回应。「一位朋友开玩笑说，这家公司靠&lt;strong&gt;推特情绪&lt;/strong&gt;运转。」&lt;/p&gt; 
-&lt;p&gt;French-Owen 认为，外界对 OpenAI 最大的误解是&lt;strong&gt;它不重视 AI 安全&lt;/strong&gt;。「事实上，包括前员工在内的许多 AI 安全专家都曾对 OpenAI 的安全机制提出过批评。」&lt;/p&gt; 
-&lt;p&gt;虽然外界关注的是「AI 会毁灭人类」这类理论性风险，但在公司内部，员工更关注&lt;strong&gt;现实层面的安全问题&lt;/strong&gt;，比如「仇恨言论、滥用、政治偏见操控、生物武器生成、自残行为、提示注入攻击」等。&lt;/p&gt; 
-&lt;p&gt;他强调，OpenAI 并未忽视 AI 的长期影响。公司有专门的研究团队在研究这些潜在风险，并意识到其语言模型如今已被数亿人用于各种场景，从医疗建议到心理治疗都有。&lt;/p&gt;
-                                                                                &lt;/div&gt;
-                                                                            </description>
-      <link>https://www.oschina.net/news/360714/openai-reflections</link>
-      <guid isPermaLink="false">https://www.oschina.net/news/360714/openai-reflections</guid>
-      <pubDate>Tue, 15 Jul 2025 11:21:00 GMT</pubDate>
       <author>来源: OSCHINA</author>
     </item>
   </channel>
