@@ -7,8 +7,635 @@
     <generator>RSSHub</generator>
     <webMaster>contact@rsshub.app (RSSHub)</webMaster>
     <language>zh-cn</language>
-    <lastBuildDate>Tue, 22 Jul 2025 02:43:18 GMT</lastBuildDate>
+    <lastBuildDate>Tue, 22 Jul 2025 07:44:31 GMT</lastBuildDate>
     <ttl>5</ttl>
+    <item>
+      <title>字节跳动发布通用机器人模型 GR-3</title>
+      <description>&lt;div class="content"&gt;
+                                                                    
+                                                        ********************************************************************************************************************
+    ********************************************************************************************************************
+    ********************************************************************************************************************
+    ********************************************************************************************************************
+                                                                                &lt;/div&gt;
+                                                                            </description>
+      <link>https://www.oschina.net/news/361697</link>
+      <guid isPermaLink="false">https://www.oschina.net/news/361697</guid>
+      <pubDate>Tue, 22 Jul 2025 07:42:29 GMT</pubDate>
+      <author>来源: OSCHINA</author>
+    </item>
+    <item>
+      <title>给 Javaer 看的大模型开发指南</title>
+      <description>&lt;div class="content"&gt;
+                                                                                                                    
+                                                                                                                                                    &lt;h1&gt;一、概述&lt;/h1&gt; 
+&lt;p&gt;伴随着大模型的性能提升、成本下降，在 Web 在线对话场景以外，大模型也越来越多的被集成到传统业务场景。&lt;/p&gt; 
+&lt;p&gt;在大模型 API 交互模式、业务集成模式经百家争鸣现已趋于稳定的背景下，Spring 作为 Java 生态里的 OSS 巨头也下场为 LLM 提供生态支持，于近期释出 spring-ai 正式版。&lt;/p&gt; 
+&lt;p&gt;需要说明的是，Spring-AI 所提供的能力并不神秘，业务上也并非必须用 Spring-AI 不可。但是，就像过去 Spring 对新的数据库、新的中间件提供生态支持一样，Spring-AI 提供了一套和 Spring 全家桶兼容并且语义一致、良好设计、易拓展的大模型交互的 Java API，可以极大的降低 LLM 集成和开发的成本。&lt;/p&gt; 
+&lt;p&gt;从大模型的工程化、实用化角度来说，当你厘清 Spring-AI 这一套 API 设施的逻辑后，事情最后还是会回归到业务开发人最熟悉的 CRUD 领域。就像使用 Mybatis 操作 MySQL 一样，我们会用 spring-ai 来操作大模型。&lt;/p&gt; 
+&lt;p&gt;那我们开始今天的讨论吧！&lt;/p&gt; 
+&lt;h1&gt;二、什么是大模型&lt;/h1&gt; 
+&lt;p&gt;大模型的舞台上，从来不缺新面孔。自 ChatGPT 开启 AI 新纪元后，各类大模型层出不穷。&lt;/p&gt; 
+&lt;p&gt;但是我们不去考虑大模型的训练原理、推理/运算架构、参数调优等较为复杂的数学范畴的东西，就像我们很少关心 MySQL 是怎么用代码来实现效果的一样。&lt;/p&gt; 
+&lt;p&gt;此处类比我们熟悉的知识，对大模型有一个盲人摸象式的基础且能够自洽的认识即可。&lt;/p&gt; 
+&lt;ol&gt; 
+ &lt;li&gt; &lt;p&gt;从某种意义上来说，模型训练就是通过分析海量文本（如维基百科、图书、网页等）寻找到人类语言的规律，再将这个规律固化成一个包含数十亿【参数】的超级【数学公式】。就像简单公式 y = 5x + 8 中的 5 和 8 ，这两个【参数】决定了将输入 X 如何转化为输出 Y。&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;训练好的【数学公式】就像代码，需要部署在算力平台上，借助【显卡】的并行运算能力来实现高效运算。&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;用户的输入作为这个【数学公式】的入参，经公式运算后，得到相关的【输出】。&lt;/p&gt; &lt;/li&gt; 
+&lt;/ol&gt; 
+&lt;p&gt;&lt;img src="https://oscimg.oschina.net/oscnet/up-4f220f78af04d95180d8fa240fb782a41c6.png" alt="" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p&gt;假设大模型是上述的数学公式，不同的大模型「ChatGPT/DeepSeek」是不同的架构、不同的公式，那么模型训练就是通过对海量文本的分析、学习，找到合适的参数值。&lt;/p&gt; 
+&lt;h1&gt;三、大模型的特点&lt;/h1&gt; 
+&lt;p&gt;接下来我们关注在工程应用场景下，需要开发人关注的大模型特点。&lt;/p&gt; 
+&lt;p&gt;就像 MySQL，我们集成时也需要关注不同的存储引擎（InnoDB/MyISAM）的特点。&lt;/p&gt; 
+&lt;h2&gt;无状态&lt;/h2&gt; 
+&lt;p&gt;&lt;img src="https://oscimg.oschina.net/oscnet/up-955439c305797e44d9a606d734224e79816.png" alt="" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p&gt;大模型是没有记忆、没有状态的，它是一个纯函数。&lt;/p&gt; 
+&lt;p&gt;它不知道之前跟你说过什么。所以每次进行大模型输入的时候，我们需要根据业务场景把之前的【输入】，【反馈】一并给它，避免大模型失忆导致的对话不流畅。&lt;/p&gt; 
+&lt;p&gt;&lt;img src="https://oscimg.oschina.net/oscnet/up-3f4298c09ec0589241e82ec27594fd43bf5.png" alt="" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;h2&gt;结构化输出&lt;/h2&gt; 
+&lt;p&gt;大模型是具备结构化输出能力的，虽然有些模型支持的不够好，但是没关系，只是支持的程度不同，重要的是它们都支持！&lt;/p&gt; 
+&lt;p&gt;所谓的结构化输出是指，大模型除了可以返回口语化、没有模式的自然语言文本外，还可以按你需求给你返回其他的文本格式，比如：JSON。&lt;/p&gt; 
+&lt;p&gt;&lt;img src="https://oscimg.oschina.net/oscnet/up-38fa0d015043b414639659a356421e84b95.png" alt="" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p&gt;你看，这像不像在调一个 REST 接口？甚至是一个万能接口，毕竟大模型什么都会，不会的也可以现编。&lt;/p&gt; 
+&lt;p&gt;&lt;img src="https://oscimg.oschina.net/oscnet/up-b86a6416d0d66ba884b2112b071ac10b848.png" alt="" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;h2&gt;函数调用&lt;/h2&gt; 
+&lt;p&gt;其实看到这里我们就可以实现一个大模型驱动的 RPC 调用引擎了！&lt;/p&gt; 
+&lt;p&gt;&lt;img src="https://oscimg.oschina.net/oscnet/up-70ed28496f315664f13fb79d858d84155a3.png" alt="" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p&gt;大模型帮你推理、规划得到了需要执行的函数和对应的函数参数，至于这个【函数名】对应的到底是一个进程内的方法、HTTP 接口、Dubbo 接口还是 MCP 接口都没有那么重要，这只是智能体实现的一个技术细节而已。&lt;/p&gt; 
+&lt;p&gt;我们可以用自然语言表述需求，同时告诉大模型有哪些辅助【工具/函数】可以供它备用。它会推理、编排这些工具来达成需求。&lt;/p&gt; 
+&lt;p&gt;&lt;img src="https://oscimg.oschina.net/oscnet/up-05eafbfb705514d386afcc33aaa92a0b681.png" alt="" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;ol&gt; 
+ &lt;li&gt; &lt;p&gt;把用户输入和可用函数输入给大模型，大模型推理发现需要调用外部函数，于是返回函数名+函数调用参数。&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;智能体捕获输出，对指定函数发起调用，再将用户输入和函数结果一起输入到大模型，大模型基于这些上下文推理输出结果。&lt;/p&gt; &lt;/li&gt; 
+&lt;/ol&gt; 
+&lt;p&gt;考虑到大模型发起函数调用的普遍需求，大模型供应商一般都在 API 层面提供了【function call】能力，用于将文本输出和函数调用输出区分开，明白了原理，我们知道这只是 API 抽象层次的问题。&lt;/p&gt; 
+&lt;h1&gt;四、大模型接口&lt;/h1&gt; 
+&lt;p&gt;考虑到大模型对硬件资源的特别需求（如显卡），所以大模型一般是独立部署，以 SaaS 模式提供能力。就像 MySQL 对资源有特别的需求（如大内存），所以一般也是进行独立部署。&lt;/p&gt; 
+&lt;p&gt;&lt;img src="https://oscimg.oschina.net/oscnet/up-0318204255dc09fb74daf6d3701fb1a81d7.png" alt="" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p&gt;训练好的大模型就是一套二进制数据集，SaaS 化需要做外围的服务化、产品化封装，同一套模型可以在不同的算力平台部署，提供截然不同的服务化 API。&lt;/p&gt; 
+&lt;h2&gt;模型封装&lt;/h2&gt; 
+&lt;p&gt;示例伪代码如下：&lt;/p&gt; 
+&lt;p&gt;&lt;img src="https://oscimg.oschina.net/oscnet/up-4469b4e5ea9c89830f03852be3da2e7cdca.png" alt="" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p&gt;我们可以简单看下当下比较热门的几大供应商提供的 API 文档：&lt;/p&gt; 
+&lt;ol&gt; 
+ &lt;li&gt; &lt;p&gt;OpenAI-会话补全&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fopenai.apifox.cn%2Fapi-67883981" target="_blank"&gt;https://openai.apifox.cn/api-67883981&lt;/a&gt;&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;DeepSeek-会话补全&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fapi-docs.deepseek.com%2Fzh-cn%2Fapi%2Fcreate-chat-completion" target="_blank"&gt;https://api-docs.deepseek.com/zh-cn/api/create-chat-completion&lt;/a&gt;&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;硅基流动-会话补全&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fdocs.siliconflow.cn%2Fcn%2Fapi-reference%2Fchat-completions%2Fchat-completions" target="_blank"&gt;https://docs.siliconflow.cn/cn/api-reference/chat-completions/chat-completions&lt;/a&gt;&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;Ollama-会话补全&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fwww.runoob.com%2Follama%2Follama-api.html" target="_blank"&gt;https://www.runoob.com/ollama/ollama-api.html&lt;/a&gt;&lt;/p&gt; &lt;/li&gt; 
+&lt;/ol&gt; 
+&lt;p&gt;硅基流动和 Ollama 都属于大模型算力/治理平台。他们不研发大模型，只是大模型的搬运工。可以把大模型理解成微服务集群，把硅基流动和 Ollama 理解成微服务构建/发布平台即可。&lt;/p&gt; 
+&lt;p&gt;大概浏览一下，会发现核心 API 都差不多，毕竟有 OpenAI 珠玉在前，许多系统都已对接了 OpenAI 的 API。后发的大模型为了兼容，降低接入难度，基本上也都和 OpenAI 的 API 大差不差。&lt;/p&gt; 
+&lt;p&gt;就像是 MySQL，尽管数据库产品类型百花齐放，但都兼容 SQL 语法。&lt;/p&gt; 
+&lt;p&gt;我们在此只讨论【会话补全】这一点，会发现会话补全接口的输入/输出大概都是以下情况：&lt;/p&gt; 
+&lt;h2&gt;接口输入&lt;/h2&gt; 
+&lt;pre&gt;&lt;code class="language-auto"&gt;{
+  "stream": false, // 是否是流式输出 (要不要 SSE)
+  "model": "deepseek-chat", //选用的哪个模型
+  "messages": [ // 历史对话消息，因为大模型无状态，所以按场景提供一定数量的历史消息
+    {
+      "content": "You are a helpful assistant",
+      "role": "system"
+    },
+    {
+      "content": "Hi", //消息内容
+      "role": "user" //消息类型
+    }
+  ],
+  "tools": null, //外部函数列表，【函数调用】能力在 API 层面的支持
+  "frequency_penalty": 0,  //无关紧要的模型行为控制参数
+  "presence_penalty": 0, //无关紧要的模型行为控制参数
+  "temperature": 1, //无关紧要的模型行为控制参数
+  "top_p": 1, //无关紧要的模型行为控制参数
+  "logprobs": false, //无关紧要的模型行为控制参数
+  "top_logprobs": null //无关紧要的模型行为控制参数
+}
+
+
+&lt;/code&gt;&lt;/pre&gt; 
+&lt;p&gt;这里以目标达成作为要点，内容中部分不理解的参数可以忽略。&lt;/p&gt; 
+&lt;h2&gt;接口输出&lt;/h2&gt; 
+&lt;pre&gt;&lt;code class="language-auto"&gt;{
+  "id": "&amp;lt;string&amp;gt;", //无关紧要
+  "choices": [
+    {
+      "message": {
+        "role": "assistant",
+        "content": "&amp;lt;string&amp;gt;", // 大模型生成的内容
+        "reasoning_content": "&amp;lt;string&amp;gt;",
+        "tool_calls": [  //需要发起的【函数调用】
+          {
+            "id": "&amp;lt;string&amp;gt;",
+            "type": "function",
+            "function": {
+              "name": "&amp;lt;string&amp;gt;",
+              "arguments": "&amp;lt;string&amp;gt;"
+            }
+          }
+        ]
+      },
+      "finish_reason": "stop" //有点重要，但是我们先不管
+    }
+  ],
+  "usage": {  //token 使用量，计数、计费
+    "prompt_tokens": 123,
+    "completion_tokens": 123,
+    "total_tokens": 123
+  },
+  "created": 123,  //无关紧要
+  "model": "&amp;lt;string&amp;gt;",  //无关紧要
+  "object": "chat.completion"  //无关紧要
+}
+
+
+&lt;/code&gt;&lt;/pre&gt; 
+&lt;p&gt;看到这里时，你是不是已经开始跃跃欲试了？是不是感觉打造一个垂直领域的智能体没有想象中那么困难了~&lt;/p&gt; 
+&lt;h1&gt;五、RAG 架构&lt;/h1&gt; 
+&lt;p&gt;除非是围绕特定业务场景结合私域数据训练的专用大模型，否则涉及到一些企业内部的私域信息时，通用大模型也只能不懂装懂的现编。&lt;/p&gt; 
+&lt;p&gt;例如：当你询问大模型【DJob 如何接入与使用】，除非训练大模型时输入了相关资料，不然大模型只能现编了。&lt;/p&gt; 
+&lt;p&gt;考虑到专用大模型的成本，工程上解决这个问题的方法一般是通过外挂知识库来实现：&lt;/p&gt; 
+&lt;ol&gt; 
+ &lt;li&gt; &lt;p&gt;结合具体业务场景，将相关的文档与资料提前录入到【知识库】中。&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;用户提交一个【输入】后，先使用，用户【输入】作为搜索条件，去【知识库】中搜索得到相关的【资料】。&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;将用户【输入】和【资料】一起提供给大模型。&lt;/p&gt; &lt;/li&gt; 
+&lt;/ol&gt; 
+&lt;p&gt;此【知识库】组件的具体选型属于实现细节，简单的可以用 MySQL、Elasticsearch，如果想提升【知识库搜索结果】的匹配度，也可以使用近期讨论度很高的【向量数据库】。&lt;/p&gt; 
+&lt;p&gt;添加了 RAG 后，流程如下：&lt;/p&gt; 
+&lt;p&gt;&lt;img src="https://oscimg.oschina.net/oscnet/up-6f168cdbf7307ba88cff25022007853c787.png" alt="" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p&gt;详情可参考下文：&lt;/p&gt; 
+&lt;p&gt;&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fwww.zhihu.com%2Ftardis%2Fzm%2Fart%2F675509396%3Fsource_id%3D1003" target="_blank"&gt;https://www.zhihu.com/tardis/zm/art/675509396?source_id=1003&lt;/a&gt;&lt;/p&gt; 
+&lt;h1&gt;六、MCP 协议&lt;/h1&gt; 
+&lt;p&gt;可以看到，将大模型作为一个【函数调用】的规划引擎，借助它的推理与生成能力，可以实现复杂的业务流程。如果说大模型是【脑】，那提供给大模型规划、使用的【函数】就是它的【手】和【脚】。有脑有手的大模型，可以迸发出巨大的业务潜力。&lt;/p&gt; 
+&lt;p&gt;那如何打通大模型和传统软件系统（如存量微服务）呢？&lt;/p&gt; 
+&lt;p&gt;我们关注的问题，开源社区也在积极的关注，这就是 MCP 协议诞生的背景和目的。&lt;/p&gt; 
+&lt;p&gt;&lt;img src="https://oscimg.oschina.net/oscnet/up-cdf7c58206c4240bbfa014790dbf64837a8.png" alt="" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;strong&gt;MCP 协议介绍&lt;/strong&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fmcp-docs.cn%2Fintroduction" target="_blank"&gt;https://mcp-docs.cn/introduction&lt;/a&gt;&lt;/p&gt; 
+&lt;p&gt;在这里我们不展开 MCP 协议的细节，仅作个人对 MCP 协议的思考，重点在于打破 MCP 协议的神秘感、破除 MCP 迷信。&lt;/p&gt; 
+&lt;ol&gt; 
+ &lt;li&gt; &lt;p&gt;MCP 协议本身并非高精尖的内容，简单来说，就是常用人群约定系统间调用的流程、格式。若不考虑通用，谁都可以设计符合自己需求的、领域特定的交互协议。&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;MCP 协议的优势在于，它出现的非常及时，且基本满足了常规交互需求，因此快速在社区达成了共识。&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;不管是 MAP、MBP 还是 MCP，都没有那么重要，但是形成共识非常重要。协议达成了共识，开源社区才可以合力围绕协议进行生态建设。&lt;/p&gt; &lt;/li&gt; 
+&lt;/ol&gt; 
+&lt;h1&gt;七、Spring-AI&lt;/h1&gt; 
+&lt;p&gt;到了这一步，我们开始探讨 Java 代码，首先我们需要熟悉下 spring-ai 的整套代码架构，一步一步来，以整体到到细节的节奏进行讨论。&lt;/p&gt; 
+&lt;h2&gt;模型抽象&lt;/h2&gt; 
+&lt;p&gt;核心的 API 实体是 Model ，是一个带泛型的纯函数，提供了对大模型能力的顶层抽象：&lt;/p&gt; 
+&lt;p&gt;&lt;img src="https://oscimg.oschina.net/oscnet/up-4c8eb6d3a3db0d348bcf6af4a83d96598cc.png" alt="" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p&gt;org.springframework.ai.model.Model&lt;/p&gt; 
+&lt;p&gt;大模型的能力本质就是：输入一个 ( request )，返回一个输出。&lt;/p&gt; 
+&lt;p&gt;至于输入/输出的具体类型，由细分的子类限定：&lt;/p&gt; 
+&lt;p&gt;&lt;img src="https://oscimg.oschina.net/oscnet/up-658963d4fd91da7af51a3c881b6b6c990d9.png" alt="" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p&gt;不同模态的大模型支持不同类型的输入/输出，在此我们只讨论 ChatModel 。&lt;/p&gt; 
+&lt;p&gt;&lt;img src="https://oscimg.oschina.net/oscnet/up-ea60492d26588e3617111304802991e6d13.png" alt="" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p&gt;org.springframework.ai.chat.model.ChatModel&lt;/p&gt; 
+&lt;p&gt;&lt;img src="https://oscimg.oschina.net/oscnet/up-8f2e639d274c64e73ac2fd7ab77dffc9b5e.png" alt="" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p&gt;spring-ai 提供了不同平台、不同模型的 API 集成，开发者只需要提供接口地址、调用凭证即可开箱使用~&lt;/p&gt; 
+&lt;h2&gt;聊天会话&lt;/h2&gt; 
+&lt;p&gt;考虑到大模型对话是热点场景， spring-ai 针对性的提供了会话接口抽象。&lt;/p&gt; 
+&lt;p&gt;&lt;img src="https://oscimg.oschina.net/oscnet/up-c0fc2c85cae2c4c057a742257fa412b0b65.png" alt="" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p&gt;org.springframework.ai.chat.client.ChatClient&lt;/p&gt; 
+&lt;h2&gt;RAG 拓展&lt;/h2&gt; 
+&lt;p&gt;类似 Spring-AOP， spring-ai 基于请求横切提供了开箱即用的 RAG 能力抽象。&lt;/p&gt; 
+&lt;p&gt;&lt;img src="https://oscimg.oschina.net/oscnet/up-d652767109fde40d777cb798748fcd7d1f1.png" alt="" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;img src="https://oscimg.oschina.net/oscnet/up-144d4d0070da16c5c4549f3e22d38ef1aab.png" alt="" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p&gt;org.springframework.ai.rag.advisor.RetrievalAugmentationAdvisor&lt;/p&gt; 
+&lt;h2&gt;代码示例&lt;/h2&gt; 
+&lt;p&gt;&lt;strong&gt;基于供应商构建 ChatModel&lt;/strong&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;img src="https://oscimg.oschina.net/oscnet/up-de37abd8f6a6b76596d69538ae2017b2e70.png" alt="" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;strong&gt;构建 ChatClient 发起会话&lt;/strong&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;img src="https://oscimg.oschina.net/oscnet/up-dc3cbb7de1b8b757423df6f47e3d6f6d8bf.png" alt="" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;h1&gt;八、智能体示例&lt;/h1&gt; 
+&lt;p&gt;到这里，我们已经自上而下的理解了大模型的工程化，现在我们来开发一个【DJob 智能助手】吧！&lt;/p&gt; 
+&lt;h2&gt;接口骨架&lt;/h2&gt; 
+&lt;p&gt;&lt;img src="https://oscimg.oschina.net/oscnet/up-2c6fe1568279296cb61ca3c34155b04af4b.png" alt="" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p&gt;通过 POST 接口，响应 Content-Type 为 text/event-stream 。&lt;/p&gt; 
+&lt;h2&gt;构造外部函数定义&lt;/h2&gt; 
+&lt;p&gt;假设有以下几个函数可以给大模型提供能力：&lt;/p&gt; 
+&lt;p&gt;&lt;img src="https://oscimg.oschina.net/oscnet/up-712add346042b148c3b97b4bfbd1b3ea2a2.png" alt="" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p&gt;将上述 3 个本地方法封装成 ChatClient API 认识的【ToolCallback】：&lt;/p&gt; 
+&lt;p&gt;&lt;img src="https://oscimg.oschina.net/oscnet/up-592d6518eba6c49212db74683c115d8ccf8.png" alt="" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p&gt;构建可用的，函数/工具，信息，这里用本地方法来 mock。实际使用时可以利用 MCP/HTTP/gRPC/Dubbod 等实现跨系统调用。&lt;/p&gt; 
+&lt;h2&gt;系统提示词&lt;/h2&gt; 
+&lt;p&gt;由于不能让大模型自由发挥，因此需要在用户输入的内容外，给大模型一些定向信息补充或场景限定，帮助大模型更好地解决问题！&lt;/p&gt; 
+&lt;p&gt;&lt;img src="https://oscimg.oschina.net/oscnet/up-2033f2904f431653de6b35214010265c3e1.png" alt="" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;h2&gt;发起调用&lt;/h2&gt; 
+&lt;p&gt;&lt;img src="https://oscimg.oschina.net/oscnet/up-6296331333a464f694abe879362d5c31887.png" alt="" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;ol&gt; 
+ &lt;li&gt; &lt;p&gt;考虑到大模型无状态，所以每次会话时历史消息也需要一并输入。&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;历史消息可以由前端收集、提交，也可以由后端每次会话存储、收集。&lt;/p&gt; &lt;/li&gt; 
+&lt;/ol&gt; 
+&lt;h1&gt;九、总结&lt;/h1&gt; 
+&lt;p&gt;综上所述，太阳底下没有新鲜事，工程领域所有的新生事物都可以暂时把它当做 MySQL，没有人比 Java 工程师更懂 MySQL 了（开玩笑）。&lt;/p&gt; 
+&lt;p&gt;以上，除 Java 代码外，都是经过盲人摸象的方法探索出的内容。如有错误，欢迎指正。&lt;/p&gt; 
+&lt;p&gt;&lt;strong&gt;往期回顾&lt;/strong&gt;&lt;/p&gt; 
+&lt;p&gt;1.一致性框架：供应链分布式事务问题解决方案｜得物技术&lt;/p&gt; 
+&lt;p&gt;2.Redis 是单线程模型？｜得物技术&lt;/p&gt; 
+&lt;p&gt;3.得物社区活动：组件化的演进与实践&lt;/p&gt; 
+&lt;p&gt;4.从 CPU 冒烟到丝滑体验：算法 SRE 性能优化实战全揭秘｜得物技术&lt;/p&gt; 
+&lt;p&gt;5.CSS 闯关指南：从手写地狱到「类」积木之旅｜得物技术&lt;/p&gt; 
+&lt;p&gt;文 / 羊羽&lt;/p&gt; 
+&lt;p&gt;关注得物技术，每周更新技术干货&lt;/p&gt; 
+&lt;p&gt;要是觉得文章对你有帮助的话，欢迎评论转发点赞～&lt;/p&gt; 
+&lt;p&gt;未经得物技术许可严禁转载，否则依法追究法律责任。&lt;/p&gt;
+                                                                                    &lt;/div&gt;
+                                                                            </description>
+      <link>https://my.oschina.net/u/5783135/blog/18638450</link>
+      <guid isPermaLink="false">https://my.oschina.net/u/5783135/blog/18638450</guid>
+      <pubDate>Tue, 22 Jul 2025 07:13:29 GMT</pubDate>
+      <author>原创</author>
+    </item>
+    <item>
+      <title>腾讯发布全栈 AI IDE「CodeBuddyIDE」</title>
+      <description>&lt;div class="content"&gt;
+                                                                    
+                                                        &lt;p&gt;腾讯今日正式发布旗下首个全栈 AI IDE「CodeBuddy IDE」，主打「产品-设计-研发部署」全流程 AI 一体化开发工作台（即「产设研一体」），支持从需求到部署的全栈自动化 。&lt;/p&gt; 
+&lt;p&gt;&lt;img alt="" src="https://oscimg.oschina.net/oscnet/up-55fa5c9fdde529e683a05e0690eb3d5ae4e.png" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p&gt;CodeBuddyIDE 国际版已上线，内置 Claude-4.0-Sonnet 和 Gemini-2.5-Pro 等模型，可直接用自然语言生成产品 PRD、TRD、DRD，并据此生成网页和后端，甚至一键将 Figma 设计稿变成网页 。&lt;/p&gt; 
+&lt;p&gt;CodeBuddyIDE 集成腾讯云开发 CloudBase 和 Supabase，支持快速部署，用户通过自然语言描述需求即可生成完整项目（如小程序、Web 应用等），并支持一键部署到云端。&lt;/p&gt; 
+&lt;p&gt;目前，CodeBuddyIDE 处于内测阶段，需邀请码激活使用，内测期间解锁 Pro 版权益并赠送高级模型对话额度 。腾讯云开发者产品总经理刘毅表示，未来 AI 编程将分化为「简单应用开发需求可通过氛围编程实现，复杂系统则需专业化团队协作的规约编程」。&lt;/p&gt;
+                                                                                &lt;/div&gt;
+                                                                            </description>
+      <link>https://www.oschina.net/news/361686</link>
+      <guid isPermaLink="false">https://www.oschina.net/news/361686</guid>
+      <pubDate>Tue, 22 Jul 2025 07:00:29 GMT</pubDate>
+      <author>来源: OSCHINA</author>
+    </item>
+    <item>
+      <title>软银与 OpenAI 产生分歧，5000 亿 「星际之门」 项目面临危机</title>
+      <description>&lt;div class="content"&gt;
+                                                                    
+                                                        &lt;p style="color:#242424; margin-left:0; margin-right:0; text-align:left"&gt;&lt;span style="color:#000000"&gt;《华尔街日报》&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fwww.wsj.com%2Ftech%2Fai%2Fsoftbank-openai-a3dc57b4" target="_blank"&gt;报道&lt;/a&gt;称，白宫于今年 1 月宣布的 「星际之门」 项目正面临重重困难，这个旨在推动美国人工智能（AI）发展的雄心壮志项目，现阶段的推进速度远低于预期。最初计划在项目中注入的 5000 亿美元资金，现在看起来却有可能要大幅度缩减。&lt;/span&gt;&lt;/p&gt; 
+&lt;p style="color:#242424; margin-left:0; margin-right:0; text-align:left"&gt;&lt;span style="color:#000000"&gt;「星际之门」 项目的联合创始人，软银创始人孙正义、OpenAI CEO 萨姆・奥尔特曼以及美国前总统特朗普在今年初在白宫共同亮相，宣布了这一合作计划。然而，六个月过去了，负责推动项目的公司尚未成功完成任何数据中心的交易，这显然让参与各方感到失望。&lt;/span&gt;&lt;/p&gt; 
+&lt;p style="color:#242424; margin-left:0; margin-right:0; text-align:left"&gt;&lt;img height="459" src="https://oscimg.oschina.net/oscnet/up-94e9db1fbddb7e52554be50cf7517543b16.png" width="500" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p style="color:#242424; margin-left:0; margin-right:0; text-align:left"&gt;&lt;span style="color:#000000"&gt;知情人士透露，软银与 OpenAI 在项目的关键条款上产生了分歧，尤其是在数据中心的选址问题上。尽管两家公司在宣布时曾承诺立即投资 1000 亿美元，但目前的目标显得更加保守，计划在年底前建成一家小型数据中心，地点可能选在俄亥俄州。&lt;/span&gt;&lt;/p&gt; 
+&lt;p style="color:#242424; margin-left:0; margin-right:0; text-align:left"&gt;&lt;span style="color:#000000"&gt;这个进展缓慢的项目，无疑是对孙正义雄心壮志的挫败。作为风险投资的老手，他近年来在 AI 领域投入了数十亿美元的资金，但仍未能跟上快速发展的脚步。此外，软银早前承诺向 OpenAI 投资 300 亿美元，这项巨额投资使其在 AI 基础设施领域占据了一席之地。&lt;/span&gt;&lt;/p&gt; 
+&lt;p style="color:#242424; margin-left:0; margin-right:0; text-align:left"&gt;&lt;span style="color:#000000"&gt;而奥尔特曼则迫切希望能够获得足够的计算能力来支持 OpenAI 的下一代旗舰产品 ChatGPT，因此他选择与其他运营商合作，绕过软银，与甲骨文达成了一项数据中心协议。根据该协议，OpenAI 将在未来三年内向甲骨文支付超过 300 亿美元的费用，以建立总装机容量达 4.5 吉瓦的数据中心。&lt;/span&gt;&lt;/p&gt; 
+&lt;p style="color:#242424; margin-left:0; margin-right:0; text-align:left"&gt;&lt;span style="color:#000000"&gt;虽然孙正义和奥尔特曼在公开场合声称合作一切顺利，并表示目标是共同建设 10 吉瓦的数据中心，但知情人士却透露，「星际之门」 项目的起步缓慢并未影响孙正义对 OpenAI 未来发展的信心，仍有意向进一步投资。&lt;/span&gt;&lt;/p&gt;
+                                                                                &lt;/div&gt;
+                                                                            </description>
+      <link>https://www.oschina.net/news/361680</link>
+      <guid isPermaLink="false">https://www.oschina.net/news/361680</guid>
+      <pubDate>Thu, 17 Jul 2025 06:29:00 GMT</pubDate>
+      <author>来源: OSCHINA</author>
+    </item>
+    <item>
+      <title>OpenAI 正在准备发布下一代文生视频模型 Sora 2</title>
+      <description>&lt;div class="content"&gt;
+                                                                    
+                                                        &lt;p&gt;近日有网友&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fx.com%2Fbtibor91%2Fstatus%2F1947276559322345693" target="_blank"&gt;发现&lt;/a&gt;了 OpenAI Sora 2 相关的资源文件。&lt;/p&gt; 
+&lt;p&gt;&lt;img src="https://static.oschina.net/uploads/space/2025/0722/142046_blsg_2720166.png" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p&gt;看起来，OpenAI 似乎正在准备发布其文生视频模型的下一代版本 Sora 2。据称，新模型旨在与 Google 的 Veo 3 等模型竞争，并可能包含生成更长视频以及集成音频功能等新特性。&lt;/p&gt;
+                                                                                &lt;/div&gt;
+                                                                            </description>
+      <link>https://www.oschina.net/news/361675</link>
+      <guid isPermaLink="false">https://www.oschina.net/news/361675</guid>
+      <pubDate>Thu, 17 Jul 2025 06:18:00 GMT</pubDate>
+      <author>来源: OSCHINA</author>
+    </item>
+    <item>
+      <title>零一万物「超级员工」登场，企业级 Agent 迈入「价值交付」时代</title>
+      <description>&lt;div class="content"&gt;
+                                                                    
+                                                        &lt;p style="color:#000000; text-align:left"&gt;7 月 22 日，零一万物于北京举办产品发布会。零一万物 CEO 李开复博士与零一万物联合创始人马杰、黄蕙雯一起，共同发布万智企业大模型一站式平台（下文简称万智平台）2.0 版本，并推出零一万物企业级 Agent 智能体。&lt;/p&gt; 
+&lt;p style="color:#000000; text-align:left"&gt;作为万智平台的核心功能模块，该企业级 Agent 以「超级员工」为核心定位，具备深度思考和任务规划能力。基于安全沙盒与 MCP，零一万物企业级 Agent 能够访问手机和 Web 端，连接各类企业服务。同时，零一万物万智平台还提供开发工具与配置平台，企业可以随时随地基于自身业务场景，定制最懂客户需求、解决真实问题的「超级员工」。&lt;/p&gt; 
+&lt;p style="color:#000000; text-align:left"&gt;这是零一万物产业大模型落地实践的关键布局。在当前基座模型与产业应用仍存在显著落地断层的背景下，零一万物正积极协同产业生态伙伴，致力于打造&lt;strong&gt;安全好用、互联互通&lt;/strong&gt;的企业级 Agent，推动中国大模型产业从「交付服务」迈向「交付结果」的产业 AI 时代。&lt;/p&gt; 
+&lt;p style="color:#000000; text-align:left"&gt;&lt;strong&gt;万智 2.0 推出企业级 Agent，让 AI 成为能干靠谱的「超级员工」&lt;/strong&gt;&lt;/p&gt; 
+&lt;p style="color:#000000; text-align:left"&gt;在审视大模型的发展路径时，不妨以人类演进为参照——人类的独到之处在于创造和使用工具，从而拓展自身解决复杂问题的能力。&lt;/p&gt; 
+&lt;p style="color:#000000; text-align:left"&gt;业界在技术探索中逐渐形成共识是，AI Agent 的能力跃升，也遵循着这一逻辑，有两个关键影响因子：一是 AI Agent 之下的基座模型具备的深度思考与任务规划能力，二是 Agent 经过场景锤炼和工程优化之后可调用执行工具的数量与精度，影响着其能力边界，人工智能开始逐步展现「手脑并用」的能力。这两个因素的深度媒合，未来 AI Agent 才有望衍生出各行各业的「超级员工」。&lt;/p&gt; 
+&lt;p style="color:#000000; text-align:left"&gt;然而现实是，受限于当前基座模型对垂直产业的理解深度与工具调用能力的成熟度，市面上多数 Agent 方案仍无法满足企业在复杂业务场景下的实际需求。&lt;/p&gt; 
+&lt;p style="color:#000000; text-align:left"&gt;目前 AI Agent 的发展路径，预计会经历三个演进层级：&lt;/p&gt; 
+&lt;p style="color:#000000; text-align:left"&gt;&lt;strong&gt;L1：工作流 Agent&lt;/strong&gt;&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt; &lt;p style="text-align:left"&gt;这一阶段由人类主导任务的规划与决策流程，Agent 仅按指令一步步执行指定动作。虽然实现了任务自动化的初步落地，但其智能化程度有限，本质仍为强化版的「RPA（机器人流程自动化）」或「Co-pilot」，难以应对企业中复杂多变、跨环节的任务。&lt;/p&gt; &lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;p style="color:#000000; text-align:left"&gt;&lt;strong&gt;L2：推理 Agent&lt;/strong&gt;&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt; &lt;p style="text-align:left"&gt;Agent 具备基于大模型的任务规划能力，能通过推理机制自主判断任务步骤，调度多种工具完成复杂目标。此阶段的 Agent 不再依赖人类指定的流程，而是能「想清楚再做」，具备真正的任务闭环执行能力。&lt;/p&gt; &lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;p style="color:#000000; text-align:left"&gt;&lt;strong&gt;L3：多智能体 Multi-Agents&lt;/strong&gt;&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt; &lt;p style="text-align:left"&gt;多个 AI Agent 之间实现有机协作，自主进行任务分配、资源调度与协同优化。这一阶段将彻底重构企业运作范式，形成真正的去中心化智能协作网络，是 Agent 发展的进阶形态与行业变革的关键临界点。&lt;/p&gt; &lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;p style="color:#000000; text-align:center"&gt;&lt;img alt="" src="https://oscimg.oschina.net/oscnet//2224cd169976598ef59825cc00e111e7.png" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p style="color:#000000; text-align:left"&gt;&lt;strong&gt;目前，零一万物的企业级 Agent 已步入 L2 阶段，与 OpenAI 最新发布的 ChatGPT Agent 处于同一技术水位，实现从「工具流执行者」向「人机共同决策者」的跃迁。&lt;/strong&gt;&lt;/p&gt; 
+&lt;p style="color:#000000; text-align:left"&gt;在服务全球多家头部企业的过程中，零一万物持续收到客户的高频咨询：他们亟需一款真正理解企业语言、贴合业务场景、能够闭环解决实际问题的 AI Agent。&lt;/p&gt; 
+&lt;p style="color:#000000; text-align:left"&gt;而市场上诸多面向 C 端用户的通用型 Agent 的底层逻辑以普适性为重点，因此在企业级工具接入、定制化能力上存在明显短板，不仅调用工具的广度和精度有限，也缺乏对专业系统和行业知识的深度适配，难以真正渗透企业的关键业务链条。&lt;/p&gt; 
+&lt;p style="color:#000000; text-align:left"&gt;基于产业需求与客户痛点，零一万物万智平台正式推出企业级 Agent，打造&lt;strong&gt;「超级员工」&lt;/strong&gt;。零一万物的企业级 Agent 在设计之初即聚焦企业场景并媒合深度的工程优化，具备更丰富的行业理解与工具调用能力，真正做到了「更懂企业」。&lt;/p&gt; 
+&lt;p style="color:#000000; text-align:left"&gt;&lt;strong&gt;一「体」多用，靠谱交付。&lt;/strong&gt;万智 Agent 能在企业的业务场景下执行编程、研究、访问系统等复杂综合任务，靠谱交付和自主晋升。&lt;strong&gt;智能决策：&lt;/strong&gt;自研强化学习＋全栈研发工程技术栈，让万智 Agent 提升综合任务规划能力，拓宽生产力场景。结合企业知识库和生产任务，以交付结果为目标动态生成执行计划，而非套用固定工作流。&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt; &lt;p style="text-align:left"&gt;&lt;strong&gt;专业进阶&lt;/strong&gt;：依托基于客户需求继续训练和微调的产业大模型基座，万智 Agent 比通用 Agent 更能理解企业实际业务场景，更精准地调用企业内、外部工具，实现跨部门、跨组织的多工具串联，跑通完整任务的交付闭环，胜任复杂多变的企业级任务。&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p style="text-align:left"&gt;&lt;strong&gt;自主晋升：&lt;/strong&gt;基于数据反馈的强化学习，超级员工还能在企业专业生产流程不断学习正负反馈，不断迭代。&lt;/p&gt; &lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;p style="color:#000000; text-align:left"&gt;&lt;strong&gt;超级工具，互通互联。&lt;/strong&gt;Agent 能精准调用的工具越多，工作能力越进阶。零一万物针对 Agent 工具使用能力进行深度研发工程优化，构建起了智能高效的工具调用与任务处理能力。&lt;strong&gt;互通终端&lt;/strong&gt;：基于&lt;strong&gt;安全沙盒技术与 MCP 协议&lt;/strong&gt;，零一万物企业级 Agent 对内能够跨系统调用工具，实现企业内部跨部门数据流动；对外能够访问手机和 Web 端应用，实现与外部生态的高效协同。&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt; &lt;p style="text-align:left"&gt;&lt;strong&gt;互联系统：&lt;/strong&gt;基于企业核心业务流专门训练了&lt;strong&gt;Tool Use 模型&lt;/strong&gt;，跨系统调用企业内部工具时，使用更准确，效率更高；针对企业特定服务做强化学习，大幅增强 Agent 在特定场景的工具使用能力。&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p style="text-align:left"&gt;&lt;strong&gt;互联工具：&lt;/strong&gt;通过自身搭建和引入创新合作伙伴，不断丰富 Agent 的工具箱。不仅提升其在单一任务中的专业深度，也拓展其在更多应用场景中的可能性。&lt;/p&gt; &lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;p style="color:#000000; text-align:left"&gt;&lt;strong&gt;安全可控，私有化部署 + 结果校验构筑双保险。&lt;/strong&gt;&lt;strong&gt;私有化部署：&lt;/strong&gt;万智 Agent 支持企业私有化部署，同时基于安全沙盒技术隔离运行环境，确保 AI 在调用外部系统时不会对原始数据和核心系统造成风险。零一万物万智平台还将面向企业客户开放 Agent 开发框架与配置平台，支持企业基于自身场景下需求快速定制专属 Agent。&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt; &lt;p style="text-align:left"&gt;&lt;strong&gt;结果校验：&lt;/strong&gt;基于任务和目标，结合 Guardrails 能力，会对每个环节进行结果校验，保障结果的准确性和创意性，真正实现能力外包，但业务数据与安全无忧。&lt;/p&gt; &lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;p style="color:#000000; text-align:left"&gt;未来，零一万物希望在打造「超级员工」的基础上更进一步，推动 Agent 之间的互联互通，携手企业客户共建「超级 AI 企业」。零一万物所设想的未来图景是，企业组织本身就应进化为一个超级智能体，人类转型为目标架构师，AI 成为执行引擎。&lt;/p&gt; 
+&lt;p style="color:#000000; text-align:left"&gt;&lt;strong&gt;以「一把手工程」自上而下穿透企业场景，打造更懂企业的 AI&lt;/strong&gt;&lt;/p&gt; 
+&lt;p style="color:#000000; text-align:left"&gt;从早期的聊天机器人，到 AI 助手，再到如今的 AI Agent，大模型正逐步替代人类执行完整任务，成为推动企业业绩增长的重要力量。&lt;/p&gt; 
+&lt;p style="color:#000000; text-align:left"&gt;Gartner 曾在报告中预测，到 2028 年，33% 的企业级软件应用将整合 AI Agent，届时 15% 的日常工作任务决策可实现完全自主化。Morgan Stanley 在研报《AI Agents Knocking at the Door》中也指出，Agentic AI 市场前景广阔，目前蕴藏着 520 亿美元的机会，预计到 2028 年市场规模将增长至 1020 亿美元。&lt;/p&gt; 
+&lt;p style="color:#000000; text-align:left"&gt;作为大模型落地产业的关键连接器，AI Agent 展现出不可忽视的广阔市场前景，也折射出传统企业在 AI 数智化转型过程中结构性困境。&lt;/p&gt; 
+&lt;p style="color:#000000; text-align:left"&gt;何时引入 AI、是否开放核心业务场景、如何实现技术和业务的高效协同，这些问题的答案不仅关乎技术选型，更涉及企业战略决策与组织变革。AI 技术日新月异，传统产业管理者很难全面回答这些问题，需要既懂 AI 又懂经营管理的专业团队进行系统规划。此外，企业 AI 数智化转型往往牵扯数据治理、系统整合与流程重构等复杂环节，必须有高层统一规划、跨部门协作与资源调配。&lt;/p&gt; 
+&lt;p style="color:#000000; text-align:left"&gt;企业 AI 数智化转型本质上是&lt;strong&gt;CEO 一把手驱动的 AI 战略转型工程&lt;/strong&gt;，这不仅是技术问题，更是管理问题，需要 CEO 与一线员工形成转型共同体，上下协力，实现从战略到执行的全面贯通，确保转型落地见效。&lt;/p&gt; 
+&lt;p style="color:#000000; text-align:left"&gt;基于万智 2.0 平台，零一万物选择以「&lt;strong&gt;一把手工程（Top Down）&lt;/strong&gt;」为核心战略，由零一万物 CEO 李开复博士牵头，从头部咨询机构招募、搭建具有实战经验的新型战略咨询团队，精选对 AI 数智化转型有决心的行业龙头企业，一同制定企业顶层 AI 战略，并基于战略&lt;strong&gt;找场景、调模型、搭应用&lt;/strong&gt;，战略、技术、业务三方团队密切配合，打造真正贴合业务需求的大模型 ToB 解决方案。零一万物目前也在积极招聘这只优秀且国际化的战略咨询队伍。&lt;/p&gt; 
+&lt;p style="color:#000000; text-align:left"&gt;&lt;strong&gt;找场景&lt;/strong&gt;：零一万物已构建起覆盖战略规划、模型研发、产品开发到客户成功等全链条的成熟团队，具备从战略咨询到平台落地的全链路服务能力，能够基于战略精准识别和切入高价值应用场景，&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt; &lt;p style="text-align:left"&gt;&lt;strong&gt;调模型&lt;/strong&gt;：基于零一万物自研大模型端到端的完整技术栈，结合基于企业客户需求选用全球 SOTA 模型进行模型继续训练、模型微调，并利用强化学习增强对企业实际业务的理解，提升工具调用准确率。&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p style="text-align:left"&gt;&lt;strong&gt;搭应用&lt;/strong&gt;：零一万物两年来在全球化应用实践中得到验证的 ToC、ToB 的诸多 AI&lt;strong&gt;生产力功能&lt;/strong&gt;，如 AI PPT 生成（PopAi）、AI 数字人、AI 搜索等，也为构建企业级 Agent 奠定了扎实的应用实践基础。&lt;/p&gt; &lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;p style="color:#000000; text-align:center"&gt;&lt;img alt="" src="https://oscimg.oschina.net/oscnet//d39d83849a47b62f4720e78a33ff53a7.jpeg" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p style="color:#000000; text-align:left"&gt;凭借与行业龙头企业形成的深度战略合作，零一万物得以深入接触企业内部的丰富工具与场景，供「超级员工」基于数据反馈进行强化学习，不断提升自身能力；另一方面，头部企业所使用的系统工具和业务流程往往代表着行业标准，能够很大程度上覆盖中小企业的共性需求，在龙头企业积累的实践经验能够在更广泛的行业中实现高效复用。&lt;/p&gt; 
+&lt;p style="color:#000000; text-align:left"&gt;零一万物联合创始人马杰表示，AI Agent 要真正成为企业的「超级员工」，核心在于能不能走进真实业务的深水区，直面复杂业务流与跨系统协作的挑战，为企业客户带来新增长点。零一万物以&lt;strong&gt;李开复博士为核心的「一把手工程」打法，手把手陪伴&lt;/strong&gt;企业设计 AI 嵌入业务的路径，从场景拆解、到模型微调、再到工具打通与应用搭建，是一套可落地、可复制的产品逻辑。「超级员工」不是噱头，而是能真正驱动业务指标、带来可衡量结果的 AI 生产力员工。&lt;/p&gt; 
+&lt;p style="color:#000000; text-align:center"&gt;&lt;img alt="" src="https://oscimg.oschina.net/oscnet//9a21010f387c2a29d21cc75981f4afde.jpeg" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p style="color:#000000; text-align:left"&gt;值得一提的是，零一万物还将携手创新工场生态中的兄弟企业，如硅基流动、未来式智能、TTC、凡得科技等，结合双方技术与行业理解，强化应用落地能力，共同打造企业级 Agent 等解决方案，助力企业 AI 智能化转型。&lt;/p&gt; 
+&lt;p style="color:#000000; text-align:left"&gt;&lt;strong&gt;「超级员工」落地招商、金融、销售、游戏等领域，Agent 迈入「价值交付」时代&lt;/strong&gt;&lt;/p&gt; 
+&lt;p style="color:#000000; text-align:left"&gt;目前，零一万物万智平台「超级员工」已经在咨询服务、金融交易以及销售客服等多个场景先期落地。通过与零一万物战略客户的深度合作打磨，基于领军企业的丰富工具、业务数据和专业知识库，万智企业数字人已经&lt;strong&gt;深度嵌入企业的业务流，打通私有数据，成为具备跨部门、跨角色、跨系统的超级员工，交付价值与结果&lt;/strong&gt;。&lt;/p&gt; 
+&lt;p style="color:#000000; text-align:center"&gt;&lt;img alt="" src="https://oscimg.oschina.net/oscnet//7d195b2cac7499e7492c12cd45b25023.jpeg" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p style="color:#000000; text-align:left"&gt;&lt;strong&gt;万智招商专家&lt;/strong&gt;已经不再是只会整理会议纪要，输出报告的小助手，而是能够从招商目标出发，多平台搜索整合分析信息，汇总形成客户开发行动建议，并根据业务端的实时反馈进行任务优化再处理，内部协调相关业务条线，进一步执行直至满意结果。&lt;/p&gt; 
+&lt;p style="color:#000000; text-align:left"&gt;一个产业园区的招商，往往需要全局性的判断与推理，而非仅仅是根据既定条件匹配筛选。在这个过程中，万智招商专家既能充分消化企业已有的招商规则流程与知识案例，还能根据市场变化与竞品情报，提供及时的策略建议与行动路径。在某大型地产企业，相比过往只能提供「实习生」级别的招商服务，一到两年工作经验的优秀员工的判断力与执行力，具备了快速整合信息并完成工作任务的能力。&lt;/p&gt; 
+&lt;p style="color:#000000; text-align:left"&gt;&lt;strong&gt;万智保险顾问&lt;/strong&gt;，把传统基于话术的套路式保险交易流程，变成了真正从客户需求出发的启发式互动。数字人可以根据后端丰富的行业产品知识库，找到与客户画像匹配的沟通模式，在帮客户解决问题的基础上有效推介产品解决方案。同时，万智保险顾问还可以打通售前售中售后全流程，为客户提供统一界面且体验一致的服务，切实提升客户满意度。&lt;/p&gt; 
+&lt;p style="color:#000000; text-align:left"&gt;在帮助某知名的跨区域保险公司提供健康险服务时，万智保险顾问能够基于当地的医疗健康服务特点与客户健康状况，结合客户生活方式特点及家庭财务状况等多维度信息，准确解读产品特点，提供个性化案例和提供保险方案。对照分析发现，万智保险顾问的推荐准确度和客户采纳率均高于入门一到两年的初级保险销售顾问，并提供 7*24 小时无间断的实时服务。&lt;/p&gt; 
+&lt;p style="color:#000000; text-align:left"&gt;&lt;strong&gt;万智超级销售&lt;/strong&gt;，则把销售过程变成了以客户为中心的服务过程。智商与情商 24 小时在线，从销售线索的分析、跟进再到潜在客户的沟通，售前方案的管理跟进，报价再到签单的全过程，都能与核心销售负责人紧密协作，让客户感受到前端人性化，后端智能化的销售体验。&lt;/p&gt; 
+&lt;p style="color:#000000; text-align:left"&gt;更重要的是，超级销售还可以承担智能业务枢纽的角色，帮助销售订单更好地与交付环节对接，做到产销一体，前后一致，避免了这其中的信息差与体验差，完整地服务客户全生命周期，提高客户满意度与复购率。&lt;/p&gt; 
+&lt;p style="color:#000000; text-align:left"&gt;&lt;strong&gt;万智游戏制作人，&lt;/strong&gt;覆盖从概念设计到正式上线的游戏全生命周期，从 AI 游戏引擎研发与产品化、平台搭建、游戏发行、云服务四个维度出发，帮助开发者省去大量繁琐的重复性生产工作，聚焦核心玩法设计和内容创新，助力游戏开发者激发创意，提升人效比。在显著压缩从立项到落地运营的时间周期、降低成本的基础上，将支持更丰富的交互体验、更沉浸的多模态功能和更具动态性的玩法设计，为用户带来更具沉浸感的游戏体验。&lt;/p&gt; 
+&lt;p style="color:#000000; text-align:left"&gt;目前，包含零一万物万智平台、「超级员工」在内的零一万物大模型 ToB 解决方案在能源、游戏、法律等领域都已有头部客户，其中包含世界最大的五家铁矿公司之一、知名网络游戏上市公司星竞威武、专利领域龙头企业中细软集团，都与零一万物达成了深度合作，共同推进企业的 AI 数智化进程。&lt;/p&gt; 
+&lt;p style="color:#000000; text-align:left"&gt;零一万物 CEO 李开复博士表示，以生成式 AI 驱动的 AI 2.0 革命比过去的技术革命更为迅猛，正在加速商业落地。AI Agent 的颠覆式创新，将会重构整个商业世界的业务流程和价值创造。未来十年企业竞争的分水岭，就在于是否具备 AI 2.0 时代的全局思维与落地能力。企业 AI 数智化转型本质上是 CEO 一把手工程，敢于让 AI 穿透核心系统、重构价值链条的企业将赢得先机。零一万物期待与行业合作伙伴深度共建，携手迈进 AI 智能体时代。&lt;/p&gt; 
+&lt;p style="color:#000000; text-align:left"&gt;了解更多请访问：b.01.ai&lt;/p&gt; 
+&lt;p style="color:#000000; text-align:left"&gt;申请试用：https://www.lingyiwanwu.com/businesspartnership&lt;/p&gt;
+                                                                                &lt;/div&gt;
+                                                                            </description>
+      <link>https://www.oschina.net/news/361673</link>
+      <guid isPermaLink="false">https://www.oschina.net/news/361673</guid>
+      <pubDate>Thu, 17 Jul 2025 06:10:00 GMT</pubDate>
+      <author>作者: 开源科技</author>
+    </item>
+    <item>
+      <title>RWKV-7s 即将亮相 WAIC</title>
+      <description>&lt;div class="content"&gt;
+                                                                    
+                                                        &lt;p&gt;2025 年 7 月 26 日至 29 日，RWKV 团队受邀参加 2025 世界人工智能大会（WAIC 2025）。RWKV 将在大会上公开最新 RWKV-7s 混合架构，与所有参会者分享 RWKV 的最新技术突破。&lt;/p&gt; 
+&lt;p&gt;&lt;img alt="waic-1" src="https://oscimg.oschina.net/oscnet/up-2dbef8b0695315b2a589b31cf8f65da16c6.jpg" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;img alt="waic-2" src="https://oscimg.oschina.net/oscnet/up-7b5848fcb6908307a0952971749fe423f9a.jpg" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;img alt="waic-3" src="https://oscimg.oschina.net/oscnet/up-0bf9c26895c446447f0997e5c9bad0d9444.jpg" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;img alt="waic-4" src="https://oscimg.oschina.net/oscnet/up-61bfe66884c43704b452e85fff8a3c5f4a4.jpg" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p&gt;7 月 26-29 日，RWKV 团队在 WAIC 2025 期待您的到来！&lt;/p&gt; 
+&lt;p&gt;RWKV 在上海世博展览馆 1 层 Hall3-D701 及 B1 层 Hall4-FT305 均设有展位。诚邀您亲临现场，了解 RWKV 的最新技术突破！&lt;/p&gt;
+                                                                                &lt;/div&gt;
+                                                                            </description>
+      <link>https://www.oschina.net/news/361672</link>
+      <guid isPermaLink="false">https://www.oschina.net/news/361672</guid>
+      <pubDate>Thu, 17 Jul 2025 06:07:00 GMT</pubDate>
+      <author>来源: 资讯</author>
+    </item>
+    <item>
+      <title>字节跳动开源 Seed-X 7B，支持 28 种语言翻译</title>
+      <description>&lt;div class="content"&gt;
+                                                                    
+                                                        &lt;p style="color:#242424; margin-left:0; margin-right:0; text-align:left"&gt;&lt;span style="color:#000000"&gt;字节跳动旗下 Seed 团队近日正式开源多语言翻译模型 Seed-X，该模型以仅 70 亿参数（7B）的轻量级规模，支持包括英语、中文、日语、韩语、法语、德语、西班牙语、俄语等在内的 28 种语言的双向翻译。&lt;/span&gt;&lt;/p&gt; 
+&lt;p style="color:#242424; margin-left:0; margin-right:0; text-align:left"&gt;&lt;span style="color:#000000"&gt;根据介绍，Seed-X 在多个领域 (如互联网、科技、办公对话、电子商务、生物医药、金融、法律、文学、娱乐等) 的翻译任务中表现优异，性能甚至可媲美 Gemini-2.5、Claude-3.5 和 GPT-4 等顶级大模型。&lt;/span&gt;&lt;/p&gt; 
+&lt;p style="color:#242424; margin-left:0; margin-right:0; text-align:left"&gt;&lt;img height="273" src="https://oscimg.oschina.net/oscnet/up-d1a99717fc679c972df23bf4e33ce1516fc.png" width="700" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p style="color:#242424; margin-left:0; margin-right:0; text-align:left"&gt;&lt;span style="color:#000000"&gt;Seed-X 基于 Mistral 架构设计，专注于翻译任务的优化。开发团队在训练过程中特意剔除了 STEM、代码和推理相关数据，聚焦于翻译任务的精准性和高效性。这种专注使得 Seed-X 在人类评分测试中表现出色，翻译效果接近 DeepSeek R1 和 Gemini Pro2.5 的水平。得益于其轻量级设计，Seed-X 优化了部署和推理效率，适合在资源受限的环境下运行，为开发者提供了灵活的应用场景。&lt;/span&gt;&lt;/p&gt; 
+&lt;p style="color:#242424; margin-left:0; margin-right:0; text-align:left"&gt;&lt;span style="color:#000000"&gt;团队通过以大语言模型为核心的数据处理管道，最大限度减少了人工干预，生成并筛选高质量的翻译训练数据。这种方法不仅提升了模型的翻译能力，还确保了其在多语言场景下的泛化性能。&lt;/span&gt;&lt;/p&gt; 
+&lt;p style="color:#242424; margin-left:0; margin-right:0; text-align:left"&gt;&lt;span style="color:#000000"&gt;此前，字节 Seed 团队已开源多模态模型 BAGEL、代码模型 Seed-Coder 和语音生成模型 Seed-TTS。&lt;/span&gt;&lt;/p&gt;
+                                                                                &lt;/div&gt;
+                                                                            </description>
+      <link>https://www.oschina.net/news/361671</link>
+      <guid isPermaLink="false">https://www.oschina.net/news/361671</guid>
+      <pubDate>Thu, 17 Jul 2025 06:02:00 GMT</pubDate>
+      <author>来源: OSCHINA</author>
+    </item>
+    <item>
+      <title>服务提效，看得见的 AI｜绿盟科技托管安全服务市场份额稳居行业前列</title>
+      <description>&lt;div class="content"&gt;
+                                                                    
+                                                        &lt;p style="margin-left:0; margin-right:0; text-align:left"&gt;近日，国际权威咨询机构 IDC 发布最新市场报告《中国 GenAI 赋能的托管安全服务（MSS）市场份额，2024：AI 智能体助力网络安全运营人员提质增效》（Doc # CHC53602725 ，2025 年 6 月）（以下简称《报告》），绿盟科技托管安全服务以 14.0% 的市场份额名列国内厂商第二名。&lt;/p&gt; 
+&lt;p style="text-align:center"&gt;&lt;img alt="图片 3.jpg" height="486" src="https://oscimg.oschina.net/oscnet//8bdefb5d7d525242cbca36cdb3749be6.jpg" width="600" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p style="margin-left:0; margin-right:0; text-align:left"&gt;《报告》指出，生成式人工智能（GenAI）和 AI 智能体在托管安全服务体系中的价值正在快速提升，成为安全运营平台上必不可少的工具，能够自动化完成相对简单、标准化和重复性的安全运营工作，并提升安全运营人员分析和处置更复杂网络安全事件的能力。远程托管安全服务凭借自身流程标准化、快速交付、低成本、专家资源共享等特点，在全球经济下行的大背景下实现逆势增长，在整体托管安全服务市场中的占比进一步提高。&lt;/p&gt; 
+&lt;p style="margin-left:0; margin-right:0; text-align:left"&gt;2024 年，中国远程托管安全服务市场规模为 15.2 亿元，相较于 2022 年实现了 3.6% 的同比增长。绿盟科技推出的风云衞大模型，已在多款托管安全服务中实现实战落地，全面融入交付流程。依托模型能力与平台支撑，公司已构建覆盖多场景、多维需求的远程托管服务体系。以下介绍四类具有代表性的远程安全托管服务。&lt;/p&gt; 
+&lt;p style="margin-left:0; margin-right:0; text-align:left"&gt;&amp;nbsp;&lt;/p&gt; 
+&lt;p style="margin-left:0; margin-right:0; text-align:center"&gt;&lt;span&gt;&lt;strong&gt;&lt;span&gt;绿盟威胁检测与响应服务&lt;/span&gt;&lt;/strong&gt;&lt;/span&gt;&lt;/p&gt; 
+&lt;p style="margin-left:0; margin-right:0; text-align:center"&gt;&lt;span&gt;&lt;strong&gt;&lt;span&gt;（MDR 服务）&lt;/span&gt;&lt;/strong&gt;&lt;/span&gt;&lt;/p&gt; 
+&lt;p style="margin-left:0; margin-right:0; text-align:left"&gt;MDR 核心能力：分钟级监测响应，全天候云地护航，AI 增强威胁检测辅助降噪&lt;/p&gt; 
+&lt;p style="margin-left:0; margin-right:0; text-align:left"&gt;绿盟科技威胁检测与响应服务（以下简称 MDR 服务）是安全运营中心服务专家为客户提供的 7*24 小时威胁监测、分析、处置闭环的远程服务。该服务基于云端 T-ONE 运营平台做自动化交付支撑，形成了标准化的工作流程。同时，服务结合威胁情报完成事件研判，并将 NSGPT、DeepSeek 双基座应用于事件的智能分析与威胁降噪过程中。MDR 服务通过威胁事件的实时监测、快速分析研判、主动的处置闭环管理，有效的提升客户响应效率，降低安全风险。&lt;/p&gt; 
+&lt;p style="text-align:center"&gt;&lt;img alt="图片 4.jpg" height="423" src="https://oscimg.oschina.net/oscnet//00dbb5044c1ec32aa54ab92d34f9a3d6.jpg" width="600" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p style="margin-left:0; margin-right:0; text-align:left"&gt;目前 AI 已经成熟应用于事件的分析、快速的处置、响应闭环各个环节，为客户提供更高效准确的 MDR 服务。&lt;/p&gt; 
+&lt;p style="margin-left:0; margin-right:0; text-align:left"&gt;1、实时化，全天在线响应：运营专家 7*24H 在线服务结合风云衞大模型对安全事件实时分析，并结合情报实现对威胁事件的分钟级检测及响应。为了让风云衞大模型能够真正在安全运营中发挥作用，我们针对事件研判、载荷分析等关键场景，开发了大量提示词，通过提示词规范大模型的推理过程、输出内容和格式，使之能够以 Agent 的形态在流程中自动完成监测及分析工作。&lt;/p&gt; 
+&lt;p style="margin-left:0; margin-right:0; text-align:left"&gt;2、高效率，AI 助力快速发现及响应事件：持续监测网络安全威胁，绿盟积累了 300 多亿的训练语料及各种服务报告、知识库、POC、样本等构建出风云衞大模型，通过大模型来进行事件降噪，并辅助威胁事件的研判，缩短威胁响应和闭环时间至分钟级。&lt;/p&gt; 
+&lt;p style="margin-left:0; margin-right:0; text-align:left"&gt;3、重闭环，事件跟踪全流程覆盖：MDR 服务可提供监测、分析、研判、抑制、响应的威胁全生命周期闭环管理。各个客户的环境有所不同，我们也用 RAG 技术将客户相关资产、网络、业务信息作为知识库接入大模型，使风云衞大模型能够对各个客户提供差异化的响应。&lt;/p&gt; 
+&lt;p style="margin-left:0; margin-right:0; text-align:left"&gt;4、强感知 ，交互感知多样化：研判结果及报告，可通过群、短信、邮件、用户门户、电话、手机 APP 多种方式及时通知客户。同时，我们已经将风云衞大模型应用于运营知识问答交互，以及基于告警上下文及知识库的报告生成过程中。&lt;/p&gt; 
+&lt;p style="margin-left:0; margin-right:0; text-align:left"&gt;&amp;nbsp;&lt;/p&gt; 
+&lt;p style="margin-left:0; margin-right:0; text-align:center"&gt;&lt;strong&gt;&lt;span&gt;绿盟外部攻击面管理服务&lt;/span&gt;&lt;/strong&gt;&lt;/p&gt; 
+&lt;p style="margin-left:0; margin-right:0; text-align:center"&gt;&lt;strong&gt;&lt;span&gt;（EASM 服务）&lt;/span&gt;&lt;/strong&gt;&lt;/p&gt; 
+&lt;p style="margin-left:0; margin-right:0; text-align:left"&gt;EASM 核心能力：资产测绘覆盖广、攻击触点抓得全、风险预警速度快&lt;/p&gt; 
+&lt;p style="margin-left:0; margin-right:0; text-align:left"&gt;外部攻击面管理服务是一款集泛资产普查、攻击触点识别、攻击面分析、风险预警为一体的 SaaS 服务。服务以攻击者视角监控本级单位、分支机构、供应链暴露在互联网侧的泛资产，并通过大模型自动验证外部攻击触点。同时，系统自动结合 AI 知识图谱，主动映射攻击面，分析并预测易被网络犯罪分子利用的安全风险，并及时进行风险预警，辅助组织完成风险处置闭环。&lt;/p&gt; 
+&lt;p style="margin-left:0; margin-right:0; text-align:left"&gt;&lt;br&gt; EASM 在多维度资产梳理、敏感数据泄露监测、重要时期保障/攻防演习等多种安全场景中均有出色表现。&lt;/p&gt; 
+&lt;p style="text-align:center"&gt;&lt;img alt="图片 5.jpg" height="260" src="https://oscimg.oschina.net/oscnet//60754b00ddc409b50a49da03e92d248e.jpg" width="600" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p&gt;&amp;nbsp;&lt;/p&gt; 
+&lt;p style="margin-left:0; margin-right:0; text-align:center"&gt;&lt;span&gt;&lt;strong&gt;绿盟网站安全监测服务&lt;/strong&gt;&lt;/span&gt;&lt;/p&gt; 
+&lt;p style="margin-left:0; margin-right:0; text-align:center"&gt;&lt;span&gt;&lt;strong&gt;（WebSafe 服务）&lt;/strong&gt;&lt;/span&gt;&lt;/p&gt; 
+&lt;p style="margin-left:0; margin-right:0; text-align:left"&gt;Websafe 核心优势：7*24h 风险持续监测、安全事件分钟级告警、24h 内仿冒网站关停&lt;/p&gt; 
+&lt;p style="margin-left:0; margin-right:0; text-align:left"&gt;网站安全监测服务是一款面向用户网站的安全监测类托管型 SaaS 服务，为用户提供 7*24H 的安全事件监测发现与预警通告。定期出具网站安全综合评估报告，提供专业的安全建议，帮助用户全面掌握网站风险状况与安全趋势，全天候守护用户的网站安全。&lt;/p&gt; 
+&lt;p style="text-align:center"&gt;&lt;img alt="图片 6.jpg" height="232" src="https://oscimg.oschina.net/oscnet//94341df3f38501a55703b0bff5523c26.jpg" width="600" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p&gt;&amp;nbsp;&lt;/p&gt; 
+&lt;p&gt;&amp;nbsp;&lt;/p&gt; 
+&lt;p style="margin-left:0; margin-right:0; text-align:center"&gt;&lt;span&gt;&lt;strong&gt;绿盟轻量化渗透测试服务&lt;/strong&gt;&lt;/span&gt;&lt;/p&gt; 
+&lt;p style="margin-left:0; margin-right:0; text-align:center"&gt;&lt;span&gt;&lt;strong&gt;（PTaaS 服务）&lt;/strong&gt;&lt;/span&gt;&lt;/p&gt; 
+&lt;p style="margin-left:0; margin-right:0; text-align:left"&gt;PTaaS 核心能力：在线订阅即买即测，漏洞管理更灵活，快速高效出报告&lt;/p&gt; 
+&lt;p style="margin-left:0; margin-right:0; text-align:left"&gt;绿盟轻量化渗透测试服务将传统渗透测试服务 SaaS 化，利用平台整合资深专家团队、自动化渗透测试工具和标准的云端流程，在线为客户提供持续的渗透测试服务，帮助用户发现业务资产的安全风险，实现漏洞全生命周期管理，全方位分析和展示企业系统安全状况。&lt;/p&gt; 
+&lt;p style="margin-left:0; margin-right:0; text-align:left"&gt;PTaaS 在新系统上线、满足监管合规要求、0day 漏洞爆发迅速查缺补漏以及攻防演练和重保活动等场景获得客户的普遍认可。&lt;/p&gt; 
+&lt;p style="text-align:center"&gt;&lt;img alt="图片 7.jpg" height="317" src="https://oscimg.oschina.net/oscnet//4c891fe12ce74faccdcbbb28e0ed296b.jpg" width="600" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p style="margin-left:0; margin-right:0; text-align:left"&gt;绿盟科技以云的思路重构安全运营体系，为用户提供弹性、敏捷的安全闭环保障能力。T-ONE CLOUD 作为云端安全运营中心的交付支撑平台，为企业、云、IDC 等各类环境的客户，提供灵活可订阅的托管安全服务。未来，绿盟科技将继续结合实战化的技术方案、场景化的专家攻防经验、流程化的云地共享模式为更多客户提供全方位全时段的安全运营服务保障。&lt;/p&gt;
+                                                                                &lt;/div&gt;
+                                                                            </description>
+      <link>https://www.oschina.net/news/361665</link>
+      <guid isPermaLink="false">https://www.oschina.net/news/361665</guid>
+      <pubDate>Thu, 17 Jul 2025 04:09:00 GMT</pubDate>
+      <author>作者: 开源科技</author>
+    </item>
+    <item>
+      <title>DeepSeek 下载量暴跌 72.2%，豆包登顶</title>
+      <description>&lt;div class="content"&gt;
+                                                                    
+                                                        &lt;p&gt;&lt;span style="color:#000000"&gt;《每日经济新闻》联合 QuestMobile 推出《2025 年二季度 AI 应用价值榜》，基于月均下载量与月活跃用户数（MAU）两大核心指标，揭示 AI 应用「中场战事」的新变局。&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;span style="color:#000000"&gt;数据显示，一季度冠军 DeepSeek 光环褪色，豆包在下载量方面成为领跑者，Kimi、智谱、文小言、通义等 AI 智能助手类应用月活集体下滑，可灵月活跌超 16%。&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;span style="color:#000000"&gt;新的垂直场景跑出了黑马，在「AI+办公」领域，ima 月活环比增长 190.2%，360 文库月活环比增幅达 134.5%；在「AI+教育」领域，字节旗下的豆包爱学月活为 756.2 万，而作业帮旗下的快对 AI 月活更是高达 1044.4 万。一场关乎用户留存、实用价值与商业化的深水区搏斗正全面展开。&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;span style="color:#000000"&gt;&lt;img height="444" src="https://oscimg.oschina.net/oscnet/up-535d5cbe306167256400f31b96a983f21a3.png" width="300" referrerpolicy="no-referrer"&gt;&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;span style="color:#000000"&gt;&lt;img height="432" src="https://oscimg.oschina.net/oscnet/up-c021a59249f548632845b6a7b9a05d10f5b.png" width="300" referrerpolicy="no-referrer"&gt;&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;span style="color:#000000"&gt;&lt;img height="437" src="https://oscimg.oschina.net/oscnet/up-32976a2d0d2104b3e023b9296bfb6d13634.png" width="300" referrerpolicy="no-referrer"&gt;&lt;/span&gt;&lt;/p&gt; 
+&lt;p style="color:#030303; margin-left:8px; margin-right:8px; text-align:justify"&gt;&lt;span style="color:#000000"&gt;&lt;strong&gt;1.&amp;nbsp;&lt;/strong&gt;&lt;strong&gt;王座易主： 豆包以近 3000 万下载量登顶，DeepSeek 下载量大跌七成&lt;/strong&gt;&lt;/span&gt;&lt;/p&gt; 
+&lt;p style="color:#030303; margin-left:8px; margin-right:8px; text-align:justify"&gt;&lt;span style="color:#000000"&gt;2025 年二季度，AI 助手赛道的下载量榜首位置发生戏剧性更迭。字节跳动旗下的&lt;strong&gt;豆包，凭借稳健的增长策略和强大的生态协同，取代了一季度「断层式」领先的 DeepSeek，成为月均下载量的冠军&lt;/strong&gt;，并在活跃用户规模上进一步缩小差距。&lt;/span&gt;&lt;/p&gt; 
+&lt;p style="color:#030303; margin-left:8px; margin-right:8px; text-align:justify"&gt;&lt;span style="color:#000000"&gt;◆ 数据洞察&lt;/span&gt;&lt;/p&gt; 
+&lt;p style="color:#030303; margin-left:8px; margin-right:8px; text-align:justify"&gt;&lt;span style="color:#000000"&gt;（1）豆包：&lt;strong&gt;二季度月均下载量达到 2981.3 万，位列第一&lt;/strong&gt;，相较于第一季度有 9.5% 的增长。&lt;strong&gt;其 MAU 也从第一季度的 9980.5 万大幅增长 30.4%，达到 1.3 亿&lt;/strong&gt;，稳居行业第二。MAU 与下载量的比值（下载用户的活跃转化效率）从第一季度的约 3.7 倍扩大至约 4.4 倍，显示其庞大的存量用户基础之上，用户粘性仍在增强。&lt;/span&gt;&lt;/p&gt; 
+&lt;p style="color:#030303; margin-left:8px; margin-right:8px; text-align:justify"&gt;&lt;span style="color:#000000"&gt;（2）DeepSeek：一季度的「双冠王」在二季度出现明显回落。&lt;strong&gt;其月均下载量从第一季度惊人的 8111.3 万骤降至 2258.9 万，&lt;/strong&gt;&lt;strong&gt;降幅高达 72.2%&lt;/strong&gt;。尽管其 MAU 仍以近 1.7 亿的规模位居榜首，但相比第一季度的近 1.87 亿，也出现 9.3% 的环比下滑。&lt;/span&gt;&lt;/p&gt; 
+&lt;p style="color:#030303; margin-left:8px; margin-right:8px; text-align:justify"&gt;&lt;span style="color:#000000"&gt;◆ 数据解读&lt;/span&gt;&lt;/p&gt; 
+&lt;p style="color:#030303; margin-left:8px; margin-right:8px; text-align:justify"&gt;&lt;span style="color:#000000"&gt;（1）豆包的生态优势：豆包在第二季度展现了强大的后劲，这背后是字节跳动生态流量的持续灌溉与产品场景的深化布局。特别是其在教育等垂直领域的子应用&lt;strong&gt;「豆包爱学」表现不俗&lt;/strong&gt;&lt;strong&gt;，MAU 达到 756.2 万&lt;/strong&gt;，&lt;strong&gt;成功为豆包主 App 构建了高频、刚需的使用场景，形成了「通用平台+垂直爆款」的双轮驱动模式&lt;/strong&gt;。这种策略不仅带来了稳定的新用户，更重要的是有效提升了用户的留存和活跃度。&lt;/span&gt;&lt;/p&gt; 
+&lt;p style="color:#030303; margin-left:8px; margin-right:8px; text-align:justify"&gt;&lt;span style="color:#000000"&gt;（2）DeepSeek 被其他 AI 应用分流，不再是性价比之王：一方面，DeepSeek 动作寥寥，大版本更新停滞。&lt;strong&gt;曾被寄予厚望的 DeepSeek-R2 模型原计划 5 月初发布，但直至 7 月中旬仍未见踪影，引发市场对其技术迭代能力的质疑&lt;/strong&gt;。&lt;/span&gt;&lt;/p&gt; 
+&lt;p style="color:#030303; margin-left:8px; margin-right:8px; text-align:justify"&gt;&lt;span style="color:#000000"&gt;另一方面，DeepSeek「高性价比」标签正在被市场一点点撕下，进一步加剧了流量的流失。阿里、字节、百度等大厂纷纷推出 API 价格更低的同类模型。蓄势待发的「AI 六小龙」们通过模型更新，也开始在性能和价格上纷纷挑战起 DeepSeek 的性价比。&amp;nbsp;&lt;/span&gt;&lt;/p&gt; 
+&lt;p style="color:#030303; margin-left:8px; margin-right:8px; text-align:justify"&gt;&lt;span style="color:#000000"&gt;QuestMobile 研究总监陈燕在接受《每日经济新闻》记者采访时分析称，&lt;strong&gt;DeepSeek 下滑主要源于其被其他应用接入后，用户被分流。&lt;/strong&gt;&lt;/span&gt;&lt;/p&gt; 
+&lt;p style="color:#030303; margin-left:8px; margin-right:8px; text-align:justify"&gt;&lt;span style="color:#000000"&gt;QuestMobile 数据显示，DeepSeek 的 App 端流量自 4 月起开始下滑。具体来看，5 月流失的 DeepSeek 用户中，6 月有 59.2% 转向使用百度 App，38.6% 转向使用豆包 App，7.0% 转向使用腾讯元宝 App。&lt;/span&gt;&lt;/p&gt; 
+&lt;p style="color:#030303; margin-left:8px; margin-right:8px; text-align:justify"&gt;&lt;span style="color:#000000"&gt;陈燕进一步指出，DeepSeek 属于通用型智能问答产品，在办公、学习、娱乐等垂直场景对用户的深度绑定不足，这也导致其用户吸引力降低。&lt;/span&gt;&lt;/p&gt; 
+&lt;p style="color:#030303; margin-left:8px; margin-right:8px; text-align:justify"&gt;&lt;span style="color:#000000"&gt;&lt;img height="439" src="https://oscimg.oschina.net/oscnet/up-e8d9040e7441bb9dc59fc6d382af92b0a58.png" width="300" referrerpolicy="no-referrer"&gt;&lt;/span&gt;&lt;/p&gt; 
+&lt;p style="color:#030303; margin-left:8px; margin-right:8px; text-align:justify"&gt;&lt;span style="color:#000000"&gt;&lt;strong&gt;2. 「烧钱」后遗症显现：腾讯元宝、Kimi 增长模式迎大考&lt;/strong&gt;&lt;/span&gt;&lt;/p&gt; 
+&lt;p style="color:#030303; margin-left:8px; margin-right:8px; text-align:justify"&gt;&lt;span style="color:#000000"&gt;腾讯元宝和 Kimi 在第二季度不约而同地进入了增长的「冷静期」与「阵痛期」，印证了《2025 年一季度 AI 应用价值榜》中关于「烧钱」模式不可持续的预警。&lt;/span&gt;&lt;/p&gt; 
+&lt;p style="color:#030303; margin-left:8px; margin-right:8px; text-align:justify"&gt;&lt;span style="color:#000000"&gt;（1）腾讯元宝：月均下载量「腰斩」，策略重心转向精细化运营&lt;/span&gt;&lt;/p&gt; 
+&lt;p style="color:#030303; margin-left:8px; margin-right:8px; text-align:justify"&gt;&lt;span style="color:#000000"&gt;腾讯元宝的 MAU 在第二季度保持了微弱增长，从 2358.3 万增至 2502.5 万，增幅约为 6%，守住了行业第三的位置。然而，&lt;strong&gt;腾讯元宝的月均下载量在第一季度 1343.3 万的基础上大幅下跌 54% 至 617.5 万&lt;/strong&gt;。下载量的大幅下滑与活跃用户的稳定形成鲜明对比。&lt;/span&gt;&lt;/p&gt; 
+&lt;p style="color:#030303; margin-left:8px; margin-right:8px; text-align:justify"&gt;&lt;span style="color:#000000"&gt;这组数据清晰地表明，腾讯元宝在第一季度斥约 14 亿元巨资「闪电战」式获取用户的阶段已经结束。第二季度的策略重心已全面转向用户留存和习惯培养，这正是第一季度报告所预见的挑战。&lt;strong&gt;通过高频迭代、接入微信生态等方式获取的庞大用户群，如今需要通过更精细化的运营来沉淀。&lt;/strong&gt;MAU 的稳定说明其在留存上取得了一定成效，但如何激发这部分用户的更高频使用，避免「下载即流失」成为关键。&lt;/span&gt;&lt;/p&gt; 
+&lt;p style="color:#030303; margin-left:8px; margin-right:8px; text-align:justify"&gt;&lt;span style="color:#000000"&gt;（2）Kimi：月均下载量、MAU 均加速下滑&amp;nbsp;&lt;/span&gt;&lt;/p&gt; 
+&lt;p style="color:#030303; margin-left:8px; margin-right:8px; text-align:justify"&gt;&lt;span style="color:#000000"&gt;如果说第一季度的 Kimi 是「增长失速」，那么第二季度则进入了「加速下滑」通道，用户流失问题凸显。&lt;strong&gt;其月均下载量较第一季度跌 57.7% 至 352.9 万&lt;/strong&gt;&lt;strong&gt;。更令人担忧的是，其 MAU 也未能守住，从第一季度的 2165.3 万下降 35% 至 1407.2 万。&lt;/strong&gt;&lt;/span&gt;&lt;/p&gt; 
+&lt;p style="color:#030303; margin-left:8px; margin-right:8px; text-align:justify"&gt;&lt;span style="color:#000000"&gt;Kimi 的困境是第一季度问题的延续和深化。在大幅压缩投流规模后，Kimi 在用户拉新上已无优势。当 DeepSeek、豆包、元宝等以更通用、更高性能或更低成本提供同类应用后，Kimi 在产品差异化上未能及时建立起足够高的壁垒。长文本处理能力曾是其亮点，但随着行业技术普遍进步，这一优势的护城河效应正在减弱。&lt;/span&gt;&lt;/p&gt; 
+&lt;p style="color:#030303; margin-left:8px; margin-right:8px; text-align:justify"&gt;&lt;span style="color:#000000"&gt;Kimi 的案例为所有 AI 创业公司敲响了警钟：在缺乏持续造血能力和强大生态依托的情况下，单纯依赖融资和单一亮点的增长路径，将在巨头林立的战场上面临极大的不确定性。&lt;/span&gt;&lt;/p&gt; 
+&lt;p style="color:#030303; margin-left:8px; margin-right:8px; text-align:justify"&gt;&lt;span style="color:#000000"&gt;&lt;strong&gt;3. 「双雄&lt;strong&gt;」&lt;/strong&gt;格局形成，多数 AI 智能助手流量下滑&lt;/strong&gt;&lt;/span&gt;&lt;/p&gt; 
+&lt;p style="color:#030303; margin-left:8px; margin-right:8px; text-align:justify"&gt;&lt;span style="color:#000000"&gt;二季度的数据揭示了一个残酷的现实：市场洗牌正在提速。除了少数头部玩家外，大多数通用型 AI 助手都陷入了活跃用户下滑的困境。&lt;/span&gt;&lt;/p&gt; 
+&lt;p style="color:#030303; margin-left:8px; margin-right:8px; text-align:justify"&gt;&lt;span style="color:#000000"&gt;◆ 数据洞察&lt;/span&gt;&lt;/p&gt; 
+&lt;p style="color:#030303; margin-left:8px; margin-right:8px; text-align:justify"&gt;&lt;span style="color:#000000"&gt;市场集中度达到了前所未有的程度。根据第二季度数据计算，在主流 AI 智能助手应用中，DeepSeek（MAU 约 1.7 亿）和豆包（MAU 约 1.3 亿）占据了该赛道近 88.9% 的月活跃用户规模，形成了「双寡头垄断」。&lt;/span&gt;&lt;/p&gt; 
+&lt;p style="color:#030303; margin-left:8px; margin-right:8px; text-align:justify"&gt;&lt;span style="color:#000000"&gt;这一格局使得其他竞争者只能在剩余约 10% 市场空间中激烈拼抢，生存压力巨大。除腾讯元宝保持了 6.1% 的平稳增长外，其余 AI 智能助手几乎全线承压。&lt;/span&gt;&lt;/p&gt; 
+&lt;p style="color:#030303; margin-left:8px; margin-right:8px; text-align:justify"&gt;&lt;span style="color:#000000"&gt;&lt;strong&gt;除上文提到的 Kimi 外，智谱清言的 MAU 下降 43.0%，天工的 MAU 下降 39.2%，文小言的 MAU 下降 32.8%，通义也出现了 2.6% 的下滑。&lt;/strong&gt;&lt;/span&gt;&lt;/p&gt; 
+&lt;p style="color:#030303; margin-left:8px; margin-right:8px; text-align:justify"&gt;&lt;span style="color:#000000"&gt;◆ 数据解读&lt;/span&gt;&lt;/p&gt; 
+&lt;p style="color:#030303; margin-left:8px; margin-right:8px; text-align:justify"&gt;&lt;span style="color:#000000"&gt;&lt;strong&gt;产品同质化与用户「审美疲劳」：&lt;/strong&gt;当底层大模型能力趋同，各款 AI 助手在基础对话、问答、知识查询等功能上拉不开显著差距，便陷入了严重的同质化竞争。对于用户而言，在体验过一两款主流应用后，已没有动力去下载和频繁使用功能相似的多个应用。初期的「新鲜感」消退后，用户开始「用脚投票」，向体验更好或场景更贴合的少数应用集中。&lt;/span&gt;&lt;/p&gt; 
+&lt;p style="color:#030303; margin-left:8px; margin-right:8px; text-align:justify"&gt;&lt;span style="color:#000000"&gt;&lt;strong&gt;「生态」与「场景」成为决胜负的关键：&lt;/strong&gt;为何豆包和腾讯元宝的 MAU 能在洗牌中保持增长？答案在于&lt;strong&gt;它们&lt;/strong&gt;&lt;strong&gt;超越了「纯工具」的范畴。&lt;/strong&gt;&lt;/span&gt;&lt;/p&gt; 
+&lt;p style="color:#030303; margin-left:8px; margin-right:8px; text-align:justify"&gt;&lt;span style="color:#000000"&gt;豆包的强劲增长，很大程度上得益于其背后字节跳动的强大生态，通过高频、刚需的场景化服务，将用户牢牢锁定在自己的生态系统内，从而带动了主应用的活跃度。&lt;/span&gt;&lt;/p&gt; 
+&lt;p style="color:#030303; margin-left:8px; margin-right:8px; text-align:justify"&gt;&lt;span style="color:#000000"&gt;腾讯元宝的 MAU 增长则更多体现了其在第一季度巨额投入后，依托微信等社交生态进行用户留存的成果。它将 AI 产品与腾讯的其他服务和流量池深度绑定，构建了独特的用户粘性。&lt;/span&gt;&lt;/p&gt; 
+&lt;p style="color:#030303; margin-left:8px; margin-right:8px; text-align:justify"&gt;&lt;span style="color:#000000"&gt;&lt;strong&gt;独立 AI 助手的生存空间被挤压：&lt;/strong&gt;对于 Kimi、天工、智谱清言等缺乏强大生态背景和独特场景优势的独立 AI 助手而言，生存环境正变得日益严峻。它们既要面对来自巨头「生态军」的降维打击，又要满足用户日益挑剔的目光。当无法为用户提供「非你不可」的价值时，活跃度的下滑便成为难以避免的趋势。&lt;/span&gt;&lt;/p&gt; 
+&lt;p style="color:#030303; margin-left:8px; margin-right:8px; text-align:justify"&gt;&lt;span style="color:#000000"&gt;这一趋势清晰地表明，单纯「聊天机器人」的阶段已经过去。&lt;/span&gt;&lt;/p&gt; 
+&lt;p style="color:#030303; margin-left:8px; margin-right:8px; text-align:justify"&gt;&lt;span style="color:#000000"&gt;&lt;img height="446" src="https://oscimg.oschina.net/oscnet/up-ea4c1a8d2b47416a1248659ba91647b94a6.png" width="300" referrerpolicy="no-referrer"&gt;&lt;/span&gt;&lt;/p&gt; 
+&lt;p style="color:#030303; margin-left:8px; margin-right:8px; text-align:justify"&gt;&lt;span style="color:#000000"&gt;&lt;strong&gt;4. 「AI+场景」冰火两重天：新风口崛起，旧热点降温&lt;/strong&gt;&lt;/span&gt;&lt;/p&gt; 
+&lt;p style="color:#030303; margin-left:8px; margin-right:8px; text-align:justify"&gt;&lt;span style="color:#000000"&gt;与通用 AI 助手领域格局剧变相呼应，第二季度的「AI+场景」应用赛道同样上演了「冰火两重天」的剧情。第一季度的热点应用有的归于沉寂，有的则持续走强，同时，新的细分赛道有「黑马」开始崭露头角。&lt;/span&gt;&lt;/p&gt; 
+&lt;p style="color:#030303; margin-left:8px; margin-right:8px; text-align:justify"&gt;&lt;span style="color:#000000"&gt;（1）营销驱动难以为继&lt;/span&gt;&lt;/p&gt; 
+&lt;p style="color:#030303; margin-left:8px; margin-right:8px; text-align:justify"&gt;&lt;span style="color:#000000"&gt;◆ 典型案例：360 旗下的纳米 AI 搜索是本季度最典型的「过山车」式应用。在第一季度，它曾以近 620% 的下载量增幅和近 1100% 的 MAU 增幅惊艳市场。然而进入第二季度，&lt;strong&gt;其月均下载量环比下跌 80.8%，MAU 也锐减 50%。&lt;/strong&gt;&lt;/span&gt;&lt;/p&gt; 
+&lt;p style="color:#030303; margin-left:8px; margin-right:8px; text-align:justify"&gt;&lt;span style="color:#000000"&gt;◆ 现象解读：&lt;strong&gt;纳米 AI 搜索的昙花一现，深刻揭示了过度依赖创始人和营销事件驱动的增长模式的脆弱性。&lt;/strong&gt;周鸿祎的亲自站台和创新营销在短期内吸引了大量眼球和试用用户。但当营销热度褪去，如果产品本身未能提供超越传统搜索或其他 AI 助手的独特、持续的价值，用户便会迅速流失。这表明，&lt;strong&gt;在 AI 时代，用户的忠诚度建立在「好用」而非「好听」之上。&lt;/strong&gt;&lt;/span&gt;&lt;/p&gt; 
+&lt;p style="color:#030303; margin-left:8px; margin-right:8px; text-align:justify"&gt;&lt;span style="color:#000000"&gt;（2）「AI+教育」成垂直场景「领跑者」&lt;/span&gt;&lt;/p&gt; 
+&lt;p style="color:#030303; margin-left:8px; margin-right:8px; text-align:justify"&gt;&lt;span style="color:#000000"&gt;&lt;strong&gt;◆&amp;nbsp;&lt;/strong&gt;典型案例：以学习辅导为核心的「AI+教育」应用，在用户规模和粘性上已全面超越泛娱乐及生活类应用，成为最成功的垂直场景。&lt;strong&gt;字节旗下的豆包爱学 MAU 为 756.2 万，而作业帮旗下的快对 AI MAU 更是高达 1044.4 万，位列总榜第五，甚至超过了热门的 AIGC 创作应用即梦 AI。&lt;/strong&gt;&lt;/span&gt;&lt;/p&gt; 
+&lt;p style="color:#030303; margin-left:8px; margin-right:8px; text-align:justify"&gt;&lt;span style="color:#000000"&gt;◆ 现象解读：与社交、娱乐等「锦上添花」型需求不同，教育辅导是用户的刚需。这类应用成功地将 AI 能力与查难题、批改作业等高频、具体的学习任务结合，提供了明确的价值，从而获得了极高的用户粘性。它们已经从「AI 玩具」进化为不可或缺的「学习工具」，其庞大且稳定的用户基础，成为 AI 场景化落地的「压舱石」。&lt;/span&gt;&lt;/p&gt; 
+&lt;p style="color:#030303; margin-left:8px; margin-right:8px; text-align:justify"&gt;&lt;span style="color:#000000"&gt;（3）AIGC 创作赛道格局生变：即梦 AI 一家独大，可灵失速&lt;/span&gt;&lt;/p&gt; 
+&lt;p style="color:#030303; margin-left:8px; margin-right:8px; text-align:justify"&gt;&lt;span style="color:#000000"&gt;&lt;strong&gt;◆&amp;nbsp;&lt;/strong&gt;数据表现：第二季度见证了 AI 视频生成赛道的格局初定。第一季度，字节旗下的即梦 AI 和快手旗下的可灵 AI 还被视为并驾齐驱的强劲增长者。然而&lt;strong&gt;仅一个季度后，两者差距迅速拉大。&lt;/strong&gt;&lt;/span&gt;&lt;/p&gt; 
+&lt;p style="color:#030303; margin-left:8px; margin-right:8px; text-align:justify"&gt;&lt;span style="color:#000000"&gt;&lt;strong&gt;即梦 AI 延续强势增长&lt;/strong&gt;，&lt;strong&gt;其 MAU 已达 959 万，环比增长超 68%，月均下载量也保持着 44.6% 的高速增长。&lt;/strong&gt;&lt;/span&gt;&lt;/p&gt; 
+&lt;p style="color:#030303; margin-left:8px; margin-right:8px; text-align:justify"&gt;&lt;span style="color:#000000"&gt;&lt;strong&gt;可灵 AI 则明显失速&lt;/strong&gt;，&lt;strong&gt;其月均下载量环比下滑超过 25%&lt;/strong&gt;，MAU 仅为 113.3 万，不足「即梦 AI」的八分之一，环比下跌 16%。&lt;/span&gt;&lt;/p&gt; 
+&lt;p style="color:#030303; margin-left:8px; margin-right:8px; text-align:justify"&gt;&lt;span style="color:#000000"&gt;◆ 现象解读：即梦 AI 的成功不仅在于技术迭代，更在于其与抖音等内容生态的紧密结合，为用户提供了创作、分享、获得反馈的完整闭环。&lt;/span&gt;&lt;/p&gt; 
+&lt;p style="color:#030303; margin-left:8px; margin-right:8px; text-align:justify"&gt;&lt;span style="color:#000000"&gt;（4）「AI+办公」需求强劲，成新增长引擎&lt;/span&gt;&lt;/p&gt; 
+&lt;p style="color:#030303; margin-left:8px; margin-right:8px; text-align:justify"&gt;&lt;span style="color:#000000"&gt;◆ 典型案例：第二季度的最大特点，是 AI 应用场景正从泛娱乐、泛聊天，向更具生产力属性的「工作学习」场景深度渗透。&lt;strong&gt;以 ima 和 360 文库为代表的 AI 办公类应用异军突起。&lt;/strong&gt;其中，ima 的 MAU 环比增长率高达 190.2%，360 文库的 MAU 增幅也达到 134.5%，两者在 MAU 和下载量增长榜上均名列前茅。&lt;/span&gt;&lt;/p&gt; 
+&lt;p style="color:#030303; margin-left:8px; margin-right:8px; text-align:justify"&gt;&lt;span style="color:#000000"&gt;◆ 现象解读：这一转变标志着用户需求走向成熟。用户不再满足于将 AI 作为「玩具」，而是迫切希望将其作为提升工作和学习效率的工具。AI 文档处理、知识库管理等功能，能够直接解决用户在信息处理、知识沉淀等方面的痛点，因此具备了比泛娱乐应用更高的用户价值和商业化潜力，正成为市场新的增长引擎。&lt;/span&gt;&lt;/p&gt; 
+&lt;p style="color:rgba(0, 0, 0, 0.9); margin-left:8px; margin-right:8px; text-align:justify"&gt;&lt;span style="color:#000000"&gt;《2025 年二季度 AI 应用价值榜》显示，AI 应用市场的竞争已彻底告别野蛮生长的阶段，全面进入围绕用户价值和留存的「存量绞杀」阶段。当前市场正呈现出多重关键趋势：&lt;/span&gt;&lt;/p&gt; 
+&lt;p style="color:#030303; margin-left:8px; margin-right:8px; text-align:justify"&gt;&lt;span style="color:#000000"&gt;&lt;strong&gt;◆ 市场的核心已从「如何让用户下载」，转变为「如何让用户留下」。&lt;/strong&gt;&lt;/span&gt;&lt;/p&gt; 
+&lt;p style="color:rgba(0, 0, 0, 0.9); margin-left:8px; margin-right:8px; text-align:justify"&gt;&lt;span style="color:#000000"&gt;陈燕向每经记者表示，通过强投放带来的流量爆破有一定的局限性，不仅获客成本高昂，用户留存也面临难题。在她看来，与移动互联网时代「流量入口为王」的逻辑不同，AI 产品的价值实现更依赖于对特定场景的深度理解和全方位赋能。但需要注意的是，这并非简单的功能叠加，而是基于对用户任务链路的深度洞察，其本质是解决问题而非提供工具。&lt;/span&gt;&lt;/p&gt; 
+&lt;p style="color:#030303; margin-left:8px; margin-right:8px; text-align:justify"&gt;&lt;span style="color:#000000"&gt;&lt;strong&gt;◆ 「AI+生产力」成核心增长极，AI 应用能否为办公、教育等提供生产力工具，是其成功的关键试金石。&lt;/strong&gt;陈燕指出，「AI+生产力」是一个确定的场景，尤其是「AI+办公」，其场景痛点诸多，如文档处理，数据整合等。QuestMobile 数据显示，5 月「AI+办公」在 PC 网页端的规模达 5000 万，环比增速 12.2%。&lt;/span&gt;&lt;/p&gt; 
+&lt;p style="color:#030303; margin-left:8px; margin-right:8px; text-align:justify"&gt;&lt;span style="color:#000000"&gt;&lt;strong&gt;◆ 用户已完成市场教育，变得更加务实。他们会选择能解决实际问题的「AI 工具」，也会毫不犹豫地抛弃价值模糊、体验不佳的应用。&lt;/strong&gt;&lt;/span&gt;&lt;/p&gt; 
+&lt;p style="color:#030303; margin-left:8px; margin-right:8px; text-align:justify"&gt;&lt;span style="color:#000000"&gt;以 AI 社交赛道（App 端）为例，QuestMobile 数据显示，自今年 2 月起 AI 社交类 App 已出现流量滑坡。以某头部 AI 社交互动 App 为例，其 1 月用户规模为 676 万，6 月规模下滑至 353 万。除了行业重心有所转移外，此类产品退潮的关键原因是用户体验满足度上「不达标」。&lt;/span&gt;&lt;/p&gt; 
+&lt;p style="color:#030303; margin-left:8px; margin-right:8px; text-align:justify"&gt;&lt;span style="color:#000000"&gt;陈燕认为，从数据层面看，这类产品要走出「短期爆红、长期难留」的困境，一方面可以尝试借鉴游戏行业解法，将 AI 角色发展为虚拟偶像（如初音未来），通过构建内容与情感价值闭环，强化长期陪伴、个性化互动、情绪响应等体验，逐步从娱乐向「轻陪护」演进来提升用户粘性；另一方面，可以尝试产品场景的实用化延展，如 AI 生图功能，与社交平台、内容创作工具等深度结合，并通过内容衍生（短视频、周边）来提高流程和商业化变现。&lt;/span&gt;&lt;/p&gt; 
+&lt;p style="color:#030303; margin-left:8px; margin-right:8px; text-align:justify"&gt;&lt;span style="color:#000000"&gt;&lt;strong&gt;◆ 生态协同能力成为 AI 应用在存量竞争中突围的核心支撑。&lt;/strong&gt;而对于没有大平台背书的 AI 应用，陈燕表示，需要避开与大厂的正面竞争，在垂直场景中找到「缝隙市场」。&lt;/span&gt;&lt;/p&gt; 
+&lt;p style="color:#030303; margin-left:8px; margin-right:8px; text-align:justify"&gt;&lt;span style="color:#000000"&gt;可以预见，2025 年下半年的 AI 应用之争将围绕「价值深耕」。陈燕预测，AI 眼镜、AI 耳机、AI PC 等消费电子产品的普及将成为下阶段新爆点。根据市场观察来看，几个头部互联网集团及手机厂商都已经在去年做了提前布局，通过硬件+软件的结合，实现 AI 的落地。&lt;/span&gt;&lt;/p&gt; 
+&lt;p style="color:#030303; margin-left:8px; margin-right:8px; text-align:justify"&gt;&lt;span style="color:#000000"&gt;&lt;strong&gt;◆ 智能体（Agent）领域同样值得关注。&lt;/strong&gt;AI 产品的真正价值在于实现复杂任务的简单处理，而智能体的概念恰恰与此对应。但智能体的爆发核心在于任务闭环能力、场景渗透能力以及生态协同（即平台+开发者共建）。&lt;/span&gt;&lt;/p&gt;
+                                                                                &lt;/div&gt;
+                                                                            </description>
+      <link>https://www.oschina.net/news/361663</link>
+      <guid isPermaLink="false">https://www.oschina.net/news/361663</guid>
+      <pubDate>Thu, 17 Jul 2025 03:57:00 GMT</pubDate>
+      <author>来源: OSCHINA</author>
+    </item>
+    <item>
+      <title>月之暗面发布 Kimi K2 技术报告</title>
+      <description>&lt;div class="content"&gt;
+                                                                    
+                                                        &lt;p&gt;月之暗面（Moonshot AI）发布了其 Kimi K2 模型的完整技术报告，相关文档已上传至 GitHub。&lt;/p&gt; 
+&lt;p&gt;&lt;img height="748" src="https://static.oschina.net/uploads/space/2025/0722/110557_TRxF_2720166.png" width="1080" referrerpolicy="no-referrer"&gt;、&lt;/p&gt; 
+&lt;p&gt;&lt;em&gt;&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fgithub.com%2FMoonshotAI%2FKimi-K2%2Fblob%2Fmain%2Ftech_report.pdf" target="_blank"&gt;https://github.com/MoonshotAI/Kimi-K2/blob/main/tech_report.pdf&lt;/a&gt;&lt;/em&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;strong&gt;一、Kimi K2 是什么？&lt;/strong&gt;&lt;/p&gt; 
+&lt;p&gt;Kimi K2 是一款 Mixture-of-Experts（MoE）架构，的大语言模型，具备：&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt; &lt;p&gt;1.04 万亿参数（Trillion-scale Total Params）&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;激活参数数为 320 亿（Activated Params）&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;高效稳定的训练机制（MuonClip）&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;多阶段后训练（含 RL 自我对齐）&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;在多个领域性能 SOTA，尤其擅长代码、数学、工具使用&lt;/p&gt; &lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;p&gt;换句话说，Kimi K2 是一位既懂编程又会推理、还能灵活使用工具的超级 AI 助手。&lt;/p&gt; 
+&lt;p&gt;&lt;strong&gt;二、为什么说它「强」？&lt;/strong&gt;&lt;/p&gt; 
+&lt;p&gt;从公开评测数据来看，Kimi K2 在众多权威基准上表现优异：&lt;/p&gt; 
+&lt;p&gt;任务类型，测试集，得分，对比领先，软件工程 SWE-Bench 65.8 超 GPT-4.1、Claude 数学竞赛 AIME 2025 49.5 同级模型领先，工具使用 Tau2-Bench 66.1 开源模型最高，编程实战 LiveCodeBench v6 53.7 所有模型最高，通用能力 MMLU-Redux 92.7 超过大多数闭源模型&lt;/p&gt; 
+&lt;p&gt;关键词：非思考设置下的 SOTA、全面领先、高效能&lt;/p&gt; 
+&lt;p&gt;&lt;strong&gt;三、它是怎么训练出来的？&lt;/strong&gt;&lt;/p&gt; 
+&lt;p&gt;Kimi K2 在预训练与后训练阶段均做了大量创新设计。&lt;/p&gt; 
+&lt;ol&gt; 
+ &lt;li&gt;预训练阶段 —— MuonClip 提高稳定性与效率&lt;/li&gt; 
+&lt;/ol&gt; 
+&lt;ul&gt; 
+ &lt;li&gt; &lt;p&gt;使用 Muon 优化器，已在 Kimi K1.5 中证明能极大提升 token 效率；&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;提出 QK-Clip 技术，动态裁剪 attention logits，防止训练不稳定；&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;使用 15.5 万亿 token 进行训练，全程，无损失突刺（loss spike）；&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;架构采用，超稀疏 MoE + 多头隐式注意力（MLA），比 DeepSeek V3 更轻更强。&lt;/p&gt; &lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;ol start="2"&gt; 
+ &lt;li&gt;数据方面 —— 重写技术增强 token 价值&lt;/li&gt; 
+&lt;/ol&gt; 
+&lt;p&gt;为提升每个 token 的学习效率，Kimi 团队采用两类，智能重写：&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt; &lt;p&gt;知识重写：通过多视角、多风格的 prompts 重写原文，增强语言多样性；&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;数学重写：将数学文档转写为「学习笔记」风格，提高理解与推理能力。&lt;/p&gt; &lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;p&gt;此外，还加入跨语种数学翻译数据，让模型更具多语言泛化能力。&lt;/p&gt; 
+&lt;p&gt;&lt;strong&gt;四、后训练阶段：打造真正的 Agent&lt;/strong&gt;&lt;/p&gt; 
+&lt;p&gt;Kimi K2 在后训练中重点强化了「代理式行为」，包括：&lt;/p&gt; 
+&lt;ol&gt; 
+ &lt;li&gt;多阶段指令微调（SFT）&lt;/li&gt; 
+&lt;/ol&gt; 
+&lt;p&gt;构建大规模指令数据集，覆盖知识、代码、推理、对话等多个领域；&lt;/p&gt; 
+&lt;p&gt;利用，工具使用数据合成流水线，让模型学会调用复杂工具完成任务；&lt;/p&gt; 
+&lt;p&gt;采用人类评审 + LLM 评估，保障生成数据的质量与多样性。&lt;/p&gt; 
+&lt;ol start="2"&gt; 
+ &lt;li&gt;强化学习（RL）自我对齐机制&lt;/li&gt; 
+&lt;/ol&gt; 
+&lt;p&gt;Verifiable RL：在数学、逻辑、代码等有明确正确性的任务中进行强化；&lt;/p&gt; 
+&lt;p&gt;Self-Critique RL：让模型自我比较多个输出，根据评分标准自行打分学习；&lt;/p&gt; 
+&lt;p&gt;自适应训练策略：包括 token budget 控制、探索性 temperature 衰减等；&lt;/p&gt; 
+&lt;p&gt;简而言之，Kimi 不再仅仅「模仿人」，而是在不断尝试、思考、优化自己的行为，朝「具备目标感与行动能力的智能体」迈进。&lt;/p&gt; 
+&lt;p&gt;&lt;strong&gt;五、开放性与社区友好&lt;/strong&gt;&lt;/p&gt; 
+&lt;p&gt;Kimi K2 已在 HuggingFace 完整开源，包括：&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt; &lt;p&gt;base 模型与 instruct 模型 checkpoint；&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;完整技术报告；&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;官方评测基准对齐，方便社区复现与改进。&lt;/p&gt; &lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;p&gt;地址：&lt;a href="https://www.oschina.net/action/GoToLink?url=http%3A%2F%2Fhuggingface.co%2Fmoonshotai%2FKimi-K2-Instruct" target="_blank"&gt;huggingface.co/moonshotai/Kimi-K2-Instruct&lt;/a&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;strong&gt;六、总结&lt;/strong&gt;&lt;/p&gt; 
+&lt;p&gt;Kimi K2 是当前开源 LLM 中少有的兼具：&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt; &lt;p&gt;高性能（全面领先多数模型）&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;高稳定性（训练过程无损失抖动）&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;高代理能力（可作为工具使用者、任务执行者）&lt;/p&gt; &lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;p&gt;的「通才型大模型」。&lt;/p&gt; 
+&lt;p&gt;它不仅在 benchmark 上发光，更重要的是为构建「能感知、能计划、能行动」的通用智能代理打下了坚实基础。&lt;/p&gt;
+                                                                                &lt;/div&gt;
+                                                                            </description>
+      <link>https://www.oschina.net/news/361646</link>
+      <guid isPermaLink="false">https://www.oschina.net/news/361646</guid>
+      <pubDate>Thu, 17 Jul 2025 03:06:00 GMT</pubDate>
+      <author>来源: OSCHINA</author>
+    </item>
+    <item>
+      <title>智谱 Z.ai 推出开源项目阅读工具 Zread.ai</title>
+      <description>&lt;div class="content"&gt;
+                                                                    
+                                                        &lt;p&gt;Z.ai（智谱）公司&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fx.com%2FZread_ai%2Fstatus%2F1947321954777891012"&gt;上线&lt;/a&gt;了一款名为 Zread.AI&amp;nbsp;的新工具，旨在帮助用户阅读和理解复杂的开源项目。&lt;/p&gt; 
+&lt;p&gt;&lt;img alt="" src="https://static.oschina.net/uploads/space/2025/0722/104950_EX44_2720166.png" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p&gt;Zread.AI 的功能类似于 Cognition 推出的 DeepWiki，优点是支持中文，目前已经索引了大部分热门开源项目，冷门代码仓库可以申请发起索引。&lt;/p&gt; 
+&lt;p&gt;具体来说，用户只需粘贴一个 GitHub 链接，该工具即可生成清晰的项目结构和易于遵循的指南。Zread.AI 还推出了一个名为 「Buzz」 的特色功能，该功能能够首次聚合展示来自社区的真实洞察，包括相关的 commits、issues 和新闻。&lt;/p&gt;
+                                                                                &lt;/div&gt;
+                                                                            </description>
+      <link>https://www.oschina.net/news/361635</link>
+      <guid isPermaLink="false">https://www.oschina.net/news/361635</guid>
+      <pubDate>Thu, 17 Jul 2025 02:50:00 GMT</pubDate>
+      <author>来源: OSCHINA</author>
+    </item>
     <item>
       <title>Qwen3 旗舰版更新：Qwen3-235B-A22B-Instruct-2507-FP8</title>
       <description>&lt;div class="content"&gt;
@@ -42,37 +669,107 @@
                                                                             </description>
       <link>https://www.oschina.net/news/361625</link>
       <guid isPermaLink="false">https://www.oschina.net/news/361625</guid>
-      <pubDate>Tue, 22 Jul 2025 02:36:15 GMT</pubDate>
+      <pubDate>Thu, 17 Jul 2025 02:36:00 GMT</pubDate>
       <author>来源: OSCHINA</author>
     </item>
     <item>
       <title>鸿蒙 NEXT 开发案例：世界时间表</title>
       <description>&lt;div class="content"&gt;
                                                                     
-                                                        ********************************************************************************************************************
-    ********************************************************************************************************************
-    ********************************************************************************************************************
-    ********************************************************************************************************************
+                                                        &lt;p style="color:#555555; margin-left:0; margin-right:0; text-align:center"&gt;&lt;img alt="13.png" height="1299" src="https://oscimg.oschina.net/oscnet//9e1a403238a9a8ec08e5975de9eb5f7f.png" width="600" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p style="color:#555555; margin-left:0; margin-right:0; text-align:left"&gt;【引言】&lt;/p&gt; 
+&lt;p style="color:#555555; margin-left:0; margin-right:0; text-align:left"&gt;本案例将展示如何使用鸿蒙 NEXT 框架开发一个简单的世界时钟应用程序。该应用程序能够展示多个城市的当前时间，并支持搜索功能，方便用户快速查找所需城市的时间信息。在本文中，我们将详细介绍应用程序的实现思路，包括如何获取时区信息、更新城市时间、以及如何实现搜索高亮功能。&lt;/p&gt; 
+&lt;p style="color:#555555; margin-left:0; margin-right:0; text-align:left"&gt;【环境准备】&lt;/p&gt; 
+&lt;p style="color:#555555; margin-left:0; margin-right:0; text-align:left"&gt;·&amp;nbsp;操作系统：Windows 10&lt;/p&gt; 
+&lt;p style="color:#555555; margin-left:0; margin-right:0; text-align:left"&gt;·&amp;nbsp;开发工具：DevEco Studio NEXT Beta1 Build Version: 5.0.3.806&lt;/p&gt; 
+&lt;p style="color:#555555; margin-left:0; margin-right:0; text-align:left"&gt;·&amp;nbsp;目标设备：华为 Mate60 Pro&lt;/p&gt; 
+&lt;p style="color:#555555; margin-left:0; margin-right:0; text-align:left"&gt;·&amp;nbsp;开发语言：ArkTS&lt;/p&gt; 
+&lt;p style="color:#555555; margin-left:0; margin-right:0; text-align:left"&gt;·&amp;nbsp; 框架：ArkUI&lt;/p&gt; 
+&lt;p style="color:#555555; margin-left:0; margin-right:0; text-align:left"&gt;·&amp;nbsp;API 版本：API 12&lt;/p&gt; 
+&lt;p style="color:#555555; margin-left:0; margin-right:0; text-align:left"&gt;【实现思路】&lt;/p&gt; 
+&lt;p style="color:#555555; margin-left:0; margin-right:0; text-align:left"&gt;1、&amp;nbsp;组件结构设计&lt;/p&gt; 
+&lt;p style="color:#555555; margin-left:0; margin-right:0; text-align:left"&gt;我们的应用程序主要由两个核心组件构成：CityTimeInfo 类和 WorldClockApp 组件。CityTimeInfo 类用于存储每个城市的名称、当前时间和时区信息。WorldClockApp 组件则负责管理城市时间列表、搜索功能以及用户界面。&lt;/p&gt; 
+&lt;p style="color:#555555; margin-left:0; margin-right:0; text-align:left"&gt;2、&amp;nbsp;获取时区信息&lt;/p&gt; 
+&lt;p style="color:#555555; margin-left:0; margin-right:0; text-align:left"&gt;在应用程序启动时，我们需要获取可用的时区信息。通过调用 i18n.TimeZone.getAvailableIDs() 方法，我们可以获取所有可用的时区 ID。接着，我们使用这些 ID 创建 CityTimeInfo 实例，并将其添加到城市时间列表中。为了确保用户能够看到当前时间，我们还添加了北京的时间信息作为默认城市。&lt;/p&gt; 
+&lt;p style="color:#555555; margin-left:0; margin-right:0; text-align:left"&gt;3、&amp;nbsp;更新时间逻辑&lt;/p&gt; 
+&lt;p style="color:#555555; margin-left:0; margin-right:0; text-align:left"&gt;为了实时更新城市的当前时间，我们在 updateAllCityTimes 方法中实现了时间更新逻辑。通过获取系统的语言环境和相应的日历对象，我们可以根据城市的时区 ID 获取当前的年、月、日、时、分、秒，并将其格式化为字符串。这个方法会在页面显示时每秒调用一次，确保时间信息的准确性。&lt;/p&gt; 
+&lt;p style="color:#555555; margin-left:0; margin-right:0; text-align:left"&gt;4、&amp;nbsp;搜索功能实现&lt;/p&gt; 
+&lt;p style="color:#555555; margin-left:0; margin-right:0; text-align:left"&gt;为了提升用户体验，我们实现了搜索功能，允许用户通过输入关键词来筛选城市。在 highlightSearchText 方法中，我们对城市名称进行分段处理，将匹配的关键词高亮显示。通过这种方式，用户可以快速找到所需的城市，并且高亮的文本能够提供更好的视觉反馈。&lt;/p&gt; 
+&lt;p style="color:#555555; margin-left:0; margin-right:0; text-align:left"&gt;5、用户界面构建&lt;/p&gt; 
+&lt;p style="color:#555555; margin-left:0; margin-right:0; text-align:left"&gt;最后，我们使用 build 方法构建用户界面。界面包括一个搜索框、城市名称和时间的显示区域。我们使用了 Column 和 Row 组件来布局，并通过设置样式属性来美化界面。滚动区域的实现使得用户可以方便地浏览多个城市的信息。&lt;/p&gt; 
+&lt;p style="color:#555555; margin-left:0; margin-right:0; text-align:left"&gt;【完整代码】&lt;/p&gt; 
+&lt;p style="color:#555555; margin-left:0; margin-right:0; text-align:center"&gt;&lt;img alt="14.png" height="852" src="https://oscimg.oschina.net/oscnet//a80c1a03d5828132e66a2e213b7dac3e.png" width="600" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p style="color:#555555; margin-left:0; margin-right:0; text-align:center"&gt;&lt;img alt="15.png" height="600" src="https://oscimg.oschina.net/oscnet//9626e9485930401a536e260cdb337778.png" width="600" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p style="color:#555555; margin-left:0; margin-right:0; text-align:center"&gt;&lt;img alt="16.png" height="988" src="https://oscimg.oschina.net/oscnet//0468fc4033059da06fb5dee20173efbb.png" width="600" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p style="color:#555555; margin-left:0; margin-right:0; text-align:center"&gt;&lt;img alt="17.png" height="387" src="https://oscimg.oschina.net/oscnet//b39618852022c3fd9bd2236d899799ed.png" width="600" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p style="color:#555555; margin-left:0; margin-right:0; text-align:center"&gt;&lt;img alt="18.png" height="880" src="https://oscimg.oschina.net/oscnet//d809a1cefffc5faf12072b1c69c626f1.png" width="600" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p style="color:#555555; margin-left:0; margin-right:0; text-align:center"&gt;&lt;img alt="19.png" height="818" src="https://oscimg.oschina.net/oscnet//21d7771945aeaa8b7a2c2164c4aa16fe.png" width="600" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p style="color:#555555; margin-left:0; margin-right:0; text-align:left"&gt;踏入鸿蒙世界的敲门砖，标志着您在技术征途上的全新起点，提升就业竞争力，获得行业认可，点亮职业成长先机，快人一步抢占未来应用开发赛道！&amp;nbsp;&lt;/p&gt; 
+&lt;p&gt;&amp;nbsp;&lt;/p&gt;
                                                                                 &lt;/div&gt;
                                                                             </description>
       <link>https://www.oschina.net/news/361623</link>
       <guid isPermaLink="false">https://www.oschina.net/news/361623</guid>
-      <pubDate>Tue, 22 Jul 2025 02:33:15 GMT</pubDate>
+      <pubDate>Thu, 17 Jul 2025 02:32:00 GMT</pubDate>
       <author>来源: 资讯</author>
     </item>
     <item>
       <title>鸿蒙 NEXT 实战：构建安全高效的在线支付应用</title>
       <description>&lt;div class="content"&gt;
                                                                     
-                                                        ********************************************************************************************************************
-    ********************************************************************************************************************
-    ********************************************************************************************************************
-    ********************************************************************************************************************
+                                                        &lt;p style="color:#555555; margin-left:0; margin-right:0; text-align:left"&gt;本文旨在深入探讨华为鸿蒙 HarmonyOS NEXT 系统（截止目前 API12）在开发多语言电商平台方面的技术细节，基于实际开发实践进行总结。主要作为技术分享与交流载体，难免错漏，欢迎各位同仁提出宝贵意见和问题，以便共同进步。本文为原创内容，任何形式的转载必须注明出处及原作者。&lt;/p&gt; 
+&lt;p style="color:#555555; margin-left:0; margin-right:0; text-align:left"&gt;在数字化金融蓬勃发展的今天，在线支付应用的安全性和稳定性至关重要。本次，我们将基于鸿蒙 NEXT 系统，深入探讨如何开发一个功能完备的在线支付应用，涵盖从架构设计到核心功能实现的全过程，全面展现鸿蒙 NEXT 在金融科技领域的强大实力。&lt;/p&gt; 
+&lt;p style="color:#555555; margin-left:0; margin-right:0; text-align:left"&gt;&lt;strong&gt;一、架构设计：Clean Architecture 的应用&lt;/strong&gt;&lt;/p&gt; 
+&lt;p style="color:#555555; margin-left:0; margin-right:0; text-align:left"&gt;&lt;strong&gt;（一）Clean Architecture 概述&lt;/strong&gt;&lt;/p&gt; 
+&lt;p style="color:#555555; margin-left:0; margin-right:0; text-align:left"&gt;Clean Architecture 是一种分层架构模式，将应用划分为多个独立的层次，每个层次都有明确的职责，使得代码结构清晰、易于维护和测试。在在线支付应用中，这种架构能够有效隔离业务逻辑、数据存储和用户界面，提高应用的安全性和稳定性。&lt;/p&gt; 
+&lt;p style="color:#555555; margin-left:0; margin-right:0; text-align:left"&gt;&lt;strong&gt;（二）表现层（Presentation Layer）&lt;/strong&gt;&lt;/p&gt; 
+&lt;p style="color:#555555; margin-left:0; margin-right:0; text-align:left"&gt;表现层负责与用户进行交互，展示应用的界面和接收用户输入。在在线支付应用中，包括登录界面、银行卡绑定界面、支付密码设置界面、支付订单界面等。我们将使用 ArkUI 框架构建美观、易用的用户界面，确保用户能够流畅地进行操作。例如，通过 TextField 组件接收用户输入的银行卡号、密码等信息，Button 组件实现各种操作按钮的功能。&lt;/p&gt; 
+&lt;p style="color:#555555; margin-left:0; margin-right:0; text-align:left"&gt;&lt;strong&gt;（三）应用层（Application Layer）&lt;/strong&gt;&lt;/p&gt; 
+&lt;p style="color:#555555; margin-left:0; margin-right:0; text-align:left"&gt;应用层作为表现层和领域层之间的桥梁，负责协调业务逻辑的执行。它接收表现层的用户请求，调用领域层的业务逻辑处理方法，并将处理结果返回给表现层。例如，当用户点击银行卡绑定按钮时，应用层负责验证用户输入的信息格式，然后调用领域层的银行卡绑定方法进行实际的绑定操作。&lt;/p&gt; 
+&lt;p style="color:#555555; margin-left:0; margin-right:0; text-align:left"&gt;&lt;strong&gt;（四）领域层（Domain Layer）&lt;/strong&gt;&lt;/p&gt; 
+&lt;p style="color:#555555; margin-left:0; margin-right:0; text-align:left"&gt;领域层包含了应用的核心业务逻辑，如银行卡绑定逻辑、支付密码验证逻辑、支付订单处理逻辑等。它不依赖于任何外部框架或技术，只专注于业务规则的实现。例如，在银行卡绑定逻辑中，验证银行卡号的有效性、与银行系统进行交互验证等操作都在领域层完成。&lt;/p&gt; 
+&lt;p style="color:#555555; margin-left:0; margin-right:0; text-align:left"&gt;&lt;strong&gt;（五）数据层（Data Layer）&lt;/strong&gt;&lt;/p&gt; 
+&lt;p style="color:#555555; margin-left:0; margin-right:0; text-align:left"&gt;数据层负责数据的存储和获取，与数据库、网络服务等进行交互。在在线支付应用中，它负责存储用户的银行卡信息、支付密码等敏感数据（经过加密处理），以及与支付服务器进行通信，获取支付结果等信息。我们将使用鸿蒙 NEXT 的安全存储 API 和网络通信 API 来实现数据层的功能。&lt;/p&gt; 
+&lt;p style="color:#555555; margin-left:0; margin-right:0; text-align:left"&gt;&lt;strong&gt;（六）各层之间的依赖关系&lt;/strong&gt;&lt;/p&gt; 
+&lt;p style="color:#555555; margin-left:0; margin-right:0; text-align:left"&gt;Clean Architecture 强调各层之间的单向依赖，表现层依赖于应用层，应用层依赖于领域层，领域层依赖于数据层。这种依赖关系确保了各层的独立性和可测试性，使得应用的维护和扩展更加容易。&lt;/p&gt; 
+&lt;p style="color:#555555; margin-left:0; margin-right:0; text-align:left"&gt;&lt;strong&gt;二、权限申请与安全机制&lt;/strong&gt;&lt;/p&gt; 
+&lt;p style="color:#555555; margin-left:0; margin-right:0; text-align:left"&gt;&lt;strong&gt;（一）权限机制与安全原则&lt;/strong&gt;&lt;/p&gt; 
+&lt;p style="color:#555555; margin-left:0; margin-right:0; text-align:left"&gt;在线支付应用涉及用户的敏感信息和资金交易，安全是首要任务。鸿蒙 NEXT 的权限机制为我们提供了坚实的安全保障，确保应用在合法、安全的前提下获取用户授权，保护用户数据和资金安全。&lt;/p&gt; 
+&lt;p style="color:#555555; margin-left:0; margin-right:0; text-align:left"&gt;&lt;strong&gt;（二）用户授权的应用&lt;/strong&gt;&lt;/p&gt; 
+&lt;p style="color:#555555; margin-left:0; margin-right:0; text-align:left"&gt;&lt;strong&gt;1.&amp;nbsp;读取剪贴板权限（用于粘贴银行卡号）&lt;/strong&gt;&lt;br&gt; 当用户在银行卡绑定界面选择粘贴银行卡号时，应用需要申请读取剪贴板权限（ohos.permission.READ_PASTEBOARD）。在用户点击粘贴按钮时，应用应动态申请该权限。例如：&lt;/p&gt; 
+&lt;p style="color:#555555; margin-left:0; margin-right:0; text-align:center"&gt;&lt;img alt="5.png" height="254" src="https://oscimg.oschina.net/oscnet//60149314fc463ad5c215f21249360d7f.png" width="600" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p style="color:#555555; margin-left:0; margin-right:0; text-align:center"&gt;&lt;img alt="6.png" height="286" src="https://oscimg.oschina.net/oscnet//6e60984067e9a6d07f930aa0b63c5abe.png" width="600" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p style="color:#555555; margin-left:0; margin-right:0; text-align:left"&gt;&lt;strong&gt;（三）安全控件的使用&lt;/strong&gt;&lt;/p&gt; 
+&lt;p style="color:#555555; margin-left:0; margin-right:0; text-align:left"&gt;&lt;strong&gt;1.&amp;nbsp;粘贴控件（读取银行卡号）&lt;/strong&gt;&lt;br&gt; 为了方便用户输入银行卡号，我们使用粘贴控件。当用户在银行卡号输入框点击粘贴按钮时，应用调用粘贴控件读取剪贴板中的银行卡号。例如：&lt;/p&gt; 
+&lt;p style="color:#555555; margin-left:0; margin-right:0; text-align:center"&gt;&lt;img alt="7.png" height="305" src="https://oscimg.oschina.net/oscnet//683462379734b38e03e2355e28af71a4.png" width="600" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p style="color:#555555; margin-left:0; margin-right:0; text-align:left"&gt;用户点击粘贴控件后，应用将读取到的银行卡号填充到输入框中，方便用户操作。&lt;/p&gt; 
+&lt;p style="color:#555555; margin-left:0; margin-right:0; text-align:left"&gt;&lt;strong&gt;三、核心功能实现&lt;/strong&gt;&lt;/p&gt; 
+&lt;p style="color:#555555; margin-left:0; margin-right:0; text-align:left"&gt;&lt;strong&gt;（一）银行卡绑定功能&lt;/strong&gt;&lt;/p&gt; 
+&lt;p style="color:#555555; margin-left:0; margin-right:0; text-align:left"&gt;&lt;strong&gt;信息验证&lt;/strong&gt;&lt;br&gt; 在用户输入银行卡号、开户行、持卡人姓名等信息后，应用在应用层进行初步的信息格式验证，如银行卡号的位数、开户行的有效性等。然后在领域层，通过与银行系统的接口（假设通过网络通信 API 与银行服务器进行交互）进行更严格的验证，确保银行卡信息的准确性和可用性。&lt;/p&gt; 
+&lt;p style="color:#555555; margin-left:0; margin-right:0; text-align:left"&gt;&lt;strong&gt;数据加密与存储&lt;/strong&gt;&lt;br&gt; 验证通过后，在数据层对银行卡信息进行加密处理，然后存储到本地安全存储区域（使用鸿蒙 NEXT 的安全存储 API）。加密算法可以选择行业标准的加密算法，如 AES 等，确保用户银行卡信息的安全性。例如：&lt;/p&gt; 
+&lt;p style="color:#555555; margin-left:0; margin-right:0; text-align:center"&gt;&lt;img alt="8.png" height="210" src="https://oscimg.oschina.net/oscnet//f821f164c2b8677eb862bc487b5e1ccc.png" width="600" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p style="color:#555555; margin-left:0; margin-right:0; text-align:left"&gt;&lt;strong&gt;（二）&amp;nbsp;支付密码设置功能&lt;/strong&gt;&lt;/p&gt; 
+&lt;p style="color:#555555; margin-left:0; margin-right:0; text-align:left"&gt;&lt;strong&gt;1.密码强度验证&lt;/strong&gt;&lt;br&gt; 用户设置支付密码时，在应用层对密码强度进行验证，要求密码包含字母、数字、特殊字符等，且长度符合要求。例如：&lt;/p&gt; 
+&lt;p style="color:#555555; margin-left:0; margin-right:0; text-align:center"&gt;&lt;img alt="9.png" height="107" src="https://oscimg.oschina.net/oscnet//4d35a3b647cc362ac7c597c9a474b320.png" width="600" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p style="color:#555555; margin-left:0; margin-right:0; text-align:left"&gt;&lt;strong&gt;2.密码加密与存储&lt;/strong&gt;&lt;br&gt; 支付密码同样需要进行加密处理后存储到本地安全存储区域。加密方式与银行卡信息加密类似，确保密码的安全性。例如：&lt;/p&gt; 
+&lt;p style="color:#555555; margin-left:0; margin-right:0; text-align:center"&gt;&lt;img alt="10.png" height="128" src="https://oscimg.oschina.net/oscnet//8a1436b5787ec08bc0d85c500d5013fb.png" width="600" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p style="color:#555555; margin-left:0; margin-right:0; text-align:left"&gt;&lt;strong&gt;（三）&amp;nbsp;支付订单功能&lt;/strong&gt;&lt;/p&gt; 
+&lt;p style="color:#555555; margin-left:0; margin-right:0; text-align:left"&gt;&lt;strong&gt;1、订单信息生成与加密&lt;/strong&gt;&lt;br&gt; 当用户发起支付订单时，应用在应用层生成订单信息，包括商品信息、金额、订单号等，然后在领域层对订单信息进行加密处理（可以使用与银行卡信息不同的加密密钥）。例如：&lt;/p&gt; 
+&lt;p style="color:#555555; margin-left:0; margin-right:0; text-align:center"&gt;&lt;img alt="11.png" height="210" src="https://oscimg.oschina.net/oscnet//d9815700ea5826789f49e561bb41de1b.png" width="600" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p style="color:#555555; margin-left:0; margin-right:0; text-align:left"&gt;&lt;strong&gt;2、&amp;nbsp;发送支付请求与接收结果&lt;/strong&gt;&lt;br&gt; 使用网络通信 API 将加密后的订单信息发送到支付服务器，支付服务器进行解密和验证后，返回支付结果。应用接收支付结果并在表现层展示给用户。例如：&lt;/p&gt; 
+&lt;p style="color:#555555; margin-left:0; margin-right:0; text-align:center"&gt;&lt;img alt="12.png" height="290" src="https://oscimg.oschina.net/oscnet//e58f3e879a02a2b81cdf9cec8efe3e3f.png" width="600" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p style="color:#555555; margin-left:0; margin-right:0; text-align:left"&gt;&lt;strong&gt;（四）安全功能&lt;/strong&gt;&lt;/p&gt; 
+&lt;p style="color:#555555; margin-left:0; margin-right:0; text-align:left"&gt;&lt;strong&gt;防止数据泄露&lt;/strong&gt;&lt;br&gt; 除了对敏感数据进行加密存储外，应用在运行过程中要确保数据在内存中的安全。例如，在处理银行卡信息和支付密码时，尽量减少数据在内存中的停留时间，使用后及时清除。同时，防止应用被调试或反编译，通过鸿蒙 NEXT 的安全机制，如代码混淆、加固等手段，增加恶意者获取数据的难度。&lt;/p&gt; 
+&lt;p style="color:#555555; margin-left:0; margin-right:0; text-align:left"&gt;&lt;strong&gt;防止恶意恶意&lt;/strong&gt;&lt;br&gt; 在网络通信方面，使用安全的网络协议（如 HTTPS），对网络请求进行签名和验证，防止中间人恶意和恶意数据。在应用层和领域层，对用户输入进行严格的验证和过滤，防止 SQL XX、XSS 恶意等常见的网络恶意手段。例如，在处理用户输入的订单信息时，对特殊字符进行转义处理，防止 SQL XX 恶意。&lt;/p&gt; 
+&lt;p style="color:#555555; margin-left:0; margin-right:0; text-align:left"&gt;&lt;strong&gt;四、总结与展望&lt;/strong&gt;&lt;/p&gt; 
+&lt;p style="color:#555555; margin-left:0; margin-right:0; text-align:left"&gt;通过本次实战，我们成功构建了一个基于鸿蒙 NEXT 系统的在线支付应用，涵盖了银行卡绑定、支付密码设置和支付订单等核心功能。在开发过程中，我们深入运用了鸿蒙 NEXT 的 Clean Architecture 架构、权限机制、安全控件、剪贴板操作和网络操作等关键技术，确保了应用的安全性、稳定性和功能性。&lt;/p&gt; 
+&lt;p style="color:#555555; margin-left:0; margin-right:0; text-align:left"&gt;展望未来，随着金融科技的不断发展和用户需求的日益多样化，我们可以进一步优化在线支付应用的功能。例如，引入生物识别技术（如指纹识别、人脸识别），提升支付的便捷性和安全性。同时，加强与更多金融机构和商家的合作，拓展支付场景，为用户提供更加全面、便捷的支付服务。希望本文能够为鸿蒙 NEXT 同行者在金融应用开发领域提供有益的参考和借鉴，共同推动鸿蒙 NEXT 在金融科技领域的应用发展。&lt;/p&gt; 
+&lt;p style="color:#555555; margin-left:0; margin-right:0; text-align:left"&gt;踏入鸿蒙世界的敲门砖，标志着您在技术征途上的全新起点，提升就业竞争力，获得行业认可，点亮职业成长先机，快人一步抢占未来应用开发赛道！&lt;/p&gt;
                                                                                 &lt;/div&gt;
                                                                             </description>
       <link>https://www.oschina.net/news/361621</link>
       <guid isPermaLink="false">https://www.oschina.net/news/361621</guid>
-      <pubDate>Tue, 22 Jul 2025 02:29:15 GMT</pubDate>
+      <pubDate>Thu, 17 Jul 2025 02:28:00 GMT</pubDate>
       <author>来源: 资讯</author>
     </item>
     <item>
@@ -90,7 +787,7 @@
                                                                             </description>
       <link>https://www.oschina.net/news/361618</link>
       <guid isPermaLink="false">https://www.oschina.net/news/361618</guid>
-      <pubDate>Tue, 22 Jul 2025 02:27:15 GMT</pubDate>
+      <pubDate>Thu, 17 Jul 2025 02:26:00 GMT</pubDate>
       <author>来源: OSCHINA</author>
     </item>
     <item>
@@ -127,7 +824,7 @@
                                                                             </description>
       <link>https://www.oschina.net/news/361613</link>
       <guid isPermaLink="false">https://www.oschina.net/news/361613</guid>
-      <pubDate>Tue, 22 Jul 2025 02:17:15 GMT</pubDate>
+      <pubDate>Thu, 17 Jul 2025 02:16:00 GMT</pubDate>
       <author>来源: OSCHINA</author>
     </item>
     <item>
@@ -208,7 +905,7 @@
                                                                             </description>
       <link>https://my.oschina.net/koderover/blog/18043823</link>
       <guid isPermaLink="false">https://my.oschina.net/koderover/blog/18043823</guid>
-      <pubDate>Tue, 22 Jul 2025 02:04:15 GMT</pubDate>
+      <pubDate>Thu, 17 Jul 2025 02:04:00 GMT</pubDate>
       <author>原创</author>
     </item>
     <item>
@@ -244,336 +941,6 @@
       <link>https://www.oschina.net/news/361545</link>
       <guid isPermaLink="false">https://www.oschina.net/news/361545</guid>
       <pubDate>Wed, 16 Jul 2025 11:32:00 GMT</pubDate>
-      <author>来源: OSCHINA</author>
-    </item>
-    <item>
-      <title>让代码更可靠的小技巧：边写代码边证明它能正确运行</title>
-      <description>&lt;div class="content"&gt;
-                                                                    
-                                                        &lt;p&gt;让你的代码更可靠？秘诀是在脑中「写证明」！&lt;/p&gt; 
-&lt;p&gt;有网友分享了一个写代码时的小技巧，引发了大量程序员的共鸣。这个技巧就是：&lt;strong&gt;边写代码边在脑中「证明」它会正确运行&lt;/strong&gt;。&lt;/p&gt; 
-&lt;p&gt;这是一个技巧，但其实更像一种思维习惯：在写每一行代码的同时，不断验证它的逻辑是否自洽、是否会出错。当这种思维方式练熟之后，很多人会惊喜地发现：自己的代码常常一次就能跑通，甚至无需调试。&lt;/p&gt; 
-&lt;p&gt;具体如何「证明」呢？Matthew 提供了五个实战中常用的思路：&lt;/p&gt; 
-&lt;ol&gt; 
- &lt;li&gt;&lt;strong&gt;单调性&lt;/strong&gt;&lt;/li&gt; 
-&lt;/ol&gt; 
-&lt;p&gt;程序中的某些状态一旦更新，就不该回退，比如「已完成的任务」「增长的日志」等。想象某个状态只能往一个方向变化，就能排除很多可能出错的路径。&lt;/p&gt; 
-&lt;ol start="2"&gt; 
- &lt;li&gt;&lt;strong&gt;前置条件 / 后置条件&lt;/strong&gt;&lt;/li&gt; 
-&lt;/ol&gt; 
-&lt;p&gt;明确函数「执行前必须成立」和「执行后必须成立」的条件，从而帮助你设计测试用例 &amp;amp; 写断言。如果某个函数的前/后置条件说不清楚，说明它本身就写得不清楚，值得重构！&lt;/p&gt; 
-&lt;ol start="3"&gt; 
- &lt;li&gt;&lt;strong&gt;不变量&lt;/strong&gt;&lt;/li&gt; 
-&lt;/ol&gt; 
-&lt;p&gt;不变量是贯穿整个程序生命周期必须保持不变的条件。把程序拆成小步骤，每一步都必须守住这个不变量，整体自然可靠。&lt;/p&gt; 
-&lt;p&gt;当你发现系统变得诡异或时好时坏时，往往是某个关键不变量被偷偷破坏了。&lt;/p&gt; 
-&lt;ul&gt; 
- &lt;li&gt;隔离变化&lt;/li&gt; 
-&lt;/ul&gt; 
-&lt;p&gt;代码的每一次改动，都有一个「爆炸半径」。理想情况下，变化应尽量局限在本模块内部，而不是牵一发而动全身。&lt;/p&gt; 
-&lt;p&gt;可以利用模块边界或接口作为防火墙，贯彻「开闭原则」：加功能是加代码，而不是改旧代码。&lt;/p&gt; 
-&lt;ul&gt; 
- &lt;li&gt;归纳法&lt;/li&gt; 
-&lt;/ul&gt; 
-&lt;p&gt;当你面对递归结构（比如树、列表）或写递归函数时，用数学归纳思维最自然。先证明最简单情况是正确的。再假设子结构已经正确，然后证明更大结构也正确。&lt;/p&gt; 
-&lt;p&gt;作者在文章最后一段抛出了一个核心概念：Proof-affinity，直译是「可证明性」。&lt;/p&gt; 
-&lt;p&gt;简单来说就是，你写的代码，能不能轻松地用逻辑说服自己它不会出错。&lt;/p&gt; 
-&lt;p&gt;不依赖测试、不需要日志，只靠逻辑推导，你就能大致确信这段逻辑的正确性，这种代码往往设计得很优秀。&lt;/p&gt; 
-&lt;p&gt;上述的这些技巧，不仅能帮助你推理，也能反过来指导你如何写出好代码。换句话说：能被「证明」得越轻松的代码，往往本身就设计得更好。&lt;/p&gt; 
-&lt;p&gt;这种证明的能力和练习打字一样，需要反复练手、变成本能。作者推荐从这三件事做起：&lt;/p&gt; 
-&lt;ul&gt; 
- &lt;li&gt; &lt;p&gt;多写数学证明&lt;/p&gt; &lt;/li&gt; 
- &lt;li&gt; &lt;p&gt;多刷 Leetcode，但重质不重量&lt;/p&gt; &lt;/li&gt; 
- &lt;li&gt; &lt;p&gt;尝试用证明的方式解释自己的代码逻辑&lt;/p&gt; &lt;/li&gt; 
-&lt;/ul&gt; 
-&lt;blockquote&gt; 
- &lt;p&gt;&lt;em&gt;感兴趣的朋友可以查看原文：&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fthe-nerve-blog.ghost.io%2Fto-be-a-better-programmer-write-little-proofs-in-your-head%2F" target="_blank"&gt;https://the-nerve-blog.ghost.io/to-be-a-better-programmer-write-little-proofs-in-your-head/&lt;/a&gt;&lt;/em&gt;&lt;/p&gt; 
-&lt;/blockquote&gt;
-                                                                                &lt;/div&gt;
-                                                                            </description>
-      <link>https://www.oschina.net/news/361541</link>
-      <guid isPermaLink="false">https://www.oschina.net/news/361541</guid>
-      <pubDate>Wed, 16 Jul 2025 11:18:00 GMT</pubDate>
-      <author>来源: OSCHINA</author>
-    </item>
-    <item>
-      <title>Meta 超级智能团队的一半成员来自中国</title>
-      <description>&lt;div class="content"&gt;
-                                                                    
-                                                        &lt;p&gt;马克·扎克伯格在科技行业的某个特定赌注上习惯于投入巨额资金，比如斥资 460 亿美元打造元宇宙，但大多数人都知道，这个计划最终以失败告终。如今，Meta 首席执行官正在四处招聘人才，并将这些人安置在超级智能实验室。该实验室的团队致力于各种基础模型的研发，力争在人工智能竞赛中占据领先地位。&lt;/p&gt; 
-&lt;p&gt;至于该部门的员工名单，一份详细名单显示，该部门共有 44 名员工。有趣的是，&lt;strong&gt;其中 50% 来自中国，40% 的人从 OpenAI 离职&lt;/strong&gt;，此外还有其他一些「令人大开眼界」的发现。&lt;/p&gt; 
-&lt;p&gt;&lt;img alt="" src="https://oscimg.oschina.net/oscnet/up-4c9dc62a4cdaa55014056f865231cea5672.png" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;p&gt;Meta 目前正在大举招聘，试图从 OpenAI、苹果等知名公司挖走人才，并向他们提供难以拒绝的待遇。在招募这家 iPhone 制造商的基础模型主管 （附带 2 亿美元的签约奖金）之前，Meta 已经挖走了三名前 OpenAI 员工，其中一人声称自己并没有获得 1 亿美元的签约奖金。&lt;/p&gt; 
-&lt;p&gt;虽然 Meta 只知道其承诺的人才招募金额，但@deedydas 从一位匿名公司员工那里获得了这家社交媒体巨头超级智能实验室的&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fx.com%2Fdeedydas%2Fstatus%2F1946597162068091177" target="_blank"&gt;详细员工名单&lt;/a&gt;。如上所述，50% 的招聘人员来自中国，其中 75% 为博士，70% 为研究人员。OpenAI 的招聘人数最多，占 40%，其次是 Google 的 DeepMind，占 20%，Scale 的招聘人数为 15%。&lt;/p&gt; 
-&lt;p&gt;&lt;img src="https://static.oschina.net/uploads/space/2025/0721/190818_KDrF_2720166.png" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;p&gt;简而言之，Meta 的超级智能实验室员工构成相当多元化，其中大多数人甚至在公司工作不到一个月。X 上的帖子还提到，这些新员工的年薪可能在 1000 万至 1 亿美元之间，但这一数字尚未得到证实。这份名单中最引人注目的细节或许是，44 名员工中有 50% 来自中国，一旦特朗普政府开始调查该公司是否存在任何安全违规行为，这可能会让 Meta 陷入困境。&lt;/p&gt; 
-&lt;p&gt;因此，如果马克·扎克伯格将来被各路监管机构问及这些中国研究人员的情况，我们不会感到惊讶。&lt;/p&gt;
-                                                                                &lt;/div&gt;
-                                                                            </description>
-      <link>https://www.oschina.net/news/361539</link>
-      <guid isPermaLink="false">https://www.oschina.net/news/361539</guid>
-      <pubDate>Wed, 16 Jul 2025 11:08:00 GMT</pubDate>
-      <author>来源: OSCHINA</author>
-    </item>
-    <item>
-      <title>波兰程序员在 10 小时编程马拉松中击败 OpenAI</title>
-      <description>&lt;div class="content"&gt;
-                                                                    
-                                                        &lt;p&gt;在东京举行的 2025 年 AtCoder 世界巡回赛总决赛（AWTF）中，来自波兰格丁尼亚的 42 岁程序员 Psyho 创造了历史，击败了 OpenAI 的定制 AI 模型，赢得了这场比赛。&lt;/p&gt; 
-&lt;p&gt;这场赛事被认为是世界上最负盛名的编程比赛之一，邀请了 12 位顶尖人类程序员和一个 AI 竞争对手来应对极具挑战性的任务。&lt;/p&gt; 
-&lt;p&gt;经过 10 小时的编程马拉松，Psyho 以约 9.5% 的优势战胜了 AI，赢得了第一名，而 OpenAI 的模型获得了第二名。&lt;/p&gt; 
-&lt;p&gt;Psyho 在社交媒体上表示：「人类胜利了（至少现在是这样）！」他承认在比赛前的三天里，他只睡了大约 10 个小时，将自己推向了极限。&lt;/p&gt; 
-&lt;p&gt;OpenAI 首席执行官 Sam Altman 回应道：「干得好，Psyho。」&lt;/p&gt; 
-&lt;p&gt;&lt;img height="1105" src="https://static.oschina.net/uploads/space/2025/0721/190121_fO7b_2720166.png" width="1280" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;p&gt;今年的挑战要求参赛者在 30×30 的网格上规划机器人的路径，使用尽可能少的移动次数，这是一个 NP-hard 优化问题，有无数可能的结果。&lt;/p&gt; 
-&lt;p&gt;赛前 OpenAI 的 AI 模型 OpenAIAHC 被认为在比赛中占据主导地位，但 D?biak 的创新性、启发式驱动的方法——使用解决问题的捷径和有根据的猜测，而不是暴力计算——确保了他赢得了比赛。&lt;/p&gt; 
-&lt;p&gt;比赛管理员 Yoichi Iwata 赞扬了他的独特方法，指出 AI 在原始优化方面表现出色，但在「人类创造力」方面仍有不足。&lt;/p&gt; 
-&lt;p&gt;Psyho 是一位前 OpenAI 工程师，曾帮助开发 OpenAI Five，他使用 Visual Studio Code 进行比赛，仅依赖基本的自动完成功能，并承认 AI 将他推向了极限：「我的得分接近模型的得分，这促使我全力以赴。」&lt;/p&gt; 
-&lt;p&gt;&lt;img alt="" src="https://oscimg.oschina.net/oscnet/up-f77e296a89edb2d66ba4cad4489aa35510a.png" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;p&gt;在 10 小时马拉松的最后阶段，他超越了 OpenAIAHC，赢得了比赛和 50 万日元的奖金。&lt;/p&gt;
-                                                                                &lt;/div&gt;
-                                                                            </description>
-      <link>https://www.oschina.net/news/361538</link>
-      <guid isPermaLink="false">https://www.oschina.net/news/361538</guid>
-      <pubDate>Wed, 16 Jul 2025 11:02:00 GMT</pubDate>
-      <author>来源: OSCHINA</author>
-    </item>
-    <item>
-      <title>🔥造物分享：24h 智能计分网球学练馆</title>
-      <description/>
-      <link>https://www.oschina.net/ai-creation/details/2102</link>
-      <guid isPermaLink="false">https://www.oschina.net/ai-creation/details/2102</guid>
-      <pubDate>Wed, 16 Jul 2025 10:54:00 GMT</pubDate>
-    </item>
-    <item>
-      <title>Windows 包管理器 UniGetUI 发布 3.3，支持批量下载</title>
-      <description>&lt;div class="content"&gt;
-                                                                    
-                                                        &lt;p&gt;Windows 11/10 上相当欢迎的包管理器 UniGetUI（原 WinGetUI）迎来了重大更新。这一版本原本计划作为 3.2.1 发布，但由于更新内容远超预期，开发者决定直接提升版本号至&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fgithub.com%2Fmarticliment%2FUniGetUI%2Freleases%2Ftag%2F3.3.0" target="_blank"&gt;3.3.0。&lt;/a&gt;&lt;/p&gt; 
-&lt;p&gt;此次更新亮点颇多，其中最引人注目的便是新增了批量下载安装程序的功能，用户现在可以一次性下载多个软件的安装包。&lt;/p&gt; 
-&lt;p&gt;此外，UniGetUI 还允许用户选择特定的包管理器可执行文件，并为每个包管理器设置默认安装选项。&lt;/p&gt; 
-&lt;p&gt;&lt;img alt="" src="https://oscimg.oschina.net/oscnet/up-f5522da28b5d043ecc23b82e07eab9826ed.png" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;p&gt;除了这些新功能外，UniGetUI 还引入了云备份和恢复功能，用户可以将软件配置备份到云端，在更换设备或系统重装后能够快速恢复之前的设置。同时软件还支持更多命令，并且用户可以在安装、卸载或更新软件包之前终止相关进程，避免冲突和错误。&lt;/p&gt; 
-&lt;p&gt;PowerShell7 在更新时会自动清理旧版本，搜索框的位置被调整以更好地利用空间，工具栏得到了增强，内部错误检测机制也进行了升级，部分对话框也进行了更新。&lt;/p&gt; 
-&lt;p&gt;值得注意的是，由于 XAML 和 YAML 文件的使用率极低（仅 0.7% - 1.3% 的用户使用），开发者决定不再支持这两种文件格式的创建，以减少开发维护成本。&lt;/p&gt;
-                                                                                &lt;/div&gt;
-                                                                            </description>
-      <link>https://www.oschina.net/news/361533</link>
-      <guid isPermaLink="false">https://www.oschina.net/news/361533</guid>
-      <pubDate>Wed, 16 Jul 2025 10:46:00 GMT</pubDate>
-      <author>来源: OSCHINA</author>
-    </item>
-    <item>
-      <title>官宣！Dora-rs 官方中文教程正式发布！</title>
-      <description>&lt;div class="content"&gt;
-                                                                    
-                                                        &lt;p&gt;&lt;strong&gt;&lt;code&gt;Dora-rs&lt;/code&gt;：是一个为现代 AI 机器人应用设计的、以数据流为核心的机器人开发框架 。&lt;/strong&gt;&lt;/p&gt; 
-&lt;p style="color:#191b1f; margin-left:0; margin-right:0; text-align:start"&gt;在机器人开发的世界里，我们常常面临这样的困境：&lt;/p&gt; 
-&lt;ul&gt; 
- &lt;li&gt;&lt;strong&gt;过于复杂&lt;/strong&gt;： 传统软件栈学习曲线陡峭，配置繁琐，让快速原型验证成为奢望。&lt;/li&gt; 
- &lt;li&gt;&lt;strong&gt;性能瓶颈&lt;/strong&gt;： 数据在不同模块间传递时延迟巨大，严重影响系统的实时响应与可靠性。&lt;/li&gt; 
- &lt;li&gt;&lt;strong&gt;集成困难&lt;/strong&gt;： 融合不同来源的硬件与算法库，就像一场永无止境的「胶水代码」战争。&lt;/li&gt; 
- &lt;li&gt;&lt;strong&gt;分布式难题&lt;/strong&gt;： 多机器人协作时，通信冲突、带宽抢占等问题层出不穷。&lt;/li&gt; 
-&lt;/ul&gt; 
-&lt;p style="color:#191b1f; margin-left:0; margin-right:0; text-align:start"&gt;我们相信，是时候用现代化的软件开发实践，为机器人领域带来一些改变了。&lt;/p&gt; 
-&lt;p style="color:#191b1f; margin-left:0; margin-right:0; text-align:start"&gt;Dora-rs，因此而生。&lt;/p&gt; 
-&lt;h2&gt;&lt;strong&gt;为什么选择 Dora-rs？&lt;/strong&gt;&lt;/h2&gt; 
-&lt;p style="color:#191b1f; margin-left:0; margin-right:0; text-align:start"&gt;我们摒弃了复杂的概念堆砌，将核心优势聚焦于三点：&lt;/p&gt; 
-&lt;p style="color:#191b1f; margin-left:0; margin-right:0; text-align:start"&gt;&lt;strong&gt;1. 化繁为简：像搭乐高一样构建应用&lt;/strong&gt;&lt;/p&gt; 
-&lt;p style="color:#191b1f; margin-left:0; margin-right:0; text-align:start"&gt;Dora-rs 的核心是数据流。你不再需要维护复杂的状态和纠结于琐碎的通信实现，而是将应用拆解成一个个独立的、可复用的节点和操作符，然后像画流程图一样将它们连接起来，定义清晰的数据流向。这种声明式的方法极大地降低了系统的心智负担，让集成和调试变得前所未有的简单。&lt;/p&gt; 
-&lt;p style="color:#191b1f; margin-left:0; margin-right:0; text-align:start"&gt;&lt;strong&gt;2. 极致高效：为高性能而生的零拷贝通信&lt;/strong&gt;&lt;/p&gt; 
-&lt;p style="color:#191b1f; margin-left:0; margin-right:0; text-align:start"&gt;性能是机器人系统的生命线。Dora-rs 底层采用 Apache Arrow 数据格式，并实现了节点间的零拷贝通信。这意味着数据在传递时无需在内存中进行不必要的复制，从而将端到端延迟降至微秒级，为实时感知、决策和控制提供了坚实的性能基础。&lt;/p&gt; 
-&lt;p style="color:#191b1f; margin-left:0; margin-right:0; text-align:start"&gt;&lt;strong&gt;3. 根源可靠：Rust 带来的内存安全保证&lt;/strong&gt;&lt;/p&gt; 
-&lt;p style="color:#191b1f; margin-left:0; margin-right:0; text-align:start"&gt;Dora-rs 由 Rust 语言构建。这不仅带来了卓越的性能，更重要的是，Rust 强大的所有权和借用检查机制，可以在编译阶段就消除一整类的内存安全漏洞（如空指针、数据竞争等）。对于追求稳定性和可靠性的机器人应用而言，这是一种来自语言层面的、与生俱来的安全感。&lt;/p&gt; 
-&lt;h2&gt;&lt;strong&gt;我们为你准备了什么？&lt;/strong&gt;&lt;/h2&gt; 
-&lt;p style="color:#191b1f; margin-left:0; margin-right:0; text-align:start"&gt;我们准备了一份官方系统化教程。&lt;/p&gt; 
-&lt;p style="color:#191b1f; margin-left:0; margin-right:0; text-align:start"&gt;纸上得来终觉浅，为了帮助你真正掌握 Dora-rs，我们推出了这份官方系统化教程。它不是零散的博客文章，而是一份结构完整、路径清晰的专业文档。&lt;/p&gt; 
-&lt;p style="color:#191b1f; margin-left:0; margin-right:0; text-align:start"&gt;为了让你能系统化地掌握 Dora-rs，我们为你规划了以下这条清晰的学习路径：&lt;/p&gt; 
-&lt;h3&gt;&lt;strong&gt;开始&lt;/strong&gt;&lt;/h3&gt; 
-&lt;ol&gt; 
- &lt;li&gt;介绍：Dora-rs 是什么？&lt;/li&gt; 
- &lt;li&gt;快速上手&lt;/li&gt; 
-&lt;/ol&gt; 
-&lt;h3&gt;&lt;strong&gt;基础&lt;/strong&gt;&lt;/h3&gt; 
-&lt;ol&gt; 
- &lt;li&gt;数据流&lt;/li&gt; 
- &lt;li&gt;节点&lt;/li&gt; 
- &lt;li&gt;操作符&lt;/li&gt; 
- &lt;li&gt;事件流处理&lt;/li&gt; 
- &lt;li&gt;数据信息 / Arrow Data&lt;/li&gt; 
- &lt;li&gt;多语言支持：API 绑定&lt;/li&gt; 
- &lt;li&gt;命令行接口&lt;/li&gt; 
- &lt;li&gt;守护进程&lt;/li&gt; 
- &lt;li&gt;协调器&lt;/li&gt; 
-&lt;/ol&gt; 
-&lt;p style="color:#191b1f; margin-left:0; margin-right:0; text-align:start"&gt;学完本教程，你将不仅掌握 Dora-rs 的核心设计哲学，更能独立构建、运行、调试一个基于数据流的模块化机器人应用，为你未来驾驭复杂机器人项目打下最坚实的基础。&lt;/p&gt; 
-&lt;p style="color:#191b1f; margin-left:0; margin-right:0; text-align:start"&gt;我们已将这份结构完整的中文教程部署在社区网站上，你可以扫描下方二维码或者通过本文末尾的链接直接开始学习。&lt;/p&gt; 
-&lt;div&gt;
- &lt;img alt="" height="400" src="https://oscimg.oschina.net/oscnet/up-1ccb97a05a676e0418d83681015ee4eda42.png" width="400" referrerpolicy="no-referrer"&gt;
-&lt;/div&gt; 
-&lt;p&gt;Dora 中文社区&lt;/p&gt; 
-&lt;p style="color:#191b1f; margin-left:0; margin-right:0; text-align:start"&gt;官方中文教程入口&lt;/p&gt; 
-&lt;ul&gt; 
- &lt;li style="color: rgb(25, 27, 31); margin-left: 0px; margin-right: 0px; text-align: start;"&gt;&lt;u&gt;&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fdoracc.com%2F" target="_blank"&gt;https://doracc.com&lt;/a&gt;&lt;/u&gt;&lt;/li&gt; 
-&lt;/ul&gt; 
-&lt;p style="color:#191b1f; margin-left:0; margin-right:0; text-align:start"&gt;⭐ Dora-rs GitHub 仓库地址&lt;/p&gt; 
-&lt;ul&gt; 
- &lt;li style="color: rgb(25, 27, 31); margin-left: 0px; margin-right: 0px; text-align: start;"&gt;&lt;u&gt;&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fgithub.com%2Fdora-rs%2Fdora" target="_blank"&gt;https://github.com/dora-rs/dora&lt;/a&gt;&lt;/u&gt;&lt;/li&gt; 
-&lt;/ul&gt; 
-&lt;p style="color:#191b1f; margin-left:0; margin-right:0; text-align:start"&gt;我们相信，一个优秀的工具最终是为开发者服务的。我们编写这份教程，是希望它能真正帮你扫清学习路上的障碍，让你感受到现代化机器人开发的简洁与高效。&lt;/p&gt; 
-&lt;h2&gt;&lt;strong&gt;下一步行动&lt;/strong&gt;&lt;/h2&gt; 
-&lt;p style="color:#191b1f; margin-left:0; margin-right:0; text-align:start"&gt;⭐ 支持项目 ：点亮我们的 GitHub Star&lt;/p&gt; 
-&lt;p style="color:#191b1f; margin-left:0; margin-right:0; text-align:start"&gt;分享文章：点个「赞」和「分享」，让更多人发现&lt;/p&gt; 
-&lt;p style="color:#191b1f; margin-left:0; margin-right:0; text-align:start"&gt;开始学习 ：点击上方链接直达教程&lt;/p&gt;
-                                                                                &lt;/div&gt;
-                                                                            </description>
-      <link>https://www.oschina.net/news/361526</link>
-      <guid isPermaLink="false">https://www.oschina.net/news/361526</guid>
-      <pubDate>Wed, 16 Jul 2025 10:43:00 GMT</pubDate>
-      <author>来源: 资讯</author>
-    </item>
-    <item>
-      <title>​斯坦福开源 OctoTools，多工具协作 AI Agent</title>
-      <description>&lt;div class="content"&gt;
-                                                                    
-                                                        &lt;p style="color:#242424; margin-left:0; margin-right:0; text-align:left"&gt;斯坦福大学开源了一款名为 OctoTools 的 AI Agent，该工具能够结合超过 11 种不同的工具，以应对复杂的推理任务。传统的 AI 助手往往依赖於单一模型，难以有效处理需要多步推理和跨领域知识的挑战。而 OctoTools 的问世，则为这些问题提供了新的解决方案。&lt;/p&gt; 
-&lt;p style="color:#242424; margin-left:0; margin-right:0; text-align:left"&gt;&lt;img height="591" src="https://static.oschina.net/uploads/space/2025/0721/173755_M5fY_4252687.png" width="1057" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;p style="color:#242424; margin-left:0; margin-right:0; text-align:left"&gt;OctoTools 在多个领域表现出色，测试数据显示其在 16 项基准测试中的平均准确率非常高。这使得它能够在数学、科学和医学等复杂场景中轻松完成任务。用户可以通过 OctoTools 更好地解决视觉谜题或进行基于文本的推理，提升工作效率。&lt;/p&gt; 
-&lt;p style="color:#242424; margin-left:0; margin-right:0; text-align:left"&gt;该框架的基础构件是 「工具卡片」，这些卡片以标准化的形式封装各种工具的功能和元数据。工具包括图像识别、数学计算、网络搜索及特定领域的专家系统等。每个工具卡片都详细描述了工具的基本信息，例如输入输出格式、使用限制和&lt;span&gt;最佳&lt;/span&gt;实践。这些信息为规划器和执行器提供了必要的指导，帮助其有效使用这些工具。&lt;/p&gt; 
-&lt;p style="color:#242424; margin-left:0; margin-right:0; text-align:left"&gt;在 OctoTools 的工作流程中，规划器作为系统的大脑，负责分析用户查询并制定解决方案。它会根据任务目标和所需技能选择合适的工具，生成详细的行动计划。这个过程类似于人类在解决问题时的思考方式，通过逐步细化来确保每一步都朝着最终目标前进。&lt;/p&gt; 
-&lt;p style="color:#242424; margin-left:0; margin-right:0; text-align:left"&gt;执行器则负责将规划器制定的行动计划转化为可执行命令，并运行相应的工具。通过这种方式，OctoTools 不仅能够执行简单命令，还能处理复杂的多步操作，提升系统的可靠性和可维护性。此外，上下文验证器则负责检查任务进展中的一致性，确保最终结果的准确性。&lt;/p&gt;
-                                                                                &lt;/div&gt;
-                                                                            </description>
-      <link>https://www.oschina.net/news/361510</link>
-      <guid isPermaLink="false">https://www.oschina.net/news/361510</guid>
-      <pubDate>Wed, 16 Jul 2025 09:50:00 GMT</pubDate>
-      <author>来源: OSCHINA</author>
-    </item>
-    <item>
-      <title>微软服务器软件被曝严重安全漏洞，黑客借此在全球发起攻击</title>
-      <description>&lt;div class="content"&gt;
-                                                                    
-                                                        &lt;p&gt;&lt;span style="color:#000000"&gt;微软服务器软件近日被曝存在严重安全漏洞，不明身份的黑客在过去几天利用这一漏洞对全球范围的目标发起了攻击。目前已有多家机构证实服务器被攻破，相关部门正紧急采取补救措施。&lt;/span&gt;&lt;/p&gt; 
-&lt;p&gt;&lt;span style="color:#000000"&gt;据路透社美东时间 20 日报道，微软公司近日发布安全警告，称其 SharePoint 服务器软件正在遭到持续攻击，该软件广泛用于政府机构和企业内部文件共享。此次全球攻击已入侵了美国联邦和州政府机构、大学、能源公司以及一家亚洲电信公司。&lt;/span&gt;&lt;/p&gt; 
-&lt;p&gt;&lt;img height="335" src="https://static.oschina.net/uploads/space/2025/0721/171427_6M5M_4252687.png" width="500" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;p&gt;&lt;span style="color:#000000"&gt;微软在 7 月 20 日发布的安全通告中表示，攻击者正在利用 SharePoint 软件中的一个「允许授权攻击者在网络中执行伪装行为」的漏洞。据《华盛顿邮报》率先披露的消息，不明身份的攻击者在过去几天内利用漏洞对全球各地的目标发动了攻击。这次攻击被称为「零日攻击」，因为它利用了一个此前未知的漏洞。专家表示，全球有数以万计的此类服务器处于风险之中。美国政府及其在加拿大和澳大利亚的合作伙伴正在调查 SharePoint 服务器的入侵事件。&lt;/span&gt;&lt;/p&gt; 
-&lt;p&gt;&lt;span style="color:#000000"&gt;美国联邦调查局（FBI）在 20 日的一份声明中表示，已知悉此次攻击事件，正在与联邦政府和私营部门的合作伙伴密切协作。&lt;/span&gt;&lt;/p&gt; 
-&lt;p&gt;&lt;span style="color:#000000"&gt;荷兰研究机构 Eye Security 指出，攻击者可能通过访问 SharePoint 服务器，进而接入核心服务系统，实施敏感数据窃取、密码获取等行为。更令人担忧的是，研究人员发现攻击者可能已经获取系统密钥，即使系统打上补丁后，仍有可能再次被远程入侵。&lt;/span&gt;&lt;/p&gt; 
-&lt;p&gt;&lt;span style="color:#000000"&gt;据《华盛顿邮报》报道，至少两个美国联邦政府机构的服务器已被攻破。报道还称，美国东部某州一名官员表示，攻击者「劫持」了该州一份对公众开放的政府文档库，目前该机构无法访问相关内容，尚不清楚资料是否已被删除。该官员表示：「我们可能需要在另一个文档库中重新发布这些文件。」&lt;/span&gt;&lt;/p&gt; 
-&lt;p&gt;&lt;span style="color:#000000"&gt;此次事件引发了美国国内广泛关注。美国国土安全部下属网络安全与基础设施安全局（CISA）在接到安全公司通报后已迅速介入，并通知了大约 100 个潜在受影响的组织，包括公立学校和大学。CISA 发言人马西·麦卡锡（Marci McCarthy）表示，尽管该机构目前由代理局长领导，但相关人员仍「昼夜不停」地应对此次安全事件。&lt;/span&gt;&lt;/p&gt; 
-&lt;p&gt;&lt;span style="color:#000000"&gt;微软 20 日表示，已为 SharePoint 订阅版（SharePoint Subscription Edition）发布安全更新，并建议客户立即安装。同时，微软正在为 2016 版和 2019 版 SharePoint 开发补丁。如果客户无法启用建议的恶意软件防护，微软建议立即断开服务器与互联网的连接，直到补丁可用为止。&lt;/span&gt;&lt;/p&gt;
-                                                                                &lt;/div&gt;
-                                                                            </description>
-      <link>https://www.oschina.net/news/361504</link>
-      <guid isPermaLink="false">https://www.oschina.net/news/361504</guid>
-      <pubDate>Wed, 16 Jul 2025 09:29:00 GMT</pubDate>
-      <author>来源: OSCHINA</author>
-    </item>
-    <item>
-      <title>我国网民规模已达 11.23 亿人，互联网普及率达 79.7%</title>
-      <description>&lt;div class="content"&gt;
-                                                                    
-                                                        &lt;p&gt;&lt;span style="color:#000000"&gt;7 月 21 日，中国互联网络信息中心（CNNIC）在京发布第 56 次《中国互联网络发展状况统计报告》（以下简称《报告》）。《报告》显示，「十四五」期间，我国互联网建设取得显著成就。新型信息基础设施加速布局，互联网基础资源持续丰富，为互联网普及和数字经济发展提供了坚实支撑。&lt;/span&gt;&lt;/p&gt; 
-&lt;p&gt;&lt;span style="color:#000000"&gt;截至 6 月，我国网民规模达 11.23 亿人，互联网普及率达 79.7%，越来越多的群体共享数字发展成果。新兴市场蓬勃发展，人工智能技术加速应用落地，全球影响力不断提升，科技创新引领经济社会高质量发展。&lt;/span&gt;&lt;/p&gt; 
-&lt;p&gt;&lt;span style="color:#000000"&gt;&lt;strong&gt;基础资源稳固根基&lt;/strong&gt;&lt;/span&gt;&lt;/p&gt; 
-&lt;p&gt;&lt;span style="color:#000000"&gt;&lt;strong&gt;基础设施量质齐升&lt;/strong&gt;&lt;/span&gt;&lt;/p&gt; 
-&lt;p&gt;&lt;span style="color:#000000"&gt;《报告》显示，2025 年上半年，基础资源保有量保持稳定，信息基础设施持续夯实，移动互联网接入流量不断增长，赋能信息通信业高质量发展再上新台阶。&lt;/span&gt;&lt;/p&gt; 
-&lt;p&gt;&lt;span style="color:#000000"&gt;一是互联网基础资源保有量筑牢根基。截至 6 月，我国域名总数为 3262 万个，其中，国家顶级域名「.CN」数量为 2085 万个；IPv6 地址数量为 68567 块/32。&lt;/span&gt;&lt;/p&gt; 
-&lt;p&gt;&lt;span style="color:#000000"&gt;二是信息基础设施持续夯实。1 月，工业和信息化部发布《关于开展万兆光网试点工作的通知》，提出开展万兆光网试点，有序引导万兆光网从技术试点逐步走向部署应用；电信普遍服务实施十周年，截至 6 月底，我国 5G 基站总数达 455 万个，十年间推动实现了「村村通宽带、乡乡通 5G」，行政村通 5G 比例超过 90%；移动用户上网流量连续 6 个月实现两位数增长。&lt;/span&gt;&lt;/p&gt; 
-&lt;p&gt;&lt;span style="color:#000000"&gt;&lt;strong&gt;互联网普惠深入推进&lt;/strong&gt;&lt;/span&gt;&lt;/p&gt; 
-&lt;p&gt;&lt;span style="color:#000000"&gt;&lt;strong&gt;银发农村群体共享发展成果&lt;/strong&gt;&lt;/span&gt;&lt;/p&gt; 
-&lt;p&gt;&lt;span style="color:#000000"&gt;《报告》显示，截至 6 月，我国网民规模达 11.23 亿人，互联网普及率达 79.7%；60 岁及以上银发网民规模达 1.61 亿人、农村网民规模达 3.22 亿人，保持稳定增长态势。&lt;/span&gt;&lt;/p&gt; 
-&lt;p&gt;&lt;span style="color:#000000"&gt;一是银发经济快速发展，赋能互联网进一步普及应用。政府高度重视老年群体惠享数字红利，我国老年群体互联网普及率达 52.0%。2025 年《政府工作报告》提出大力发展银发经济，6 月工业和信息化部公布《智慧健康养老产品及服务推广目录（2024 年版）》，推动银发群体深度共享信息化发展成果。&lt;/span&gt;&lt;/p&gt; 
-&lt;p&gt;&lt;span style="color:#000000"&gt;二是县域富民产业发展，互联网点亮农村居民数字化新生活。互联网赋能乡村振兴成效显著，我国农村地区互联网普及率为 69.2%，较 2024 年 12 月提升 1.9 个百分点。数字文旅新模式不断涌现，拓宽农村居民数字化就业增收新渠道，3 月乡村游产品预订量同比增长 52%；农村流通高质量发展，一季度全国快递业务量中发往农村地区的占比达到三成，全国县域生活服务消费订单量同比增长 42.1%。&lt;/span&gt;&lt;/p&gt; 
-&lt;p&gt;&lt;span style="color:#000000"&gt;&lt;strong&gt;数字文娱出海势头不减&lt;/strong&gt;&lt;/span&gt;&lt;/p&gt; 
-&lt;p&gt;&lt;span style="color:#000000"&gt;&lt;strong&gt;融合线下提升发展活力&lt;/strong&gt;&lt;/span&gt;&lt;/p&gt; 
-&lt;p&gt;&lt;span style="color:#000000"&gt;《报告》显示，2025 年上半年，我国数字文娱领域发展「内外兼修」，持续向全球输出优秀文化价值，并不断拓展与线下的融合，为国内文旅市场增加新动力。&lt;/span&gt;&lt;/p&gt; 
-&lt;p&gt;&lt;span style="color:#000000"&gt;一是网络文学出海热度不断攀升，成为中华文化「走出去」的创新载体。2024 年网络文学出海市场规模超 50 亿元，培育海外网络作家 46 万名，海外用户规模超 3.5 亿，覆盖全球 200 多个国家和地区，其中日本市场用户规模激增 180%，成为全球用户增速最快的新兴市场。&lt;/span&gt;&lt;/p&gt; 
-&lt;p&gt;&lt;span style="color:#000000"&gt;二是网络游戏出海迎来新的发展机遇。4 月，国务院发布《加快推进服务业扩大开放综合试点工作方案》，明确将「发展游戏出海业务，布局从 IP 打造到游戏制作、发行、海外运营的整个产业链」纳入国家级战略工程。&lt;/span&gt;&lt;/p&gt; 
-&lt;p&gt;&lt;span style="color:#000000"&gt;三是网络视频对线下文化赋能效应逐渐显现。网络剧与旅游深入融合，如运河题材网络剧与旅游形成协同矩阵，推动运河沿岸城市游客总量增加 40%，民宿预订量同比提升 215%。短视频平台通过整合本地政务资源、平台流量与商家资源，构建线上线下消费闭环，为更多实体商家带去新客流。&lt;/span&gt;&lt;/p&gt; 
-&lt;p&gt;&lt;span style="color:#000000"&gt;&lt;strong&gt;生成式人工智能产品数量攀升&lt;/strong&gt;&lt;/span&gt;&lt;/p&gt; 
-&lt;p&gt;&lt;span style="color:#000000"&gt;&lt;strong&gt;应用场景不断深化&lt;/strong&gt;&lt;/span&gt;&lt;/p&gt; 
-&lt;p&gt;&lt;span style="color:#000000"&gt;《报告》显示，2025 年上半年，生成式人工智能产品实现了从技术到应用的全方位进步，产品数量迅猛增长，应用场景持续扩大。&lt;/span&gt;&lt;/p&gt; 
-&lt;p&gt;&lt;span style="color:#000000"&gt;一是我国在人工智能领域影响力显著提升。截至 3 月，共有 346 款生成式人工智能服务在国家互联网信息办公室完成备案。我国人工智能产品涌现引发全球关注，DeepSeek 上线不足 20 天全球日活跃用户就突破 3000 万，登顶全球 140 个国家及地区的应用市场，成为全球用户增速最快的生成式人工智能应用。&lt;/span&gt;&lt;/p&gt; 
-&lt;p&gt;&lt;span style="color:#000000"&gt;二是生成式人工智能技术不断向具体应用场景纵深渗透。用户方面，截至 6 月，用户利用生成式人工智能产品回答问题的比例最高，达 80.9%。产业方面，2024 年我国人工智能产业规模突破 7000 亿元，连续多年保持 20% 以上的增长率。国产人工智能产品不仅在千亿级参数规模、多模态能力等方面实现突破，并与办公协同、教育普惠、工业设计、内容创作等场景深度融合，构建了覆盖多个领域的智能应用生态。（记者，张岗）&lt;/span&gt;&lt;/p&gt;
-                                                                                &lt;/div&gt;
-                                                                            </description>
-      <link>https://www.oschina.net/news/361501</link>
-      <guid isPermaLink="false">https://www.oschina.net/news/361501</guid>
-      <pubDate>Wed, 16 Jul 2025 09:11:00 GMT</pubDate>
-      <author>来源: OSCHINA</author>
-    </item>
-    <item>
-      <title>Resume Matcher —— 制作一份能获得面试机会的简历</title>
-      <description>&lt;div class="content"&gt;
-                                                                                                                                                                                                                            &lt;p&gt;&lt;span style="color:#1f2328"&gt;&lt;strong&gt;告别 ATS 机器人自动拒绝的困扰。&lt;/strong&gt;Resume&amp;nbsp;Matcher 是一个 AI 驱动的平台，它对招聘算法进行逆向工程，精准地向你展示如何定制你的简历。获取关键词、格式和洞察，助你顺利通过首屏筛选，最终交到真人手中。&lt;/span&gt;&lt;/p&gt;
-
-&lt;p&gt;&lt;span style="color:#1f2328"&gt;Resume&amp;nbsp;Matcher &lt;/span&gt;&lt;span&gt;&lt;span&gt;&lt;span style="color:#1f2328"&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span style="background-color:#ffffff"&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;旨在帮助用户优化简历，以突出技能和经验，从而引起潜在雇主的共鸣。&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/p&gt;
-
-&lt;p style="text-align:start"&gt;&lt;span&gt;&lt;span&gt;&lt;span style="color:#1f2328"&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span style="background-color:#ffffff"&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;项目正在积极改进中，致力于构建一个&lt;strong&gt;用于制作简历的 VS Code 版本&lt;/strong&gt;，并添加新功能。&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/p&gt;
-
-&lt;p&gt;主要特点：&lt;/p&gt;
-
-&lt;ul&gt;
-&lt;li&gt;&lt;strong&gt;本地运行&lt;/strong&gt;：无需将简历上传到服务器。所有功能均在你的机器上运行，并采用 Ollama 的开源 AI 模型。&lt;/li&gt;
-&lt;li&gt;&lt;strong&gt;ATS 兼容性&lt;/strong&gt;：获取有关你的简历与 ATS 系统兼容性的详细分析。&lt;/li&gt;
-&lt;li&gt;&lt;strong&gt;即时匹配分数&lt;/strong&gt;：上传简历和职位描述以获得快速匹配分数和关键改进领域。&lt;/li&gt;
-&lt;li&gt;&lt;strong&gt;关键字优化器&lt;/strong&gt;：将你的简历与工作关键字对齐，并识别关键内容差距。&lt;/li&gt;
-&lt;li&gt;&lt;strong&gt;指导改进&lt;/strong&gt;：获得明确的建议，让你的简历脱颖而出。&lt;/li&gt;
-&lt;/ul&gt;
-
-&lt;p&gt;&lt;img height="183" src="https://static.oschina.net/uploads/space/2025/0721/154029_WBq2_4252687.png" width="700" referrerpolicy="no-referrer"&gt;&lt;/p&gt;
-
-                                                                    &lt;/div&gt;
-                                                                </description>
-      <link>https://www.oschina.net/p/resume-matcher</link>
-      <guid isPermaLink="false">https://www.oschina.net/p/resume-matcher</guid>
-      <pubDate>Wed, 16 Jul 2025 09:03:00 GMT</pubDate>
-    </item>
-    <item>
-      <title>LibreOffice 指责微软故意制造复杂格式锁住用户</title>
-      <description>&lt;div class="content"&gt;
-                                                                    
-                                                        &lt;p&gt;开源办公软件 LibreOffice 近期近期一直在不遗余力地&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fblog.documentfoundation.org%2Fblog%2F2025%2F07%2F18%2Fartificially-complex-xml-schema-as-lock-in-tool%2F" target="_blank"&gt;批评微软及其做法&lt;/a&gt;&lt;strong&gt;，这一次更是指责微软故意使用「不必要的复杂」文件格式，通过其 Microsoft 365（Office）锁住用户&lt;/strong&gt;。&lt;/p&gt; 
-&lt;p&gt;&lt;img src="https://static.oschina.net/uploads/space/2025/0721/164419_fUou_2720166.png" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;p&gt;XML 是一种标记语言，用于结构化和定义文档，被微软 365 和 LibreOffice 等程序广泛使用。&lt;/p&gt; 
-&lt;p&gt;LibreOffice 表示，XML 模式包括 XML 文档的结构、数据类型和规则，并在 XML Schema Definition（XSD）文件中描述，用于告诉电脑该如何处理数据，并确保数据遵循规则。&lt;/p&gt; 
-&lt;p&gt;但 LibreOffice 和微软在文件格式的选择上截然不同，LibreOffice 采用 OpenDocument Format（ODF），这是一种开放标准，旨在不受单一公司控制，这种格式提供了如.odt（文本）和.ods（电子表格）等文件类型。&lt;/p&gt; 
-&lt;p&gt;而微软则创建了自己的 Office Open XML（OOXML），以支持其软件中的所有功能，从而产生了我们熟悉的.docx 和.xlsx 文件。&lt;/p&gt; 
-&lt;p&gt;有意思的是，这两种格式实际上都是 ZIP 存档，最简单的验证方法是将一个.docx 文件重命名为.zip，然后解压缩，这将展示出 Microsoft 365 文档的内部结构。&lt;/p&gt; 
-&lt;p&gt;LibreOffice 指出，XML 本应作为「桥梁」，但微软通过使其架构「复杂到成为障碍而非桥梁」来武器化自己的架构。&lt;/p&gt; 
-&lt;p&gt;LibreOffice 将其比作铁路系统，轨道是公共的，但一家公司的控制系统如此复杂，以至于其他公司无法早出兼容的列车，从而几乎不可能与其他公司竞争，而且用户没有意识到他们被这些技术障碍所束缚。&lt;/p&gt; 
-&lt;p&gt;LibreOffice 还认为这种锁定逻辑在其他地方发挥作用，它将复杂的文件格式直接与 Windows 11 的推广联系起来，认为微软没有充分的技术理由强迫用户切换到 Windows 11。&lt;/p&gt;
-                                                                                &lt;/div&gt;
-                                                                            </description>
-      <link>https://www.oschina.net/news/361488</link>
-      <guid isPermaLink="false">https://www.oschina.net/news/361488</guid>
-      <pubDate>Wed, 16 Jul 2025 08:44:00 GMT</pubDate>
-      <author>来源: OSCHINA</author>
-    </item>
-    <item>
-      <title>京东开源轻量化通用多智能体 JoyAgent-JDGenie，GAIA 准确率 75.15%</title>
-      <description>&lt;div class="content"&gt;
-                                                                    
-                                                        &lt;p&gt;&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fwww.aibase.com%2Fzh%2Fnews%2F19831" target="_blank"&gt;AIbase&lt;/a&gt; 从网络信息获悉，京东正式开源了一款产品级端到端通用多智能体系统 JoyAgent-JDGenie，在 GAIA 基准测试中以 75.15% 的准确率超越 OWL、OpenManus 等竞品，位居行业前列。&lt;/p&gt; 
-&lt;p&gt;&lt;strong&gt;GAIA 基准领跑，性能卓越&lt;/strong&gt;&lt;/p&gt; 
-&lt;p&gt;JoyAgent-JDGenie 在 GAIA 基准测试中表现亮眼，以 75.15% 的总体准确率刷新了多智能体系统的性能纪录。&lt;/p&gt; 
-&lt;p&gt;根据 GAIA 基准的评估标准，该系统在难度分级的任务中展现了优异的能力：Level1 任务准确率达 85% 以上，Level2 任务接近 78%，而在最复杂的 Level3 任务中也取得了 55% 的出色成绩，显著超越其他开源框架如 OWL（约 65%）和 OpenManus(约 65%)。&lt;/p&gt; 
-&lt;p&gt;&lt;strong&gt;端到端多智能体框架，开箱即用&lt;/strong&gt;&lt;/p&gt; 
-&lt;p&gt;JoyAgent-JDGenie 是一款完整的端到端多智能体系统，支持用户通过简单查询或任务输入直接获得答案或解决方案。该框架集成了前端、后端、核心引擎以及多个子智能体模块，包括报告生成智能体、代码智能体、PPT 智能体和文件智能体，覆盖了从文档处理到代码生成、演示文稿制作等多样化场景。AIbase 了解到，开发者可通过挂载自定义子智能体或外部工具（如 Web 搜索 API 或 Python 解释器）进一步扩展功能，满足特定业务需求。&lt;/p&gt; 
-&lt;p&gt;&lt;img height="246" src="https://oscimg.oschina.net/oscnet/up-ec6403d7c741e6e5f377cd0fe3bedcc4bf3.png" width="500" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;p&gt;与传统单一智能体系统不同，JoyAgent-JDGenie 采用多层级协作设计，通过任务分解和智能体协同，高效处理复杂任务。例如，用户输入「生成一份关于 2025 年 AI 趋势的 PPT」，系统会自动分配任务给 PPT 智能体和数据分析智能体，生成包含图表和内容的演示文稿。这种开箱即用的特性极大降低了开发门槛，适合企业快速部署 AI 应用。&lt;/p&gt; 
-&lt;p&gt;&lt;strong&gt;多模态与记忆优化，智能更进一步&lt;/strong&gt;&lt;/p&gt; 
-&lt;p&gt;JoyAgent-JDGenie 的多模态与记忆设计是其核心亮点。系统支持文本、图像、代码等多种输入和输出形式，能够处理 GAIA 基准中的多模态任务，如解析 PDF 文件、分析图像内容或处理音频数据。此外，框架引入了跨任务级别的相似任务记忆机制，允许系统根据历史任务记录优化当前任务的处理效率。例如，在重复生成类似报告时，系统可调用历史数据，减少重复计算，提升响应速度。&lt;/p&gt; 
-&lt;p&gt;AIbase 从社区反馈中获悉，JoyAgent-JDGenie 的多模态能力在处理复杂任务时表现出色。例如，在 GAIA Level3 任务中，系统能够通过链式推理（Chain-of-Thought）结合外部工具，准确回答涉及多源数据整合的问题，如「根据某幅画作和历史记录提取特定信息」。这种能力使其在数据分析、内容创作和自动化工作流中具有广泛应用前景。&lt;/p&gt; 
-&lt;p&gt;&lt;strong&gt;开源生态，助力开发者创新&lt;/strong&gt;&lt;/p&gt; 
-&lt;p&gt;目前，JoyAgent-JDGenie 已公开了前端、后端、框架、引擎以及核心子智能体的完整代码，开发者可基于此进行二次开发或直接部署。项目还提供了详细的文档和快速入门指南，支持在 Windows、Linux 等多个平台上运行，兼容主流硬件环境。&lt;/p&gt; 
-&lt;p&gt;社区反馈显示，JoyAgent-JDGenie 的模块化设计便于扩展。例如，开发者可通过添加新的子智能体（如专用于金融分析或医疗数据处理的智能体）快速定制系统。此外，京东团队表示将持续优化框架，计划引入本地化 LLM 支持和更高效的推理加速技术，以降低对云端 API 的依赖，进一步提升性能和成本效益。&lt;/p&gt;
-                                                                                &lt;/div&gt;
-                                                                            </description>
-      <link>https://www.oschina.net/news/361479</link>
-      <guid isPermaLink="false">https://www.oschina.net/news/361479</guid>
-      <pubDate>Wed, 16 Jul 2025 08:30:00 GMT</pubDate>
       <author>来源: OSCHINA</author>
     </item>
   </channel>
