@@ -7,8 +7,426 @@
     <generator>RSSHub</generator>
     <webMaster>contact@rsshub.app (RSSHub)</webMaster>
     <language>zh-hk</language>
-    <lastBuildDate>Tue, 22 Jul 2025 21:41:39 GMT</lastBuildDate>
+    <lastBuildDate>Wed, 23 Jul 2025 02:45:18 GMT</lastBuildDate>
     <ttl>5</ttl>
+    <item>
+      <title>MySQL 9.4 創新版正式發行 GA</title>
+      <description>&lt;div class="content"&gt;
+                                                                    
+                                                        &lt;p&gt;MySQL 9.4.0 版正式發行，讓我們快速瀏覽一下都有哪些內容。&lt;/p&gt; 
+&lt;h3&gt;字符集支持&lt;/h3&gt; 
+&lt;ul&gt; 
+ &lt;li&gt;&lt;strong&gt;重要變更：IFNULL()&lt;/strong&gt; （&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fdev.mysql.com%2Fdoc%2Frefman%2F9.4%2Fen%2Fflow-control-functions.html%23function_ifnull%25EF%25BC%2589%25E5%259C%25A8" target="_blank"&gt;https://dev.mysql.com/doc/refman/9.4/en/flow-control-functions.html#function_ifnull&lt;/a&gt;）在 LIKE （&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fdev.mysql.com%2Fdoc%2Frefman%2F9.4%2Fen%2Fstring-comparison-functions.html%23operator_like%25EF%25BC%2589%25E5%25AD%2590%25E5%258F%25A5%25E4%25B8%25AD%25E4%25BD%25BF%25E7%2594%25A8%25E6%2597%25B6%25EF%25BC%258C%25E4%25BC%259A%25E8%25A7%25A6%25E5%258F%2591" target="_blank"&gt;https://dev.mysql.com/doc/refman/9.4/en/string-comparison-functions.html#operator_like&lt;/a&gt;）子句中使用時，會觸發 ER_CANT_AGGREGATE_2COLLATIONS 錯誤 （&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fdev.mysql.com%2Fdoc%2Fmysql-errors%2F9.4%2Fen%2Fserver-error-reference.html%23error_er_cant_aggregate_2collations%25EF%25BC%2589%25E3%2580%2582" target="_blank"&gt;https://dev.mysql.com/doc/mysql-errors/9.4/en/server-error-reference.html#error_er_cant_aggregate_2collations&lt;/a&gt;）。 這是因為 IFNULL() 返回二進制排序規則且排序規則派生類型為 NONE，但在此場景下不允許使用 NONE，從而導致錯誤。 我們通過對語義稍作調整來解決此問題：將排序規則派生類型 NONE 的優先級降低，使其低於其他任何排序規則派生類型的優先級。這意味着，當使用派生類型為 NONE 的表達式時，LIKE 會根據另一個操作數來確定要使用的比較排序規則。這對現有功能的影響應該極小，且我們現有的測試套件無需任何修改。 我們還修改了排序規則聚合邏輯，在確定結果排序規則時，僅考慮具有相同（且最高）優先級的排序規則。此外，我們將之前的 IGNORABLE 派生類型重命名為 NULL，因為它僅用於空值，且由於 NONE 現在的優先級更低，它不再是「可忽略的」。 另外，我們在原 NONE 優先級的值之間留下了一個間隔，以儘量減少 COERCIBILITY() （&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fdev.mysql.com%2Fdoc%2Frefman%2F9.4%2Fen%2Finformation-functions.html%23function_coercibility%25EF%25BC%2589%25E8%25B0%2583%25E7%2594%25A8%25E8%25BF%2594%25E5%259B%259E%25E4%25B8%258E%25E5%2585%2588%25E5%2589%258D%25E5%25AE%259E%25E7%258E%25B0%25E4%25B8%258D%25E5%2585%25BC%25E5%25AE%25B9%25E7%259A%2584%25E5%2580%25BC%25E7%259A%2584%25E6%2583%2585%25E5%2586%25B5%25E3%2580%2582" target="_blank"&gt;https://dev.mysql.com/doc/refman/9.4/en/information-functions.html#function_coercibility）調用返回與先前實現不兼容的值的情況。&lt;/a&gt; 有關更多信息，請參見《表達式中的排序規則可 coercibility》 （&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fdev.mysql.com%2Fdoc%2Frefman%2F9.4%2Fen%2Fcharset-collation-coercibility.html%25EF%25BC%2589%25E3%2580%2582%25EF%25BC%2588%25E6%25BC%258F%25E6%25B4%259E" target="_blank"&gt;https://dev.mysql.com/doc/refman/9.4/en/charset-collation-coercibility.html）。（漏洞&lt;/a&gt; #37285902）&lt;/li&gt; 
+ &lt;li&gt;&lt;strong&gt;CREATE TABLE&lt;/strong&gt; （&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fdev.mysql.com%2Fdoc%2Frefman%2F9.4%2Fen%2Fcreate-table-check-constraints.html%25EF%25BC%2589%25E8%258B%25A5%25E5%258C%2585%25E5%2590%25AB%25E7%2594%259F%25E6%2588%2590%25E5%2588%2597%25E8%25A1%25A8%25E8%25BE%25BE%25E5%25BC%258F%25EF%25BC%2588%25E5%25A6%2582" target="_blank"&gt;https://dev.mysql.com/doc/refman/9.4/en/create-table-check-constraints.html）若包含生成列表達式（如&lt;/a&gt; CHECK 約束），且該表達式引用了非 ASCII 標識符，如果當前客户端字符集與 UTF-8 不兼容時（例如 GBK），會導致語法錯誤。（漏洞 #30453221）&lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;h3&gt;編譯説明&lt;/h3&gt; 
+&lt;ul&gt; 
+ &lt;li&gt;macOS：現在可以使用 -DWITH_KERBEROS 在 macOS 上編譯服務器。&lt;/li&gt; 
+ &lt;li&gt;macOS：調整了用於讀取狀態變量的緩衝區。這修復了在 macOS/M1 平台上可能出現的問題。&lt;/li&gt; 
+ &lt;li&gt;移除了針對舊版本 CMake 的兼容處理。&lt;br&gt; &lt;strong&gt;注意&lt;/strong&gt; 編譯 MySQL 所需的最低 CMake 版本為 3.14.6。（漏洞 #37901122）&lt;/li&gt; 
+ &lt;li&gt;內置的 ICU 庫已升級至 77-1 版本。（漏洞 #37870791）&lt;/li&gt; 
+ &lt;li&gt;內置的 zstd 庫已升級至 1.5.7 版本。（漏洞 #37869972）&lt;/li&gt; 
+ &lt;li&gt;移除了使用 Clang 20 編譯服務器時出現的警告。（漏洞 #37785251）&lt;/li&gt; 
+ &lt;li&gt;使用 GCC 15 編譯時，禁用了 clang::musttail。（漏洞 #37776018） - 解決了在某些舊版本 CMake 中處理列表時的問題。（漏洞 #37709169）&lt;/li&gt; 
+ &lt;li&gt;部分編譯器功能測試在使用 -fprofile-use 編譯時無法通過。（漏洞 #37707556）&lt;/li&gt; 
+ &lt;li&gt;編譯 MySQL 所需的 Boost 版本已從 1.85.0 提升至 1.87.0。（漏洞 #37403602）&lt;/li&gt; 
+ &lt;li&gt;鏈接器嘗試使用空的 Cmake 變量 ${ICU_LIBRARIES}，即使正確的庫（ext::icu）已在其他位置鏈接。（漏洞 #36524167）&lt;/li&gt; 
+ &lt;li&gt;在 macOS 上編譯時，原本明確查找 openssl@1.1，現在改為查找通用的 openssl 符號鏈接，以支持 openssl@3。（漏洞 #35468370）&lt;/li&gt; 
+ &lt;li&gt;在 macOS 上，消除了 Xcode 14 生成的棄用警告；包括建議使用 snprintf(3) 替代 sprintf(3)，以及從 64 位轉換為 32 位整數時可能丟失精度的警告。（漏洞 #34776172）&lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;h3&gt;組件説明&lt;/h3&gt; 
+&lt;ul&gt; 
+ &lt;li&gt;當組件註冊的用户定義函數（UDF）正在運行時，該函數無法被註銷，因此組件也無法被卸載（執行&lt;code&gt;UNINSTALL COMPONENT&lt;/code&gt;（&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fdev.mysql.com%2Fdoc%2Frefman%2F9.4%2Fen%2Funinstall-component.html%25EF%25BC%2589%25E4%25BC%259A%25E8%25A2%25AB%25E6%258B%2592%25E7%25BB%259D%25E5%25B9%25B6%25E8%25BF%2594%25E5%259B%259E%25E9%2594%2599%25E8%25AF%25AF%25EF%25BC%2589%25E3%2580%2582%25E8%258B%25A5%25E5%259C%25A8UDF%25E8%25BF%2590%25E8%25A1%258C%25E6%259C%259F%25E9%2597%25B4%25E4%25B8%25A4%25E6%25AC%25A1%25E5%25B0%259D%25E8%25AF%2595%25E5%258D%25B8%25E8%25BD%25BD%25E7%25BB%2584%25E4%25BB%25B6%25EF%25BC%258C%25E7%25AC%25AC%25E4%25B8%2580%25E6%25AC%25A1%25E5%25B0%259D%25E8%25AF%2595%25E4%25BC%259A%25E5%25A6%2582%25E9%25A2%2584%25E6%259C%259F%25E8%2588%25AC%25E5%25A4%25B1%25E8%25B4%25A5%25EF%25BC%258C%25E4%25BD%2586%25E7%25AC%25AC%25E4%25BA%258C%25E6%25AC%25A1%25E5%25B0%259D%25E8%25AF%2595%25E5%258D%25B4%25E4%25BC%259A%25E6%2588%2590%25E5%258A%259F%25EF%25BC%258C%25E8%25BF%2599%25E4%25BC%259A%25E5%25AF%25BC%25E8%2587%25B4%25E5%25BA%2593%25E8%25A2%25AB%25E5%258D%25B8%25E8%25BD%25BD%25EF%25BC%258C%25E8%25BF%259B%25E8%2580%258C%25E5%25BC%2595%25E5%258F%2591UDF%25E7%259B%25B8%25E5%2585%25B3%25E9%2597%25AE%25E9%25A2%2598%25EF%25BC%258C%25E7%2594%259A%25E8%2587%25B3%25E5%258F%25AF%25E8%2583%25BD%25E5%25AF%25BC%25E8%2587%25B4%25E6%259C%258D%25E5%258A%25A1%25E5%2599%25A8%25E6%2584%258F%25E5%25A4%2596%25E9%2580%2580%25E5%2587%25BA%25E3%2580%2582" target="_blank"&gt;https://dev.mysql.com/doc/refman/9.4/en/uninstall-component.html）會被拒絕並返回錯誤）。若在 UDF 運行期間兩次嘗試卸載組件，第一次嘗試會如預期般失敗，但第二次嘗試卻會成功，這會導致庫被卸載，進而引發 UDF 相關問題，甚至可能導致服務器意外退出。&lt;/a&gt; 出現此問題的原因是，即使組件的反初始化函數未成功執行，它也會清空已註冊 UDF 的容器，因此第二次卸載操作會跳過註銷步驟。我們通過在此類情況下存儲先前註冊的狀態來修復該問題。（漏洞 #35772996）&lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;h3&gt;配置説明&lt;/h3&gt; 
+&lt;ul&gt; 
+ &lt;li&gt;微軟 Windows 系統：當使用非默認的 Windows 服務名稱時，通過 MySQL 配置器進行 MySQL 服務器的原地升級會失敗。（漏洞 #37917039）&lt;/li&gt; 
+ &lt;li&gt;微軟 Windows 系統：將服務器從 8.0 版本升級到更高版本系列時，MySQL 配置器不會在&lt;code&gt;my.ini&lt;/code&gt;文件中保留自定義的服務器設置。（漏洞 #37481548）&lt;/li&gt; 
+ &lt;li&gt;微軟 Windows 系統：使用 MySQL 配置器升級 MySQL 服務器時，若使用了自定義的錯誤日誌名稱，升級過程會在「啓動服務器並升級系統表」步驟中掛起。（漏洞 #37463478）&lt;/li&gt; 
+ &lt;li&gt;微軟 Windows 系統：MySQL 配置器允許添加重複用户（即使用相同用户名和主機名定義的用户），並在服務器上將它們創建為不同的用户。此次修復後，在圖形用户界面（GUI）模式下，重複用户會被拒絕並顯示錯誤消息；在命令行界面（CLI）模式下，使用&lt;code&gt;--add-user&lt;/code&gt;指定的重複用户會被忽略。（漏洞 #37460190）&lt;/li&gt; 
+ &lt;li&gt;微軟 Windows 系統：在 CLI 模式下，MySQL 配置器現在接受環境變量&lt;code&gt;MYSQL_PWD&lt;/code&gt;的文件路徑，允許在文件中指定密碼。 感謝 Jonathan Moore 對此做出的貢獻。（漏洞 #37460173）&lt;/li&gt; 
+ &lt;li&gt;微軟 Windows 系統：在 CLI 模式下，MySQL 配置器之前始終拒絕長度少於 4 個字符的 root 密碼。此次修復後，該限制僅適用於新配置。此外，除新配置外，密碼選項不再是必填項。（漏洞 #37460061）&lt;/li&gt; 
+ &lt;li&gt;系統變量&lt;code&gt;back_log&lt;/code&gt;（&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fdev.mysql.com%2Fdoc%2Frefman%2F9.4%2Fen%2Fserver-system-variables.html%23sysvar_back_log%25EF%25BC%2589%25E7%259A%2584%25E9%25BB%2598%25E8%25AE%25A4%25E5%2580%25BC%25E5%25B7%25B2%25E5%25A2%259E%25E5%258A%25A0%25E5%2588%25B010000%25E3%2580%2582%25E6%259C%2589%25E5%2585%25B3%25E4%25B8%25BA%25E4%25BD%25BFMySQL%25E6%259C%258D%25E5%258A%25A1%25E5%2599%25A8%25E8%2583%25BD%25E5%25A4%259F%25E6%258A%25B5%25E5%25BE%25A1%25E8%25BF%259E%25E6%258E%25A5%25E7%25AA%2581%25E5%258F%2591%25E8%2580%258C%25E5%25BF%2585%25E9%25A1%25BB%25E8%25AE%25BE%25E7%25BD%25AE%25E7%259A%2584Linux%25E9%2585%258D%25E7%25BD%25AE%25E5%258F%2582%25E6%2595%25B0%25EF%25BC%258C%25E8%25AF%25B7%25E5%258F%2582%25E8%25A7%2581" target="_blank"&gt;https://dev.mysql.com/doc/refman/9.4/en/server-system-variables.html#sysvar_back_log）的默認值已增加到 10000。有關為使 MySQL 服務器能夠抵禦連接突發而必須設置的 Linux 配置參數，請參見&lt;/a&gt;&lt;code&gt;back_log&lt;/code&gt;（&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fdev.mysql.com%2Fdoc%2Frefman%2F9.4%2Fen%2Fserver-system-variables.html%23sysvar_back_log%25EF%25BC%2589%25E3%2580%2582%25EF%25BC%2588%25E4%25BB%25BB%25E5%258A%25A1" target="_blank"&gt;https://dev.mysql.com/doc/refman/9.4/en/server-system-variables.html#sysvar_back_log）。（任務&lt;/a&gt; #16888）&lt;/li&gt; 
+ &lt;li&gt;現在可以通過系統變量&lt;code&gt;server_memory&lt;/code&gt;（&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fdev.mysql.com%2Fdoc%2Frefman%2F9.4%2Fen%2Fserver-system-variables.html%23sysvar_server_memory%25EF%25BC%2589%25E9%2599%2590%25E5%2588%25B6MySQL%25E6%259C%258D%25E5%258A%25A1%25E5%2599%25A8%25E5%259C%25A8%25E7%25A1%25AE%25E5%25AE%259A%25E9%2585%258D%25E7%25BD%25AE%25E5%258F%2598%25E9%2587%258F%25E9%25BB%2598%25E8%25AE%25A4%25E5%2580%25BC%25E6%2597%25B6%25E4%25BD%25BF%25E7%2594%25A8%25E7%259A%2584%25E6%259C%2580%25E5%25A4%25A7%25E7%2589%25A9%25E7%2590%2586%25E5%2586%2585%25E5%25AD%2598%25E9%2587%258F%25E3%2580%2582%25EF%25BC%2588%25E4%25BB%25BB%25E5%258A%25A1" target="_blank"&gt;https://dev.mysql.com/doc/refman/9.4/en/server-system-variables.html#sysvar_server_memory）限制 MySQL 服務器在確定配置變量默認值時使用的最大物理內存量。（任務&lt;/a&gt; #16938）&lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;h3&gt;棄用與移除説明&lt;/h3&gt; 
+&lt;ul&gt; 
+ &lt;li&gt;作為從 MySQL 插件向 MySQL 組件過渡的持續工作的一部分，用於編寫 MySQL 插件的 API 現已被棄用，並計劃在未來的 MySQL 版本中移除。此變更會產生以下影響： - MySQL 服務器的&lt;code&gt;--early-plugin-load&lt;/code&gt;（&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fdev.mysql.com%2Fdoc%2Frefman%2F9.4%2Fen%2Fserver-options.html%23option_mysqld_early-plugin-load%25EF%25BC%2589%25E9%2580%2589%25E9%25A1%25B9%25E5%25B7%25B2%25E8%25A2%25AB%25E5%25BC%2583%25E7%2594%25A8%25E3%2580%2582%25E4%25BD%25BF%25E7%2594%25A8%25E8%25AF%25A5%25E9%2580%2589%25E9%25A1%25B9%25E5%2590%25AF%25E5%258A%25A8%25E6%259C%258D%25E5%258A%25A1%25E5%2599%25A8%25E4%25BC%259A%25E8%25A7%25A6%25E5%258F%2591%25E5%25BC%2583%25E7%2594%25A8%25E8%25AD%25A6%25E5%2591%258A%25E3%2580%2582" target="_blank"&gt;https://dev.mysql.com/doc/refman/9.4/en/server-options.html#option_mysqld_early-plugin-load）選項已被棄用。使用該選項啓動服務器會觸發棄用警告。&lt;/a&gt;&lt;/li&gt; 
+ &lt;li&gt;每當加載密鑰環插件時，都會發出棄用警告。有關密鑰環組件與密鑰環插件的區別概述，請參見《密鑰環組件與密鑰環插件》（&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fdev.mysql.com%2Fdoc%2Frefman%2F9.4%2Fen%2Fkeyring-component-plugin-comparison.html%25EF%25BC%2589%25E3%2580%2582%25E5%258F%25A6%25E8%25AF%25B7%25E5%258F%2582%25E8%25A7%2581%25E3%2580%258A%25E4%25BD%25BF%25E7%2594%25A8%25E8%25BF%2581%25E7%25A7%25BB%25E6%259C%258D%25E5%258A%25A1%25E5%2599%25A8%25E8%25BF%259B%25E8%25A1%258C%25E5%25AF%2586%25E9%2592%25A5%25E8%25BF%2581%25E7%25A7%25BB%25E3%2580%258B%25EF%25BC%2588https%3A%2F%2Fdev.mysql.com%2Fdoc%2Frefman%2F9.4%2Fen%2Fkeyring-key-migration.html%23keyring-key-migration-using-migration-server%25EF%25BC%2589%25EF%25BC%258C%25E4%25BA%2586%25E8%25A7%25A3%25E4%25BB%258E%25E5%25AF%2586%25E9%2592%25A5%25E7%258E%25AF%25E6%258F%2592%25E4%25BB%25B6%25E8%25BF%2581%25E7%25A7%25BB%25E5%2588%25B0%25E5%25AF%2586%25E9%2592%25A5%25E7%258E%25AF%25E7%25BB%2584%25E4%25BB%25B6%25E7%259A%2584%25E7%259B%25B8%25E5%2585%25B3%25E4%25BF%25A1%25E6%2581%25AF%25E3%2580%2582%25EF%25BC%2588%25E4%25BB%25BB%25E5%258A%25A1" target="_blank"&gt;https://dev.mysql.com/doc/refman/9.4/en/keyring-component-plugin-comparison.html）。另請參見《使用遷移服務器進行密鑰遷移》（https://dev.mysql.com/doc/refman/9.4/en/keyring-key-migration.html#keyring-key-migration-using-migration-server），瞭解從密鑰環插件遷移到密鑰環組件的相關信息。（任務&lt;/a&gt; #16574）&lt;/li&gt; 
+ &lt;li&gt;在 8.0.26 版本中被棄用的系統變量&lt;code&gt;temptable_use_mmap&lt;/code&gt;，在本版本中已被移除。（任務 #16745） - 本版本中，SQL 函數&lt;code&gt;MD5()&lt;/code&gt;（&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fdev.mysql.com%2Fdoc%2Frefman%2F9.4%2Fen%2Fencryption-functions.html%23function_md5%25EF%25BC%2589%25E5%2592%258C" target="_blank"&gt;https://dev.mysql.com/doc/refman/9.4/en/encryption-functions.html#function_md5）和&lt;/a&gt;&lt;code&gt;SHA1()&lt;/code&gt;（&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fdev.mysql.com%2Fdoc%2Frefman%2F9.4%2Fen%2Fencryption-functions.html%23function_sha1%25EF%25BC%2589%25E5%25B7%25B2%25E8%25A2%25AB%25E5%25BC%2583%25E7%2594%25A8%25EF%25BC%258C%25E5%25B9%25B6%25E8%25AE%25A1%25E5%2588%2592%25E5%259C%25A8%25E6%259C%25AA%25E6%259D%25A5%25E7%2589%2588%25E6%259C%25AC%25E4%25B8%25AD%25E7%25A7%25BB%25E9%2599%25A4%25E3%2580%2582%25EF%25BC%2588%25E4%25BB%25BB%25E5%258A%25A1" target="_blank"&gt;https://dev.mysql.com/doc/refman/9.4/en/encryption-functions.html#function_sha1）已被棄用，並計劃在未來版本中移除。（任務&lt;/a&gt; #16955）&lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;h3&gt;InnoDB 説明&lt;/h3&gt; 
+&lt;ul&gt; 
+ &lt;li&gt;改進了內存管理，以防止在某些錯誤處理場景中可能出現的內存泄漏。（漏洞 #37826893）&lt;/li&gt; 
+ &lt;li&gt;在特定條件下（例如表和索引從緩存中被逐出時），&lt;code&gt;information_schema.innodb_cmp_per_index&lt;/code&gt;（&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fdev.mysql.com%2Fdoc%2Frefman%2F9.4%2Fen%2Finformation-schema-innodb-cmp-per-index-table.html%25EF%25BC%2589%25E8%25A1%25A8%25E6%259C%2589%25E6%2597%25B6%25E4%25BC%259A%25E8%25BF%2594%25E5%259B%259E%25E6%259C%25AA%25E7%259F%25A5%25E7%259A%2584%25E6%2595%25B0%25E6%258D%25AE%25E5%25BA%2593%25E5%2590%258D%25E5%2592%258C%25E8%25A1%25A8%25E5%2590%258D%25E3%2580%2582%25EF%25BC%2588%25E6%25BC%258F%25E6%25B4%259E" target="_blank"&gt;https://dev.mysql.com/doc/refman/9.4/en/information-schema-innodb-cmp-per-index-table.html）表有時會返回未知的數據庫名和表名。（漏洞&lt;/a&gt; #37820227）&lt;/li&gt; 
+ &lt;li&gt;修復了與導入表相關的問題。（漏洞 #37621360） - &lt;code&gt;innodb_change_buffer_max_size&lt;/code&gt;（&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fdev.mysql.com%2Fdoc%2Frefman%2F9.4%2Fen%2Finnodb-parameters.html%23sysvar_innodb_change_buffer_max_size%25EF%25BC%2589%25E7%259A%2584%25E9%25BB%2598%25E8%25AE%25A4%25E5%2580%25BC%25E5%25B7%25B2%25E6%259B%25B4%25E6%2594%25B9%25E4%25B8%25BA5%25E3%2580%2582%25E6%25AD%25A4%25E6%259B%25B4%25E6%2596%25B0%25E6%2597%25A8%25E5%259C%25A8%25E5%25B9%25B3%25E8%25A1%25A1%25E5%258F%2598%25E6%259B%25B4%25E7%25BC%2593%25E5%2586%25B2%25E5%25AF%25B9IO%25E5%25AF%2586%25E9%259B%2586%25E5%259E%258B%25E5%25B7%25A5%25E4%25BD%259C%25E8%25B4%259F%25E8%25BD%25BD%25E7%259A%2584%25E7%259B%258A%25E5%25A4%2584%25EF%25BC%258C%25E4%25BB%25A5%25E5%258F%258A%25E5%25BD%2593%25E7%25BC%2593%25E5%2586%25B2%25E6%25B1%25A0%25E7%259A%2584%25E8%25BE%2583%25E5%25A4%25A7%25E9%2583%25A8%25E5%2588%2586%25E7%2594%25A8%25E4%25BA%258E%25E5%258F%2598%25E6%259B%25B4%25E7%25BC%2593%25E5%2586%25B2%25E6%2597%25B6%25EF%25BC%258C%25E5%25AF%25B9%25E5%2586%2585%25E5%25AD%2598%25E5%25B7%25A5%25E4%25BD%259C%25E8%25B4%259F%25E8%25BD%25BD%25E5%258F%25AF%25E8%2583%25BD%25E4%25BA%25A7%25E7%2594%259F%25E7%259A%2584%25E8%25B4%259F%25E9%259D%25A2%25E5%25BD%25B1%25E5%2593%258D%25E3%2580%2582%25EF%25BC%2588%25E4%25BB%25BB%25E5%258A%25A1" target="_blank"&gt;https://dev.mysql.com/doc/refman/9.4/en/innodb-parameters.html#sysvar_innodb_change_buffer_max_size）的默認值已更改為 5。此更新旨在平衡變更緩衝對 IO 密集型工作負載的益處，以及當緩衝池的較大部分用於變更緩衝時，對內存工作負載可能產生的負面影響。（任務&lt;/a&gt; #16968）&lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;h3&gt;安裝説明&lt;/h3&gt; 
+&lt;ul&gt; 
+ &lt;li&gt;macOS：當啓動&lt;code&gt;mysqld&lt;/code&gt;時未指定&lt;code&gt;--plugin-dir&lt;/code&gt;（&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fdev.mysql.com%2Fdoc%2Frefman%2F9.4%2Fen%2Fserver-system-variables.html%23sysvar_plugin_dir%25EF%25BC%2589%25EF%25BC%258C%25E4%25BD%2586%25E6%258C%2587%25E5%25AE%259A%25E4%25BA%2586" target="_blank"&gt;https://dev.mysql.com/doc/refman/9.4/en/server-system-variables.html#sysvar_plugin_dir），但指定了&lt;/a&gt;&lt;code&gt;--basedir&lt;/code&gt;（&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fdev.mysql.com%2Fdoc%2Frefman%2F9.4%2Fen%2Fserver-system-variables.html%23sysvar_basedir%25EF%25BC%2589%25EF%25BC%258C%25E4%25B8%2594%25E5%259F%25BA%25E7%25A1%2580%25E7%259B%25AE%25E5%25BD%2595%25E4%25B8%258D%25E4%25BB%25A5%25E6%2596%259C%25E6%259D%25A0%25E5%25AD%2597%25E7%25AC%25A6%25EF%25BC%2588%2F%25EF%25BC%2589%25E7%25BB%2593%25E5%25B0%25BE%25EF%25BC%258C%25E5%2590%258C%25E6%2597%25B6" target="_blank"&gt;https://dev.mysql.com/doc/refman/9.4/en/server-system-variables.html#sysvar_basedir），且基礎目錄不以斜槓字符（/）結尾，同時&lt;/a&gt;&lt;code&gt;mysqld&lt;/code&gt;配置為加載&lt;code&gt;keyring_file&lt;/code&gt;組件時，服務器啓動會失敗並報錯。這給 MySQL 的 macOS 安裝程序帶來了問題，導致它無法設置 root 賬户的密碼。（漏洞 #36816216）參考：另見漏洞 #36398484。&lt;/li&gt; 
+ &lt;li&gt;現在，非 root 用户也可以運行用於安裝 MySQL 的 Debian 軟件包。這有助於解決需要無 root 安裝的 Debian 或 Ubuntu 系統的相關問題。（漏洞 #37765153）&lt;/li&gt; 
+ &lt;li&gt;現在支持在 Red Hat Enterprise Linux 和 Oracle Linux 10 上通過 RPM 和 Yum 倉庫進行安裝。（漏洞 #37592019）&lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;h3&gt;JavaScript 程序&lt;/h3&gt; 
+&lt;ul&gt; 
+ &lt;li&gt;在內存使用率較高的情況下，嘗試執行 JavaScript 存儲過程時，&lt;code&gt;SP::init()&lt;/code&gt;中的第一個&lt;code&gt;context.parse()&lt;/code&gt;調用會引發內存不足錯誤。隨後，會異步進行第二次&lt;code&gt;context.parse()&lt;/code&gt;調用。如果在此期間其他會話釋放了內存，該調用可能會成功。這意味着 MLE 組件的錯誤處理程序會報告一個錯誤，但由於第二次調用成功，MLE 會返回表示成功的狀態碼。現在，在這種情況下，&lt;code&gt;CALL&lt;/code&gt;（&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fdev.mysql.com%2Fdoc%2Frefman%2F9.4%2Fen%2Fcall.html%25EF%25BC%2589%25E4%25BC%259A%25E8%25A2%25AB%25E6%258B%2592%25E7%25BB%259D%25E5%25B9%25B6%25E8%25BF%2594%25E5%259B%259E%25E5%2586%2585%25E5%25AD%2598%25E4%25B8%258D%25E8%25B6%25B3%25E9%2594%2599%25E8%25AF%25AF%25E3%2580%2582%25EF%25BC%2588%25E6%25BC%258F%25E6%25B4%259E" target="_blank"&gt;https://dev.mysql.com/doc/refman/9.4/en/call.html）會被拒絕並返回內存不足錯誤。（漏洞&lt;/a&gt; #37952656）&lt;/li&gt; 
+ &lt;li&gt;將捆綁的 Graal Maven 版本升級到了 24.2.1.0.1。（漏洞 #37938310）&lt;/li&gt; 
+ &lt;li&gt;包含的 GraalVM 以及 MLE 組件使用的 Truffle 庫分別升級到了 23.1.7 和 24.2.1 版本。（漏洞 #37833200）&lt;/li&gt; 
+ &lt;li&gt;當&lt;code&gt;mysqldump&lt;/code&gt;來自 MySQL 9.2.0 或更高版本的發行版時，&lt;code&gt;mysqldump --routines&lt;/code&gt;（&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fdev.mysql.com%2Fdoc%2Frefman%2F9.4%2Fen%2Fmysqldump.html%23option_mysqldump_routines%25EF%25BC%2589%25E5%259C%25A8%25E4%25B8%258E%25E6%2597%25A9%25E6%259C%259F%25E7%2589%2588%25E6%259C%25AC%25E7%259A%2584%25E6%259C%258D%25E5%258A%25A1%25E5%2599%25A8%25E9%2585%258D%25E5%2590%2588%25E4%25BD%25BF%25E7%2594%25A8%25E6%2597%25B6%25E6%2597%25A0%25E6%25B3%2595%25E6%25AD%25A3%25E5%25B8%25B8%25E5%25B7%25A5%25E4%25BD%259C%25EF%25BC%258C%25E5%259B%25A0%25E4%25B8%25BA%25E5%25AE%2583%25E6%2589%25BE%25E4%25B8%258D%25E5%2588%25B0" target="_blank"&gt;https://dev.mysql.com/doc/refman/9.4/en/mysqldump.html#option_mysqldump_routines）在與早期版本的服務器配合使用時無法正常工作，因為它找不到&lt;/a&gt;&lt;code&gt;INFORMATION_SCHEMA.LIBRARIES&lt;/code&gt;（&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fdev.mysql.com%2Fdoc%2Frefman%2F9.4%2Fen%2Finformation-schema-libraries-table.html%25EF%25BC%2589%25E8%25A1%25A8%25E3%2580%2582%25E7%258E%25B0%25E5%259C%25A8%25EF%25BC%258C%25E5%259C%25A8%25E8%25BF%2599%25E7%25A7%258D%25E6%2583%2585%25E5%2586%25B5%25E4%25B8%258B%25EF%25BC%258C" target="_blank"&gt;https://dev.mysql.com/doc/refman/9.4/en/information-schema-libraries-table.html）表。現在，在這種情況下，&lt;/a&gt;&lt;code&gt;mysqldump&lt;/code&gt;會跳過該表，不會嘗試導出它。（漏洞 #37498680）&lt;/li&gt; 
+ &lt;li&gt;現在支持在 JavaScript 存儲例程中使用 MySQL 的&lt;code&gt;BIT&lt;/code&gt;（&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fdev.mysql.com%2Fdoc%2Frefman%2F9.4%2Fen%2Fbit-type.html%25EF%25BC%2589%25E7%25B1%25BB%25E5%259E%258B%25E3%2580%2582%25E6%259C%2589%25E5%2585%25B3%25E7%25B1%25BB%25E5%259E%258B%25E8%25BD%25AC%25E6%258D%25A2%25E8%25A7%2584%25E5%2588%2599%25E5%2592%258C%25E5%2585%25B6%25E4%25BB%2596%25E4%25BF%25A1%25E6%2581%25AF%25EF%25BC%258C%25E8%25AF%25B7%25E5%258F%2582%25E8%25A7%2581%25E3%2580%258AJavaScript%25E5%25AD%2598%25E5%2582%25A8%25E7%25A8%258B%25E5%25BA%258F%25E7%259A%2584%25E6%2595%25B0%25E6%258D%25AE%25E7%25B1%25BB%25E5%259E%258B%25E5%2592%258C%25E5%258F%2582%25E6%2595%25B0%25E5%25A4%2584%25E7%2590%2586%25E3%2580%258B%25EF%25BC%2588https%3A%2F%2Fdev.mysql.com%2Fdoc%2Frefman%2F9.4%2Fen%2Fsrjs-data-arguments.html%25EF%25BC%2589%25E3%2580%2582%25EF%25BC%2588%25E4%25BB%25BB%25E5%258A%25A1" target="_blank"&gt;https://dev.mysql.com/doc/refman/9.4/en/bit-type.html）類型。有關類型轉換規則和其他信息，請參見《JavaScript 存儲程序的數據類型和參數處理》（https://dev.mysql.com/doc/refman/9.4/en/srjs-data-arguments.html）。（任務&lt;/a&gt; #16885）&lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;h3&gt;性能模式説明&lt;/h3&gt; 
+&lt;ul&gt; 
+ &lt;li&gt;內部函數&lt;code&gt;pfs_get_thread_statement_locker_vc()&lt;/code&gt;包含調試代碼，這些代碼意外地被包含在了發佈版本中。（漏洞 #37743667）&lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;h3&gt;向量數據類型&lt;/h3&gt; 
+&lt;ul&gt; 
+ &lt;li&gt;&lt;code&gt;VECTOR_TO_STRING()&lt;/code&gt;（&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fdev.mysql.com%2Fdoc%2Frefman%2F9.4%2Fen%2Fvector-functions.html%23function_vector-to-string%25EF%25BC%2589%25E5%2587%25BD%25E6%2595%25B0%25E6%259C%25AA%25E8%2583%25BD%25E6%25AD%25A3%25E7%25A1%25AE%25E8%25AE%25BE%25E7%25BD%25AE%25E5%2585%25B6%25E8%25BE%2593%25E5%2587%25BA%25E7%259A%2584%25E6%258E%2592%25E5%25BA%258F%25E8%25A7%2584%25E5%2588%2599%25E3%2580%2582%25EF%25BC%2588%25E6%25BC%258F%25E6%25B4%259E" target="_blank"&gt;https://dev.mysql.com/doc/refman/9.4/en/vector-functions.html#function_vector-to-string）函數未能正確設置其輸出的排序規則。（漏洞&lt;/a&gt; #37815490）&lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;h3&gt;新增或更改的功能&lt;/h3&gt; 
+&lt;ul&gt; 
+ &lt;li&gt;&lt;strong&gt;重要變更&lt;/strong&gt;：新增了 mysql 客户端的&lt;code&gt;--commands&lt;/code&gt;（&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fdev.mysql.com%2Fdoc%2Frefman%2F9.4%2Fen%2Fmysql-command-options.html%23option_mysql_commands%25EF%25BC%2589%25E9%2580%2589%25E9%25A1%25B9%25EF%25BC%258C%25E8%25AF%25A5%25E9%2580%2589%25E9%25A1%25B9%25E7%2594%25A8%25E4%25BA%258E%25E5%2590%25AF%25E7%2594%25A8%25E6%2588%2596%25E7%25A6%2581%25E7%2594%25A8%25E5%25A4%25A7%25E5%25A4%259A%25E6%2595%25B0mysql%25E5%25AE%25A2%25E6%2588%25B7%25E7%25AB%25AF%25E5%2591%25BD%25E4%25BB%25A4%25E3%2580%2582" target="_blank"&gt;https://dev.mysql.com/doc/refman/9.4/en/mysql-command-options.html#option_mysql_commands）選項，該選項用於啓用或禁用大多數 mysql 客户端命令。&lt;/a&gt; 此選項默認處於禁用狀態。要啓用它，可以使用&lt;code&gt;--commands&lt;/code&gt;或&lt;code&gt;--commands=ON&lt;/code&gt;（&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fdev.mysql.com%2Fdoc%2Frefman%2F9.4%2Fen%2Fmysql-command-options.html%23option_mysql_commands%25EF%25BC%2589%25E5%2590%25AF%25E5%258A%25A8%25E5%25AE%25A2%25E6%2588%25B7%25E7%25AB%25AF%25E3%2580%2582%25E6%259C%2589%25E5%2585%25B3%25E5%258F%2597%25E6%25AD%25A4%25E9%2580%2589%25E9%25A1%25B9%25E5%25BD%25B1%25E5%2593%258D%25E7%259A%2584%25E6%2589%2580%25E6%259C%2589%25E5%2591%25BD%25E4%25BB%25A4%25E7%259A%2584%25E5%25AE%258C%25E6%2595%25B4%25E5%2588%2597%25E8%25A1%25A8%25E4%25BB%25A5%25E5%258F%258A%25E5%2585%25B6%25E4%25BB%2596%25E4%25BF%25A1%25E6%2581%25AF%25EF%25BC%258C%25E8%25AF%25B7%25E5%258F%2582%25E8%25A7%2581%25E3%2580%258Amysql%25E5%25AE%25A2%25E6%2588%25B7%25E7%25AB%25AF%25E9%2580%2589%25E9%25A1%25B9%25E3%2580%258B%25EF%25BC%2588https%3A%2F%2Fdev.mysql.com%2Fdoc%2Frefman%2F9.4%2Fen%2Fmysql-command-options.html%25EF%25BC%2589%25E3%2580%2582%25EF%25BC%2588%25E4%25BB%25BB%25E5%258A%25A1" target="_blank"&gt;https://dev.mysql.com/doc/refman/9.4/en/mysql-command-options.html#option_mysql_commands）啓動客户端。有關受此選項影響的所有命令的完整列表以及其他信息，請參見《mysql 客户端選項》（https://dev.mysql.com/doc/refman/9.4/en/mysql-command-options.html）。（任務&lt;/a&gt; #16949） 參考：另見漏洞 #36416568。&lt;/li&gt; 
+ &lt;li&gt;InnoDB：為了改進調試，現在會將&lt;code&gt;buf_page_t&lt;/code&gt;和&lt;code&gt;buf_block_t&lt;/code&gt;結構的元數據打印到錯誤日誌中。（漏洞 #35115629）參考：另見漏洞 #35115601。&lt;/li&gt; 
+ &lt;li&gt;組複製：新增了錯誤&lt;code&gt;ER_GRP_RPL_APPLIER_THD_KILLED&lt;/code&gt;（&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fdev.mysql.com%2Fdoc%2Fmysql-errors%2F9.4%2Fen%2Fserver-error-reference.html%23error_er_grp_rpl_applier_thd_killed%25EF%25BC%2589%25EF%25BC%258C%25E7%2594%25A8%25E4%25BA%258E%25E5%258C%25BA%25E5%2588%2586%25E5%25BA%2594%25E7%2594%25A8%25E7%25BA%25BF%25E7%25A8%258B%25E6%2598%25AF%25E9%2580%259A%25E8%25BF%2587SQL%25E7%259A%2584" target="_blank"&gt;https://dev.mysql.com/doc/mysql-errors/9.4/en/server-error-reference.html#error_er_grp_rpl_applier_thd_killed），用於區分應用線程是通過 SQL 的&lt;/a&gt;&lt;code&gt;KILL&lt;/code&gt;命令終止的，還是因錯誤而停止的。（漏洞 #37764717）&lt;/li&gt; 
+ &lt;li&gt;NDB 複製：現在可以將 MySQL 集羣或單個&lt;code&gt;NDBCLUSTER&lt;/code&gt;（&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fdev.mysql.com%2Fdoc%2Frefman%2F9.4%2Fen%2Fmysql-cluster.html%25EF%25BC%2589%25E8%25A1%25A8%25E7%259A%2584%25E4%25BA%258C%25E8%25BF%259B%25E5%2588%25B6%25E6%2597%25A5%25E5%25BF%2597%25E5%259C%25A8%25E5%25A4%259A%25E4%25B8%25AAMySQL%25E6%259C%258D%25E5%258A%25A1%25E5%2599%25A8%25E4%25B9%258B%25E9%2597%25B4%25E5%2588%2586%25E6%2588%2590%25E7%259B%25B8%25E7%25AD%2589%25E7%259A%2584%25E9%2583%25A8%25E5%2588%2586%25E6%2588%2596%25E2%2580%259C%25E5%2588%2586%25E7%2589%2587%25E2%2580%259D%25E3%2580%2582" target="_blank"&gt;https://dev.mysql.com/doc/refman/9.4/en/mysql-cluster.html）表的二進制日誌在多個 MySQL 服務器之間分成相等的部分或「分片」。&lt;/a&gt; 為了將整個集羣的二進制日誌分成多個分片，此 NDB 版本實現了兩個&lt;code&gt;mysqld&lt;/code&gt;啓動選項。&lt;code&gt;--ndb-log-row-slice-count&lt;/code&gt;（&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fdev.mysql.com%2Fdoc%2Frefman%2F9.4%2Fen%2Fmysql-cluster-options-variables.html%23option_mysqld_ndb-log-row-slice-count%25EF%25BC%2589%25E9%2580%2589%25E9%25A1%25B9%25E7%2594%25A8%25E4%25BA%258E%25E7%25A1%25AE%25E5%25AE%259A%25E5%2588%2586%25E7%2589%2587%25E7%259A%2584%25E6%2595%25B0%25E9%2587%258F%25EF%25BC%258C%25E4%25BB%258E%25E8%2580%258C%25E7%25A1%25AE%25E5%25AE%259A%25E5%2585%25B1%25E4%25BA%25AB%25E4%25BA%258C%25E8%25BF%259B%25E5%2588%25B6%25E6%2597%25A5%25E5%25BF%2597%25E7%259A%2584%25E6%259C%258D%25E5%258A%25A1%25E5%2599%25A8%25E6%2595%25B0%25E9%2587%258F%25E3%2580%2582" target="_blank"&gt;https://dev.mysql.com/doc/refman/9.4/en/mysql-cluster-options-variables.html#option_mysqld_ndb-log-row-slice-count）選項用於確定分片的數量，從而確定共享二進制日誌的服務器數量。&lt;/a&gt;&lt;code&gt;--ndb-log-row-slice-id&lt;/code&gt;（&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fdev.mysql.com%2Fdoc%2Frefman%2F9.4%2Fen%2Fmysql-cluster-options-variables.html%23option_mysqld_ndb-log-row-slice-id%25EF%25BC%2589%25E7%2594%25A8%25E4%25BA%258E%25E6%25A0%2587%25E8%25AF%2586%25E6%25AD%25A4MySQL%25E6%259C%258D%25E5%258A%25A1%25E5%2599%25A8%25E8%25B4%259F%25E8%25B4%25A3%25E7%259A%2584%25E5%2588%2586%25E7%2589%2587%25E3%2580%2582%25E6%259C%2589%25E5%2585%25B3%25E8%25BF%2599%25E4%25BA%259B%25E9%2580%2589%25E9%25A1%25B9%25E7%259A%2584%25E6%259B%25B4%25E5%25A4%259A%25E4%25BF%25A1%25E6%2581%25AF%25EF%25BC%258C%25E8%25AF%25B7%25E5%258F%2582%25E8%25A7%2581%25E5%2585%25B6%25E6%258F%258F%25E8%25BF%25B0%25E3%2580%2582%25E5%258F%25AF%25E4%25BB%25A5%25E9%2580%259A%25E8%25BF%2587%25E5%2590%2591" target="_blank"&gt;https://dev.mysql.com/doc/refman/9.4/en/mysql-cluster-options-variables.html#option_mysqld_ndb-log-row-slice-id）用於標識此 MySQL 服務器負責的分片。有關這些選項的更多信息，請參見其描述。可以通過向&lt;/a&gt;&lt;code&gt;ndb_replication&lt;/code&gt;表中添加行（併為該表中新增的&lt;code&gt;binlog_row_slice_count&lt;/code&gt;和&lt;code&gt;binlog_row_slice_id&lt;/code&gt;列設置適當的值），為特定的 NDB 表分割二進制日誌。如果正在升級現有的設置，可能需要執行&lt;code&gt;ALTER TABLE&lt;/code&gt;語句，或者刪除並重新創建該表以獲得此功能。有關更多信息和示例，請參見《按表進行二進制日誌分片》（&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fdev.mysql.com%2Fdoc%2Frefman%2F9.4%2Fen%2Fmysql-cluster-replication-schema.html%23ndb-replication-per-table-binlog-slicing%25EF%25BC%2589%25E3%2580%2582%25EF%25BC%2588%25E4%25BB%25BB%25E5%258A%25A1" target="_blank"&gt;https://dev.mysql.com/doc/refman/9.4/en/mysql-cluster-replication-schema.html#ndb-replication-per-table-binlog-slicing）。（任務&lt;/a&gt; #15413）&lt;/li&gt; 
+ &lt;li&gt;在信號處理期間打印當前查詢時，將歷史的 1024 字節限制增加到了 1073741824（1024 * 1024 * 1024）字節。（漏洞 #37603354）&lt;/li&gt; 
+ &lt;li&gt;包含 curl（而非鏈接到系統 curl 庫）的二進制包已升級為使用 curl 8.14.1。（漏洞 #37389565）&lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;h3&gt;已修復的漏洞&lt;/h3&gt; 
+&lt;ul&gt; 
+ &lt;li&gt;&lt;strong&gt;重要説明；組複製&lt;/strong&gt;：組通信系統（GCS）負責處理成員之間的組複製通信，並跟蹤組成員身份以及所有組成員之間的連接。成員身份跟蹤包括當前及前兩次迭代的成員身份。當某個成員離開時，組內剩餘成員會保留該離開成員的記錄，但在其返回前停止與其通信。例如：組內包含成員 M1、M2 和 M3。M3 離開組後，M1 和 M2 停止與 M3 通信。當新成員（M4）加入時，它會瞭解該組前幾次迭代的成員身份，並嘗試與所有服務器通信，包括前幾次迭代中的服務器（此處為 M3）。 若某些先前的服務器已消失且不再返回，新成員會持續嘗試連接這些缺失的服務器；在某些情況下，這些持續的連接嘗試可能會引入網絡延遲，影響組成員的通信。 為避免此問題，現在對屬於組成員身份迭代中的服務器的連接會在 5 分鐘後停止，這一時間應足以重新建立有效連接，同時不會對組通信造成持續影響。（漏洞 #37704514）&lt;/li&gt; 
+ &lt;li&gt;&lt;strong&gt;性能&lt;/strong&gt;：在 MySQL 8.0 中已優化移除的某些查詢中的冗餘條件，在後續版本中不再被移除，導致此類查詢的性能大幅下降。（漏洞 #117907、漏洞 #37808260） 參考：此問題是以下漏洞的迴歸：漏洞 #30112096。&lt;/li&gt; 
+ &lt;li&gt;&lt;strong&gt;InnoDB&lt;/strong&gt;：即使不需要，每次行更新時都會檢查該表是否被外鍵引用。 現在僅在需要時才執行該檢查。（漏洞 #37867653）&lt;/li&gt; 
+ &lt;li&gt;&lt;strong&gt;InnoDB&lt;/strong&gt;：在緩衝池創建期間為線程設置處理器親和性時，未正確解析&lt;code&gt;pthread_setaffinity_np&lt;/code&gt;的返回值。因此，即使親和性設置失敗，也不會返回錯誤。（漏洞 #37825544）&lt;/li&gt; 
+ &lt;li&gt;&lt;strong&gt;InnoD&lt;/strong&gt;：重建主鍵時，若存在重複數據，服務器有時會遇到問題，可能導致服務器意外停止。 感謝 Xizhe Zhang 及阿里巴巴團隊的貢獻。（漏洞 #37822992）&lt;/li&gt; 
+ &lt;li&gt;&lt;strong&gt;InnoDB&lt;/strong&gt;：修復了與刪除屬於索引一部分的列相關的問題。（漏洞 #37726881）&lt;/li&gt; 
+ &lt;li&gt;&lt;strong&gt;InnoDB&lt;/strong&gt;：由於未受保護的靜態數組，MySQL 社區版二進制文件包含不必要的 OpenTelemetry 符號。（漏洞 #37689163）&lt;/li&gt; 
+ &lt;li&gt;&lt;strong&gt;InnoDB&lt;/strong&gt;：雙寫緩衝區過大。計算每個文件的段數時，總會額外添加一個段，而實際上只有當雙寫實例的數量不能被雙寫文件的數量整除時，才應添加額外的段。（漏洞 #37684656）&lt;/li&gt; 
+ &lt;li&gt;&lt;strong&gt;InnoDB&lt;/strong&gt;：修復了與&lt;code&gt;DELETE&lt;/code&gt;操作相關的問題。（漏洞 #37478594）&lt;/li&gt; 
+ &lt;li&gt;&lt;strong&gt;InnoDB&lt;/strong&gt;：在&lt;code&gt;VARCHAR&lt;/code&gt;（&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fdev.mysql.com%2Fdoc%2Frefman%2F9.4%2Fen%2Fchar.html%25EF%25BC%2589%25E5%2588%2597%25E4%25B8%258A%25E5%2588%259B%25E5%25BB%25BA%25E4%25BA%258C%25E7%25BA%25A7%25E7%25B4%25A2%25E5%25BC%2595%25E6%2597%25B6%25EF%25BC%258C%25E5%2588%2586%25E9%2585%258D%25E7%259A%2584%25E5%2586%2585%25E5%25AD%2598%25E5%258F%25AF%25E8%2583%25BD%25E8%25B6%2585%25E8%25BF%2587%25E9%2585%258D%25E7%25BD%25AE%25E5%2580%25BC%25EF%25BC%258C%25E5%2588%2586%25E9%2585%258D%25E7%259A%2584%25E5%2586%2585%25E5%25AD%2598%25E9%2587%258F%25E4%25B8%258E" target="_blank"&gt;https://dev.mysql.com/doc/refman/9.4/en/char.html）列上創建二級索引時，分配的內存可能超過配置值，分配的內存量與&lt;/a&gt;&lt;code&gt;innodb_ddl_buffer_size&lt;/code&gt;（&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fdev.mysql.com%2Fdoc%2Frefman%2F9.4%2Fen%2Finnodb-parameters.html%23sysvar_innodb_ddl_buffer_size%25EF%25BC%2589%25E7%259A%2584%25E5%2580%25BC%25E7%259B%25B4%25E6%258E%25A5%25E7%259B%25B8%25E5%2585%25B3%25EF%25BC%258C%25E4%25BB%258E%25E8%2580%258C%25E5%25AF%25BC%25E8%2587%25B4%25E7%25B1%25BB%25E4%25BC%25BC%25E2%2580%259CERROR" target="_blank"&gt;https://dev.mysql.com/doc/refman/9.4/en/innodb-parameters.html#sysvar_innodb_ddl_buffer_size）的值直接相關，從而導致類似「ERROR&lt;/a&gt; 1136 (21S01)：第 1 行的列數與值數不匹配」的錯誤。（漏洞 #37233273）&lt;/li&gt; 
+ &lt;li&gt;&lt;strong&gt;InnoDB&lt;/strong&gt;：修復了與空間數據類型列索引相關的問題。（漏洞 #36682518）&lt;/li&gt; 
+ &lt;li&gt;&lt;strong&gt;InnoDB&lt;/strong&gt;：服務器關閉期間，臨時表處理程序未能正常終止，可能導致服務器意外終止。通過實施一種機制來跟蹤並正確清理與每個線程相關聯的臨時表對象，已解決此問題。（漏洞 #36538081）&lt;/li&gt; 
+ &lt;li&gt;&lt;strong&gt;InnoDB&lt;/strong&gt;：當 MySQL 企業備份增量備份失敗後，若重做日誌消費者滯後，可能會導致長時間的信號量等待崩潰，從而阻止重做日誌寫入線程推進。返回的錯誤消息類似如下： [警告] [MY-013934] [InnoDB] 重做日誌寫入程序正在等待 MEB 重做日誌消費者，該消費者當前正在讀取 LSN=23335640211468，這阻止了重做日誌後續部分的回收。考慮增加 innodb_redo_log_capacity。 （漏洞 #36330455）&lt;/li&gt; 
+ &lt;li&gt;&lt;strong&gt;InnoDB&lt;/strong&gt;：修復了與表上的範圍查詢相關的問題。（漏洞 #31360522）&lt;/li&gt; 
+ &lt;li&gt;&lt;strong&gt;複製&lt;/strong&gt;：修復了&lt;code&gt;libs/mysql/binlog/event/event_reader.cpp&lt;/code&gt;中的內部內存管理問題。（漏洞 #37371443）&lt;/li&gt; 
+ &lt;li&gt;&lt;strong&gt;複製&lt;/strong&gt;：在半同步複製中，當二進制日誌後綴的長度超過六位（.999999），使得下一個日誌文件變為例如&lt;code&gt;mysql-bin.1000000&lt;/code&gt;時，複製協議會意外地從半同步變為異步。（漏洞 #115861、漏洞 #37024069）&lt;/li&gt; 
+ &lt;li&gt;&lt;strong&gt;組複製&lt;/strong&gt;：系統狀態變量&lt;code&gt;Gr_empty_consensus_proposals_count&lt;/code&gt;（&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fdev.mysql.com%2Fdoc%2Frefman%2F9.4%2Fen%2Fgroup-replication-status-variables.html%23statvar_Gr_empty_consensus_proposals_count%25EF%25BC%2589%25E6%259C%25AA%25E6%258C%2589%25E9%25A2%2584%25E6%259C%259F%25E6%259B%25B4%25E6%2596%25B0%25E3%2580%2582%25EF%25BC%2588%25E6%25BC%258F%25E6%25B4%259E" target="_blank"&gt;https://dev.mysql.com/doc/refman/9.4/en/group-replication-status-variables.html#statvar_Gr_empty_consensus_proposals_count）未按預期更新。（漏洞&lt;/a&gt; #37937927）&lt;/li&gt; 
+ &lt;li&gt;&lt;strong&gt;組複製&lt;/strong&gt;：在網絡環境不穩定的情況下，啓用了&lt;code&gt;group_replication_paxos_single_leader=ON&lt;/code&gt;（&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fdev.mysql.com%2Fdoc%2Frefman%2F9.4%2Fen%2Fgroup-replication-system-variables.html%23sysvar_group_replication_paxos_single_leader%25EF%25BC%2589%25E7%259A%2584%25E7%25BB%2584%25E5%25A4%258D%25E5%2588%25B6InnoDB%25E9%259B%2586%25E7%25BE%25A4%25E4%25B8%25AD%25EF%25BC%258C%25E4%25B8%2580%25E4%25BA%259B%25E9%2595%25BF%25E6%2597%25B6%25E9%2597%25B4%25E8%25BF%2590%25E8%25A1%258C%25E7%259A%2584%25E4%25BA%258B%25E5%258A%25A1%25E4%25BC%259A%25E9%2599%25B7%25E5%2585%25A5%25E2%2580%259C%25E7%25AD%2589%25E5%25BE%2585%25E5%25A4%2584%25E7%2590%2586%25E7%25A8%258B%25E5%25BA%258F%25E6%258F%2590%25E4%25BA%25A4%25E2%2580%259D%25E7%258A%25B6%25E6%2580%2581%25E3%2580%2582%25E7%25BB%2593%25E6%259E%259C%25EF%25BC%258C" target="_blank"&gt;https://dev.mysql.com/doc/refman/9.4/en/group-replication-system-variables.html#sysvar_group_replication_paxos_single_leader）的組複製 InnoDB 集羣中，一些長時間運行的事務會陷入「等待處理程序提交」狀態。結果，&lt;/a&gt;&lt;code&gt;group_replication_set_as_primary()&lt;/code&gt;（&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fdev.mysql.com%2Fdoc%2Frefman%2F9.4%2Fen%2Fgroup-replication-functions-for-new-primary.html%23function_group-replication-set-as-primary%25EF%25BC%2589%25E8%25A2%25AB%25E8%25BF%25AB%25E7%25AD%2589%25E5%25BE%2585%25EF%25BC%258C%25E8%25BF%259B%25E8%2580%258C%25E9%2598%25BB%25E5%25A1%259E%25E5%2585%25B6%25E4%25BB%2596%25E4%25BC%25A0%25E5%2585%25A5%25E7%259A%2584%25E6%259F%25A5%25E8%25AF%25A2%25EF%25BC%258C%25E5%25AF%25BC%25E8%2587%25B4%25E9%259B%2586%25E7%25BE%25A4%25E4%25B8%258D%25E5%258F%25AF%25E5%2586%2599%25E3%2580%2582%25E9%2595%25BF%25E6%2597%25B6%25E9%2597%25B4%25E8%25BF%2590%25E8%25A1%258C%25E7%259A%2584%25E4%25BA%258B%25E5%258A%25A1%25E9%2599%25B7%25E5%2585%25A5%25E2%2580%259C%25E7%25AD%2589%25E5%25BE%2585%25E5%25A4%2584%25E7%2590%2586%25E7%25A8%258B%25E5%25BA%258F%25E6%258F%2590%25E4%25BA%25A4%25E2%2580%259D%25E7%258A%25B6%25E6%2580%2581%25E7%259A%2584%25E9%2597%25AE%25E9%25A2%2598%25E5%258F%2591%25E7%2594%259F%25E5%25A6%2582%25E4%25B8%258B%25EF%25BC%259A" target="_blank"&gt;https://dev.mysql.com/doc/refman/9.4/en/group-replication-functions-for-new-primary.html#function_group-replication-set-as-primary）被迫等待，進而阻塞其他傳入的查詢，導致集羣不可寫。長時間運行的事務陷入「等待處理程序提交」狀態的問題發生如下：&lt;/a&gt; 在間歇性網絡分區期間，次要節點由於成員身份信息過時或不準確而錯誤地承擔了領導者角色。這導致同步節點編號分配衝突，使得來自主節點的事務無法完成。 通過確保次要節點在將視圖消息推送到 Paxos 之前始終反映最新、準確的狀態來修復此問題。這確保過時或不一致的成員身份信息不會導致領導力或同步節點編號分配衝突。（漏洞 #37764970） 參考：另見漏洞 #117424、漏洞 #37237959、漏洞 #37645674。&lt;/li&gt; 
+ &lt;li&gt;Fedora 24 上的 RPM 安裝無法完成，因為從上游拉取了衝突的包。此修復添加了適當的廢棄聲明以阻止衝突的包。（漏洞 #37976913）&lt;/li&gt; 
+ &lt;li&gt;某些調用存儲例程的觸發器並非總能正確執行。（漏洞 #37915445）&lt;/li&gt; 
+ &lt;li&gt;內部函數&lt;code&gt;transform_table_subquery_to_join_with_derived()&lt;/code&gt;在調用後未能正確恢復當前查詢塊，導致斷言錯誤。（漏洞 #37884336） 參考：另見漏洞 #37832605。&lt;/li&gt; 
+ &lt;li&gt;移除了&lt;code&gt;item_cmpfunc.cc&lt;/code&gt;中潛在的內存泄漏。（漏洞 #37883669）&lt;/li&gt; 
+ &lt;li&gt;使用包含子查詢的 CTE 的視圖並非總能得到正確處理。（漏洞 #37832605）&lt;/li&gt; 
+ &lt;li&gt;如果啓用了&lt;code&gt;component_keyring_encrypted_file&lt;/code&gt;（&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fdev.mysql.com%2Fdoc%2Frefman%2F9.4%2Fen%2Fkeyring-encrypted-file-component.html%25EF%25BC%2589%25E6%2588%2596" target="_blank"&gt;https://dev.mysql.com/doc/refman/9.4/en/keyring-encrypted-file-component.html）或&lt;/a&gt;&lt;code&gt;component_keyring_file&lt;/code&gt;（&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fdev.mysql.com%2Fdoc%2Frefman%2F9.4%2Fen%2Fkeyring-file-component.html%25EF%25BC%2589%25E4%25B8%2594" target="_blank"&gt;https://dev.mysql.com/doc/refman/9.4/en/keyring-file-component.html）且&lt;/a&gt;&lt;code&gt;binlog_encryption&lt;/code&gt;（&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fdev.mysql.com%2Fdoc%2Frefman%2F9.4%2Fen%2Freplication-options-binary-log.html%23sysvar_binlog_encryption%25EF%25BC%2589%25E8%25AE%25BE%25E7%25BD%25AE%25E4%25B8%25BA" target="_blank"&gt;https://dev.mysql.com/doc/refman/9.4/en/replication-options-binary-log.html#sysvar_binlog_encryption）設置為&lt;/a&gt;&lt;code&gt;ON&lt;/code&gt;，由於訪問密鑰環數據文件時出現問題，服務器無法在 Docker 容器中啓動。（漏洞 #37821740）&lt;/li&gt; 
+ &lt;li&gt;移除了&lt;code&gt;sql/opt_costconstantcache.cc&lt;/code&gt;中的一個警告，該警告由設置而非比較值的斷言引起。（漏洞 #37814484）&lt;/li&gt; 
+ &lt;li&gt;在已使用系統的 APT 倉庫安裝 MySQL 的 Ubuntu 25.04 系統上，無法安裝 Oracle 的 MySQL 包。（漏洞 #37804480）&lt;/li&gt; 
+ &lt;li&gt;在 Fedora 24 上，當系統上已安裝 MariaDB 時，由於包衝突，無法安裝 Oracle MySQL RPM 包。通過此修復，衝突得到妥善處理，使得 MySQL 服務器能夠成功安裝。（漏洞 #37798784）&lt;/li&gt; 
+ &lt;li&gt;改進了先前針對關閉期間客户端連接並非總能正確終止的問題的修復。（漏洞 #37755594） 參考：此問題是以下漏洞的迴歸：漏洞 #35854919。&lt;/li&gt; 
+ &lt;li&gt;當計算的塊數超過 65535 時，&lt;code&gt;INTERSECT&lt;/code&gt;中觸發斷言錯誤，這可能發生在估計的行數非常高，或者&lt;code&gt;set_operations_buffer_size&lt;/code&gt;（&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fdev.mysql.com%2Fdoc%2Frefman%2F9.4%2Fen%2Fserver-system-variables.html%23sysvar_set_operations_buffer_size%25EF%25BC%2589%25E7%25B3%25BB%25E7%25BB%259F%25E5%258F%2598%25E9%2587%258F%25E8%25AE%25BE%25E7%25BD%25AE%25E8%25BF%2587%25E4%25BD%258E%25E7%259A%2584%25E6%2583%2585%25E5%2586%25B5%25E4%25B8%258B%25E3%2580%2582" target="_blank"&gt;https://dev.mysql.com/doc/refman/9.4/en/server-system-variables.html#sysvar_set_operations_buffer_size）系統變量設置過低的情況下。&lt;/a&gt; 此修復添加了對此情況的缺失檢查。如果需要超過 2 個塊文件集，我們會恢復為基於索引臨時表的去重。為提醒用户，此信息會在查詢的註釋和優化器跟蹤中呈現。 作為此修復的一部分，&lt;code&gt;set_operations_buffer_size&lt;/code&gt;使用的塊大小從 128 增加到 1024。（漏洞 #37742092）&lt;/li&gt; 
+ &lt;li&gt;Fedora 42 的 RPM 安裝包已適配 Fedora 42 及更高版本中&lt;code&gt;/usr/bin&lt;/code&gt;和&lt;code&gt;/usr/sbin&lt;/code&gt;目錄合併的情況。（漏洞 #37737658）&lt;/li&gt; 
+ &lt;li&gt;使用 InnoDB 的全文搜索性能，特別是短語搜索，已得到改進。文檔 ID 匹配的效率有所提升。（漏洞 #37682648）&lt;/li&gt; 
+ &lt;li&gt;當&lt;code&gt;keyring_okv&lt;/code&gt;插件（參見《使用 keyring_okv KMIP 插件》（&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fdev.mysql.com%2Fdoc%2Frefman%2F9.4%2Fen%2Fkeyring-okv-plugin.html%25EF%25BC%2589%25EF%25BC%2589%25E5%25B7%25B2%25E5%25AE%2589%25E8%25A3%2585%25E4%25BD%2586%25E9%2585%258D%25E7%25BD%25AE%25E4%25B8%258D%25E6%25AD%25A3%25E7%25A1%25AE%25E6%2597%25B6%25EF%25BC%258C%25E5%25AF%25B9" target="_blank"&gt;https://dev.mysql.com/doc/refman/9.4/en/keyring-okv-plugin.html））已安裝但配置不正確時，對&lt;/a&gt;&lt;code&gt;performance_schema.keyring_keys&lt;/code&gt;（&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fdev.mysql.com%2Fdoc%2Frefman%2F9.4%2Fen%2Fperformance-schema-keyring-keys-table.html%25EF%25BC%2589%25E8%25A1%25A8%25E7%259A%2584%25E6%259F%25A5%25E8%25AF%25A2%25E4%25BC%259A%25E5%2587%25BA%25E7%258E%25B0%25E9%2597%25AE%25E9%25A2%2598" target="_blank"&gt;https://dev.mysql.com/doc/refman/9.4/en/performance-schema-keyring-keys-table.html）表的查詢會出現問題&lt;/a&gt;。（漏洞 #37655299）&lt;/li&gt; 
+ &lt;li&gt;從&lt;code&gt;sql/sql_resolver.cc&lt;/code&gt;中移除了一個斷言。（漏洞 #37601389）&lt;/li&gt; 
+ &lt;li&gt;作為包含多個子查詢的條件的一部分且其策略已確定為&lt;code&gt;IN-to-EXISTS&lt;/code&gt;的子查詢，會被檢查是否可物化，從而導致問題。之所以進行物化檢查，是因為該條件中的其他某個子查詢的策略已確定為&lt;code&gt;MATERIALIZATION&lt;/code&gt;。我們通過添加檢查，僅關注那些應被物化的子查詢來解決此問題。（漏洞 #37587388）&lt;/li&gt; 
+ &lt;li&gt;漏洞 #30875669 的修復在該漏洞關閉時並未實際包含在 mysql 客户端的代碼中。現在已實施相關更改。（漏洞 #37572191） 參考：另見漏洞 #30875669。&lt;/li&gt; 
+ &lt;li&gt;&lt;code&gt;mysql_secure_installation&lt;/code&gt;未按預期檢查 root 密碼是否已過期。（漏洞 #37563088）&lt;/li&gt; 
+ &lt;li&gt;包含一行或多行且每行包含多個 SQL 語句的初始化文件，在初始化期間有時會產生錯誤。（漏洞 #37559598）&lt;/li&gt; 
+ &lt;li&gt;某些&lt;code&gt;CREATE TABLE&lt;/code&gt;（&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fdev.mysql.com%2Fdoc%2Frefman%2F9.4%2Fen%2Fcreate-table.html%25EF%25BC%2589%25E5%2592%258C" target="_blank"&gt;https://dev.mysql.com/doc/refman/9.4/en/create-table.html）和&lt;/a&gt;&lt;code&gt;DROP TABLE&lt;/code&gt;（&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fdev.mysql.com%2Fdoc%2Frefman%2F9.4%2Fen%2Fdrop-table.html%25EF%25BC%2589%25E8%25AF%25AD%25E5%258F%25A5%25E5%25BA%258F%25E5%2588%2597%25E6%259C%25AA%25E5%25BE%2597%25E5%2588%25B0%25E6%25AD%25A3%25E7%25A1%25AE%25E5%25A4%2584%25E7%2590%2586" target="_blank"&gt;https://dev.mysql.com/doc/refman/9.4/en/drop-table.html）語句序列未得到正確處理&lt;/a&gt;。（漏洞 #37534068） 參考：此問題是漏洞 #35721121 的迴歸：。&lt;/li&gt; 
+ &lt;li&gt;移除了由 MySQL 9.2.0 中對緩存 SHA-2 認證插件所做工作引入的性能迴歸。（漏洞 #37523469）&lt;/li&gt; 
+ &lt;li&gt;&lt;code&gt;UPDATE ... SET ...&lt;/code&gt;（&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fdev.mysql.com%2Fdoc%2Frefman%2F9.4%2Fen%2Fupdate.html%25EF%25BC%2589%25E5%25B9%25B6%25E9%259D%259E%25E6%2580%25BB%25E8%2583%25BD%25E6%2588%2590%25E5%258A%259F%25E5%259B%259E%25E6%25BB%259A" target="_blank"&gt;https://dev.mysql.com/doc/refman/9.4/en/update.html）並非總能成功回滾&lt;/a&gt;。（漏洞 #37489167）&lt;/li&gt; 
+ &lt;li&gt;&lt;code&gt;CREATE TABLE&lt;/code&gt;（&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fdev.mysql.com%2Fdoc%2Frefman%2F9.4%2Fen%2Fcreate-table.html%25EF%25BC%2589%25E8%25AF%25AD%25E5%258F%25A5%25E4%25B8%25AD%25E7%259A%2584%25E5%25A4%259A%25E4%25B8%25AA" target="_blank"&gt;https://dev.mysql.com/doc/refman/9.4/en/create-table.html）語句中的多個&lt;/a&gt;&lt;code&gt;DEFAULT&lt;/code&gt;列表達式並非總能得到正確處理。（漏洞 #37436220）&lt;/li&gt; 
+ &lt;li&gt;包含執行聚合的關聯子查詢的查詢，在執行期間有時會（錯誤地）因重複鍵錯誤而被拒絕。 此問題由先前的修復引入，該修復在&lt;code&gt;JOIN::cleanup()&lt;/code&gt;執行期間移除了對原始引用切片的恢復（&lt;code&gt;set_ref_item_slice(REF_SLICE_SAVED_BASE)&lt;/code&gt;），並假設這是不必要的。結果，來自先前執行的臨時表字段引用未被清除，導致嘗試向臨時表插入重複鍵時觸發錯誤「無法寫入；表中存在重複鍵」。 我們通過在清理期間恢復原始引用切片來修復此問題，確保任何過時的引用都被丟棄。（漏洞 #37415167） 參考：另見漏洞 #32141711。此問題是漏洞 #35856247 的迴歸。&lt;/li&gt; 
+ &lt;li&gt;在某些 Windows 系統上，使用 MSI 安裝程序安裝 MySQL Server 9.1 後，服務器無法啓動。這是因為這些系統未安裝 Visual C++ Redistributable v.14.42 或更高版本。MySQL Server MSI 安裝程序現在會檢查此要求，只有滿足要求才會開始安裝。（漏洞 #37365476）&lt;/li&gt; 
+ &lt;li&gt;註釋中未加引號的分號字符（;）並非總能被標記為錯誤，儘管它們是不允許的。（漏洞 #37117875）&lt;/li&gt; 
+ &lt;li&gt;從&lt;code&gt;keyring_aws&lt;/code&gt;插件中移除了潛在的內存泄漏。（漏洞 #36684413）&lt;/li&gt; 
+ &lt;li&gt;在嘗試將子查詢轉換為派生表時，某些情況並非總能被考慮到。（漏洞 #36421710） 參考：此問題是漏洞 #36921175 的迴歸：。&lt;/li&gt; 
+ &lt;li&gt;設置&lt;code&gt;max_join_size&lt;/code&gt;（&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fdev.mysql.com%2Fdoc%2Frefman%2F9.4%2Fen%2Fserver-system-variables.html%23sysvar_max_join_size%25EF%25BC%2589%25E5%25AF%25BC%25E8%2587%25B4%25E6%259F%2590%25E4%25BA%259B%25E5%25B5%258C%25E5%25A5%2597%25E6%259F%25A5%25E8%25AF%25A2%25E5%25A4%2584%25E7%2590%2586%25E4%25B8%258D%25E5%25BD%2593" target="_blank"&gt;https://dev.mysql.com/doc/refman/9.4/en/server-system-variables.html#sysvar_max_join_size）導致某些嵌套查詢處理不當&lt;/a&gt;。（漏洞 #35625769）&lt;/li&gt; 
+ &lt;li&gt;當子查詢位於&lt;code&gt;SELECT&lt;/code&gt;（&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fdev.mysql.com%2Fdoc%2Frefman%2F9.4%2Fen%2Fselect.html%25EF%25BC%2589%25E5%2588%2597%25E8%25A1%25A8%25E4%25B8%25AD%25E4%25B8%2594%25E5%258C%2585%25E5%2590%25AB%25E8%25AF%25A5%25E6%259F%25A5%25E8%25AF%25A2%25E8%25A2%25AB%25E9%259A%2590%25E5%25BC%258F%25E5%2588%2586%25E7%25BB%2584%25E6%2597%25B6%25EF%25BC%258C%25E5%25B0%2586%25E6%25A0%2587%25E9%2587%258F%25E5%25AD%2590%25E6%259F%25A5%25E8%25AF%25A2%25E8%25BD%25AC%25E6%258D%25A2%25E4%25B8%25BA%25E4%25B8%258E%25E6%25B4%25BE%25E7%2594%259F%25E8%25A1%25A8%25E7%259A%2584%25E8%25BF%259E%25E6%258E%25A5%25E6%259C%25AC%25E5%25BA%2594%25E8%25A2%25AB%25E5%2585%2581%25E8%25AE%25B8%25EF%25BC%258C%25E4%25BD%2586%25E5%25BD%2593" target="_blank"&gt;https://dev.mysql.com/doc/refman/9.4/en/select.html）列表中且包含該查詢被隱式分組時，將標量子查詢轉換為與派生表的連接本應被允許，但當&lt;/a&gt;&lt;code&gt;subquery_to_derived&lt;/code&gt;（&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fdev.mysql.com%2Fdoc%2Frefman%2F9.4%2Fen%2Fswitchable-optimizations.html%23optflag_subquery-to-derived%25EF%25BC%2589%25E4%25BC%2598%25E5%258C%2596%25E5%2599%25A8%25E5%25BC%2580%25E5%2585%25B3%25E5%2590%25AF%25E7%2594%25A8%25E6%2597%25B6%25EF%25BC%258C%25E8%25AF%25A5%25E8%25BD%25AC%25E6%258D%25A2%25E4%25BC%259A%25E8%25A2%25AB%25E6%258B%2592%25E7%25BB%259D" target="_blank"&gt;https://dev.mysql.com/doc/refman/9.4/en/switchable-optimizations.html#optflag_subquery-to-derived）優化器開關啓用時，該轉換會被拒絕&lt;/a&gt;。（漏洞 #35150438）&lt;/li&gt; 
+ &lt;li&gt;當&lt;code&gt;explain_json_format_version&lt;/code&gt;（&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fdev.mysql.com%2Fdoc%2Frefman%2F9.4%2Fen%2Fserver-system-variables.html%23sysvar_explain_json_format_version%25EF%25BC%2589%25E7%25AD%2589%25E4%25BA%258E1%25E6%2597%25B6%25EF%25BC%258C" target="_blank"&gt;https://dev.mysql.com/doc/refman/9.4/en/server-system-variables.html#sysvar_explain_json_format_version）等於 1 時，&lt;/a&gt;&lt;code&gt;EXPLAIN ANALYZE FORMAT=JSON&lt;/code&gt;（&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fdev.mysql.com%2Fdoc%2Frefman%2F9.4%2Fen%2Fexplain.html%23explain-analyze%25EF%25BC%2589%25E6%2597%25A0%25E6%25B3%2595%25E6%25AD%25A3%25E7%25A1%25AE%25E5%25A4%2584%25E7%2590%2586%25E5%258C%2585%25E5%2590%25AB%25E5%25AD%2590%25E6%259F%25A5%25E8%25AF%25A2%25E7%259A%2584%25E6%259F%25A5%25E8%25AF%25A2" target="_blank"&gt;https://dev.mysql.com/doc/refman/9.4/en/explain.html#explain-analyze）無法正確處理包含子查詢的查詢&lt;/a&gt;。 感謝 Peiyuan Liu 及騰訊團隊的貢獻。（漏洞 #117995、漏洞 #37285902）&lt;/li&gt; 
+ &lt;li&gt;可以對&lt;code&gt;SET TRANSACTION ISOLATION LEVEL&lt;/code&gt;（&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fdev.mysql.com%2Fdoc%2Frefman%2F9.4%2Fen%2Fset-transaction.html%25EF%25BC%2589%25E4%25BD%25BF%25E7%2594%25A8" target="_blank"&gt;https://dev.mysql.com/doc/refman/9.4/en/set-transaction.html）使用&lt;/a&gt;&lt;code&gt;PERSIST&lt;/code&gt;或&lt;code&gt;PERSIST_ONLY&lt;/code&gt;，儘管這是不允許的，且會在服務器重啓時導致錯誤。現在嘗試這樣做會導致語句被拒絕，並返回錯誤&lt;code&gt;ER_GRP_RPL_UNSUPPORTED_TRANS_ISOLATION&lt;/code&gt;（&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fdev.mysql.com%2Fdoc%2Fmysql-errors%2F9.4%2Fen%2Fserver-error-reference.html%23error_er_grp_rpl_unsupported_trans_isolation%25EF%25BC%2589%25E3%2580%2582%25EF%25BC%2588%25E6%25BC%258F%25E6%25B4%259E" target="_blank"&gt;https://dev.mysql.com/doc/mysql-errors/9.4/en/server-error-reference.html#error_er_grp_rpl_unsupported_trans_isolation）。（漏洞&lt;/a&gt; #115619、漏洞 #36854635）&lt;/li&gt; 
+ &lt;li&gt;當服務器以&lt;code&gt;autocommit=OFF&lt;/code&gt;（&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fdev.mysql.com%2Fdoc%2Frefman%2F9.4%2Fen%2Fserver-system-variables.html%23sysvar_autocommit%25EF%25BC%2589%25E8%25BF%2590%25E8%25A1%258C%25E6%2597%25B6%25EF%25BC%258C%25E6%259F%25A5%25E8%25AF%25A2%25E9%2587%258D%25E5%2586%2599%25E6%258F%2592%25E4%25BB%25B6%25EF%25BC%2588%25E5%258F%2582%25E8%25A7%2581%25E3%2580%258A%25E9%2587%258D%25E5%2586%2599%25E5%2599%25A8%25E6%259F%25A5%25E8%25AF%25A2%25E9%2587%258D%25E5%2586%2599%25E6%258F%2592%25E4%25BB%25B6%25E3%2580%258B%25EF%25BC%2588https%3A%2F%2Fdev.mysql.com%2Fdoc%2Frefman%2F9.4%2Fen%2Frewriter-query-rewrite-plugin.html%25EF%25BC%2589%25EF%25BC%2589%25E6%2597%25A0%25E6%25B3%2595%25E6%25AD%25A3%25E5%25B8%25B8%25E5%25B7%25A5%25E4%25BD%259C" target="_blank"&gt;https://dev.mysql.com/doc/refman/9.4/en/server-system-variables.html#sysvar_autocommit）運行時，查詢重寫插件（參見《重寫器查詢重寫插件》（https://dev.mysql.com/doc/refman/9.4/en/rewriter-query-rewrite-plugin.html））無法正常工作&lt;/a&gt;。（漏洞 #115437、漏洞 #36784795）&lt;/li&gt; 
+ &lt;li&gt;&lt;code&gt;MIN()&lt;/code&gt;（&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fdev.mysql.com%2Fdoc%2Frefman%2F9.4%2Fen%2Faggregate-functions.html%23function_min%25EF%25BC%2589%25E4%25BD%259C%25E4%25B8%25BA%25E7%25AA%2597%25E5%258F%25A3%25E5%2587%25BD%25E6%2595%25B0%25E4%25BD%25BF%25E7%2594%25A8%25E6%2597%25B6%25EF%25BC%258C%25E6%259C%25AA%25E6%258C%2589%25E9%25A2%2584%25E6%259C%259F%25E5%25BF%25BD%25E7%2595%25A5%25E7%25A9%25BA%25E5%2580%25BC" target="_blank"&gt;https://dev.mysql.com/doc/refman/9.4/en/aggregate-functions.html#function_min）作為窗口函數使用時，未按預期忽略空值&lt;/a&gt;。（漏洞 #113631、漏洞 #36182490） - 在使用 &lt;code&gt;RANGE&lt;/code&gt; 幀單位的窗口函數規範中，此前允許在 &lt;code&gt;ORDER BY&lt;/code&gt; 表達式中使用 &lt;code&gt;RAND()&lt;/code&gt; 函數（&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fdev.mysql.com%2Fdoc%2Frefman%2F9.4%2Fen%2Fmathematical-functions.html%23function_rand%25EF%25BC%2589%25E3%2580%2582%25E8%25BF%2599%25E8%25BF%259D%25E5%258F%258D%25E4%25BA%2586" target="_blank"&gt;https://dev.mysql.com/doc/refman/9.4/en/mathematical-functions.html#function_rand）。這違反了&lt;/a&gt; &lt;code&gt;RANGE&lt;/code&gt; 幀規範的基本要求，即幀內值必須保持單調遞增或遞減。為解決此問題，現在禁止在 &lt;code&gt;RANGE&lt;/code&gt; 幀單位下使用非確定性的 &lt;code&gt;ORDER BY&lt;/code&gt; 表達式，此類查詢將直接返回錯誤。 此外，該修復還解決了一個相關問題：當計算 &lt;code&gt;BETWEEN CURRENT ROW AND after_value FOLLOWING&lt;/code&gt; 幀邊界時，如果被比較的行值為無符號類型且可能小於 &lt;code&gt;after_value&lt;/code&gt;，會導致下溢（underflow）併產生錯誤結果。現在遇到這種情況時，系統會直接拒絕執行並返回錯誤。 有關窗口函數幀規範的詳細信息，請參見：&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fdev.mysql.com%2Fdoc%2Frefman%2F9.4%2Fen%2Fwindow-functions-frames.html%25E3%2580%2582%25EF%25BC%2588Bug" target="_blank"&gt;https://dev.mysql.com/doc/refman/9.4/en/window-functions-frames.html。&lt;/a&gt;（Bug#111510, Bug #35521787）&lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;p&gt;&lt;span style="background-color:#ffffff; color:#1c1f23"&gt;以上內容是 MySQL 9.4 版本的主要內容，詳情請訪問 MySQL 官網。&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;span style="background-color:#ffffff; color:#1c1f23"&gt;稿源：&lt;/span&gt;&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fmp.weixin.qq.com%2Fs%2FBwL6J_RFHnuo7im2dQgB2g" target="_blank"&gt;https://mp.weixin.qq.com/s/BwL6J_RFHnuo7im2dQgB2g&lt;/a&gt;&lt;/p&gt;
+                                                                                &lt;/div&gt;
+                                                                            </description>
+      <link>https://www.oschina.net/news/361854</link>
+      <guid isPermaLink="false">https://www.oschina.net/news/361854</guid>
+      <pubDate>Wed, 23 Jul 2025 02:30:15 GMT</pubDate>
+      <author>來源: OSCHINA</author>
+    </item>
+    <item>
+      <title>上海 AI 實驗室開源多智能體框架 Intern·Agent</title>
+      <description>&lt;div class="content"&gt;
+                                                                    
+                                                        &lt;p&gt;&lt;span style="color:#000000"&gt;上海人工智能實驗室（上海 AI 實驗室）近期&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fmp.weixin.qq.com%2Fs%2Fl_1x4S2pZ8AyJyIgfjNQYA" target="_blank"&gt;推出&lt;/a&gt;多智能體框架 Intern·Agent，並探索以此為核心構建科學發現系統。通過調動多個專職智能體，使之各司其職協同工作，&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;span style="color:#000000"&gt;根據介紹，Intern·Agent 使 AI 獲得類似人類科學家的自主探索能力，可開展分析問題、查閲文獻、調研反思及開展實驗，從而實現「想法生成-方案設計-代碼實現-實驗驗證」全流程閉環。&lt;/span&gt;&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt;&lt;span style="color:#000000"&gt;在想法生成階段，Intern·Agent 通過文獻綜述智能體、觀點提出智能體、多維評審智能體，支持自動生成針對科研任務的創新想法並持續迭代，專家可在任意階段提供反饋，既能精準指導特定想法，又能宏觀調控整體研究方向。&lt;/span&gt;&lt;/li&gt; 
+ &lt;li&gt;&lt;span style="color:#000000"&gt;在方案設計階段，Intern·Agent 通過方案設計智能體、Coding 評審智能體，快速將抽象想法轉化為詳細實施方案，並進一步結合領域約束與計算資源限制對方案進行優化調整，最終將方案轉換為高質量代碼。&lt;/span&gt;&lt;/li&gt; 
+ &lt;li&gt;&lt;span style="color:#000000"&gt;在實驗驗證階段，Intern·Agent 通過實驗設置與計劃智能體、人機交互與反饋智能體，自主規劃實驗流程，針對代碼進行實驗驗證，記錄實驗結果；實驗結束後，Intern·Agent 還支持對實驗結果進行多維度分析，為下一次方案設計和代碼生成提供參考。&lt;/span&gt;&lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;p&gt;&lt;img height="203" src="https://oscimg.oschina.net/oscnet/up-fe23deeddc557bb99e4fa07c8263ae302c8.png" width="500" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;span style="color:#000000"&gt;目前，Intern·Agent 已應用於化學、物理、生物等領域的 12 種科研任務，在大幅提升科研效率的同時，亦初步展現出多智能體系統自主學習、持續進化的潛力，為人工智能自主完成算法設計、科學發現等高端科研任務開闢了全新的探索路徑。&lt;/span&gt;&amp;nbsp;&lt;/p&gt;
+                                                                                &lt;/div&gt;
+                                                                            </description>
+      <link>https://www.oschina.net/news/361851</link>
+      <guid isPermaLink="false">https://www.oschina.net/news/361851</guid>
+      <pubDate>Wed, 23 Jul 2025 02:24:15 GMT</pubDate>
+      <author>來源: OSCHINA</author>
+    </item>
+    <item>
+      <title>DjangoAdmin 敏捷開發框架 Django+EleVue 版本 v2.6.0 發佈</title>
+      <description>&lt;div class="content"&gt;
+                                                                    
+                                                        &lt;p&gt;&lt;span style="background-color:#ffffff; color:#333333"&gt;v2.6.0 更新內容：&lt;/span&gt;&lt;br&gt; &lt;span style="background-color:#ffffff; color:#333333"&gt;1、新增全局參數配置；&lt;/span&gt;&lt;br&gt; &lt;span style="background-color:#ffffff; color:#333333"&gt;2、新增到出 Excel 功能；&lt;/span&gt;&lt;br&gt; &lt;span style="background-color:#ffffff; color:#333333"&gt;3、新增導入 Excel 功能；&lt;/span&gt;&lt;br&gt; &lt;span style="background-color:#ffffff; color:#333333"&gt;4、新增上傳導入功能組件；&lt;/span&gt;&lt;br&gt; &lt;span style="background-color:#ffffff; color:#333333"&gt;5、新增導出下載功能組件；&lt;/span&gt;&lt;br&gt; &lt;span style="background-color:#ffffff; color:#333333"&gt;6、新增上傳文件功能；&lt;/span&gt;&lt;br&gt; &lt;span style="background-color:#ffffff; color:#333333"&gt;7、新增讀取 env 配置文件擴展；&lt;/span&gt;&lt;br&gt; &lt;span style="background-color:#ffffff; color:#333333"&gt;8、優化角色權限節點參數設置；&lt;/span&gt;&lt;br&gt; &lt;span style="background-color:#ffffff; color:#333333"&gt;9、優化非超管用户權限設置問題；&lt;/span&gt;&lt;br&gt; &lt;span style="background-color:#ffffff; color:#333333"&gt;10、修復近期用户反饋的問題；&lt;/span&gt;&lt;/p&gt; 
+&lt;div&gt; 
+ &lt;div&gt; 
+  &lt;div&gt; 
+   &lt;div&gt; 
+    &lt;div&gt; 
+     &lt;div&gt; 
+      &lt;div&gt; 
+       &lt;div&gt; 
+        &lt;div&gt; 
+         &lt;div&gt; 
+          &lt;div&gt; 
+           &lt;div&gt; 
+            &lt;div&gt; 
+             &lt;div&gt; 
+              &lt;div&gt; 
+               &lt;div&gt; 
+                &lt;div&gt; 
+                 &lt;div&gt; 
+                  &lt;h2&gt;項目介紹&lt;/h2&gt; 
+                  &lt;p style="color:#40485b; margin-left:0; margin-right:0; text-align:left"&gt;一款 Python 語言基於 Django、Vue、ElementUI、MySQL 等框架精心打造的一款模塊化、高性能、企業級的敏捷開發框架，本着簡化開發、提升開發效率的初衷觸發，框架自研了一套個性化的組件，實現了可插拔的組件式開發方式：單圖上傳、多圖上傳、下拉選擇、開關按鈕、單選按鈕、多選按鈕等等一系列個性化、輕量級的組件，是一款真正意義上實現低代碼開發的敏捷開發框架。&lt;/p&gt; 
+                  &lt;h2&gt;內置模塊&lt;/h2&gt; 
+                  &lt;ul&gt; 
+                   &lt;li&gt;用户管理：用於維護管理系統的用户，常規信息的維護與賬號設置。&lt;/li&gt; 
+                   &lt;li&gt;角色管理：角色菜單管理與權限分配、設置角色所擁有的菜單權限。&lt;/li&gt; 
+                   &lt;li&gt;菜單管理：配置系統菜單，操作權限，按鈕權限標識等。&lt;/li&gt; 
+                   &lt;li&gt;職級管理：主要管理用户的職級。&lt;/li&gt; 
+                   &lt;li&gt;崗位管理：主要管理用户擔任職務。&lt;/li&gt; 
+                   &lt;li&gt;部門管理：配置系統組織機構，樹結構展現支持數據權限。&lt;/li&gt; 
+                   &lt;li&gt;字典管理：對系統中常用的較為固定的數據進行統一維護。&lt;/li&gt; 
+                   &lt;li&gt;配置管理：對系統的常規配置信息進行維護，網站配置管理功能進行統一維護。&lt;/li&gt; 
+                   &lt;li&gt;通知公告：系統通知公告信息發佈維護。&lt;/li&gt; 
+                  &lt;/ul&gt; 
+                  &lt;h2&gt;軟件信息&lt;/h2&gt; 
+                  &lt;ul&gt; 
+                   &lt;li&gt;軟件名稱：DjangoAdmin 敏捷開發框架 Django+EleVue 版本&lt;/li&gt; 
+                   &lt;li&gt;官網網址：&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fwww.djangoadmin.cn" target="_blank"&gt;https://www.djangoadmin.cn&lt;/a&gt;&lt;/li&gt; 
+                   &lt;li&gt;文檔網址：&lt;a href="https://www.oschina.net/action/GoToLink?url=http%3A%2F%2Fdocs.django.elevue.djangoadmin.cn" target="_blank"&gt;http://docs.django.elevue.djangoadmin.cn&lt;/a&gt;&lt;/li&gt; 
+                   &lt;li&gt;演示地址：&lt;a href="https://www.oschina.net/action/GoToLink?url=http%3A%2F%2Fmanage.django.elevue.djangoadmin.cn" target="_blank"&gt;http://manage.django.elevue.djangoadmin.cn&lt;/a&gt;&lt;/li&gt; 
+                  &lt;/ul&gt; 
+                  &lt;table cellspacing="0" style="-webkit-text-stroke-width:0px; background-color:#ffffff; border-collapse:collapse; border-spacing:0px; border:none; box-sizing:border-box; color:#40485b; display:block; font-family:-apple-system,BlinkMacSystemFont,&amp;quot;Segoe UI&amp;quot;,Helvetica,Arial,&amp;quot;Apple Color Emoji&amp;quot;,&amp;quot;Segoe UI Emoji&amp;quot;,&amp;quot;Segoe UI Symbol&amp;quot;,&amp;quot;Liberation Sans&amp;quot;,&amp;quot;PingFang SC&amp;quot;,&amp;quot;Microsoft YaHei&amp;quot;,&amp;quot;Hiragino Sans GB&amp;quot;,&amp;quot;Wenquanyi Micro Hei&amp;quot;,&amp;quot;WenQuanYi Zen Hei&amp;quot;,&amp;quot;ST Heiti&amp;quot;,SimHei,SimSun,&amp;quot;WenQuanYi Zen Hei Sharp&amp;quot;,sans-serif; font-size:16px; font-style:normal; font-variant-caps:normal; font-variant-ligatures:normal; font-weight:400; letter-spacing:normal; line-height:inherit; margin:0px 0px 16px; max-width:100%; orphans:2; overflow:auto; text-align:left; text-decoration-color:initial; text-decoration-style:initial; text-decoration-thickness:initial; text-transform:none; white-space:normal; widows:2; width:635px; word-break:initial; word-spacing:0px"&gt; 
+                   &lt;tbody&gt; 
+                    &lt;tr&gt; 
+                     &lt;th&gt;賬號&lt;/th&gt; 
+                     &lt;th&gt;密碼&lt;/th&gt; 
+                     &lt;th&gt;操作權限&lt;/th&gt; 
+                    &lt;/tr&gt; 
+                   &lt;/tbody&gt; 
+                   &lt;tbody&gt; 
+                    &lt;tr&gt; 
+                     &lt;td style="border-color:#dfe2e5; border-style:solid; border-width:1px"&gt;admin&lt;/td&gt; 
+                     &lt;td style="border-color:#dfe2e5; border-style:solid; border-width:1px"&gt;123456&lt;/td&gt; 
+                     &lt;td style="border-color:#dfe2e5; border-style:solid; border-width:1px"&gt;演示環境無法進行修改刪除操作&lt;/td&gt; 
+                    &lt;/tr&gt; 
+                   &lt;/tbody&gt; 
+                  &lt;/table&gt; 
+                  &lt;h2&gt;版本説明&lt;/h2&gt; 
+                  &lt;table cellspacing="0" style="-webkit-text-stroke-width:0px; background-color:#ffffff; border-collapse:collapse; border-spacing:0px; border:none; box-sizing:border-box; color:#40485b; display:block; font-family:-apple-system,BlinkMacSystemFont,&amp;quot;Segoe UI&amp;quot;,Helvetica,Arial,&amp;quot;Apple Color Emoji&amp;quot;,&amp;quot;Segoe UI Emoji&amp;quot;,&amp;quot;Segoe UI Symbol&amp;quot;,&amp;quot;Liberation Sans&amp;quot;,&amp;quot;PingFang SC&amp;quot;,&amp;quot;Microsoft YaHei&amp;quot;,&amp;quot;Hiragino Sans GB&amp;quot;,&amp;quot;Wenquanyi Micro Hei&amp;quot;,&amp;quot;WenQuanYi Zen Hei&amp;quot;,&amp;quot;ST Heiti&amp;quot;,SimHei,SimSun,&amp;quot;WenQuanYi Zen Hei Sharp&amp;quot;,sans-serif; font-size:16px; font-style:normal; font-variant-caps:normal; font-variant-ligatures:normal; font-weight:400; letter-spacing:normal; line-height:inherit; margin:0px 0px 16px; max-width:100%; orphans:2; overflow:auto; text-align:left; text-decoration-color:initial; text-decoration-style:initial; text-decoration-thickness:initial; text-transform:none; white-space:normal; widows:2; width:635px; word-break:initial; word-spacing:0px"&gt; 
+                   &lt;tbody&gt; 
+                    &lt;tr&gt; 
+                     &lt;th&gt;版本名稱&lt;/th&gt; 
+                     &lt;th&gt;版本説明&lt;/th&gt; 
+                     &lt;th&gt;版本地址&lt;/th&gt; 
+                    &lt;/tr&gt; 
+                   &lt;/tbody&gt; 
+                   &lt;tbody&gt; 
+                    &lt;tr&gt; 
+                     &lt;td style="border-color:#dfe2e5; border-style:solid; border-width:1px"&gt;Django+Layui 混編版&lt;/td&gt; 
+                     &lt;td style="border-color:#dfe2e5; border-style:solid; border-width:1px"&gt;採用 Django、Layui 等框架研發&lt;/td&gt; 
+                     &lt;td style="border-color:#dfe2e5; border-style:solid; border-width:1px"&gt;&lt;a href="https://gitee.com/djangoadmin/DjangoAdmin_Django_Layui"&gt;https://gitee.com/djangoadmin/DjangoAdmin_Django_Layui&lt;/a&gt;&lt;/td&gt; 
+                    &lt;/tr&gt; 
+                    &lt;tr&gt; 
+                     &lt;td style="border-color:#dfe2e5; border-style:solid; border-width:1px"&gt;Flask+Layui 混編版&lt;/td&gt; 
+                     &lt;td style="border-color:#dfe2e5; border-style:solid; border-width:1px"&gt;採用 Flask、Layui 等框架研發&lt;/td&gt; 
+                     &lt;td style="border-color:#dfe2e5; border-style:solid; border-width:1px"&gt;&lt;a href="https://gitee.com/djangoadmin/DjangoAdmin_Flask_Layui"&gt;https://gitee.com/djangoadmin/DjangoAdmin_Flask_Layui&lt;/a&gt;&lt;/td&gt; 
+                    &lt;/tr&gt; 
+                    &lt;tr&gt; 
+                     &lt;td style="border-color:#dfe2e5; border-style:solid; border-width:1px"&gt;Tornado+Layui 混編版&lt;/td&gt; 
+                     &lt;td style="border-color:#dfe2e5; border-style:solid; border-width:1px"&gt;採用 Tornado、Layui 等框架研發&lt;/td&gt; 
+                     &lt;td style="border-color:#dfe2e5; border-style:solid; border-width:1px"&gt;&lt;a href="https://gitee.com/djangoadmin/DjangoAdmin_Tornado_Layui"&gt;https://gitee.com/djangoadmin/DjangoAdmin_Tornado_Layui&lt;/a&gt;&lt;/td&gt; 
+                    &lt;/tr&gt; 
+                    &lt;tr&gt; 
+                     &lt;td style="border-color:#dfe2e5; border-style:solid; border-width:1px"&gt;Django+EleVue 前後端分離版&lt;/td&gt; 
+                     &lt;td style="border-color:#dfe2e5; border-style:solid; border-width:1px"&gt;採用 Django、Vue2.x、ElementUI 等框架研發前後端分離版本&lt;/td&gt; 
+                     &lt;td style="border-color:#dfe2e5; border-style:solid; border-width:1px"&gt;&lt;a href="https://gitee.com/djangoadmin/DjangoAdmin_Django_EleVue"&gt;https://gitee.com/djangoadmin/DjangoAdmin_Django_EleVue&lt;/a&gt;&lt;/td&gt; 
+                    &lt;/tr&gt; 
+                    &lt;tr&gt; 
+                     &lt;td style="border-color:#dfe2e5; border-style:solid; border-width:1px"&gt;Flask+EleVue 前後端分離版&lt;/td&gt; 
+                     &lt;td style="border-color:#dfe2e5; border-style:solid; border-width:1px"&gt;採用 Flask、Vue2.x、ElementUI 等框架研發前後端分離版本&lt;/td&gt; 
+                     &lt;td style="border-color:#dfe2e5; border-style:solid; border-width:1px"&gt;&lt;a href="https://gitee.com/djangoadmin/DjangoAdmin_Flask_EleVue"&gt;https://gitee.com/djangoadmin/DjangoAdmin_Flask_EleVue&lt;/a&gt;&lt;/td&gt; 
+                    &lt;/tr&gt; 
+                    &lt;tr&gt; 
+                     &lt;td style="border-color:#dfe2e5; border-style:solid; border-width:1px"&gt;Tornado+EleVue 前後端分離版&lt;/td&gt; 
+                     &lt;td style="border-color:#dfe2e5; border-style:solid; border-width:1px"&gt;採用 Tornado、Vue2.x、ElementUI 等框架研發前後端分離版本&lt;/td&gt; 
+                     &lt;td style="border-color:#dfe2e5; border-style:solid; border-width:1px"&gt;&lt;a href="https://gitee.com/djangoadmin/DjangoAdmin_Tornado_EleVue"&gt;https://gitee.com/djangoadmin/DjangoAdmin_Tornado_EleVue&lt;/a&gt;&lt;/td&gt; 
+                    &lt;/tr&gt; 
+                    &lt;tr&gt; 
+                     &lt;td style="border-color:#dfe2e5; border-style:solid; border-width:1px"&gt;Django+AntdVue 前後端分離版&lt;/td&gt; 
+                     &lt;td style="border-color:#dfe2e5; border-style:solid; border-width:1px"&gt;採用 Django、Vue3.x、AntDesign 等框架研發前後端分離版本&lt;/td&gt; 
+                     &lt;td style="border-color:#dfe2e5; border-style:solid; border-width:1px"&gt;&lt;a href="https://gitee.com/djangoadmin/DjangoAdmin_Django_AntdVue"&gt;https://gitee.com/djangoadmin/DjangoAdmin_Django_AntdVue&lt;/a&gt;&lt;/td&gt; 
+                    &lt;/tr&gt; 
+                    &lt;tr&gt; 
+                     &lt;td style="border-color:#dfe2e5; border-style:solid; border-width:1px"&gt;Flask+AntdVue 前後端分離版&lt;/td&gt; 
+                     &lt;td style="border-color:#dfe2e5; border-style:solid; border-width:1px"&gt;採用 Flask、Vue3.x、AntDesign 等框架研發前後端分離版本&lt;/td&gt; 
+                     &lt;td style="border-color:#dfe2e5; border-style:solid; border-width:1px"&gt;&lt;a href="https://gitee.com/djangoadmin/DjangoAdmin_Flask_AntdVue"&gt;https://gitee.com/djangoadmin/DjangoAdmin_Flask_AntdVue&lt;/a&gt;&lt;/td&gt; 
+                    &lt;/tr&gt; 
+                    &lt;tr&gt; 
+                     &lt;td style="border-color:#dfe2e5; border-style:solid; border-width:1px"&gt;Tornado+AntdVue 前後端分離版&lt;/td&gt; 
+                     &lt;td style="border-color:#dfe2e5; border-style:solid; border-width:1px"&gt;採用 Tornado、Vue、AntDesign 等框架研發前後端分離版本&lt;/td&gt; 
+                     &lt;td style="border-color:#dfe2e5; border-style:solid; border-width:1px"&gt;&lt;a href="https://gitee.com/djangoadmin/DjangoAdmin_Tornado_AntdVue"&gt;https://gitee.com/djangoadmin/DjangoAdmin_Tornado_AntdVue&lt;/a&gt;&lt;/td&gt; 
+                    &lt;/tr&gt; 
+                   &lt;/tbody&gt; 
+                  &lt;/table&gt; 
+                  &lt;h2&gt;模塊展示&lt;/h2&gt; 
+                  &lt;p style="color:#333333; margin-left:0; margin-right:0; text-align:left"&gt;&lt;img alt="" height="1080" src="https://oscimg.oschina.net/oscnet/up-924a8e7453095f1c5dbf96e0b6ef90ab2f2.png" width="1920" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+                 &lt;/div&gt; 
+                &lt;/div&gt; 
+               &lt;/div&gt; 
+              &lt;/div&gt; 
+             &lt;/div&gt; 
+            &lt;/div&gt; 
+           &lt;/div&gt; 
+          &lt;/div&gt; 
+         &lt;/div&gt; 
+        &lt;/div&gt; 
+       &lt;/div&gt; 
+      &lt;/div&gt; 
+     &lt;/div&gt; 
+    &lt;/div&gt; 
+   &lt;/div&gt; 
+  &lt;/div&gt; 
+ &lt;/div&gt; 
+&lt;/div&gt;
+                                                                                &lt;/div&gt;
+                                                                            </description>
+      <link>https://www.oschina.net/news/361834</link>
+      <guid isPermaLink="false">https://www.oschina.net/news/361834</guid>
+      <pubDate>Wed, 16 Jul 2025 22:51:00 GMT</pubDate>
+      <author>來源: 資訊</author>
+    </item>
+    <item>
+      <title>🚀 Xinference 1.8.0 重磅更新！最強圖片編輯+文心一言 4.5 來襲！</title>
+      <description>&lt;div class="content"&gt;
+                                                                    
+                                                        &lt;p&gt;Xorbits Inference（Xinference）是一個，性能強大且功能全面的，分佈式，推理框架。可用於大語言模型（LLM），語音識別模型，多模態模型等各種模型的推理。通過 Xorbits Inference，你可以輕鬆地，一鍵部署你自己的模型或內置的前沿開源模型 - &lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fgithub.com%2Fxorbitsai%2Finference%25E3%2580%2582%25E6%2597%25A0%25E8%25AE%25BA%25E4%25BD%25A0%25E6%2598%25AF%25E7%25A0%2594%25E7%25A9%25B6%25E8%2580%2585%25EF%25BC%258C%25E5%25BC%2580%25E5%258F%2591%25E8%2580%2585%25EF%25BC%258C%25E6%2588%2596%25E6%2598%25AF%25E6%2595%25B0%25E6%258D%25AE%25E7%25A7%2591%25E5%25AD%25A6%25E5%25AE%25B6%25EF%25BC%258C%25E9%2583%25BD%25E5%258F%25AF%25E4%25BB%25A5%25E9%2580%259A%25E8%25BF%2587" target="_blank"&gt;https://github.com/xorbitsai/inference。無論你是研究者，開發者，或是數據科學家，都可以通過&lt;/a&gt; Xorbits Inference 與最前沿的 AI 模型，發掘更多可能。 &amp;nbsp; Xinference 的功能和亮點有：&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt;🌟 模型推理，輕而易舉：大語言模型，語音識別模型，多模態模型的部署流程被大大簡化。一個命令即可完成模型的部署工作。&lt;/li&gt; 
+ &lt;li&gt;⚡️ 前沿模型，應有盡有：框架內置眾多中英文的前沿大語言模型，包括 baichuan，chatglm2 等，一鍵即可體驗！內置模型列表還在快速更新中！&lt;/li&gt; 
+ &lt;li&gt;🖥 異構硬件，快如閃電：通過 ggml，同時使用你的 GPU 與 CPU 進行推理，降低延遲，提高吞吐！&lt;/li&gt; 
+ &lt;li&gt;⚙️ 接口調用，靈活多樣：提供多種使用模型的接口，包括 OpenAI 兼容的 RESTful API（包括 Function Calling），RPC，命令行，web UI 等等。方便模型的管理與交互。&lt;/li&gt; 
+ &lt;li&gt;🌐 集羣計算，分佈協同：支持分佈式部署，通過內置的資源調度器，讓不同大小的模型按需調度到不同機器，充分使用集羣資源。&lt;/li&gt; 
+ &lt;li&gt;🔌 開放生態，無縫對接：與流行的三方庫無縫對接，包括 LangChain， LlamaIndex， Dify，以及 Chatbox。&lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;p&gt;🚀 Xinference v1.8.0 更新日誌&lt;/p&gt; 
+&lt;p&gt;⚠️ 重要提示&lt;/p&gt; 
+&lt;p&gt;本次版本更新重構了 &lt;strong&gt;Xinference 模型緩存結構&lt;/strong&gt;，這意味着：&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt;之前已緩存的模型顯示會失效，需要重新加載模型。&lt;/li&gt; 
+ &lt;li&gt;已經加載運行的模型不會重新下載，因為 Xinference 僅通過軟鏈指向模型路徑，底層權重文件未被刪除。&lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;p&gt;✅ 本次亮點&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt;🔍 Embedding 支持 llama.cpp 後端 &amp;nbsp; &amp;nbsp; * 向量檢索和語義搜索場景中，llama.cpp 可直接作為高性能 embedding 引擎使用。&lt;/li&gt; 
+ &lt;li&gt;🎨 支持當前最強圖片編輯模型 FLUX.1-Kontext-dev &amp;nbsp; &amp;nbsp; * 圖片編輯與生成能力顯著增強，帶來更高質量和更自然的視覺效果。&lt;/li&gt; 
+ &lt;li&gt;🧠 新增文心一言 4.5 開源模型 ERNIE 和 GLM-4.1V-Thinking 模型支持 &amp;nbsp; &amp;nbsp; * 擴展多家前沿模型生態，思考鏈推理（Thinking）更智能。&lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;p&gt;🌐 社區版更新&lt;/p&gt; 
+&lt;p&gt;📦 安裝方式&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt;pip 安裝：pip install 'xinference==1.8.0'&lt;/li&gt; 
+ &lt;li&gt;Docker 使用：拉取最新版鏡像，或在容器中使用 pip 更新&lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;p&gt;🆕 新模型支持&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt;文心一言 4.5 開源模型 ERNIE&lt;/li&gt; 
+ &lt;li&gt;GLM-4.1V-Thinking&lt;/li&gt; 
+ &lt;li&gt;FLUX.1-Kontext-dev&lt;/li&gt; 
+ &lt;li&gt;Jina Embeddings V4 (jina-embeddings-v4)&lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;p&gt;✨ 新特性&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt;Embedding：支持 llama.cpp 後端&lt;/li&gt; 
+ &lt;li&gt;SGLang：支持非流式工具調用（non-stream tool calling）&lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;p&gt;🛠 功能增強&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt;固定 xllamacpp&amp;gt;=0.1.23 版本，增強穩定性&lt;/li&gt; 
+ &lt;li&gt;ModelScope 支持 Fish Speech 1.5&lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;p&gt;🐞 Bug 修復&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt;無 GPU 時禁用 qwen3 embedding &amp;amp; rerank 的 flash_attn&lt;/li&gt; 
+ &lt;li&gt;修復 async_client 刪除時錯誤&lt;/li&gt; 
+ &lt;li&gt;增加消息預處理，避免內容為空&lt;/li&gt; 
+ &lt;li&gt;FunASR 系列模型避免索引越界&lt;/li&gt; 
+ &lt;li&gt;修復無工具可選時 function call 輸出丟失&lt;/li&gt; 
+ &lt;li&gt;修復 enable_thinking 下 reasoning_content 輸出異常&lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;p&gt;🏢 企業版更新&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt;發佈 0.1.2 版本，增強 Prometheus 指標監控能力，max_tokens 默認支持最長 tokens。&lt;/li&gt; 
+ &lt;li&gt;修復多模態模型在 vLLM 與 Transformers 推理時的兼容問題，提升分佈式部署穩定性。&lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;p&gt;我們感謝每一位參與的社區夥伴對 Xinference 的幫助和支持，也歡迎更多使用者和開發者參與體驗和使用 Xinference。 &amp;nbsp; 歡迎您在 &lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fgithub.com%2Fxorbitsai%2Finference" target="_blank"&gt;https://github.com/xorbitsai/inference&lt;/a&gt; 給我們一個，星標，這樣你就可以在 GitHub 上及時收到每個新版本的通知。&lt;/p&gt;
+                                                                                &lt;/div&gt;
+                                                                            </description>
+      <link>https://www.oschina.net/news/361803/xinference-1-8-0-released</link>
+      <guid isPermaLink="false">https://www.oschina.net/news/361803/xinference-1-8-0-released</guid>
+      <pubDate>Wed, 16 Jul 2025 14:51:00 GMT</pubDate>
+      <author>來源: 資訊</author>
+    </item>
+    <item>
+      <title>🔥信創無代碼流程引擎 FlowLong 飛龍 1.1.15 發佈</title>
+      <description>&lt;div class="content"&gt;
+                                                                    
+                                                        &lt;p style="color:#333333; margin-left:0; margin-right:0; text-align:left"&gt;&lt;img height="141" src="https://oscimg.oschina.net/oscnet/up-8f140b87336199abaadd80c20df88f4a1a2.png" width="474" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt; &lt;p style="margin-left:0; margin-right:0"&gt;開源地址：&lt;span style="color:#ff2941"&gt;https://gitee.com/aizuda/flowlong&lt;/span&gt;&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p style="margin-left:0; margin-right:0"&gt;&lt;span style="color:#ff2941"&gt;&lt;span style="background-color:#ffffff; color:#3f3f3f"&gt;開源地址：&lt;/span&gt;&lt;span style="background-color:#ffffff; color:#ff2941"&gt;https://github.com/aizuda/flowlong&lt;/span&gt;&lt;/span&gt;&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p style="margin-left:0; margin-right:0"&gt;官網文檔：https://flowlong.aizuda.com&lt;/p&gt; &lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;blockquote&gt; 
+ &lt;p style="color:#505050; margin-left:0; margin-right:0"&gt;支持全流程操作監聽，僅 8 張表實現整個流程引擎（更符合中國人的思維模式設計），截至當前近 300 家企業自用登記接入使用。300 多家企業包括，國家計算中心，電信，等國企已上車，你還在等什麼呢？&lt;/p&gt; 
+&lt;/blockquote&gt; 
+&lt;p style="color:#333333; margin-left:0; margin-right:0; text-align:center"&gt;&lt;span style="color:#ff2941"&gt;開源登記使用名單如下，企業版用户暫不公開&lt;/span&gt;&lt;/p&gt; 
+&lt;p style="color:#333333; margin-left:0; margin-right:0; text-align:center"&gt;&lt;span style="color:#ff2941"&gt;https://gitee.com/aizuda/flowlong/issues/IB5K4V&lt;/span&gt;&lt;/p&gt; 
+&lt;h1&gt;&lt;span&gt;Flowlong 1.1.15 &amp;nbsp;主要亮點&lt;/span&gt;&lt;/h1&gt; 
+&lt;ul&gt; 
+ &lt;li&gt;feat: 新增，角色、部門，審批策略支持認領全部人員參與審批兩種模式&lt;/li&gt; 
+ &lt;li&gt;fixed: 修復多角色部門認領審批提前結束問題&lt;/li&gt; 
+ &lt;li&gt;opt: 優化執行器去除動態提供審批參與者緩存&lt;/li&gt; 
+ &lt;li&gt;opt: 優化解決 FlwHisTask setTaskState 序列化問題&lt;/li&gt; 
+ &lt;li&gt;opt: 優化完善其它註釋説明&lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;p style="color:#333333; margin-left:0; margin-right:0; text-align:left"&gt;&lt;span&gt;&lt;span&gt;開源版本&amp;nbsp;&lt;/span&gt;&lt;span style="color:#ff4c00"&gt;具備企業版&amp;nbsp;&lt;/span&gt;&lt;span&gt;所有功能（除了可視化），&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;企業版&amp;nbsp;&lt;/span&gt;&lt;span style="color:#ff4c00"&gt;可視化部分&amp;nbsp;&lt;/span&gt;&lt;span&gt;界面展示&lt;/span&gt;&lt;/span&gt;&lt;/p&gt; 
+&lt;p style="color:#333333; margin-left:0; margin-right:0; text-align:left"&gt;&lt;img height="1809" src="https://oscimg.oschina.net/oscnet/up-de023c77c5b3f3598907e82cb34d11fec8b.png" width="3119" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p style="color:#333333; margin-left:0; margin-right:0; text-align:left"&gt;&lt;img height="1809" src="https://oscimg.oschina.net/oscnet/up-2241fdc8e63f7d7ef4e711b1d0ed406bb36.png" width="3119" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p style="color:#333333; margin-left:0; margin-right:0; text-align:left"&gt;&lt;img height="1809" src="https://oscimg.oschina.net/oscnet/up-75bdea02093d2ef16feef07502a9e4deb5a.png" width="3119" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p style="color:#333333; margin-left:0; margin-right:0; text-align:left"&gt;&lt;img height="1809" src="https://oscimg.oschina.net/oscnet/up-cb64adf0e52eb4c56bc374d9f026ea1dac0.png" width="3119" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p style="color:#333333; margin-left:0; margin-right:0; text-align:left"&gt;&lt;img height="1809" src="https://oscimg.oschina.net/oscnet/up-63bc6f2905b01b7af9b90f67ba5e8ab5d05.png" width="3119" referrerpolicy="no-referrer"&gt;&lt;/p&gt;
+                                                                                &lt;/div&gt;
+                                                                            </description>
+      <link>https://www.oschina.net/news/361786/flowlong-1-1-15-released</link>
+      <guid isPermaLink="false">https://www.oschina.net/news/361786/flowlong-1-1-15-released</guid>
+      <pubDate>Wed, 16 Jul 2025 12:46:00 GMT</pubDate>
+      <author>來源: 資訊</author>
+    </item>
     <item>
       <title>EditorJumper 發佈：讓 AI IDE 和 JetBrains IDE 切換如絲般順滑！</title>
       <description>&lt;div class="content"&gt;
@@ -754,480 +1172,6 @@
       <link>https://www.oschina.net/news/361605/avue-3-7-1-released</link>
       <guid isPermaLink="false">https://www.oschina.net/news/361605/avue-3-7-1-released</guid>
       <pubDate>Wed, 16 Jul 2025 01:34:00 GMT</pubDate>
-      <author>來源: 資訊</author>
-    </item>
-    <item>
-      <title>「給予」超越「蓮花」，支持 Oracle 數據庫</title>
-      <description>&lt;div class="content"&gt;
-                                                                    
-                                                        &lt;p style="color:#333333; margin-left:0; margin-right:0; text-align:left"&gt;&lt;strong&gt;「給予」超越「蓮花」，支持 Oracle 數據庫&lt;/strong&gt;&lt;/p&gt; 
-&lt;p&gt;給予虛擬成像台已發佈嚐鮮版五，此版本增強支持了 Oracle 數據庫，並更新了相關文檔。介紹視頻請見：&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fwww.bilibili.com%2Fvideo%2FBV1higLzgEY1%2F" target="_blank"&gt;https://www.bilibili.com/video/BV1higLzgEY1/&lt;/a&gt;&lt;/p&gt; 
-&lt;p&gt;視頻演示了蛋糕商場 Ora 示例，演示了代碼生成物的前端後端項目演示運行的情況。&lt;/p&gt; 
-&lt;p style="color:#333333; margin-left:0; margin-right:0; text-align:left"&gt;給予虛擬成像台嚐鮮版四。此版本更新了 Rust 語言和主要框架的版本。技術實現已領先於 Rust 通用代碼生成器蓮花。具體軟件版本更新如下：&lt;/p&gt; 
-&lt;ul&gt; 
- &lt;li&gt;Rust 從 1.78 更新至 1.85&lt;/li&gt; 
- &lt;li&gt;Axum 從 0.6.20 更新至 0.8.4&lt;/li&gt; 
- &lt;li&gt;Tokio 從 1.32.0 更新至 1.46.1&lt;/li&gt; 
- &lt;li&gt;Sqlx 從 0.7.1 更新至 0.8.6&lt;/li&gt; 
- &lt;li&gt;不再使用 axum-sessions 改用 tower-sessions&lt;/li&gt; 
- &lt;li&gt;Oracle 0.5.7 更新至 0.6.3&lt;/li&gt; 
-&lt;/ul&gt; 
-&lt;p style="color:#333333; margin-left:0; margin-right:0; text-align:left"&gt;介紹視頻如下：&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fwww.bilibili.com%2Fvideo%2FBV1GTubzCEZ4%2F" target="_blank"&gt;https://www.bilibili.com/video/BV1GTubzCEZ4/&lt;/a&gt;&lt;/p&gt; 
-&lt;p style="color:#333333; margin-left:0; margin-right:0; text-align:left"&gt;給予虛擬成像台將強大的生產力賦能廣大程序員。無論是新開發的軟件還是通過遺留數據庫反射以再次開發的遺留項目，您都可以使用動詞算子式通用代碼生成器的強大生產力大大加速研發速度。給予虛擬成像台永遠是廣大程序員的瑞士軍刀，是加快開發速度和提高開發質量的利器。&amp;nbsp;&lt;/p&gt; 
-&lt;p style="color:#333333; margin-left:0; margin-right:0; text-align:left"&gt;給予虛擬成像台&lt;span style="background-color:#ffffff; color:#333333"&gt;的項目地址：&lt;/span&gt;&lt;a href="https://gitee.com/jerryshensjf/Given"&gt;https://gitee.com/jerryshensjf/Given&lt;/a&gt;&lt;/p&gt; 
-&lt;h1&gt;給予虛擬成像台&lt;/h1&gt; 
-&lt;h4&gt;介紹&lt;/h4&gt; 
-&lt;p style="color:#40485b; margin-left:0; margin-right:0; text-align:left"&gt;項目名：給予虛擬成像台&lt;/p&gt; 
-&lt;p style="color:#40485b; margin-left:0; margin-right:0; text-align:left"&gt;Project Name: Given the gateway&lt;/p&gt; 
-&lt;p style="color:#40485b; margin-left:0; margin-right:0; text-align:left"&gt;為第二代動詞算子架構的通用代碼生成器陣列，目前支持 Rust 語言，技術狀態已領先於 Rust 通用代碼生成器蓮花，紅蓮嚐鮮版三十六。&lt;/p&gt; 
-&lt;p style="color:#40485b; margin-left:0; margin-right:0; text-align:left"&gt;給予虛擬成像台是一款徹底插件化的多語言通用代碼生成器陣列。其所有功能由插件提供，插件不分語言，如果支持某種語言的生成需求，它就會生成壓縮包，如果不支持，軟件會報一個編譯錯誤。現有的 Rust 語言代碼生成功能由標準插件提供。&lt;/p&gt; 
-&lt;p style="color:#40485b; margin-left:0; margin-right:0; text-align:left"&gt;給予虛擬成像台有完善的插件管理功能。未來所有的功能增強都會通過不同的插件提供。給予虛擬成像台的插件機制，構成了第二代動詞算子架構的主要部分。&lt;/p&gt; 
-&lt;h3&gt;項目圖片&lt;/h3&gt; 
-&lt;p style="color:#40485b; margin-left:0; margin-right:0; text-align:left"&gt;&lt;img alt="輸入圖片説明" src="https://oscimg.oschina.net/oscnet//e838ccbb8f33320c18de908de6c3158f.jpg" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;h3&gt;生成功能界面截圖&lt;/h3&gt; 
-&lt;p style="color:#40485b; margin-left:0; margin-right:0; text-align:left"&gt;&lt;img alt="輸入圖片説明" src="https://oscimg.oschina.net/oscnet//9f90533f12af71f2ce8524561570e44e.jpg" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;p style="color:#40485b; margin-left:0; margin-right:0; text-align:left"&gt;&lt;img alt="輸入圖片説明" src="https://oscimg.oschina.net/oscnet//991cc7bf03a9c147c485516bd674d910.jpg" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;p style="color:#40485b; margin-left:0; margin-right:0; text-align:left"&gt;&lt;img alt="輸入圖片説明" src="https://oscimg.oschina.net/oscnet//0397ba06e5ece21da6fb8016258719f5.jpg" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;p style="color:#40485b; margin-left:0; margin-right:0; text-align:left"&gt;&lt;img alt="輸入圖片説明" src="https://oscimg.oschina.net/oscnet//0406c0bf3e0a84ce097fbb56debb86d7.jpg" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;p style="color:#40485b; margin-left:0; margin-right:0; text-align:left"&gt;&lt;img alt="輸入圖片説明" src="https://oscimg.oschina.net/oscnet//d212a126f69fbc03608913d8865a7584.jpg" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;p style="color:#40485b; margin-left:0; margin-right:0; text-align:left"&gt;&lt;img alt="輸入圖片説明" src="https://oscimg.oschina.net/oscnet//4293aa3cffe8a58775ec43c6d59af1fd.jpg" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;p style="color:#40485b; margin-left:0; margin-right:0; text-align:left"&gt;&lt;img alt="輸入圖片説明" src="https://oscimg.oschina.net/oscnet//bcf45e78dc11b77c1e2c0b8d9451080b.jpg" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;h4&gt;軟件架構&lt;/h4&gt; 
-&lt;p style="color:#40485b; margin-left:0; margin-right:0; text-align:left"&gt;統一的插件架構&lt;/p&gt; 
-&lt;ul&gt; 
- &lt;li&gt;內含動詞算子，標準域對象，界面和模塊&lt;/li&gt; 
- &lt;li&gt;動詞算子庫，模塊庫和界面庫是統一的，因內含物的不同提供不同的服務&lt;/li&gt; 
- &lt;li&gt;對象的標準命名:插件名.模塊名.對象名&lt;/li&gt; 
- &lt;li&gt;不分語言和技術棧，生成時匹配語言，技術棧，數據庫類型，前端技術，後端技術並輸出結果，如果不匹配返回 Null 或拋 ValidateException&lt;/li&gt; 
- &lt;li&gt;可以引用本插件和其他插件的模塊&lt;/li&gt; 
- &lt;li&gt;一個代碼生成器陣列以一個陣列本體和一系列插件 Jar 組成&lt;/li&gt; 
-&lt;/ul&gt; 
-&lt;h3&gt;組件清單&lt;/h3&gt; 
-&lt;p style="color:#40485b; margin-left:0; margin-right:0; text-align:left"&gt;曲速引擎前端代碼生成器&lt;span&gt;&amp;nbsp;&lt;/span&gt;&lt;a href="https://gitee.com/jerryshensjf/WarpEngine"&gt;https://gitee.com/jerryshensjf/WarpEngine&lt;/a&gt;&lt;/p&gt; 
-&lt;p style="color:#40485b; margin-left:0; margin-right:0; text-align:left"&gt;表反射引擎&lt;span&gt;&amp;nbsp;&lt;/span&gt;&lt;a href="https://gitee.com/jerryshensjf/ReflectTable"&gt;https://gitee.com/jerryshensjf/ReflectTable&lt;/a&gt;&lt;/p&gt; 
-&lt;p style="color:#40485b; margin-left:0; margin-right:0; text-align:left"&gt;標準插件&lt;span&gt;&amp;nbsp;&lt;/span&gt;&lt;a href="https://gitee.com/jerryshensjf/StdPlugin"&gt;https://gitee.com/jerryshensjf/StdPlugin&lt;/a&gt;&lt;/p&gt; 
-&lt;p style="color:#40485b; margin-left:0; margin-right:0; text-align:left"&gt;蛋糕商城插件&lt;span&gt;&amp;nbsp;&lt;/span&gt;&lt;a href="https://gitee.com/jerryshensjf/CookieShopPlugin"&gt;https://gitee.com/jerryshensjf/CookieShopPlugin&lt;/a&gt;&lt;/p&gt; 
-&lt;h3&gt;版本發佈&lt;/h3&gt; 
-&lt;p style="color:#40485b; margin-left:0; margin-right:0; text-align:left"&gt;給予虛擬成像台已發佈嚐鮮版五，此版本增強支持了 Oracle 數據庫，並更新了相關文檔。&lt;/p&gt; 
-&lt;p style="color:#40485b; margin-left:0; margin-right:0; text-align:left"&gt;已發佈給予嚐鮮版四，此版本更新了 Rust 語言和主要框架的版本。技術實現已領先於 Rust 通用代碼生成器蓮花。具體軟件版本更新如下：&lt;/p&gt; 
-&lt;ul&gt; 
- &lt;li&gt;Rust 從 1.78 更新至 1.85&lt;/li&gt; 
- &lt;li&gt;Axum 從 0.6.20 更新至 0.8.4&lt;/li&gt; 
- &lt;li&gt;Tokio 從 1.32.0 更新至 1.46.1&lt;/li&gt; 
- &lt;li&gt;Sqlx 從 0.7.1 更新至 0.8.6&lt;/li&gt; 
- &lt;li&gt;不再使用 axum-sessions 改用 tower-sessions&lt;/li&gt; 
- &lt;li&gt;Oracle 0.5.7 更新至 0.6.3&lt;/li&gt; 
-&lt;/ul&gt; 
-&lt;p style="color:#40485b; margin-left:0; margin-right:0; text-align:left"&gt;已發佈給予嚐鮮版三，完善支持人工智能腳本運行。&lt;/p&gt; 
-&lt;h3&gt;插件概要&lt;/h3&gt; 
-&lt;ul&gt; 
- &lt;li&gt;StdPlugin 標準插件由紅蓮三十六改過來&lt;/li&gt; 
- &lt;li&gt;CookieShopPlugin 蛋糕商城插件&lt;/li&gt; 
- &lt;li&gt;SimpleAuthPlugin 簡易認證插件&lt;/li&gt; 
- &lt;li&gt;SimpleAuth2Plugin 簡易認證插件 2&lt;/li&gt; 
- &lt;li&gt;AdvancedAuthPlugin 先進認證插件&lt;/li&gt; 
- &lt;li&gt;DictionaryPlugin 字典插件&lt;/li&gt; 
- &lt;li&gt;OrgnizationPlugin 組織插件&lt;/li&gt; 
- &lt;li&gt;LocationPlugin 地點插件&lt;/li&gt; 
-&lt;/ul&gt; 
-&lt;h3&gt;介紹視頻&lt;/h3&gt; 
-&lt;p style="color:#40485b; margin-left:0; margin-right:0; text-align:left"&gt;嚐鮮版五&lt;/p&gt; 
-&lt;ul&gt; 
- &lt;li style="color: rgb(64, 72, 91); margin-left: 0px; margin-right: 0px; text-align: left;"&gt;&lt;a href="https://gitee.com/link?target=https%3A%2F%2Fwww.bilibili.com%2Fvideo%2FBV1higLzgEY1%2F" target="_blank"&gt;https://www.bilibili.com/video/BV1higLzgEY1/&lt;/a&gt;&lt;/li&gt; 
-&lt;/ul&gt; 
-&lt;p style="color:#40485b; margin-left:0; margin-right:0; text-align:left"&gt;嚐鮮版四&lt;/p&gt; 
-&lt;ul&gt; 
- &lt;li style="color: rgb(64, 72, 91); margin-left: 0px; margin-right: 0px; text-align: left;"&gt;&lt;a href="https://gitee.com/link?target=https%3A%2F%2Fwww.bilibili.com%2Fvideo%2FBV1GTubzCEZ4%2F" target="_blank"&gt;https://www.bilibili.com/video/BV1GTubzCEZ4/&lt;/a&gt;&lt;/li&gt; 
-&lt;/ul&gt; 
-&lt;p style="color:#40485b; margin-left:0; margin-right:0; text-align:left"&gt;嚐鮮版三&lt;/p&gt; 
-&lt;ul&gt; 
- &lt;li style="color: rgb(64, 72, 91); margin-left: 0px; margin-right: 0px; text-align: left;"&gt;&lt;a href="https://gitee.com/link?target=https%3A%2F%2Fwww.bilibili.com%2Fvideo%2FBV1CSGNzqEVY%2F" target="_blank"&gt;https://www.bilibili.com/video/BV1CSGNzqEVY/&lt;/a&gt;&lt;/li&gt; 
-&lt;/ul&gt; 
-&lt;p style="color:#40485b; margin-left:0; margin-right:0; text-align:left"&gt;嚐鮮版二&lt;/p&gt; 
-&lt;ul&gt; 
- &lt;li style="color: rgb(64, 72, 91); margin-left: 0px; margin-right: 0px; text-align: left;"&gt;&lt;a href="https://gitee.com/link?target=https%3A%2F%2Fwww.bilibili.com%2Fvideo%2FBV1ry34z4EhC%2F" target="_blank"&gt;https://www.bilibili.com/video/BV1ry34z4EhC/&lt;/a&gt;&lt;/li&gt; 
-&lt;/ul&gt; 
-&lt;p style="color:#40485b; margin-left:0; margin-right:0; text-align:left"&gt;嚐鮮版&lt;/p&gt; 
-&lt;ul&gt; 
- &lt;li style="color: rgb(64, 72, 91); margin-left: 0px; margin-right: 0px; text-align: left;"&gt;&lt;a href="https://gitee.com/link?target=https%3A%2F%2Fwww.bilibili.com%2Fvideo%2FBV1g4KDzbED3%2F" target="_blank"&gt;https://www.bilibili.com/video/BV1g4KDzbED3/&lt;/a&gt;&lt;/li&gt; 
-&lt;/ul&gt;
-                                                                                &lt;/div&gt;
-                                                                            </description>
-      <link>https://www.oschina.net/news/361603</link>
-      <guid isPermaLink="false">https://www.oschina.net/news/361603</guid>
-      <pubDate>Wed, 16 Jul 2025 01:24:00 GMT</pubDate>
-      <author>來源: 資訊</author>
-    </item>
-    <item>
-      <title>小螞蟻雲 XiaoMaYi-AntdVue 單體敏捷開發框架 v1.0.0 發佈</title>
-      <description>&lt;div class="content"&gt;
-                                                                    
-                                                        &lt;p&gt;&lt;span style="background-color:#ffffff; color:#333333"&gt;v1.0.0 更新內容：&lt;/span&gt;&lt;br&gt; &lt;span style="background-color:#ffffff; color:#333333"&gt;1、全新架構設計；&amp;nbsp;&lt;/span&gt;&lt;br&gt; &lt;span style="background-color:#ffffff; color:#333333"&gt;2、全系支持 JDK17;&amp;nbsp;&lt;/span&gt;&lt;br&gt; &lt;span style="background-color:#ffffff; color:#333333"&gt;3、全系支持 MySQL、PostgreSQL、SqlServer、Sqlite 等數據庫；&lt;/span&gt;&lt;/p&gt; 
-&lt;h4&gt;項目介紹&lt;/h4&gt; 
-&lt;p style="color:#40485b; margin-left:0; margin-right:0; text-align:left"&gt;基於 SpringBoot3、SpringSecurity、MybatisPlus、Vue3、TypeScript、Vite、AntDesign、MySQL 等技術棧實現的單體前後端分離後台管理系統；後端基於 Java 語言採用 SpringBoot3、SpringSecurity、MybatisPlus、MySQL 等主流技術棧，前端基於 Vue3、TypeScript、Vite 等技術棧實現，採用 AntDesign 前端 UI 框架，基於目前 Vue 前後端分離主流設計思想，為了實現精細化分工，模塊化、組件化開發模式，目前採用完全前後端分離架構實現，前端應用通過 API 調用後端服務的方式實現數據交互；整套系統擁有完善的 RBAC 權限架構體系，權限顆粒度精細至按鈕級別，支持多主題切換模式，多端兼容手機客户端、PAD 平板、PC 電腦等終端設備，提升了用户使用體驗；同時為了簡化開發，本身集成了基礎模塊，如用户模塊、角色模塊、菜單模塊、部門模塊、崗位模塊、職級模塊、日誌模塊、租户模塊、字典模塊、配置模塊、行政區劃、任務調度等基礎功能模塊； 為了支持個別企業和開發者多租户功能需求，在設計之初已重點設計並支持多租户功能；為了實現項目快速開發，官方自定義研發了整套代碼生成器功能，可以根據單個規範的數據表結構一鍵生成模塊的後端文件代碼和前端模塊代碼；為了高度適配企業、政府和開發者定製化項目的需求，目前單體前後端分離架構發行了多個版本，根據實際需求按需選擇即可，軟件框架本身已集成了權限架構體系和基礎功能模塊，極大的提高了開發效率，降低了項目研發成本以及節省了人力。&lt;/p&gt; 
-&lt;h4&gt;軟件架構&lt;/h4&gt; 
-&lt;ul&gt; 
- &lt;li&gt;採用&lt;span&gt;&amp;nbsp;&lt;/span&gt;&lt;code&gt;模塊化&lt;/code&gt;、&lt;code&gt;插件化&lt;/code&gt;&lt;span&gt;&amp;nbsp;&lt;/span&gt;設計，實現核心類庫按需引入；&lt;/li&gt; 
- &lt;li&gt;採用&lt;span&gt;&amp;nbsp;&lt;/span&gt;&lt;code&gt;Vue3&lt;/code&gt;、&lt;code&gt;TypeScript&lt;/code&gt;、&lt;code&gt;AntDesign&lt;/code&gt;、&lt;code&gt;Vite&lt;/code&gt;&lt;span&gt;&amp;nbsp;&lt;/span&gt;等技術實現完全前後端分離；&lt;/li&gt; 
- &lt;li&gt;採用&lt;span&gt;&amp;nbsp;&lt;/span&gt;&lt;code&gt;MybatisPlus&lt;/code&gt;、&lt;code&gt;hutool&lt;/code&gt;、&lt;code&gt;fastjson2&lt;/code&gt;&lt;span&gt;&amp;nbsp;&lt;/span&gt;等主流開源框架；&lt;/li&gt; 
- &lt;li&gt;採用&lt;span&gt;&amp;nbsp;&lt;/span&gt;&lt;code&gt;Json Web Token&lt;/code&gt;&lt;span&gt;&amp;nbsp;&lt;/span&gt;、&lt;code&gt;redis&lt;/code&gt;&lt;span&gt;&amp;nbsp;&lt;/span&gt;緩存技術等令牌生成機制；&lt;/li&gt; 
- &lt;li&gt;採用&lt;span&gt;&amp;nbsp;&lt;/span&gt;&lt;code&gt;AOP&lt;/code&gt;&lt;span&gt;&amp;nbsp;&lt;/span&gt;切面技術實現日誌及權限訪問控制，顆粒度至按鈕節點級別；&lt;/li&gt; 
- &lt;li&gt;採用&lt;span&gt;&amp;nbsp;&lt;/span&gt;&lt;code&gt;Validator&lt;/code&gt;&lt;span&gt;&amp;nbsp;&lt;/span&gt;驗證器，實現&lt;span&gt;&amp;nbsp;&lt;/span&gt;&lt;code&gt;DTO&lt;/code&gt;&lt;span&gt;&amp;nbsp;&lt;/span&gt;參數嚴格校驗；&lt;/li&gt; 
- &lt;li&gt;採用&lt;span&gt;&amp;nbsp;&lt;/span&gt;&lt;code&gt;SpringDoc&lt;/code&gt;、&lt;code&gt;knife4j&lt;/code&gt;&lt;span&gt;&amp;nbsp;&lt;/span&gt;實現在線文檔查看；&lt;/li&gt; 
- &lt;li&gt;採用&lt;span&gt;&amp;nbsp;&lt;/span&gt;&lt;code&gt;redis&lt;/code&gt;&lt;span&gt;&amp;nbsp;&lt;/span&gt;緩存技術記錄登錄信息，實現在線強制退出機制；&lt;/li&gt; 
- &lt;li&gt;採用&lt;span&gt;&amp;nbsp;&lt;/span&gt;&lt;code&gt;mybatis-plus-generator&lt;/code&gt;&lt;span&gt;&amp;nbsp;&lt;/span&gt;實現代碼生成器，一鍵生成模塊文件；&lt;/li&gt; 
- &lt;li&gt;採用&lt;span&gt;&amp;nbsp;&lt;/span&gt;&lt;code&gt;MybatisPlus&lt;/code&gt;&lt;span&gt;&amp;nbsp;&lt;/span&gt;實現多租户數據隔離策略；&lt;/li&gt; 
- &lt;li&gt;集成&lt;span&gt;&amp;nbsp;&lt;/span&gt;&lt;code&gt;阿里短信&lt;/code&gt;、&lt;code&gt;郵件&lt;/code&gt;&lt;span&gt;&amp;nbsp;&lt;/span&gt;等核心功能，實現業務解耦；&lt;/li&gt; 
- &lt;li&gt;集成&lt;span&gt;&amp;nbsp;&lt;/span&gt;&lt;code&gt;在線監控&lt;/code&gt;&lt;span&gt;&amp;nbsp;&lt;/span&gt;技術，實現應用健康度、性能在線監控；&lt;/li&gt; 
- &lt;li&gt;集成&lt;span&gt;&amp;nbsp;&lt;/span&gt;&lt;code&gt;Druid&lt;/code&gt;&lt;span&gt;&amp;nbsp;&lt;/span&gt;數據庫連接池，用於管理數據庫連接；&lt;/li&gt; 
-&lt;/ul&gt; 
-&lt;h4&gt;軟件信息&lt;/h4&gt; 
-&lt;ul&gt; 
- &lt;li&gt;軟件名稱：小螞蟻雲單體 Vue3+AntDesign 版&lt;/li&gt; 
- &lt;li&gt;軟件作者：@小螞蟻雲團隊&lt;/li&gt; 
- &lt;li&gt;軟件協議：Apache-2.0&lt;/li&gt; 
- &lt;li&gt;官網網址：&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fwww.xiaomayicloud.com" target="_blank"&gt;https://www.xiaomayicloud.com&lt;/a&gt;&lt;/li&gt; 
- &lt;li&gt;文檔網址：&lt;a href="https://www.oschina.net/action/GoToLink?url=http%3A%2F%2Fdocs.antdvue.xiaomayicloud.com" target="_blank"&gt;http://docs.antdvue.xiaomayicloud.com&lt;/a&gt;&lt;/li&gt; 
- &lt;li&gt;演示地址：&lt;a href="https://www.oschina.net/action/GoToLink?url=http%3A%2F%2Fmanage.antdvue.xiaomayicloud.com" target="_blank"&gt;http://manage.antdvue.xiaomayicloud.com&lt;/a&gt;&lt;/li&gt; 
-&lt;/ul&gt; 
-&lt;h4&gt;功能模塊&lt;/h4&gt; 
-&lt;ul&gt; 
- &lt;li&gt;主控制枱：純靜態頁面，提供給有需要的企業、開發者做定製化使用；&lt;/li&gt; 
- &lt;li&gt;用户管理：實現用户數據錄入於管理，增強了賬户安全；&lt;/li&gt; 
- &lt;li&gt;角色管理：基於 RBAC 權限架構體系，實現角色權限的管理；&lt;/li&gt; 
- &lt;li&gt;菜單管理：用於權限菜單數據管理以及菜單節點權限數據管理；&lt;/li&gt; 
- &lt;li&gt;部門管理：用於管理系統架構體系中的部門數據；&lt;/li&gt; 
- &lt;li&gt;崗位管理：針對用户崗位屬性的數據進行統一維護管理；&lt;/li&gt; 
- &lt;li&gt;租户管理：主要對租户入住數據進行管理和租户賬號開通管理；&lt;/li&gt; 
- &lt;li&gt;日誌管理：用於登錄日誌、操作日誌管理和維護；&lt;/li&gt; 
- &lt;li&gt;參數管理：用於對系統核心參數的定義和管理；&lt;/li&gt; 
- &lt;li&gt;配置管理：用於對動態配置參數的統一管理和設置；&lt;/li&gt; 
- &lt;li&gt;字典管理：用於對字典數據、字典項數據的管理為維護；&lt;/li&gt; 
- &lt;li&gt;通知公告：主要對通知、公告等站外、站內數據進行管理；&lt;/li&gt; 
- &lt;li&gt;行政區劃：針對全國行政區劃分數據進行管理和維護；&lt;/li&gt; 
- &lt;li&gt;消息管理：對系統消息模塊進行查閲和管理；&lt;/li&gt; 
- &lt;li&gt;短信日誌：主要用於記錄發送短信的日誌信息進行管理；&lt;/li&gt; 
- &lt;li&gt;郵件日誌：主要用於記錄郵件發送記錄和數據維護管理；&lt;/li&gt; 
- &lt;li&gt;文件日誌：主要用於上傳圖片、文件等資源附件日誌記錄進行管理；&lt;/li&gt; 
- &lt;li&gt;文件模板：主要對系統中使用的文件模板進行上傳和管理；&lt;/li&gt; 
- &lt;li&gt;郵件模板：主要對系統使用的郵件模板文件進行管理；&lt;/li&gt; 
- &lt;li&gt;短信模板：主要對系統短信模板信息進行錄入、維護和管理；&lt;/li&gt; 
- &lt;li&gt;消息模板：主要針對系統業務發送的消息內容進行統一管理；&lt;/li&gt; 
- &lt;li&gt;系統設置：針對系統的常規配置數據進行可視化管理維護；&lt;/li&gt; 
- &lt;li&gt;CMS 管理：主要用於網站相關的數據進行管理的模塊；&lt;/li&gt; 
- &lt;li&gt;任務調度：主要用於對定時任務進行定義和統一調度管理；&lt;/li&gt; 
- &lt;li&gt;在線用户：主要用於在線用户的維護以及強制退出登錄；&lt;/li&gt; 
- &lt;li&gt;SQL 監控：主要結合 Druid 數據庫連接池技術實現數據庫 SQL 監控管理；&lt;/li&gt; 
- &lt;li&gt;性能監控：用於監控應用 CPU、內存、服務器、磁盤、虛擬機等信息；&lt;/li&gt; 
- &lt;li&gt;健康監控：主要用於對系統健康度和運行狀態、性能進行監控；&lt;/li&gt; 
- &lt;li&gt;緩存監控：主要對系統緩存信息進行統計和監控查閲；&lt;/li&gt; 
- &lt;li&gt;代碼生成：官方定製化模板生成器，用於簡化單模塊開發，提高效率；&lt;/li&gt; 
- &lt;li&gt;接口文檔：用於查閲系統接口在線文檔，查閲 API 地址、入參、出參等；&lt;/li&gt; 
-&lt;/ul&gt; 
-&lt;h4&gt;其他版本&lt;/h4&gt; 
-&lt;table cellspacing="0" style="-webkit-text-stroke-width:0px; background-color:#ffffff; border-collapse:collapse; border-spacing:0px; box-sizing:border-box; color:#40485b; display:block; font-family:-apple-system,BlinkMacSystemFont,&amp;quot;Segoe UI&amp;quot;,Helvetica,Arial,&amp;quot;Apple Color Emoji&amp;quot;,&amp;quot;Segoe UI Emoji&amp;quot;,&amp;quot;Segoe UI Symbol&amp;quot;,&amp;quot;Liberation Sans&amp;quot;,&amp;quot;PingFang SC&amp;quot;,&amp;quot;Microsoft YaHei&amp;quot;,&amp;quot;Hiragino Sans GB&amp;quot;,&amp;quot;Wenquanyi Micro Hei&amp;quot;,&amp;quot;WenQuanYi Zen Hei&amp;quot;,&amp;quot;ST Heiti&amp;quot;,SimHei,SimSun,&amp;quot;WenQuanYi Zen Hei Sharp&amp;quot;,sans-serif; font-size:16px; font-style:normal; font-variant-caps:normal; font-variant-ligatures:normal; font-weight:400; letter-spacing:normal; margin-bottom:16px; margin-top:0px; orphans:2; overflow:auto; text-align:left; text-decoration-color:initial; text-decoration-style:initial; text-decoration-thickness:initial; text-transform:none; white-space:normal; widows:2; width:857.286px; word-break:initial; word-spacing:0px"&gt; 
- &lt;tbody&gt; 
-  &lt;tr&gt; 
-   &lt;th&gt;版本名稱&lt;/th&gt; 
-   &lt;th&gt;説明&lt;/th&gt; 
-   &lt;th&gt;地址&lt;/th&gt; 
-  &lt;/tr&gt; 
- &lt;/tbody&gt; 
- &lt;tbody&gt; 
-  &lt;tr&gt; 
-   &lt;td style="border-color:#dfe2e5; border-style:solid; border-width:1px"&gt;小螞蟻雲單體 Vue3+ElementPlus 版&lt;/td&gt; 
-   &lt;td style="border-color:#dfe2e5; border-style:solid; border-width:1px"&gt;基於 SpringBoot3、SpringSecurity、MybatisPlus、Vue3、ElementPlus、TypeScript、Vite、MySQL 等技術棧&lt;/td&gt; 
-   &lt;td style="border-color:#dfe2e5; border-style:solid; border-width:1px"&gt;&lt;a href="https://gitee.com/xiaomayicloud/XiaoMaYi-EleVue"&gt;https://gitee.com/xiaomayicloud/XiaoMaYi-EleVue&lt;/a&gt;&lt;/td&gt; 
-  &lt;/tr&gt; 
-  &lt;tr&gt; 
-   &lt;td style="border-color:#dfe2e5; border-style:solid; border-width:1px"&gt;小螞蟻雲單體 Vue3+AntDesign 版&lt;/td&gt; 
-   &lt;td style="border-color:#dfe2e5; border-style:solid; border-width:1px"&gt;基於 SpringBoot3、SpringSecurity、MybatisPlus、Vue3、AntDesign、TypeScript、Vite、MySQL 等技術棧&lt;/td&gt; 
-   &lt;td style="border-color:#dfe2e5; border-style:solid; border-width:1px"&gt;&lt;a href="https://gitee.com/xiaomayicloud/XiaoMaYi-AntdVue"&gt;https://gitee.com/xiaomayicloud/XiaoMaYi-AntdVue&lt;/a&gt;&lt;/td&gt; 
-  &lt;/tr&gt; 
-  &lt;tr&gt; 
-   &lt;td style="border-color:#dfe2e5; border-style:solid; border-width:1px"&gt;小螞蟻雲單體 Vue3+NaiveUI 版&lt;/td&gt; 
-   &lt;td style="border-color:#dfe2e5; border-style:solid; border-width:1px"&gt;基於 SpringBoot3、SpringSecurity、MybatisPlus、Vue3、NaiveUI、TypeScript、Vite、MySQL 等技術棧&lt;/td&gt; 
-   &lt;td style="border-color:#dfe2e5; border-style:solid; border-width:1px"&gt;&lt;a href="https://gitee.com/xiaomayicloud/XiaoMaYi-NaiveVue"&gt;https://gitee.com/xiaomayicloud/XiaoMaYi-NaiveVue&lt;/a&gt;&lt;/td&gt; 
-  &lt;/tr&gt; 
-  &lt;tr&gt; 
-   &lt;td style="border-color:#dfe2e5; border-style:solid; border-width:1px"&gt;小螞蟻雲單體 Vue3+ArcoDesign 版&lt;/td&gt; 
-   &lt;td style="border-color:#dfe2e5; border-style:solid; border-width:1px"&gt;基於 SpringBoot3、SpringSecurity、MybatisPlus、Vue3、ArcoDesign、TypeScript、Vite、MySQL 等技術棧&lt;/td&gt; 
-   &lt;td style="border-color:#dfe2e5; border-style:solid; border-width:1px"&gt;&lt;a href="https://gitee.com/xiaomayicloud/XiaoMaYi-ArcoVue"&gt;https://gitee.com/xiaomayicloud/XiaoMaYi-ArcoVue&lt;/a&gt;&lt;/td&gt; 
-  &lt;/tr&gt; 
-  &lt;tr&gt; 
-   &lt;td style="border-color:#dfe2e5; border-style:solid; border-width:1px"&gt;小螞蟻雲微服務 Nacos+ElementPlus 版&lt;/td&gt; 
-   &lt;td style="border-color:#dfe2e5; border-style:solid; border-width:1px"&gt;基於 SpringCloud、SpringSecurity、OAuth2、Nacos、Seata、MybatisPlus、Vue3、ElementPlus、TypeScript、Vite、MySQL 等技術棧&lt;/td&gt; 
-   &lt;td style="border-color:#dfe2e5; border-style:solid; border-width:1px"&gt;&lt;a href="https://gitee.com/xiaomayicloud/XiaoMaYi-Nacos-EleVue"&gt;https://gitee.com/xiaomayicloud/XiaoMaYi-Nacos-EleVue&lt;/a&gt;&lt;/td&gt; 
-  &lt;/tr&gt; 
-  &lt;tr&gt; 
-   &lt;td style="border-color:#dfe2e5; border-style:solid; border-width:1px"&gt;小螞蟻雲微服務 Nacos+AntDesign 版&lt;/td&gt; 
-   &lt;td style="border-color:#dfe2e5; border-style:solid; border-width:1px"&gt;基於 SpringCloud、SpringSecurity、OAuth2、Nacos、Seata、MybatisPlus、Vue3、AntDesign、TypeScript、Vite、MySQL 等技術棧&lt;/td&gt; 
-   &lt;td style="border-color:#dfe2e5; border-style:solid; border-width:1px"&gt;&lt;a href="https://gitee.com/xiaomayicloud/XiaoMaYi-Nacos-AntdVue"&gt;https://gitee.com/xiaomayicloud/XiaoMaYi-Nacos-AntdVue&lt;/a&gt;&lt;/td&gt; 
-  &lt;/tr&gt; 
-  &lt;tr&gt; 
-   &lt;td style="border-color:#dfe2e5; border-style:solid; border-width:1px"&gt;小螞蟻雲微服務 Nacos+NaiveUI 版&lt;/td&gt; 
-   &lt;td style="border-color:#dfe2e5; border-style:solid; border-width:1px"&gt;基於 SpringCloud、SpringSecurity、OAuth2、Nacos、Seata、MybatisPlus、Vue3、NaiveUI、TypeScript、Vite、MySQL 等技術棧&lt;/td&gt; 
-   &lt;td style="border-color:#dfe2e5; border-style:solid; border-width:1px"&gt;&lt;a href="https://gitee.com/xiaomayicloud/XiaoMaYi-Nacos-NaiveVue"&gt;https://gitee.com/xiaomayicloud/XiaoMaYi-Nacos-NaiveVue&lt;/a&gt;&lt;/td&gt; 
-  &lt;/tr&gt; 
-  &lt;tr&gt; 
-   &lt;td style="border-color:#dfe2e5; border-style:solid; border-width:1px"&gt;小螞蟻雲微服務 Nacos+ArcoDesign 版&lt;/td&gt; 
-   &lt;td style="border-color:#dfe2e5; border-style:solid; border-width:1px"&gt;基於 SpringCloud、SpringSecurity、OAuth2、Nacos、Seata、MybatisPlus、Vue3、ArcoDesign、TypeScript、Vite、MySQL 等技術棧&lt;/td&gt; 
-   &lt;td style="border-color:#dfe2e5; border-style:solid; border-width:1px"&gt;&lt;a href="https://gitee.com/xiaomayicloud/XiaoMaYi-Nacos-ArcoVue"&gt;https://gitee.com/xiaomayicloud/XiaoMaYi-Nacos-ArcoVue&lt;/a&gt;&lt;/td&gt; 
-  &lt;/tr&gt; 
-  &lt;tr&gt; 
-   &lt;td style="border-color:#dfe2e5; border-style:solid; border-width:1px"&gt;小螞蟻雲微服務 Consul+ElementPlus 版&lt;/td&gt; 
-   &lt;td style="border-color:#dfe2e5; border-style:solid; border-width:1px"&gt;基於 SpringCloud、SpringSecurity、OAuth2、Consul、Seata、MybatisPlus、Vue3、ElementPlus、TypeScript、Vite、MySQL 等技術棧&lt;/td&gt; 
-   &lt;td style="border-color:#dfe2e5; border-style:solid; border-width:1px"&gt;&lt;a href="https://gitee.com/xiaomayicloud/XiaoMaYi-Consul-EleVue"&gt;https://gitee.com/xiaomayicloud/XiaoMaYi-Consul-EleVue&lt;/a&gt;&lt;/td&gt; 
-  &lt;/tr&gt; 
-  &lt;tr&gt; 
-   &lt;td style="border-color:#dfe2e5; border-style:solid; border-width:1px"&gt;小螞蟻雲微服務 Consul+AntDesign 版&lt;/td&gt; 
-   &lt;td style="border-color:#dfe2e5; border-style:solid; border-width:1px"&gt;基於 SpringCloud、SpringSecurity、OAuth2、Consul、Seata、MybatisPlus、Vue3、AntDesign、TypeScript、Vite、MySQL 等技術棧&lt;/td&gt; 
-   &lt;td style="border-color:#dfe2e5; border-style:solid; border-width:1px"&gt;&lt;a href="https://gitee.com/xiaomayicloud/XiaoMaYi-Consul-AntdVue"&gt;https://gitee.com/xiaomayicloud/XiaoMaYi-Consul-AntdVue&lt;/a&gt;&lt;/td&gt; 
-  &lt;/tr&gt; 
-  &lt;tr&gt; 
-   &lt;td style="border-color:#dfe2e5; border-style:solid; border-width:1px"&gt;小螞蟻雲微服務 Consul+NaiveUI 版&lt;/td&gt; 
-   &lt;td style="border-color:#dfe2e5; border-style:solid; border-width:1px"&gt;基於 SpringCloud、SpringSecurity、OAuth2、Consul、Seata、MybatisPlus、Vue3、NaiveUI、TypeScript、Vite、MySQL 等技術棧&lt;/td&gt; 
-   &lt;td style="border-color:#dfe2e5; border-style:solid; border-width:1px"&gt;&lt;a href="https://gitee.com/xiaomayicloud/XiaoMaYi-Consul-NaiveVue"&gt;https://gitee.com/xiaomayicloud/XiaoMaYi-Consul-NaiveVue&lt;/a&gt;&lt;/td&gt; 
-  &lt;/tr&gt; 
-  &lt;tr&gt; 
-   &lt;td style="border-color:#dfe2e5; border-style:solid; border-width:1px"&gt;小螞蟻雲微服務 Consul+ArcoDesign 版&lt;/td&gt; 
-   &lt;td style="border-color:#dfe2e5; border-style:solid; border-width:1px"&gt;基於 SpringCloud、SpringSecurity、OAuth2、Consul、Seata、MybatisPlus、Vue3、ArcoDesign、TypeScript、Vite、MySQL 等技術棧&lt;/td&gt; 
-   &lt;td style="border-color:#dfe2e5; border-style:solid; border-width:1px"&gt;&lt;a href="https://gitee.com/xiaomayicloud/XiaoMaYi-Consul-ArcoVue"&gt;https://gitee.com/xiaomayicloud/XiaoMaYi-Consul-ArcoVue&lt;/a&gt;&lt;/td&gt; 
-  &lt;/tr&gt; 
- &lt;/tbody&gt; 
-&lt;/table&gt; 
-&lt;h4&gt;模塊預覽&lt;/h4&gt; 
-&lt;p&gt;&lt;img alt="" src="https://oscimg.oschina.net/oscnet/up-2aff3d1b1920834d21c3db56bd044d8126d.png" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;h4&gt;開源協議&lt;/h4&gt; 
-&lt;p style="color:#40485b; margin-left:0; margin-right:0; text-align:left"&gt;開源軟件遵循&lt;span&gt;&amp;nbsp;&lt;/span&gt;&lt;a href="https://gitee.com/link?target=https%3A%2F%2Fwww.apache.org%2Flicenses%2FLICENSE-2.0.html" target="_blank"&gt;Apache 2.0 協議&lt;/a&gt;。 允許商業使用，但務必保留包括但不限於開源團隊、軟件作者、版權説明等信息。&lt;/p&gt; 
-&lt;h4&gt;版權信息&lt;/h4&gt; 
-&lt;p style="color:#40485b; margin-left:0; margin-right:0; text-align:left"&gt;軟件產品版權和最終解釋權歸【小螞蟻雲開源團隊】所有，商業版使用需授權，禁止惡意傳播和用於商業用途，否則將追究相關人的法律責任。&lt;/p&gt; 
-&lt;p style="color:#40485b; margin-left:0; margin-right:0; text-align:left"&gt;版權所有 Copyright © 2020~2025&lt;span&gt;&amp;nbsp;&lt;/span&gt;&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fxiaomayicloud.com" target="_blank"&gt;xiaomayicloud.com&lt;/a&gt;&lt;span&gt;&amp;nbsp;&lt;/span&gt;All rights reserved。&lt;/p&gt;
-                                                                                &lt;/div&gt;
-                                                                            </description>
-      <link>https://www.oschina.net/news/361599</link>
-      <guid isPermaLink="false">https://www.oschina.net/news/361599</guid>
-      <pubDate>Tue, 15 Jul 2025 22:55:00 GMT</pubDate>
-      <author>來源: 資訊</author>
-    </item>
-    <item>
-      <title>torchv-unstructured v1.0.0 發佈，優化 Word 格式表格解析增強</title>
-      <description>&lt;div class="content"&gt;
-                                                                    
-                                                        &lt;h1&gt;&lt;span&gt;🎉 初始發佈&lt;/span&gt;&lt;/h1&gt; 
-&lt;p style="color:#111111; margin-left:0; margin-right:0; text-align:justify"&gt;&lt;span&gt;&lt;code&gt;torchv-unstructured&lt;/code&gt;&lt;/span&gt;&lt;span&gt; v1.0.0 發佈。&lt;/span&gt;&lt;span&gt;&lt;code&gt;torchv-unstructured&lt;/code&gt;&lt;/span&gt;&lt;span&gt; 依託目前 Java 平台的開源中間件,站在巨人的肩膀上，致力於深入文件格式內部，解決最棘手的解析與優化挑戰，而不僅僅是表面內容提取。專注於為 RAG（檢索增強生成）等 AI 應用提供高質量、結構化的數據源。&lt;/span&gt;&lt;/p&gt; 
-&lt;p style="color:#111111; margin-left:0; margin-right:0; text-align:justify"&gt;&lt;span&gt;本版本聚焦於解決一個典型痛點：Word 文檔（&lt;/span&gt;&lt;span&gt;&lt;code&gt;.doc&lt;/code&gt;&lt;/span&gt;&lt;span&gt;和&lt;/span&gt;&lt;span&gt;&lt;code&gt;.docx&lt;/code&gt;&lt;/span&gt;&lt;span&gt;）的解析。傳統工具在處理這兩種格式，尤其是包含複雜合併單元格（&lt;/span&gt;&lt;span&gt;&lt;code&gt;rowspan&lt;/code&gt;&lt;/span&gt;&lt;span&gt;/&lt;/span&gt;&lt;span&gt;&lt;code&gt;colspan&lt;/code&gt;&lt;/span&gt;&lt;span&gt;）的表格時，往往表現不佳，導致結構破壞和信息丟失。通過實現一套&lt;/span&gt;&lt;span&gt;&lt;strong&gt;&lt;span&gt;完全基於表格結構、無需硬編碼的通用算法&lt;/span&gt;&lt;/strong&gt;&lt;/span&gt;&lt;span&gt;，能夠精準解析&lt;/span&gt;&lt;span&gt;&lt;code&gt;.doc&lt;/code&gt;&lt;/span&gt;&lt;span&gt;和&lt;/span&gt;&lt;span&gt;&lt;code&gt;.docx&lt;/code&gt;&lt;/span&gt;&lt;span&gt;格式中的任意複雜表格。通過對不同格式採用差異化的最優處理策略，確保了轉換後的內容（特別是 HTML 表格）與源文件在視覺和結構上高度一致，為下游的 AI/ML 管道提供了前所未有的高質量、結構化的數據。&lt;/span&gt;&lt;/p&gt; 
-&lt;h3&gt;&lt;span&gt;Maven 座標&lt;/span&gt;&lt;/h3&gt; 
-&lt;pre&gt;&lt;span&gt;&lt;span style="color:#117700"&gt;&amp;lt;&lt;/span&gt;&lt;span style="color:#117700"&gt;dependency&lt;/span&gt;&lt;span style="color:#117700"&gt;&amp;gt;&lt;/span&gt;&lt;/span&gt;
-&lt;span&gt; &amp;nbsp; &amp;nbsp;&lt;span style="color:#117700"&gt;&amp;lt;&lt;/span&gt;&lt;span style="color:#117700"&gt;groupId&lt;/span&gt;&lt;span style="color:#117700"&gt;&amp;gt;&lt;/span&gt;com.torchv.infra&lt;span style="color:#117700"&gt;&amp;lt;/&lt;/span&gt;&lt;span style="color:#117700"&gt;groupId&lt;/span&gt;&lt;span style="color:#117700"&gt;&amp;gt;&lt;/span&gt;&lt;/span&gt;
-&lt;span&gt; &amp;nbsp; &amp;nbsp;&lt;span style="color:#117700"&gt;&amp;lt;&lt;/span&gt;&lt;span style="color:#117700"&gt;artifactId&lt;/span&gt;&lt;span style="color:#117700"&gt;&amp;gt;&lt;/span&gt;torchv-unstructured&lt;span style="color:#117700"&gt;&amp;lt;/&lt;/span&gt;&lt;span style="color:#117700"&gt;artifactId&lt;/span&gt;&lt;span style="color:#117700"&gt;&amp;gt;&lt;/span&gt;&lt;/span&gt;
-&lt;span&gt; &amp;nbsp; &amp;nbsp;&lt;span style="color:#117700"&gt;&amp;lt;&lt;/span&gt;&lt;span style="color:#117700"&gt;version&lt;/span&gt;&lt;span style="color:#117700"&gt;&amp;gt;&lt;/span&gt;1.0.0&lt;span style="color:#117700"&gt;&amp;lt;/&lt;/span&gt;&lt;span style="color:#117700"&gt;version&lt;/span&gt;&lt;span style="color:#117700"&gt;&amp;gt;&lt;/span&gt;&lt;/span&gt;
-&lt;span&gt;&lt;span style="color:#117700"&gt;&amp;lt;/&lt;/span&gt;&lt;span style="color:#117700"&gt;dependency&lt;/span&gt;&lt;span style="color:#117700"&gt;&amp;gt;&lt;/span&gt;&lt;/span&gt;&lt;/pre&gt; 
-&lt;h3&gt;&lt;span&gt;✨ 核心特性&lt;/span&gt;&lt;/h3&gt; 
-&lt;h4&gt;&lt;span&gt;🔥 智能 Word 文檔解析優化&lt;/span&gt;&lt;/h4&gt; 
-&lt;ul&gt; 
- &lt;li&gt; &lt;p style="color:#111111; margin-left:.5rem; margin-right:0"&gt;&lt;span&gt;&lt;strong&gt;&lt;span&gt;全格式支持&lt;/span&gt;&lt;/strong&gt;&lt;/span&gt;&lt;span&gt;：完整支持 DOC 和 DOCX 格式文檔解析。&lt;/span&gt;&lt;/p&gt; &lt;/li&gt; 
- &lt;li&gt; &lt;p style="color:#111111; margin-left:.5rem; margin-right:0"&gt;&lt;span&gt;&lt;strong&gt;&lt;span&gt;統一 API 設計&lt;/span&gt;&lt;/strong&gt;&lt;/span&gt;&lt;span&gt;：通過 &lt;/span&gt;&lt;span&gt;&lt;code&gt;UnstructuredParser&lt;/code&gt;&lt;/span&gt;&lt;span&gt; 提供簡潔統一的解析入口。&lt;/span&gt;&lt;/p&gt; &lt;/li&gt; 
- &lt;li&gt; &lt;p style="color:#111111; margin-left:.5rem; margin-right:0"&gt;&lt;span&gt;&lt;strong&gt;&lt;span&gt;高質量內容提取&lt;/span&gt;&lt;/strong&gt;&lt;/span&gt;&lt;span&gt;：基於 Apache Tika、Apache POI 的可靠底層實現。&lt;/span&gt;&lt;/p&gt; &lt;/li&gt; 
- &lt;li&gt; &lt;p style="color:#111111; margin-left:.5rem; margin-right:0"&gt;&lt;span&gt;&lt;strong&gt;&lt;span&gt;表格解析技術&lt;/span&gt;&lt;/strong&gt;&lt;/span&gt;&lt;span&gt;：提供在 Doc/Docx 兩種格式下的表格解析優化，解決單元格合併等問題&lt;/span&gt;&lt;/p&gt; &lt;/li&gt; 
-&lt;/ul&gt; 
-&lt;h4&gt;&lt;span&gt;🎯 RAG 應用優化&lt;/span&gt;&lt;/h4&gt; 
-&lt;ul&gt; 
- &lt;li&gt; &lt;p style="color:#111111; margin-left:.5rem; margin-right:0"&gt;&lt;span&gt;&lt;strong&gt;&lt;span&gt;Markdown 輸出&lt;/span&gt;&lt;/strong&gt;&lt;/span&gt;&lt;span&gt;：專為向量化和檢索優化的結構化內容。&lt;/span&gt;&lt;/p&gt; &lt;/li&gt; 
- &lt;li&gt; &lt;p style="color:#111111; margin-left:.5rem; margin-right:0"&gt;&lt;span&gt;&lt;strong&gt;&lt;span&gt;表格結構保持&lt;/span&gt;&lt;/strong&gt;&lt;/span&gt;&lt;span&gt;：HTML 格式表格確保表格關係完整性，提升上下文理解。&lt;/span&gt;&lt;/p&gt; &lt;/li&gt; 
- &lt;li&gt; &lt;p style="color:#111111; margin-left:.5rem; margin-right:0"&gt;&lt;span&gt;&lt;strong&gt;&lt;span&gt;靈活輸出格式&lt;/span&gt;&lt;/strong&gt;&lt;/span&gt;&lt;span&gt;：支持純 Markdown、帶 HTML 表格的 Markdown 等多種格式。&lt;/span&gt;&lt;/p&gt; &lt;/li&gt; 
- &lt;li&gt; &lt;p style="color:#111111; margin-left:.5rem; margin-right:0"&gt;&lt;span&gt;&lt;strong&gt;&lt;span&gt;元數據提取&lt;/span&gt;&lt;/strong&gt;&lt;/span&gt;&lt;span&gt;：可提取豐富的文檔元數據信息。&lt;/span&gt;&lt;/p&gt; &lt;/li&gt; 
-&lt;/ul&gt; 
-&lt;h3&gt;&lt;span&gt;🔧 API 設計&lt;/span&gt;&lt;/h3&gt; 
-&lt;h4&gt;&lt;span&gt;簡單易用的靜態 API&lt;/span&gt;&lt;/h4&gt; 
-&lt;pre&gt;&lt;span&gt;&lt;span style="color:#aa5500"&gt;// 解析為 Markdown 格式（推薦用於 RAG）&lt;/span&gt;&lt;/span&gt;
-&lt;span&gt;&lt;span style="color:#008855"&gt;String&lt;/span&gt; &lt;span style="color:#000000"&gt;content&lt;/span&gt; &lt;span style="color:#981a1a"&gt;=&lt;/span&gt; &lt;span style="color:#000000"&gt;UnstructuredParser&lt;/span&gt;.&lt;span style="color:#000000"&gt;toMarkdown&lt;/span&gt;(&lt;span style="color:#aa1111"&gt;"document.docx"&lt;/span&gt;);&lt;/span&gt;
-&lt;span&gt;&lt;span&gt;&lt;/span&gt;&lt;/span&gt;
-&lt;span&gt;&lt;span style="color:#aa5500"&gt;// 解析為帶 HTML 表格的 Markdown 格式&lt;/span&gt;&lt;/span&gt;
-&lt;span&gt;&lt;span style="color:#008855"&gt;String&lt;/span&gt; &lt;span style="color:#000000"&gt;contentWithTables&lt;/span&gt; &lt;span style="color:#981a1a"&gt;=&lt;/span&gt; &lt;span style="color:#000000"&gt;UnstructuredParser&lt;/span&gt;.&lt;span style="color:#000000"&gt;toMarkdownWithHtmlTables&lt;/span&gt;(&lt;span style="color:#aa1111"&gt;"document.docx"&lt;/span&gt;);&lt;/span&gt;
-&lt;span&gt;&lt;span&gt;&lt;/span&gt;&lt;/span&gt;
-&lt;span&gt;&lt;span style="color:#aa5500"&gt;// 僅提取表格數據&lt;/span&gt;&lt;/span&gt;
-&lt;span&gt;&lt;span style="color:#000000"&gt;List&lt;/span&gt;&lt;span style="color:#981a1a"&gt;&amp;lt;&lt;/span&gt;&lt;span style="color:#008855"&gt;String&lt;/span&gt;&lt;span style="color:#981a1a"&gt;&amp;gt;&lt;/span&gt; &lt;span style="color:#000000"&gt;tables&lt;/span&gt; &lt;span style="color:#981a1a"&gt;=&lt;/span&gt; &lt;span style="color:#000000"&gt;UnstructuredParser&lt;/span&gt;.&lt;span style="color:#000000"&gt;extractTables&lt;/span&gt;(&lt;span style="color:#aa1111"&gt;"document.docx"&lt;/span&gt;);&lt;/span&gt;
-&lt;span&gt;&lt;span&gt;&lt;/span&gt;&lt;/span&gt;
-&lt;span&gt;&lt;span style="color:#aa5500"&gt;// 獲取完整解析結果&lt;/span&gt;&lt;/span&gt;
-&lt;span&gt;&lt;span style="color:#000000"&gt;DocumentResult&lt;/span&gt; &lt;span style="color:#000000"&gt;result&lt;/span&gt; &lt;span style="color:#981a1a"&gt;=&lt;/span&gt; &lt;span style="color:#000000"&gt;UnstructuredParser&lt;/span&gt;.&lt;span style="color:#000000"&gt;toStructuredResult&lt;/span&gt;(&lt;span style="color:#aa1111"&gt;"document.docx"&lt;/span&gt;);&lt;/span&gt;&lt;/pre&gt; 
-&lt;h4&gt;&lt;span&gt;高級配置 API&lt;/span&gt;&lt;/h4&gt; 
-&lt;pre&gt;&lt;span&gt;&lt;span style="color:#aa5500"&gt;// 使用 RAG 優化配置&lt;/span&gt;&lt;/span&gt;
-&lt;span&gt;&lt;span style="color:#770088"&gt;try&lt;/span&gt; (&lt;span style="color:#000000"&gt;WordParser&lt;/span&gt; &lt;span style="color:#000000"&gt;parser&lt;/span&gt; &lt;span style="color:#981a1a"&gt;=&lt;/span&gt; &lt;span style="color:#000000"&gt;WordParser&lt;/span&gt;.&lt;span style="color:#000000"&gt;ragOptimized&lt;/span&gt;()) {&lt;/span&gt;
-&lt;span&gt; &amp;nbsp; &amp;nbsp;&lt;span style="color:#000000"&gt;DocumentResult&lt;/span&gt; &lt;span style="color:#000000"&gt;result&lt;/span&gt; &lt;span style="color:#981a1a"&gt;=&lt;/span&gt; &lt;span style="color:#000000"&gt;parser&lt;/span&gt;.&lt;span style="color:#000000"&gt;parse&lt;/span&gt;(&lt;span style="color:#aa1111"&gt;"document.docx"&lt;/span&gt;);&lt;/span&gt;
-&lt;span&gt;}&lt;/span&gt;
-&lt;span&gt;&lt;span&gt;&lt;/span&gt;&lt;/span&gt;
-&lt;span&gt;&lt;span style="color:#aa5500"&gt;// 自定義配置&lt;/span&gt;&lt;/span&gt;
-&lt;span&gt;&lt;span style="color:#770088"&gt;try&lt;/span&gt; (&lt;span style="color:#000000"&gt;WordParser&lt;/span&gt; &lt;span style="color:#000000"&gt;parser&lt;/span&gt; &lt;span style="color:#981a1a"&gt;=&lt;/span&gt; &lt;span style="color:#000000"&gt;WordParser&lt;/span&gt;.&lt;span style="color:#000000"&gt;builder&lt;/span&gt;()&lt;/span&gt;
-&lt;span&gt; &amp;nbsp; &amp;nbsp; &amp;nbsp;  .&lt;span style="color:#000000"&gt;withTableExtraction&lt;/span&gt;(&lt;span style="color:#221199"&gt;true&lt;/span&gt;)&lt;/span&gt;
-&lt;span&gt; &amp;nbsp; &amp;nbsp; &amp;nbsp;  .&lt;span style="color:#000000"&gt;withTableAsHtml&lt;/span&gt;(&lt;span style="color:#221199"&gt;true&lt;/span&gt;)&lt;/span&gt;
-&lt;span&gt; &amp;nbsp; &amp;nbsp; &amp;nbsp;  .&lt;span style="color:#000000"&gt;withImageExtraction&lt;/span&gt;(&lt;span style="color:#221199"&gt;false&lt;/span&gt;)&lt;/span&gt;
-&lt;span&gt; &amp;nbsp; &amp;nbsp; &amp;nbsp;  .&lt;span style="color:#000000"&gt;build&lt;/span&gt;()) {&lt;/span&gt;
-&lt;span&gt; &amp;nbsp; &amp;nbsp;&lt;span style="color:#000000"&gt;DocumentResult&lt;/span&gt; &lt;span style="color:#000000"&gt;result&lt;/span&gt; &lt;span style="color:#981a1a"&gt;=&lt;/span&gt; &lt;span style="color:#000000"&gt;parser&lt;/span&gt;.&lt;span style="color:#000000"&gt;parse&lt;/span&gt;(&lt;span style="color:#aa1111"&gt;"document.docx"&lt;/span&gt;);&lt;/span&gt;
-&lt;span&gt;}&lt;/span&gt;&lt;/pre&gt; 
-&lt;h3&gt;&lt;span&gt;🔍 Word 格式解析優勢&lt;/span&gt;&lt;/h3&gt; 
-&lt;p style="color:#111111; margin-left:0; margin-right:0; text-align:justify"&gt;&lt;span&gt;本版本特別強化了 Word 格式文檔的解析能力：&lt;/span&gt;&lt;/p&gt; 
-&lt;h4&gt;&lt;span&gt;DOCX 格式優化&lt;/span&gt;&lt;/h4&gt; 
-&lt;ul&gt; 
- &lt;li&gt; &lt;p style="color:#111111; margin-left:.5rem; margin-right:0"&gt;&lt;span&gt;基於 Apache POI 的 OOXML 標準解析。&lt;/span&gt;&lt;/p&gt; &lt;/li&gt; 
- &lt;li&gt; &lt;p style="color:#111111; margin-left:.5rem; margin-right:0"&gt;&lt;span&gt;完整的表格結構保持，包括複雜合併單元格。&lt;/span&gt;&lt;/p&gt; &lt;/li&gt; 
- &lt;li&gt; &lt;p style="color:#111111; margin-left:.5rem; margin-right:0"&gt;&lt;span&gt;精確的樣式和格式信息提取。&lt;/span&gt;&lt;/p&gt; &lt;/li&gt; 
- &lt;li&gt; &lt;p style="color:#111111; margin-left:.5rem; margin-right:0"&gt;&lt;span&gt;支持嵌入對象和圖像提取。&lt;/span&gt;&lt;/p&gt; &lt;/li&gt; 
-&lt;/ul&gt; 
-&lt;h4&gt;&lt;span&gt;DOC 格式增強&lt;/span&gt;&lt;/h4&gt; 
-&lt;ul&gt; 
- &lt;li&gt; &lt;p style="color:#111111; margin-left:.5rem; margin-right:0"&gt;&lt;span&gt;專門的 HWPFDocument 處理流程。&lt;/span&gt;&lt;/p&gt; &lt;/li&gt; 
- &lt;li&gt; &lt;p style="color:#111111; margin-left:.5rem; margin-right:0"&gt;&lt;span&gt;特殊的合併單元格檢測算法，提升老舊文檔兼容性。&lt;/span&gt;&lt;/p&gt; &lt;/li&gt; 
- &lt;li&gt; &lt;p style="color:#111111; margin-left:.5rem; margin-right:0"&gt;&lt;span&gt;兼容老版本 Word 文檔格式。&lt;/span&gt;&lt;/p&gt; &lt;/li&gt; 
- &lt;li&gt; &lt;p style="color:#111111; margin-left:.5rem; margin-right:0"&gt;&lt;span&gt;強大的錯誤處理機制。&lt;/span&gt;&lt;/p&gt; &lt;/li&gt; 
-&lt;/ul&gt; 
-&lt;h4&gt;&lt;span&gt;表格解析突破&lt;/span&gt;&lt;/h4&gt; 
-&lt;ul&gt; 
- &lt;li&gt; &lt;p style="color:#111111; margin-left:.5rem; margin-right:0"&gt;&lt;span&gt;智能識別複雜表格結構。&lt;/span&gt;&lt;/p&gt; &lt;/li&gt; 
- &lt;li&gt; &lt;p style="color:#111111; margin-left:.5rem; margin-right:0"&gt;&lt;span&gt;準確計算&lt;/span&gt;&lt;span&gt;&lt;code&gt;colspan&lt;/code&gt;&lt;/span&gt;&lt;span&gt;和&lt;/span&gt;&lt;span&gt;&lt;code&gt;rowspan&lt;/code&gt;&lt;/span&gt;&lt;span&gt;。&lt;/span&gt;&lt;/p&gt; &lt;/li&gt; 
- &lt;li&gt; &lt;p style="color:#111111; margin-left:.5rem; margin-right:0"&gt;&lt;span&gt;保持表格語義完整性。&lt;/span&gt;&lt;/p&gt; &lt;/li&gt; 
- &lt;li&gt; &lt;p style="color:#111111; margin-left:.5rem; margin-right:0"&gt;&lt;span&gt;生成標準、乾淨的 HTML 表格輸出。&lt;/span&gt;&lt;/p&gt; &lt;/li&gt; 
-&lt;/ul&gt; 
-&lt;p style="color:#111111; margin-left:0; margin-right:0; text-align:justify"&gt;&amp;nbsp;&lt;/p&gt; 
-&lt;h3&gt;&lt;span&gt;🌹 解析效果驗證&lt;/span&gt;&lt;/h3&gt; 
-&lt;p style="color:#111111; margin-left:0; margin-right:0; text-align:justify"&gt;&lt;span&gt;在 31 種不同格式的複雜表格類型進行了初步驗證，包括上下單元格合併、跨頁表格、左右單元格合併等多種複雜的情況，驗證了 doc/docx 兩種格式。主要表現如下：&lt;/span&gt;&lt;/p&gt; 
-&lt;ul&gt; 
- &lt;li&gt; &lt;p style="color:#111111; margin-left:.5rem; margin-right:0"&gt;&lt;span&gt;✅ 完美識別&lt;/span&gt;&lt;span&gt;&lt;code&gt;rowspan&lt;/code&gt;&lt;/span&gt;&lt;span&gt;和&lt;/span&gt;&lt;span&gt;&lt;code&gt;colspan&lt;/code&gt;&lt;/span&gt;&lt;span&gt;合併單元格&lt;/span&gt;&lt;/p&gt; &lt;/li&gt; 
- &lt;li&gt; &lt;p style="color:#111111; margin-left:.5rem; margin-right:0"&gt;&lt;span&gt;✅ 準確保留所有表格內容，無丟失現象&lt;/span&gt;&lt;/p&gt; &lt;/li&gt; 
- &lt;li&gt; &lt;p style="color:#111111; margin-left:.5rem; margin-right:0"&gt;&lt;span&gt;✅ 正確處理跨頁表格和複雜嵌套結構&lt;/span&gt;&lt;/p&gt; &lt;/li&gt; 
- &lt;li&gt; &lt;p style="color:#111111; margin-left:.5rem; margin-right:0"&gt;&lt;span&gt;✅ 支持任意語言和字符集的表格內容&lt;/span&gt;&lt;/p&gt; &lt;/li&gt; 
- &lt;li&gt; &lt;p style="color:#111111; margin-left:.5rem; margin-right:0"&gt;&lt;span&gt;✅ 在.doc 和.docx 格式上表現一致 (目前 doc 格式無法提取 markdown 的 header 標題)&lt;/span&gt;&lt;/p&gt; &lt;/li&gt; 
- &lt;li&gt; &lt;p style="color:#111111; margin-left:.5rem; margin-right:0"&gt;&lt;span&gt;✅ 正確提取圖片以及圖片位置正確&lt;/span&gt;&lt;/p&gt; &lt;/li&gt; 
-&lt;/ul&gt; 
-&lt;p style="color:#111111; margin-left:0; margin-right:0; text-align:justify"&gt;&lt;span&gt;在 31 個複雜表格情況下，對於表格的合併情況：&lt;/span&gt;&lt;/p&gt; 
-&lt;ul&gt; 
- &lt;li&gt; &lt;p style="color:#111111; margin-left:.5rem; margin-right:0"&gt;&lt;span&gt;✅ 數據無錯誤,表格內容沒錯誤的情況比例:30/31=96.8% &lt;/span&gt;&lt;/p&gt; 
-  &lt;blockquote&gt; 
-   &lt;p style="color:#6f6f6f; margin-left:0; margin-right:0"&gt;&lt;span&gt;包含數據完全正確，目前出現 6 個表格會出現數據沒異常的情況，但是表格在縱向合併的情況並沒有表現一致的情況&lt;/span&gt;&lt;/p&gt; 
-  &lt;/blockquote&gt; &lt;/li&gt; 
- &lt;li&gt; &lt;p style="color:#111111; margin-left:.5rem; margin-right:0"&gt;&lt;span&gt;✅ 數據解析異常，錯誤比率：1/31=3.23% &lt;/span&gt;&lt;/p&gt; 
-  &lt;blockquote&gt; 
-   &lt;p style="color:#6f6f6f; margin-left:0; margin-right:0"&gt;&lt;span&gt;在 31 個複雜表格數據的情況下，出現瞭解析還原錯誤的情況，表格數據錯位了的情況，這種情況在做知識庫場景下送給大模型時，會導致數據異常、回答幻覺的情況發生&lt;/span&gt;&lt;/p&gt; 
-  &lt;/blockquote&gt; &lt;/li&gt; 
- &lt;li&gt; &lt;p style="color:#111111; margin-left:.5rem; margin-right:0"&gt;&lt;span&gt;✅ 表格完全正確，colspan/rowspan 完全無錯誤的情況：25/31=80.6% &lt;/span&gt;&lt;/p&gt; 
-  &lt;blockquote&gt; 
-   &lt;p style="color:#6f6f6f; margin-left:0; margin-right:0"&gt;&lt;span&gt;數據完全一致、表格完全一致，100% 還原出來的比例。&lt;/span&gt;&lt;/p&gt; 
-  &lt;/blockquote&gt; &lt;/li&gt; 
-&lt;/ul&gt; 
-&lt;p style="color:#111111; margin-left:0; margin-right:0; text-align:justify"&gt;&lt;span&gt;1、簡單的上下合併情況&lt;/span&gt;&lt;/p&gt; 
-&lt;p style="color:#111111; margin-left:0; margin-right:0; text-align:justify"&gt;&lt;span&gt;&lt;img alt="" src="https://oscimg.oschina.net/oscnet/up-a0c23dc16c38c39cd36a947385795832f82.png" referrerpolicy="no-referrer"&gt;&lt;/span&gt;&lt;/p&gt; 
-&lt;p style="color:#111111; margin-left:0; margin-right:0; text-align:justify"&gt;&lt;span&gt;2、跨頁上下單元格合併單元格的情況&lt;/span&gt;&lt;/p&gt; 
-&lt;p style="color:#111111; margin-left:0; margin-right:0; text-align:justify"&gt;&lt;img alt="" src="https://oscimg.oschina.net/oscnet/up-ecd49a49fddee2b5256e66ddf3947a19c06.png" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;p style="color:#111111; margin-left:0; margin-right:0; text-align:justify"&gt;&lt;span&gt;3、上下左右單元格合併的情況&lt;/span&gt;&lt;/p&gt; 
-&lt;p style="color:#111111; margin-left:0; margin-right:0; text-align:justify"&gt;&lt;img alt="" src="https://oscimg.oschina.net/oscnet/up-b00f039b8b21c78a3bfcdd8645b6ede2335.png" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;p style="color:#111111; margin-left:0; margin-right:0; text-align:justify"&gt;&amp;nbsp;&lt;/p&gt; 
-&lt;p style="color:#111111; margin-left:0; margin-right:0; text-align:justify"&gt;&lt;span&gt;4、翻頁單元格上下左右合併的情況&lt;/span&gt;&lt;/p&gt; 
-&lt;p style="color:#111111; margin-left:0; margin-right:0; text-align:justify"&gt;&lt;span&gt;&lt;img alt="" src="https://oscimg.oschina.net/oscnet/up-918a9b863851775b3b43798d1ceea868ec1.png" referrerpolicy="no-referrer"&gt;&lt;/span&gt;&lt;/p&gt; 
-&lt;p style="color:#111111; margin-left:0; margin-right:0; text-align:justify"&gt;&lt;span&gt;5、更復雜的縱向橫向表格合併情況&lt;/span&gt;&lt;/p&gt; 
-&lt;p style="color:#111111; margin-left:0; margin-right:0; text-align:justify"&gt;&lt;img alt="" height="1090" src="https://oscimg.oschina.net/oscnet/up-57678c814e4a44695033b67b2442ee68283.png" width="2922" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;h2&gt;&amp;nbsp;&lt;/h2&gt; 
-&lt;h3&gt;&lt;span&gt;🔮 未來規劃&lt;/span&gt;&lt;/h3&gt; 
-&lt;p style="color:#111111; margin-left:0; margin-right:0; text-align:justify"&gt;&lt;span&gt;v1.0.0 作為穩定的基礎版本，後續版本將在此基礎上擴展：&lt;/span&gt;&lt;/p&gt; 
-&lt;ul&gt; 
- &lt;li&gt; &lt;p style="color:#111111; margin-left:.5rem; margin-right:0"&gt;&lt;span&gt;支持更多文檔格式（PDF、PPT、Excel 等）。&lt;/span&gt;&lt;/p&gt; &lt;/li&gt; 
- &lt;li&gt; &lt;p style="color:#111111; margin-left:.5rem; margin-right:0"&gt;&lt;span&gt;增強圖像和媒體內容處理。&lt;/span&gt;&lt;/p&gt; &lt;/li&gt; 
- &lt;li&gt; &lt;p style="color:#111111; margin-left:.5rem; margin-right:0"&gt;&lt;span&gt;提供雲原生部署支持。&lt;/span&gt;&lt;/p&gt; &lt;/li&gt; 
- &lt;li&gt; &lt;p style="color:#111111; margin-left:.5rem; margin-right:0"&gt;&lt;span&gt;擴展 AI 集成能力。&lt;/span&gt;&lt;/p&gt; &lt;/li&gt; 
-&lt;/ul&gt; 
-&lt;div&gt; 
- &lt;hr&gt;
-&lt;/div&gt; 
-&lt;p style="color:#111111; margin-left:0; margin-right:0; text-align:justify"&gt;&lt;span&gt;&lt;strong&gt;&lt;span&gt;感謝您選擇 TorchV Unstructured！&lt;/span&gt;&lt;/strong&gt;&lt;/span&gt;&lt;/p&gt; 
-&lt;p style="color:#111111; margin-left:0; margin-right:0; text-align:justify"&gt;&lt;span&gt;如果您有任何問題或建議，請通過以下方式聯繫我們：&lt;/span&gt;&lt;/p&gt; 
-&lt;ul&gt; 
- &lt;li&gt; &lt;p style="color:#111111; margin-left:.5rem; margin-right:0"&gt;&lt;span&gt;📧 郵箱：&lt;/span&gt;&lt;span&gt;&lt;a href="https://www.oschina.net/action/GoToLink?url=mailto%3Axiaoymin%40foxmail.com" target="_blank"&gt;xiaoymin@foxmail.com&lt;/a&gt;&lt;/span&gt;&lt;/p&gt; &lt;/li&gt; 
- &lt;li&gt; &lt;p style="color:#111111; margin-left:.5rem; margin-right:0"&gt;&lt;span&gt;🐛 問題反饋：&lt;/span&gt;&lt;span&gt;&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fgithub.com%2Ftorchv%2Ftorchv-unstructured%2Fissues" target="_blank"&gt;&lt;span&gt;GitHub Issues&lt;/span&gt;&lt;/a&gt;&lt;/span&gt;&lt;/p&gt; &lt;/li&gt; 
- &lt;li&gt; &lt;p style="color:#111111; margin-left:.5rem; margin-right:0"&gt;&lt;span&gt;💬 技術討論：&lt;/span&gt;&lt;span&gt;&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fgithub.com%2Ftorchv%2Ftorchv-unstructured%2Fdiscussions" target="_blank"&gt;&lt;span&gt;GitHub Discussions&lt;/span&gt;&lt;/a&gt;&lt;/span&gt;&lt;/p&gt; &lt;/li&gt; 
-&lt;/ul&gt; 
-&lt;div&gt; 
- &lt;hr&gt;
-&lt;/div&gt; 
-&lt;p style="color:#111111; margin-left:0; margin-right:0; text-align:justify"&gt;&lt;span&gt;由 &lt;/span&gt;&lt;span&gt;&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fwww.torchv.com%2F" target="_blank"&gt;&lt;span&gt;TorchV 團隊&lt;/span&gt;&lt;/a&gt;&lt;/span&gt;&lt;span&gt; 用 ❤️ 製作&lt;/span&gt;&lt;/p&gt;
-                                                                                &lt;/div&gt;
-                                                                            </description>
-      <link>https://www.oschina.net/news/361579/torchv-unstructured-v1-released</link>
-      <guid isPermaLink="false">https://www.oschina.net/news/361579/torchv-unstructured-v1-released</guid>
-      <pubDate>Tue, 15 Jul 2025 15:27:00 GMT</pubDate>
-      <author>來源: 資訊</author>
-    </item>
-    <item>
-      <title>QtScrcpy v3.3.1 已經發布，Android 實時投屏軟件</title>
-      <description>&lt;div class="content"&gt;
-                                                                    
-                                                        &lt;p&gt;QtScrcpy v3.3.1 已經發布，Android 實時投屏軟件&lt;/p&gt; 
-&lt;p&gt;此版本更新內容包括：&lt;/p&gt; 
-&lt;ul&gt; 
- &lt;li&gt;feat: 更新 scrcpy-server 3.3.1&lt;/li&gt; 
- &lt;li&gt;fix: 修復 sndcpy 在 mac 上啓動失敗&lt;/li&gt; 
-&lt;/ul&gt; 
-&lt;p&gt;詳情查看：&lt;a href="https://gitee.com/Barryda/QtScrcpy/releases/v3.3.1"&gt;https://gitee.com/Barryda/QtScrcpy/releases/v3.3.1&lt;/a&gt;&lt;/p&gt;
-                                                                                &lt;/div&gt;
-                                                                            </description>
-      <link>https://www.oschina.net/news/361559/qtscrcpy-3-3-1-released</link>
-      <guid isPermaLink="false">https://www.oschina.net/news/361559/qtscrcpy-3-3-1-released</guid>
-      <pubDate>Tue, 15 Jul 2025 12:59:00 GMT</pubDate>
-      <author>來源: 資訊</author>
-    </item>
-    <item>
-      <title>k8m v0.0.146 發佈，輕量級的 Kubernetes 儀錶板</title>
-      <description>&lt;div class="content"&gt;
-                                                                    
-                                                        &lt;p&gt;k8m v0.0.146 已經發布，輕量級的 Kubernetes 儀錶板。&lt;/p&gt; 
-&lt;h2&gt;更新內容&lt;/h2&gt; 
-&lt;ul&gt; 
- &lt;li&gt;Merge pull request #266 from weibaohui/swagger&lt;/li&gt; 
- &lt;li&gt;docs(swagger): 更新 API 文檔中的 Token 申請説明&lt;/li&gt; 
- &lt;li&gt;Merge pull request #265 from weibaohui/swagger&lt;/li&gt; 
- &lt;li&gt;docs(swagger): 更新 swagger 文檔中關於 Token 獲取的説明&lt;/li&gt; 
- &lt;li&gt;feat(menu): 添加「開放 API」菜單項以訪問 Swagger 文檔&lt;/li&gt; 
- &lt;li&gt;feat(swagger): 添加 Helm 倉庫、自定義模板和用户管理相關 API 定義&lt;/li&gt; 
- &lt;li&gt;docs(api): 為多個控制器添加 Swagger API 文檔註釋&lt;/li&gt; 
- &lt;li&gt;docs(helm): 為 Helm 倉庫控制器添加 Swagger 註釋&lt;/li&gt; 
- &lt;li&gt;Merge pull request #264 from weibaohui/swagger&lt;/li&gt; 
- &lt;li&gt;docs(controller): 為 CreateNodeShell 和 CreateKubectlShell 添加 swagger 註釋&lt;/li&gt; 
- &lt;li&gt;docs(controller/node): 為污點管理接口添加 Swagger 註釋&lt;/li&gt; 
- &lt;li&gt;docs(controller): 為節點資源接口添加 Swagger 註釋&lt;/li&gt; 
- &lt;li&gt;docs(controller): 為節點控制器添加 Swagger API 文檔註釋&lt;/li&gt; 
- &lt;li&gt;docs(controller): 為 K8sGPT 接口添加 Swagger 註釋&lt;/li&gt; 
- &lt;li&gt;docs(ingress_class): 為 SetDefault 和 OptionList 添加 swagger 註釋&lt;/li&gt; 
- &lt;li&gt;docs(helm): 為 Helm Release 控制器添加 Swagger 註解&lt;/li&gt; 
- &lt;li&gt;docs(api): 添加網關類和集羣狀態接口的 Swagger 註釋&lt;/li&gt; 
- &lt;li&gt;feat(controller): 為 ConfigMap 接口添加集羣路徑參數&lt;/li&gt; 
- &lt;li&gt;refactor(controller): 統一使用已聲明的 err 變量進行錯誤綁定&lt;/li&gt; 
- &lt;li&gt;feat(deploy): 為 Deployment 接口添加集羣路徑參數支持&lt;/li&gt; 
- &lt;li&gt;feat(cronjob): 為 CronJob 接口添加集羣參數支持&lt;/li&gt; 
- &lt;li&gt;refactor(api): 更新文檔接口路徑以支持多集羣&lt;/li&gt; 
- &lt;li&gt;feat(controller): 為 DaemonSet 接口添加集羣參數支持&lt;/li&gt; 
- &lt;li&gt;feat(yaml): 添加 YAML 控制器接口文檔註釋&lt;/li&gt; 
- &lt;li&gt;docs(pod_link): 為 PodLinkController 添加 Swagger 註釋文檔&lt;/li&gt; 
- &lt;li&gt;docs(pod_anti_affinity): 為 Pod 反親和性接口添加 Swagger 註釋&lt;/li&gt; 
- &lt;li&gt;docs(pod_affinity): 為 Pod 親和性接口添加 Swagger 註釋&lt;/li&gt; 
- &lt;li&gt;feat(controller): 添加節點親和性 API 的 Swagger 文檔註釋&lt;/li&gt; 
- &lt;li&gt;feat(metadata): 添加資源標籤和註解的 API 文檔註釋&lt;/li&gt; 
- &lt;li&gt;refactor(controller): 簡化錯誤變量聲明並優化字符串格式化&lt;/li&gt; 
- &lt;li&gt;refactor: 簡化變量聲明並直接賦值錯誤&lt;/li&gt; 
- &lt;li&gt;docs(controller): 為動態控制器添加 Swagger API 文檔註釋&lt;/li&gt; 
- &lt;li&gt;feat(容忍度控制器): 在 API 路由中添加集羣名稱參數&lt;/li&gt; 
- &lt;li&gt;docs(crd_status): 為 CRDStatus 函數添加 Swagger 註釋&lt;/li&gt; 
- &lt;li&gt;docs(controller): 為 CRD 控制器添加 Swagger 註釋&lt;/li&gt; 
- &lt;li&gt;feat(swagger): 添加容器管理、配置管理和文檔查詢相關 API 接口&lt;/li&gt; 
- &lt;li&gt;docs(api): 為容器相關接口添加集羣名稱查詢參數&lt;/li&gt; 
- &lt;li&gt;fix(controller): 更新容器控制器路由路徑以包含集羣參數&lt;/li&gt; 
- &lt;li&gt;docs(controller): 為容器控制器添加 Swagger API 文檔註釋&lt;/li&gt; 
- &lt;li&gt;docs(toleration): 為容忍度接口添加 Swagger 註釋&lt;/li&gt; 
-&lt;/ul&gt; 
-&lt;p&gt;&lt;strong&gt;完整的更新日誌&lt;/strong&gt;: &lt;a href="https://gitee.com/weibaohui/k8m/compare/v0.0.144...v0.0.146" target="_blank"&gt;https://gitee.com/weibaohui/k8m/compare/v0.0.144...v0.0.146&lt;/a&gt;&lt;/p&gt; 
-&lt;p&gt;詳情查看：&lt;a href="https://gitee.com/weibaohui/k8m/releases/v0.0.146"&gt;https://gitee.com/weibaohui/k8m/releases/v0.0.146&lt;/a&gt;&lt;/p&gt;
-                                                                                &lt;/div&gt;
-                                                                            </description>
-      <link>https://www.oschina.net/news/361549</link>
-      <guid isPermaLink="false">https://www.oschina.net/news/361549</guid>
-      <pubDate>Tue, 15 Jul 2025 11:58:00 GMT</pubDate>
       <author>來源: 資訊</author>
     </item>
   </channel>
