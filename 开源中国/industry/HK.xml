@@ -7,8 +7,445 @@
     <generator>RSSHub</generator>
     <webMaster>contact@rsshub.app (RSSHub)</webMaster>
     <language>zh-hk</language>
-    <lastBuildDate>Wed, 23 Jul 2025 21:40:58 GMT</lastBuildDate>
+    <lastBuildDate>Thu, 24 Jul 2025 02:43:00 GMT</lastBuildDate>
     <ttl>5</ttl>
+    <item>
+      <title>抖音集團基於 Flink 的億級 RPS 實時計算優化實踐</title>
+      <description>&lt;div class="content"&gt;
+                                                                                                                    
+                                                                                                                                                    &lt;p&gt;&lt;img src="https://oscimg.oschina.net/oscnet/up-299b0ad831e8aa86ddb446bf5085c13099e.jpg" alt="" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;blockquote&gt; 
+ &lt;p&gt;**摘要：**本文整理自抖音集團數據工程師陶王飛和羊藝超老師，在&amp;nbsp;Flink&amp;nbsp;Forward&amp;nbsp;Asia&amp;nbsp;2024&amp;nbsp;生產實踐（一）專場中的分享主要內容主要分為以下四個部分：&lt;/p&gt; 
+ &lt;p&gt;1、現狀與痛點&lt;/p&gt; 
+ &lt;p&gt;2、鏈路通用優化&lt;/p&gt; 
+ &lt;p&gt;3、業務場景優化&lt;/p&gt; 
+ &lt;p&gt;4、未來規劃&lt;/p&gt; 
+&lt;/blockquote&gt; 
+&lt;span id="OSC_h2_1"&gt;&lt;/span&gt; 
+&lt;h2&gt;01、現狀與痛點&lt;/h2&gt; 
+&lt;span id="OSC_h3_2"&gt;&lt;/span&gt; 
+&lt;h3&gt;1.1&amp;nbsp;業務現狀&lt;/h3&gt; 
+&lt;p&gt;&lt;img src="https://oscimg.oschina.net/oscnet//31bfc2c668fca07ca815665dc86dfe11.png" alt="" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p&gt;抖音的主要業務場景為視頻和直播，實時數據在其中有着廣泛應用，如實時大屏、實時預警、對內實時分析（如大盤生態監控）、實時榜單以及為推薦提供實時特徵數據等。&lt;/p&gt; 
+&lt;p&gt;視頻場景流量巨大，晚高峯整體流量達億級 RPS；直播場景則狀態數據量大，因為業務上直播間開關播時間無限制，導致存在許多超長週期存儲聚合需求。&lt;/p&gt; 
+&lt;span id="OSC_h3_3"&gt;&lt;/span&gt; 
+&lt;h3&gt;1.2&amp;nbsp;問題挑戰&lt;/h3&gt; 
+&lt;p&gt;（1）實時數倉架構圖&lt;/p&gt; 
+&lt;p&gt;&lt;img src="https://oscimg.oschina.net/oscnet//68bd7c819883b62cc8ca999547327819.png" alt="" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p&gt;數據源層包括客户端埋點、服務端日誌以及業務庫數據。數倉的分層使用 Flink 計算，依次為 ODS 層（數據源層）、DWD 層（進行維表關聯與簡單數據處理）、DWS 層（指標計算）和 APP 層（針對具體應用場景開發），最終將數據輸出至下游存儲。下游存儲依據業務場景選擇不同，ToC 場景多使用內部的 KV 存儲引擎 Abase，分析型場景及對內產品、平台則使用 ClickHouse 或 Doris，以供下游業務使用。&lt;/p&gt; 
+&lt;p&gt;&lt;strong&gt;（2）問題挑戰&lt;/strong&gt;&lt;/p&gt; 
+&lt;p&gt;在開發過程中，主要面臨着三個問題：&lt;/p&gt; 
+&lt;p&gt;其一，由於數據量大且計算複雜，致使鏈路穩定性差，任務頻繁失敗；&lt;/p&gt; 
+&lt;p&gt;其二，資源消耗巨大，整體計算資源已達 30 萬 core；&lt;/p&gt; 
+&lt;p&gt;其三，任務異常恢復緩慢，晚高峯時異常恢復時長 30+分鐘。&lt;/p&gt; 
+&lt;span id="OSC_h2_4"&gt;&lt;/span&gt; 
+&lt;h2&gt;02、鏈路通用優化&lt;/h2&gt; 
+&lt;span id="OSC_h3_5"&gt;&lt;/span&gt; 
+&lt;h3&gt;2.1&amp;nbsp;通用優化方案&lt;/h3&gt; 
+&lt;p&gt;&lt;img src="https://oscimg.oschina.net/oscnet//a5d8b340159cba4ee3ab177fb8d29116.png" alt="" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p&gt;在 DWD 明細層，優化關聯操作，核心維表在此層關聯，而非核心維表及字段則在 DWD 擴展層關聯。DWS 層和 APP 層計算直播及視頻的天級累計指標。&lt;/p&gt; 
+&lt;p&gt;&lt;strong&gt;（1）分層建模優化&lt;/strong&gt;&lt;/p&gt; 
+&lt;p&gt;在分層建模時，將相同實體、不同維度的數據合併為一張維表，以降低下游消費 RPS。在維度關聯時，使用 Keyby 提升本地緩存命中率。對於 DWD 大作業，將其拆分成多個小任務灰度上線。在視頻大流量場景下，採用寬表模型輸出指標，即將所有數據置於一行，存儲在一個 Map 中輸出；直播場景則使用窄表 Anchor 模型，一條數據對應一個指標一行數據。這兩種模型在新增指標時均可實現狀態兼容。&lt;/p&gt; 
+&lt;p&gt;&lt;strong&gt;（2）作業性能優化&lt;/strong&gt;&lt;/p&gt; 
+&lt;p&gt;在任務層面進行性能優化以降低資源消耗，具體在後文中進行介紹。&lt;/p&gt; 
+&lt;p&gt;&lt;strong&gt;（3）鏈路保障優化&lt;/strong&gt;&lt;/p&gt; 
+&lt;p&gt;對任務和隊列進行分級，並構建全鏈路血緣來保障分級的準確性。對於高優任務，建立熱備鏈路以及自動化容災切換能力，提升鏈路大盤的容災能力。&lt;/p&gt; 
+&lt;span id="OSC_h3_6"&gt;&lt;/span&gt; 
+&lt;h3&gt;2.2&amp;nbsp;技術手段優化&lt;/h3&gt; 
+&lt;p&gt;&lt;img src="https://oscimg.oschina.net/oscnet//c28a4dcfac0a889caab651ef1a3670f3.png" alt="" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p&gt;在抖音短視頻業務中，流量呈現高度集中，top20 個的任務佔據 40% 以上的計算資源，這些任務不僅成本高，還會降低穩定性，加大運維難度。&lt;/p&gt; 
+&lt;p&gt;從頭部任務開發分析，部分簡單的 Pipeline 任務消耗大量計算資源，可以結合火焰圖查找問題的根源。如上圖中左下角的火焰圖，Calc 算子消耗佔比達 56%，這對於非計算型的任務是明顯異常情況。經分析是 JIT 及時編譯優化失效所致。&lt;/p&gt; 
+&lt;p&gt;再結合右側重新開啓優化後的圖分析，大任務資源消耗下降約 40%。此外，火焰圖中 Calc 佔比較大的情況常出現在大併發 Hash 場景，上游併發×下游併發的數據輸出隊列會導致任務 Shuffle 利用率低，資源消耗較大。我們前後發現了十幾項優化項，並推廣至其他業務，最終 top 20 任務資源消耗下降約 25%。&lt;/p&gt; 
+&lt;span id="OSC_h2_7"&gt;&lt;/span&gt; 
+&lt;h2&gt;03、業務場景優化&lt;/h2&gt; 
+&lt;span id="OSC_h3_8"&gt;&lt;/span&gt; 
+&lt;h3&gt;3.1&amp;nbsp;視頻場景痛點優化&lt;/h3&gt; 
+&lt;p&gt;&lt;img src="https://oscimg.oschina.net/oscnet//b679d7cd16af45c7c78f1261ae8bc6d9.png" alt="" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p&gt;在 DWD 明細層，關聯大量維表時面臨巨大壓力。大流量場景下整體流量達億級規模，無法直接請求維表，即便開啓維表 LRU cache 請求量也達千萬級，這帶來了成本和穩定性難題。在指標聚合計算時，大流量下解決重複數據問題挑戰巨大。&lt;/p&gt; 
+&lt;p&gt;（1）大流量維表關聯優化&lt;/p&gt; 
+&lt;p&gt;①場景分析&lt;/p&gt; 
+&lt;p&gt;&lt;img src="https://oscimg.oschina.net/oscnet//591030223c0f730869a04f404767f0cc.png" alt="" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p&gt;高 QPS 的維表訪問導致 Abase 集羣壓力大，Flink 任務穩定性差，關聯維表成為瓶頸。雖提升維表關聯緩存命中率可降低外部請求 QPS，但目前緩存命中率已達 90% 以上，提升空間有限。且並非所有維表都超大且時效性要求高，如離線用户維表和百萬級監控規則表都相對較小。數倉大量使用 Abase 這種 KV 存儲支持大訪問 QPS，但當超出其承受能力時，會帶來不可控，因此需擺脱對 KV 引擎的依賴，引入新的維表存儲方式。&lt;/p&gt; 
+&lt;p&gt;②解決方案&lt;/p&gt; 
+&lt;p&gt;&lt;img src="https://oscimg.oschina.net/oscnet//00d80b09acbb9c9efed83450f3201c2f.png" alt="" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p&gt;整體思路是將外部組件訪問轉化為本地訪問，最直接的方式就是將數據加載到內存中完成計算。基於此，我們通過開發 UDF 將 Hive 和 MySQL 中的數據加載到內存中關聯，但其並不通用，每次查詢 Hive 和 MySQL 語句時需要單獨指定，且只能加載少量數據，於是，我們將 UDF 升級為 Flink Broadcast join 功能。&lt;/p&gt; 
+&lt;p&gt;該功能設計分為三個模塊，以 Hive 為例。分區發現模塊通過 Broadcast 算子監測 Hive 分區，發現新分區時，即向下游下發 Watermark 和表元數據信息；數據構建模塊的數據讀取算子，可配置大併發用於讀取 Hive 維表數據；數據分發模塊可以將讀取的數據分發到各個 TM 中，根據數據量不同有兩種分發方式， 即 Broadcast 方式（將全量數據 copy 分發）或根據主鍵 Hash 分發（適用於數據量較大場景）。&lt;/p&gt; 
+&lt;p&gt;在抖音內部場景，該功能支持了千億級別的維表關聯，主要適用於大流量場景下維表關聯業務，對維表更新的感知在分鐘級以上。功能上線後，它替代了部分 Abase 關聯任務，減少約 400 萬 QPS ，相關任務在追溯場景下無外部訪問瓶頸。&lt;/p&gt; 
+&lt;p&gt;（2）大流量冪等計算&lt;/p&gt; 
+&lt;p&gt;①場景分析&lt;/p&gt; 
+&lt;p&gt;&lt;img src="https://oscimg.oschina.net/oscnet//bd261bf4c464cd22ed668087c1c2df7b.png" alt="" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p&gt;在大流量聚合計算優化方面，由於數據量大，短視頻的小時和天級指標從分鐘中間層聚合，這會導致分鐘聚合輸出有重複數據、亂序數據甚至回撤數據。如果直接通過先取 max 等方式聚合，其計算成本高且會引入回撤流問題，導致原本遞增的埋點指標下降。以分鐘向小時聚合為例，小時任務需要每一分鐘的最後一條數據。&lt;/p&gt; 
+&lt;p&gt;②解決方案&lt;/p&gt; 
+&lt;p&gt;&lt;img src="https://oscimg.oschina.net/oscnet//f515a4786be013304ee91c7ff5a26886.png" alt="" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p&gt;針對以上問題，我們引入了 Bucket 的思路，即每一分鐘維護一個 Bucket，保留最後一條數據，新數據到來時，將其對應的 Bucket 與原本的數據相較，僅下發正序遞增數據。這樣，從分鐘級向小時級聚合時，即使分鐘級流量達百萬 RPS，最終也只有 60 個 Bucket。&lt;/p&gt; 
+&lt;p&gt;基於此簡化模型，如上圖左下角展示的分鐘數據輸出，第一列是分鐘值，即 Bucket key；第二列是時間位移，用於 Bucket 的時間比較；第三列是指標值。第一、二條數據均為 58 分鐘，因此，其屬於同一個 Bucket，數據也是正序到來的，因此，Bucket 記錄為 30 秒；指標值為 100 的數據，第三條數據正常輸出，第四條和第五條數據存在亂序，40 秒的數據先到，20 秒的數據後到，因此，Bucket 只記錄 40 秒的數據，在 20 秒的數據進入後不再更新。這樣，通過 Bucket 機制可有效處理重複下發、亂序和回撤數據，不影響小時及天指標聚合結果。&lt;/p&gt; 
+&lt;p&gt;③性能優化&lt;/p&gt; 
+&lt;p&gt;&lt;img src="https://oscimg.oschina.net/oscnet//f0385e2fac946c801ad7ba46390c9b47.png" alt="" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p&gt;基於 Bucket 計算資源消耗仍較大，通過火焰圖分析，發現 state 的序列化環節和 GC 環節佔比較大，表明在狀態和計算上仍有優化空間。我們從數據結構和業務兩方面入手。&lt;/p&gt; 
+&lt;p&gt;其一，優化 Bucket 結構，將多層嵌套結構改為兩個數組，兩個數組的長度等於 Bucket 的長度，無需要存儲 Bucket key，按照數組的順序取對應 Bucket。一個數組存儲時間戳位移，將 long 格式的時間戳存儲為 int 類型（減少存儲佔用），另一個數組通過字符串拼接指標值，將原本的 Map 中指標的 value 拼接成一行，節省 state 中的空間佔用。&lt;/p&gt; 
+&lt;p&gt;其二，進行 Bucket 時間壓縮，從分鐘向天級聚合最多 1440 個 Bucket，根據業務實際情況，將六個小時之前的 Bucket 壓縮，Bucket 數量從 1440 個降至 378 個，降低約 70%。&lt;/p&gt; 
+&lt;p&gt;完成這些優化後，整體資源消耗下降約 30%。&lt;/p&gt; 
+&lt;span id="OSC_h3_9"&gt;&lt;/span&gt; 
+&lt;h3&gt;3.2&amp;nbsp;直播場景痛點問題&lt;/h3&gt; 
+&lt;p&gt;&lt;img src="https://oscimg.oschina.net/oscnet//8ff92760d26c1e1097ebc17a1402f5b0.png" alt="" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p&gt;直播場景的痛點問題主要分為計算大狀態和回溯大流量兩類。&lt;/p&gt; 
+&lt;p&gt;首先是直播間場次聚合計算大狀態。抖音直播中，直播間最長可開播 30 天，但目前 Flink 作業的 DWS 和 APP 層只計算開播後七天狀態的數據，即 state TTL 為七天。其原因是目前單作業資源消耗大，最高已達 2000 核，狀態可達 18T，穩定性不佳，無法簡單橫向擴展資源解決問題。而業務有查看直播間 30 天累計指標的訴求。&lt;/p&gt; 
+&lt;p&gt;其次是冷啓動和故障回溯大流量。在此場景下，回溯數據從小時到天級不等，DWS 作業向下游下發數據時會重複且大量下發，影響下游 MQ 及 Redis 等 QA 存儲組件穩定性。此外，Flink 作業運行雖有資源投入，但回溯數據仍較慢，從業務視角看，存在數據恢復慢和性能指標上線週期長的問題。&lt;/p&gt; 
+&lt;p&gt;針對這些問題，我們提出了相應的解決方案。&lt;/p&gt; 
+&lt;p&gt;（1）大狀態優化&lt;/p&gt; 
+&lt;p&gt;①場景分析&lt;/p&gt; 
+&lt;p&gt;&lt;img src="https://oscimg.oschina.net/oscnet//56fdd1dd529ad5affae89677e9e98656.png" alt="" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p&gt;對於大狀態優化場景，直播間開關播時間和時長不固定，最短不到分鐘級，最長 30 天，平均在小時級別。分析 Flink 作業中不同開播時長的狀態大小佔比發現，state TTL 為七天時，開播時長一天的直播間狀態大小佔 98%，這部分多存儲六天；大於一天小於七天的佔 1%，也存在多存情況；大於八天的僅佔 0.5‰，存在少存情況。該問題的核心是狀態固定的 TTL 與直播間動態的 TTL 矛盾，導致 99% 的狀態多存，0.5‰狀態少存。&lt;/p&gt; 
+&lt;p&gt;解決思路是對齊兩者 TTL，實現直播間關播後刪除狀態。&lt;/p&gt; 
+&lt;p&gt;②方案設計&lt;/p&gt; 
+&lt;p&gt;最初設計了兩種方案。&lt;/p&gt; 
+&lt;p&gt;&lt;img src="https://oscimg.oschina.net/oscnet//a9521b265a30d6d8e8de8f9de9f4645d.png" alt="" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p&gt;第一種基於 Retract 機制刪除狀態。在 Flink 作業中，同時消費直播間流量數據和關播數據，將兩條數據進行聚合。按直播間 ID 分組聚合計算，關播 source 收到數據後向下遊聚合算子發送 delete 消息，下游的聚合算子在接受到該消息後刪除狀態。&lt;/p&gt; 
+&lt;p&gt;但該方案存在問題，用户開發成本高，刪除狀態邏輯與 SQL 邏輯強耦合，導致改造作業時開發成本大；擴展性差，僅適用於 group key 為直播間 ID 的場景，而實際業務中 group key 可能包含更多內容，如用户畫像或主播畫像等，則不適用。&lt;/p&gt; 
+&lt;p&gt;總結問題後，發現其核心是刪除狀態邏輯與 SQL 邏輯強耦合，進而設計了第二種方案作為 TTL CompactionFilter 方案的擴展，即自定義 RocksDB CompactionFilter 方案。兩者執行時機相同，自定義 RocksDB CompactionFilter 方案支持通過 Java UDF 為指定狀態設定 CompactionFilter 。兩者的區別在於，TTL CompactionFilter 執行時解析狀態中的時間戳判斷狀態是否刪除，而自定義方案在 RocksDB 執行時，通過 JNI 將狀態數據傳給 Flink TM，解析直播間 ID 作為 CompactionFilter 入參，訪問直播間 Abase 維表，判斷是否關播，若關播，則 CompactionFilter 返回 true，刪除狀態。此方案實現了直播間關播後的狀態刪除，且與 SQL 邏輯完全解耦，解決了方案一中的問題。&lt;/p&gt; 
+&lt;p&gt;③落地方案&lt;/p&gt; 
+&lt;p&gt;與&amp;nbsp;Flink&amp;nbsp;架構組共建，實現了該方案的落地。&lt;/p&gt; 
+&lt;p&gt;&lt;img src="https://oscimg.oschina.net/oscnet//4a72afb9ccd8582789e772b28472bfa9.png" alt="" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p&gt;Flink 架構組在 RocksDB 層面支持 CompactionFilter 能力，在 SQL 層面支持用户為指定聚合算子指定 CompactionFilter。如代碼示例所示，設置狀態 TTL 為 30 天，通過 ADD RESOURCES 語句引入 CompactionFilter 的 jar 包，通過 SQL hint 指定聚合算子的 CompactionFilter，參數包括 path（路徑） 和 filed（直播間 ID）。&lt;/p&gt; 
+&lt;p&gt;實現過程中對性能問題進行了優化，如 CompactionFilter 查詢性能優化，將實時訪問 Abase 優化為批量加載關播直播間數據到本地，判斷是否關播，避免 Compaction 執行過程中， CompactionFilter 訪問外部組件查詢阻塞，減少 CP 的時長；Cache 選擇優化，將本地存儲關播直播間的 cache 從內存優化到磁盤，降低 GC 時長；CompactionFilter 調用頻次優化，設定 state 存儲時長超過兩天才調用 CompactionFilter，減少未關播直播間頻繁調用導致的 CPU 浪費，同時在 RocksDB C++側緩存，直播間開關播的結果（CompactionFilter 結果），利用 RocksDB 存儲機制，將直播間 ID 放在 group by 語句最前面，順序存儲相同 ID 的狀態數據，複用 CompactionFilter 調用結果，避免 JNI 調用帶來的性能損耗。&lt;/p&gt; 
+&lt;p&gt;通過該方案，業務上支持了直播間 30 天累計指標，技術上直播間場次作業狀態平均下降 60%，CPU 資源使用下降 70%。&lt;/p&gt; 
+&lt;p&gt;（2）大流量回溯優化&lt;/p&gt; 
+&lt;p&gt;①場景分析&lt;/p&gt; 
+&lt;p&gt;分析無&amp;nbsp;lag&amp;nbsp;場景和追 lag&amp;nbsp;場景下作業期望目標。&lt;/p&gt; 
+&lt;p&gt;&lt;img src="https://oscimg.oschina.net/oscnet//23ffaab6834affe69f04a03720743f1d.png" alt="" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p&gt;無 lag 場景追求低延遲，數據實時產出，期望數據處理模式為流處理；追 lag 場景追求短時間內快速恢復，數據高吞吐，期望處理模式為批處理。&lt;/p&gt; 
+&lt;p&gt;但當前 Flink 流處理作業僅能以流處理運行，設置 Minibatch 為 30 秒，在無 lag 場景可行，而在追 lag 場景則存在吞吐低、恢復慢的問題，與預期高吞吐目標不符。&lt;/p&gt; 
+&lt;p&gt;為解決此問題，分析 Flink 流處理和批處理在引擎實現上的差異，在滿足 Flink 流處理低延遲特性的同時，實現 Flink 批處理的高吞吐。流處理通過 Minibatch 機制保證低延遲，但其 RocksDB 隨機訪問和 Retract 機制限制了吞吐；批處理雖有高延遲，但通過 sort 排序處理且無 Retract 機制，吞吐較高。因此，我們提出在流作業中動態監測消費積壓情況，判斷作業對高吞吐或低延遲的傾向性，在當前算子引入 sort 排序算子和動態調整 Minibatch 大小的能力，實現流批執行模式的動態切換。&lt;/p&gt; 
+&lt;p&gt;②方案設計&lt;/p&gt; 
+&lt;p&gt;&lt;img src="https://oscimg.oschina.net/oscnet//d1272c4b617b4e584d685b0d1961502a.png" alt="" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p&gt;該方案核心步驟包括積壓檢測、檢測結果傳遞和動態啓用 sorter 算子並調整 Minibatch 大小。Flink 作業運行時，Source 算子動態監測 lag size；當 lag size 超過指定值時，向下遊算子發送數據時，標記 isBackLog 為 true，聚合算子接收數據後解析該字段，若為 true，則認為當前作業傾向於批處理，啓用 sorter，將 Minibatch 的大小間隔調整為 CP 的間隔。&lt;/p&gt; 
+&lt;p&gt;此方案實現了流作業執行過程中流處理和批處理模式的動態切換，且作業的 DAG 不變，狀態完全兼容。&lt;/p&gt; 
+&lt;p&gt;③落地方案&lt;/p&gt; 
+&lt;p&gt;&lt;img src="https://oscimg.oschina.net/oscnet//258cc68cab26724db1a0d2f863dcd020.png" alt="" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p&gt;Flink 流批傾向性指標有三個，即自動檢測積壓狀態時間間隔、觸發切換批模式處理的平均 lag size 上限、觸發切換流處理平均 lag size 下限。SQL 使用案例如上圖左下角所示：首先，在運行參數中設置 backlog mode 開啓，然後在 source 算子中指定以上三個參數，進而實現 Flink 作業流批融合的處理。&lt;/p&gt; 
+&lt;p&gt;通過該方案，技術上，追 lag 場景回溯數據結果下發量減少，下游組件穩定性提升；業務上，批模式追溯速度比流模式提升一倍。&lt;/p&gt; 
+&lt;span id="OSC_h2_10"&gt;&lt;/span&gt; 
+&lt;h2&gt;04、未來規劃&lt;/h2&gt; 
+&lt;p&gt;在抖音一級 RPS 場景下，未來優化分為通用優化和個性化場景優化。&lt;/p&gt; 
+&lt;p&gt;&lt;img src="https://oscimg.oschina.net/oscnet//ccf7f6a093cc54cd46625cbd98349751.png" alt="" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;span id="OSC_h3_11"&gt;&lt;/span&gt; 
+&lt;h3&gt;4.1&amp;nbsp;通用優化&lt;/h3&gt; 
+&lt;p&gt;作業重啓時內存 localcache 失效導致的緩存穿透優化；使用 Paimon 維表能力減少對 Redis 等 K-V 存儲的請求，使用 PaimonWithMQ 能力減少 MQ dump 派作業，節約資源；豐富 AutoScaling 的資源優化規則，獲取更多收益。&lt;/p&gt; 
+&lt;span id="OSC_h3_12"&gt;&lt;/span&gt; 
+&lt;h3&gt;4.2&amp;nbsp;個性化場景優化&lt;/h3&gt; 
+&lt;p&gt;解決多任務比值類指標分子分母更新快慢不一致導致的波動明顯問題；實現 broadcast join 支持狀態的增量加載，針對千億級維表，拒絕全量加載，而是定時加載僅變化的增量數據，提升作業穩定性；進行內存優化。&lt;/p&gt; 
+&lt;span id="OSC_h3_13"&gt;&lt;/span&gt; 
+&lt;h3&gt;更多內容&lt;/h3&gt; 
+&lt;p&gt;&lt;img src="https://oscimg.oschina.net/oscnet//6041760444b05a21431ac6efcf7680be.jpg" alt="" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;hr&gt; 
+&lt;span id="OSC_h3_14"&gt;&lt;/span&gt; 
+&lt;h3&gt;活動推薦&lt;/h3&gt; 
+&lt;p&gt;阿里雲基於 Apache Flink 構建的企業級產品-實時計算 Flink 版現開啓活動： 新用户複製點擊下方鏈接或者掃描二維碼即可 0 元免費試用 Flink + Paimon &lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Ffree.aliyun.com%2F%3Futm_content%3Dg_1000395379%26productCode%3Dsc" rel="nofollow" target="_blank"&gt;實時計算 Flink 版&lt;/a&gt;（3000CU*小時，3 個月內） 瞭解活動詳情：&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Ffree.aliyun.com%2F%3Futm_content%3Dg_1000395379%26productCode%3Dsc" rel="nofollow" target="_blank"&gt;https://free.aliyun.com/?utm_content=g_1000395379&amp;amp;productCode=sc&lt;/a&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;img src="https://oscimg.oschina.net/oscnet//9dca849c94b7e32b3cff482a77660ce0.jpg" alt="" referrerpolicy="no-referrer"&gt;&lt;/p&gt;
+                                                                                    &lt;/div&gt;
+                                                                            </description>
+      <link>https://my.oschina.net/u/2828172/blog/18685623</link>
+      <guid isPermaLink="false">https://my.oschina.net/u/2828172/blog/18685623</guid>
+      <pubDate>Thu, 24 Jul 2025 02:34:57 GMT</pubDate>
+      <author>原創</author>
+    </item>
+    <item>
+      <title>白宮發佈《美國 AI 行動計劃》</title>
+      <description>&lt;div class="content"&gt;
+                                                                    
+                                                        &lt;p&gt;白宮發佈了名為&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fwww.whitehouse.gov%2Farticles%2F2025%2F07%2Fwhite-house-unveils-americas-ai-action-plan%2F" target="_blank"&gt;《贏得 AI 競賽：美國 AI 行動計劃》（Winning the AI Race: America’s AI Action Plan）&lt;/a&gt;的戰略文件，以保證美國毫無爭議地成為全球 AI 霸主。&lt;/p&gt; 
+&lt;p&gt;&lt;img height="595" src="https://static.oschina.net/uploads/space/2025/0724/103055_nOWT_2720166.png" width="521" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;img src="https://static.oschina.net/uploads/space/2025/0724/103116_zfCg_2720166.png" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p&gt;該計劃主要有三大支柱，加速 AI 創新、構建 AI 基礎設施以及主導國際外交與安全，涵蓋 90 多項具體行政命令。其中，廢除限制 AI 創新監管條例，加速發電場、水資源、半導體芯片等基礎設施建設，這對於像 OpenAI、微軟、亞馬遜、谷歌、Meta 等 AI 巨頭來説非常有利。&lt;/p&gt; 
+&lt;p&gt;白宮在 28 頁的 AI 行動計劃中特別要求，凡聯邦政府採購的大語言模型必須「客觀、不受自上而下意識形態影響」。此外，該計劃還把中國列為主要競爭對手，希望在技術創新、模型開源、基礎設施等方面領先。&lt;/p&gt;
+                                                                                &lt;/div&gt;
+                                                                            </description>
+      <link>https://www.oschina.net/news/362050</link>
+      <guid isPermaLink="false">https://www.oschina.net/news/362050</guid>
+      <pubDate>Thu, 24 Jul 2025 02:32:57 GMT</pubDate>
+      <author>來源: OSCHINA</author>
+    </item>
+    <item>
+      <title>蜻蜓 FM 開源 SmartXPlayer 音頻播放組件</title>
+      <description>&lt;div class="content"&gt;
+                                                                    
+                                                        &lt;p&gt;&lt;span style="color:#000000"&gt;由蜻蜓 FM 研發的音頻播放組件「SmartXPlayer」近日已正式開源並上線 OpenHarmony 三方庫中心倉。&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;span style="color:#000000"&gt;根據&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fmp.weixin.qq.com%2Fs%2FtWpwyDSCWemr7NCevxiiYw%3Fpoc_token%3DHHyUgWijpdpTgHnwJ0S3aKNInFpLFta7--q5a3AQ" target="_blank"&gt;介紹&lt;/a&gt;，作為一款專為鴻蒙多端場景打造的音頻播放引擎，SmartXPlayer 基於鴻蒙系統分佈式能力和多線程架構，提供高性能、易集成的音頻播放能力支持，助力開發者高效構建更順滑、更智能、更便捷的音頻播放體驗。&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;img height="273" src="https://oscimg.oschina.net/oscnet/up-86f4c94cb3161e141e4caf4a5965a5e4178.png" width="500" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;span style="color:#000000"&gt;當前，隨着音頻內容和智能設備的普及，傳統播放器在多端適配、分佈式投播、主線程阻塞等方面存在開發難、效率低、體驗差等痛點。在這一背景下，SmartXPlayer 應運而生，以組件化、跨線程、高擴展的技術路徑，有效提升鴻蒙平台音頻應用開發效率與終端播放體驗。&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;span style="color:#000000"&gt;SmartXPlayer 基於蜻蜓 FM 實際業務場景研發打磨，在多項關鍵能力上具備優異表現：&lt;/span&gt;&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt;&lt;strong&gt;&lt;span style="color:#000000"&gt;跨線程播放架構，提升系統響應效率&lt;/span&gt;&lt;/strong&gt;&lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;p&gt;&lt;span style="color:#000000"&gt;SmartXPlayer 首創子線程播放技術，通過引入 ThreadWorker 機制，播放任務在子線程處理，主線程專注 UI 渲染與狀態管理，將播放性能提升 50%，有效緩解主線程阻塞帶來的卡頓、閃退等問題。&lt;/span&gt;&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt;&lt;strong&gt;&lt;span style="color:#000000"&gt;支持分佈式投播與後台播放，適配多端設備&lt;/span&gt;&lt;/strong&gt;&lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;p&gt;&lt;span style="color:#000000"&gt;SmartXPlayer 內置的 SXCastPlayer 實現了與本地播放器一致的標準播放接口，開發者無需為投播功能單獨學習新接口。同時，它能實時監聽設備連接狀態變化，當檢測到投播需求時，播放器會自動將內部的播放邏輯從本地播放器切換為 SXCastPlayer，從而實現「本地播放」到「跨設備投播」的無縫銜接。此外，它還具備後台播放與狀態同步能力，實現鴻蒙「全場景互聯」下的流暢音頻體驗。&lt;/span&gt;&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt;&lt;strong&gt;&lt;span style="color:#000000"&gt;高度抽象 API，開發門檻低、接入效率高&lt;/span&gt;&lt;/strong&gt;&lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;p&gt;&lt;span style="color:#000000"&gt;SmartXPlayer 組件接口設計高度抽象，支持一行代碼實現多端投播，僅需少量代碼即可快速實現初始化與播放控制，開發效率大幅提升。&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;span style="color:#000000"&gt;據蜻蜓 FM 內部估算，在實際應用中，實現同樣的音頻播放效果，SmartXPlayer 相比傳統方案能夠將開發時長由 2 周縮短至 2-3 天，代碼量減少 60%，維護成本降低 50%，用户體驗顯著提升。目前該方案已在蜻蜓 FM 鴻蒙版和蜻蜓電台元服務中集成使用, 整體表現優異，並計劃在未來支持更多音頻內容形態與播放場景的適配與擴展。&lt;/span&gt;&lt;/p&gt;
+                                                                                &lt;/div&gt;
+                                                                            </description>
+      <link>https://www.oschina.net/news/362049</link>
+      <guid isPermaLink="false">https://www.oschina.net/news/362049</guid>
+      <pubDate>Thu, 24 Jul 2025 02:25:57 GMT</pubDate>
+      <author>來源: OSCHINA</author>
+    </item>
+    <item>
+      <title>GitHub Spark 發佈公測預覽版，通過自然語言構建全棧應用</title>
+      <description>&lt;div class="content"&gt;
+                                                                    
+                                                        &lt;p&gt;GitHub 宣佈其新產品 GitHub Spark 已面向 Copilot Pro+訂閲用户開啓&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fgithub.blog%2Fchangelog%2F2025-07-23-github-spark-in-public-preview-for-copilot-pro-subscribers%2F" target="_blank"&gt;公測&lt;/a&gt;，該產品旨在讓開發者通過自然語言在數分鐘內完成從想法到部署的全棧智能應用程序的構建和發佈，無需進行環境設置或配置。&lt;/p&gt; 
+&lt;p&gt;&lt;img src="https://static.oschina.net/uploads/space/2025/0724/101944_bsPs_2720166.png" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p&gt;Spark 的核心功能由 Claude Sonnet 4 驅動，允許用户通過描述想法來構建包含前端和後端的應用。該平台內置了數據存儲、LLM 推理、託管、部署和 GitHub 身份驗證等功能。&lt;/p&gt; 
+&lt;p&gt;&lt;img alt="" src="https://oscimg.oschina.net/oscnet/up-d9febfe928d296469d6ce6186d282669ebe.png" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p&gt;開發者可以在應用中添加由 OpenAI、Meta、DeepSeek、xAI 等公司模型驅動的 AI 功能，而無需管理 API 密鑰。應用可以通過一鍵點擊進行部署，並自動創建一個包含 GitHub Actions 和 Dependabot 的 GitHub 倉庫，確保所有內容保持同步。&lt;/p&gt; 
+&lt;p&gt;開發者可以通過自然語言、可視化編輯控件或在集成 GitHub Copilot 代碼補全的編輯器中進行編碼來迭代他們的想法。&lt;/p&gt; 
+&lt;p&gt;此外，用户可以直接從 Spark 中打開一個 codespace，以使用 Copilot agent 模式進行迭代，或將 issue 分配給 Copilot coding agent。Copilot Pro+訂閲用户可直接訪問 Spark，其使用會消耗 GitHub Copilot 計劃中包含的 premium requests。&lt;/p&gt;
+                                                                                &lt;/div&gt;
+                                                                            </description>
+      <link>https://www.oschina.net/news/362046</link>
+      <guid isPermaLink="false">https://www.oschina.net/news/362046</guid>
+      <pubDate>Thu, 24 Jul 2025 02:20:57 GMT</pubDate>
+      <author>來源: OSCHINA</author>
+    </item>
+    <item>
+      <title>Qwen3 系列模型迎來新第三方部署和價格特惠</title>
+      <description>&lt;div class="content"&gt;
+                                                                    
+                                                        &lt;p&gt;阿里巴巴的 Qwen3 系列模型近期在多個平台獲得部署並在官方平台開啓了價格特惠。&lt;/p&gt; 
+&lt;p&gt;&lt;img src="https://static.oschina.net/uploads/space/2025/0724/100552_pcPY_2720166.png" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p&gt;Cerebras 宣佈推出 Qwen3-235B 模型，實現了每秒 1500 個 token 的推理速度，目前可進行有限制的免費體驗。&lt;/p&gt; 
+&lt;p&gt;阿里雲的通義靈碼 IDE 已集成 Qwen3-Coder，並去掉了原有的 DeepSeek 模型。GMI inference cloud 也上線了 Qwen3 Coder 480B A35B Instruct FP8 版本，定價為輸入$1.00/M Tokens，輸出$2.00/M Tokens。&lt;/p&gt; 
+&lt;p&gt;阿里雲百鍊平台宣佈對 Qwen3-Coder-Plus 進行為期一個月的限時降價，並進一步對上下文緩存功能進行説明：「上下文緩存的命中概率並不是 100%，即使是上下文完全一致的請求，也存在無法命中的概率，命中概率依據系統判斷而定。」&lt;/p&gt; 
+&lt;table style="display:table; text-align:left"&gt; 
+ &lt;thead&gt; 
+  &lt;tr&gt; 
+   &lt;th style="border-color:rgba(36, 4, 4, 0.4); height:auto; text-align:left"&gt; &lt;p&gt;&lt;span&gt;Token 數量&lt;/span&gt;&lt;/p&gt; &lt;/th&gt; 
+   &lt;th style="border-color:rgba(36, 4, 4, 0.4); height:auto; text-align:left"&gt; &lt;p&gt;&lt;span&gt;輸入成本 (每千 Token)&lt;/span&gt;&lt;/p&gt; &lt;/th&gt; 
+   &lt;th style="border-color:rgba(36, 4, 4, 0.4); height:auto; text-align:left"&gt; &lt;p&gt;&lt;span&gt;輸出成本 (每千 Token)&lt;/span&gt;&lt;/p&gt; &lt;/th&gt; 
+  &lt;/tr&gt; 
+ &lt;/thead&gt; 
+ &lt;tbody&gt; 
+  &lt;tr&gt; 
+   &lt;td style="border-bottom-color:rgba(36, 4, 4, 0.4); border-bottom-left-radius:0px; border-bottom-right-radius:0px; border-bottom-style:solid; border-bottom-width:1px; border-left-color:rgba(36, 4, 4, 0.4); border-left-style:solid; border-left-width:1px; border-right-color:rgba(36, 4, 4, 0.4); border-right-style:solid; border-right-width:1px; border-top-color:rgba(36, 4, 4, 0.4); border-top-left-radius:0px; border-top-right-radius:0px; border-top-style:solid; border-top-width:1px; height:auto; text-align:left"&gt;&lt;strong style="color:#1f0c03"&gt;&lt;span&gt;&lt;span&gt;0-32K&lt;/span&gt;&lt;/span&gt;&lt;/strong&gt;&lt;/td&gt; 
+   &lt;td style="border-bottom-color:rgba(36, 4, 4, 0.4); border-bottom-left-radius:0px; border-bottom-right-radius:0px; border-bottom-style:solid; border-bottom-width:1px; border-left-color:rgba(36, 4, 4, 0.4); border-left-style:solid; border-left-width:1px; border-right-color:rgba(36, 4, 4, 0.4); border-right-style:solid; border-right-width:1px; border-top-color:rgba(36, 4, 4, 0.4); border-top-left-radius:0px; border-top-right-radius:0px; border-top-style:solid; border-top-width:1px; height:auto; text-align:left"&gt; &lt;p&gt;&lt;span&gt;&lt;span&gt;0.004 元&lt;/span&gt;&lt;/span&gt;&lt;/p&gt; &lt;/td&gt; 
+   &lt;td style="border-bottom-color:rgba(36, 4, 4, 0.4); border-bottom-left-radius:0px; border-bottom-right-radius:0px; border-bottom-style:solid; border-bottom-width:1px; border-left-color:rgba(36, 4, 4, 0.4); border-left-style:solid; border-left-width:1px; border-right-color:rgba(36, 4, 4, 0.4); border-right-style:solid; border-right-width:1px; border-top-color:rgba(36, 4, 4, 0.4); border-top-left-radius:0px; border-top-right-radius:0px; border-top-style:solid; border-top-width:1px; height:auto; text-align:left"&gt; &lt;p&gt;&lt;span&gt;&lt;span&gt;0.016 元&lt;/span&gt;&lt;/span&gt;&lt;/p&gt; &lt;/td&gt; 
+  &lt;/tr&gt; 
+  &lt;tr&gt; 
+   &lt;td style="border-bottom-color:rgba(36, 4, 4, 0.4); border-bottom-left-radius:0px; border-bottom-right-radius:0px; border-bottom-style:solid; border-bottom-width:1px; border-left-color:rgba(36, 4, 4, 0.4); border-left-style:solid; border-left-width:1px; border-right-color:rgba(36, 4, 4, 0.4); border-right-style:solid; border-right-width:1px; border-top-color:rgba(36, 4, 4, 0.4); border-top-left-radius:0px; border-top-right-radius:0px; border-top-style:solid; border-top-width:1px; height:auto; text-align:left"&gt;&lt;strong style="color:#1f0c03"&gt;&lt;span&gt;&lt;span&gt;32K-128K&lt;/span&gt;&lt;/span&gt;&lt;/strong&gt;&lt;/td&gt; 
+   &lt;td style="border-bottom-color:rgba(36, 4, 4, 0.4); border-bottom-left-radius:0px; border-bottom-right-radius:0px; border-bottom-style:solid; border-bottom-width:1px; border-left-color:rgba(36, 4, 4, 0.4); border-left-style:solid; border-left-width:1px; border-right-color:rgba(36, 4, 4, 0.4); border-right-style:solid; border-right-width:1px; border-top-color:rgba(36, 4, 4, 0.4); border-top-left-radius:0px; border-top-right-radius:0px; border-top-style:solid; border-top-width:1px; height:auto; text-align:left"&gt; &lt;p&gt;&lt;span&gt;&lt;span&gt;0.0042 元 (原價 0.006 元的&amp;nbsp;&lt;/span&gt;&lt;/span&gt;&lt;strong style="color:#1f0c03"&gt;&lt;span&gt;&lt;span&gt;7 折&lt;/span&gt;&lt;/span&gt;&lt;/strong&gt;&lt;span&gt;&lt;span&gt;)&lt;/span&gt;&lt;/span&gt;&lt;/p&gt; &lt;/td&gt; 
+   &lt;td style="border-bottom-color:rgba(36, 4, 4, 0.4); border-bottom-left-radius:0px; border-bottom-right-radius:0px; border-bottom-style:solid; border-bottom-width:1px; border-left-color:rgba(36, 4, 4, 0.4); border-left-style:solid; border-left-width:1px; border-right-color:rgba(36, 4, 4, 0.4); border-right-style:solid; border-right-width:1px; border-top-color:rgba(36, 4, 4, 0.4); border-top-left-radius:0px; border-top-right-radius:0px; border-top-style:solid; border-top-width:1px; height:auto; text-align:left"&gt; &lt;p&gt;&lt;span&gt;&lt;span&gt;0.0168 元 (原價 0.024 元的&amp;nbsp;&lt;/span&gt;&lt;/span&gt;&lt;strong style="color:#1f0c03"&gt;&lt;span&gt;&lt;span&gt;7 折&lt;/span&gt;&lt;/span&gt;&lt;/strong&gt;&lt;span&gt;&lt;span&gt;)&lt;/span&gt;&lt;/span&gt;&lt;/p&gt; &lt;/td&gt; 
+  &lt;/tr&gt; 
+  &lt;tr&gt; 
+   &lt;td style="border-bottom-color:rgba(36, 4, 4, 0.4); border-bottom-left-radius:0px; border-bottom-right-radius:0px; border-bottom-style:solid; border-bottom-width:1px; border-left-color:rgba(36, 4, 4, 0.4); border-left-style:solid; border-left-width:1px; border-right-color:rgba(36, 4, 4, 0.4); border-right-style:solid; border-right-width:1px; border-top-color:rgba(36, 4, 4, 0.4); border-top-left-radius:0px; border-top-right-radius:0px; border-top-style:solid; border-top-width:1px; height:auto; text-align:left"&gt;&lt;strong style="color:#1f0c03"&gt;&lt;span&gt;&lt;span&gt;128K-256K&lt;/span&gt;&lt;/span&gt;&lt;/strong&gt;&lt;/td&gt; 
+   &lt;td style="border-bottom-color:rgba(36, 4, 4, 0.4); border-bottom-left-radius:0px; border-bottom-right-radius:0px; border-bottom-style:solid; border-bottom-width:1px; border-left-color:rgba(36, 4, 4, 0.4); border-left-style:solid; border-left-width:1px; border-right-color:rgba(36, 4, 4, 0.4); border-right-style:solid; border-right-width:1px; border-top-color:rgba(36, 4, 4, 0.4); border-top-left-radius:0px; border-top-right-radius:0px; border-top-style:solid; border-top-width:1px; height:auto; text-align:left"&gt; &lt;p&gt;&lt;span&gt;&lt;span&gt;0.005 元 (原價 0.01 元的&amp;nbsp;&lt;/span&gt;&lt;/span&gt;&lt;strong style="color:#1f0c03"&gt;&lt;span&gt;&lt;span&gt;5 折&lt;/span&gt;&lt;/span&gt;&lt;/strong&gt;&lt;span&gt;&lt;span&gt;)&lt;/span&gt;&lt;/span&gt;&lt;/p&gt; &lt;/td&gt; 
+   &lt;td style="border-bottom-color:rgba(36, 4, 4, 0.4); border-bottom-left-radius:0px; border-bottom-right-radius:0px; border-bottom-style:solid; border-bottom-width:1px; border-left-color:rgba(36, 4, 4, 0.4); border-left-style:solid; border-left-width:1px; border-right-color:rgba(36, 4, 4, 0.4); border-right-style:solid; border-right-width:1px; border-top-color:rgba(36, 4, 4, 0.4); border-top-left-radius:0px; border-top-right-radius:0px; border-top-style:solid; border-top-width:1px; height:auto; text-align:left"&gt; &lt;p&gt;&lt;span&gt;&lt;span&gt;0.02 元 (原價 0.04 元的&amp;nbsp;&lt;/span&gt;&lt;/span&gt;&lt;strong style="color:#1f0c03"&gt;&lt;span&gt;&lt;span&gt;5 折&lt;/span&gt;&lt;/span&gt;&lt;/strong&gt;&lt;span&gt;&lt;span&gt;)&lt;/span&gt;&lt;/span&gt;&lt;/p&gt; &lt;/td&gt; 
+  &lt;/tr&gt; 
+  &lt;tr&gt; 
+   &lt;td style="border-bottom-color:rgba(36, 4, 4, 0.4); border-bottom-left-radius:0px; border-bottom-right-radius:0px; border-bottom-style:solid; border-bottom-width:1px; border-left-color:rgba(36, 4, 4, 0.4); border-left-style:solid; border-left-width:1px; border-right-color:rgba(36, 4, 4, 0.4); border-right-style:solid; border-right-width:1px; border-top-color:rgba(36, 4, 4, 0.4); border-top-left-radius:0px; border-top-right-radius:0px; border-top-style:solid; border-top-width:1px; height:auto; text-align:left"&gt;&lt;strong style="color:#1f0c03"&gt;&lt;span&gt;&lt;span&gt;256K-1M&lt;/span&gt;&lt;/span&gt;&lt;/strong&gt;&lt;/td&gt; 
+   &lt;td style="border-bottom-color:rgba(36, 4, 4, 0.4); border-bottom-left-radius:0px; border-bottom-right-radius:0px; border-bottom-style:solid; border-bottom-width:1px; border-left-color:rgba(36, 4, 4, 0.4); border-left-style:solid; border-left-width:1px; border-right-color:rgba(36, 4, 4, 0.4); border-right-style:solid; border-right-width:1px; border-top-color:rgba(36, 4, 4, 0.4); border-top-left-radius:0px; border-top-right-radius:0px; border-top-style:solid; border-top-width:1px; height:auto; text-align:left"&gt; &lt;p&gt;&lt;span&gt;&lt;span&gt;0.01 元 (原價 0.02 元的&amp;nbsp;&lt;/span&gt;&lt;/span&gt;&lt;strong style="color:#1f0c03"&gt;&lt;span&gt;&lt;span&gt;5 折&lt;/span&gt;&lt;/span&gt;&lt;/strong&gt;&lt;span&gt;&lt;span&gt;)&lt;/span&gt;&lt;/span&gt;&lt;/p&gt; &lt;/td&gt; 
+   &lt;td style="border-bottom-color:rgba(36, 4, 4, 0.4); border-bottom-left-radius:0px; border-bottom-right-radius:0px; border-bottom-style:solid; border-bottom-width:1px; border-left-color:rgba(36, 4, 4, 0.4); border-left-style:solid; border-left-width:1px; border-right-color:rgba(36, 4, 4, 0.4); border-right-style:solid; border-right-width:1px; border-top-color:rgba(36, 4, 4, 0.4); border-top-left-radius:0px; border-top-right-radius:0px; border-top-style:solid; border-top-width:1px; height:auto; text-align:left"&gt; &lt;p&gt;&lt;span&gt;&lt;span&gt;0.1 元 (原價 0.2 元的&amp;nbsp;&lt;/span&gt;&lt;/span&gt;&lt;strong style="color:#1f0c03"&gt;&lt;span&gt;&lt;span&gt;5 折&lt;/span&gt;&lt;/span&gt;&lt;/strong&gt;&lt;span&gt;&lt;span&gt;)&lt;/span&gt;&lt;/span&gt;&lt;/p&gt; &lt;/td&gt; 
+  &lt;/tr&gt; 
+ &lt;/tbody&gt; 
+&lt;/table&gt; 
+&lt;p&gt;詳情：https://help.aliyun.com/zh/model-studio/qwen3-coder-plus-price-drop&lt;/p&gt;
+                                                                                &lt;/div&gt;
+                                                                            </description>
+      <link>https://www.oschina.net/news/362044</link>
+      <guid isPermaLink="false">https://www.oschina.net/news/362044</guid>
+      <pubDate>Thu, 24 Jul 2025 02:06:57 GMT</pubDate>
+      <author>來源: OSCHINA</author>
+    </item>
+    <item>
+      <title>谷歌母公司發佈 Q2 財報：全年資本支出飆升至 850 億美元</title>
+      <description>&lt;div class="content"&gt;
+                                                                    
+                                                        &lt;div style="text-align:start"&gt; 
+ &lt;p style="color:#222222; margin-left:0; margin-right:0"&gt;谷歌母公司 Alphabet 週三公佈季度營收超出華爾街預期，得益於新推出的 AI 功能以及穩定的數字廣告市場。公司還表示，將今年的資本支出計劃從原本的大約 750 億美元上調至約 850 億美元。Alphabet A 股美股盤後下跌 2.8%，但隨後回彈，一度跳漲 3.4%。&lt;/p&gt; 
+&lt;/div&gt; 
+&lt;div style="text-align:start"&gt; 
+ &lt;p style="color:#222222; margin-left:0; margin-right:0"&gt;以下是 Alphabet 二季度財報要點：&lt;/p&gt; 
+&lt;/div&gt; 
+&lt;div style="text-align:start"&gt; 
+ &lt;p style="color:#222222; margin-left:0; margin-right:0"&gt;&lt;strong&gt;主要財務數據：&lt;/strong&gt;&lt;/p&gt; 
+&lt;/div&gt; 
+&lt;div style="text-align:start"&gt; 
+ &lt;blockquote&gt; 
+  &lt;p style="color:#222222; margin-left:0; margin-right:0"&gt;&lt;strong&gt;營收：&lt;/strong&gt;Alphabet 二季度營收 964.3 億美元，同比增長 14%，高於分析師預期的 939.7 億美元。&lt;/p&gt; 
+  &lt;p style="color:#222222; margin-left:0; margin-right:0"&gt;&lt;strong&gt;調整後營收：&lt;/strong&gt;剔除合作伙伴分成後的第二季度銷售額為 817 億美元，高於分析師平均預期 796 億美元。&lt;/p&gt; 
+  &lt;p style="color:#222222; margin-left:0; margin-right:0"&gt;&lt;strong&gt;每股收益：&lt;/strong&gt;Alphabet 二季度每股收益 2.31 美元，同比增長 22%，高於分析師預期的 2.18 美元。&lt;/p&gt; 
+ &lt;/blockquote&gt; 
+&lt;/div&gt; 
+&lt;div style="text-align:start"&gt; 
+ &lt;p style="color:#222222; margin-left:0; margin-right:0"&gt;&lt;img height="425" src="https://oscimg.oschina.net/oscnet/up-184de4a234b4e0f59adc392a84a16afd3ea.png" width="500" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+ &lt;p style="color:#222222; margin-left:0; margin-right:0"&gt;&lt;strong&gt;分業務數據：&lt;/strong&gt;&lt;/p&gt; 
+&lt;/div&gt; 
+&lt;div style="text-align:start"&gt; 
+ &lt;blockquote&gt; 
+  &lt;p style="color:#222222; margin-left:0; margin-right:0"&gt;&lt;strong&gt;谷歌雲營收：&lt;/strong&gt;谷歌雲營收第二季度為 136 億美元，同比增長 32%，高於市場預期的 131 億美元。&lt;/p&gt; 
+  &lt;ul style="margin-left:0; margin-right:0"&gt; 
+   &lt;li&gt;&lt;strong&gt;雲計算利潤：&lt;/strong&gt;谷歌雲計算部門本季度運營利潤為 28.3 億美元，遠超分析師預期的 22.5 億美元。&lt;/li&gt; 
+  &lt;/ul&gt; 
+  &lt;p style="color:#222222; margin-left:0; margin-right:0"&gt;&lt;strong&gt;廣告總營收：&lt;/strong&gt;Alphabet 廣告總營收 713 億美元，同比增長 10.4%。&lt;/p&gt; 
+  &lt;ul style="margin-left:0; margin-right:0"&gt; 
+   &lt;li&gt;&lt;strong&gt;搜索業務營收：&lt;/strong&gt;搜索業務營收第二季度為 541 億美元，同比增長 11.7%，高於分析師預期的 540 億美元。&lt;/li&gt; 
+   &lt;li&gt;&lt;strong&gt;YouTube 廣告收入：&lt;/strong&gt;YouTube 廣告營收為 98 億美元，略高於預期的 95 億美元。&lt;/li&gt; 
+  &lt;/ul&gt; 
+ &lt;/blockquote&gt; 
+&lt;/div&gt; 
+&lt;div style="text-align:start"&gt; 
+ &lt;p style="color:#222222; margin-left:0; margin-right:0"&gt;Alphabet 股價自 4 月份發佈上一份財報以來已上漲超過 18%。週三公佈財報後，Alphabet A 股盤後交易中一度下跌超過 2.8%，但隨後一度反彈 3.4%，漲幅後收窄至 2% 左右。&lt;/p&gt; 
+&lt;/div&gt; 
+&lt;div style="text-align:start"&gt; 
+ &lt;h2 style="margin-left:0; margin-right:0"&gt;&lt;strong&gt;今年資本支出提高至 850 億美元，預計 2026 年繼續增加&lt;/strong&gt;&lt;/h2&gt; 
+&lt;/div&gt; 
+&lt;div style="text-align:start"&gt; 
+ &lt;p style="color:#222222; margin-left:0; margin-right:0"&gt;&lt;strong&gt;谷歌母公司表示，其全年資本支出將提高 13%，達到 850 億美元，而不是今年早些時候預測的 750 億美元。相比之下，2024 年為 525 億美元。&lt;/strong&gt;&lt;/p&gt; 
+&lt;/div&gt; 
+&lt;div style="text-align:start"&gt; 
+ &lt;p style="color:#222222; margin-left:0; margin-right:0"&gt;&lt;strong&gt;媒體分析，儘管 Alphabet 公司公佈的營收好於預期並創下歷史紀錄，但由於 2025 年的資本支出將高於此前預測，這讓公司在 AI 競賽中的投資合理性面臨更大壓力。公司首席財務官 Anat Ashkenazi 在週三財報電話會上表示，公司預計 2026 年還將進一步增加資本支出。&lt;/strong&gt;&lt;/p&gt; 
+&lt;/div&gt; 
+&lt;div style="text-align:start"&gt; 
+ &lt;p style="color:#222222; margin-left:0; margin-right:0"&gt;谷歌首席執行官桑達爾·皮查伊（Sundar Pichai）和其他科技高管過去幾年在 AI 開發上投入了數百億美元，這是整個 AI 熱潮的一部分。大部分資金都用於建設新的數據中心，以開發和運行 AI 模型。&lt;/p&gt; 
+&lt;/div&gt; 
+&lt;div style="text-align:start"&gt; 
+ &lt;p style="color:#222222; margin-left:0; margin-right:0"&gt;皮查伊表示：&lt;/p&gt; 
+&lt;/div&gt; 
+&lt;div style="text-align:start"&gt; 
+ &lt;blockquote&gt; 
+  &lt;p style="color:#222222; margin-left:0; margin-right:0"&gt;「人工智能正在積極影響公司業務的每一個部分，推動整體強勁發展。我們正站在 AI 前沿，並以驚人的速度推進產品發佈。AI 正在對業務的每一個環節產生積極影響，帶來強勁的增長勢頭。」&lt;/p&gt; 
+  &lt;p style="color:#222222; margin-left:0; margin-right:0"&gt;「搜索業務實現了兩位數的收入增長，我們的新功能，比如 AI 概覽（AI Overviews）和 AI 模式（AI Mode），表現良好。YouTube 和訂閲服務繼續保持強勁表現。雲計算業務在收入、訂單積壓和盈利能力方面都取得強勁增長，其年化收入目前已超過 500 億美元。」&lt;/p&gt; 
+ &lt;/blockquote&gt; 
+&lt;/div&gt; 
+&lt;div style="text-align:start"&gt; 
+ &lt;h2 style="margin-left:0; margin-right:0"&gt;鉅額資本支出或將用於人才爭奪戰&lt;/h2&gt; 
+&lt;/div&gt; 
+&lt;div style="text-align:start"&gt; 
+ &lt;p style="color:#222222; margin-left:0; margin-right:0"&gt;今年以來，美國科技巨頭已經承諾為建設 AI 能力投資 3200 億美元。面對競爭對手的壓力，以及投資者對 AI 回報慢於預期的失望，科技巨頭為其大規模 AI 支出進行了辯護，表示這些投資是推動業務增長和提升產品質量的必要條件。&lt;/p&gt; 
+&lt;/div&gt; 
+&lt;div style="text-align:start"&gt; 
+ &lt;p style="color:#222222; margin-left:0; margin-right:0"&gt;&lt;strong&gt;在財報電話會上，在被問及是否在 AI 人才方面大手筆支出時，Ashkenazi 表示，Alphabet 會「確保我們為擁有業內最優秀和最聰明的人才進行適當投資」。&lt;/strong&gt;&lt;/p&gt; 
+&lt;/div&gt; 
+&lt;div style="text-align:start"&gt; 
+ &lt;p style="color:#222222; margin-left:0; margin-right:0"&gt;本月早些時候，谷歌在 AI 人才爭奪戰中引發關注，宣佈將以 24 億美元收購 AI 編程初創公司 Windsurf，該交易還包括技術授權，Windsurf 首席執行官 Varun Mohan 及其頂級研究團隊將加入谷歌。&lt;/p&gt; 
+&lt;/div&gt; 
+&lt;div style="text-align:start"&gt; 
+ &lt;p style="color:#222222; margin-left:0; margin-right:0"&gt;與此同時，競爭對手 Meta 正在瘋狂進行挖角計劃。Meta 此前宣佈設立「超級智能實驗室」部門並展開激進的人才招聘，給這場 AI 競賽加碼。據悉，Meta 為吸引頂尖 AI 研究人員，開出了超過 1 億美元的薪資待遇。&lt;/p&gt; 
+&lt;/div&gt; 
+&lt;div style="text-align:start"&gt; 
+ &lt;h2 style="margin-left:0; margin-right:0"&gt;搜索業務得到 AI 加持，繼續強勁增長&lt;/h2&gt; 
+&lt;/div&gt; 
+&lt;div style="text-align:start"&gt; 
+ &lt;p style="color:#222222; margin-left:0; margin-right:0"&gt;谷歌此次公佈的財報是科技巨頭們本輪財報季的第一份，微軟、蘋果、亞馬遜和 Meta 將於下週陸續發佈。媒體稱，投資者目前高度關注這些大型科技公司不斷膨脹的支出規模，因為它們正在競相搶佔 AI 賽道的領先地位。&lt;strong&gt;隨着越來越多用户轉向 ChatGPT 來獲取網絡信息，投資者一直在密切關注 Alphabet 是否出現疲軟跡象。&lt;/strong&gt;&lt;/p&gt; 
+&lt;/div&gt; 
+&lt;div style="text-align:start"&gt; 
+ &lt;p style="color:#222222; margin-left:0; margin-right:0"&gt;同時，谷歌的情況具有一定特殊性，其雲計算部門依靠數據中心向客户出售算力，是這波 AI 熱潮的直接受益者；而公司其他業務則在加速將 AI 工具整合進搜索、YouTube 等熱門產品中。雖然谷歌仍位居雲計算市場第三，僅次於微軟和亞馬遜，但其在 AI 方面的優勢已幫助其贏得了眾多客户。該部門被廣泛認為是 Alphabet 當前增長最強勁的動力來源，因為其核心搜索業務已日趨成熟。&lt;/p&gt; 
+&lt;/div&gt; 
+&lt;div style="text-align:start"&gt; 
+ &lt;p style="color:#222222; margin-left:0; margin-right:0"&gt;&lt;strong&gt;第二季度，谷歌雲業務營收為 136 億美元，同比增長 32%，而第一季度增幅為 28%。Alphabet 本季度廣告總收入為 713 億美元，同比增長 10.4%。其中，Alphabet 在其核心搜索業務中實現了強勁增長，同比上漲超過 11%。&lt;/strong&gt;&lt;/p&gt; 
+&lt;/div&gt; 
+&lt;div style="text-align:start"&gt; 
+ &lt;p style="color:#222222; margin-left:0; margin-right:0"&gt;為了給 AI 投資騰出資源，谷歌多年來持續進行削減成本的努力。今年，公司多次在不同部門提供自願買斷方案以減少員工人數。&lt;/p&gt; 
+&lt;/div&gt; 
+&lt;div style="text-align:start"&gt; 
+ &lt;p style="color:#222222; margin-left:0; margin-right:0"&gt;為搶佔 AI 賽道，谷歌不斷提升其 AI 模型與聊天機器人 Gemini 的能力，並將 AI 功能加入多個核心產品。今年 5 月，谷歌在美國推出了「AI 模式」，對傳統搜索引擎進行了重大更新，該模式通過聊天式對話來回答搜索問題，減少了鏈接數量。&lt;/p&gt; 
+&lt;/div&gt; 
+&lt;div style="text-align:start"&gt; 
+ &lt;h2 style="margin-left:0; margin-right:0"&gt;反壟斷訴訟仍是未知之數&lt;/h2&gt; 
+&lt;/div&gt; 
+&lt;div style="text-align:start"&gt; 
+ &lt;p style="color:#222222; margin-left:0; margin-right:0"&gt;不過，投資者也對谷歌搜索主導地位面臨的反壟斷訴訟結果表示擔憂。一名負責該案的聯邦法官預計將在下個月裁定是否對谷歌施加限制，包括在 AI 競爭方面設定某些邊界。&lt;/p&gt; 
+&lt;/div&gt; 
+&lt;div style="text-align:start"&gt; 
+ &lt;p style="color:#222222; margin-left:0; margin-right:0"&gt;這一裁決將是長達數月審判的結果，審判重點之一就是新興 AI 參與者是否會侵蝕谷歌的搜索壟斷地位。該案由美國司法部於 2020 年發起，訴求包括強制谷歌出售 Chrome 瀏覽器、禁止其向蘋果支付「默認搜索引擎」費用，並要求谷歌與競爭對手共享部分數據。&lt;/p&gt; 
+&lt;/div&gt; 
+&lt;div style="text-align:start"&gt; 
+ &lt;p style="color:#222222; margin-left:0; margin-right:0"&gt;谷歌方面則辯稱，政府的要求過於極端，不僅會損害消費者利益，還將削弱美國的技術領先地位。The Futurum Group 首席執行官 Daniel Newman 認為，這種不確定性正在拖累股價。&lt;/p&gt; 
+&lt;/div&gt; 
+&lt;div style="text-align:start"&gt; 
+ &lt;p style="color:#222222; margin-left:0; margin-right:0"&gt;「在人們擔心人工智能顛覆之後，反壟斷風險接踵而至，這造成了拖累。」他表示：&lt;/p&gt; 
+&lt;/div&gt; 
+&lt;div style="text-align:start"&gt; 
+ &lt;blockquote&gt; 
+  &lt;p style="color:#222222; margin-left:0; margin-right:0"&gt;「裁決結果可能是深度懲罰性的，只要我們不知道最終結果如何，這種不確定性的陰影就會持續很長一段時間。」&lt;/p&gt; 
+ &lt;/blockquote&gt; 
+&lt;/div&gt; 
+&lt;div style="text-align:start"&gt; 
+ &lt;p style="color:#222222; margin-left:0; margin-right:0"&gt;此次外，Ashkenazi 表示，公司總運營支出增長 20%，達到 261 億美元。增長的最大原因是法律及其他相關費用，其中包括與一項和解相關的 14 億美元支出。德州總檢察長 Ken Paxton 於 5 月宣佈，谷歌就 2022 年一項涉及數據隱私權的訴訟達成 13.7 億美元的和解協議。&lt;/p&gt; 
+&lt;/div&gt;
+                                                                                &lt;/div&gt;
+                                                                            </description>
+      <link>https://www.oschina.net/news/362043</link>
+      <guid isPermaLink="false">https://www.oschina.net/news/362043</guid>
+      <pubDate>Thu, 24 Jul 2025 02:01:57 GMT</pubDate>
+      <author>來源: OSCHINA</author>
+    </item>
+    <item>
+      <title>🔥造物分享：上海理工大學，匠行團隊-安全騎行輔助智能尾燈 v1.0</title>
+      <description/>
+      <link>https://www.oschina.net/ai-creation/details/2107</link>
+      <guid isPermaLink="false">https://www.oschina.net/ai-creation/details/2107</guid>
+      <pubDate>Thu, 24 Jul 2025 01:54:57 GMT</pubDate>
+    </item>
+    <item>
+      <title>IBM 第二季度營收 157.7 億美元，淨利潤同比增長 16%</title>
+      <description>&lt;div class="content"&gt;
+                                                                    
+                                                        &lt;p&gt;IBM 已發佈了該公司的 2024 財年第二季度財報。報告顯示，IBM 第二季度總營收為 157.70 億美元，與上年同期的 154.75 億美元相比增長 2%，不計入匯率變動的影響為同比增長 4%；淨利潤為 18.34 億美元，與上年同期的 15.83 億美元相比實現增長；來自於持續運營業務的淨利潤為 18.30 億美元，上年同期來自於持續運營業務的淨利潤為 15.81 億美元，同比增幅達 16%。&lt;/p&gt; 
+&lt;p&gt;IBM 第二季度營收和調整後每股收益均超出華爾街分析師預期，對 2024 財年全年營收作出的展望也超出預期，從而推動其盤後股價上漲近 3%。&lt;/p&gt; 
+&lt;p&gt;&lt;strong&gt;第二季度主要業績：&lt;/strong&gt;&lt;/p&gt; 
+&lt;p&gt;在截至 2024 年 6 月 30 日的這一財季，IBM 的淨利潤為 18.34 億美元，與上年同期的 15.83 億美元相比實現增長。&lt;/p&gt; 
+&lt;p&gt;IBM 第二季度來自於持續運營業務的淨利潤為 18.30 億美元，上年同期來自於持續運營業務的淨利潤為 15.81 億美元，同比增幅達 16%；來自於持續運營業務的每股攤薄收益為 1.96 美元，與上年同期的 1.72 美元相比增長 14%。&lt;/p&gt; 
+&lt;p&gt;IBM 第二季度來自於非持續運營業務的利潤為 400 萬美元，而上年同期來自於非持續運營業務的利潤為 200 萬美元。&lt;/p&gt; 
+&lt;p&gt;不計入某些一次性項目（不按照美國通用會計準則），IBM 第二季度來自於持續運營業務的運營淨利潤為 22.75 億美元，與上年同期的 20.03 億美元相比增長 14%；來自於持續運營業務的運營每股攤薄收益為 2.43 美元，與上年同期的 2.18 美元相比增長 11%，這一業績超出分析師此前預期。據雅虎財經頻道提供的數據顯示，13 名分析師此前平均預期 IBM 第二季度每股收益將達 2.2 美元。&lt;/p&gt; 
+&lt;p&gt;IBM 第二季度總營收為 157.70 億美元，與上年同期的 154.75 億美元相比增長 2%，不計入匯率變動的影響為同比增長 4%，這一業績也超出分析師此前預期。據雅虎財經頻道提供的數據顯示，12 名分析師此前平均預期 IBM 第二季度營收將達 156.2 億美元。&lt;/p&gt; 
+&lt;p&gt;IBM 第二季度來自於持續運營業務的總毛利潤為 89.50 億美元，與上年同期的 85.01 億美元相比增長 5%；總毛利率為 56.8%，而上年同期為 54.9%，同比上升 1.8 個百分點。不計入某些一次性項目（不按照美國通用會計準則），IIBM 第二季度來自於持續運營業務的總毛利潤為 91.20 億美元，與上年同期的 86.50 億美元相比增長 5%；總毛利率為 57.8%，而上年同期為 55.9%，同比上升 1.9 個百分點。&lt;/p&gt; 
+&lt;p&gt;第二季度成本和支出：&lt;/p&gt; 
+&lt;p&gt;IBM 第二季度來自於持續運營業務的總支出及其他收入為 67.30 億美元，與上年同期的 65.01 億美元相比有所上升。其中，銷售、總務和行政支出為 49.38 億美元，與上年同期的 49.00 億美元相比基本持平；研發和工程支出為 18.40 億美元，與上年同期的 16.87 億美元相比有所上升；知識產權和海關開發收入為 2.41 億美元，與上年同期的 2.48 億美元相比略有下降；其他收入為 2.33 億美元，與上年同期的其他收入 2.61 億美元相比有所下降；利息支出為 4.27 億美元，與上年同期的 4.23 億美元相比基本持平。&lt;/p&gt; 
+&lt;p&gt;第二季度各部門業績：&lt;/p&gt; 
+&lt;p&gt;2024 財年第二季度，IBM 軟件業務部門（包括混合平台與解決方案業務以及交易處理業務）的營收為 67.39 億美元，與上年同期的 62.94 億美元相比增長 7.1%，不計入匯率變動的影響為同比增長 8.4%。軟件業務部門的毛利率為 83.6%，與上年同期的 82.1% 相比有所上升。&lt;/p&gt; 
+&lt;p&gt;在軟件部門內部：&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt;混合平台與解決方案業務的營收同比增長 5%，不計入匯率變動的影響為同比增長 6%。在這項業務內部：紅帽（Red Hat）部門的營收同比增長 7%，不計入匯率變動的影響為同比增長 8%；自動化部門的營收同比增長 15%，不計入匯率變動的影響為同比增長 16%；數據和人工智能部門的營收同比下降 3%，不計入匯率變動的影響為同比下降 2%；安全部門的營收同比增長 2%，不計入匯率變動的影響為同比增長 3%。&lt;/li&gt; 
+ &lt;li&gt;交易處理業務的營收同比增長 11%，不計入匯率變動的影響為同比增長 13%。&lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;p&gt;IBM 諮詢業務部門（包括商業轉型、技術諮詢和應用業務）第二季度營收為 51.79 億美元，與上年同期的 52.26 億美元相比下降 0.9%，不計入匯率變動的影響為同比增長 1.8%。&lt;/p&gt; 
+&lt;p&gt;在諮詢業務部門內部：&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt;業務轉型營收同比增長 3%，不計入匯率變動的影響為同比增長 6%；&lt;/li&gt; 
+ &lt;li&gt;技術諮詢營收同比下降 3%，不計入匯率變動的影響為同比增長 1%；&lt;/li&gt; 
+ &lt;li&gt;應用運營營收同比下降 4%，不計入匯率變動的影響為同比下降 2%。&lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;p&gt;IBM 第二季度基礎設施業務部門（包括混合基礎設施和基礎設施支持業務）營收為 36.45 億美元，與上年同期的 36.18 億美元相比增長 0.7%，不計入匯率變動的影響為同比增長 2.7%。&lt;/p&gt; 
+&lt;p&gt;在基礎設施業務部門內部：&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt;混合基礎設施業務營收同比增長 4%，不計入匯率變動的影響為同比增長 6%。在這項業務內部，IBM z 系統營收同比增長 6%，不計入匯率變動的影響為同比增長 8%；分佈式基礎設施營收同比增長 3%，不計入匯率變動的影響為同比增長 5%。&lt;/li&gt; 
+ &lt;li&gt;基礎設施支持業務營收同比下降 5%，不計入匯率變動的影響為同比下降 3%。&lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;p&gt;IBM 第二季度融資部門（包括客户和商業融資業務）營收為 1.69 億美元，與上年同期的 1.85 億美元相比下降 8.3%，不計入匯率變動的影響為同比下降 6.6%。&lt;/p&gt; 
+&lt;p&gt;IBM 第二季度其他業務部門的營收為 3800 萬美元，而上年同期其他業務部門的營收為 1.52 億美元，同比大幅下降。&lt;/p&gt; 
+&lt;p&gt;第二季度其他財務信息：&lt;/p&gt; 
+&lt;p&gt;IBM 第二季度來自於運營活動的淨現金為 21 億美元，與上年同期相比減少了 6 億美元。IBM 第二季度自由現金流為 26 億美元，與上年同期相比增加了 5 億美元。在第二季度裏，IBM 通過派發股息的形式向股東返還了 15 億美元現金。&lt;/p&gt; 
+&lt;p&gt;截至 2024 年第二季度末，IBM 持有 160 億美元現金、限制性現金和有價證券，與截至 2023 年底相比增加了 25 億美元；債務總額（其中包括全球融資部門的 111 億美元債務）為 565 億美元，自 2023 年底以來並無增減。&lt;/p&gt; 
+&lt;p&gt;上半年主要業績：&lt;/p&gt; 
+&lt;p&gt;IBM 上半年總營收為 302.31 億美元，與上年同期的 297.27 億美元相比實現增長。IBM 上半年來自於持續運營業務的淨利潤為 34.05 億美元，與上年同期的 25.15 億美元相比有所增長；來自於持續運營業務的每股攤薄收益為 3.68 美元，高於上年同期的 2.73 美元。&lt;/p&gt; 
+&lt;p&gt;不計入某些一次性項目（不按照美國通用會計準則），IBM 上半年來自於持續運營業務的淨利潤為 38.39 億美元，與上年同期的 32.52 億美元相比實現增長。不計入某些一次性項目（不按照美國通用會計準則），IBM 上半年來自於持續運營業務的每股攤薄收益為 4.11 美元，與上年同期的為 3.54 美元相比實現增長。&lt;/p&gt; 
+&lt;p&gt;IBM 上半年來自於運營活動的淨現金為 62 億美元，與上年同期相比減少了 2 億美元。IBM 上半年的自由現金流為 45 億美元，與上年同期相比增加了 11 億美元。在過去 12 個月時間裏，IBM 來自於運營活動的淨現金為 138 億美元，自由現金流為 123 億美元。&lt;/p&gt; 
+&lt;p&gt;&lt;strong&gt;2024 年全年業績展望：&lt;/strong&gt;&lt;/p&gt; 
+&lt;p&gt;IBM 繼續預計，該公司 2024 財年營收的同比增長率（不計入匯率變動的影響）將可達到 3% 至 5%。IBM 表示，按照當前的匯率，預計匯率變動將對該公司的營收增長造成 1 到 2 個百分點的負面影響。&lt;/p&gt; 
+&lt;p&gt;據 IBM 此前公佈的財報顯示，2023 財年該公司的總營收為 618.60 億美元。按 3% 到 5% 的同比增長率計算，這意味着該公司預計其 2024 財年總營收將達 637 億美元到 650 億美元之間，超出分析師預期。據雅虎財經頻道提供的數據顯示，19 名分析師目前平均預期該公司 2024 財年的總營收將達 630.3 億美元。&lt;/p&gt; 
+&lt;p&gt;IBM 目前預計，2024 財年該公司的自由現金流將達 120 億美元以上。&lt;/p&gt;
+                                                                                &lt;/div&gt;
+                                                                            </description>
+      <link>https://www.oschina.net/news/362039</link>
+      <guid isPermaLink="false">https://www.oschina.net/news/362039</guid>
+      <pubDate>Thu, 24 Jul 2025 01:53:57 GMT</pubDate>
+      <author>來源: OSCHINA</author>
+    </item>
     <item>
       <title>《開源鴻蒙共建地圖 4.0》在 2025 開放原子開源生態大會上重磅發佈</title>
       <description>&lt;div class="content"&gt;
@@ -233,520 +670,6 @@
       <link>https://www.oschina.net/news/361953</link>
       <guid isPermaLink="false">https://www.oschina.net/news/361953</guid>
       <pubDate>Wed, 16 Jul 2025 09:16:00 GMT</pubDate>
-      <author>來源: OSCHINA</author>
-    </item>
-    <item>
-      <title>崑崙萬維正式上線音樂模型 Mureka V7</title>
-      <description>&lt;div class="content"&gt;
-                                                                    
-                                                        &lt;p&gt;崑崙萬維宣佈推出最新音樂模型 Mureka V7，以及全新的音頻模型 Mureka TTS V1——支持 Voice Design 音色設計能力。&lt;/p&gt; 
-&lt;blockquote&gt; 
- &lt;p&gt;「Mureka V7 是一座 24 小時不打烊的私人錄音棚，它懂得旋律的呼吸，也懂得你偶爾的情緒化。只需要敲下一個主題、幾行歌詞、想要的風格，兩分鐘後就能在電腦中聽到一首完整且願意立刻分享給好友的音樂作品。」&lt;/p&gt; 
-&lt;/blockquote&gt; 
-&lt;ul&gt; 
- &lt;li&gt;&lt;strong&gt;Mureka V7 帶來的音樂品質更好&lt;/strong&gt;：大幅提升旋律動機與編曲質量，人聲與樂器真實度進一步增強，做出來的每一首歌都好聽；&lt;/li&gt; 
- &lt;li&gt;&lt;strong&gt;Mureka V7 的音樂創新性更強：&lt;/strong&gt;生成的歌曲對於音樂從業者更具啓發。&lt;/li&gt; 
- &lt;li&gt;&lt;strong&gt;良品率從 V6 的 43.4% 提升到 57.7%&lt;/strong&gt;，這意味着輸入歌詞生成後獲得好聽歌曲的概率；&lt;/li&gt; 
- &lt;li&gt;&lt;strong&gt;人聲真實度和表達力提升 44%&lt;/strong&gt;，讓人不禁感嘆「這真是 AI 做的？」；&lt;/li&gt; 
- &lt;li&gt;&lt;strong&gt;整體音質提升近一倍&lt;/strong&gt;，告別「AI 味」的千篇一律。&lt;/li&gt; 
-&lt;/ul&gt; 
-&lt;p&gt;&lt;img height="367" src="https://oscimg.oschina.net/oscnet/up-a117fd9281b96abeada1022a7cbb71c7f7f.png" width="500" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;p style="color:rgba(0, 0, 0, 0.9); margin-left:0; margin-right:0; text-align:justify"&gt;Mureka TTS V1 支持 Voice Design 能力，用户可以通過文本輸入想要的語音特徵獲得對應的音色。不論是真實人物、虛擬人物還是配音角色，都能夠通過文本來控制，擺脱了過去只能通過現有音色庫實現音色克隆，或是隻能使用已經存在的音色形式。&lt;/p&gt; 
-&lt;p style="color:rgba(0, 0, 0, 0.9); margin-left:0; margin-right:0; text-align:justify"&gt;&amp;nbsp;&lt;/p&gt; 
-&lt;p&gt;Mureka TTS V1 的 Voice Design 功能技術指標上也獲得了提升：&lt;/p&gt; 
-&lt;ul&gt; 
- &lt;li&gt;語音質量達 4.6 分，超過 Elevenlabs（4.36），整體聽感上遠超同行；&lt;/li&gt; 
- &lt;li&gt;&lt;span&gt;文字切分和段落準確性上達 4.64 分，意味着能更好地理解輸入意圖和文字表述；&lt;/span&gt;&lt;/li&gt; 
- &lt;li&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;整體聽感上也有大幅提升，使得音頻聽起來更加流暢絲滑。&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/li&gt; 
-&lt;/ul&gt; 
-&lt;p&gt;&lt;img height="304" src="https://oscimg.oschina.net/oscnet/up-d7f56d82cea841410bec728812df96c2c19.png" width="500" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;p&gt;&lt;span style="display:none"&gt;&amp;nbsp;&lt;/span&gt;&lt;span style="display:none"&gt;&amp;nbsp;&lt;/span&gt;更多詳情可&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fmp.weixin.qq.com%2Fs%2FLFgTHO3uuMYhNylq5zwNkw" target="_blank"&gt;查看官方公告&lt;/a&gt;。&lt;/p&gt;
-                                                                                &lt;/div&gt;
-                                                                            </description>
-      <link>https://www.oschina.net/news/361952</link>
-      <guid isPermaLink="false">https://www.oschina.net/news/361952</guid>
-      <pubDate>Wed, 16 Jul 2025 09:15:00 GMT</pubDate>
-      <author>來源: OSCHINA</author>
-    </item>
-    <item>
-      <title>TorchV Unstructured —— 文檔解析庫</title>
-      <description>&lt;div class="content"&gt;
-                                                                                                                                                                                                                            &lt;p style="margin-left:0px; margin-right:0px"&gt;&lt;span&gt;一個強大且開發者友好的文檔解析庫，專為 RAG（檢索增強生成）應用優化。基於 Apache Tika、Apache POI 和 PDFBox 等業界標準 Java 庫構建，TorchV Unstructured 提供了增強的解析能力，具備智能表格結構識別和內容提取功能。&lt;/span&gt;&lt;/p&gt;
-
-&lt;h2 style="margin-left:0px; margin-right:0px"&gt;&lt;span&gt;🚀 核心特性&lt;/span&gt;&lt;/h2&gt;
-
-&lt;ul&gt;
-&lt;li&gt;
-&lt;p style="color:#111111; margin-left:.5rem; margin-right:0"&gt;&lt;span&gt;&lt;strong&gt;&lt;span&gt;智能表格解析&lt;/span&gt;&lt;/strong&gt;&lt;/span&gt;&lt;span&gt;：先進的表格結構分析，支持複雜單元格合併檢測&lt;/span&gt;&lt;/p&gt;
-&lt;/li&gt;
-&lt;li&gt;
-&lt;p style="color:#111111; margin-left:.5rem; margin-right:0"&gt;&lt;span&gt;&lt;strong&gt;&lt;span&gt;多格式支持&lt;/span&gt;&lt;/strong&gt;&lt;/span&gt;&lt;span&gt;：無縫處理 DOC、DOCX、PDF 等多種文檔格式&lt;/span&gt;&lt;/p&gt;
-&lt;/li&gt;
-&lt;li&gt;
-&lt;p style="color:#111111; margin-left:.5rem; margin-right:0"&gt;&lt;span&gt;&lt;strong&gt;&lt;span&gt;RAG 優化輸出&lt;/span&gt;&lt;/strong&gt;&lt;/span&gt;&lt;span&gt;：專為 AI/ML 管道設計的結構化內容提取&lt;/span&gt;&lt;/p&gt;
-&lt;/li&gt;
-&lt;li&gt;
-&lt;p style="color:#111111; margin-left:.5rem; margin-right:0"&gt;&lt;span&gt;&lt;strong&gt;&lt;span&gt;Markdown 和 HTML 導出&lt;/span&gt;&lt;/strong&gt;&lt;/span&gt;&lt;span&gt;：靈活的輸出格式，保持表格結構完整性&lt;/span&gt;&lt;/p&gt;
-&lt;/li&gt;
-&lt;li&gt;
-&lt;p style="color:#111111; margin-left:.5rem; margin-right:0"&gt;&lt;span&gt;&lt;strong&gt;&lt;span&gt;圖像提取&lt;/span&gt;&lt;/strong&gt;&lt;/span&gt;&lt;span&gt;：自動提取和處理嵌入式圖像&lt;/span&gt;&lt;/p&gt;
-&lt;/li&gt;
-&lt;li&gt;
-&lt;p style="color:#111111; margin-left:.5rem; margin-right:0"&gt;&lt;span&gt;&lt;strong&gt;&lt;span&gt;內存高效&lt;/span&gt;&lt;/strong&gt;&lt;/span&gt;&lt;span&gt;：優化的大文檔處理，最小化內存佔用&lt;/span&gt;&lt;/p&gt;
-&lt;/li&gt;
-&lt;/ul&gt;
-
-&lt;h2 style="margin-left:0px; margin-right:0px"&gt;&lt;span&gt;📦 安裝&lt;/span&gt;&lt;/h2&gt;
-
-&lt;h3 style="text-align:justify"&gt;&lt;span&gt;Maven&lt;/span&gt;&lt;/h3&gt;
-
-&lt;pre style="margin-left:0; margin-right:0; text-align:left"&gt;&lt;span&gt;&lt;span style="color:#117700"&gt;&amp;lt;&lt;/span&gt;&lt;span style="color:#117700"&gt;dependency&lt;/span&gt;&lt;span style="color:#117700"&gt;&amp;gt;&lt;/span&gt;&lt;/span&gt;
-&lt;span&gt; &amp;nbsp; &amp;nbsp;&lt;span style="color:#117700"&gt;&amp;lt;&lt;/span&gt;&lt;span style="color:#117700"&gt;groupId&lt;/span&gt;&lt;span style="color:#117700"&gt;&amp;gt;&lt;/span&gt;com.torchv.infra&lt;span style="color:#117700"&gt;&amp;lt;/&lt;/span&gt;&lt;span style="color:#117700"&gt;groupId&lt;/span&gt;&lt;span style="color:#117700"&gt;&amp;gt;&lt;/span&gt;&lt;/span&gt;
-&lt;span&gt; &amp;nbsp; &amp;nbsp;&lt;span style="color:#117700"&gt;&amp;lt;&lt;/span&gt;&lt;span style="color:#117700"&gt;artifactId&lt;/span&gt;&lt;span style="color:#117700"&gt;&amp;gt;&lt;/span&gt;torchv-unstructured&lt;span style="color:#117700"&gt;&amp;lt;/&lt;/span&gt;&lt;span style="color:#117700"&gt;artifactId&lt;/span&gt;&lt;span style="color:#117700"&gt;&amp;gt;&lt;/span&gt;&lt;/span&gt;
-&lt;span&gt; &amp;nbsp; &amp;nbsp;&lt;span style="color:#117700"&gt;&amp;lt;&lt;/span&gt;&lt;span style="color:#117700"&gt;version&lt;/span&gt;&lt;span style="color:#117700"&gt;&amp;gt;&lt;/span&gt;1.0.0&lt;span style="color:#117700"&gt;&amp;lt;/&lt;/span&gt;&lt;span style="color:#117700"&gt;version&lt;/span&gt;&lt;span style="color:#117700"&gt;&amp;gt;&lt;/span&gt;&lt;/span&gt;
-&lt;span&gt;&lt;span style="color:#117700"&gt;&amp;lt;/&lt;/span&gt;&lt;span style="color:#117700"&gt;dependency&lt;/span&gt;&lt;span style="color:#117700"&gt;&amp;gt;&lt;/span&gt;&lt;/span&gt;&lt;/pre&gt;
-
-&lt;h3 style="text-align:justify"&gt;&lt;span&gt;Gradle&lt;/span&gt;&lt;/h3&gt;
-
-&lt;pre style="margin-left:0; margin-right:0; text-align:left"&gt;&lt;span&gt;&lt;span style="color:#000000"&gt;implementation&lt;/span&gt; &lt;span style="color:#aa1111"&gt;'com.torchv.infra:torchv-unstructured:1.0.0'&lt;/span&gt;&lt;/span&gt;&lt;/pre&gt;
-
-&lt;h2 style="margin-left:0px; margin-right:0px"&gt;&lt;span&gt;🔧 快速開始&lt;/span&gt;&lt;/h2&gt;
-
-&lt;h3 style="text-align:justify"&gt;&lt;span&gt;基礎文檔解析&lt;/span&gt;&lt;/h3&gt;
-
-&lt;pre style="margin-left:0; margin-right:0; text-align:left"&gt;&lt;span&gt;&lt;span style="color:#770088"&gt;import&lt;/span&gt; &lt;span style="color:#000000"&gt;com&lt;/span&gt;.&lt;span style="color:#000000"&gt;torchv&lt;/span&gt;.&lt;span style="color:#000000"&gt;infra&lt;/span&gt;.&lt;span style="color:#000000"&gt;unstructured&lt;/span&gt;.&lt;span style="color:#000000"&gt;UnstructuredParser&lt;/span&gt;;&lt;/span&gt;
-&lt;span&gt;&lt;span&gt;&lt;/span&gt;&lt;/span&gt;
-&lt;span&gt;&lt;span style="color:#aa5500"&gt;// 解析文檔為 Markdown 格式（推薦用於 RAG）&lt;/span&gt;&lt;/span&gt;
-&lt;span&gt;&lt;span style="color:#008855"&gt;String&lt;/span&gt; &lt;span style="color:#000000"&gt;content&lt;/span&gt; &lt;span style="color:#981a1a"&gt;=&lt;/span&gt; &lt;span style="color:#000000"&gt;UnstructuredParser&lt;/span&gt;.&lt;span style="color:#000000"&gt;toMarkdown&lt;/span&gt;(&lt;span style="color:#aa1111"&gt;"document.docx"&lt;/span&gt;);&lt;/span&gt;
-&lt;span&gt;&lt;span style="color:#000000"&gt;System&lt;/span&gt;.&lt;span style="color:#000000"&gt;out&lt;/span&gt;.&lt;span style="color:#000000"&gt;println&lt;/span&gt;(&lt;span style="color:#000000"&gt;content&lt;/span&gt;);&lt;/span&gt;
-&lt;span&gt;&lt;span&gt;&lt;/span&gt;&lt;/span&gt;
-&lt;span&gt;&lt;span style="color:#aa5500"&gt;// 解析文檔為帶 HTML 表格的 Markdown 格式（保持表格結構）&lt;/span&gt;&lt;/span&gt;
-&lt;span&gt;&lt;span style="color:#008855"&gt;String&lt;/span&gt; &lt;span style="color:#000000"&gt;contentWithTables&lt;/span&gt; &lt;span style="color:#981a1a"&gt;=&lt;/span&gt; &lt;span style="color:#000000"&gt;UnstructuredParser&lt;/span&gt;.&lt;span style="color:#000000"&gt;toMarkdownWithHtmlTables&lt;/span&gt;(&lt;span style="color:#aa1111"&gt;"document.docx"&lt;/span&gt;);&lt;/span&gt;
-&lt;span&gt;&lt;span style="color:#000000"&gt;System&lt;/span&gt;.&lt;span style="color:#000000"&gt;out&lt;/span&gt;.&lt;span style="color:#000000"&gt;println&lt;/span&gt;(&lt;span style="color:#000000"&gt;contentWithTables&lt;/span&gt;);&lt;/span&gt;&lt;/pre&gt;
-
-&lt;h3 style="text-align:justify"&gt;&lt;span&gt;高級表格提取&lt;/span&gt;&lt;/h3&gt;
-
-&lt;pre style="margin-left:0; margin-right:0; text-align:left"&gt;&lt;span&gt;&lt;span style="color:#770088"&gt;import&lt;/span&gt; &lt;span style="color:#000000"&gt;com&lt;/span&gt;.&lt;span style="color:#000000"&gt;torchv&lt;/span&gt;.&lt;span style="color:#000000"&gt;infra&lt;/span&gt;.&lt;span style="color:#000000"&gt;unstructured&lt;/span&gt;.&lt;span style="color:#000000"&gt;UnstructuredParser&lt;/span&gt;;&lt;/span&gt;
-&lt;span&gt;&lt;span&gt;&lt;/span&gt;&lt;/span&gt;
-&lt;span&gt;&lt;span style="color:#770088"&gt;import&lt;/span&gt; &lt;span style="color:#000000"&gt;java&lt;/span&gt;.&lt;span style="color:#000000"&gt;io&lt;/span&gt;.&lt;span style="color:#000000"&gt;File&lt;/span&gt;;&lt;/span&gt;
-&lt;span&gt;&lt;span style="color:#770088"&gt;import&lt;/span&gt; &lt;span style="color:#000000"&gt;java&lt;/span&gt;.&lt;span style="color:#000000"&gt;util&lt;/span&gt;.&lt;span style="color:#000000"&gt;List&lt;/span&gt;;&lt;/span&gt;
-&lt;span&gt;&lt;span&gt;&lt;/span&gt;&lt;/span&gt;
-&lt;span&gt;&lt;span style="color:#aa5500"&gt;// 僅提取 Word 文檔中的表格&lt;/span&gt;&lt;/span&gt;
-&lt;span&gt;&lt;span style="color:#000000"&gt;List&lt;/span&gt;&lt;span style="color:#981a1a"&gt;&amp;lt;&lt;/span&gt;&lt;span style="color:#008855"&gt;String&lt;/span&gt;&lt;span style="color:#981a1a"&gt;&amp;gt;&lt;/span&gt; &lt;span style="color:#000000"&gt;tables&lt;/span&gt; &lt;span style="color:#981a1a"&gt;=&lt;/span&gt; &lt;span style="color:#000000"&gt;UnstructuredParser&lt;/span&gt;.&lt;span style="color:#000000"&gt;extractTables&lt;/span&gt;(&lt;span style="color:#aa1111"&gt;"document.docx"&lt;/span&gt;);&lt;/span&gt;
-&lt;span&gt;&lt;span style="color:#770088"&gt;for&lt;/span&gt; (&lt;span style="color:#008855"&gt;int&lt;/span&gt; &lt;span style="color:#000000"&gt;i&lt;/span&gt; &lt;span style="color:#981a1a"&gt;=&lt;/span&gt; &lt;span style="color:#116644"&gt;0&lt;/span&gt;; &lt;span style="color:#000000"&gt;i&lt;/span&gt; &lt;span style="color:#981a1a"&gt;&amp;lt;&lt;/span&gt; &lt;span style="color:#000000"&gt;tables&lt;/span&gt;.&lt;span style="color:#000000"&gt;size&lt;/span&gt;(); &lt;span style="color:#000000"&gt;i&lt;/span&gt;&lt;span style="color:#981a1a"&gt;++&lt;/span&gt;) {&lt;/span&gt;
-&lt;span&gt; &amp;nbsp; &amp;nbsp;&lt;span style="color:#000000"&gt;System&lt;/span&gt;.&lt;span style="color:#000000"&gt;out&lt;/span&gt;.&lt;span style="color:#000000"&gt;println&lt;/span&gt;(&lt;span style="color:#aa1111"&gt;"表格 "&lt;/span&gt; &lt;span style="color:#981a1a"&gt;+&lt;/span&gt; (&lt;span style="color:#000000"&gt;i&lt;/span&gt; &lt;span style="color:#981a1a"&gt;+&lt;/span&gt; &lt;span style="color:#116644"&gt;1&lt;/span&gt;) &lt;span style="color:#981a1a"&gt;+&lt;/span&gt; &lt;span style="color:#aa1111"&gt;":"&lt;/span&gt;);&lt;/span&gt;
-&lt;span&gt; &amp;nbsp; &amp;nbsp;&lt;span style="color:#000000"&gt;System&lt;/span&gt;.&lt;span style="color:#000000"&gt;out&lt;/span&gt;.&lt;span style="color:#000000"&gt;println&lt;/span&gt;(&lt;span style="color:#000000"&gt;tables&lt;/span&gt;.&lt;span style="color:#000000"&gt;get&lt;/span&gt;(&lt;span style="color:#000000"&gt;i&lt;/span&gt;));&lt;/span&gt;
-&lt;span&gt;}&lt;/span&gt;
-&lt;span&gt;&lt;span&gt;&lt;/span&gt;&lt;/span&gt;
-&lt;span&gt;&lt;span style="color:#aa5500"&gt;// 獲取結構化結果，提供更多控制&lt;/span&gt;&lt;/span&gt;
-&lt;span&gt;&lt;span style="color:#000000"&gt;DocumentResult&lt;/span&gt; &lt;span style="color:#000000"&gt;result&lt;/span&gt; &lt;span style="color:#981a1a"&gt;=&lt;/span&gt; &lt;span style="color:#000000"&gt;UnstructuredParser&lt;/span&gt;.&lt;span style="color:#000000"&gt;toStructuredResult&lt;/span&gt;(&lt;span style="color:#aa1111"&gt;"document.docx"&lt;/span&gt;);&lt;/span&gt;
-&lt;span&gt;&lt;span style="color:#770088"&gt;if&lt;/span&gt; (&lt;span style="color:#000000"&gt;result&lt;/span&gt;.&lt;span style="color:#000000"&gt;isSuccess&lt;/span&gt;()) {&lt;/span&gt;
-&lt;span&gt; &amp;nbsp; &amp;nbsp;&lt;span style="color:#000000"&gt;System&lt;/span&gt;.&lt;span style="color:#000000"&gt;out&lt;/span&gt;.&lt;span style="color:#000000"&gt;println&lt;/span&gt;(&lt;span style="color:#aa1111"&gt;"內容: "&lt;/span&gt; &lt;span style="color:#981a1a"&gt;+&lt;/span&gt; &lt;span style="color:#000000"&gt;result&lt;/span&gt;.&lt;span style="color:#000000"&gt;getContent&lt;/span&gt;());&lt;/span&gt;
-&lt;span&gt; &amp;nbsp; &amp;nbsp;&lt;span style="color:#000000"&gt;System&lt;/span&gt;.&lt;span style="color:#000000"&gt;out&lt;/span&gt;.&lt;span style="color:#000000"&gt;println&lt;/span&gt;(&lt;span style="color:#aa1111"&gt;"表格: "&lt;/span&gt; &lt;span style="color:#981a1a"&gt;+&lt;/span&gt; &lt;span style="color:#000000"&gt;result&lt;/span&gt;.&lt;span style="color:#000000"&gt;getTables&lt;/span&gt;());&lt;/span&gt;
-&lt;span&gt;}&lt;/span&gt;&lt;/pre&gt;
-
-&lt;h3 style="text-align:justify"&gt;&lt;span&gt;文件格式支持&lt;/span&gt;&lt;/h3&gt;
-
-&lt;pre style="margin-left:0; margin-right:0; text-align:left"&gt;&lt;span&gt;&lt;span style="color:#770088"&gt;import&lt;/span&gt; &lt;span style="color:#000000"&gt;com&lt;/span&gt;.&lt;span style="color:#000000"&gt;torchv&lt;/span&gt;.&lt;span style="color:#000000"&gt;infra&lt;/span&gt;.&lt;span style="color:#000000"&gt;unstructured&lt;/span&gt;.&lt;span style="color:#000000"&gt;UnstructuredParser&lt;/span&gt;;&lt;/span&gt;
-&lt;span&gt;&lt;span style="color:#770088"&gt;import&lt;/span&gt; &lt;span style="color:#000000"&gt;com&lt;/span&gt;.&lt;span style="color:#000000"&gt;torchv&lt;/span&gt;.&lt;span style="color:#000000"&gt;infra&lt;/span&gt;.&lt;span style="color:#000000"&gt;unstructured&lt;/span&gt;.&lt;span style="color:#000000"&gt;util&lt;/span&gt;.&lt;span style="color:#000000"&gt;UnstructuredUtils&lt;/span&gt;;&lt;/span&gt;
-&lt;span&gt;&lt;span&gt;&lt;/span&gt;&lt;/span&gt;
-&lt;span&gt;&lt;span style="color:#aa5500"&gt;// 檢查文件格式是否支持&lt;/span&gt;&lt;/span&gt;
-&lt;span&gt;&lt;span style="color:#770088"&gt;if&lt;/span&gt; (&lt;span style="color:#000000"&gt;UnstructuredUtils&lt;/span&gt;.&lt;span style="color:#000000"&gt;isSupportedFormat&lt;/span&gt;(&lt;span style="color:#aa1111"&gt;"document.docx"&lt;/span&gt;)) {&lt;/span&gt;
-&lt;span&gt; &amp;nbsp; &amp;nbsp;&lt;span style="color:#008855"&gt;String&lt;/span&gt; &lt;span style="color:#000000"&gt;content&lt;/span&gt; &lt;span style="color:#981a1a"&gt;=&lt;/span&gt; &lt;span style="color:#000000"&gt;UnstructuredParser&lt;/span&gt;.&lt;span style="color:#000000"&gt;toMarkdownWithHtmlTables&lt;/span&gt;(&lt;span style="color:#aa1111"&gt;"document.docx"&lt;/span&gt;);&lt;/span&gt;
-&lt;span&gt; &amp;nbsp; &amp;nbsp;&lt;span style="color:#000000"&gt;System&lt;/span&gt;.&lt;span style="color:#000000"&gt;out&lt;/span&gt;.&lt;span style="color:#000000"&gt;println&lt;/span&gt;(&lt;span style="color:#aa1111"&gt;"解析成功！"&lt;/span&gt;);&lt;/span&gt;
-&lt;span&gt;} &lt;span style="color:#770088"&gt;else&lt;/span&gt; {&lt;/span&gt;
-&lt;span&gt; &amp;nbsp; &amp;nbsp;&lt;span style="color:#000000"&gt;System&lt;/span&gt;.&lt;span style="color:#000000"&gt;out&lt;/span&gt;.&lt;span style="color:#000000"&gt;println&lt;/span&gt;(&lt;span style="color:#aa1111"&gt;"不支持的文件格式"&lt;/span&gt;);&lt;/span&gt;
-&lt;span&gt;}&lt;/span&gt;
-&lt;span&gt;&lt;span&gt;&lt;/span&gt;&lt;/span&gt;
-&lt;span&gt;&lt;span style="color:#aa5500"&gt;// 獲取所有支持的格式&lt;/span&gt;&lt;/span&gt;
-&lt;span&gt;&lt;span style="color:#000000"&gt;List&lt;/span&gt;&lt;span style="color:#981a1a"&gt;&amp;lt;&lt;/span&gt;&lt;span style="color:#008855"&gt;String&lt;/span&gt;&lt;span style="color:#981a1a"&gt;&amp;gt;&lt;/span&gt; &lt;span style="color:#000000"&gt;supportedFormats&lt;/span&gt; &lt;span style="color:#981a1a"&gt;=&lt;/span&gt; &lt;span style="color:#000000"&gt;UnstructuredUtils&lt;/span&gt;.&lt;span style="color:#000000"&gt;getSupportedFormats&lt;/span&gt;();&lt;/span&gt;
-&lt;span&gt;&lt;span style="color:#000000"&gt;System&lt;/span&gt;.&lt;span style="color:#000000"&gt;out&lt;/span&gt;.&lt;span style="color:#000000"&gt;println&lt;/span&gt;(&lt;span style="color:#aa1111"&gt;"支持的格式: "&lt;/span&gt; &lt;span style="color:#981a1a"&gt;+&lt;/span&gt; &lt;span style="color:#008855"&gt;String&lt;/span&gt;.&lt;span style="color:#000000"&gt;join&lt;/span&gt;(&lt;span style="color:#aa1111"&gt;", "&lt;/span&gt;, &lt;span style="color:#000000"&gt;supportedFormats&lt;/span&gt;));&lt;/span&gt;&lt;/pre&gt;
-
-&lt;h2 style="margin-left:0px; margin-right:0px"&gt;&lt;span&gt;🎯 核心組件&lt;/span&gt;&lt;/h2&gt;
-
-&lt;h3 style="text-align:justify"&gt;&lt;span&gt;統一入口&lt;/span&gt;&lt;/h3&gt;
-
-&lt;ul&gt;
-&lt;li&gt;
-&lt;p style="color:#111111; margin-left:.5rem; margin-right:0"&gt;&lt;span&gt;&lt;strong&gt;&lt;span&gt;UnstructuredParser&lt;/span&gt;&lt;/strong&gt;&lt;/span&gt;&lt;span&gt;：主要入口類，為所有文檔解析操作提供簡單統一的 API&lt;/span&gt;&lt;/p&gt;
-&lt;/li&gt;
-&lt;/ul&gt;
-
-&lt;h3 style="text-align:justify"&gt;&lt;span&gt;文檔解析器&lt;/span&gt;&lt;/h3&gt;
-
-&lt;ul&gt;
-&lt;li&gt;
-&lt;p style="color:#111111; margin-left:.5rem; margin-right:0"&gt;&lt;span&gt;&lt;strong&gt;&lt;span&gt;UnstructuredWord&lt;/span&gt;&lt;/strong&gt;&lt;/span&gt;&lt;span&gt;：通用 Word 文檔解析器，支持自動檢測&lt;/span&gt;&lt;/p&gt;
-&lt;/li&gt;
-&lt;li&gt;
-&lt;p style="color:#111111; margin-left:.5rem; margin-right:0"&gt;&lt;span&gt;&lt;strong&gt;&lt;span&gt;TikaAutoUtils&lt;/span&gt;&lt;/strong&gt;&lt;/span&gt;&lt;span&gt;：支持自動檢測的通用文檔解析器（底層實現）&lt;/span&gt;&lt;/p&gt;
-&lt;/li&gt;
-&lt;li&gt;
-&lt;p style="color:#111111; margin-left:.5rem; margin-right:0"&gt;&lt;span&gt;&lt;strong&gt;&lt;span&gt;WordTableParser&lt;/span&gt;&lt;/strong&gt;&lt;/span&gt;&lt;span&gt;：專業的 Word 文檔表格解析器&lt;/span&gt;&lt;/p&gt;
-&lt;/li&gt;
-&lt;li&gt;
-&lt;p style="color:#111111; margin-left:.5rem; margin-right:0"&gt;&lt;span&gt;&lt;strong&gt;&lt;span&gt;DocxTableParser&lt;/span&gt;&lt;/strong&gt;&lt;/span&gt;&lt;span&gt;：高級 DOCX 表格結構分析器&lt;/span&gt;&lt;/p&gt;
-&lt;/li&gt;
-&lt;/ul&gt;
-
-&lt;h3 style="text-align:justify"&gt;&lt;span&gt;內容處理器&lt;/span&gt;&lt;/h3&gt;
-
-&lt;ul&gt;
-&lt;li&gt;
-&lt;p style="color:#111111; margin-left:.5rem; margin-right:0"&gt;&lt;span&gt;&lt;strong&gt;&lt;span&gt;ToMarkdownWithHtmlTableContentHandler&lt;/span&gt;&lt;/strong&gt;&lt;/span&gt;&lt;span&gt;：將文檔轉換為帶 HTML 表格的 Markdown&lt;/span&gt;&lt;/p&gt;
-&lt;/li&gt;
-&lt;li&gt;
-&lt;p style="color:#111111; margin-left:.5rem; margin-right:0"&gt;&lt;span&gt;&lt;strong&gt;&lt;span&gt;DocMarkdownWithHtmlTableContentHandler&lt;/span&gt;&lt;/strong&gt;&lt;/span&gt;&lt;span&gt;：專門的 DOC 格式處理器&lt;/span&gt;&lt;/p&gt;
-&lt;/li&gt;
-&lt;li&gt;
-&lt;p style="color:#111111; margin-left:.5rem; margin-right:0"&gt;&lt;span&gt;&lt;strong&gt;&lt;span&gt;DocXMarkdownWithHtmlTableContentHandler&lt;/span&gt;&lt;/strong&gt;&lt;/span&gt;&lt;span&gt;：專門的 DOCX 格式處理器&lt;/span&gt;&lt;/p&gt;
-&lt;/li&gt;
-&lt;/ul&gt;
-
-&lt;h3 style="text-align:justify"&gt;&lt;span&gt;表格分析&lt;/span&gt;&lt;/h3&gt;
-
-&lt;ul&gt;
-&lt;li&gt;
-&lt;p style="color:#111111; margin-left:.5rem; margin-right:0"&gt;&lt;span&gt;&lt;strong&gt;&lt;span&gt;TableStructureAnalyzer&lt;/span&gt;&lt;/strong&gt;&lt;/span&gt;&lt;span&gt;：智能表格結構識別&lt;/span&gt;&lt;/p&gt;
-&lt;/li&gt;
-&lt;li&gt;
-&lt;p style="color:#111111; margin-left:.5rem; margin-right:0"&gt;&lt;span&gt;&lt;strong&gt;&lt;span&gt;CellMergeAnalyzer&lt;/span&gt;&lt;/strong&gt;&lt;/span&gt;&lt;span&gt;：高級單元格合併檢測&lt;/span&gt;&lt;/p&gt;
-&lt;/li&gt;
-&lt;li&gt;
-&lt;p style="color:#111111; margin-left:.5rem; margin-right:0"&gt;&lt;span&gt;&lt;strong&gt;&lt;span&gt;HtmlTableBuilder&lt;/span&gt;&lt;/strong&gt;&lt;/span&gt;&lt;span&gt;：清潔的 HTML 表格生成器&lt;/span&gt;&lt;/p&gt;
-&lt;/li&gt;
-&lt;/ul&gt;
-
-&lt;h3 style="text-align:justify"&gt;&lt;span&gt;實用工具&lt;/span&gt;&lt;/h3&gt;
-
-&lt;ul&gt;
-&lt;li&gt;
-&lt;p style="color:#111111; margin-left:.5rem; margin-right:0"&gt;&lt;span&gt;&lt;strong&gt;&lt;span&gt;FileMagicUtils&lt;/span&gt;&lt;/strong&gt;&lt;/span&gt;&lt;span&gt;：文件類型檢測和驗證&lt;/span&gt;&lt;/p&gt;
-&lt;/li&gt;
-&lt;li&gt;
-&lt;p style="color:#111111; margin-left:.5rem; margin-right:0"&gt;&lt;span&gt;&lt;strong&gt;&lt;span&gt;ImageExtractParse&lt;/span&gt;&lt;/strong&gt;&lt;/span&gt;&lt;span&gt;：嵌入式圖像提取&lt;/span&gt;&lt;/p&gt;
-&lt;/li&gt;
-&lt;/ul&gt;
-
-&lt;h2 style="margin-left:0px; margin-right:0px"&gt;&lt;span&gt;🔍 高級用法&lt;/span&gt;&lt;/h2&gt;
-
-&lt;h3 style="text-align:justify"&gt;&lt;span&gt;RAG 應用集成&lt;/span&gt;&lt;/h3&gt;
-
-&lt;pre style="margin-left:0; margin-right:0; text-align:left"&gt;&lt;span&gt;&lt;span style="color:#770088"&gt;import&lt;/span&gt; &lt;span style="color:#000000"&gt;com&lt;/span&gt;.&lt;span style="color:#000000"&gt;torchv&lt;/span&gt;.&lt;span style="color:#000000"&gt;infra&lt;/span&gt;.&lt;span style="color:#000000"&gt;unstructured&lt;/span&gt;.&lt;span style="color:#000000"&gt;UnstructuredParser&lt;/span&gt;;&lt;/span&gt;
-&lt;span&gt;&lt;span style="color:#770088"&gt;import&lt;/span&gt; &lt;span style="color:#000000"&gt;com&lt;/span&gt;.&lt;span style="color:#000000"&gt;torchv&lt;/span&gt;.&lt;span style="color:#000000"&gt;infra&lt;/span&gt;.&lt;span style="color:#000000"&gt;unstructured&lt;/span&gt;.&lt;span style="color:#000000"&gt;core&lt;/span&gt;.&lt;span style="color:#000000"&gt;DocumentResult&lt;/span&gt;;&lt;/span&gt;
-&lt;span&gt;&lt;span&gt;&lt;/span&gt;&lt;/span&gt;
-&lt;span&gt;&lt;span style="color:#aa5500"&gt;// 為 RAG 應用優化&lt;/span&gt;&lt;/span&gt;
-&lt;span&gt;&lt;span style="color:#770088"&gt;public&lt;/span&gt; &lt;span style="color:#770088"&gt;class&lt;/span&gt; &lt;span style="color:#0000ff"&gt;RAGDocumentProcessor&lt;/span&gt; {&lt;/span&gt;
-&lt;span&gt;&lt;span&gt;&lt;/span&gt;&lt;/span&gt;
-&lt;span&gt; &amp;nbsp; &amp;nbsp;&lt;span style="color:#770088"&gt;public&lt;/span&gt; &lt;span style="color:#000000"&gt;DocumentChunk&lt;/span&gt; &lt;span style="color:#000000"&gt;processDocument&lt;/span&gt;(&lt;span style="color:#008855"&gt;String&lt;/span&gt; &lt;span style="color:#000000"&gt;filePath&lt;/span&gt;) {&lt;/span&gt;
-&lt;span&gt; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp;&lt;span style="color:#aa5500"&gt;// 解析時保持表格結構以獲得更好的上下文&lt;/span&gt;&lt;/span&gt;
-&lt;span&gt; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp;&lt;span style="color:#008855"&gt;String&lt;/span&gt; &lt;span style="color:#000000"&gt;content&lt;/span&gt; &lt;span style="color:#981a1a"&gt;=&lt;/span&gt; &lt;span style="color:#000000"&gt;UnstructuredParser&lt;/span&gt;.&lt;span style="color:#000000"&gt;toMarkdownWithHtmlTables&lt;/span&gt;(&lt;span style="color:#000000"&gt;filePath&lt;/span&gt;);&lt;/span&gt;
-&lt;span&gt;&lt;span&gt;&lt;/span&gt;&lt;/span&gt;
-&lt;span&gt; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp;&lt;span style="color:#aa5500"&gt;// 單獨提取表格用於結構化數據處理&lt;/span&gt;&lt;/span&gt;
-&lt;span&gt; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp;&lt;span style="color:#000000"&gt;List&lt;/span&gt;&lt;span style="color:#981a1a"&gt;&amp;lt;&lt;/span&gt;&lt;span style="color:#008855"&gt;String&lt;/span&gt;&lt;span style="color:#981a1a"&gt;&amp;gt;&lt;/span&gt; &lt;span style="color:#000000"&gt;tables&lt;/span&gt; &lt;span style="color:#981a1a"&gt;=&lt;/span&gt; &lt;span style="color:#000000"&gt;UnstructuredParser&lt;/span&gt;.&lt;span style="color:#000000"&gt;extractTables&lt;/span&gt;(&lt;span style="color:#000000"&gt;filePath&lt;/span&gt;);&lt;/span&gt;
-&lt;span&gt;&lt;span&gt;&lt;/span&gt;&lt;/span&gt;
-&lt;span&gt; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp;&lt;span style="color:#770088"&gt;return&lt;/span&gt; &lt;span style="color:#770088"&gt;new&lt;/span&gt; &lt;span style="color:#000000"&gt;DocumentChunk&lt;/span&gt;(&lt;span style="color:#000000"&gt;content&lt;/span&gt;, &lt;span style="color:#000000"&gt;tables&lt;/span&gt;);&lt;/span&gt;
-&lt;span&gt; &amp;nbsp;  }&lt;/span&gt;
-&lt;span&gt;}&lt;/span&gt;&lt;/pre&gt;
-
-&lt;h3 style="text-align:justify"&gt;&lt;span&gt;批量處理&lt;/span&gt;&lt;/h3&gt;
-
-&lt;pre style="margin-left:0; margin-right:0; text-align:left"&gt;&lt;span&gt;&lt;span style="color:#770088"&gt;import&lt;/span&gt; &lt;span style="color:#000000"&gt;com&lt;/span&gt;.&lt;span style="color:#000000"&gt;torchv&lt;/span&gt;.&lt;span style="color:#000000"&gt;infra&lt;/span&gt;.&lt;span style="color:#000000"&gt;unstructured&lt;/span&gt;.&lt;span style="color:#000000"&gt;UnstructuredParser&lt;/span&gt;;&lt;/span&gt;
-&lt;span&gt;&lt;span style="color:#770088"&gt;import&lt;/span&gt; &lt;span style="color:#000000"&gt;com&lt;/span&gt;.&lt;span style="color:#000000"&gt;torchv&lt;/span&gt;.&lt;span style="color:#000000"&gt;infra&lt;/span&gt;.&lt;span style="color:#000000"&gt;unstructured&lt;/span&gt;.&lt;span style="color:#000000"&gt;util&lt;/span&gt;.&lt;span style="color:#000000"&gt;UnstructuredUtils&lt;/span&gt;;&lt;/span&gt;
-&lt;span&gt;&lt;span&gt;&lt;/span&gt;&lt;/span&gt;
-&lt;span&gt;&lt;span style="color:#770088"&gt;public&lt;/span&gt; &lt;span style="color:#770088"&gt;class&lt;/span&gt; &lt;span style="color:#0000ff"&gt;BatchProcessor&lt;/span&gt; {&lt;/span&gt;
-&lt;span&gt;&lt;span&gt;&lt;/span&gt;&lt;/span&gt;
-&lt;span&gt; &amp;nbsp; &amp;nbsp;&lt;span style="color:#770088"&gt;public&lt;/span&gt; &lt;span style="color:#008855"&gt;void&lt;/span&gt; &lt;span style="color:#000000"&gt;processBatch&lt;/span&gt;(&lt;span style="color:#000000"&gt;List&lt;/span&gt;&lt;span style="color:#981a1a"&gt;&amp;lt;&lt;/span&gt;&lt;span style="color:#008855"&gt;String&lt;/span&gt;&lt;span style="color:#981a1a"&gt;&amp;gt;&lt;/span&gt; &lt;span style="color:#000000"&gt;filePaths&lt;/span&gt;) {&lt;/span&gt;
-&lt;span&gt; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp;&lt;span style="color:#000000"&gt;filePaths&lt;/span&gt;.&lt;span style="color:#000000"&gt;parallelStream&lt;/span&gt;()&lt;/span&gt;
-&lt;span&gt; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp;  .&lt;span style="color:#000000"&gt;filter&lt;/span&gt;(&lt;span style="color:#000000"&gt;UnstructuredUtils&lt;/span&gt;::&lt;span style="color:#000000"&gt;isSupportedFormat&lt;/span&gt;)&lt;/span&gt;
-&lt;span&gt; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp;  .&lt;span style="color:#000000"&gt;forEach&lt;/span&gt;(&lt;span style="color:#770088"&gt;this&lt;/span&gt;::&lt;span style="color:#000000"&gt;processFile&lt;/span&gt;);&lt;/span&gt;
-&lt;span&gt; &amp;nbsp;  }&lt;/span&gt;
-&lt;span&gt;&lt;span&gt;&lt;/span&gt;&lt;/span&gt;
-&lt;span&gt; &amp;nbsp; &amp;nbsp;&lt;span style="color:#770088"&gt;private&lt;/span&gt; &lt;span style="color:#008855"&gt;void&lt;/span&gt; &lt;span style="color:#000000"&gt;processFile&lt;/span&gt;(&lt;span style="color:#008855"&gt;String&lt;/span&gt; &lt;span style="color:#000000"&gt;filePath&lt;/span&gt;) {&lt;/span&gt;
-&lt;span&gt; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp;&lt;span style="color:#770088"&gt;try&lt;/span&gt; {&lt;/span&gt;
-&lt;span&gt; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp;&lt;span style="color:#008855"&gt;String&lt;/span&gt; &lt;span style="color:#000000"&gt;content&lt;/span&gt; &lt;span style="color:#981a1a"&gt;=&lt;/span&gt; &lt;span style="color:#000000"&gt;UnstructuredParser&lt;/span&gt;.&lt;span style="color:#000000"&gt;toMarkdownWithHtmlTables&lt;/span&gt;(&lt;span style="color:#000000"&gt;filePath&lt;/span&gt;);&lt;/span&gt;
-&lt;span&gt; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp;&lt;span style="color:#aa5500"&gt;// 保存或進一步處理內容&lt;/span&gt;&lt;/span&gt;
-&lt;span&gt; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp;&lt;span style="color:#000000"&gt;saveProcessedContent&lt;/span&gt;(&lt;span style="color:#000000"&gt;filePath&lt;/span&gt;, &lt;span style="color:#000000"&gt;content&lt;/span&gt;);&lt;/span&gt;
-&lt;span&gt; &amp;nbsp; &amp;nbsp; &amp;nbsp;  } &lt;span style="color:#770088"&gt;catch&lt;/span&gt; (&lt;span style="color:#000000"&gt;Exception&lt;/span&gt; &lt;span style="color:#000000"&gt;e&lt;/span&gt;) {&lt;/span&gt;
-&lt;span&gt; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp;&lt;span style="color:#000000"&gt;log&lt;/span&gt;.&lt;span style="color:#000000"&gt;error&lt;/span&gt;(&lt;span style="color:#aa1111"&gt;"處理文件失敗: {}"&lt;/span&gt;, &lt;span style="color:#000000"&gt;filePath&lt;/span&gt;, &lt;span style="color:#000000"&gt;e&lt;/span&gt;);&lt;/span&gt;
-&lt;span&gt; &amp;nbsp; &amp;nbsp; &amp;nbsp;  }&lt;/span&gt;
-&lt;span&gt; &amp;nbsp;  }&lt;/span&gt;
-&lt;span&gt;}&lt;/span&gt;&lt;/pre&gt;
-
-&lt;h3 style="text-align:justify"&gt;&lt;span&gt;錯誤處理和驗證&lt;/span&gt;&lt;/h3&gt;
-
-&lt;pre style="margin-left:0; margin-right:0; text-align:left"&gt;&lt;span&gt;&lt;span style="color:#770088"&gt;import&lt;/span&gt; &lt;span style="color:#000000"&gt;com&lt;/span&gt;.&lt;span style="color:#000000"&gt;torchv&lt;/span&gt;.&lt;span style="color:#000000"&gt;infra&lt;/span&gt;.&lt;span style="color:#000000"&gt;unstructured&lt;/span&gt;.&lt;span style="color:#000000"&gt;UnstructuredParser&lt;/span&gt;;&lt;/span&gt;
-&lt;span&gt;&lt;span style="color:#770088"&gt;import&lt;/span&gt; &lt;span style="color:#000000"&gt;com&lt;/span&gt;.&lt;span style="color:#000000"&gt;torchv&lt;/span&gt;.&lt;span style="color:#000000"&gt;infra&lt;/span&gt;.&lt;span style="color:#000000"&gt;unstructured&lt;/span&gt;.&lt;span style="color:#000000"&gt;util&lt;/span&gt;.&lt;span style="color:#000000"&gt;UnstructuredUtils&lt;/span&gt;;&lt;/span&gt;
-&lt;span&gt;&lt;span&gt;&lt;/span&gt;&lt;/span&gt;
-&lt;span&gt;&lt;span style="color:#770088"&gt;public&lt;/span&gt; &lt;span style="color:#770088"&gt;class&lt;/span&gt; &lt;span style="color:#0000ff"&gt;DocumentValidator&lt;/span&gt; {&lt;/span&gt;
-&lt;span&gt; &amp;nbsp; &amp;nbsp;&lt;/span&gt;
-&lt;span&gt; &amp;nbsp; &amp;nbsp;&lt;span style="color:#770088"&gt;public&lt;/span&gt; &lt;span style="color:#000000"&gt;ProcessingResult&lt;/span&gt; &lt;span style="color:#000000"&gt;validateAndProcess&lt;/span&gt;(&lt;span style="color:#008855"&gt;String&lt;/span&gt; &lt;span style="color:#000000"&gt;filePath&lt;/span&gt;) {&lt;/span&gt;
-&lt;span&gt; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp;&lt;span style="color:#aa5500"&gt;// 檢查文件格式&lt;/span&gt;&lt;/span&gt;
-&lt;span&gt; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp;&lt;span style="color:#770088"&gt;if&lt;/span&gt; (&lt;span style="color:#981a1a"&gt;!&lt;/span&gt;&lt;span style="color:#000000"&gt;UnstructuredUtils&lt;/span&gt;.&lt;span style="color:#000000"&gt;isSupportedFormat&lt;/span&gt;(&lt;span style="color:#000000"&gt;filePath&lt;/span&gt;)) {&lt;/span&gt;
-&lt;span&gt; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp;&lt;span style="color:#770088"&gt;return&lt;/span&gt; &lt;span style="color:#000000"&gt;ProcessingResult&lt;/span&gt;.&lt;span style="color:#000000"&gt;unsupportedFormat&lt;/span&gt;();&lt;/span&gt;
-&lt;span&gt; &amp;nbsp; &amp;nbsp; &amp;nbsp;  }&lt;/span&gt;
-&lt;span&gt; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp;&lt;/span&gt;
-&lt;span&gt; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp;&lt;span style="color:#770088"&gt;try&lt;/span&gt; {&lt;/span&gt;
-&lt;span&gt; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp;&lt;span style="color:#008855"&gt;String&lt;/span&gt; &lt;span style="color:#000000"&gt;content&lt;/span&gt; &lt;span style="color:#981a1a"&gt;=&lt;/span&gt; &lt;span style="color:#000000"&gt;UnstructuredParser&lt;/span&gt;.&lt;span style="color:#000000"&gt;toMarkdownWithHtmlTables&lt;/span&gt;(&lt;span style="color:#000000"&gt;filePath&lt;/span&gt;);&lt;/span&gt;
-&lt;span&gt; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp;&lt;span style="color:#000000"&gt;List&lt;/span&gt;&lt;span style="color:#981a1a"&gt;&amp;lt;&lt;/span&gt;&lt;span style="color:#008855"&gt;String&lt;/span&gt;&lt;span style="color:#981a1a"&gt;&amp;gt;&lt;/span&gt; &lt;span style="color:#000000"&gt;tables&lt;/span&gt; &lt;span style="color:#981a1a"&gt;=&lt;/span&gt; &lt;span style="color:#000000"&gt;UnstructuredParser&lt;/span&gt;.&lt;span style="color:#000000"&gt;extractTables&lt;/span&gt;(&lt;span style="color:#000000"&gt;filePath&lt;/span&gt;);&lt;/span&gt;
-&lt;span&gt; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp;&lt;/span&gt;
-&lt;span&gt; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp;&lt;span style="color:#770088"&gt;return&lt;/span&gt; &lt;span style="color:#000000"&gt;ProcessingResult&lt;/span&gt;.&lt;span style="color:#000000"&gt;success&lt;/span&gt;(&lt;span style="color:#000000"&gt;content&lt;/span&gt;, &lt;span style="color:#000000"&gt;tables&lt;/span&gt;);&lt;/span&gt;
-&lt;span&gt; &amp;nbsp; &amp;nbsp; &amp;nbsp;  } &lt;span style="color:#770088"&gt;catch&lt;/span&gt; (&lt;span style="color:#000000"&gt;RuntimeException&lt;/span&gt; &lt;span style="color:#000000"&gt;e&lt;/span&gt;) {&lt;/span&gt;
-&lt;span&gt; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp;&lt;span style="color:#770088"&gt;return&lt;/span&gt; &lt;span style="color:#000000"&gt;ProcessingResult&lt;/span&gt;.&lt;span style="color:#000000"&gt;error&lt;/span&gt;(&lt;span style="color:#000000"&gt;e&lt;/span&gt;.&lt;span style="color:#000000"&gt;getMessage&lt;/span&gt;());&lt;/span&gt;
-&lt;span&gt; &amp;nbsp; &amp;nbsp; &amp;nbsp;  }&lt;/span&gt;
-&lt;span&gt; &amp;nbsp;  }&lt;/span&gt;
-&lt;span&gt;}&lt;/span&gt;&lt;/pre&gt;
-
-&lt;h2 style="margin-left:0px; margin-right:0px"&gt;&lt;span&gt;🌟 為什麼選擇 TORCHV UNSTRUCTURED？&lt;/span&gt;&lt;/h2&gt;
-
-&lt;h3 style="text-align:justify"&gt;&lt;span&gt;適用於 RAG 應用&lt;/span&gt;&lt;/h3&gt;
-
-&lt;ul&gt;
-&lt;li&gt;
-&lt;p style="color:#111111; margin-left:.5rem; margin-right:0"&gt;&lt;span&gt;&lt;strong&gt;&lt;span&gt;結構化輸出&lt;/span&gt;&lt;/strong&gt;&lt;/span&gt;&lt;span&gt;：清潔、結構化的內容提取，完美適配嵌入向量生成&lt;/span&gt;&lt;/p&gt;
-&lt;/li&gt;
-&lt;li&gt;
-&lt;p style="color:#111111; margin-left:.5rem; margin-right:0"&gt;&lt;span&gt;&lt;strong&gt;&lt;span&gt;表格保持&lt;/span&gt;&lt;/strong&gt;&lt;/span&gt;&lt;span&gt;：維護表格關係，對文檔理解至關重要&lt;/span&gt;&lt;/p&gt;
-&lt;/li&gt;
-&lt;li&gt;
-&lt;p style="color:#111111; margin-left:.5rem; margin-right:0"&gt;&lt;span&gt;&lt;strong&gt;&lt;span&gt;豐富元數據&lt;/span&gt;&lt;/strong&gt;&lt;/span&gt;&lt;span&gt;：提取全面的文檔元數據，增強檢索效果&lt;/span&gt;&lt;/p&gt;
-&lt;/li&gt;
-&lt;/ul&gt;
-
-&lt;h3 style="text-align:justify"&gt;&lt;span&gt;適用於開發者&lt;/span&gt;&lt;/h3&gt;
-
-&lt;ul&gt;
-&lt;li&gt;
-&lt;p style="color:#111111; margin-left:.5rem; margin-right:0"&gt;&lt;span&gt;&lt;strong&gt;&lt;span&gt;簡單 API&lt;/span&gt;&lt;/strong&gt;&lt;/span&gt;&lt;span&gt;：直觀的接口設計，合理的默認配置&lt;/span&gt;&lt;/p&gt;
-&lt;/li&gt;
-&lt;li&gt;
-&lt;p style="color:#111111; margin-left:.5rem; margin-right:0"&gt;&lt;span&gt;&lt;strong&gt;&lt;span&gt;可擴展&lt;/span&gt;&lt;/strong&gt;&lt;/span&gt;&lt;span&gt;：基於插件的架構，支持自定義內容處理器&lt;/span&gt;&lt;/p&gt;
-&lt;/li&gt;
-&lt;li&gt;
-&lt;p style="color:#111111; margin-left:.5rem; margin-right:0"&gt;&lt;span&gt;&lt;strong&gt;&lt;span&gt;生產就緒&lt;/span&gt;&lt;/strong&gt;&lt;/span&gt;&lt;span&gt;：經過實戰驗證，具備全面的錯誤處理機制&lt;/span&gt;&lt;/p&gt;
-&lt;/li&gt;
-&lt;/ul&gt;
-
-&lt;h3 style="text-align:justify"&gt;&lt;span&gt;性能優化&lt;/span&gt;&lt;/h3&gt;
-
-&lt;ul&gt;
-&lt;li&gt;
-&lt;p style="color:#111111; margin-left:.5rem; margin-right:0"&gt;&lt;span&gt;&lt;strong&gt;&lt;span&gt;內存高效&lt;/span&gt;&lt;/strong&gt;&lt;/span&gt;&lt;span&gt;：大文檔的流式處理&lt;/span&gt;&lt;/p&gt;
-&lt;/li&gt;
-&lt;li&gt;
-&lt;p style="color:#111111; margin-left:.5rem; margin-right:0"&gt;&lt;span&gt;&lt;strong&gt;&lt;span&gt;快速處理&lt;/span&gt;&lt;/strong&gt;&lt;/span&gt;&lt;span&gt;：優化算法確保快速解析&lt;/span&gt;&lt;/p&gt;
-&lt;/li&gt;
-&lt;li&gt;
-&lt;p style="color:#111111; margin-left:.5rem; margin-right:0"&gt;&lt;span&gt;&lt;strong&gt;&lt;span&gt;可擴展&lt;/span&gt;&lt;/strong&gt;&lt;/span&gt;&lt;span&gt;：專為高吞吐量文檔處理而設計&lt;/span&gt;&lt;/p&gt;
-&lt;/li&gt;
-&lt;/ul&gt;
-
-&lt;h2 style="margin-left:0px; margin-right:0px"&gt;&lt;span&gt;📚 文檔&lt;/span&gt;&lt;/h2&gt;
-
-&lt;ul&gt;
-&lt;li&gt;
-&lt;p style="color:#111111; margin-left:.5rem; margin-right:0"&gt;&lt;span&gt;&lt;a href="https://torchv.github.io/torchv-unstructured/"&gt;&lt;span&gt;API 文檔&lt;/span&gt;&lt;/a&gt;&lt;/span&gt;&lt;/p&gt;
-&lt;/li&gt;
-&lt;li&gt;
-&lt;p style="color:#111111; margin-left:.5rem; margin-right:0"&gt;&lt;span&gt;&lt;a href="https://github.com/torchv/torchv-unstructured-examples"&gt;&lt;span&gt;示例倉庫&lt;/span&gt;&lt;/a&gt;&lt;/span&gt;&lt;/p&gt;
-&lt;/li&gt;
-&lt;li&gt;
-&lt;p style="color:#111111; margin-left:.5rem; margin-right:0"&gt;&lt;span&gt;&lt;a href="https://www.oschina.net/p/docs/migration.md"&gt;&lt;span&gt;遷移指南&lt;/span&gt;&lt;/a&gt;&lt;/span&gt;&lt;/p&gt;
-&lt;/li&gt;
-&lt;/ul&gt;
-
-&lt;h2 style="margin-left:0px; margin-right:0px"&gt;&lt;span&gt;🤝 貢獻&lt;/span&gt;&lt;/h2&gt;
-
-&lt;p style="color:#111111; margin-left:0; margin-right:0; text-align:justify"&gt;&lt;span&gt;我們歡迎貢獻！請查看我們的&lt;/span&gt;&lt;span&gt;&lt;a href="https://www.oschina.net/p/CONTRIBUTING.md"&gt;&lt;span&gt;貢獻指南&lt;/span&gt;&lt;/a&gt;&lt;/span&gt;&lt;span&gt;瞭解詳情。&lt;/span&gt;&lt;/p&gt;
-
-&lt;ol start=""&gt;
-&lt;li&gt;
-&lt;p style="color:#111111; margin-left:.5rem; margin-right:0"&gt;&lt;span&gt;Fork 這個倉庫&lt;/span&gt;&lt;/p&gt;
-&lt;/li&gt;
-&lt;li&gt;
-&lt;p style="color:#111111; margin-left:.5rem; margin-right:0"&gt;&lt;span&gt;創建你的功能分支 (&lt;/span&gt;&lt;span&gt;&lt;code&gt;git checkout -b feature/amazing-feature&lt;/code&gt;&lt;/span&gt;&lt;span&gt;)&lt;/span&gt;&lt;/p&gt;
-&lt;/li&gt;
-&lt;li&gt;
-&lt;p style="color:#111111; margin-left:.5rem; margin-right:0"&gt;&lt;span&gt;提交你的更改 (&lt;/span&gt;&lt;span&gt;&lt;code&gt;git commit -m 'Add some amazing feature'&lt;/code&gt;&lt;/span&gt;&lt;span&gt;)&lt;/span&gt;&lt;/p&gt;
-&lt;/li&gt;
-&lt;li&gt;
-&lt;p style="color:#111111; margin-left:.5rem; margin-right:0"&gt;&lt;span&gt;推送到分支 (&lt;/span&gt;&lt;span&gt;&lt;code&gt;git push origin feature/amazing-feature&lt;/code&gt;&lt;/span&gt;&lt;span&gt;)&lt;/span&gt;&lt;/p&gt;
-&lt;/li&gt;
-&lt;li&gt;
-&lt;p style="color:#111111; margin-left:.5rem; margin-right:0"&gt;&lt;span&gt;打開一個 Pull Request&lt;/span&gt;&lt;/p&gt;
-&lt;/li&gt;
-&lt;/ol&gt;
-
-&lt;h2 style="margin-left:0px; margin-right:0px"&gt;&lt;span&gt;📄 許可證&lt;/span&gt;&lt;/h2&gt;
-
-&lt;p style="color:#111111; margin-left:0; margin-right:0; text-align:justify"&gt;&lt;span&gt;本項目基於 Apache License 2.0 許可證 - 查看&lt;/span&gt;&lt;span&gt;&lt;a href="https://www.oschina.net/p/LICENSE"&gt;&lt;span&gt;LICENSE&lt;/span&gt;&lt;/a&gt;&lt;/span&gt;&lt;span&gt;文件瞭解詳情。&lt;/span&gt;&lt;/p&gt;
-
-&lt;h2 style="margin-left:0px; margin-right:0px"&gt;&lt;span&gt;🙏 致謝&lt;/span&gt;&lt;/h2&gt;
-
-&lt;ul&gt;
-&lt;li&gt;
-&lt;p style="color:#111111; margin-left:.5rem; margin-right:0"&gt;&lt;span&gt;&lt;a href="https://tika.apache.org/"&gt;&lt;span&gt;Apache Tika&lt;/span&gt;&lt;/a&gt;&lt;/span&gt;&lt;span&gt; - 內容分析工具包&lt;/span&gt;&lt;/p&gt;
-&lt;/li&gt;
-&lt;li&gt;
-&lt;p style="color:#111111; margin-left:.5rem; margin-right:0"&gt;&lt;span&gt;&lt;a href="https://poi.apache.org/"&gt;&lt;span&gt;Apache POI&lt;/span&gt;&lt;/a&gt;&lt;/span&gt;&lt;span&gt; - Microsoft 文檔的 Java API&lt;/span&gt;&lt;/p&gt;
-&lt;/li&gt;
-&lt;li&gt;
-&lt;p style="color:#111111; margin-left:.5rem; margin-right:0"&gt;&lt;span&gt;&lt;a href="https://pdfbox.apache.org/"&gt;&lt;span&gt;PDFBox&lt;/span&gt;&lt;/a&gt;&lt;/span&gt;&lt;span&gt; - PDF 文檔操作庫&lt;/span&gt;&lt;/p&gt;
-&lt;/li&gt;
-&lt;/ul&gt;
-
-&lt;h2 style="margin-left:0px; margin-right:0px"&gt;&lt;span&gt;📞 支持&lt;/span&gt;&lt;/h2&gt;
-
-&lt;ul&gt;
-&lt;li&gt;
-&lt;p style="color:#111111; margin-left:.5rem; margin-right:0"&gt;&lt;span&gt;📧 郵箱：&lt;/span&gt;&lt;span&gt;&lt;a href="mailto:xiaoymin@foxmail.com"&gt;xiaoymin@foxmail.com&lt;/a&gt;&lt;/span&gt;&lt;/p&gt;
-&lt;/li&gt;
-&lt;li&gt;
-&lt;p style="color:#111111; margin-left:.5rem; margin-right:0"&gt;&lt;span&gt;🐛 問題反饋：&lt;/span&gt;&lt;span&gt;&lt;a href="https://github.com/torchv/torchv-unstructured/issues"&gt;&lt;span&gt;GitHub Issues&lt;/span&gt;&lt;/a&gt;&lt;/span&gt;&lt;/p&gt;
-&lt;/li&gt;
-&lt;li&gt;
-&lt;p style="color:#111111; margin-left:.5rem; margin-right:0"&gt;&lt;span&gt;💬 討論：&lt;/span&gt;&lt;span&gt;&lt;a href="https://github.com/torchv/torchv-unstructured/discussions"&gt;&lt;span&gt;GitHub Discussions&lt;/span&gt;&lt;/a&gt;&lt;/span&gt;&lt;/p&gt;
-&lt;/li&gt;
-&lt;/ul&gt;
-
-&lt;div style="text-align:justify"&gt;
-&lt;hr&gt;&lt;/div&gt;
-
-&lt;p style="color:#111111; margin-left:0; margin-right:0; text-align:justify"&gt;&lt;span&gt;由 &lt;/span&gt;&lt;span&gt;&lt;a href="https://www.torchv.com/"&gt;&lt;span&gt;TorchV 團隊&lt;/span&gt;&lt;/a&gt;&lt;/span&gt;&lt;span&gt; 用 ❤️ 製作&lt;/span&gt;&lt;/p&gt;
-
-                                                                    &lt;/div&gt;
-                                                                </description>
-      <link>https://www.oschina.net/p/torchv-unstructured</link>
-      <guid isPermaLink="false">https://www.oschina.net/p/torchv-unstructured</guid>
-      <pubDate>Wed, 16 Jul 2025 09:03:00 GMT</pubDate>
-    </item>
-    <item>
-      <title>李沐發佈開源 TTS 語言大模型 Higgs Audio v2</title>
-      <description>&lt;div class="content"&gt;
-                                                                    
-                                                        &lt;p&gt;知名 AI 技術創業者李沐和其團隊 Boson.ai&amp;nbsp;發佈了開源 TTS 語言大模型&amp;nbsp;&lt;strong&gt;Higgs Audio v2&lt;/strong&gt;，該模型不僅支持文本轉語音，還能生成多語言自然多説話人對話、自動調整韻律、使用克隆聲音哼唱旋律，甚至同時生成語音和背景音樂 。&lt;/p&gt; 
-&lt;p&gt;Higgs Audio v2 整合了 1000 萬小時語音數據到 LLM 文本訓練中，在 &lt;strong&gt;EmergentTTS-Eval&lt;/strong&gt; 基準測試中表現優異（尤其在「情緒」和「問題」類別中，較 &lt;strong&gt;GPT-4o-mini-tts&lt;/strong&gt; 分別高出 75.7% 和 55.7% 的勝率），在傳統 TTS 基準測試中也取得了最佳性能。&lt;/p&gt; 
-&lt;p&gt;&lt;img alt="" src="https://oscimg.oschina.net/oscnet/up-e48b7c56c84559072bacc4563a1695cd45d.png" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;p&gt;&lt;img alt="" src="https://oscimg.oschina.net/oscnet/up-c8f511e25c2103e76f04d3fda3dcb16a3a5.png" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;p&gt;&lt;img alt="" src="https://oscimg.oschina.net/oscnet/up-7d2efc44d02a93d4f5dacd62985a24b7d09.png" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;p&gt;以下是關於 Higgs Audio V2 的詳細介紹：&lt;/p&gt; 
-&lt;ul&gt; 
- &lt;li&gt;&lt;strong&gt;模型特點&lt;/strong&gt; 
-  &lt;ul&gt; 
-   &lt;li&gt;&lt;strong&gt;多模態能力&lt;/strong&gt;：不僅能處理文本，還能同時理解並生成語音，可完成簡單的文本轉語音，也能實現更復雜的任務，如寫一首歌並唱出來，再加上配樂。&lt;/li&gt; 
-   &lt;li&gt;&lt;strong&gt;獨特功能&lt;/strong&gt;：具備生成多種語言的自然多説話人對話、旁白過程中的自動韻律調整、使用克隆聲音進行旋律哼唱以及同時生成語音和背景音樂等能力。&lt;/li&gt; 
-   &lt;li&gt;&lt;strong&gt;性能優勢&lt;/strong&gt;：在 emergenttts-eval 基準上，相較於其他模型，性能遙遙領先，尤其是在「情緒」和「問題」類別中，相比 gpt-4o-mini-tts 高出了 75.7% 和 55.7% 的勝率。在 seed-tts eval 和情感語音數據集（esd）等傳統 tts 基準測試中也取得了最佳性能。&lt;/li&gt; 
-  &lt;/ul&gt; &lt;/li&gt; 
- &lt;li&gt;&lt;strong&gt;技術原理&lt;/strong&gt; 
-  &lt;ul&gt; 
-   &lt;li&gt;&lt;strong&gt;數據處理&lt;/strong&gt;：將語音信號以每秒 25 幀的速度運行，通過統一的離散化音頻分詞器，將其表示為長度為 10 的編號序列，也就是一個個 token，以捕獲語義和聲學特徵。&lt;/li&gt; 
-   &lt;li&gt;&lt;strong&gt;模型架構&lt;/strong&gt;：利用預訓練的大型語言模型，將其強大的語言理解、語境感知和推理能力擴展到音頻任務。通過在大量的配對文本-音頻數據集上端到端地訓練大型語言模型，實現了語音和文本的整合。&lt;/li&gt; 
-   &lt;li&gt;&lt;strong&gt;上下文學習&lt;/strong&gt;：融入了上下文學習，使模型能夠快速適應而無需重新訓練。通過簡單的提示，例如簡短的參考音頻樣本，可以即時進行零樣本語音克隆，匹配説話風格。&lt;/li&gt; 
-  &lt;/ul&gt; &lt;/li&gt; 
- &lt;li&gt;&lt;strong&gt;應用場景&lt;/strong&gt; 
-  &lt;ul&gt; 
-   &lt;li&gt;&lt;strong&gt;實時語音聊天&lt;/strong&gt;：可實現低延遲、理解情緒並表達情緒的自然語音交互，而不僅僅是機械的問答，適用於虛擬主播、實時語音助手等場景。&lt;/li&gt; 
-   &lt;li&gt;&lt;strong&gt;音頻內容創作&lt;/strong&gt;：能夠生成自然多説話人對話、旁白等音頻內容，為有聲讀物、互動培訓和動態故事講述等提供支持。&lt;/li&gt; 
-   &lt;li&gt;&lt;strong&gt;語音克隆&lt;/strong&gt;：可以複製特定人物的聲音，用於製作鬼畜視頻、虛擬主播等，為娛樂和創意領域提供了新的可能性。&lt;/li&gt; 
-  &lt;/ul&gt; &lt;/li&gt; 
-&lt;/ul&gt; 
-&lt;p&gt;該模型代碼已全部開源至 GitHub：https://github.com/boson-ai/higgs-audio，和 Hugging Face（https://huggingface.co/bosonai/higgs-audio-v2-generation-3B-base），支持本地安裝（需 GPU 版 PyTorch 或使用 Docker 簡化安裝）。&lt;/p&gt;
-                                                                                &lt;/div&gt;
-                                                                            </description>
-      <link>https://www.oschina.net/news/361946</link>
-      <guid isPermaLink="false">https://www.oschina.net/news/361946</guid>
-      <pubDate>Wed, 16 Jul 2025 08:49:00 GMT</pubDate>
-      <author>來源: OSCHINA</author>
-    </item>
-    <item>
-      <title>21 歲 MIT 輟學生 AI 創業團隊獲得 3200 萬美元融資</title>
-      <description>&lt;div class="content"&gt;
-                                                                    
-                                                        &lt;p&gt;&lt;span style="color:#000000"&gt;來自麻省理工學院（MIT）的兩位 21 歲輟學生卡倫・考希克 (Karun Kaushik) 和塞林・科卡拉 (Selin Kocalar) 所創辦的的 AI 合規初創公司 Delve 已完成 3200 萬美元的 A 輪融資。目前，Delve 的估值已高達 3 億美元。&lt;/span&gt;&lt;/p&gt; 
-&lt;p&gt;&lt;span style="color:#000000"&gt;Delve 最初的目標是開發一款 AI 醫療記錄助手，幫助醫生處理病人文檔，但在面臨繁瑣的 HIPAA 合規要求後，他們迅速調整了方向，決定幫助其他公司更快、更高效地達成合規目標。&lt;/span&gt;&lt;/p&gt; 
-&lt;p&gt;&lt;span style="color:#000000"&gt;&lt;img alt="" height="202" src="https://oscimg.oschina.net/oscnet/up-e4be3c97d6c432687d0e90c9b808bdf6d7c.png" width="500" referrerpolicy="no-referrer"&gt;&lt;/span&gt;&lt;/p&gt; 
-&lt;p&gt;&lt;span style="color:#000000"&gt;自成立以來，Delve 的客户數量已從今年 1 月的 100 家激增至 500 家，其中不乏如 Lovable、Bland 和 Wispr Flow 等快速成長的 AI 獨角獸。其核心技術是利用 AI 代理來自動化合規工作，減少人工成本和時間的消耗。&lt;/span&gt;&lt;/p&gt; 
-&lt;p&gt;&lt;span style="color:#000000"&gt;創始人們表示，傳統的合規流程往往依賴郵件、Slack 和共享驅動器等不規範的手段，這使得企業在擴展和運營時面臨重重困難。Delve 通過與客户現有工具的整合，讓這些 AI 代理在後台默默工作，自動收集證據、撰寫報告和更新審計日誌，實現合規工作流程的實時自動化。&lt;/span&gt;&lt;/p&gt; 
-&lt;p&gt;&lt;span style="color:#000000"&gt;Delve 的成功並非偶然，投資方 Insight Partners 對其未來發展寄予厚望，認為合規的現代化將推動企業整個運營的升級。Kocalar 指出，隨着客户需求的多樣化，Delve 計劃將業務範圍擴展到網絡安全、風險管理及內部治理等領域，力爭在未來自動化更多的後台業務。&lt;/span&gt;&lt;/p&gt; 
-&lt;p&gt;&lt;span style="color:#000000"&gt;當然，市場競爭同樣激烈，各類 AI 企業和大型實驗室如 OpenAI 也在推出各種通用代理工具來自動化業務流程。但 Kocalar 認為，這些競爭者的出現反而驗證了 Delve 的商業模式和市場需求。憑藉在合規領域的深入知識和專業技術，Delve 期待在這個不斷變化的市場中保持領先地位。&lt;/span&gt;&lt;/p&gt;
-                                                                                &lt;/div&gt;
-                                                                            </description>
-      <link>https://www.oschina.net/news/361941</link>
-      <guid isPermaLink="false">https://www.oschina.net/news/361941</guid>
-      <pubDate>Wed, 16 Jul 2025 08:37:00 GMT</pubDate>
-      <author>來源: OSCHINA</author>
-    </item>
-    <item>
-      <title>AI 將在五年內成為企業生存的 「基本技能」</title>
-      <description>&lt;div class="content"&gt;
-                                                                    
-                                                        &lt;p style="color:#242424; margin-left:0; margin-right:0; text-align:left"&gt;美國科技億萬富翁馬克・庫班最近在接受採訪時表示，人工智能（AI）將在未來五年內成為每個職場人士必備的 「基本技能」，就像電子郵件和 Excel 軟件一樣普及。他強調，企業主如何有效利用人工智能將直接影響他們在未來幾年的競爭力和成功。&lt;/p&gt; 
-&lt;p style="color:#242424; margin-left:0; margin-right:0; text-align:left"&gt;&lt;img height="340" src="https://oscimg.oschina.net/oscnet/up-6045b74ea4f19a7984f7137d2b1c96ff8a2.png" width="500" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;p style="color:#242424; margin-left:0; margin-right:0; text-align:left"&gt;庫班提到，在接下來的十年內，人工智能助手將極大改變工作模式。他預測，未來會有越來越多的人選擇自己創業，藉助人工智能的幫助，單個創始人將能夠承擔起一個完整團隊的工作。這一變化不僅能夠提升個人的工作效率，還能夠為更多人打開創業的大門。&lt;/p&gt; 
-&lt;p style="color:#242424; margin-left:0; margin-right:0; text-align:left"&gt;他指出，企業主在利用人工智能的過程中，必須快速做出決策並行動。他表示:「如果你沒有利用人工智能來更快地決策，你就會落後於競爭對手。」 庫班將人工智能視為企業主可以投資的 「團隊成員」，它能夠協助企業主完成多個角色的工作，包括運營副總裁、銷售代表、數據分析師及法律顧問，而這些角色的工作費用將大幅降低。&lt;/p&gt; 
-&lt;p style="color:#242424; margin-left:0; margin-right:0; text-align:left"&gt;不過，庫班也提醒企業家們，儘管 AI 具有強大的能力，他們在使用人工智能時仍需謹慎。他建議將人工智能視作 「最聰明的實習生」，不僅要提出正確的問題，還要認真審核其提供的答案。他指出，許多企業家在當前環境中面臨的&lt;span&gt;最大&lt;/span&gt;挑戰是 「恐懼和資金」。然而，人工智能代理的出現，將幫助那些由於招聘成本而無法進入某一行業的創業者，打破這一壁壘。&lt;/p&gt; 
-&lt;p style="color:#242424; margin-left:0; margin-right:0; text-align:left"&gt;庫班總結道，人工智能不僅是工具，更是企業家們的強大槓桿。成功的企業家將懂得如何有效利用這一技術，確保在競爭中立於不敗之地。他強調:「最終，人工智能是一個乘數，善用它，但不要被它操控。」&lt;/p&gt;
-                                                                                &lt;/div&gt;
-                                                                            </description>
-      <link>https://www.oschina.net/news/361931</link>
-      <guid isPermaLink="false">https://www.oschina.net/news/361931</guid>
-      <pubDate>Wed, 16 Jul 2025 07:40:00 GMT</pubDate>
-      <author>來源: OSCHINA</author>
-    </item>
-    <item>
-      <title>亞馬遜雲科技上海 AI 研究院解散</title>
-      <description>&lt;div class="content"&gt;
-                                                                    
-                                                        &lt;p&gt;AWS 亞馬遜雲科技上海 AI 研究院的首席應用科學家王敏捷發朋友圈稱，「剛收到通知，AWS 亞馬遜雲科技上海 AI 研究院（也是 AWS 最後一個海外研究院）正式解散。」&lt;/p&gt; 
-&lt;p&gt;&lt;img alt="" src="https://oscimg.oschina.net/oscnet/up-0bf820d1cb694fdf814a9c083a90582b673.png" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;p&gt;王敏捷感慨道，「近 6 年帶隊時光，趕上了外企研究院的黃金週期，更得益於張崢老師的細心指導，有幸成為 AWS 亞太地區最年輕的首席應用科學家。」&lt;/p&gt; 
-&lt;p&gt;今日，亞馬遜雲科技就上海 AI 研究院解散一事&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fbaijiahao.baidu.com%2Fs%3Fid%3D1838398566569114998%26wfr%3Dspider%26for%3Dpc"&gt;回應新浪科技稱&lt;/a&gt;：「經過對公司組織、發展重點及未來戰略方向的深入評估，我們決定對亞馬遜雲科技部分團隊進行人員精簡。」&lt;/p&gt; 
-&lt;p&gt;亞馬遜雲科技表示，「做出這些決定是非常艱難的，我們將全力支持員工順利過渡，我們做出這些必要的決定，是為了持續投資、優化資源，為客户帶來更多的創新」。&lt;/p&gt; 
-&lt;p&gt;今年以來，已有多家科技巨頭對其在華研發業務進行了調整。&lt;/p&gt; 
-&lt;p&gt;2025 年 3 月，IBM 關閉了在中國運營了 32 年的研發部門，另外，有媒體報道微軟也在逐步關閉其上海 AI 實驗室，並將數百名專家搬遷至美國、澳大利亞、愛爾蘭等地。今年 6 月，花旗集團宣佈，作為在全球持續推進的簡化工作的一部分，花旗將精簡位於中國上海和大連的全球技術解決中心，減少約 3500 名技術人員。&lt;/p&gt;
-                                                                                &lt;/div&gt;
-                                                                            </description>
-      <link>https://www.oschina.net/news/361930</link>
-      <guid isPermaLink="false">https://www.oschina.net/news/361930</guid>
-      <pubDate>Wed, 16 Jul 2025 07:37:00 GMT</pubDate>
-      <author>來源: OSCHINA</author>
-    </item>
-    <item>
-      <title>Fedora 考慮放棄 DVD 光盤啓動支持</title>
-      <description>&lt;div class="content"&gt;
-                                                                    
-                                                        &lt;p&gt;Fedora 項目正在向其用户和開發者社區徵求反饋，探討是否可能更新其發佈標準，使其不再阻止光盤啓動問題（DVD 映像），以及是否繼續將基於 Intel 的 Mac 的雙啓動問題視為發佈阻礙。&lt;/p&gt; 
-&lt;p&gt;提出的&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fdiscussion.fedoraproject.org%2Ft%2Fproposal-drop-optical-media-boot-release-criterion%2F160524" target="_blank"&gt;第一項建議&lt;/a&gt;是，是否放棄 Fedora 發佈標準中關於光盤啓動支持的內容。這涉及 Fedora 發行版安裝程序映像，這些映像必須在寫入光盤（DVD）後才能啓動。Fedora 已於 2020 年正式停止測試光盤支持，目前他們正在考慮使其不再阻止任何已報告的問題：&lt;/p&gt; 
-&lt;blockquote&gt; 
- &lt;p&gt;自 2020 年以來，質量團隊不再被要求測試光學介質，但發現的任何問題仍然可能成為阻礙。我們不太喜歡這個解決方案（阻止我們未測試的內容），但測試光學啓動實在太耗時，而且已經很小眾了。五年後的今天，我們認為是時候放棄整個標準了。光學啓動的重要性早已不復存在，我們認為是時候將其從名為發佈標準的「關鍵功能列表」中移除了。這不會為我們節省太多時間（我不記得過去幾年出現過任何引人注目的光學啓動問題），但它可以稍微簡化我們的測試矩陣（使其更易於閲讀），解決發佈阻止狀態和質量覆蓋範圍之間的矛盾，並且如果發現問題，它可以讓我們丟棄仍然準備好的 DVD 驅動器和介質（但可能已經無法使用了）。&lt;/p&gt; 
-&lt;/blockquote&gt; 
-&lt;p&gt;&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fwww.phoronix.com%2Fnews%2F%3D%2522https%3A%2F%2Fdiscussion.fedoraproject.org%2Ft%2Fproposal-drop-intel-based-macbook-dual-boot-release-criterion%2F160525%2522" target="_blank"&gt;第二項提案&lt;/a&gt;是關於取消基於 Intel 的 Apple MacBook 雙啓動發佈標準。當前的發佈標準指出，Fedora 安裝程序必須能夠與基於 Intel 的 Mac 電腦上現有的 macOS 安裝一起雙啓動/安裝到可用空間中。&lt;/p&gt; 
-&lt;blockquote&gt; 
- &lt;p&gt;「這個標準正在隨着時間的推移而被淘汰，因為蘋果多年前就停止生產基於英特爾的 Mac（取而代之的是「Apple Silicon」 M* 處理器，目前 Fedora 並不支持這種處理器）。最後幾款可以合理使用 Fedora 的 MacBook 是 2017 年款，它仍然包含 T1 安全芯片（較新的型號有 T2 芯片，並且它們的內部鍵盤和觸摸板不適用於 Fedora 內核）。2017 年款的系統更新支持將於今年結束，老款已經過時。這意味着 2017 年之前款的用户很可能已經切換到 Fedora，如果他們願意的話，2017 年款的用户可能會在今年這樣做，而且未來不會有這樣的用户，因為他們的硬件得不到 Fedora 的良好支持。」&lt;/p&gt; 
-&lt;/blockquote&gt; 
-&lt;p&gt;這主要涉及 2017 年及更早的 Apple Mac，因為配備 T2 安全芯片的較新 Apple Mac 目前在 Fedora Linux 上運行不佳。這不會影響 Apple Silicon Mac 的任何變更，只會影響 Intel x86_64 系統。&lt;/p&gt; 
-&lt;p&gt;由於 Fedora 質量團隊目前對剩餘的 Intel Mac 的訪問權限較少，並且能夠投入較少時間來修復這些老舊系統的任何問題，因此現在的願望是不要將任何 Apple Mac 雙啓動問題視為發佈阻礙。&lt;/p&gt;
-                                                                                &lt;/div&gt;
-                                                                            </description>
-      <link>https://www.oschina.net/news/361929</link>
-      <guid isPermaLink="false">https://www.oschina.net/news/361929</guid>
-      <pubDate>Wed, 16 Jul 2025 07:31:00 GMT</pubDate>
-      <author>來源: OSCHINA</author>
-    </item>
-    <item>
-      <title>周鴻禕：最近都採購華為芯片，英偉達 H20 性價比不高</title>
-      <description>&lt;div class="content"&gt;
-                                                                    
-                                                        &lt;p&gt;7 月 23 日，360 集團創始人周鴻禕&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fwww.yicai.com%2Fnews%2F102737141.html"&gt;對第一財經記者表示&lt;/a&gt;，360 的芯片採購正轉向國產芯片，最近採購的都是華為的產品，未涉及英偉達 H20 芯片。&lt;/p&gt; 
-&lt;p&gt;他坦言，儘管國產芯片與英偉達產品存在差距，但必須堅持使用，因為只有通過大量應用，才能推動國產芯片持續改進。&lt;/p&gt; 
-&lt;p&gt;&lt;img alt="" src="https://static.oschina.net/uploads/space/2025/0723/152238_twYV_2720166.png" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;p&gt;H20 是英偉達針對中國市場推出的 H100 簡化版，採用 Hopper 架構和 CoWoS 封裝技術，但性能差距明顯。周鴻禕分析，H20 更適合 AI 推理任務，而推理對芯片要求較低，無需高速互聯和集羣部署。在此領域，國產芯片性價比更高，使得定位中間的 H20 顯得尷尬。當前美國芯片出口限制背景下，華為等企業加大研發，其昇騰系列芯片性能逐步提升，部分領域已超越 H20。360 的選擇既獲性價比優勢，也助力國產芯片產業迭代，實現雙贏。&lt;/p&gt; 
-&lt;p&gt;此前，360 已採購約 1000 片華為昇騰 910B AI 芯片，併合作將 AI 框架移植到該芯片上。&lt;/p&gt;
-                                                                                &lt;/div&gt;
-                                                                            </description>
-      <link>https://www.oschina.net/news/361928</link>
-      <guid isPermaLink="false">https://www.oschina.net/news/361928</guid>
-      <pubDate>Wed, 16 Jul 2025 07:24:00 GMT</pubDate>
       <author>來源: OSCHINA</author>
     </item>
   </channel>
