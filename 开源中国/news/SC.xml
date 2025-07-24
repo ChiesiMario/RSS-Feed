@@ -7,8 +7,445 @@
     <generator>RSSHub</generator>
     <webMaster>contact@rsshub.app (RSSHub)</webMaster>
     <language>zh-cn</language>
-    <lastBuildDate>Wed, 23 Jul 2025 21:43:01 GMT</lastBuildDate>
+    <lastBuildDate>Thu, 24 Jul 2025 02:45:48 GMT</lastBuildDate>
     <ttl>5</ttl>
+    <item>
+      <title>抖音集团基于 Flink 的亿级 RPS 实时计算优化实践</title>
+      <description>&lt;div class="content"&gt;
+                                                                                                                    
+                                                                                                                                                    &lt;p&gt;&lt;img src="https://oscimg.oschina.net/oscnet/up-299b0ad831e8aa86ddb446bf5085c13099e.jpg" alt="" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;blockquote&gt; 
+ &lt;p&gt;**摘要：**本文整理自抖音集团数据工程师陶王飞和羊艺超老师，在&amp;nbsp;Flink&amp;nbsp;Forward&amp;nbsp;Asia&amp;nbsp;2024&amp;nbsp;生产实践（一）专场中的分享主要内容主要分为以下四个部分：&lt;/p&gt; 
+ &lt;p&gt;1、现状与痛点&lt;/p&gt; 
+ &lt;p&gt;2、链路通用优化&lt;/p&gt; 
+ &lt;p&gt;3、业务场景优化&lt;/p&gt; 
+ &lt;p&gt;4、未来规划&lt;/p&gt; 
+&lt;/blockquote&gt; 
+&lt;span id="OSC_h2_1"&gt;&lt;/span&gt; 
+&lt;h2&gt;01、现状与痛点&lt;/h2&gt; 
+&lt;span id="OSC_h3_2"&gt;&lt;/span&gt; 
+&lt;h3&gt;1.1&amp;nbsp;业务现状&lt;/h3&gt; 
+&lt;p&gt;&lt;img src="https://oscimg.oschina.net/oscnet//31bfc2c668fca07ca815665dc86dfe11.png" alt="" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p&gt;抖音的主要业务场景为视频和直播，实时数据在其中有着广泛应用，如实时大屏、实时预警、对内实时分析（如大盘生态监控）、实时榜单以及为推荐提供实时特征数据等。&lt;/p&gt; 
+&lt;p&gt;视频场景流量巨大，晚高峰整体流量达亿级 RPS；直播场景则状态数据量大，因为业务上直播间开关播时间无限制，导致存在许多超长周期存储聚合需求。&lt;/p&gt; 
+&lt;span id="OSC_h3_3"&gt;&lt;/span&gt; 
+&lt;h3&gt;1.2&amp;nbsp;问题挑战&lt;/h3&gt; 
+&lt;p&gt;（1）实时数仓架构图&lt;/p&gt; 
+&lt;p&gt;&lt;img src="https://oscimg.oschina.net/oscnet//68bd7c819883b62cc8ca999547327819.png" alt="" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p&gt;数据源层包括客户端埋点、服务端日志以及业务库数据。数仓的分层使用 Flink 计算，依次为 ODS 层（数据源层）、DWD 层（进行维表关联与简单数据处理）、DWS 层（指标计算）和 APP 层（针对具体应用场景开发），最终将数据输出至下游存储。下游存储依据业务场景选择不同，ToC 场景多使用内部的 KV 存储引擎 Abase，分析型场景及对内产品、平台则使用 ClickHouse 或 Doris，以供下游业务使用。&lt;/p&gt; 
+&lt;p&gt;&lt;strong&gt;（2）问题挑战&lt;/strong&gt;&lt;/p&gt; 
+&lt;p&gt;在开发过程中，主要面临着三个问题：&lt;/p&gt; 
+&lt;p&gt;其一，由于数据量大且计算复杂，致使链路稳定性差，任务频繁失败；&lt;/p&gt; 
+&lt;p&gt;其二，资源消耗巨大，整体计算资源已达 30 万 core；&lt;/p&gt; 
+&lt;p&gt;其三，任务异常恢复缓慢，晚高峰时异常恢复时长 30+分钟。&lt;/p&gt; 
+&lt;span id="OSC_h2_4"&gt;&lt;/span&gt; 
+&lt;h2&gt;02、链路通用优化&lt;/h2&gt; 
+&lt;span id="OSC_h3_5"&gt;&lt;/span&gt; 
+&lt;h3&gt;2.1&amp;nbsp;通用优化方案&lt;/h3&gt; 
+&lt;p&gt;&lt;img src="https://oscimg.oschina.net/oscnet//a5d8b340159cba4ee3ab177fb8d29116.png" alt="" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p&gt;在 DWD 明细层，优化关联操作，核心维表在此层关联，而非核心维表及字段则在 DWD 扩展层关联。DWS 层和 APP 层计算直播及视频的天级累计指标。&lt;/p&gt; 
+&lt;p&gt;&lt;strong&gt;（1）分层建模优化&lt;/strong&gt;&lt;/p&gt; 
+&lt;p&gt;在分层建模时，将相同实体、不同维度的数据合并为一张维表，以降低下游消费 RPS。在维度关联时，使用 Keyby 提升本地缓存命中率。对于 DWD 大作业，将其拆分成多个小任务灰度上线。在视频大流量场景下，采用宽表模型输出指标，即将所有数据置于一行，存储在一个 Map 中输出；直播场景则使用窄表 Anchor 模型，一条数据对应一个指标一行数据。这两种模型在新增指标时均可实现状态兼容。&lt;/p&gt; 
+&lt;p&gt;&lt;strong&gt;（2）作业性能优化&lt;/strong&gt;&lt;/p&gt; 
+&lt;p&gt;在任务层面进行性能优化以降低资源消耗，具体在后文中进行介绍。&lt;/p&gt; 
+&lt;p&gt;&lt;strong&gt;（3）链路保障优化&lt;/strong&gt;&lt;/p&gt; 
+&lt;p&gt;对任务和队列进行分级，并构建全链路血缘来保障分级的准确性。对于高优任务，建立热备链路以及自动化容灾切换能力，提升链路大盘的容灾能力。&lt;/p&gt; 
+&lt;span id="OSC_h3_6"&gt;&lt;/span&gt; 
+&lt;h3&gt;2.2&amp;nbsp;技术手段优化&lt;/h3&gt; 
+&lt;p&gt;&lt;img src="https://oscimg.oschina.net/oscnet//c28a4dcfac0a889caab651ef1a3670f3.png" alt="" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p&gt;在抖音短视频业务中，流量呈现高度集中，top20 个的任务占据 40% 以上的计算资源，这些任务不仅成本高，还会降低稳定性，加大运维难度。&lt;/p&gt; 
+&lt;p&gt;从头部任务开发分析，部分简单的 Pipeline 任务消耗大量计算资源，可以结合火焰图查找问题的根源。如上图中左下角的火焰图，Calc 算子消耗占比达 56%，这对于非计算型的任务是明显异常情况。经分析是 JIT 及时编译优化失效所致。&lt;/p&gt; 
+&lt;p&gt;再结合右侧重新开启优化后的图分析，大任务资源消耗下降约 40%。此外，火焰图中 Calc 占比较大的情况常出现在大并发 Hash 场景，上游并发×下游并发的数据输出队列会导致任务 Shuffle 利用率低，资源消耗较大。我们前后发现了十几项优化项，并推广至其他业务，最终 top 20 任务资源消耗下降约 25%。&lt;/p&gt; 
+&lt;span id="OSC_h2_7"&gt;&lt;/span&gt; 
+&lt;h2&gt;03、业务场景优化&lt;/h2&gt; 
+&lt;span id="OSC_h3_8"&gt;&lt;/span&gt; 
+&lt;h3&gt;3.1&amp;nbsp;视频场景痛点优化&lt;/h3&gt; 
+&lt;p&gt;&lt;img src="https://oscimg.oschina.net/oscnet//b679d7cd16af45c7c78f1261ae8bc6d9.png" alt="" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p&gt;在 DWD 明细层，关联大量维表时面临巨大压力。大流量场景下整体流量达亿级规模，无法直接请求维表，即便开启维表 LRU cache 请求量也达千万级，这带来了成本和稳定性难题。在指标聚合计算时，大流量下解决重复数据问题挑战巨大。&lt;/p&gt; 
+&lt;p&gt;（1）大流量维表关联优化&lt;/p&gt; 
+&lt;p&gt;①场景分析&lt;/p&gt; 
+&lt;p&gt;&lt;img src="https://oscimg.oschina.net/oscnet//591030223c0f730869a04f404767f0cc.png" alt="" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p&gt;高 QPS 的维表访问导致 Abase 集群压力大，Flink 任务稳定性差，关联维表成为瓶颈。虽提升维表关联缓存命中率可降低外部请求 QPS，但目前缓存命中率已达 90% 以上，提升空间有限。且并非所有维表都超大且时效性要求高，如离线用户维表和百万级监控规则表都相对较小。数仓大量使用 Abase 这种 KV 存储支持大访问 QPS，但当超出其承受能力时，会带来不可控，因此需摆脱对 KV 引擎的依赖，引入新的维表存储方式。&lt;/p&gt; 
+&lt;p&gt;②解决方案&lt;/p&gt; 
+&lt;p&gt;&lt;img src="https://oscimg.oschina.net/oscnet//00d80b09acbb9c9efed83450f3201c2f.png" alt="" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p&gt;整体思路是将外部组件访问转化为本地访问，最直接的方式就是将数据加载到内存中完成计算。基于此，我们通过开发 UDF 将 Hive 和 MySQL 中的数据加载到内存中关联，但其并不通用，每次查询 Hive 和 MySQL 语句时需要单独指定，且只能加载少量数据，于是，我们将 UDF 升级为 Flink Broadcast join 功能。&lt;/p&gt; 
+&lt;p&gt;该功能设计分为三个模块，以 Hive 为例。分区发现模块通过 Broadcast 算子监测 Hive 分区，发现新分区时，即向下游下发 Watermark 和表元数据信息；数据构建模块的数据读取算子，可配置大并发用于读取 Hive 维表数据；数据分发模块可以将读取的数据分发到各个 TM 中，根据数据量不同有两种分发方式， 即 Broadcast 方式（将全量数据 copy 分发）或根据主键 Hash 分发（适用于数据量较大场景）。&lt;/p&gt; 
+&lt;p&gt;在抖音内部场景，该功能支持了千亿级别的维表关联，主要适用于大流量场景下维表关联业务，对维表更新的感知在分钟级以上。功能上线后，它替代了部分 Abase 关联任务，减少约 400 万 QPS ，相关任务在追溯场景下无外部访问瓶颈。&lt;/p&gt; 
+&lt;p&gt;（2）大流量幂等计算&lt;/p&gt; 
+&lt;p&gt;①场景分析&lt;/p&gt; 
+&lt;p&gt;&lt;img src="https://oscimg.oschina.net/oscnet//bd261bf4c464cd22ed668087c1c2df7b.png" alt="" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p&gt;在大流量聚合计算优化方面，由于数据量大，短视频的小时和天级指标从分钟中间层聚合，这会导致分钟聚合输出有重复数据、乱序数据甚至回撤数据。如果直接通过先取 max 等方式聚合，其计算成本高且会引入回撤流问题，导致原本递增的埋点指标下降。以分钟向小时聚合为例，小时任务需要每一分钟的最后一条数据。&lt;/p&gt; 
+&lt;p&gt;②解决方案&lt;/p&gt; 
+&lt;p&gt;&lt;img src="https://oscimg.oschina.net/oscnet//f515a4786be013304ee91c7ff5a26886.png" alt="" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p&gt;针对以上问题，我们引入了 Bucket 的思路，即每一分钟维护一个 Bucket，保留最后一条数据，新数据到来时，将其对应的 Bucket 与原本的数据相较，仅下发正序递增数据。这样，从分钟级向小时级聚合时，即使分钟级流量达百万 RPS，最终也只有 60 个 Bucket。&lt;/p&gt; 
+&lt;p&gt;基于此简化模型，如上图左下角展示的分钟数据输出，第一列是分钟值，即 Bucket key；第二列是时间位移，用于 Bucket 的时间比较；第三列是指标值。第一、二条数据均为 58 分钟，因此，其属于同一个 Bucket，数据也是正序到来的，因此，Bucket 记录为 30 秒；指标值为 100 的数据，第三条数据正常输出，第四条和第五条数据存在乱序，40 秒的数据先到，20 秒的数据后到，因此，Bucket 只记录 40 秒的数据，在 20 秒的数据进入后不再更新。这样，通过 Bucket 机制可有效处理重复下发、乱序和回撤数据，不影响小时及天指标聚合结果。&lt;/p&gt; 
+&lt;p&gt;③性能优化&lt;/p&gt; 
+&lt;p&gt;&lt;img src="https://oscimg.oschina.net/oscnet//f0385e2fac946c801ad7ba46390c9b47.png" alt="" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p&gt;基于 Bucket 计算资源消耗仍较大，通过火焰图分析，发现 state 的序列化环节和 GC 环节占比较大，表明在状态和计算上仍有优化空间。我们从数据结构和业务两方面入手。&lt;/p&gt; 
+&lt;p&gt;其一，优化 Bucket 结构，将多层嵌套结构改为两个数组，两个数组的长度等于 Bucket 的长度，无需要存储 Bucket key，按照数组的顺序取对应 Bucket。一个数组存储时间戳位移，将 long 格式的时间戳存储为 int 类型（减少存储占用），另一个数组通过字符串拼接指标值，将原本的 Map 中指标的 value 拼接成一行，节省 state 中的空间占用。&lt;/p&gt; 
+&lt;p&gt;其二，进行 Bucket 时间压缩，从分钟向天级聚合最多 1440 个 Bucket，根据业务实际情况，将六个小时之前的 Bucket 压缩，Bucket 数量从 1440 个降至 378 个，降低约 70%。&lt;/p&gt; 
+&lt;p&gt;完成这些优化后，整体资源消耗下降约 30%。&lt;/p&gt; 
+&lt;span id="OSC_h3_9"&gt;&lt;/span&gt; 
+&lt;h3&gt;3.2&amp;nbsp;直播场景痛点问题&lt;/h3&gt; 
+&lt;p&gt;&lt;img src="https://oscimg.oschina.net/oscnet//8ff92760d26c1e1097ebc17a1402f5b0.png" alt="" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p&gt;直播场景的痛点问题主要分为计算大状态和回溯大流量两类。&lt;/p&gt; 
+&lt;p&gt;首先是直播间场次聚合计算大状态。抖音直播中，直播间最长可开播 30 天，但目前 Flink 作业的 DWS 和 APP 层只计算开播后七天状态的数据，即 state TTL 为七天。其原因是目前单作业资源消耗大，最高已达 2000 核，状态可达 18T，稳定性不佳，无法简单横向扩展资源解决问题。而业务有查看直播间 30 天累计指标的诉求。&lt;/p&gt; 
+&lt;p&gt;其次是冷启动和故障回溯大流量。在此场景下，回溯数据从小时到天级不等，DWS 作业向下游下发数据时会重复且大量下发，影响下游 MQ 及 Redis 等 QA 存储组件稳定性。此外，Flink 作业运行虽有资源投入，但回溯数据仍较慢，从业务视角看，存在数据恢复慢和性能指标上线周期长的问题。&lt;/p&gt; 
+&lt;p&gt;针对这些问题，我们提出了相应的解决方案。&lt;/p&gt; 
+&lt;p&gt;（1）大状态优化&lt;/p&gt; 
+&lt;p&gt;①场景分析&lt;/p&gt; 
+&lt;p&gt;&lt;img src="https://oscimg.oschina.net/oscnet//56fdd1dd529ad5affae89677e9e98656.png" alt="" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p&gt;对于大状态优化场景，直播间开关播时间和时长不固定，最短不到分钟级，最长 30 天，平均在小时级别。分析 Flink 作业中不同开播时长的状态大小占比发现，state TTL 为七天时，开播时长一天的直播间状态大小占 98%，这部分多存储六天；大于一天小于七天的占 1%，也存在多存情况；大于八天的仅占 0.5‰，存在少存情况。该问题的核心是状态固定的 TTL 与直播间动态的 TTL 矛盾，导致 99% 的状态多存，0.5‰状态少存。&lt;/p&gt; 
+&lt;p&gt;解决思路是对齐两者 TTL，实现直播间关播后删除状态。&lt;/p&gt; 
+&lt;p&gt;②方案设计&lt;/p&gt; 
+&lt;p&gt;最初设计了两种方案。&lt;/p&gt; 
+&lt;p&gt;&lt;img src="https://oscimg.oschina.net/oscnet//a9521b265a30d6d8e8de8f9de9f4645d.png" alt="" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p&gt;第一种基于 Retract 机制删除状态。在 Flink 作业中，同时消费直播间流量数据和关播数据，将两条数据进行聚合。按直播间 ID 分组聚合计算，关播 source 收到数据后向下游聚合算子发送 delete 消息，下游的聚合算子在接受到该消息后删除状态。&lt;/p&gt; 
+&lt;p&gt;但该方案存在问题，用户开发成本高，删除状态逻辑与 SQL 逻辑强耦合，导致改造作业时开发成本大；扩展性差，仅适用于 group key 为直播间 ID 的场景，而实际业务中 group key 可能包含更多内容，如用户画像或主播画像等，则不适用。&lt;/p&gt; 
+&lt;p&gt;总结问题后，发现其核心是删除状态逻辑与 SQL 逻辑强耦合，进而设计了第二种方案作为 TTL CompactionFilter 方案的扩展，即自定义 RocksDB CompactionFilter 方案。两者执行时机相同，自定义 RocksDB CompactionFilter 方案支持通过 Java UDF 为指定状态设定 CompactionFilter 。两者的区别在于，TTL CompactionFilter 执行时解析状态中的时间戳判断状态是否删除，而自定义方案在 RocksDB 执行时，通过 JNI 将状态数据传给 Flink TM，解析直播间 ID 作为 CompactionFilter 入参，访问直播间 Abase 维表，判断是否关播，若关播，则 CompactionFilter 返回 true，删除状态。此方案实现了直播间关播后的状态删除，且与 SQL 逻辑完全解耦，解决了方案一中的问题。&lt;/p&gt; 
+&lt;p&gt;③落地方案&lt;/p&gt; 
+&lt;p&gt;与&amp;nbsp;Flink&amp;nbsp;架构组共建，实现了该方案的落地。&lt;/p&gt; 
+&lt;p&gt;&lt;img src="https://oscimg.oschina.net/oscnet//4a72afb9ccd8582789e772b28472bfa9.png" alt="" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p&gt;Flink 架构组在 RocksDB 层面支持 CompactionFilter 能力，在 SQL 层面支持用户为指定聚合算子指定 CompactionFilter。如代码示例所示，设置状态 TTL 为 30 天，通过 ADD RESOURCES 语句引入 CompactionFilter 的 jar 包，通过 SQL hint 指定聚合算子的 CompactionFilter，参数包括 path（路径） 和 filed（直播间 ID）。&lt;/p&gt; 
+&lt;p&gt;实现过程中对性能问题进行了优化，如 CompactionFilter 查询性能优化，将实时访问 Abase 优化为批量加载关播直播间数据到本地，判断是否关播，避免 Compaction 执行过程中， CompactionFilter 访问外部组件查询阻塞，减少 CP 的时长；Cache 选择优化，将本地存储关播直播间的 cache 从内存优化到磁盘，降低 GC 时长；CompactionFilter 调用频次优化，设定 state 存储时长超过两天才调用 CompactionFilter，减少未关播直播间频繁调用导致的 CPU 浪费，同时在 RocksDB C++侧缓存，直播间开关播的结果（CompactionFilter 结果），利用 RocksDB 存储机制，将直播间 ID 放在 group by 语句最前面，顺序存储相同 ID 的状态数据，复用 CompactionFilter 调用结果，避免 JNI 调用带来的性能损耗。&lt;/p&gt; 
+&lt;p&gt;通过该方案，业务上支持了直播间 30 天累计指标，技术上直播间场次作业状态平均下降 60%，CPU 资源使用下降 70%。&lt;/p&gt; 
+&lt;p&gt;（2）大流量回溯优化&lt;/p&gt; 
+&lt;p&gt;①场景分析&lt;/p&gt; 
+&lt;p&gt;分析无&amp;nbsp;lag&amp;nbsp;场景和追 lag&amp;nbsp;场景下作业期望目标。&lt;/p&gt; 
+&lt;p&gt;&lt;img src="https://oscimg.oschina.net/oscnet//23ffaab6834affe69f04a03720743f1d.png" alt="" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p&gt;无 lag 场景追求低延迟，数据实时产出，期望数据处理模式为流处理；追 lag 场景追求短时间内快速恢复，数据高吞吐，期望处理模式为批处理。&lt;/p&gt; 
+&lt;p&gt;但当前 Flink 流处理作业仅能以流处理运行，设置 Minibatch 为 30 秒，在无 lag 场景可行，而在追 lag 场景则存在吞吐低、恢复慢的问题，与预期高吞吐目标不符。&lt;/p&gt; 
+&lt;p&gt;为解决此问题，分析 Flink 流处理和批处理在引擎实现上的差异，在满足 Flink 流处理低延迟特性的同时，实现 Flink 批处理的高吞吐。流处理通过 Minibatch 机制保证低延迟，但其 RocksDB 随机访问和 Retract 机制限制了吞吐；批处理虽有高延迟，但通过 sort 排序处理且无 Retract 机制，吞吐较高。因此，我们提出在流作业中动态监测消费积压情况，判断作业对高吞吐或低延迟的倾向性，在当前算子引入 sort 排序算子和动态调整 Minibatch 大小的能力，实现流批执行模式的动态切换。&lt;/p&gt; 
+&lt;p&gt;②方案设计&lt;/p&gt; 
+&lt;p&gt;&lt;img src="https://oscimg.oschina.net/oscnet//d1272c4b617b4e584d685b0d1961502a.png" alt="" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p&gt;该方案核心步骤包括积压检测、检测结果传递和动态启用 sorter 算子并调整 Minibatch 大小。Flink 作业运行时，Source 算子动态监测 lag size；当 lag size 超过指定值时，向下游算子发送数据时，标记 isBackLog 为 true，聚合算子接收数据后解析该字段，若为 true，则认为当前作业倾向于批处理，启用 sorter，将 Minibatch 的大小间隔调整为 CP 的间隔。&lt;/p&gt; 
+&lt;p&gt;此方案实现了流作业执行过程中流处理和批处理模式的动态切换，且作业的 DAG 不变，状态完全兼容。&lt;/p&gt; 
+&lt;p&gt;③落地方案&lt;/p&gt; 
+&lt;p&gt;&lt;img src="https://oscimg.oschina.net/oscnet//258cc68cab26724db1a0d2f863dcd020.png" alt="" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p&gt;Flink 流批倾向性指标有三个，即自动检测积压状态时间间隔、触发切换批模式处理的平均 lag size 上限、触发切换流处理平均 lag size 下限。SQL 使用案例如上图左下角所示：首先，在运行参数中设置 backlog mode 开启，然后在 source 算子中指定以上三个参数，进而实现 Flink 作业流批融合的处理。&lt;/p&gt; 
+&lt;p&gt;通过该方案，技术上，追 lag 场景回溯数据结果下发量减少，下游组件稳定性提升；业务上，批模式追溯速度比流模式提升一倍。&lt;/p&gt; 
+&lt;span id="OSC_h2_10"&gt;&lt;/span&gt; 
+&lt;h2&gt;04、未来规划&lt;/h2&gt; 
+&lt;p&gt;在抖音一级 RPS 场景下，未来优化分为通用优化和个性化场景优化。&lt;/p&gt; 
+&lt;p&gt;&lt;img src="https://oscimg.oschina.net/oscnet//ccf7f6a093cc54cd46625cbd98349751.png" alt="" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;span id="OSC_h3_11"&gt;&lt;/span&gt; 
+&lt;h3&gt;4.1&amp;nbsp;通用优化&lt;/h3&gt; 
+&lt;p&gt;作业重启时内存 localcache 失效导致的缓存穿透优化；使用 Paimon 维表能力减少对 Redis 等 K-V 存储的请求，使用 PaimonWithMQ 能力减少 MQ dump 派作业，节约资源；丰富 AutoScaling 的资源优化规则，获取更多收益。&lt;/p&gt; 
+&lt;span id="OSC_h3_12"&gt;&lt;/span&gt; 
+&lt;h3&gt;4.2&amp;nbsp;个性化场景优化&lt;/h3&gt; 
+&lt;p&gt;解决多任务比值类指标分子分母更新快慢不一致导致的波动明显问题；实现 broadcast join 支持状态的增量加载，针对千亿级维表，拒绝全量加载，而是定时加载仅变化的增量数据，提升作业稳定性；进行内存优化。&lt;/p&gt; 
+&lt;span id="OSC_h3_13"&gt;&lt;/span&gt; 
+&lt;h3&gt;更多内容&lt;/h3&gt; 
+&lt;p&gt;&lt;img src="https://oscimg.oschina.net/oscnet//6041760444b05a21431ac6efcf7680be.jpg" alt="" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;hr&gt; 
+&lt;span id="OSC_h3_14"&gt;&lt;/span&gt; 
+&lt;h3&gt;活动推荐&lt;/h3&gt; 
+&lt;p&gt;阿里云基于 Apache Flink 构建的企业级产品-实时计算 Flink 版现开启活动： 新用户复制点击下方链接或者扫描二维码即可 0 元免费试用 Flink + Paimon &lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Ffree.aliyun.com%2F%3Futm_content%3Dg_1000395379%26productCode%3Dsc" rel="nofollow" target="_blank"&gt;实时计算 Flink 版&lt;/a&gt;（3000CU*小时，3 个月内） 了解活动详情：&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Ffree.aliyun.com%2F%3Futm_content%3Dg_1000395379%26productCode%3Dsc" rel="nofollow" target="_blank"&gt;https://free.aliyun.com/?utm_content=g_1000395379&amp;amp;productCode=sc&lt;/a&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;img src="https://oscimg.oschina.net/oscnet//9dca849c94b7e32b3cff482a77660ce0.jpg" alt="" referrerpolicy="no-referrer"&gt;&lt;/p&gt;
+                                                                                    &lt;/div&gt;
+                                                                            </description>
+      <link>https://my.oschina.net/u/2828172/blog/18685623</link>
+      <guid isPermaLink="false">https://my.oschina.net/u/2828172/blog/18685623</guid>
+      <pubDate>Thu, 24 Jul 2025 02:34:57 GMT</pubDate>
+      <author>原创</author>
+    </item>
+    <item>
+      <title>白宫发布《美国 AI 行动计划》</title>
+      <description>&lt;div class="content"&gt;
+                                                                    
+                                                        &lt;p&gt;白宫发布了名为&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fwww.whitehouse.gov%2Farticles%2F2025%2F07%2Fwhite-house-unveils-americas-ai-action-plan%2F" target="_blank"&gt;《赢得 AI 竞赛：美国 AI 行动计划》（Winning the AI Race: America’s AI Action Plan）&lt;/a&gt;的战略文件，以保证美国毫无争议地成为全球 AI 霸主。&lt;/p&gt; 
+&lt;p&gt;&lt;img height="595" src="https://static.oschina.net/uploads/space/2025/0724/103055_nOWT_2720166.png" width="521" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;img src="https://static.oschina.net/uploads/space/2025/0724/103116_zfCg_2720166.png" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p&gt;该计划主要有三大支柱，加速 AI 创新、构建 AI 基础设施以及主导国际外交与安全，涵盖 90 多项具体行政命令。其中，废除限制 AI 创新监管条例，加速发电场、水资源、半导体芯片等基础设施建设，这对于像 OpenAI、微软、亚马逊、谷歌、Meta 等 AI 巨头来说非常有利。&lt;/p&gt; 
+&lt;p&gt;白宫在 28 页的 AI 行动计划中特别要求，凡联邦政府采购的大语言模型必须「客观、不受自上而下意识形态影响」。此外，该计划还把中国列为主要竞争对手，希望在技术创新、模型开源、基础设施等方面领先。&lt;/p&gt;
+                                                                                &lt;/div&gt;
+                                                                            </description>
+      <link>https://www.oschina.net/news/362050</link>
+      <guid isPermaLink="false">https://www.oschina.net/news/362050</guid>
+      <pubDate>Thu, 24 Jul 2025 02:32:57 GMT</pubDate>
+      <author>来源: OSCHINA</author>
+    </item>
+    <item>
+      <title>蜻蜓 FM 开源 SmartXPlayer 音频播放组件</title>
+      <description>&lt;div class="content"&gt;
+                                                                    
+                                                        &lt;p&gt;&lt;span style="color:#000000"&gt;由蜻蜓 FM 研发的音频播放组件「SmartXPlayer」近日已正式开源并上线 OpenHarmony 三方库中心仓。&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;span style="color:#000000"&gt;根据&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fmp.weixin.qq.com%2Fs%2FtWpwyDSCWemr7NCevxiiYw%3Fpoc_token%3DHHyUgWijpdpTgHnwJ0S3aKNInFpLFta7--q5a3AQ" target="_blank"&gt;介绍&lt;/a&gt;，作为一款专为鸿蒙多端场景打造的音频播放引擎，SmartXPlayer 基于鸿蒙系统分布式能力和多线程架构，提供高性能、易集成的音频播放能力支持，助力开发者高效构建更顺滑、更智能、更便捷的音频播放体验。&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;img height="273" src="https://oscimg.oschina.net/oscnet/up-86f4c94cb3161e141e4caf4a5965a5e4178.png" width="500" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;span style="color:#000000"&gt;当前，随着音频内容和智能设备的普及，传统播放器在多端适配、分布式投播、主线程阻塞等方面存在开发难、效率低、体验差等痛点。在这一背景下，SmartXPlayer 应运而生，以组件化、跨线程、高扩展的技术路径，有效提升鸿蒙平台音频应用开发效率与终端播放体验。&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;span style="color:#000000"&gt;SmartXPlayer 基于蜻蜓 FM 实际业务场景研发打磨，在多项关键能力上具备优异表现：&lt;/span&gt;&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt;&lt;strong&gt;&lt;span style="color:#000000"&gt;跨线程播放架构，提升系统响应效率&lt;/span&gt;&lt;/strong&gt;&lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;p&gt;&lt;span style="color:#000000"&gt;SmartXPlayer 首创子线程播放技术，通过引入 ThreadWorker 机制，播放任务在子线程处理，主线程专注 UI 渲染与状态管理，将播放性能提升 50%，有效缓解主线程阻塞带来的卡顿、闪退等问题。&lt;/span&gt;&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt;&lt;strong&gt;&lt;span style="color:#000000"&gt;支持分布式投播与后台播放，适配多端设备&lt;/span&gt;&lt;/strong&gt;&lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;p&gt;&lt;span style="color:#000000"&gt;SmartXPlayer 内置的 SXCastPlayer 实现了与本地播放器一致的标准播放接口，开发者无需为投播功能单独学习新接口。同时，它能实时监听设备连接状态变化，当检测到投播需求时，播放器会自动将内部的播放逻辑从本地播放器切换为 SXCastPlayer，从而实现「本地播放」到「跨设备投播」的无缝衔接。此外，它还具备后台播放与状态同步能力，实现鸿蒙「全场景互联」下的流畅音频体验。&lt;/span&gt;&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt;&lt;strong&gt;&lt;span style="color:#000000"&gt;高度抽象 API，开发门槛低、接入效率高&lt;/span&gt;&lt;/strong&gt;&lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;p&gt;&lt;span style="color:#000000"&gt;SmartXPlayer 组件接口设计高度抽象，支持一行代码实现多端投播，仅需少量代码即可快速实现初始化与播放控制，开发效率大幅提升。&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;span style="color:#000000"&gt;据蜻蜓 FM 内部估算，在实际应用中，实现同样的音频播放效果，SmartXPlayer 相比传统方案能够将开发时长由 2 周缩短至 2-3 天，代码量减少 60%，维护成本降低 50%，用户体验显著提升。目前该方案已在蜻蜓 FM 鸿蒙版和蜻蜓电台元服务中集成使用, 整体表现优异，并计划在未来支持更多音频内容形态与播放场景的适配与扩展。&lt;/span&gt;&lt;/p&gt;
+                                                                                &lt;/div&gt;
+                                                                            </description>
+      <link>https://www.oschina.net/news/362049</link>
+      <guid isPermaLink="false">https://www.oschina.net/news/362049</guid>
+      <pubDate>Thu, 24 Jul 2025 02:25:57 GMT</pubDate>
+      <author>来源: OSCHINA</author>
+    </item>
+    <item>
+      <title>GitHub Spark 发布公测预览版，通过自然语言构建全栈应用</title>
+      <description>&lt;div class="content"&gt;
+                                                                    
+                                                        &lt;p&gt;GitHub 宣布其新产品 GitHub Spark 已面向 Copilot Pro+订阅用户开启&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fgithub.blog%2Fchangelog%2F2025-07-23-github-spark-in-public-preview-for-copilot-pro-subscribers%2F" target="_blank"&gt;公测&lt;/a&gt;，该产品旨在让开发者通过自然语言在数分钟内完成从想法到部署的全栈智能应用程序的构建和发布，无需进行环境设置或配置。&lt;/p&gt; 
+&lt;p&gt;&lt;img src="https://static.oschina.net/uploads/space/2025/0724/101944_bsPs_2720166.png" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p&gt;Spark 的核心功能由 Claude Sonnet 4 驱动，允许用户通过描述想法来构建包含前端和后端的应用。该平台内置了数据存储、LLM 推理、托管、部署和 GitHub 身份验证等功能。&lt;/p&gt; 
+&lt;p&gt;&lt;img alt="" src="https://oscimg.oschina.net/oscnet/up-d9febfe928d296469d6ce6186d282669ebe.png" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p&gt;开发者可以在应用中添加由 OpenAI、Meta、DeepSeek、xAI 等公司模型驱动的 AI 功能，而无需管理 API 密钥。应用可以通过一键点击进行部署，并自动创建一个包含 GitHub Actions 和 Dependabot 的 GitHub 仓库，确保所有内容保持同步。&lt;/p&gt; 
+&lt;p&gt;开发者可以通过自然语言、可视化编辑控件或在集成 GitHub Copilot 代码补全的编辑器中进行编码来迭代他们的想法。&lt;/p&gt; 
+&lt;p&gt;此外，用户可以直接从 Spark 中打开一个 codespace，以使用 Copilot agent 模式进行迭代，或将 issue 分配给 Copilot coding agent。Copilot Pro+订阅用户可直接访问 Spark，其使用会消耗 GitHub Copilot 计划中包含的 premium requests。&lt;/p&gt;
+                                                                                &lt;/div&gt;
+                                                                            </description>
+      <link>https://www.oschina.net/news/362046</link>
+      <guid isPermaLink="false">https://www.oschina.net/news/362046</guid>
+      <pubDate>Thu, 24 Jul 2025 02:20:57 GMT</pubDate>
+      <author>来源: OSCHINA</author>
+    </item>
+    <item>
+      <title>Qwen3 系列模型迎来新第三方部署和价格特惠</title>
+      <description>&lt;div class="content"&gt;
+                                                                    
+                                                        &lt;p&gt;阿里巴巴的 Qwen3 系列模型近期在多个平台获得部署并在官方平台开启了价格特惠。&lt;/p&gt; 
+&lt;p&gt;&lt;img src="https://static.oschina.net/uploads/space/2025/0724/100552_pcPY_2720166.png" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p&gt;Cerebras 宣布推出 Qwen3-235B 模型，实现了每秒 1500 个 token 的推理速度，目前可进行有限制的免费体验。&lt;/p&gt; 
+&lt;p&gt;阿里云的通义灵码 IDE 已集成 Qwen3-Coder，并去掉了原有的 DeepSeek 模型。GMI inference cloud 也上线了 Qwen3 Coder 480B A35B Instruct FP8 版本，定价为输入$1.00/M Tokens，输出$2.00/M Tokens。&lt;/p&gt; 
+&lt;p&gt;阿里云百炼平台宣布对 Qwen3-Coder-Plus 进行为期一个月的限时降价，并进一步对上下文缓存功能进行说明：「上下文缓存的命中概率并不是 100%，即使是上下文完全一致的请求，也存在无法命中的概率，命中概率依据系统判断而定。」&lt;/p&gt; 
+&lt;table style="display:table; text-align:left"&gt; 
+ &lt;thead&gt; 
+  &lt;tr&gt; 
+   &lt;th style="border-color:rgba(36, 4, 4, 0.4); height:auto; text-align:left"&gt; &lt;p&gt;&lt;span&gt;Token 数量&lt;/span&gt;&lt;/p&gt; &lt;/th&gt; 
+   &lt;th style="border-color:rgba(36, 4, 4, 0.4); height:auto; text-align:left"&gt; &lt;p&gt;&lt;span&gt;输入成本 (每千 Token)&lt;/span&gt;&lt;/p&gt; &lt;/th&gt; 
+   &lt;th style="border-color:rgba(36, 4, 4, 0.4); height:auto; text-align:left"&gt; &lt;p&gt;&lt;span&gt;输出成本 (每千 Token)&lt;/span&gt;&lt;/p&gt; &lt;/th&gt; 
+  &lt;/tr&gt; 
+ &lt;/thead&gt; 
+ &lt;tbody&gt; 
+  &lt;tr&gt; 
+   &lt;td style="border-bottom-color:rgba(36, 4, 4, 0.4); border-bottom-left-radius:0px; border-bottom-right-radius:0px; border-bottom-style:solid; border-bottom-width:1px; border-left-color:rgba(36, 4, 4, 0.4); border-left-style:solid; border-left-width:1px; border-right-color:rgba(36, 4, 4, 0.4); border-right-style:solid; border-right-width:1px; border-top-color:rgba(36, 4, 4, 0.4); border-top-left-radius:0px; border-top-right-radius:0px; border-top-style:solid; border-top-width:1px; height:auto; text-align:left"&gt;&lt;strong style="color:#1f0c03"&gt;&lt;span&gt;&lt;span&gt;0-32K&lt;/span&gt;&lt;/span&gt;&lt;/strong&gt;&lt;/td&gt; 
+   &lt;td style="border-bottom-color:rgba(36, 4, 4, 0.4); border-bottom-left-radius:0px; border-bottom-right-radius:0px; border-bottom-style:solid; border-bottom-width:1px; border-left-color:rgba(36, 4, 4, 0.4); border-left-style:solid; border-left-width:1px; border-right-color:rgba(36, 4, 4, 0.4); border-right-style:solid; border-right-width:1px; border-top-color:rgba(36, 4, 4, 0.4); border-top-left-radius:0px; border-top-right-radius:0px; border-top-style:solid; border-top-width:1px; height:auto; text-align:left"&gt; &lt;p&gt;&lt;span&gt;&lt;span&gt;0.004 元&lt;/span&gt;&lt;/span&gt;&lt;/p&gt; &lt;/td&gt; 
+   &lt;td style="border-bottom-color:rgba(36, 4, 4, 0.4); border-bottom-left-radius:0px; border-bottom-right-radius:0px; border-bottom-style:solid; border-bottom-width:1px; border-left-color:rgba(36, 4, 4, 0.4); border-left-style:solid; border-left-width:1px; border-right-color:rgba(36, 4, 4, 0.4); border-right-style:solid; border-right-width:1px; border-top-color:rgba(36, 4, 4, 0.4); border-top-left-radius:0px; border-top-right-radius:0px; border-top-style:solid; border-top-width:1px; height:auto; text-align:left"&gt; &lt;p&gt;&lt;span&gt;&lt;span&gt;0.016 元&lt;/span&gt;&lt;/span&gt;&lt;/p&gt; &lt;/td&gt; 
+  &lt;/tr&gt; 
+  &lt;tr&gt; 
+   &lt;td style="border-bottom-color:rgba(36, 4, 4, 0.4); border-bottom-left-radius:0px; border-bottom-right-radius:0px; border-bottom-style:solid; border-bottom-width:1px; border-left-color:rgba(36, 4, 4, 0.4); border-left-style:solid; border-left-width:1px; border-right-color:rgba(36, 4, 4, 0.4); border-right-style:solid; border-right-width:1px; border-top-color:rgba(36, 4, 4, 0.4); border-top-left-radius:0px; border-top-right-radius:0px; border-top-style:solid; border-top-width:1px; height:auto; text-align:left"&gt;&lt;strong style="color:#1f0c03"&gt;&lt;span&gt;&lt;span&gt;32K-128K&lt;/span&gt;&lt;/span&gt;&lt;/strong&gt;&lt;/td&gt; 
+   &lt;td style="border-bottom-color:rgba(36, 4, 4, 0.4); border-bottom-left-radius:0px; border-bottom-right-radius:0px; border-bottom-style:solid; border-bottom-width:1px; border-left-color:rgba(36, 4, 4, 0.4); border-left-style:solid; border-left-width:1px; border-right-color:rgba(36, 4, 4, 0.4); border-right-style:solid; border-right-width:1px; border-top-color:rgba(36, 4, 4, 0.4); border-top-left-radius:0px; border-top-right-radius:0px; border-top-style:solid; border-top-width:1px; height:auto; text-align:left"&gt; &lt;p&gt;&lt;span&gt;&lt;span&gt;0.0042 元 (原价 0.006 元的&amp;nbsp;&lt;/span&gt;&lt;/span&gt;&lt;strong style="color:#1f0c03"&gt;&lt;span&gt;&lt;span&gt;7 折&lt;/span&gt;&lt;/span&gt;&lt;/strong&gt;&lt;span&gt;&lt;span&gt;)&lt;/span&gt;&lt;/span&gt;&lt;/p&gt; &lt;/td&gt; 
+   &lt;td style="border-bottom-color:rgba(36, 4, 4, 0.4); border-bottom-left-radius:0px; border-bottom-right-radius:0px; border-bottom-style:solid; border-bottom-width:1px; border-left-color:rgba(36, 4, 4, 0.4); border-left-style:solid; border-left-width:1px; border-right-color:rgba(36, 4, 4, 0.4); border-right-style:solid; border-right-width:1px; border-top-color:rgba(36, 4, 4, 0.4); border-top-left-radius:0px; border-top-right-radius:0px; border-top-style:solid; border-top-width:1px; height:auto; text-align:left"&gt; &lt;p&gt;&lt;span&gt;&lt;span&gt;0.0168 元 (原价 0.024 元的&amp;nbsp;&lt;/span&gt;&lt;/span&gt;&lt;strong style="color:#1f0c03"&gt;&lt;span&gt;&lt;span&gt;7 折&lt;/span&gt;&lt;/span&gt;&lt;/strong&gt;&lt;span&gt;&lt;span&gt;)&lt;/span&gt;&lt;/span&gt;&lt;/p&gt; &lt;/td&gt; 
+  &lt;/tr&gt; 
+  &lt;tr&gt; 
+   &lt;td style="border-bottom-color:rgba(36, 4, 4, 0.4); border-bottom-left-radius:0px; border-bottom-right-radius:0px; border-bottom-style:solid; border-bottom-width:1px; border-left-color:rgba(36, 4, 4, 0.4); border-left-style:solid; border-left-width:1px; border-right-color:rgba(36, 4, 4, 0.4); border-right-style:solid; border-right-width:1px; border-top-color:rgba(36, 4, 4, 0.4); border-top-left-radius:0px; border-top-right-radius:0px; border-top-style:solid; border-top-width:1px; height:auto; text-align:left"&gt;&lt;strong style="color:#1f0c03"&gt;&lt;span&gt;&lt;span&gt;128K-256K&lt;/span&gt;&lt;/span&gt;&lt;/strong&gt;&lt;/td&gt; 
+   &lt;td style="border-bottom-color:rgba(36, 4, 4, 0.4); border-bottom-left-radius:0px; border-bottom-right-radius:0px; border-bottom-style:solid; border-bottom-width:1px; border-left-color:rgba(36, 4, 4, 0.4); border-left-style:solid; border-left-width:1px; border-right-color:rgba(36, 4, 4, 0.4); border-right-style:solid; border-right-width:1px; border-top-color:rgba(36, 4, 4, 0.4); border-top-left-radius:0px; border-top-right-radius:0px; border-top-style:solid; border-top-width:1px; height:auto; text-align:left"&gt; &lt;p&gt;&lt;span&gt;&lt;span&gt;0.005 元 (原价 0.01 元的&amp;nbsp;&lt;/span&gt;&lt;/span&gt;&lt;strong style="color:#1f0c03"&gt;&lt;span&gt;&lt;span&gt;5 折&lt;/span&gt;&lt;/span&gt;&lt;/strong&gt;&lt;span&gt;&lt;span&gt;)&lt;/span&gt;&lt;/span&gt;&lt;/p&gt; &lt;/td&gt; 
+   &lt;td style="border-bottom-color:rgba(36, 4, 4, 0.4); border-bottom-left-radius:0px; border-bottom-right-radius:0px; border-bottom-style:solid; border-bottom-width:1px; border-left-color:rgba(36, 4, 4, 0.4); border-left-style:solid; border-left-width:1px; border-right-color:rgba(36, 4, 4, 0.4); border-right-style:solid; border-right-width:1px; border-top-color:rgba(36, 4, 4, 0.4); border-top-left-radius:0px; border-top-right-radius:0px; border-top-style:solid; border-top-width:1px; height:auto; text-align:left"&gt; &lt;p&gt;&lt;span&gt;&lt;span&gt;0.02 元 (原价 0.04 元的&amp;nbsp;&lt;/span&gt;&lt;/span&gt;&lt;strong style="color:#1f0c03"&gt;&lt;span&gt;&lt;span&gt;5 折&lt;/span&gt;&lt;/span&gt;&lt;/strong&gt;&lt;span&gt;&lt;span&gt;)&lt;/span&gt;&lt;/span&gt;&lt;/p&gt; &lt;/td&gt; 
+  &lt;/tr&gt; 
+  &lt;tr&gt; 
+   &lt;td style="border-bottom-color:rgba(36, 4, 4, 0.4); border-bottom-left-radius:0px; border-bottom-right-radius:0px; border-bottom-style:solid; border-bottom-width:1px; border-left-color:rgba(36, 4, 4, 0.4); border-left-style:solid; border-left-width:1px; border-right-color:rgba(36, 4, 4, 0.4); border-right-style:solid; border-right-width:1px; border-top-color:rgba(36, 4, 4, 0.4); border-top-left-radius:0px; border-top-right-radius:0px; border-top-style:solid; border-top-width:1px; height:auto; text-align:left"&gt;&lt;strong style="color:#1f0c03"&gt;&lt;span&gt;&lt;span&gt;256K-1M&lt;/span&gt;&lt;/span&gt;&lt;/strong&gt;&lt;/td&gt; 
+   &lt;td style="border-bottom-color:rgba(36, 4, 4, 0.4); border-bottom-left-radius:0px; border-bottom-right-radius:0px; border-bottom-style:solid; border-bottom-width:1px; border-left-color:rgba(36, 4, 4, 0.4); border-left-style:solid; border-left-width:1px; border-right-color:rgba(36, 4, 4, 0.4); border-right-style:solid; border-right-width:1px; border-top-color:rgba(36, 4, 4, 0.4); border-top-left-radius:0px; border-top-right-radius:0px; border-top-style:solid; border-top-width:1px; height:auto; text-align:left"&gt; &lt;p&gt;&lt;span&gt;&lt;span&gt;0.01 元 (原价 0.02 元的&amp;nbsp;&lt;/span&gt;&lt;/span&gt;&lt;strong style="color:#1f0c03"&gt;&lt;span&gt;&lt;span&gt;5 折&lt;/span&gt;&lt;/span&gt;&lt;/strong&gt;&lt;span&gt;&lt;span&gt;)&lt;/span&gt;&lt;/span&gt;&lt;/p&gt; &lt;/td&gt; 
+   &lt;td style="border-bottom-color:rgba(36, 4, 4, 0.4); border-bottom-left-radius:0px; border-bottom-right-radius:0px; border-bottom-style:solid; border-bottom-width:1px; border-left-color:rgba(36, 4, 4, 0.4); border-left-style:solid; border-left-width:1px; border-right-color:rgba(36, 4, 4, 0.4); border-right-style:solid; border-right-width:1px; border-top-color:rgba(36, 4, 4, 0.4); border-top-left-radius:0px; border-top-right-radius:0px; border-top-style:solid; border-top-width:1px; height:auto; text-align:left"&gt; &lt;p&gt;&lt;span&gt;&lt;span&gt;0.1 元 (原价 0.2 元的&amp;nbsp;&lt;/span&gt;&lt;/span&gt;&lt;strong style="color:#1f0c03"&gt;&lt;span&gt;&lt;span&gt;5 折&lt;/span&gt;&lt;/span&gt;&lt;/strong&gt;&lt;span&gt;&lt;span&gt;)&lt;/span&gt;&lt;/span&gt;&lt;/p&gt; &lt;/td&gt; 
+  &lt;/tr&gt; 
+ &lt;/tbody&gt; 
+&lt;/table&gt; 
+&lt;p&gt;详情：https://help.aliyun.com/zh/model-studio/qwen3-coder-plus-price-drop&lt;/p&gt;
+                                                                                &lt;/div&gt;
+                                                                            </description>
+      <link>https://www.oschina.net/news/362044</link>
+      <guid isPermaLink="false">https://www.oschina.net/news/362044</guid>
+      <pubDate>Thu, 24 Jul 2025 02:06:57 GMT</pubDate>
+      <author>来源: OSCHINA</author>
+    </item>
+    <item>
+      <title>谷歌母公司发布 Q2 财报：全年资本支出飙升至 850 亿美元</title>
+      <description>&lt;div class="content"&gt;
+                                                                    
+                                                        &lt;div style="text-align:start"&gt; 
+ &lt;p style="color:#222222; margin-left:0; margin-right:0"&gt;谷歌母公司 Alphabet 周三公布季度营收超出华尔街预期，得益于新推出的 AI 功能以及稳定的数字广告市场。公司还表示，将今年的资本支出计划从原本的大约 750 亿美元上调至约 850 亿美元。Alphabet A 股美股盘后下跌 2.8%，但随后回弹，一度跳涨 3.4%。&lt;/p&gt; 
+&lt;/div&gt; 
+&lt;div style="text-align:start"&gt; 
+ &lt;p style="color:#222222; margin-left:0; margin-right:0"&gt;以下是 Alphabet 二季度财报要点：&lt;/p&gt; 
+&lt;/div&gt; 
+&lt;div style="text-align:start"&gt; 
+ &lt;p style="color:#222222; margin-left:0; margin-right:0"&gt;&lt;strong&gt;主要财务数据：&lt;/strong&gt;&lt;/p&gt; 
+&lt;/div&gt; 
+&lt;div style="text-align:start"&gt; 
+ &lt;blockquote&gt; 
+  &lt;p style="color:#222222; margin-left:0; margin-right:0"&gt;&lt;strong&gt;营收：&lt;/strong&gt;Alphabet 二季度营收 964.3 亿美元，同比增长 14%，高于分析师预期的 939.7 亿美元。&lt;/p&gt; 
+  &lt;p style="color:#222222; margin-left:0; margin-right:0"&gt;&lt;strong&gt;调整后营收：&lt;/strong&gt;剔除合作伙伴分成后的第二季度销售额为 817 亿美元，高于分析师平均预期 796 亿美元。&lt;/p&gt; 
+  &lt;p style="color:#222222; margin-left:0; margin-right:0"&gt;&lt;strong&gt;每股收益：&lt;/strong&gt;Alphabet 二季度每股收益 2.31 美元，同比增长 22%，高于分析师预期的 2.18 美元。&lt;/p&gt; 
+ &lt;/blockquote&gt; 
+&lt;/div&gt; 
+&lt;div style="text-align:start"&gt; 
+ &lt;p style="color:#222222; margin-left:0; margin-right:0"&gt;&lt;img height="425" src="https://oscimg.oschina.net/oscnet/up-184de4a234b4e0f59adc392a84a16afd3ea.png" width="500" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+ &lt;p style="color:#222222; margin-left:0; margin-right:0"&gt;&lt;strong&gt;分业务数据：&lt;/strong&gt;&lt;/p&gt; 
+&lt;/div&gt; 
+&lt;div style="text-align:start"&gt; 
+ &lt;blockquote&gt; 
+  &lt;p style="color:#222222; margin-left:0; margin-right:0"&gt;&lt;strong&gt;谷歌云营收：&lt;/strong&gt;谷歌云营收第二季度为 136 亿美元，同比增长 32%，高于市场预期的 131 亿美元。&lt;/p&gt; 
+  &lt;ul style="margin-left:0; margin-right:0"&gt; 
+   &lt;li&gt;&lt;strong&gt;云计算利润：&lt;/strong&gt;谷歌云计算部门本季度运营利润为 28.3 亿美元，远超分析师预期的 22.5 亿美元。&lt;/li&gt; 
+  &lt;/ul&gt; 
+  &lt;p style="color:#222222; margin-left:0; margin-right:0"&gt;&lt;strong&gt;广告总营收：&lt;/strong&gt;Alphabet 广告总营收 713 亿美元，同比增长 10.4%。&lt;/p&gt; 
+  &lt;ul style="margin-left:0; margin-right:0"&gt; 
+   &lt;li&gt;&lt;strong&gt;搜索业务营收：&lt;/strong&gt;搜索业务营收第二季度为 541 亿美元，同比增长 11.7%，高于分析师预期的 540 亿美元。&lt;/li&gt; 
+   &lt;li&gt;&lt;strong&gt;YouTube 广告收入：&lt;/strong&gt;YouTube 广告营收为 98 亿美元，略高于预期的 95 亿美元。&lt;/li&gt; 
+  &lt;/ul&gt; 
+ &lt;/blockquote&gt; 
+&lt;/div&gt; 
+&lt;div style="text-align:start"&gt; 
+ &lt;p style="color:#222222; margin-left:0; margin-right:0"&gt;Alphabet 股价自 4 月份发布上一份财报以来已上涨超过 18%。周三公布财报后，Alphabet A 股盘后交易中一度下跌超过 2.8%，但随后一度反弹 3.4%，涨幅后收窄至 2% 左右。&lt;/p&gt; 
+&lt;/div&gt; 
+&lt;div style="text-align:start"&gt; 
+ &lt;h2 style="margin-left:0; margin-right:0"&gt;&lt;strong&gt;今年资本支出提高至 850 亿美元，预计 2026 年继续增加&lt;/strong&gt;&lt;/h2&gt; 
+&lt;/div&gt; 
+&lt;div style="text-align:start"&gt; 
+ &lt;p style="color:#222222; margin-left:0; margin-right:0"&gt;&lt;strong&gt;谷歌母公司表示，其全年资本支出将提高 13%，达到 850 亿美元，而不是今年早些时候预测的 750 亿美元。相比之下，2024 年为 525 亿美元。&lt;/strong&gt;&lt;/p&gt; 
+&lt;/div&gt; 
+&lt;div style="text-align:start"&gt; 
+ &lt;p style="color:#222222; margin-left:0; margin-right:0"&gt;&lt;strong&gt;媒体分析，尽管 Alphabet 公司公布的营收好于预期并创下历史纪录，但由于 2025 年的资本支出将高于此前预测，这让公司在 AI 竞赛中的投资合理性面临更大压力。公司首席财务官 Anat Ashkenazi 在周三财报电话会上表示，公司预计 2026 年还将进一步增加资本支出。&lt;/strong&gt;&lt;/p&gt; 
+&lt;/div&gt; 
+&lt;div style="text-align:start"&gt; 
+ &lt;p style="color:#222222; margin-left:0; margin-right:0"&gt;谷歌首席执行官桑达尔·皮查伊（Sundar Pichai）和其他科技高管过去几年在 AI 开发上投入了数百亿美元，这是整个 AI 热潮的一部分。大部分资金都用于建设新的数据中心，以开发和运行 AI 模型。&lt;/p&gt; 
+&lt;/div&gt; 
+&lt;div style="text-align:start"&gt; 
+ &lt;p style="color:#222222; margin-left:0; margin-right:0"&gt;皮查伊表示：&lt;/p&gt; 
+&lt;/div&gt; 
+&lt;div style="text-align:start"&gt; 
+ &lt;blockquote&gt; 
+  &lt;p style="color:#222222; margin-left:0; margin-right:0"&gt;「人工智能正在积极影响公司业务的每一个部分，推动整体强劲发展。我们正站在 AI 前沿，并以惊人的速度推进产品发布。AI 正在对业务的每一个环节产生积极影响，带来强劲的增长势头。」&lt;/p&gt; 
+  &lt;p style="color:#222222; margin-left:0; margin-right:0"&gt;「搜索业务实现了两位数的收入增长，我们的新功能，比如 AI 概览（AI Overviews）和 AI 模式（AI Mode），表现良好。YouTube 和订阅服务继续保持强劲表现。云计算业务在收入、订单积压和盈利能力方面都取得强劲增长，其年化收入目前已超过 500 亿美元。」&lt;/p&gt; 
+ &lt;/blockquote&gt; 
+&lt;/div&gt; 
+&lt;div style="text-align:start"&gt; 
+ &lt;h2 style="margin-left:0; margin-right:0"&gt;巨额资本支出或将用于人才争夺战&lt;/h2&gt; 
+&lt;/div&gt; 
+&lt;div style="text-align:start"&gt; 
+ &lt;p style="color:#222222; margin-left:0; margin-right:0"&gt;今年以来，美国科技巨头已经承诺为建设 AI 能力投资 3200 亿美元。面对竞争对手的压力，以及投资者对 AI 回报慢于预期的失望，科技巨头为其大规模 AI 支出进行了辩护，表示这些投资是推动业务增长和提升产品质量的必要条件。&lt;/p&gt; 
+&lt;/div&gt; 
+&lt;div style="text-align:start"&gt; 
+ &lt;p style="color:#222222; margin-left:0; margin-right:0"&gt;&lt;strong&gt;在财报电话会上，在被问及是否在 AI 人才方面大手笔支出时，Ashkenazi 表示，Alphabet 会「确保我们为拥有业内最优秀和最聪明的人才进行适当投资」。&lt;/strong&gt;&lt;/p&gt; 
+&lt;/div&gt; 
+&lt;div style="text-align:start"&gt; 
+ &lt;p style="color:#222222; margin-left:0; margin-right:0"&gt;本月早些时候，谷歌在 AI 人才争夺战中引发关注，宣布将以 24 亿美元收购 AI 编程初创公司 Windsurf，该交易还包括技术授权，Windsurf 首席执行官 Varun Mohan 及其顶级研究团队将加入谷歌。&lt;/p&gt; 
+&lt;/div&gt; 
+&lt;div style="text-align:start"&gt; 
+ &lt;p style="color:#222222; margin-left:0; margin-right:0"&gt;与此同时，竞争对手 Meta 正在疯狂进行挖角计划。Meta 此前宣布设立「超级智能实验室」部门并展开激进的人才招聘，给这场 AI 竞赛加码。据悉，Meta 为吸引顶尖 AI 研究人员，开出了超过 1 亿美元的薪资待遇。&lt;/p&gt; 
+&lt;/div&gt; 
+&lt;div style="text-align:start"&gt; 
+ &lt;h2 style="margin-left:0; margin-right:0"&gt;搜索业务得到 AI 加持，继续强劲增长&lt;/h2&gt; 
+&lt;/div&gt; 
+&lt;div style="text-align:start"&gt; 
+ &lt;p style="color:#222222; margin-left:0; margin-right:0"&gt;谷歌此次公布的财报是科技巨头们本轮财报季的第一份，微软、苹果、亚马逊和 Meta 将于下周陆续发布。媒体称，投资者目前高度关注这些大型科技公司不断膨胀的支出规模，因为它们正在竞相抢占 AI 赛道的领先地位。&lt;strong&gt;随着越来越多用户转向 ChatGPT 来获取网络信息，投资者一直在密切关注 Alphabet 是否出现疲软迹象。&lt;/strong&gt;&lt;/p&gt; 
+&lt;/div&gt; 
+&lt;div style="text-align:start"&gt; 
+ &lt;p style="color:#222222; margin-left:0; margin-right:0"&gt;同时，谷歌的情况具有一定特殊性，其云计算部门依靠数据中心向客户出售算力，是这波 AI 热潮的直接受益者；而公司其他业务则在加速将 AI 工具整合进搜索、YouTube 等热门产品中。虽然谷歌仍位居云计算市场第三，仅次于微软和亚马逊，但其在 AI 方面的优势已帮助其赢得了众多客户。该部门被广泛认为是 Alphabet 当前增长最强劲的动力来源，因为其核心搜索业务已日趋成熟。&lt;/p&gt; 
+&lt;/div&gt; 
+&lt;div style="text-align:start"&gt; 
+ &lt;p style="color:#222222; margin-left:0; margin-right:0"&gt;&lt;strong&gt;第二季度，谷歌云业务营收为 136 亿美元，同比增长 32%，而第一季度增幅为 28%。Alphabet 本季度广告总收入为 713 亿美元，同比增长 10.4%。其中，Alphabet 在其核心搜索业务中实现了强劲增长，同比上涨超过 11%。&lt;/strong&gt;&lt;/p&gt; 
+&lt;/div&gt; 
+&lt;div style="text-align:start"&gt; 
+ &lt;p style="color:#222222; margin-left:0; margin-right:0"&gt;为了给 AI 投资腾出资源，谷歌多年来持续进行削减成本的努力。今年，公司多次在不同部门提供自愿买断方案以减少员工人数。&lt;/p&gt; 
+&lt;/div&gt; 
+&lt;div style="text-align:start"&gt; 
+ &lt;p style="color:#222222; margin-left:0; margin-right:0"&gt;为抢占 AI 赛道，谷歌不断提升其 AI 模型与聊天机器人 Gemini 的能力，并将 AI 功能加入多个核心产品。今年 5 月，谷歌在美国推出了「AI 模式」，对传统搜索引擎进行了重大更新，该模式通过聊天式对话来回答搜索问题，减少了链接数量。&lt;/p&gt; 
+&lt;/div&gt; 
+&lt;div style="text-align:start"&gt; 
+ &lt;h2 style="margin-left:0; margin-right:0"&gt;反垄断诉讼仍是未知之数&lt;/h2&gt; 
+&lt;/div&gt; 
+&lt;div style="text-align:start"&gt; 
+ &lt;p style="color:#222222; margin-left:0; margin-right:0"&gt;不过，投资者也对谷歌搜索主导地位面临的反垄断诉讼结果表示担忧。一名负责该案的联邦法官预计将在下个月裁定是否对谷歌施加限制，包括在 AI 竞争方面设定某些边界。&lt;/p&gt; 
+&lt;/div&gt; 
+&lt;div style="text-align:start"&gt; 
+ &lt;p style="color:#222222; margin-left:0; margin-right:0"&gt;这一裁决将是长达数月审判的结果，审判重点之一就是新兴 AI 参与者是否会侵蚀谷歌的搜索垄断地位。该案由美国司法部于 2020 年发起，诉求包括强制谷歌出售 Chrome 浏览器、禁止其向苹果支付「默认搜索引擎」费用，并要求谷歌与竞争对手共享部分数据。&lt;/p&gt; 
+&lt;/div&gt; 
+&lt;div style="text-align:start"&gt; 
+ &lt;p style="color:#222222; margin-left:0; margin-right:0"&gt;谷歌方面则辩称，政府的要求过于极端，不仅会损害消费者利益，还将削弱美国的技术领先地位。The Futurum Group 首席执行官 Daniel Newman 认为，这种不确定性正在拖累股价。&lt;/p&gt; 
+&lt;/div&gt; 
+&lt;div style="text-align:start"&gt; 
+ &lt;p style="color:#222222; margin-left:0; margin-right:0"&gt;「在人们担心人工智能颠覆之后，反垄断风险接踵而至，这造成了拖累。」他表示：&lt;/p&gt; 
+&lt;/div&gt; 
+&lt;div style="text-align:start"&gt; 
+ &lt;blockquote&gt; 
+  &lt;p style="color:#222222; margin-left:0; margin-right:0"&gt;「裁决结果可能是深度惩罚性的，只要我们不知道最终结果如何，这种不确定性的阴影就会持续很长一段时间。」&lt;/p&gt; 
+ &lt;/blockquote&gt; 
+&lt;/div&gt; 
+&lt;div style="text-align:start"&gt; 
+ &lt;p style="color:#222222; margin-left:0; margin-right:0"&gt;此次外，Ashkenazi 表示，公司总运营支出增长 20%，达到 261 亿美元。增长的最大原因是法律及其他相关费用，其中包括与一项和解相关的 14 亿美元支出。德州总检察长 Ken Paxton 于 5 月宣布，谷歌就 2022 年一项涉及数据隐私权的诉讼达成 13.7 亿美元的和解协议。&lt;/p&gt; 
+&lt;/div&gt;
+                                                                                &lt;/div&gt;
+                                                                            </description>
+      <link>https://www.oschina.net/news/362043</link>
+      <guid isPermaLink="false">https://www.oschina.net/news/362043</guid>
+      <pubDate>Thu, 24 Jul 2025 02:01:57 GMT</pubDate>
+      <author>来源: OSCHINA</author>
+    </item>
+    <item>
+      <title>🔥造物分享：上海理工大学，匠行团队-安全骑行辅助智能尾灯 v1.0</title>
+      <description/>
+      <link>https://www.oschina.net/ai-creation/details/2107</link>
+      <guid isPermaLink="false">https://www.oschina.net/ai-creation/details/2107</guid>
+      <pubDate>Thu, 24 Jul 2025 01:54:57 GMT</pubDate>
+    </item>
+    <item>
+      <title>IBM 第二季度营收 157.7 亿美元，净利润同比增长 16%</title>
+      <description>&lt;div class="content"&gt;
+                                                                    
+                                                        &lt;p&gt;IBM 已发布了该公司的 2024 财年第二季度财报。报告显示，IBM 第二季度总营收为 157.70 亿美元，与上年同期的 154.75 亿美元相比增长 2%，不计入汇率变动的影响为同比增长 4%；净利润为 18.34 亿美元，与上年同期的 15.83 亿美元相比实现增长；来自于持续运营业务的净利润为 18.30 亿美元，上年同期来自于持续运营业务的净利润为 15.81 亿美元，同比增幅达 16%。&lt;/p&gt; 
+&lt;p&gt;IBM 第二季度营收和调整后每股收益均超出华尔街分析师预期，对 2024 财年全年营收作出的展望也超出预期，从而推动其盘后股价上涨近 3%。&lt;/p&gt; 
+&lt;p&gt;&lt;strong&gt;第二季度主要业绩：&lt;/strong&gt;&lt;/p&gt; 
+&lt;p&gt;在截至 2024 年 6 月 30 日的这一财季，IBM 的净利润为 18.34 亿美元，与上年同期的 15.83 亿美元相比实现增长。&lt;/p&gt; 
+&lt;p&gt;IBM 第二季度来自于持续运营业务的净利润为 18.30 亿美元，上年同期来自于持续运营业务的净利润为 15.81 亿美元，同比增幅达 16%；来自于持续运营业务的每股摊薄收益为 1.96 美元，与上年同期的 1.72 美元相比增长 14%。&lt;/p&gt; 
+&lt;p&gt;IBM 第二季度来自于非持续运营业务的利润为 400 万美元，而上年同期来自于非持续运营业务的利润为 200 万美元。&lt;/p&gt; 
+&lt;p&gt;不计入某些一次性项目（不按照美国通用会计准则），IBM 第二季度来自于持续运营业务的运营净利润为 22.75 亿美元，与上年同期的 20.03 亿美元相比增长 14%；来自于持续运营业务的运营每股摊薄收益为 2.43 美元，与上年同期的 2.18 美元相比增长 11%，这一业绩超出分析师此前预期。据雅虎财经频道提供的数据显示，13 名分析师此前平均预期 IBM 第二季度每股收益将达 2.2 美元。&lt;/p&gt; 
+&lt;p&gt;IBM 第二季度总营收为 157.70 亿美元，与上年同期的 154.75 亿美元相比增长 2%，不计入汇率变动的影响为同比增长 4%，这一业绩也超出分析师此前预期。据雅虎财经频道提供的数据显示，12 名分析师此前平均预期 IBM 第二季度营收将达 156.2 亿美元。&lt;/p&gt; 
+&lt;p&gt;IBM 第二季度来自于持续运营业务的总毛利润为 89.50 亿美元，与上年同期的 85.01 亿美元相比增长 5%；总毛利率为 56.8%，而上年同期为 54.9%，同比上升 1.8 个百分点。不计入某些一次性项目（不按照美国通用会计准则），IIBM 第二季度来自于持续运营业务的总毛利润为 91.20 亿美元，与上年同期的 86.50 亿美元相比增长 5%；总毛利率为 57.8%，而上年同期为 55.9%，同比上升 1.9 个百分点。&lt;/p&gt; 
+&lt;p&gt;第二季度成本和支出：&lt;/p&gt; 
+&lt;p&gt;IBM 第二季度来自于持续运营业务的总支出及其他收入为 67.30 亿美元，与上年同期的 65.01 亿美元相比有所上升。其中，销售、总务和行政支出为 49.38 亿美元，与上年同期的 49.00 亿美元相比基本持平；研发和工程支出为 18.40 亿美元，与上年同期的 16.87 亿美元相比有所上升；知识产权和海关开发收入为 2.41 亿美元，与上年同期的 2.48 亿美元相比略有下降；其他收入为 2.33 亿美元，与上年同期的其他收入 2.61 亿美元相比有所下降；利息支出为 4.27 亿美元，与上年同期的 4.23 亿美元相比基本持平。&lt;/p&gt; 
+&lt;p&gt;第二季度各部门业绩：&lt;/p&gt; 
+&lt;p&gt;2024 财年第二季度，IBM 软件业务部门（包括混合平台与解决方案业务以及交易处理业务）的营收为 67.39 亿美元，与上年同期的 62.94 亿美元相比增长 7.1%，不计入汇率变动的影响为同比增长 8.4%。软件业务部门的毛利率为 83.6%，与上年同期的 82.1% 相比有所上升。&lt;/p&gt; 
+&lt;p&gt;在软件部门内部：&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt;混合平台与解决方案业务的营收同比增长 5%，不计入汇率变动的影响为同比增长 6%。在这项业务内部：红帽（Red Hat）部门的营收同比增长 7%，不计入汇率变动的影响为同比增长 8%；自动化部门的营收同比增长 15%，不计入汇率变动的影响为同比增长 16%；数据和人工智能部门的营收同比下降 3%，不计入汇率变动的影响为同比下降 2%；安全部门的营收同比增长 2%，不计入汇率变动的影响为同比增长 3%。&lt;/li&gt; 
+ &lt;li&gt;交易处理业务的营收同比增长 11%，不计入汇率变动的影响为同比增长 13%。&lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;p&gt;IBM 咨询业务部门（包括商业转型、技术咨询和应用业务）第二季度营收为 51.79 亿美元，与上年同期的 52.26 亿美元相比下降 0.9%，不计入汇率变动的影响为同比增长 1.8%。&lt;/p&gt; 
+&lt;p&gt;在咨询业务部门内部：&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt;业务转型营收同比增长 3%，不计入汇率变动的影响为同比增长 6%；&lt;/li&gt; 
+ &lt;li&gt;技术咨询营收同比下降 3%，不计入汇率变动的影响为同比增长 1%；&lt;/li&gt; 
+ &lt;li&gt;应用运营营收同比下降 4%，不计入汇率变动的影响为同比下降 2%。&lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;p&gt;IBM 第二季度基础设施业务部门（包括混合基础设施和基础设施支持业务）营收为 36.45 亿美元，与上年同期的 36.18 亿美元相比增长 0.7%，不计入汇率变动的影响为同比增长 2.7%。&lt;/p&gt; 
+&lt;p&gt;在基础设施业务部门内部：&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt;混合基础设施业务营收同比增长 4%，不计入汇率变动的影响为同比增长 6%。在这项业务内部，IBM z 系统营收同比增长 6%，不计入汇率变动的影响为同比增长 8%；分布式基础设施营收同比增长 3%，不计入汇率变动的影响为同比增长 5%。&lt;/li&gt; 
+ &lt;li&gt;基础设施支持业务营收同比下降 5%，不计入汇率变动的影响为同比下降 3%。&lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;p&gt;IBM 第二季度融资部门（包括客户和商业融资业务）营收为 1.69 亿美元，与上年同期的 1.85 亿美元相比下降 8.3%，不计入汇率变动的影响为同比下降 6.6%。&lt;/p&gt; 
+&lt;p&gt;IBM 第二季度其他业务部门的营收为 3800 万美元，而上年同期其他业务部门的营收为 1.52 亿美元，同比大幅下降。&lt;/p&gt; 
+&lt;p&gt;第二季度其他财务信息：&lt;/p&gt; 
+&lt;p&gt;IBM 第二季度来自于运营活动的净现金为 21 亿美元，与上年同期相比减少了 6 亿美元。IBM 第二季度自由现金流为 26 亿美元，与上年同期相比增加了 5 亿美元。在第二季度里，IBM 通过派发股息的形式向股东返还了 15 亿美元现金。&lt;/p&gt; 
+&lt;p&gt;截至 2024 年第二季度末，IBM 持有 160 亿美元现金、限制性现金和有价证券，与截至 2023 年底相比增加了 25 亿美元；债务总额（其中包括全球融资部门的 111 亿美元债务）为 565 亿美元，自 2023 年底以来并无增减。&lt;/p&gt; 
+&lt;p&gt;上半年主要业绩：&lt;/p&gt; 
+&lt;p&gt;IBM 上半年总营收为 302.31 亿美元，与上年同期的 297.27 亿美元相比实现增长。IBM 上半年来自于持续运营业务的净利润为 34.05 亿美元，与上年同期的 25.15 亿美元相比有所增长；来自于持续运营业务的每股摊薄收益为 3.68 美元，高于上年同期的 2.73 美元。&lt;/p&gt; 
+&lt;p&gt;不计入某些一次性项目（不按照美国通用会计准则），IBM 上半年来自于持续运营业务的净利润为 38.39 亿美元，与上年同期的 32.52 亿美元相比实现增长。不计入某些一次性项目（不按照美国通用会计准则），IBM 上半年来自于持续运营业务的每股摊薄收益为 4.11 美元，与上年同期的为 3.54 美元相比实现增长。&lt;/p&gt; 
+&lt;p&gt;IBM 上半年来自于运营活动的净现金为 62 亿美元，与上年同期相比减少了 2 亿美元。IBM 上半年的自由现金流为 45 亿美元，与上年同期相比增加了 11 亿美元。在过去 12 个月时间里，IBM 来自于运营活动的净现金为 138 亿美元，自由现金流为 123 亿美元。&lt;/p&gt; 
+&lt;p&gt;&lt;strong&gt;2024 年全年业绩展望：&lt;/strong&gt;&lt;/p&gt; 
+&lt;p&gt;IBM 继续预计，该公司 2024 财年营收的同比增长率（不计入汇率变动的影响）将可达到 3% 至 5%。IBM 表示，按照当前的汇率，预计汇率变动将对该公司的营收增长造成 1 到 2 个百分点的负面影响。&lt;/p&gt; 
+&lt;p&gt;据 IBM 此前公布的财报显示，2023 财年该公司的总营收为 618.60 亿美元。按 3% 到 5% 的同比增长率计算，这意味着该公司预计其 2024 财年总营收将达 637 亿美元到 650 亿美元之间，超出分析师预期。据雅虎财经频道提供的数据显示，19 名分析师目前平均预期该公司 2024 财年的总营收将达 630.3 亿美元。&lt;/p&gt; 
+&lt;p&gt;IBM 目前预计，2024 财年该公司的自由现金流将达 120 亿美元以上。&lt;/p&gt;
+                                                                                &lt;/div&gt;
+                                                                            </description>
+      <link>https://www.oschina.net/news/362039</link>
+      <guid isPermaLink="false">https://www.oschina.net/news/362039</guid>
+      <pubDate>Thu, 24 Jul 2025 01:53:57 GMT</pubDate>
+      <author>来源: OSCHINA</author>
+    </item>
     <item>
       <title>Anthropic 为 Claude 开发「学习」功能，争夺 AI 教育市场</title>
       <description>&lt;div class="content"&gt;
@@ -589,251 +1026,6 @@
       <link>https://www.oschina.net/p/torchv-unstructured</link>
       <guid isPermaLink="false">https://www.oschina.net/p/torchv-unstructured</guid>
       <pubDate>Wed, 16 Jul 2025 09:03:00 GMT</pubDate>
-    </item>
-    <item>
-      <title>李沐发布开源 TTS 语言大模型 Higgs Audio v2</title>
-      <description>&lt;div class="content"&gt;
-                                                                    
-                                                        &lt;p&gt;知名 AI 技术创业者李沐和其团队 Boson.ai&amp;nbsp;发布了开源 TTS 语言大模型&amp;nbsp;&lt;strong&gt;Higgs Audio v2&lt;/strong&gt;，该模型不仅支持文本转语音，还能生成多语言自然多说话人对话、自动调整韵律、使用克隆声音哼唱旋律，甚至同时生成语音和背景音乐 。&lt;/p&gt; 
-&lt;p&gt;Higgs Audio v2 整合了 1000 万小时语音数据到 LLM 文本训练中，在 &lt;strong&gt;EmergentTTS-Eval&lt;/strong&gt; 基准测试中表现优异（尤其在「情绪」和「问题」类别中，较 &lt;strong&gt;GPT-4o-mini-tts&lt;/strong&gt; 分别高出 75.7% 和 55.7% 的胜率），在传统 TTS 基准测试中也取得了最佳性能。&lt;/p&gt; 
-&lt;p&gt;&lt;img alt="" src="https://oscimg.oschina.net/oscnet/up-e48b7c56c84559072bacc4563a1695cd45d.png" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;p&gt;&lt;img alt="" src="https://oscimg.oschina.net/oscnet/up-c8f511e25c2103e76f04d3fda3dcb16a3a5.png" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;p&gt;&lt;img alt="" src="https://oscimg.oschina.net/oscnet/up-7d2efc44d02a93d4f5dacd62985a24b7d09.png" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;p&gt;以下是关于 Higgs Audio V2 的详细介绍：&lt;/p&gt; 
-&lt;ul&gt; 
- &lt;li&gt;&lt;strong&gt;模型特点&lt;/strong&gt; 
-  &lt;ul&gt; 
-   &lt;li&gt;&lt;strong&gt;多模态能力&lt;/strong&gt;：不仅能处理文本，还能同时理解并生成语音，可完成简单的文本转语音，也能实现更复杂的任务，如写一首歌并唱出来，再加上配乐。&lt;/li&gt; 
-   &lt;li&gt;&lt;strong&gt;独特功能&lt;/strong&gt;：具备生成多种语言的自然多说话人对话、旁白过程中的自动韵律调整、使用克隆声音进行旋律哼唱以及同时生成语音和背景音乐等能力。&lt;/li&gt; 
-   &lt;li&gt;&lt;strong&gt;性能优势&lt;/strong&gt;：在 emergenttts-eval 基准上，相较于其他模型，性能遥遥领先，尤其是在「情绪」和「问题」类别中，相比 gpt-4o-mini-tts 高出了 75.7% 和 55.7% 的胜率。在 seed-tts eval 和情感语音数据集（esd）等传统 tts 基准测试中也取得了最佳性能。&lt;/li&gt; 
-  &lt;/ul&gt; &lt;/li&gt; 
- &lt;li&gt;&lt;strong&gt;技术原理&lt;/strong&gt; 
-  &lt;ul&gt; 
-   &lt;li&gt;&lt;strong&gt;数据处理&lt;/strong&gt;：将语音信号以每秒 25 帧的速度运行，通过统一的离散化音频分词器，将其表示为长度为 10 的编号序列，也就是一个个 token，以捕获语义和声学特征。&lt;/li&gt; 
-   &lt;li&gt;&lt;strong&gt;模型架构&lt;/strong&gt;：利用预训练的大型语言模型，将其强大的语言理解、语境感知和推理能力扩展到音频任务。通过在大量的配对文本-音频数据集上端到端地训练大型语言模型，实现了语音和文本的整合。&lt;/li&gt; 
-   &lt;li&gt;&lt;strong&gt;上下文学习&lt;/strong&gt;：融入了上下文学习，使模型能够快速适应而无需重新训练。通过简单的提示，例如简短的参考音频样本，可以即时进行零样本语音克隆，匹配说话风格。&lt;/li&gt; 
-  &lt;/ul&gt; &lt;/li&gt; 
- &lt;li&gt;&lt;strong&gt;应用场景&lt;/strong&gt; 
-  &lt;ul&gt; 
-   &lt;li&gt;&lt;strong&gt;实时语音聊天&lt;/strong&gt;：可实现低延迟、理解情绪并表达情绪的自然语音交互，而不仅仅是机械的问答，适用于虚拟主播、实时语音助手等场景。&lt;/li&gt; 
-   &lt;li&gt;&lt;strong&gt;音频内容创作&lt;/strong&gt;：能够生成自然多说话人对话、旁白等音频内容，为有声读物、互动培训和动态故事讲述等提供支持。&lt;/li&gt; 
-   &lt;li&gt;&lt;strong&gt;语音克隆&lt;/strong&gt;：可以复制特定人物的声音，用于制作鬼畜视频、虚拟主播等，为娱乐和创意领域提供了新的可能性。&lt;/li&gt; 
-  &lt;/ul&gt; &lt;/li&gt; 
-&lt;/ul&gt; 
-&lt;p&gt;该模型代码已全部开源至 GitHub：https://github.com/boson-ai/higgs-audio，和 Hugging Face（https://huggingface.co/bosonai/higgs-audio-v2-generation-3B-base），支持本地安装（需 GPU 版 PyTorch 或使用 Docker 简化安装）。&lt;/p&gt;
-                                                                                &lt;/div&gt;
-                                                                            </description>
-      <link>https://www.oschina.net/news/361946</link>
-      <guid isPermaLink="false">https://www.oschina.net/news/361946</guid>
-      <pubDate>Wed, 16 Jul 2025 08:49:00 GMT</pubDate>
-      <author>来源: OSCHINA</author>
-    </item>
-    <item>
-      <title>21 岁 MIT 辍学生 AI 创业团队获得 3200 万美元融资</title>
-      <description>&lt;div class="content"&gt;
-                                                                    
-                                                        &lt;p&gt;&lt;span style="color:#000000"&gt;来自麻省理工学院（MIT）的两位 21 岁辍学生卡伦・考希克 (Karun Kaushik) 和塞林・科卡拉 (Selin Kocalar) 所创办的的 AI 合规初创公司 Delve 已完成 3200 万美元的 A 轮融资。目前，Delve 的估值已高达 3 亿美元。&lt;/span&gt;&lt;/p&gt; 
-&lt;p&gt;&lt;span style="color:#000000"&gt;Delve 最初的目标是开发一款 AI 医疗记录助手，帮助医生处理病人文档，但在面临繁琐的 HIPAA 合规要求后，他们迅速调整了方向，决定帮助其他公司更快、更高效地达成合规目标。&lt;/span&gt;&lt;/p&gt; 
-&lt;p&gt;&lt;span style="color:#000000"&gt;&lt;img alt="" height="202" src="https://oscimg.oschina.net/oscnet/up-e4be3c97d6c432687d0e90c9b808bdf6d7c.png" width="500" referrerpolicy="no-referrer"&gt;&lt;/span&gt;&lt;/p&gt; 
-&lt;p&gt;&lt;span style="color:#000000"&gt;自成立以来，Delve 的客户数量已从今年 1 月的 100 家激增至 500 家，其中不乏如 Lovable、Bland 和 Wispr Flow 等快速成长的 AI 独角兽。其核心技术是利用 AI 代理来自动化合规工作，减少人工成本和时间的消耗。&lt;/span&gt;&lt;/p&gt; 
-&lt;p&gt;&lt;span style="color:#000000"&gt;创始人们表示，传统的合规流程往往依赖邮件、Slack 和共享驱动器等不规范的手段，这使得企业在扩展和运营时面临重重困难。Delve 通过与客户现有工具的整合，让这些 AI 代理在后台默默工作，自动收集证据、撰写报告和更新审计日志，实现合规工作流程的实时自动化。&lt;/span&gt;&lt;/p&gt; 
-&lt;p&gt;&lt;span style="color:#000000"&gt;Delve 的成功并非偶然，投资方 Insight Partners 对其未来发展寄予厚望，认为合规的现代化将推动企业整个运营的升级。Kocalar 指出，随着客户需求的多样化，Delve 计划将业务范围扩展到网络安全、风险管理及内部治理等领域，力争在未来自动化更多的后台业务。&lt;/span&gt;&lt;/p&gt; 
-&lt;p&gt;&lt;span style="color:#000000"&gt;当然，市场竞争同样激烈，各类 AI 企业和大型实验室如 OpenAI 也在推出各种通用代理工具来自动化业务流程。但 Kocalar 认为，这些竞争者的出现反而验证了 Delve 的商业模式和市场需求。凭借在合规领域的深入知识和专业技术，Delve 期待在这个不断变化的市场中保持领先地位。&lt;/span&gt;&lt;/p&gt;
-                                                                                &lt;/div&gt;
-                                                                            </description>
-      <link>https://www.oschina.net/news/361941</link>
-      <guid isPermaLink="false">https://www.oschina.net/news/361941</guid>
-      <pubDate>Wed, 16 Jul 2025 08:37:00 GMT</pubDate>
-      <author>来源: OSCHINA</author>
-    </item>
-    <item>
-      <title>LTX-Video 0.9.8 发布，首次支持 60 秒长视频生成</title>
-      <description>&lt;div class="content"&gt;
-                                                                    
-                                                        &lt;p&gt;LTX-Video 0.9.8 已发布，这是基于 DiT（Diffusion Transformer）架构的视频生成模型的最新升级，首次支持生成长达 60 秒的高质量视频，并发布了新的蒸馏模型和细节增强器。&lt;/p&gt; 
-&lt;p&gt;&lt;img src="https://static.oschina.net/uploads/space/2025/0723/163149_uQ8v_2720166.png" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;p&gt;新版本最大的突破是支持生成长达 60 秒的高质量视频（LTXV-13B 模型），同时保持与官方 IC-LoRAs 的兼容性。&lt;/p&gt; 
-&lt;p&gt;本次更新包含两个蒸馏模型：ltxv-13b-0.9.8-distilled 和 ltxv-2b-0.9.8-distilled，均从基础模型 ltxv-13b-0.9.8-dev 蒸馏而来。这些模型可在多尺度管道中协同使用，并显著提升了提示理解和细节生成能力。所有模型都提供了对应的 FP8 量化权重和工作流程。&lt;/p&gt; 
-&lt;p&gt;此外，Lightricks 还发布了新的细节增强模型 LTX-Video-ICLoRA-detailer-13B-0.9.8，专门用于提升生成视频的细节质量。该模型已集成到 ComfyUI 中，用户可以直接使用。&lt;/p&gt; 
-&lt;p&gt;LTX-Video 系列支持图像到视频和视频到视频的生成，并能通过多条件控制（如图像、短视频片段）进行精细化创作。开发者可以通过 Diffusers 和 ComfyUI 等框架使用这些模型，或通过 LTX-Studio、Fal.ai 和 Replicate 等平台在线体验。&lt;/p&gt; 
-&lt;p&gt;&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fgithub.com%2FLightricks%2FLTX-Video" target="_blank"&gt;https://github.com/Lightricks/LTX-Video&lt;/a&gt;&lt;/p&gt; 
-&lt;p&gt;&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fhuggingface.co%2FLightricks%2FLTX-Video" target="_blank"&gt;https://huggingface.co/Lightricks/LTX-Video&lt;/a&gt;&lt;/p&gt;
-                                                                                &lt;/div&gt;
-                                                                            </description>
-      <link>https://www.oschina.net/news/361940</link>
-      <guid isPermaLink="false">https://www.oschina.net/news/361940</guid>
-      <pubDate>Wed, 16 Jul 2025 08:31:00 GMT</pubDate>
-      <author>来源: OSCHINA</author>
-    </item>
-    <item>
-      <title>AI 将在五年内成为企业生存的 「基本技能」</title>
-      <description>&lt;div class="content"&gt;
-                                                                    
-                                                        &lt;p style="color:#242424; margin-left:0; margin-right:0; text-align:left"&gt;美国科技亿万富翁马克・库班最近在接受采访时表示，人工智能（AI）将在未来五年内成为每个职场人士必备的 「基本技能」，就像电子邮件和 Excel 软件一样普及。他强调，企业主如何有效利用人工智能将直接影响他们在未来几年的竞争力和成功。&lt;/p&gt; 
-&lt;p style="color:#242424; margin-left:0; margin-right:0; text-align:left"&gt;&lt;img height="340" src="https://oscimg.oschina.net/oscnet/up-6045b74ea4f19a7984f7137d2b1c96ff8a2.png" width="500" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;p style="color:#242424; margin-left:0; margin-right:0; text-align:left"&gt;库班提到，在接下来的十年内，人工智能助手将极大改变工作模式。他预测，未来会有越来越多的人选择自己创业，借助人工智能的帮助，单个创始人将能够承担起一个完整团队的工作。这一变化不仅能够提升个人的工作效率，还能够为更多人打开创业的大门。&lt;/p&gt; 
-&lt;p style="color:#242424; margin-left:0; margin-right:0; text-align:left"&gt;他指出，企业主在利用人工智能的过程中，必须快速做出决策并行动。他表示:「如果你没有利用人工智能来更快地决策，你就会落后于竞争对手。」 库班将人工智能视为企业主可以投资的 「团队成员」，它能够协助企业主完成多个角色的工作，包括运营副总裁、销售代表、数据分析师及法律顾问，而这些角色的工作费用将大幅降低。&lt;/p&gt; 
-&lt;p style="color:#242424; margin-left:0; margin-right:0; text-align:left"&gt;不过，库班也提醒企业家们，尽管 AI 具有强大的能力，他们在使用人工智能时仍需谨慎。他建议将人工智能视作 「最聪明的实习生」，不仅要提出正确的问题，还要认真审核其提供的答案。他指出，许多企业家在当前环境中面临的&lt;span&gt;最大&lt;/span&gt;挑战是 「恐惧和资金」。然而，人工智能代理的出现，将帮助那些由于招聘成本而无法进入某一行业的创业者，打破这一壁垒。&lt;/p&gt; 
-&lt;p style="color:#242424; margin-left:0; margin-right:0; text-align:left"&gt;库班总结道，人工智能不仅是工具，更是企业家们的强大杠杆。成功的企业家将懂得如何有效利用这一技术，确保在竞争中立于不败之地。他强调:「最终，人工智能是一个乘数，善用它，但不要被它操控。」&lt;/p&gt;
-                                                                                &lt;/div&gt;
-                                                                            </description>
-      <link>https://www.oschina.net/news/361931</link>
-      <guid isPermaLink="false">https://www.oschina.net/news/361931</guid>
-      <pubDate>Wed, 16 Jul 2025 07:40:00 GMT</pubDate>
-      <author>来源: OSCHINA</author>
-    </item>
-    <item>
-      <title>亚马逊云科技上海 AI 研究院解散</title>
-      <description>&lt;div class="content"&gt;
-                                                                    
-                                                        &lt;p&gt;AWS 亚马逊云科技上海 AI 研究院的首席应用科学家王敏捷发朋友圈称，「刚收到通知，AWS 亚马逊云科技上海 AI 研究院（也是 AWS 最后一个海外研究院）正式解散。」&lt;/p&gt; 
-&lt;p&gt;&lt;img alt="" src="https://oscimg.oschina.net/oscnet/up-0bf820d1cb694fdf814a9c083a90582b673.png" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;p&gt;王敏捷感慨道，「近 6 年带队时光，赶上了外企研究院的黄金周期，更得益于张峥老师的细心指导，有幸成为 AWS 亚太地区最年轻的首席应用科学家。」&lt;/p&gt; 
-&lt;p&gt;今日，亚马逊云科技就上海 AI 研究院解散一事&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fbaijiahao.baidu.com%2Fs%3Fid%3D1838398566569114998%26wfr%3Dspider%26for%3Dpc"&gt;回应新浪科技称&lt;/a&gt;：「经过对公司组织、发展重点及未来战略方向的深入评估，我们决定对亚马逊云科技部分团队进行人员精简。」&lt;/p&gt; 
-&lt;p&gt;亚马逊云科技表示，「做出这些决定是非常艰难的，我们将全力支持员工顺利过渡，我们做出这些必要的决定，是为了持续投资、优化资源，为客户带来更多的创新」。&lt;/p&gt; 
-&lt;p&gt;今年以来，已有多家科技巨头对其在华研发业务进行了调整。&lt;/p&gt; 
-&lt;p&gt;2025 年 3 月，IBM 关闭了在中国运营了 32 年的研发部门，另外，有媒体报道微软也在逐步关闭其上海 AI 实验室，并将数百名专家搬迁至美国、澳大利亚、爱尔兰等地。今年 6 月，花旗集团宣布，作为在全球持续推进的简化工作的一部分，花旗将精简位于中国上海和大连的全球技术解决中心，减少约 3500 名技术人员。&lt;/p&gt;
-                                                                                &lt;/div&gt;
-                                                                            </description>
-      <link>https://www.oschina.net/news/361930</link>
-      <guid isPermaLink="false">https://www.oschina.net/news/361930</guid>
-      <pubDate>Wed, 16 Jul 2025 07:37:00 GMT</pubDate>
-      <author>来源: OSCHINA</author>
-    </item>
-    <item>
-      <title>Fedora 考虑放弃 DVD 光盘启动支持</title>
-      <description>&lt;div class="content"&gt;
-                                                                    
-                                                        &lt;p&gt;Fedora 项目正在向其用户和开发者社区征求反馈，探讨是否可能更新其发布标准，使其不再阻止光盘启动问题（DVD 映像），以及是否继续将基于 Intel 的 Mac 的双启动问题视为发布阻碍。&lt;/p&gt; 
-&lt;p&gt;提出的&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fdiscussion.fedoraproject.org%2Ft%2Fproposal-drop-optical-media-boot-release-criterion%2F160524" target="_blank"&gt;第一项建议&lt;/a&gt;是，是否放弃 Fedora 发布标准中关于光盘启动支持的内容。这涉及 Fedora 发行版安装程序映像，这些映像必须在写入光盘（DVD）后才能启动。Fedora 已于 2020 年正式停止测试光盘支持，目前他们正在考虑使其不再阻止任何已报告的问题：&lt;/p&gt; 
-&lt;blockquote&gt; 
- &lt;p&gt;自 2020 年以来，质量团队不再被要求测试光学介质，但发现的任何问题仍然可能成为阻碍。我们不太喜欢这个解决方案（阻止我们未测试的内容），但测试光学启动实在太耗时，而且已经很小众了。五年后的今天，我们认为是时候放弃整个标准了。光学启动的重要性早已不复存在，我们认为是时候将其从名为发布标准的「关键功能列表」中移除了。这不会为我们节省太多时间（我不记得过去几年出现过任何引人注目的光学启动问题），但它可以稍微简化我们的测试矩阵（使其更易于阅读），解决发布阻止状态和质量覆盖范围之间的矛盾，并且如果发现问题，它可以让我们丢弃仍然准备好的 DVD 驱动器和介质（但可能已经无法使用了）。&lt;/p&gt; 
-&lt;/blockquote&gt; 
-&lt;p&gt;&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fwww.phoronix.com%2Fnews%2F%3D%2522https%3A%2F%2Fdiscussion.fedoraproject.org%2Ft%2Fproposal-drop-intel-based-macbook-dual-boot-release-criterion%2F160525%2522" target="_blank"&gt;第二项提案&lt;/a&gt;是关于取消基于 Intel 的 Apple MacBook 双启动发布标准。当前的发布标准指出，Fedora 安装程序必须能够与基于 Intel 的 Mac 电脑上现有的 macOS 安装一起双启动/安装到可用空间中。&lt;/p&gt; 
-&lt;blockquote&gt; 
- &lt;p&gt;「这个标准正在随着时间的推移而被淘汰，因为苹果多年前就停止生产基于英特尔的 Mac（取而代之的是「Apple Silicon」 M* 处理器，目前 Fedora 并不支持这种处理器）。最后几款可以合理使用 Fedora 的 MacBook 是 2017 年款，它仍然包含 T1 安全芯片（较新的型号有 T2 芯片，并且它们的内部键盘和触摸板不适用于 Fedora 内核）。2017 年款的系统更新支持将于今年结束，老款已经过时。这意味着 2017 年之前款的用户很可能已经切换到 Fedora，如果他们愿意的话，2017 年款的用户可能会在今年这样做，而且未来不会有这样的用户，因为他们的硬件得不到 Fedora 的良好支持。」&lt;/p&gt; 
-&lt;/blockquote&gt; 
-&lt;p&gt;这主要涉及 2017 年及更早的 Apple Mac，因为配备 T2 安全芯片的较新 Apple Mac 目前在 Fedora Linux 上运行不佳。这不会影响 Apple Silicon Mac 的任何变更，只会影响 Intel x86_64 系统。&lt;/p&gt; 
-&lt;p&gt;由于 Fedora 质量团队目前对剩余的 Intel Mac 的访问权限较少，并且能够投入较少时间来修复这些老旧系统的任何问题，因此现在的愿望是不要将任何 Apple Mac 双启动问题视为发布阻碍。&lt;/p&gt;
-                                                                                &lt;/div&gt;
-                                                                            </description>
-      <link>https://www.oschina.net/news/361929</link>
-      <guid isPermaLink="false">https://www.oschina.net/news/361929</guid>
-      <pubDate>Wed, 16 Jul 2025 07:31:00 GMT</pubDate>
-      <author>来源: OSCHINA</author>
-    </item>
-    <item>
-      <title>周鸿祎：最近都采购华为芯片，英伟达 H20 性价比不高</title>
-      <description>&lt;div class="content"&gt;
-                                                                    
-                                                        &lt;p&gt;7 月 23 日，360 集团创始人周鸿祎&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fwww.yicai.com%2Fnews%2F102737141.html"&gt;对第一财经记者表示&lt;/a&gt;，360 的芯片采购正转向国产芯片，最近采购的都是华为的产品，未涉及英伟达 H20 芯片。&lt;/p&gt; 
-&lt;p&gt;他坦言，尽管国产芯片与英伟达产品存在差距，但必须坚持使用，因为只有通过大量应用，才能推动国产芯片持续改进。&lt;/p&gt; 
-&lt;p&gt;&lt;img alt="" src="https://static.oschina.net/uploads/space/2025/0723/152238_twYV_2720166.png" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;p&gt;H20 是英伟达针对中国市场推出的 H100 简化版，采用 Hopper 架构和 CoWoS 封装技术，但性能差距明显。周鸿祎分析，H20 更适合 AI 推理任务，而推理对芯片要求较低，无需高速互联和集群部署。在此领域，国产芯片性价比更高，使得定位中间的 H20 显得尴尬。当前美国芯片出口限制背景下，华为等企业加大研发，其升腾系列芯片性能逐步提升，部分领域已超越 H20。360 的选择既获性价比优势，也助力国产芯片产业迭代，实现双赢。&lt;/p&gt; 
-&lt;p&gt;此前，360 已采购约 1000 片华为升腾 910B AI 芯片，并合作将 AI 框架移植到该芯片上。&lt;/p&gt;
-                                                                                &lt;/div&gt;
-                                                                            </description>
-      <link>https://www.oschina.net/news/361928</link>
-      <guid isPermaLink="false">https://www.oschina.net/news/361928</guid>
-      <pubDate>Wed, 16 Jul 2025 07:24:00 GMT</pubDate>
-      <author>来源: OSCHINA</author>
-    </item>
-    <item>
-      <title>深度剖析 TDMQ RabbitMQ 版经典队列底层存储机制</title>
-      <description>&lt;div class="content"&gt;
-                                                                                                                    
-                                                                                                                                                    &lt;h2&gt;导语&lt;/h2&gt; 
-&lt;p&gt;RabbitMQ 作为开源消息队列的标杆产品，凭借灵活的路由机制与高可用设计，支撑着海量业务场景的消息流转。而经典队列（Classic Queue） 作为 RabbitMQ 最基础、应用最广泛的队列类型，其底层存储机制直接决定了消息处理的性能边界与可用性上限。&lt;/p&gt; 
-&lt;p&gt;理解经典队列的存储架构，不仅是掌握 RabbitMQ 核心原理的关键，更为生产环境的运维优化提供了理论支撑。本文将从文件目录结构、存储格式定义、读写流程到运维实践策略，全面解析经典队列的底层存储实现逻辑，帮助读者深入理解其在消息生命周期管理中的核心作用。&lt;/p&gt; 
-&lt;h2&gt;经典队列介绍&lt;/h2&gt; 
-&lt;p&gt;RabbitMQ 作为一款历史悠久的开源消息队列，被广泛应用于各个领域。在 RabbitMQ 中，用户使用虚拟主机（Vhost）隔离资源，交换机负责路由消息，队列则是消息存储的最小单元。&lt;/p&gt; 
-&lt;p&gt;用户通过客户端与 RabbitMQ 的服务端建立连接后，基于通道（Channel）实现消息的高效交互：生产者经过通道将消息发送至交换机，由交换机按绑定规则路由至目标队列；消费者则通过通道从队列中拉取消息，完成业务逻辑处理。&lt;/p&gt; 
-&lt;p&gt;&lt;img src="https://oscimg.oschina.net/oscnet/up-356020c87a4782a64efc9913f5c4615dfea.png" alt="" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;p&gt;在这一过程中，队列作为消息生命周期的核心载体，衍生出三种差异化实现：&lt;/p&gt; 
-&lt;ul&gt; 
- &lt;li&gt; &lt;p&gt;&lt;strong&gt;经典队列（Classic Queue）&lt;/strong&gt;：采用轻量级索引与共享存储架构，在单机性能与存储效率间取得平衡，适用于高吞吐非强一致性场景；&lt;/p&gt; &lt;/li&gt; 
- &lt;li&gt; &lt;p&gt;&lt;strong&gt;仲裁队列（Quorum Queue）&lt;/strong&gt;：基于 Raft 协议实现多副本强一致性，保障关键业务数据不丢失，适用于金融交易、订单管理等关键业务；&lt;/p&gt; &lt;/li&gt; 
- &lt;li&gt; &lt;p&gt;&lt;strong&gt;流队列（Stream Queue）&lt;/strong&gt;：以日志结构存储消息流，支持回溯消费与持久化流处理，适用于实时数据分析场景。&lt;/p&gt; &lt;/li&gt; 
-&lt;/ul&gt; 
-&lt;p&gt;经典队列作为使用频率最高的队列，了解它的存储机制对于理解其可用性和性能至关重要，接下来将从存储架构、文件格式、读写流程等维度，深入解析经典队列的底层实现逻辑。&lt;/p&gt; 
-&lt;h2&gt;存储架构解析&lt;/h2&gt; 
-&lt;h3&gt;目录结构&lt;/h3&gt; 
-&lt;p&gt;RabbitMQ 通过虚拟主机（Vhost）实现资源隔离，每个 Vhost 有独立的物理存储目录，其典型结构如下：&lt;/p&gt; 
-&lt;pre&gt;&lt;code&gt;vhost_name/
-├── msg_store_persistent/      # 共享存储目录，存储大消息
-│   ├── 0.rdq                  # 共享存储文件
-│   └── 1.rdq                  # 支持文件滚动
-└── queues/                    # 队列专属存储目录
-    └── queue_name/            # 单个队列目录
-        ├── queue_name.qi      # 队列索引文件
-        └── queue_name.qs      # 队列存储文件
-&lt;/code&gt;&lt;/pre&gt; 
-&lt;p&gt;msg_store_* 是共享存储目录，顾名思义是这个 Vhost 下所有队列共享的存储。由于 Exchange 可能会将同一条消息路由到不同的队列，而将同一条消息存储多次会增加磁盘空间占用，因此经典队列会将大小超过某个阈值的消息存储在共享存储下，通过引用计数来管理这部分消息。&lt;/p&gt; 
-&lt;p&gt;每个队列在 queues 目录下都有属于自己的目录，队列目录下主要有两类文件：&lt;/p&gt; 
-&lt;ul&gt; 
- &lt;li&gt; &lt;p&gt;&lt;strong&gt;队列存储&lt;/strong&gt;：名称为 *.qs 的文件，负责存储这个队列中消息大小小于这个阈值的消息。&lt;/p&gt; &lt;/li&gt; 
- &lt;li&gt; &lt;p&gt;&lt;strong&gt;队列索引&lt;/strong&gt;：名称为 *.qi 的文件，负责存储消息元数据和消息所在位置。队列索引存储了消息的偏移或唯一标识，通过它们可以定位到消息在队列存储或共享存储中的位置，索引文件中的 Entry 和存储文件中的 Entry 因此在逻辑上构成了一对一的映射关系。&lt;/p&gt; &lt;/li&gt; 
-&lt;/ul&gt; 
-&lt;p&gt;&lt;img src="https://oscimg.oschina.net/oscnet/up-c21a1914865fc33ac57c80f3056a8a6522b.png" alt="" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;h3&gt;队列索引&lt;/h3&gt; 
-&lt;p&gt;队列索引文件由一个 Header 和若干 Entry 组成，Entry 的数量由 classic_queue_index_v2_segment_entry_count 这一参数控制，默认为 4096。Entry 有两种类型：Publish Entry 和 Ack Entry。&lt;/p&gt; 
-&lt;p&gt;生产者将消息成功发送到队列后会产生一个 Publish Entry，队列将这条消息投递给消费者并且得到消费者确认后会使用 Ack Entry 覆盖原来的 Publish Entry，代表这条消息可以被删除。&lt;/p&gt; 
-&lt;p&gt;Publish Entry 存储了这条消息的元数据，包括 MsgId、SeqId、存储位置、消息属性和是否持久化的标识。&lt;/p&gt; 
-&lt;p&gt;MsgId 是 RabbitMQ 为每条消息随机生成的 GUID，用来确定消息在共享存储的位置。&lt;/p&gt; 
-&lt;p&gt;SeqId 是这条消息在队列中的序号，用来决定消息在队列索引和队列存储中的位置。&lt;/p&gt; 
-&lt;p&gt;&lt;img src="https://oscimg.oschina.net/oscnet/up-0d7a0133f530ca3140ec9f5eae8f0132f65.png" alt="" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;h3&gt;队列存储&lt;/h3&gt; 
-&lt;p&gt;队列存储文件和索引文件是一对一的关系，当队列删除它的索引文件时，也会删除对应的存储文件。队列存储文件的结构与索引文件类似，也是由 Header 和 Entry 构成。Header 和 Entry 的具体组成如下所示。&lt;/p&gt; 
-&lt;p&gt;&lt;img src="https://oscimg.oschina.net/oscnet/up-f1cb3f97618cb1b9d332ea7825e2572cb48.png" alt="" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;h3&gt;共享存储&lt;/h3&gt; 
-&lt;p&gt;ETS 是 Erlang 内置的单机 KV 存储，共享存储使用 ETS 维护了两个组件：&lt;/p&gt; 
-&lt;ul&gt; 
- &lt;li&gt; &lt;p&gt;&lt;strong&gt;Index&lt;/strong&gt;：是 MsgId 到消息位置的映射。&lt;/p&gt; &lt;/li&gt; 
- &lt;li&gt; &lt;p&gt;&lt;strong&gt;FileSummary&lt;/strong&gt;：文件到文件统计信息的映射。&lt;/p&gt; &lt;/li&gt; 
-&lt;/ul&gt; 
-&lt;p&gt;经典队列在读取消息时通过索引文件中的 Publish Entry 获取到 MsgId 后还需要从 Index 中获取消息的具体位置，包括这条消息所在的文件、偏移以及它的引用计数。相同 MsgId 的多条消息只会被写入一次，删除消息时，它的引用计数会被减一。文件统计信息中记录了文件中有效数据的数量，这在整理文件时会被用到。&lt;/p&gt; 
-&lt;p&gt;&lt;img src="https://oscimg.oschina.net/oscnet/up-0c96ca072a09a3c72ec0b3a9950eed78807.png" alt="" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;p&gt;共享存储文件的大小由参数 msg_store_file_size_limit 控制，默认为 16MB。每个文件由若干个 Entry 组成，每个 Entry 的具体组成如下所示。&lt;/p&gt; 
-&lt;p&gt;&lt;img src="https://oscimg.oschina.net/oscnet/up-c58a84b548a6cf8d3a9adc321ae22d8fe7c.png" alt="" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;h2&gt;核心工作流程&lt;/h2&gt; 
-&lt;h3&gt;消息写入&lt;/h3&gt; 
-&lt;p&gt;RabbitMQ 根据消息大小决定将消息写入到哪个存储。如果消息大小大于或等于某个值（由参数 queue_index_embed_msgs_below 控制，默认为 4KB），RabbitMQ 会将其存于共享存储中，否则会存于队列存储中。&lt;/p&gt; 
-&lt;p&gt;将消息写入存储时会直接写到内部缓冲区：&lt;/p&gt; 
-&lt;ul&gt; 
- &lt;li&gt; &lt;p&gt;队列存储内部的缓冲区大小由参数 classic_queue_store_v2_max_cache_size 控制，默认为 512KB。&lt;/p&gt; &lt;/li&gt; 
- &lt;li&gt; &lt;p&gt;共享存储内部的缓冲区大小则固定为 1MB。将消息写入到共享存储时除了需要写入到缓冲区外，还需要更新它内部的 Index 和 FileSummary 组件。&lt;/p&gt; &lt;/li&gt; 
-&lt;/ul&gt; 
-&lt;p&gt;缓冲区大小超过限制后会 Flush 其中的数据，值得注意的是，Flush 时不会调用 Fsync，而是调用 Write 将数据写入到操作系统的 Page Cache 上。这种方式通过牺牲数据安全性以获得更低的延迟，如果需要更强的数据安全性应使用仲裁队列。&lt;/p&gt; 
-&lt;p&gt;存储写入完成后需要在队列索引文件中写入 Publish Entry，此时消息被认为成功写入了。之后还要更新内存中的消息缓存，以加速消息读取。&lt;/p&gt; 
-&lt;p&gt;&lt;img src="https://oscimg.oschina.net/oscnet/up-06d103e2eaab27dd60507d35936ea839341.png" alt="" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;h2&gt;消息读取&lt;/h2&gt; 
-&lt;p&gt;经典队列在内存中维护了专门的缓存来提升读取性能，底层存储会根据队列的消费速率批量读取不超过 2048 条消息到缓存中。读取消息时会先检查缓存中是否有这条消息，如果有则直接返回，否则会先将消息批量读取到缓存。&lt;/p&gt; 
-&lt;p&gt;将消息从磁盘批量读取到内存中需要先到队列索引中读取元数据，然后分别到队列存储和共享存储中读取消息体，并将它们组装到一起。即便缓存中有消息，但是实际的消息体仍然可能不在缓存中，因为过大（&amp;gt;12KB）过少（&amp;lt;10 条）的消息的消息体并不会被读到缓存里，需要在投递消息时逐条去磁盘中读取消息体。&lt;/p&gt; 
-&lt;p&gt;&lt;img src="https://oscimg.oschina.net/oscnet/up-62aec5d5efbcb40873a77832b210429310c.png" alt="" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;h2&gt;文件整理&lt;/h2&gt; 
-&lt;p&gt;共享存储会定时整理有效数据占比低于一半的文件以回收空间。整个过程分为三步：&lt;/p&gt; 
-&lt;ol&gt; 
- &lt;li&gt;将文件末尾的有效数据拷贝到文件前面的无效数据处。&lt;/li&gt; 
- &lt;li&gt;更新 Index 组件。&lt;/li&gt; 
- &lt;li&gt;在没有进程读取文件后截断文件。&lt;/li&gt; 
-&lt;/ol&gt; 
-&lt;p&gt;RabbitMQ 会将文件中的无效数据置 0，称为空洞（blank holes）。在文件整理时，RabbitMQ 从最后一条有效消息开始查看其是否能填补前面的空洞，如果可以就将其拷贝到前面，如果它比前面的任何一个空洞都大，那么这一次的文件整理将无法释放任何空间，这是为了防止意外覆盖被移动过的消息。Index 组件中存储了消息的位置，拷贝完成后需要更新对应消息的位置。在没有进程读取文件后就可以截断这个文件以节省磁盘空间。&lt;/p&gt; 
-&lt;p&gt;&lt;img src="https://oscimg.oschina.net/oscnet/up-92a86e83dda9f187412ce495b8d272dad17.png" alt="" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;h2&gt;运维实践&lt;/h2&gt; 
-&lt;h3&gt;发送确认&lt;/h3&gt; 
-&lt;p&gt;为了提高消息发送的可靠性，我们推荐用户打开发送确认（Confirm）。RabbitMQ 会在将消息从缓冲区 Flush 到磁盘后向客户端发送 Confirm，此时生产者可以认为这条消息已经被成功发送到队列。&lt;/p&gt; 
-&lt;h3&gt;消费确认&lt;/h3&gt; 
-&lt;p&gt;为了提高消息消费的可靠性，我们推荐用户打开手动确认（Manual Ack）。RabbitMQ 在收到 Ack 后会写入 Entry 到队列索引中，只有在索引文件中的所有 Publish Entry 全部被 Ack 后，才会删除该文件。如果消费者在发送 Ack 前宕机了，RabbitMQ 会重复投递这条消息，确保消息能真正被消费掉。未被客户端 Ack 的消息会堆积在内存中，如果数量过多则可能触发内存水位限制，甚至导致服务端 OOM。因此在用户打开手动确认后，我们建议用户设置一次最多能预取（prefetch count）的消息数量，避免大量消息堆积在客户端和服务端内存中。&lt;/p&gt; 
-&lt;h3&gt;保证队列尽可能短&lt;/h3&gt; 
-&lt;p&gt;保持生产和消费速率一致可以减少消息堆积。RabbitMQ 会在发现索引文件中的消息全部被消费后删除索引文件和对应的存储文件，这样可以减少磁盘空间占用。队列的堆积数量少意味着多数读取都可以从缓存中直接读取到消息体，从而提升读取性能。&lt;/p&gt; 
-&lt;h2&gt;总结&lt;/h2&gt; 
-&lt;p&gt;本文全面探讨了 RabbitMQ 经典队列的底层存储机制，包括其整体架构、实现原理及运维实践。经典队列的底层存储由队列索引和消息存储两大模块构成，其中消息存储又细分为共享存储和队列存储，通过精心设计的文件结构和内存管理策略，实现了高效的消息读写与存储管理。文章详细解析了队列索引、消息存储（包括共享存储和队列存储）的文件结构，介绍了消息读取与写入的流程，以及文件整理的逻辑。在运维实践方面，强调了发送确认、消费确认与保持队列尽可能短的重要性，并给出了相应的配置建议。希望通过本文的介绍，可以帮助大家深入理解 RabbitMQ 经典队列的底层存储机制，为实际应用中的性能优化与故障排查提供有力支持。&lt;/p&gt;
-                                                                                    &lt;/div&gt;
-                                                                            </description>
-      <link>https://my.oschina.net/u/4587289/blog/18684804</link>
-      <guid isPermaLink="false">https://my.oschina.net/u/4587289/blog/18684804</guid>
-      <pubDate>Wed, 16 Jul 2025 07:21:00 GMT</pubDate>
-      <author>原创</author>
     </item>
   </channel>
 </rss>
