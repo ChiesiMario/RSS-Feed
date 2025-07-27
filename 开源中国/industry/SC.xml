@@ -7,8 +7,112 @@
     <generator>RSSHub</generator>
     <webMaster>contact@rsshub.app (RSSHub)</webMaster>
     <language>zh-cn</language>
-    <lastBuildDate>Sun, 27 Jul 2025 02:42:45 GMT</lastBuildDate>
+    <lastBuildDate>Sun, 27 Jul 2025 07:45:20 GMT</lastBuildDate>
     <ttl>5</ttl>
+    <item>
+      <title>Solon 整合 LiteFlow 规则引擎：概念与实战</title>
+      <description>&lt;div class="content"&gt;
+                                                                    
+                                                        &lt;h2&gt;一、引言&lt;/h2&gt; 
+&lt;p style="color:#24292e; text-align:start"&gt;在现代软件开发中，规则引擎允许我们以声明式的方式定义业务逻辑和决策路径。LiteFlow 是一个轻量级、易于使用的组件式规则引擎，它可以与 Solon 应用无缝整合。本文将介绍如何在 Solon 项目中引入 LiteFlow，实现灵活的业务流程管理。&lt;/p&gt; 
+&lt;h2&gt;二、LiteFlow 的核心概念&lt;/h2&gt; 
+&lt;ul&gt; 
+ &lt;li&gt;LiteFlow 简介&lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;p style="color:#24292e; text-align:start"&gt;LiteFlow 是一个基于 Java 的轻量级流程引擎，专为简化复杂业务逻辑处理设计。通过将业务流程抽象为一系列的节点（components），LiteFlow 提供了一种清晰和可维护的方法来编排业务逻辑。&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt;主要特点&lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;p style="color:#24292e; text-align:start"&gt;组件化设计：业务逻辑分解为独立的组件，每个组件执行特定的功能。 灵活的流程控制：支持同步和异步执行，以及条件分支、循环等控制结构。 易于配置：使用 XML、YAML 或程序式配置定义流程。&lt;/p&gt; 
+&lt;h2&gt;三、实战演示：在 Solon 中使用 LiteFlow&lt;/h2&gt; 
+&lt;ul&gt; 
+ &lt;li&gt;环境准备&lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;p style="color:#24292e; text-align:start"&gt;确保你的开发环境已经安装了 JDK 1.8 或以上版本，并且项目是基于 Solon 构建的。&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt;添加依赖&lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;p style="color:#24292e; text-align:start"&gt;在项目的&lt;span&gt;&amp;nbsp;&lt;/span&gt;&lt;code&gt;pom.xml&lt;/code&gt;&lt;span&gt;&amp;nbsp;&lt;/span&gt;文件中添加 LiteFlow 的 Maven 依赖：&lt;/p&gt; 
+&lt;p style="color:#24292e; text-align:start"&gt;xml 复制代码&lt;/p&gt; 
+&lt;pre&gt;&lt;code class="language-xml"&gt;&lt;span&gt;&amp;lt;&lt;span style="color:#e45649"&gt;dependency&lt;/span&gt;&amp;gt;&lt;/span&gt;
+    &lt;span&gt;&amp;lt;&lt;span style="color:#e45649"&gt;groupId&lt;/span&gt;&amp;gt;&lt;/span&gt;com.yomahub&lt;span&gt;&amp;lt;/&lt;span style="color:#e45649"&gt;groupId&lt;/span&gt;&amp;gt;&lt;/span&gt;
+    &lt;span&gt;&amp;lt;&lt;span style="color:#e45649"&gt;artifactId&lt;/span&gt;&amp;gt;&lt;/span&gt;liteflow-solon-plugin&lt;span&gt;&amp;lt;/&lt;span style="color:#e45649"&gt;artifactId&lt;/span&gt;&amp;gt;&lt;/span&gt;
+    &lt;span&gt;&amp;lt;&lt;span style="color:#e45649"&gt;version&lt;/span&gt;&amp;gt;&lt;/span&gt;最新版本号&lt;span&gt;&amp;lt;/&lt;span style="color:#e45649"&gt;version&lt;/span&gt;&amp;gt;&lt;/span&gt;
+&lt;span&gt;&amp;lt;/&lt;span style="color:#e45649"&gt;dependency&lt;/span&gt;&amp;gt;&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt; 
+&lt;ul&gt; 
+ &lt;li&gt;配置 LiteFlow&lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;p style="color:#24292e; text-align:start"&gt;在&lt;span&gt;&amp;nbsp;&lt;/span&gt;&lt;code&gt;app.yml&lt;/code&gt;&lt;span&gt;&amp;nbsp;&lt;/span&gt;文件中配置 LiteFlow 的规则文件路径：&lt;/p&gt; 
+&lt;pre&gt;&lt;code class="language-yaml"&gt;&lt;span style="color:#986801"&gt;liteflow:&lt;/span&gt;
+  &lt;span style="color:#986801"&gt;rule-source:&lt;/span&gt; &lt;span style="color:#50a14f"&gt;classpath:liteflow-rules.xml&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt; 
+&lt;ul&gt; 
+ &lt;li&gt;定义组件&lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;p style="color:#24292e; text-align:start"&gt;创建组件类，每个类对应一个处理步骤：&lt;/p&gt; 
+&lt;pre&gt;&lt;code class="language-java"&gt;&lt;span style="color:#a626a4"&gt;import&lt;/span&gt; com.yomahub.liteflow.core.NodeComponent;
+&lt;span style="color:#a626a4"&gt;import&lt;/span&gt; org.noear.solon.annotation.Component;
+
+&lt;span style="color:#4078f2"&gt;@Component("componentA")&lt;/span&gt;
+&lt;span style="color:#a626a4"&gt;public&lt;/span&gt; &lt;span style="color:#a626a4"&gt;class&lt;/span&gt; &lt;span style="color:#c18401"&gt;ComponentA&lt;/span&gt; &lt;span style="color:#a626a4"&gt;extends&lt;/span&gt; &lt;span style="color:#c18401"&gt;NodeComponent&lt;/span&gt; {
+    &lt;span style="color:#4078f2"&gt;@Override&lt;/span&gt;
+    &lt;span style="color:#a626a4"&gt;public&lt;/span&gt; &lt;span style="color:#a626a4"&gt;void&lt;/span&gt; &lt;span style="color:#4078f2"&gt;process&lt;/span&gt;&lt;span&gt;()&lt;/span&gt; {
+        System.out.println(&lt;span style="color:#50a14f"&gt;"执行组件 A 的逻辑"&lt;/span&gt;);
+        &lt;em&gt;// 添加业务逻辑代码&lt;/em&gt;
+    }
+}
+&lt;/code&gt;&lt;/pre&gt; 
+&lt;ul&gt; 
+ &lt;li&gt;定义流程&lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;p style="color:#24292e; text-align:start"&gt;在&lt;span&gt;&amp;nbsp;&lt;/span&gt;&lt;code&gt;liteflow-rules.xml&lt;/code&gt;&lt;span&gt;&amp;nbsp;&lt;/span&gt;中定义业务流程，指定组件的执行顺序：&lt;/p&gt; 
+&lt;pre&gt;&lt;code class="language-xml"&gt;&lt;span&gt;&amp;lt;&lt;span style="color:#e45649"&gt;flow&lt;/span&gt; &lt;span style="color:#986801"&gt;id&lt;/span&gt;=&lt;span style="color:#50a14f"&gt;"chain1"&lt;/span&gt;&amp;gt;&lt;/span&gt;
+    &lt;span&gt;&amp;lt;&lt;span style="color:#e45649"&gt;then&lt;/span&gt; &lt;span style="color:#986801"&gt;value&lt;/span&gt;=&lt;span style="color:#50a14f"&gt;"componentA,componentB,componentC"&lt;/span&gt; /&amp;gt;&lt;/span&gt;
+&lt;span&gt;&amp;lt;/&lt;span style="color:#e45649"&gt;flow&lt;/span&gt;&amp;gt;&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt; 
+&lt;ul&gt; 
+ &lt;li&gt;触发流程执行&lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;p style="color:#24292e; text-align:start"&gt;在 Solon 应用中通过 LiteFlow 的 API 触发流程执行：&lt;/p&gt; 
+&lt;pre&gt;&lt;code class="language-java"&gt;&lt;span style="color:#a626a4"&gt;import&lt;/span&gt; com.yomahub.liteflow.flow.FlowExecutor;
+&lt;span style="color:#a626a4"&gt;import&lt;/span&gt; org.noear.solon.annotation.Controller;
+&lt;span style="color:#a626a4"&gt;import&lt;/span&gt; org.noear.solon.annotation.Inject;
+&lt;span style="color:#a626a4"&gt;import&lt;/span&gt; org.noear.solon.annotation.Get;
+&lt;span style="color:#a626a4"&gt;import&lt;/span&gt; org.noear.solon.annotation.Mapping;
+
+&lt;span style="color:#4078f2"&gt;@Controller&lt;/span&gt;
+&lt;span style="color:#a626a4"&gt;public&lt;/span&gt; &lt;span style="color:#a626a4"&gt;class&lt;/span&gt; &lt;span style="color:#c18401"&gt;FlowController&lt;/span&gt; {
+
+    &lt;span style="color:#4078f2"&gt;@Inject&lt;/span&gt;
+    &lt;span style="color:#a626a4"&gt;private&lt;/span&gt; FlowExecutor flowExecutor;
+
+    &lt;span style="color:#4078f2"&gt;@Get&lt;/span&gt;
+    &lt;span style="color:#4078f2"&gt;@Mapping("/runFlow")&lt;/span&gt;
+    &lt;span style="color:#a626a4"&gt;public&lt;/span&gt; String &lt;span style="color:#4078f2"&gt;runFlow&lt;/span&gt;&lt;span&gt;()&lt;/span&gt; {
+        &lt;span style="color:#a626a4"&gt;try&lt;/span&gt; {
+            flowExecutor.execute2Resp(&lt;span style="color:#50a14f"&gt;"chain1"&lt;/span&gt;);
+            &lt;span style="color:#a626a4"&gt;return&lt;/span&gt; &lt;span style="color:#50a14f"&gt;"流程执行成功"&lt;/span&gt;;
+        } &lt;span style="color:#a626a4"&gt;catch&lt;/span&gt; (Exception e) {
+            &lt;span style="color:#a626a4"&gt;return&lt;/span&gt; &lt;span style="color:#50a14f"&gt;"流程执行失败: "&lt;/span&gt; + e.getMessage();
+        }
+    }
+}
+&lt;/code&gt;&lt;/pre&gt; 
+&lt;ul&gt; 
+ &lt;li&gt;测试与验证&lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;p style="color:#24292e; text-align:start"&gt;启动 Solon 应用并访问&lt;span&gt;&amp;nbsp;&lt;/span&gt;&lt;code&gt;/runFlow&lt;/code&gt;&lt;span&gt;&amp;nbsp;&lt;/span&gt;路径，检查控制枱输出以验证流程是否按预期执行。&lt;/p&gt; 
+&lt;h2&gt;结论&lt;/h2&gt; 
+&lt;p style="color:#24292e; text-align:start"&gt;通过整合 LiteFlow 规则引擎，Solon 应用可以更加灵活地处理复杂的业务流程。LiteFlow 的组件化和易配置性使得管理和维护业务逻辑变得更简单。此外，借助 LiteFlow 的强大功能，开发者可以构建出更加动态和可扩展的应用系统，满足不断变化的业务需求。&lt;/p&gt; 
+&lt;p&gt;&amp;nbsp;&lt;/p&gt;
+                                                                                &lt;/div&gt;
+                                                                            </description>
+      <link>https://www.oschina.net/news/362560</link>
+      <guid isPermaLink="false">https://www.oschina.net/news/362560</guid>
+      <pubDate>Thu, 17 Jul 2025 05:11:00 GMT</pubDate>
+      <author>来源: 资讯</author>
+    </item>
     <item>
       <title>微软即将发布 Visual Studio 重大升级，应对 AI 编程工具激烈竞争</title>
       <description>&lt;div class="content"&gt;
@@ -894,21 +998,6 @@ Assistant: &amp;lt;think&amp;gt;
       <guid isPermaLink="false">https://my.oschina.net/u/5783135/blog/18684649</guid>
       <pubDate>Tue, 15 Jul 2025 07:25:00 GMT</pubDate>
       <author>原创</author>
-    </item>
-    <item>
-      <title>Anthropic 组建「AI 精神病学」团队</title>
-      <description>&lt;div class="content"&gt;
-                                                                    
-                                                        &lt;p&gt;昨日，Anthropic 神经科学研究员 Jack Lindsey &lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fx.com%2FJack_W_Lindsey%2Fstatus%2F1948138767753326654" target="_blank"&gt;宣布&lt;/a&gt;，公司将成立「AI 精神病学」团队，作为其可解释性部门的重要组成部分，旨在研究模型的角色、动机和情境意识，以及如何导致诡异、失控等行为表现，以建立对神经网络的机制性理解并确保其安全性。&lt;/p&gt; 
-&lt;p&gt;&lt;img alt="" src="https://oscimg.oschina.net/oscnet/up-02d75dfdeeb8071e8534839cdb867691694.png" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;p&gt;该团队短期内重点攻克「叠加」问题（导致模型神经元和注意力头等计算单元难以单独解释），并致力于将模型分解为更具可解释性的组件。&lt;/p&gt; 
-&lt;p&gt;目前，Anthropic 正在招聘研究科学家（年薪 31.5-56 万美元，约合人民币 220 万-400 万元）加入该团队，鼓励任何有意愿的人申请，并非所有候选人需完全符合列出的资格要求。&lt;/p&gt;
-                                                                                &lt;/div&gt;
-                                                                            </description>
-      <link>https://www.oschina.net/news/362333</link>
-      <guid isPermaLink="false">https://www.oschina.net/news/362333</guid>
-      <pubDate>Tue, 15 Jul 2025 07:24:00 GMT</pubDate>
-      <author>来源: OSCHINA</author>
     </item>
   </channel>
 </rss>
