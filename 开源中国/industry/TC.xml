@@ -7,8 +7,638 @@
     <generator>RSSHub</generator>
     <webMaster>contact@rsshub.app (RSSHub)</webMaster>
     <language>zh-tw</language>
-    <lastBuildDate>Mon, 28 Jul 2025 02:43:10 GMT</lastBuildDate>
+    <lastBuildDate>Mon, 28 Jul 2025 07:44:43 GMT</lastBuildDate>
     <ttl>5</ttl>
+    <item>
+      <title>一次線上生產庫的全流程切換完整方案</title>
+      <description>&lt;div class="content"&gt;
+                                                                                                                    
+                                                                                                                                                    &lt;span id="OSC_h1_1"&gt;&lt;/span&gt; 
+&lt;h1&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;一、現狀梳理&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/h1&gt; 
+&lt;p&gt;&lt;span&gt;&lt;span&gt;&lt;span style="background-color:#ffffff; color:#1b1b1b"&gt;本篇介紹了一次數據庫遷移的完整方案。 本次需要改造的系統為一個較為陳舊的技術棧系統，其中 MongoDB 作為核心數據存儲中間件，承擔着存儲全部核心數據的重要任務。該系統目前的配置為 1 主 1 副本模式，涉及 1 個數據庫和 2 張表，服務於 7 個不同的應用。儘管系統架構相對簡單，但其在日常運營中發揮着不可或缺的作用。目前需要將 MongoDB 存儲在其它介質中，&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;&lt;strong&gt;&lt;span&gt;如何能夠保障在不影響線上使用的情況下，平滑切流到新庫，是本文主要探討的問題。&lt;/span&gt;&lt;/strong&gt;&lt;/span&gt;&lt;/span&gt;&lt;/p&gt; 
+&lt;span id="OSC_h1_2"&gt;&lt;/span&gt; 
+&lt;h1&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;二、遷移方案&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/h1&gt; 
+&lt;span id="OSC_h2_3"&gt;&lt;/span&gt; 
+&lt;h2&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;2.1 遷移節奏&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/h2&gt; 
+&lt;p&gt;&lt;span&gt;&lt;span&gt;&lt;strong&gt;&lt;span&gt;整體節奏分為 &lt;/span&gt;&lt;/strong&gt;&lt;/span&gt;&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;span&gt;&lt;span&gt;&lt;strong&gt;&lt;span&gt;1.梳理範圍，因為系統內不僅有 mongo 還同時有 mysql 數據源，需要梳理出使用 mongo 的所有業務範圍&lt;/span&gt;&lt;/strong&gt;&lt;/span&gt;&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;span&gt;&lt;span&gt;&lt;strong&gt;&lt;span&gt;2.確定好原有的數據，應該存儲在哪個介質中，確定好存儲標準，需要能夠 cover 住原有的所有業務，包括讀寫性能&lt;/span&gt;&lt;/strong&gt;&lt;/span&gt;&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;span&gt;&lt;span&gt;&lt;strong&gt;&lt;span&gt;3.對原有數據結構的 DAO 層進行改造&lt;/span&gt;&lt;/strong&gt;&lt;/span&gt;&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;span&gt;&lt;span&gt;&lt;strong&gt;&lt;span&gt;4.需要對數據進行雙寫並進行數據遷移&lt;/span&gt;&lt;/strong&gt;&lt;/span&gt;&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;span&gt;&lt;span&gt;&lt;strong&gt;&lt;span&gt;5.R2 流量驗證/測試迴歸/數據比對，進行驗證&lt;/span&gt;&lt;/strong&gt;&lt;/span&gt;&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;span&gt;&lt;span&gt;&lt;strong&gt;&lt;span&gt;6.切量:放量節奏&lt;/span&gt;&lt;/strong&gt;&lt;/span&gt;&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;﻿&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;﻿&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/p&gt; 
+&lt;div&gt; 
+ &lt;img alt="" src="https://oscimg.oschina.net/oscnet//9c521ae700f248187c51d3a8d671c1b2.jpg" referrerpolicy="no-referrer"&gt; 
+&lt;/div&gt; 
+&lt;p&gt;&lt;span style="color:transparent"&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;﻿&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;﻿&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&amp;nbsp;&lt;/p&gt; 
+&lt;span id="OSC_h2_4"&gt;&lt;/span&gt; 
+&lt;h2&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;2.2 代碼改造/數據異構&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/h2&gt; 
+&lt;p&gt;&lt;span&gt;&lt;span&gt;&lt;strong&gt;&lt;span&gt;採用裝飾器模式，統一控制雙寫邏輯（主寫，輔寫），統一控制切量邏輯，下線邏輯，&lt;/span&gt;&lt;/strong&gt;&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;抽取代碼中原有的直接調用底層 mongodb API 的代碼，將其不改業務邏輯的情況下遷移到 Dao 層。這樣做的目的是為了後續做切流適配邏輯。不改邏輯及出入參的目的是為了避免對當前業務造成影響。&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;選用數據源的依據為&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/p&gt; 
+&lt;div&gt; 
+ &lt;table style="width:auto"&gt; 
+  &lt;tbody&gt; 
+   &lt;tr&gt; 
+    &lt;th&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;特性&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/th&gt; 
+    &lt;th&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;JimKV&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/th&gt; 
+    &lt;th&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;HBase&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/th&gt; 
+   &lt;/tr&gt; 
+   &lt;tr&gt; 
+    &lt;td&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;優勢&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/td&gt; 
+    &lt;td&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;- 支持多存儲引擎（SSD、AEP）- 基於 Raft 協議的強一致性和多機房容災&amp;lt;br&amp;gt;- 完善的運維監控和彈性伸縮能力&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/td&gt; 
+    &lt;td&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;- 支持 PB 級別的存儲容量- 雲原生架構，支持單集羣和主備集羣&amp;lt;br&amp;gt;- 高吞吐性能，適合寫密集型應用&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/td&gt; 
+   &lt;/tr&gt; 
+   &lt;tr&gt; 
+    &lt;td&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;劣勢&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/td&gt; 
+    &lt;td&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;- 由於 Raft 協議，寫性能低於 JimDB&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/td&gt; 
+    &lt;td&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;- 故障恢復時間較長，約 1—2 分鐘&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/td&gt; 
+   &lt;/tr&gt; 
+   &lt;tr&gt; 
+    &lt;td&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;適用場景&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/td&gt; 
+    &lt;td&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;- 數據一致性和可靠性要求高- 數據存儲量大- 讀流量大於寫流量&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/td&gt; 
+    &lt;td&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;- 存儲量非常大（PB 級別）- 寫密集且性能要求高的場景&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/td&gt; 
+   &lt;/tr&gt; 
+   &lt;tr&gt; 
+    &lt;td&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;技術選型推薦理由&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/td&gt; 
+    &lt;td&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;- JimKV 滿足存儲量和吞吐量要求- 數據一致性和可靠性優於 HBase&amp;lt;br&amp;gt;- 適合讀流量大於寫流量的應用場景&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/td&gt; 
+    &lt;td&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;- 適用於存儲量極大的場景，但對一致性要求較高的場景不如 JimKV 適合&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/td&gt; 
+   &lt;/tr&gt; 
+  &lt;/tbody&gt; 
+ &lt;/table&gt; 
+&lt;/div&gt; 
+&lt;p&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;基於以上原則,我們選用 JImKV(京東自研中間件)，Mysql 和 ES 作為 MongoDB 的替換的數據源，數據源切換 Dao 層的改造方式如下:&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;﻿&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/p&gt; 
+&lt;div&gt; 
+ &lt;img alt="" src="https://oscimg.oschina.net/oscnet//6ff6bf2db84b30c9647b44e6897c3ac4.jpg" referrerpolicy="no-referrer"&gt; 
+&lt;/div&gt; 
+&lt;p&gt;&lt;span style="color:transparent"&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;﻿&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;﻿&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&amp;nbsp;&lt;/p&gt; 
+&lt;p&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;﻿&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/p&gt; 
+&lt;span id="OSC_h2_5"&gt;&lt;/span&gt; 
+&lt;h2&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;2.3 存量數據遷移&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/h2&gt; 
+&lt;div&gt; 
+ &lt;table style="width:auto"&gt; 
+  &lt;tbody&gt; 
+   &lt;tr&gt; 
+    &lt;td style="border-right-width:3px"&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;方案 &lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/td&gt; 
+    &lt;td style="border-right-width:3px"&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;是否可實現 &lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/td&gt; 
+    &lt;td style="border-right-width:3px"&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;難度 &lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/td&gt; 
+   &lt;/tr&gt; 
+   &lt;tr&gt; 
+    &lt;td&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;使用大數據抽數任務 &lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/td&gt; 
+    &lt;td&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;是 &lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/td&gt; 
+    &lt;td&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;易 &lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/td&gt; 
+   &lt;/tr&gt; 
+   &lt;tr&gt; 
+    &lt;td&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;使用代碼異步任務的方式 &lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/td&gt; 
+    &lt;td&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;是 &lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/td&gt; 
+    &lt;td&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;易 &lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/td&gt; 
+   &lt;/tr&gt; 
+   &lt;tr&gt; 
+    &lt;td&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;DRC 同步 &lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/td&gt; 
+    &lt;td&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;從 mongo 到數據庫不支持 &lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/td&gt; 
+    &lt;td&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;略 &lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/td&gt; 
+   &lt;/tr&gt; 
+  &lt;/tbody&gt; 
+ &lt;/table&gt; 
+&lt;/div&gt; 
+&lt;p&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;考慮整體的數據量並不大單表 300w，通過大數據離線表的方式效率並不高，通過代碼更加的靈活，可以隨時調整速度和範圍存量數據分了兩部分 1、已經審核通過，申請單不會在有任何變更，可以隨時遷移，比對 2、申請單處於過程中的數據，數據隨時會變更。凌晨遷移，打開雙寫&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;﻿&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/p&gt; 
+&lt;div&gt; 
+ &lt;img alt="" src="https://oscimg.oschina.net/oscnet//91a580b4c7abb945ed8ae09b7f133e05.jpg" referrerpolicy="no-referrer"&gt; 
+&lt;/div&gt; 
+&lt;p&gt;&lt;span style="color:transparent"&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;﻿&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;﻿&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&amp;nbsp;&lt;/p&gt; 
+&lt;p&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;﻿&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/p&gt; 
+&lt;span id="OSC_h2_6"&gt;&lt;/span&gt; 
+&lt;h2&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;2.4 增量數據同步&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/h2&gt; 
+&lt;p&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;創建申請單和更新不包含狀態字段時的操作&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;先寫 mongo 再寫 mysql，以 mongo 寫入成功為準，寫 mysql 失敗，mq 異步補償&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;﻿&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/p&gt; 
+&lt;div&gt; 
+ &lt;img alt="" src="https://oscimg.oschina.net/oscnet//679cdd023e610819ec4e401dacf3fc3f.jpg" referrerpolicy="no-referrer"&gt; 
+&lt;/div&gt; 
+&lt;p&gt;&lt;span style="color:transparent"&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;﻿&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;﻿&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&amp;nbsp;&lt;/p&gt; 
+&lt;p&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;﻿&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;﻿&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/p&gt; 
+&lt;div&gt; 
+ &lt;img alt="" src="https://oscimg.oschina.net/oscnet//d3c5ff84534b7d9e63485fe3d2d44ff1.jpg" referrerpolicy="no-referrer"&gt; 
+&lt;/div&gt; 
+&lt;p&gt;&lt;span style="color:transparent"&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;﻿&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;﻿&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&amp;nbsp;&lt;/p&gt; 
+&lt;span id="OSC_h1_7"&gt;&lt;/span&gt; 
+&lt;h1&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;三、上線三板斧 (灰度/監控/回滾)&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/h1&gt; 
+&lt;p&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;本章節主要探討在進行數據遷移和代碼改造這些基礎工作完成之後，如何保障上線沒有線上問題，如何保障平滑切流和聽寫，工作主要聚焦於上線三板斧，可灰度，可回滾，可監控等方面，具體工作如下:&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/p&gt; 
+&lt;span id="OSC_h2_8"&gt;&lt;/span&gt; 
+&lt;h2&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;3.1 &lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;可監控 (數據對比讀邏輯)&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/h2&gt; 
+&lt;p&gt;&lt;span&gt;&lt;span&gt;&lt;strong&gt;&lt;span&gt;增量數據比對&lt;/span&gt;&lt;/strong&gt;&lt;/span&gt;&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;雙寫數據完成後發送 MQ，消息裏面查詢新庫，老庫的數據進行實時比對，不一致數據記錄不一致字段，關鍵字業務報警，寫入日誌文件，導出分析&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;span&gt;&lt;span&gt;&lt;strong&gt;&lt;span&gt;存量數據比對&lt;/span&gt;&lt;/strong&gt;&lt;/span&gt;&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;遍歷全量老庫數據，與新庫查出數據，轉換成相同對象對比數據一致性，異常數據寫入日誌文件分析&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;﻿&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/p&gt; 
+&lt;div&gt; 
+ &lt;img alt="" src="https://oscimg.oschina.net/oscnet//323083f471a4d392ba9790f91ec33d9c.jpg" referrerpolicy="no-referrer"&gt; 
+&lt;/div&gt; 
+&lt;p&gt;&lt;span style="color:transparent"&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;﻿&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;﻿&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&amp;nbsp;&lt;/p&gt; 
+&lt;span id="OSC_h2_9"&gt;&lt;/span&gt; 
+&lt;h2&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;3.2 可監控 (對比讀邏輯)&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/h2&gt; 
+&lt;p&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;對比邏輯，引入 R2 流量回放對比，提高對比速度，&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;﻿&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/p&gt; 
+&lt;div&gt; 
+ &lt;img alt="" src="https://oscimg.oschina.net/oscnet//1c840436e0907bc578b21dba45f08b9e.jpg" referrerpolicy="no-referrer"&gt; 
+&lt;/div&gt; 
+&lt;p&gt;&lt;span style="color:transparent"&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;﻿&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;﻿&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&amp;nbsp;&lt;/p&gt; 
+&lt;p&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;﻿&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/p&gt; 
+&lt;span id="OSC_h2_10"&gt;&lt;/span&gt; 
+&lt;h2&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;3.3 可灰度 (灰度切量讀)&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/h2&gt; 
+&lt;p&gt;&lt;span&gt;&lt;span&gt;&lt;strong&gt;&lt;span&gt;讀切流，按照供應商和採銷白名單+百分比來切流&lt;/span&gt;&lt;/strong&gt;&lt;/span&gt;&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;﻿&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/p&gt; 
+&lt;div&gt; 
+ &lt;img alt="" src="https://oscimg.oschina.net/oscnet//0c6295902850262dbf5645c3587ab417.jpg" referrerpolicy="no-referrer"&gt; 
+&lt;/div&gt; 
+&lt;p&gt;&lt;span style="color:transparent"&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;﻿&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;﻿&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&amp;nbsp;&lt;/p&gt; 
+&lt;p&gt;&lt;span&gt;&lt;span&gt;&lt;strong&gt;&lt;span&gt;切流時，由於需要根據 pin 對流量分散，但是不在同一線程內，使用 threadlocal 對商戶信息進行設置和讀取&lt;/span&gt;&lt;/strong&gt;&lt;/span&gt;&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;﻿&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/p&gt; 
+&lt;div&gt; 
+ &lt;img alt="" src="https://oscimg.oschina.net/oscnet//afb0c666bda5295ebd776e317bdc9b2e.jpg" referrerpolicy="no-referrer"&gt; 
+&lt;/div&gt; 
+&lt;p&gt;&lt;span style="color:transparent"&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;﻿&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;﻿&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&amp;nbsp;&lt;/p&gt; 
+&lt;span id="OSC_h2_11"&gt;&lt;/span&gt; 
+&lt;h2&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;3.4 可回滾 (灰度切量寫)&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/h2&gt; 
+&lt;p&gt;&lt;span&gt;&lt;span&gt;&lt;strong&gt;&lt;span&gt;寫切流，分為四步&lt;/span&gt;&lt;/strong&gt;&lt;/span&gt;&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;span&gt;&lt;span&gt;&lt;strong&gt;&lt;span&gt;1.首先驗證，寫新庫沒問題，相當於對新加代碼進行灰度，如果有問題，進行回切&lt;/span&gt;&lt;/strong&gt;&lt;/span&gt;&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;span&gt;&lt;span&gt;&lt;strong&gt;&lt;span&gt;2.當驗證寫新庫沒問題，需要補齊數據庫數據&lt;/span&gt;&lt;/strong&gt;&lt;/span&gt;&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;span&gt;&lt;span&gt;&lt;strong&gt;&lt;span&gt;3.當數據補齊後，轉換為主寫新庫&lt;/span&gt;&lt;/strong&gt;&lt;/span&gt;&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;span&gt;&lt;span&gt;&lt;strong&gt;&lt;span&gt;4.後續如果讀寫新庫都沒問題，可以徹底下線舊庫存&lt;/span&gt;&lt;/strong&gt;&lt;/span&gt;&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;﻿&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/p&gt; 
+&lt;div&gt; 
+ &lt;img alt="" src="https://oscimg.oschina.net/oscnet//640fe93d584fd444cf2dc85e46c6935e.jpg" referrerpolicy="no-referrer"&gt; 
+&lt;/div&gt; 
+&lt;p&gt;&lt;span style="color:transparent"&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;﻿&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;﻿&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&amp;nbsp;&lt;/p&gt; 
+&lt;p&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;﻿&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/p&gt; 
+&lt;span id="OSC_h1_12"&gt;&lt;/span&gt; 
+&lt;h1&gt;&lt;span&gt;&lt;span&gt;&lt;strong&gt;&lt;span&gt;四、總結&lt;/span&gt;&lt;/strong&gt;&lt;/span&gt;&lt;/span&gt;&lt;/h1&gt; 
+&lt;p&gt;&lt;span&gt;&lt;span&gt;&lt;span style="background-color:#ffffff; color:#24292f"&gt;本文詳細梳理了線上生產環境的全流程，包括遷移和切換的灰度方案對比。在數據源選型方面，根據實際業務需求選擇合適的中間件是整個工作的基石。在代碼改造和數據異構方面，選擇恰當的設計模式和合理的架構方案是關鍵所在。存量數據遷移和增量數據同步是不可或缺的步驟。上線過程中，確保系統具備可監控、可回滾和可灰度的能力，是實現平滑切換的保障。歡迎各位同學與我交流探討。&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/p&gt;
+                                                                                    &lt;/div&gt;
+                                                                            </description>
+      <link>https://my.oschina.net/u/4090830/blog/18685920</link>
+      <guid isPermaLink="false">https://my.oschina.net/u/4090830/blog/18685920</guid>
+      <pubDate>Mon, 28 Jul 2025 07:35:41 GMT</pubDate>
+      <author>原創</author>
+    </item>
+    <item>
+      <title>WAIC 首日 | RWKV-7s 新型高效大模型架構正式亮相</title>
+      <description>&lt;div class="content"&gt;
+                                                                    
+                                                        &lt;p&gt;7 月 26 日，RWKV 攜全球領先的大模型架構 RWKV-7 亮相 2025 世界人工智能大會暨人工智能全球治理高級別會議（以下簡稱 " WAIC 2025"），並首次公開了 RWKV-7s 架構。元始智能作為企業代表向國務院總理李強、上海市委書記陳吉寧介紹 RWKV 架構、生態和產業化近況。&lt;/p&gt; 
+&lt;p&gt;&lt;img alt="元始智能 COO&amp;amp;Co-Founder 羅璇向總理介紹 RWKV" src="https://oscimg.oschina.net/oscnet/up-45e836f5402788bffce489a460ee6b3d3db.jpg" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p&gt;RWKV 系列是全球領先的 RNN 大模型架構。其中 RWKV-7 在 RNN 架構中效率和效果世界領先。在大會首日，我們，公開了系列首個混合架構 ------ RWKV-7s。&lt;/p&gt; 
+&lt;p&gt;RWKV-7s 是承接 RWKV-7 優勢的 RNN + DEA（獨創的 DeepEmbedAttention）新型高效大模型架構，KV cache 僅為 MLA 的 1/9 大小，兼具高效計算與強長文本性能，可適配多模態、智能體等多種應用場景。&lt;/p&gt; 
+&lt;p&gt;&lt;img alt="" src="https://oscimg.oschina.net/oscnet/up-6093fc2663a245aa49e3f9e392d74cc2be8.jpg" referrerpolicy="no-referrer"&gt; &lt;img alt="" src="https://oscimg.oschina.net/oscnet/up-e6724a19136a358f0e45e7a6be8d4e63eec.jpg" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p&gt;在瞭解 RWKV 架構作為底層技術的創新性及可為人工智能行業帶來的新機遇後，李強總理給予了寶貴的指導意見，並鼓勵更多 AI 從業者關注底層技術，解決更多的基礎問題。&lt;/p&gt; 
+&lt;p&gt;&lt;img alt="李強總理親臨 RWKV 展位指導" src="https://oscimg.oschina.net/oscnet/up-4cd734102525efae518e5c422c4f656bcea.jpg" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p&gt;最後預告，純 RNN 的 RWKV7-G0 7B 已經可以解決一些 AIME（美國數學競賽）題，我們稍後會發布詳細測試結果。&lt;/p&gt; 
+&lt;p&gt;&lt;img alt="math" src="https://oscimg.oschina.net/oscnet/up-378ee71ccfc10efe46f40849c447a30d72e.png" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p&gt;不僅如此，修改後的題目也能做對（將原題的 3(n+3) 修改為 2(n+3)）：&lt;/p&gt; 
+&lt;p&gt;&lt;img alt="math" src="https://oscimg.oschina.net/oscnet/up-a9f2f1025f4451640b8545d0ceb14baf43c.png" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p&gt;WAIC 展覽還有三天，歡迎大家在 7 月 27 日至 29 日親臨 RWKV 展位，與我們共同探討人工智能行業發展的更多可能！&lt;/p&gt; 
+&lt;p&gt;&lt;strong&gt;地點：上海世博展覽館&lt;/strong&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;strong&gt;主展位：1 樓中庭，H2-2 門前&lt;/strong&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;strong&gt;展位一：H3-D701&lt;/strong&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;strong&gt;展位二：H4-FT305&lt;/strong&gt;&lt;/p&gt;
+                                                                                &lt;/div&gt;
+                                                                            </description>
+      <link>https://www.oschina.net/news/362721</link>
+      <guid isPermaLink="false">https://www.oschina.net/news/362721</guid>
+      <pubDate>Mon, 28 Jul 2025 07:24:41 GMT</pubDate>
+      <author>來源: 資訊</author>
+    </item>
+    <item>
+      <title>​三星與特斯拉達成 165 億美元 AI 芯片供應協議</title>
+      <description>&lt;div class="content"&gt;
+                                                                    
+                                                        &lt;p style="color:#242424; margin-left:0; margin-right:0; text-align:left"&gt;&lt;span style="color:#000000"&gt;韓國科技巨頭三星電子宣佈與電動車製造商特斯拉達成了一項重大的合作協議，成為其 AI 芯片的主要供應商。這項價值高達 165 億美元的交易，是三星與單一客戶之間最大的訂單。&lt;/span&gt;&lt;/p&gt; 
+&lt;p style="color:#242424; margin-left:0; margin-right:0; text-align:left"&gt;&lt;span style="color:#000000"&gt;&lt;img height="405" src="https://oscimg.oschina.net/oscnet/up-cce85318480efbbe05ec700e087771c01f4.png" width="500" referrerpolicy="no-referrer"&gt;&lt;/span&gt;&lt;/p&gt; 
+&lt;p style="color:#242424; margin-left:0; margin-right:0; text-align:left"&gt;&lt;span style="color:#000000"&gt;隨着人工智能技術的迅速發展，對高性能芯片的需求也不斷增加。特斯拉在自動駕駛和智能汽車領域的佈局，需要先進的 AI 芯片來提升其車輛的智能化水平。&lt;/span&gt;&lt;/p&gt; 
+&lt;p style="color:#242424; margin-left:0; margin-right:0; text-align:left"&gt;&lt;span style="color:#000000"&gt;三星近年來一直在努力扭轉其合同芯片製造業務的下滑趨勢。通過與特斯拉的合作，三星不僅可以獲得穩定的訂單，還能進一步鞏固在全球半導體市場的地位。這一協議的簽署，預計將為三星帶來可觀的收入，並幫助公司在技術研發方面進行更多投資。&lt;/span&gt;&lt;/p&gt; 
+&lt;p style="color:#242424; margin-left:0; margin-right:0; text-align:left"&gt;&lt;span style="color:#000000"&gt;特斯拉與三星的合作不僅侷限於芯片供應，雙方還計劃在未來的研發中進行更深層次的技術交流。特斯拉希望藉助三星的技術優勢，加速其在電動汽車和智能駕駛領域的創新步伐。同時，三星也希望通過這次合作，獲取特斯拉在汽車領域的最新需求和技術趨勢，以提升自身產品的市場競爭力。&lt;/span&gt;&lt;/p&gt; 
+&lt;p style="color:#242424; margin-left:0; margin-right:0; text-align:left"&gt;&lt;span style="color:#000000"&gt;這一合作協議對雙方來説都具有重要的戰略意義。特斯拉在 AI 技術領域的進步，將會依賴於三星提供的高效能芯片，而三星則能借此機會重塑自身在半導體行業的形象，迎接未來更大的挑戰。&lt;/span&gt;&lt;/p&gt;
+                                                                                &lt;/div&gt;
+                                                                            </description>
+      <link>https://www.oschina.net/news/362720</link>
+      <guid isPermaLink="false">https://www.oschina.net/news/362720</guid>
+      <pubDate>Mon, 28 Jul 2025 07:20:41 GMT</pubDate>
+      <author>來源: OSCHINA</author>
+    </item>
+    <item>
+      <title>京東將大模型品牌正式升級為 JoyAI</title>
+      <description>&lt;div class="content"&gt;
+                                                                    
+                                                        &lt;p style="color:#242424; margin-left:0; margin-right:0; text-align:left"&gt;&lt;span style="color:#000000"&gt;京東集團正式宣佈將其大模型品牌升級為 JoyAI。此次升級的 JoyAI 大模型體系支持 3B 到 750B 全尺寸模型，具備語言、語音、圖像、視頻、數字人等多模態交互能力。&lt;/span&gt;&lt;/p&gt; 
+&lt;p style="color:#242424; margin-left:0; margin-right:0; text-align:left"&gt;&lt;span style="color:#000000"&gt;通過動態分層蒸餾、跨領域數據治理等技術，其推理效率平均提升 30%，訓練成本降低 70%。在零售領域，京東立影「秒搭」平台可 3 分鐘生成 3D 內容，京點點 AIGC 平台實現商品圖、文案、視頻的快速生成；推出的高商業可用數字人具備逼真形象與自然動作，情感表達與場景適配能力超越 80% 真人主播，支持 24 小時不間斷直播，成本僅為真人直播的十分之一，目前已有 20000 餘個品牌採用其進行直播帶貨。&lt;/span&gt;&lt;/p&gt; 
+&lt;p style="color:#242424; margin-left:0; margin-right:0; text-align:left"&gt;&lt;span style="color:#000000"&gt;&lt;img height="443" src="https://oscimg.oschina.net/oscnet/up-12fa4d7a1eca57443933396144af5111c04.png" width="300" referrerpolicy="no-referrer"&gt;&lt;/span&gt;&lt;/p&gt; 
+&lt;p style="color:#242424; margin-left:0; margin-right:0; text-align:left"&gt;&lt;span style="color:#000000"&gt;京東同步推出附身智能品牌 JoyInside，通過接入 JoyAI 大模型為機器人、玩具等終端設備註入高情商交互能力，支持角色定製與多場景應用。該品牌已與十餘家頭部機器人、AI 玩具品牌合作，產品涵蓋快遞機器人、機器狗、AI 潮玩及兒童陪伴 AI 夥伴等。&lt;/span&gt;&lt;/p&gt; 
+&lt;p style="color:#242424; margin-left:0; margin-right:0; text-align:left"&gt;&lt;span style="color:#000000"&gt;此外，京東雲正式開源行業首個 100% 企業級智能體 JoyAgent，其融合多智能體協同引擎與大小模型優勢，支持高效協作與動態任務執行，具備高可用性、高性能及靈活適配特性。&lt;/span&gt;&lt;/p&gt;
+                                                                                &lt;/div&gt;
+                                                                            </description>
+      <link>https://www.oschina.net/news/362716</link>
+      <guid isPermaLink="false">https://www.oschina.net/news/362716</guid>
+      <pubDate>Mon, 28 Jul 2025 07:08:41 GMT</pubDate>
+      <author>來源: OSCHINA</author>
+    </item>
+    <item>
+      <title>WAIC 2025 速覽：史上最大規模、學術頂流參會、具身智能&amp;機器人成熱門版塊</title>
+      <description>&lt;div class="content"&gt;
+                                                                    
+                                                        &lt;p&gt;剛剛過去的週六，史上最盛大的一屆世界人工智能大會（WAIC 2025）正式開幕！&lt;/p&gt; 
+&lt;p&gt;今年大會不僅把重量級學術大佬「深度學習三巨頭」之一、2018 年圖靈獎得主、2024 年諾貝爾物理學獎得主傑弗裏·辛頓都請到開幕式做演講，連展會都是前所未有的爆場。&lt;/p&gt; 
+&lt;p&gt;&lt;img src="https://static.oschina.net/uploads/space/2025/0728/150438_LvlE_2720166.png" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p&gt;下面是 WAIC 2025 亮點速覽：&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt;史上最大規模：7 萬㎡展區、800+企業、40+大模型、50+AI 終端、60+機器人、80+全球首發/中國首秀。&lt;/li&gt; 
+ &lt;li&gt;學術頂流：圖靈獎&amp;amp;諾獎雙料得主 Geoffrey Hinton 開幕式演講。&lt;/li&gt; 
+ &lt;li&gt;門票爆火：168 元單日票被炒至 2000+。&lt;/li&gt; 
+ &lt;li&gt;主題關鍵詞：應用為王——全部可上手、可互動、可落地。&lt;/li&gt; 
+ &lt;li&gt;參展方陣 
+  &lt;ul&gt; 
+   &lt;li&gt;國內大廠：華為、騰訊、阿里、螞蟻、百度、聯想、京東、快手、網易、中興、三大運營商、理想、吉利等。&lt;/li&gt; 
+   &lt;li&gt;國際巨頭：谷歌、AWS、特斯拉、西門子、施耐德、希捷、思科等。&lt;/li&gt; 
+   &lt;li&gt;AI 明星公司：商湯、訊飛、第四範式、階躍星辰、MiniMax、智譜、月之暗面 Kimi、面壁智能等。&lt;/li&gt; 
+   &lt;li&gt;缺席：字節跳動（豆包等）、百川、零一萬物。&lt;/li&gt; 
+  &lt;/ul&gt; &lt;/li&gt; 
+ &lt;li&gt;三大熱門板塊 
+  &lt;ol&gt; 
+   &lt;li&gt;&lt;strong&gt;具身智能&amp;amp;機器人&lt;/strong&gt;：特斯拉 Bot、宇樹拳擊秀、智元/雲深處等 20+ 新品；H3 館單館展出 63 款機器人、208 台人形/輪式、56 條機器狗。&lt;br&gt; &lt;br&gt; &lt;img src="https://static.oschina.net/uploads/space/2025/0728/150232_l7FK_2720166.png" referrerpolicy="no-referrer"&gt;&lt;br&gt; &amp;nbsp;&lt;/li&gt; 
+   &lt;li&gt;&lt;strong&gt;智能硬件&lt;/strong&gt;：阿里夸克 AI 眼鏡、中興「麻薯」AI 萌寵、XREAL/Rokid 等旗艦 AR 眼鏡、聯想/訊飛 AI PC。&lt;br&gt; &lt;br&gt; &lt;img height="750" src="https://static.oschina.net/uploads/space/2025/0728/150158_naTS_2720166.png" width="1000" referrerpolicy="no-referrer"&gt;&lt;br&gt; &amp;nbsp;&lt;/li&gt; 
+   &lt;li&gt;&lt;strong&gt;AI 基礎設施&lt;/strong&gt;：華為昇騰 384 超節點領銜，20+ 國產 AI 芯片公司（摩爾線程、燧原、曦智等）及聯想、浪潮、新華三等智算廠商同台，玻色量子、國盾量子等量子計算企業也亮相。&lt;br&gt; &lt;br&gt; &lt;img src="https://static.oschina.net/uploads/space/2025/0728/150354_lqDc_2720166.png" referrerpolicy="no-referrer"&gt; &lt;p&gt;&amp;nbsp;&lt;/p&gt; &lt;/li&gt; 
+  &lt;/ol&gt; &lt;/li&gt; 
+ &lt;li&gt;彩蛋展區：H2 館「中國 AI 產業創新成果展」——中國 5170 家 AI 企業佔全球 15%，獨角獸 71 家佔 26%，並展出全球大模型演進圖及國產 AI 芯片/加速卡全景。&lt;br&gt; &lt;br&gt; &lt;img height="750" src="https://static.oschina.net/uploads/space/2025/0728/150126_yNkU_2720166.png" width="1000" referrerpolicy="no-referrer"&gt; &lt;p&gt;&amp;nbsp;&lt;/p&gt; &lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;p&gt;來源：&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fmp.weixin.qq.com%2Fs%2FoeyURi8YKLxud2t_BV9Jyg" target="_blank"&gt;https://mp.weixin.qq.com/s/oeyURi8YKLxud2t_BV9Jyg&lt;/a&gt;&lt;/p&gt;
+                                                                                &lt;/div&gt;
+                                                                            </description>
+      <link>https://www.oschina.net/news/362714</link>
+      <guid isPermaLink="false">https://www.oschina.net/news/362714</guid>
+      <pubDate>Mon, 28 Jul 2025 07:05:41 GMT</pubDate>
+      <author>來源: OSCHINA</author>
+    </item>
+    <item>
+      <title>微軟即將發佈 Visual Studio 重大升級，應對 AI 編程工具激烈競爭</title>
+      <description>&lt;div class="content"&gt;
+                                                                    
+                                                        &lt;p&gt;儘管微軟向客戶提供了 Visual Studio Code 這款輕量級但功能強大的開源代碼編輯器，但其旗艦開發環境實際上是原生版 Visual Studio。這是一個功能齊全的集成開發環境 (IDE)，具有 .NET 集成和其他功能，使其更適合複雜的項目管理。現在，一份新報告顯示，微軟正計劃對 Visual Studio 進行重大升級。&lt;/p&gt; 
+&lt;p&gt;&lt;img src="https://static.oschina.net/uploads/space/2025/0725/194445_SAV6_2720166.png" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p&gt;媒體&amp;nbsp;&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fwww.businessinsider.com%2Fmicrosoft-plans-major-update-visual-studio-coding-service-ai-2025-7" target="_blank"&gt;Business Insider&lt;/a&gt;&amp;nbsp;看到了一份微軟內部備忘錄，其中詳細介紹了該公司計劃發佈 Visual Studio 的重大升級。不出所料，此次更新將重點關注人工智能 (AI)，這對於與亞馬遜 Kiro 等其他競爭對手競爭至關重要，亞馬遜 Kiro 被譽為基於 AI 的 IDE。&lt;/p&gt; 
+&lt;p&gt;這份備忘錄由傑伊·帕裏克（Jay Parikh）於今年 4 月撰寫，他加入微軟不到一年，擔任執行副總裁（EVP）。帕裏克領導着公司的 CoreAI 部門，該部門負責開發人員工具，因此 Visual Studio 恰好屬於這位高管的職責範圍。&lt;/p&gt; 
+&lt;p&gt;Parikh 的備忘錄將這次主要版本稱為「Visual Studio 18」，考慮到 Visual Studio 目前使用的是 17 版，這頗具趣味。該 IDE 上個月發佈了更新，允許開發人員訪問更強大的 AI 模型，同時靈活地管理計費。值得注意的是，Visual Studio 的上一次重大更新是在 2021 年，當時微軟發佈了 Visual Studio 2022 和 .NET 6，因此再次發佈主要版本也是合情合理的。&lt;/p&gt; 
+&lt;p&gt;話雖如此，雖然 Visual Studio 的下一次重大升級有可能在今年推出，但目前尚未公佈具體的時間表。備忘錄還指出，這個由人工智能驅動的 IDE 版本目前正處於「早期內部測試」階段，這意味着微軟自己的員工正在積極地使用它進行測試。&lt;/p&gt;
+                                                                                &lt;/div&gt;
+                                                                            </description>
+      <link>https://www.oschina.net/news/362407</link>
+      <guid isPermaLink="false">https://www.oschina.net/news/362407</guid>
+      <pubDate>Fri, 25 Jul 2025 11:44:00 GMT</pubDate>
+      <author>來源: OSCHINA</author>
+    </item>
+    <item>
+      <title>谷歌短鏈接服務「goo.gl」將於下個月正式停用</title>
+      <description>&lt;div class="content"&gt;
+                                                                    
+                                                        &lt;p&gt;Google 將於下個月正式棄用其網址縮短工具生成的鏈接。自 2025 年 8 月 25 日起，所有「&lt;span style="color:#2980b9"&gt;&lt;em&gt;https://goo.gl/*&lt;/em&gt;&lt;/span&gt;」格式的鏈接將不再有效，並返回 404 錯誤信息。&lt;/p&gt; 
+&lt;p&gt;Google 於 2019 年關閉了其網址縮短服務，理由是「我們發現人們在互聯網上查找內容的方式發生了變化」。此後，使用該工具創建的鏈接仍然有效，但 Google 去年宣佈，隨着縮短網址流量的下降，將開始棄用這些服務。&lt;/p&gt; 
+&lt;p&gt;&lt;img alt="" src="https://oscimg.oschina.net/oscnet/up-3de2e977a212c4b76a27a10e76c003b1a75.png" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p&gt;Google 在其&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fdevelopers.googleblog.com%2Fen%2Fgoogle-url-shortener-links-will-no-longer-be-available%2F" target="_blank"&gt;2024 年 7 月的博客文章&lt;/a&gt;中表示：「事實上，超過 99% 的縮短網址在過去一個月內沒有任何活動。」&lt;/p&gt; 
+&lt;p&gt;當時，Google 還開始在用戶點擊縮短的網址時顯示一個警告頁面，提示「此鏈接近期將不再有效」。&lt;/p&gt; 
+&lt;p&gt;&lt;img alt="" src="https://oscimg.oschina.net/oscnet/up-0bd067dfa47ef36f85743afb32cf6824b04.png" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p&gt;距離「goo.gl」鏈接關閉僅剩一個月時間，如果您還沒有將網址轉換到其他縮短服務，現在正是轉換的好時機。&lt;/p&gt;
+                                                                                &lt;/div&gt;
+                                                                            </description>
+      <link>https://www.oschina.net/news/362402</link>
+      <guid isPermaLink="false">https://www.oschina.net/news/362402</guid>
+      <pubDate>Fri, 25 Jul 2025 11:02:00 GMT</pubDate>
+      <author>來源: OSCHINA</author>
+    </item>
+    <item>
+      <title>RWKV7-G0 7.2B 發佈，最強純 RNN 推理模型</title>
+      <description>&lt;div class="content"&gt;
+                                                                    
+                                                        &lt;p&gt;2025 年 7 月 22 日， &lt;strong&gt;RWKV7-G0 7.2B 推理模型&lt;/strong&gt;（Reasoning Model）正式開源發佈，它很可能是迄今為止人類訓練過的最強純 RNN 語言模型。&lt;/p&gt; 
+&lt;p&gt;RWKV7-G0 7.2B 是在 RWKV6-World-V3-7.6B 的基礎上訓練 2T tokens 的純預訓練模型，但在預訓練加入了大量指令/對話/推理數據，可以解決各種推理問題。&lt;/p&gt; 
+&lt;blockquote&gt; 
+ &lt;p&gt;如果需要後訓練和對齊，最適合 RNN 的方式是 &lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Frwkv.cn%2Ftutorials%2Fadvanced%2FFine-Tune%2FRWKV-PEFT%2FState-Tuning" target="_blank"&gt;state-tuning&lt;/a&gt;，直接微調 RNN 的初始狀態，相當於終極 context engineering。&lt;/p&gt; 
+&lt;/blockquote&gt; 
+&lt;h2&gt;模型客觀指標評測&lt;/h2&gt; 
+&lt;h3&gt;英語和多語言能力&lt;/h3&gt; 
+&lt;p&gt;RWKV7-G0 7.2B 的基礎英語和多語言能力&lt;strong&gt;均強於同規模的開源模型&lt;/strong&gt;：&lt;/p&gt; 
+&lt;p&gt;&lt;img alt="eval" src="https://oscimg.oschina.net/oscnet/up-3961b82f0302bbedafaae3e26ce721fe159.png" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p&gt;得益於架構和數據的提升，RWKV7-G0 7.2B 的 MMLU 準確度為 62.7%，顯著超過 RWKV6-World-V3-7.6B 的 54.2%。後續我們會發布訓練 8T tokens 的滿血 RWKV7-G1 7.2B，目標是 MMLU 達到 70%，看齊前沿模型。&lt;/p&gt; 
+&lt;h3&gt;無法作弊的評測&lt;/h3&gt; 
+&lt;blockquote&gt; 
+ &lt;p&gt;&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fhuggingface.co%2Fspaces%2FJellyfish042%2FUncheatableEval" target="_blank"&gt;Uncheatable Eval&lt;/a&gt; 是"無法作弊的評測"，它使用最新的論文和新聞文章等實時數據，評估開源大語言模型的真實建模能力和泛化能力。&lt;/p&gt; 
+&lt;/blockquote&gt; 
+&lt;p&gt;RWKV7-G0 7.2B 的 Uncheatable Eval 同樣顯著提升，滿血 8T tokens 預計超越 Llama3 8B（這裏測試 2024-07 數據，後續會測新數據，並對比 Qwen2.5、Qwen3）：&lt;/p&gt; 
+&lt;p&gt;&lt;img alt="uncheatable-eval" src="https://oscimg.oschina.net/oscnet/up-00ee915e6a6642e230984bbad95c7adda04.png" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;h2&gt;模型實戰：解數學題&lt;/h2&gt; 
+&lt;p&gt;我們發現，RWKV7-G0 7.2B 解數學題可使用 &lt;code&gt;temperature top_p penalty&lt;/code&gt; 解碼參數都為 0 的純貪心解碼，且無限復讀現象較少。&lt;/p&gt; 
+&lt;p&gt;但貪心解碼會導致推理過程探索度不足，因此可引入隨機性，例如 &lt;code&gt;temperature=0.3 top_p=0.3 penalty=0&lt;/code&gt;。模型會自動進行多輪驗算（類似 rollout），並可以自我糾錯。&lt;/p&gt; 
+&lt;p&gt;那麼 &lt;code&gt;temperature=0.6 top_p=0.6 penalty=0&lt;/code&gt; 等隨機性更高的參數是否更好，後續我們會通過參數掃描實驗評估。&lt;/p&gt; 
+&lt;p&gt;例子，第一題：&lt;/p&gt; 
+&lt;p&gt;&lt;img alt="math1" src="https://oscimg.oschina.net/oscnet/up-0cd8d78f631ee7405c4bbca2340892aa1c6.png" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p&gt;修改題目表述，模型換了種做法：&lt;/p&gt; 
+&lt;p&gt;&lt;img alt="math2" src="https://oscimg.oschina.net/oscnet/up-dc97d5561c78acbb5117c3b214de082e7da.png" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p&gt;第二題，故意將原題的 99 改為 99.1，模型一開始看錯，後來成功糾正了自己：&lt;/p&gt; 
+&lt;p&gt;&lt;img alt="math3" src="https://oscimg.oschina.net/oscnet/up-e607d6ca88eb49ab4caf0e417262eb39b2b.png" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p&gt;第三題，原題是計算 1 的冪，改為計算 i 的冪，增加難度：&lt;/p&gt; 
+&lt;p&gt;&lt;img alt="math4" src="https://oscimg.oschina.net/oscnet/up-8d5d4f106fec7c3c72836c057b1de89bddd.png" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p&gt;第四題，原題是 2^8 = 4^x，改為 8^x 增加難度：&lt;/p&gt; 
+&lt;p&gt;&lt;img alt="math5" src="https://oscimg.oschina.net/oscnet/up-4d801cfa9f331b3dca71d086a3c05004e6c.png" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p&gt;第五題，原題的概率是 1/5，改為 1/4 測試模型：&lt;/p&gt; 
+&lt;p&gt;&lt;img alt="math6" src="https://oscimg.oschina.net/oscnet/up-39c45f49e2a398f59a7dc87fde27cf46756.png" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p&gt;第六題，原題是 one hat，改為 two hat（故意不加 s 複數形式）測試模型：&lt;/p&gt; 
+&lt;p&gt;&lt;img alt="math7" src="https://oscimg.oschina.net/oscnet/up-2d56afb40928ffd13d17308fc41c6e56369.png" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p&gt;第七題，模型有點懵，但反覆驗算多次後，成功確認了正確答案：&lt;/p&gt; 
+&lt;p&gt;&lt;img alt="math8" src="https://oscimg.oschina.net/oscnet/up-7730c44785334a3421428c0e7dd153ed6ae.png" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p&gt;結論：【純 RNN + 純預訓練】可以得到推理模型，而且它理解了一些解題方法，可以用不同方法解決修改過的題目。&lt;/p&gt; 
+&lt;h2&gt;模型實戰：寫代碼&lt;/h2&gt; 
+&lt;p&gt;在此我們測試用戶喜聞樂見的圖像輸出。生成一個有一隻貓的 SVG 的網頁：&lt;/p&gt; 
+&lt;p&gt;&lt;img alt="code" src="https://oscimg.oschina.net/oscnet/up-06f4dbd1a7c9e178ed8408f93d7bb939c4d.png" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p&gt;用 Three.js 創建一個旋轉的 3D 紅色立方體（完整代碼在文末的附錄中）：&lt;/p&gt; 
+&lt;p&gt;&lt;img alt="code-1" src="https://oscimg.oschina.net/oscnet/up-5965c8a859ccc3bcc7f9db0d86caeb5f612.png" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p&gt;考慮到這是【純 RNN + 純預訓練 + 只訓練 2T tokens】，表現合理。後續更多數據的滿血版會顯著更強。&lt;/p&gt; 
+&lt;h2&gt;RNN 的抗幹擾能力&lt;/h2&gt; 
+&lt;p&gt;最新論文 &lt;code&gt;Inverse Scaling in Test-Time Compute&lt;/code&gt;（&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Farxiv.org%2Fabs%2F2507.14417%25EF%25BC%2589%25E5%258F%2591%25E7%258E%25B0%25E5%2589%258D%25E6%25B2%25BF%25E6%25A8%25A1%25E5%259E%258B%25E5%259C%25A8%25E2%2580%259C%25E6%2581%25B6%25E6%2584%258F%25E9%2597%25AE%25E9%25A2%2598%25E2%2580%259D%25EF%25BC%2588%25E4%25BE%258B%25E5%25A6%2582%25E5%25B8%25A6%25E5%25B9%25B2%25E6%2589%25B0%25E9%25A1%25B9%25E7%259A%2584%25E8%25AE%25A1%25E6%2595%25B0%25E3%2580%2581%25E5%25B8%25A6%25E8%2599%259A%25E5%2581%2587%25E7%2589%25B9%25E5%25BE%2581%25E7%259A%2584%25E5%259B%259E%25E5%25BD%2592%25E9%25A2%2584%25E6%25B5%258B%25EF%25BC%258C%25E7%25AD%2589%25E7%25AD%2589%25EF%25BC%2589%25E4%25BC%259A%25E5%2587%25BA%25E7%258E%25B0%25E8%25B6%258A%25E6%2583%25B3%25E8%25B6%258A%25E5%25B7%25AE%25E7%259A%2584%25E6%2583%2585%25E5%2586%25B5%25EF%25BC%259A" target="_blank"&gt;https://arxiv.org/abs/2507.14417）發現前沿模型在「惡意問題」（例如帶幹擾項的計數、帶虛假特徵的迴歸預測，等等）會出現越想越差的情況：&lt;/a&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;img alt="Inverse Scaling in Test-Time Compute" src="https://oscimg.oschina.net/oscnet/up-6ae323b74fd47a196c5d2c1f9fa0e6eba61.png" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p&gt;我們發現 RWKV7-G0 7.2B 可以克服幹擾，得到正確答案：&lt;/p&gt; 
+&lt;p&gt;&lt;img alt="Test-Time-Compute-test" src="https://oscimg.oschina.net/oscnet/up-ae61d209ca82eea02e344618caff2afca92.png" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p&gt;繼續測試：&lt;/p&gt; 
+&lt;p&gt;&lt;img alt="Test-Time-Compute-test-1" src="https://oscimg.oschina.net/oscnet/up-514174dd1deab6244d08e752e541b0fd36e.png" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p&gt;修改數字再測試：&lt;/p&gt; 
+&lt;p&gt;&lt;img alt="Test-Time-Compute-test-2" src="https://oscimg.oschina.net/oscnet/up-203991398541247ca9e64b89fa8da85280d.png" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p&gt;可見 attention 會導致 transformer 更易受前文幹擾，而 RNN 在此有優勢。而且 RNN 的思考過程永遠勻速，不會越想越慢。我們未來訓練更大的 RNN 會更有趣。&lt;/p&gt; 
+&lt;h2&gt;模型下載&lt;/h2&gt; 
+&lt;p&gt;下載 RWKV7-G0 7.2B 模型：&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt;Hugging Face：&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fhuggingface.co%2FBlinkDL%2Frwkv7-g1%2Ftree%2Fmain" target="_blank"&gt;https://huggingface.co/BlinkDL/rwkv7-g1/tree/main&lt;/a&gt;&lt;/li&gt; 
+ &lt;li&gt;魔搭社區：&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fmodelscope.cn%2Fmodels%2FRWKV%2Frwkv7-g1%2Ffiles" target="_blank"&gt;https://modelscope.cn/models/RWKV/rwkv7-g1/files&lt;/a&gt;&lt;/li&gt; 
+ &lt;li&gt;WiseModel：&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fwisemodel.cn%2Fmodels%2Frwkv4fun%2FRWKV-7-G1%2Ffile" target="_blank"&gt;https://wisemodel.cn/models/rwkv4fun/RWKV-7-G1/file&lt;/a&gt;&lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;h2&gt;如何使用 RWKV 模型&lt;/h2&gt; 
+&lt;h3&gt;在線 demo（續寫模式）&lt;/h3&gt; 
+&lt;p&gt;可以在 RWKV 官方 Gradio 中試用 RWKV7-G0 7.2B 模型（為避免排隊，這裏限制了輸入和輸出長度）：&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt;&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fhuggingface.co%2Fspaces%2FBlinkDL%2FRWKV-Gradio-2" target="_blank"&gt;https://huggingface.co/spaces/BlinkDL/RWKV-Gradio-2&lt;/a&gt;&lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;blockquote&gt; 
+ &lt;p&gt;Hugging Face Gradio 是續寫模式，使用時需要遵循 &lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Frwkv.cn%2Ftutorials%2Fbasic%2FPrompt-Format" target="_blank"&gt;RWKV 的 prompt 格式&lt;/a&gt;。&lt;/p&gt; 
+&lt;/blockquote&gt; 
+&lt;p&gt;RWKV7-G0 7.2B &lt;strong&gt;不思考模式&lt;/strong&gt;的 QA prompt 格式：&lt;/p&gt; 
+&lt;pre&gt;&lt;code&gt;User: 我可以抽乾太平洋的水然後下去抓魚嗎？
+
+Assistant:
+&lt;/code&gt;&lt;/pre&gt; 
+&lt;p&gt;如需開啓&lt;strong&gt;思考模式&lt;/strong&gt;，可在 QA prompt 的基礎上添加 &lt;code&gt;&amp;lt;think&amp;gt;&lt;/code&gt; 標籤：&lt;/p&gt; 
+&lt;pre&gt;&lt;code&gt;User: 我可以抽乾太平洋的水然後下去抓魚嗎？
+
+Assistant: &amp;lt;think&amp;gt;
+&lt;/code&gt;&lt;/pre&gt; 
+&lt;h3&gt;本地部署 RWKV 模型&lt;/h3&gt; 
+&lt;p&gt;可以使用 RWKV Runner、Ai00、RWKV pip 等推理工具本地部署 RWKV 模型。&lt;/p&gt; 
+&lt;p&gt;此外，RWKV 模型也適配了 llama.cpp、ollama 等熱門的模型推理工具。&lt;/p&gt; 
+&lt;p&gt;由於 RWKV7-G0 7.2B 是新模型，目前建議使用 &lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Frwkv.cn%2Ftutorials%2Fintermediate%2FRWKV-Runner%2FIntroduction" target="_blank"&gt;RWKV Runner&lt;/a&gt; 以保證得到正確結果。&lt;/p&gt; 
+&lt;p&gt;可以在 &lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Frwkv.cn%2Ftutorials%2Fintermediate" target="_blank"&gt;RWKV 官網 - 模型推理教程&lt;/a&gt;中查看上述推理工具的使用教程。&lt;/p&gt; 
+&lt;h2&gt;未來訓練計劃&lt;/h2&gt; 
+&lt;p&gt;我們也正在訓練 RWKV7-G0 13.3B 模型，以及使用更多 tokens、使用 &lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fmp.weixin.qq.com%2Fs%2FYl79XfbMCO6ecAdKGzboRg" target="_blank"&gt;DeepEmbed&lt;/a&gt; 和 &lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fmp.weixin.qq.com%2Fs%2F3q1cldAEsk1576SLK24CTw" target="_blank"&gt;DEA&lt;/a&gt; 技術的 RWKV-7s 模型。&lt;/p&gt; 
+&lt;h2&gt;加入 RWKV 社區&lt;/h2&gt; 
+&lt;p&gt;歡迎大家加入 RWKV 社區，可以從 RWKV 中文官網瞭解 RWKV 模型，也可以加入 RWKV 論壇、QQ 頻道和 QQ 羣聊，一起探討 RWKV 模型。&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt;&amp;nbsp;RWKV 中文文檔：&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fwww.rwkv.cn" target="_blank"&gt;https://www.rwkv.cn&lt;/a&gt;&lt;/li&gt; 
+ &lt;li&gt;&amp;nbsp;RWKV 論壇：&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fcommunity.rwkv.cn%2F" target="_blank"&gt;https://community.rwkv.cn/&lt;/a&gt;&lt;/li&gt; 
+ &lt;li&gt;&amp;nbsp;QQ 頻道：&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fpd.qq.com%2Fs%2F9n21eravc" target="_blank"&gt;https://pd.qq.com/s/9n21eravc&lt;/a&gt;&lt;/li&gt; 
+ &lt;li&gt;&amp;nbsp;BiliBili 視頻教程：&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fspace.bilibili.com%2F3546689096910933" target="_blank"&gt;https://space.bilibili.com/3546689096910933&lt;/a&gt;&lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;blockquote&gt; 
+ &lt;p&gt;歡迎大家基於 RWKV-7 進行創業、科研，我們也會為基於 RWKV 的項目提供技術支持。&lt;/p&gt; 
+ &lt;p&gt;如果您的團隊正在基於 RWKV 創業或開展研究，請聯繫我們！（在「RWKV 元始智能」微信公眾號留言您的聯繫方式，或發送郵件到「contact@rwkvos.com」。）&lt;/p&gt; 
+&lt;/blockquote&gt; 
+&lt;h2&gt;附錄：旋轉的紅色立方體&lt;/h2&gt; 
+&lt;p&gt;將以下代碼保存為 &lt;code&gt;3d.html&lt;/code&gt; 並雙擊運行。&lt;/p&gt; 
+&lt;pre&gt;&lt;code&gt;&amp;lt;!DOCTYPE html&amp;gt;
+&amp;lt;html lang="en"&amp;gt;
+&amp;lt;head&amp;gt;
+    &amp;lt;meta charset="UTF-8"&amp;gt;
+    &amp;lt;meta name="viewport" content="width=device-width, initial-scale=1.0"&amp;gt;
+    &amp;lt;title&amp;gt;Rotating Red Box&amp;lt;/title&amp;gt;
+    &amp;lt;style&amp;gt;
+        body {
+            margin: 0;
+            overflow: hidden;
+        }
+        canvas {
+            display: block;
+            width: 100%;
+            height: 100%;
+        }
+    &amp;lt;/style&amp;gt;
+&amp;lt;/head&amp;gt;
+&amp;lt;body&amp;gt;
+    &amp;lt;script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"&amp;gt;&amp;lt;/script&amp;gt;
+    &amp;lt;script&amp;gt;
+        // Create scene
+        const scene = new THREE.Scene();
+        
+        // Create camera
+        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+        camera.position.z = 5;
+        
+        // Create renderer
+        const renderer = new THREE.WebGLRenderer();
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        document.body.appendChild(renderer.domElement);
+        // Create box geometry and material
+        const geometry = new THREE.BoxGeometry(1, 1, 1);
+        const material = new THREE.MeshBasicMaterial({ color: 0xff0000 }); // Red color
+        
+        // Create box mesh
+        const box = new THREE.Mesh(geometry, material);
+        
+        // Add lighting
+        const light = new THREE.DirectionalLight(0xffffff, 1);
+        light.position.set(0, 0, 10);
+        scene.add(light);
+        
+        // Add box to scene
+        scene.add(box);
+        
+        // Animation loop
+        let angleX = 0;
+        let angleY = 0;
+        
+        function animate() {
+            requestAnimationFrame(animate);
+            
+            // Update rotation angles
+            angleX += 0.01;
+            angleY += 0.01;
+            
+            // Update box rotation
+            box.rotation.x = angleX;
+            box.rotation.y = angleY;
+            
+            // Render scene
+            renderer.render(scene, camera);
+        }
+        
+        animate();
+    &amp;lt;/script&amp;gt;
+&amp;lt;/body&amp;gt;
+&amp;lt;/html&amp;gt;
+&lt;/code&gt;&lt;/pre&gt;
+                                                                                &lt;/div&gt;
+                                                                            </description>
+      <link>https://www.oschina.net/news/362400</link>
+      <guid isPermaLink="false">https://www.oschina.net/news/362400</guid>
+      <pubDate>Fri, 25 Jul 2025 10:54:00 GMT</pubDate>
+      <author>來源: 資訊</author>
+    </item>
+    <item>
+      <title>谷歌 DeepMind 新架構 MoR 有望成為「Transformer 殺手」</title>
+      <description>&lt;div class="content"&gt;
+                                                                    
+                                                        &lt;p&gt;谷歌 DeepMind 團隊發表論文《Mixture-of-Recursions: Learning Dynamic Recursive Depths for Adaptive Token-Level Computation》，&lt;strong&gt;提出新 Transformer 架構 Mixture-of-Recursions（MoR）&lt;/strong&gt;，旨在同時實現參數共享和自適應計算，以解決大型語言模型訓練和部署中的計算與內存開銷問題。&lt;/p&gt; 
+&lt;p&gt;&lt;img alt="" src="https://oscimg.oschina.net/oscnet/up-17000d1f4f6bc815b75098237c70778d99f.png" referrerpolicy="no-referrer"&gt; &lt;img alt="" src="https://oscimg.oschina.net/oscnet/up-c76175988abdc82ca877e5b51ccc663dba8.png" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;em&gt;https://arxiv.org/abs/2507.10524&lt;/em&gt;&lt;/p&gt; 
+&lt;p&gt;MoR 的核心創新包括：&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt;&lt;strong&gt;參數效率&lt;/strong&gt;：通過共享層堆棧在不同遞歸步驟中複用參數，減少參數量。&lt;/li&gt; 
+ &lt;li&gt;&lt;strong&gt;動態計算&lt;/strong&gt;：輕量級路由器為每個 token 動態分配遞歸深度，複雜 token 可深入處理，簡單 token 可提前退出，從而將計算資源精準分配 。&lt;/li&gt; 
+ &lt;li&gt;&lt;strong&gt;內存優化&lt;/strong&gt;：採用遞歸級鍵值（KV）緩存機制，僅緩存活躍 token 的 KV 對，顯著降低內存帶寬壓力並提升推理吞吐量 。&lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;p&gt;實驗結果顯示，在 135M 到 1.7B 參數規模的模型中，MoR 在相同訓練計算量下，驗證困惑度更低、少樣本準確率更高，推理吞吐量相比傳統 Transformer 和現有遞歸基線提升至多 2.18 倍，同時降低內存佔用和推理延遲。&lt;/p&gt; 
+&lt;p&gt;因此，MoR 被認為可能在無需承擔大模型成本的情況下實現大模型質量，甚至被稱為「Transformer 殺手」。&lt;/p&gt;
+                                                                                &lt;/div&gt;
+                                                                            </description>
+      <link>https://www.oschina.net/news/362399</link>
+      <guid isPermaLink="false">https://www.oschina.net/news/362399</guid>
+      <pubDate>Fri, 25 Jul 2025 10:53:00 GMT</pubDate>
+      <author>來源: OSCHINA</author>
+    </item>
+    <item>
+      <title>三分之一美國人藉助 AI 工具尋求職業轉型</title>
+      <description>&lt;div class="content"&gt;
+                                                                    
+                                                        &lt;p style="color:#242424; margin-left:0; margin-right:0; text-align:left"&gt;根據東南俄克拉荷馬大學（SOU）&lt;span&gt;最新&lt;/span&gt;發佈的一項報告，約三分之一的美國人已開始使用 AI 工具，如 ChatGPT，來幫助他們進行職業轉型。該報告基於對 1000 名來自四個不同世代的美國人的調查，旨在瞭解 AI 在當前美國勞動市場劇烈變化中的角色。&lt;/p&gt; 
+&lt;p style="color:#242424; margin-left:0; margin-right:0; text-align:left"&gt;調查顯示，超過一半的受訪者表示，他們正在積極考慮換工作或職業轉型，其中以 Z 世代的 57% 比例&lt;span&gt;最高&lt;/span&gt;，隨後是千禧一代的 55%，X 世代的 50%，以及僅 12% 的嬰兒潮一代。&lt;/p&gt; 
+&lt;p style="color:#242424; margin-left:0; margin-right:0; text-align:left"&gt;在那些表示 AI 對他們的職業轉型有所幫助的受訪者中，43% 的人使用 AI 工具撰寫簡歷和求職信，47% 的人則利用 AI 進行新工作機會的研究，包括尋找薪資更高的職位。值得注意的是，近五分之一的受訪者（18%）表示，AI 建議了他們之前未曾考慮過的全新職業路徑。&lt;/p&gt; 
+&lt;p style="color:#242424; margin-left:0; margin-right:0; text-align:left"&gt;不過，儘管有不少人依賴 AI 來提供職業建議，調查也顯示大多數受訪者對 AI 提供的信息持謹慎態度。60% 的受訪者表示，他們更傾向於相信人類職業顧問的意見，而只有 7% 的人選擇相信 AI。一部分人（17%）甚至選擇遵循 AI 的建議，即使這些建議與他們之前從人類顧問那裏得到的意見相悖。&lt;/p&gt; 
+&lt;p style="color:#242424; margin-left:0; margin-right:0; text-align:left"&gt;在各年齡層中，受訪者主要關注的職業機會集中在技術領域，其次是醫療和金融。隨着 AI 技術的不斷發展，許多人認為這可能導致大量白領職位的消失。例如，Anthropic 的首席執行官達裏奧・阿莫德伊預測，AI 將在未來五年內消除一半的白領工作。而亞馬遜首席執行官安迪・賈西也表示，AI 驅動的自動化將取代一些人類工作，同時使其他職位變得更加 「有趣」，並創造出全新的崗位。&lt;/p&gt; 
+&lt;p style="color:#242424; margin-left:0; margin-right:0; text-align:left"&gt;在技術公司招聘方面的數據也表明，隨着 AI 工具開始接管許多原本由年輕、經驗較少的員工完成的日常任務，科技公司對新近計算機科學畢業生的招聘數量有所減少。此外，在硅谷的激烈人才爭奪戰中，企業之間的競爭愈發激烈，特別是在人工智能研究方面的&lt;span&gt;頂尖&lt;/span&gt;人才更是稀缺。許多公司都願意為此支付高額薪資，以吸引那些能夠在技術突破中發揮關鍵作用的優秀研究人員。&lt;/p&gt;
+                                                                                &lt;/div&gt;
+                                                                            </description>
+      <link>https://www.oschina.net/news/362398</link>
+      <guid isPermaLink="false">https://www.oschina.net/news/362398</guid>
+      <pubDate>Fri, 25 Jul 2025 10:52:00 GMT</pubDate>
+      <author>來源: OSCHINA</author>
+    </item>
+    <item>
+      <title>階躍星辰發佈最強開源多模態推理模型 Step3</title>
+      <description>&lt;div class="content"&gt;
+                                                                    
+                                                        &lt;p&gt;&lt;span style="color:#000000"&gt;階躍星辰宣佈發佈新一代基礎大模型 Step3，主打多模態推理。&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;span style="color:#000000"&gt;根據介紹，這是階躍星辰首個全尺寸、原生多模態推理模型。在國產芯片 32K 上下文推理效率最高可達 DeepSeek R1 的 300%，在英偉達 H800 芯片將推理效率提升了 70% 以上。該模型將於 7 月 31 日向全球開源。&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;span style="color:#000000"&gt;&lt;img height="262" src="https://oscimg.oschina.net/oscnet/up-e93e689dafce5406835a7db40fe0043af4b.png" width="500" referrerpolicy="no-referrer"&gt;&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;span style="color:#000000"&gt;此外，階躍星辰宣佈與上海國有資本投資有限公司達成深度戰略合作，並透露上海國投將參與階躍星辰的新一輪融資。&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;span style="color:#000000"&gt;階躍星辰創始人、CEO 姜大昕表示，階躍的商業化的成果體現在了收入數字上，基於上半年的高速增長，公司將全年的衝刺目標定在 10 億元。&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;span style="color:#000000"&gt;會上，階躍還將聯合近 10 家芯片廠商和算力平台成立模新生態創新聯盟。&lt;/span&gt;&lt;/p&gt;
+                                                                                &lt;/div&gt;
+                                                                            </description>
+      <link>https://www.oschina.net/news/362393</link>
+      <guid isPermaLink="false">https://www.oschina.net/news/362393</guid>
+      <pubDate>Fri, 25 Jul 2025 10:21:00 GMT</pubDate>
+      <author>來源: OSCHINA</author>
+    </item>
+    <item>
+      <title>螞蟻數科發佈金融推理大模型 Agentar-Fin-R1</title>
+      <description>&lt;div class="content"&gt;
+                                                                    
+                                                        &lt;p&gt;&lt;span style="color:#000000"&gt;螞蟻數科已正式發佈金融推理大模型 Agentar-Fin-R1。該模型基於 Qwen3 研發，在 FinEval1.0、FinanceIQ 等權威金融評測基準上表現優異，超越同尺寸開源通用大模型及金融大模型。&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;span style="color:#000000"&gt;「通用大模型和產業之間仍存在知識鴻溝，尤其在金融領域。」螞蟻數科 CEO 趙聞飆在大會上表示，構建專業金融大模型，是推動金融智能體真正落地的必由之路。這不僅是科技挑戰，更直接關係金融機構在未來的智能競爭中是否擁有核心抓手。&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;span style="color:#000000"&gt;研發團隊為其構建了一套業內極為全面和專業的金融數據語料。一個覆蓋了銀行、證券、保險、基金、信託等全場景的金融任務體系，包含 6 大類、66 個細分場景，構成了業內最系統、最真實的金融數據集。&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;span style="color:#000000"&gt;訓練中還引入「原則類合成數據」，讓模型天然遵守金融監管紅線，比如數據合規、身份校驗、反洗錢等細節。&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;span style="color:#000000"&gt;&lt;img height="319" src="https://oscimg.oschina.net/oscnet/up-8d7c354e371db0062d5a9f25d7135f76029.png" width="500" referrerpolicy="no-referrer"&gt;&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;span style="color:#000000"&gt;Agentar-Fin-R1 採用了創新的加權訓練算法，這就像一個聰明的學習方法，能夠動態地發現模型的薄弱環節並針對性地進行強化。&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;span style="color:#000000"&gt;這樣做的好處是，在後續的業務應用中，可以顯著減少二次微調所需的數據和算力，有效降低了企業部署大模型的門檻和成本。&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;span style="color:#000000"&gt;評測結果顯示，Agentar-Fin-R1 在金融基準測試中均取得最高評分。螞蟻數科構建了全面的金融任務數據體系，覆蓋銀行、證券等全場景，通過可信數據合成技術顯著提升模型處理複雜任務的能力。&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;span style="color:#000000"&gt;&lt;img height="231" src="https://oscimg.oschina.net/oscnet/up-a22dbbe5f4527d0a3bb44a2f3049557f6da.png" width="500" referrerpolicy="no-referrer"&gt;&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;span style="color:#000000"&gt;&lt;img height="273" src="https://oscimg.oschina.net/oscnet/up-9f2fab555918f31a036c29c55510abeffde.png" width="500" referrerpolicy="no-referrer"&gt;&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;span style="color:#000000"&gt;目前，Agentar-Fin-R1 推出了 32B 和 8B 兩種參數版本，此外還有基於百靈大模型的 MOE 架構模型以及 14B 和 72B 的非推理版本，以滿足不同機構和場景的部署需求。&lt;/span&gt;&lt;/p&gt;
+                                                                                &lt;/div&gt;
+                                                                            </description>
+      <link>https://www.oschina.net/news/362703</link>
+      <guid isPermaLink="false">https://www.oschina.net/news/362703</guid>
+      <pubDate>Thu, 17 Jul 2025 06:06:00 GMT</pubDate>
+      <author>來源: OSCHINA</author>
+    </item>
+    <item>
+      <title>Firefox 中國版宣佈停止服務</title>
+      <description>&lt;div class="content"&gt;
+                                                                    
+                                                        &lt;p&gt;7 月 27 日，由北京謀智火狐信息技術有限公司運營的 Firefox 中國版網站發佈&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fwww.firefox.com.cn%2Ffarewell%2F" target="_blank"&gt;公告&lt;/a&gt;稱，將於 2025 年 9 月 29 日後正式終止與 Mozilla 及 Firefox 瀏覽器相關的中國大陸運營。Firefox 瀏覽器將在中國大陸繼續可用並保持全部功能。&lt;/p&gt; 
+&lt;p&gt;根據公告中的背景説明，北京火狐原在中國大陸負責部分 Firefox 瀏覽器相關業務。2025 年 5 月 8 日，Mozilla 與北京火狐達成一致，北京火狐將不再運營 Firefox 瀏覽器及任何與 Firefox 有關的中國大陸業務。北京火狐將停止使用 Mozilla 授權的商標、版權及域名。同時，北京火狐將全力配合 Mozilla 確保用戶的平穩過渡。後續 Mozilla 將自行或通過授權的第三方，繼續在中國大陸負責 Firefox 瀏覽器及 Firefox 社區的相關運營。&lt;/p&gt; 
+&lt;p&gt;公告稱，自即日起，Firefox 火狐中文官方網站將不再提供 Firefox 瀏覽器的下載；中國專版的火狐通行證、火狐社區將不再接受新用戶註冊。自 9 月 29 日晚 24:00 起，火狐中文官方網站、火狐社區網站、火狐通行證賬戶服務及，火狐主頁將正式停止運營，所有功能將終止。&lt;/p&gt; 
+&lt;hr&gt; 
+&lt;p&gt;&lt;img height="3258" src="https://static.oschina.net/uploads/space/2025/0728/112233_GG4l_2720166.png" width="1548" referrerpolicy="no-referrer"&gt;&lt;/p&gt;
+                                                                                &lt;/div&gt;
+                                                                            </description>
+      <link>https://www.oschina.net/news/362681/firefox-com-cn-farewell</link>
+      <guid isPermaLink="false">https://www.oschina.net/news/362681/firefox-com-cn-farewell</guid>
+      <pubDate>Thu, 17 Jul 2025 03:20:00 GMT</pubDate>
+      <author>來源: OSCHINA</author>
+    </item>
+    <item>
+      <title>無問芯穹發佈終端本徵大模型 Megrez 2.0</title>
+      <description>&lt;div class="content"&gt;
+                                                                    
+                                                        &lt;p&gt;無問芯穹聯合上海創智學院（上海交通大學背景）正式發佈終端本徵智能大模型 &lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fmp.weixin.qq.com%2Fs%2Fws8N9Gov8MT65JFumcGZpQ" target="_blank"&gt;&lt;strong&gt;Megrez 2.0&lt;/strong&gt;&lt;/a&gt;（Megrez-2-3x7B-A3B-Preview）。&lt;/p&gt; 
+&lt;p&gt;該模型通過終端本徵架構，突破端側「能效-空間-智能」不可能三角，在實現 &lt;strong&gt;21B&lt;/strong&gt; 參數（雲端級智能水平）的同時，將實際計算量控制在 &lt;strong&gt;3B&lt;/strong&gt;、內存佔用控制在 &lt;strong&gt;7B&lt;/strong&gt; 規模（INT4 量化下不足 4G 內存佔用），適配各類終端設備 。&lt;/p&gt; 
+&lt;p&gt;&lt;img alt="" src="https://oscimg.oschina.net/oscnet/up-aa0ceca67088dab4c9dfe052153582592bf.png" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p&gt;模型鏈接：https://www.modelscope.cn/models/InfiniAI/Megrez2-3x7B-A3B-Preview/summary&lt;/p&gt; 
+&lt;p&gt;Megrez 2.0 採用重參數機制，將相鄰 MoE 層分組複用專家參數，將總參數量從 21B 降至 7B，同時保持 21B 專家池空間，實現更高能效、更低內存和更強智能，其速度比同內存佔用模型快 50%，精度比同尺寸稠密模型提升 36%，內存比同精度模型節約 75% 。&lt;/p&gt; 
+&lt;p&gt;此外，Megrez 2.0 支持終端設備在「休眠時段」無感知地持續創造價值（如整理會議紀要），實現端側級算力撬動雲端級智能，推動 AI 智能體等應用在終端釋放更大能動性 。&lt;/p&gt;
+                                                                                &lt;/div&gt;
+                                                                            </description>
+      <link>https://www.oschina.net/news/362679</link>
+      <guid isPermaLink="false">https://www.oschina.net/news/362679</guid>
+      <pubDate>Thu, 17 Jul 2025 03:17:00 GMT</pubDate>
+      <author>來源: OSCHINA</author>
+    </item>
+    <item>
+      <title>騰訊公開 AI 產品應用全景圖，開源 3D 世界模型</title>
+      <description>&lt;div class="content"&gt;
+                                                                    
+                                                        &lt;p&gt;&lt;span style="color:#000000"&gt;騰訊宣佈首次公開 AI 產品應用全景圖，包括 1+3+N 多項成果：混元 3D 世界模型、雙智能體開發平台、具身智能開放平台等，覆蓋 ToB-ToC-機器人多場景。&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;img height="226" src="https://oscimg.oschina.net/oscnet/up-2a518afecfb3fd34b432863c074a91586b1.png" width="500" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;span style="color:#000000"&gt;與此同時，混元正式發佈並開源了業界首個 3D 世界生成模型——混元 3D 世界模型 1.0。根據介紹，混元 3D 世界模型 1.0 融合了全景視覺生成與分層 3D 重建技術，能夠接受文字和圖片作為輸入，快速生成高質量、風格多樣的可漫遊 3D 場景。這一技術突破極大地簡化了 3D 場景的構建流程，過去需要專業建模團隊數週才能完成的工作，現在通過簡單的文字指令或圖片上傳，幾分鐘內即可實現。&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;span style="color:#000000"&gt;對於遊戲開發者而言，該模型能夠迅速生成包含建築、地形、植被等元素的完整 3D 場景，輸出的 Mesh 文件可直接用於遊戲原型搭建或關卡設計，同時支持前景物體調整和天空背景更換，滿足個性化創作需求。即便是沒有建模經驗的普通用戶，也能通過混元 3D 創作引擎，輕鬆生成 360°沉浸式視覺空間，並無縫導入 Vision Pro 等虛擬頭顯設備，享受沉浸式體驗。&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;span style="color:#000000"&gt;&lt;img alt="" height="293" src="https://oscimg.oschina.net/oscnet/up-e397af148c8e4065009e800578c020c6773.gif" width="500" referrerpolicy="no-referrer"&gt;&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;span style="color:#000000"&gt;混元 3D 世界模型 1.0 的核心優勢在於其創新的「語意層次化 3D 場景表徵及生成算法」。該算法將複雜的 3D 世界解構為不同語意層級，實現前景與背景、地面與天空的智能分離，不僅生成視覺效果逼真的整體場景，還能輸出標準化的 3D Mesh 資產，兼容 Unity、Unreal Engine、Blender 等主流工具，便於用戶對場景內元素進行獨立編輯或物理仿真，實現了 AIGC 技術與傳統 CG 工作流的無縫銜接。&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;span style="color:#222222"&gt;混元大模型的最新進展：&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;img height="357" src="https://oscimg.oschina.net/oscnet/up-f2e1d93b044490b121dc73e763a7d7f36d8.png" width="500" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p&gt;更多詳情可&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fmp.weixin.qq.com%2Fs%2FkaISOjFXhne5g9IG5P7ahg" target="_blank"&gt;查看官方公告&lt;/a&gt;。&lt;/p&gt;
+                                                                                &lt;/div&gt;
+                                                                            </description>
+      <link>https://www.oschina.net/news/362675</link>
+      <guid isPermaLink="false">https://www.oschina.net/news/362675</guid>
+      <pubDate>Thu, 17 Jul 2025 02:52:00 GMT</pubDate>
+      <author>來源: OSCHINA</author>
+    </item>
     <item>
       <title>中國政府倡議成立世界人工智能合作組織</title>
       <description>&lt;div class="content"&gt;
@@ -26,7 +656,7 @@
                                                                             </description>
       <link>https://www.oschina.net/news/362669</link>
       <guid isPermaLink="false">https://www.oschina.net/news/362669</guid>
-      <pubDate>Mon, 28 Jul 2025 02:37:07 GMT</pubDate>
+      <pubDate>Thu, 17 Jul 2025 02:36:00 GMT</pubDate>
       <author>來源: OSCHINA</author>
     </item>
     <item>
@@ -403,7 +1033,7 @@ if __name__ == "__main__":
                                                                             </description>
       <link>https://my.oschina.net/u/5583868/blog/18685835</link>
       <guid isPermaLink="false">https://my.oschina.net/u/5583868/blog/18685835</guid>
-      <pubDate>Mon, 28 Jul 2025 02:25:07 GMT</pubDate>
+      <pubDate>Thu, 17 Jul 2025 02:25:00 GMT</pubDate>
       <author>原創</author>
     </item>
     <item>
@@ -429,7 +1059,7 @@ if __name__ == "__main__":
                                                                             </description>
       <link>https://www.oschina.net/news/362658</link>
       <guid isPermaLink="false">https://www.oschina.net/news/362658</guid>
-      <pubDate>Mon, 28 Jul 2025 02:11:07 GMT</pubDate>
+      <pubDate>Thu, 17 Jul 2025 02:10:00 GMT</pubDate>
       <author>來源: OSCHINA</author>
     </item>
     <item>
@@ -444,802 +1074,7 @@ if __name__ == "__main__":
                                                                             </description>
       <link>https://www.oschina.net/news/362654</link>
       <guid isPermaLink="false">https://www.oschina.net/news/362654</guid>
-      <pubDate>Mon, 28 Jul 2025 02:01:07 GMT</pubDate>
-      <author>來源: OSCHINA</author>
-    </item>
-    <item>
-      <title>微軟即將發佈 Visual Studio 重大升級，應對 AI 編程工具激烈競爭</title>
-      <description>&lt;div class="content"&gt;
-                                                                    
-                                                        &lt;p&gt;儘管微軟向客戶提供了 Visual Studio Code 這款輕量級但功能強大的開源代碼編輯器，但其旗艦開發環境實際上是原生版 Visual Studio。這是一個功能齊全的集成開發環境 (IDE)，具有 .NET 集成和其他功能，使其更適合複雜的項目管理。現在，一份新報告顯示，微軟正計劃對 Visual Studio 進行重大升級。&lt;/p&gt; 
-&lt;p&gt;&lt;img src="https://static.oschina.net/uploads/space/2025/0725/194445_SAV6_2720166.png" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;p&gt;媒體&amp;nbsp;&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fwww.businessinsider.com%2Fmicrosoft-plans-major-update-visual-studio-coding-service-ai-2025-7" target="_blank"&gt;Business Insider&lt;/a&gt;&amp;nbsp;看到了一份微軟內部備忘錄，其中詳細介紹了該公司計劃發佈 Visual Studio 的重大升級。不出所料，此次更新將重點關注人工智能 (AI)，這對於與亞馬遜 Kiro 等其他競爭對手競爭至關重要，亞馬遜 Kiro 被譽為基於 AI 的 IDE。&lt;/p&gt; 
-&lt;p&gt;這份備忘錄由傑伊·帕裏克（Jay Parikh）於今年 4 月撰寫，他加入微軟不到一年，擔任執行副總裁（EVP）。帕裏克領導着公司的 CoreAI 部門，該部門負責開發人員工具，因此 Visual Studio 恰好屬於這位高管的職責範圍。&lt;/p&gt; 
-&lt;p&gt;Parikh 的備忘錄將這次主要版本稱為「Visual Studio 18」，考慮到 Visual Studio 目前使用的是 17 版，這頗具趣味。該 IDE 上個月發佈了更新，允許開發人員訪問更強大的 AI 模型，同時靈活地管理計費。值得注意的是，Visual Studio 的上一次重大更新是在 2021 年，當時微軟發佈了 Visual Studio 2022 和 .NET 6，因此再次發佈主要版本也是合情合理的。&lt;/p&gt; 
-&lt;p&gt;話雖如此，雖然 Visual Studio 的下一次重大升級有可能在今年推出，但目前尚未公佈具體的時間表。備忘錄還指出，這個由人工智能驅動的 IDE 版本目前正處於「早期內部測試」階段，這意味着微軟自己的員工正在積極地使用它進行測試。&lt;/p&gt;
-                                                                                &lt;/div&gt;
-                                                                            </description>
-      <link>https://www.oschina.net/news/362407</link>
-      <guid isPermaLink="false">https://www.oschina.net/news/362407</guid>
-      <pubDate>Fri, 25 Jul 2025 11:44:00 GMT</pubDate>
-      <author>來源: OSCHINA</author>
-    </item>
-    <item>
-      <title>谷歌短鏈接服務「goo.gl」將於下個月正式停用</title>
-      <description>&lt;div class="content"&gt;
-                                                                    
-                                                        &lt;p&gt;Google 將於下個月正式棄用其網址縮短工具生成的鏈接。自 2025 年 8 月 25 日起，所有「&lt;span style="color:#2980b9"&gt;&lt;em&gt;https://goo.gl/*&lt;/em&gt;&lt;/span&gt;」格式的鏈接將不再有效，並返回 404 錯誤信息。&lt;/p&gt; 
-&lt;p&gt;Google 於 2019 年關閉了其網址縮短服務，理由是「我們發現人們在互聯網上查找內容的方式發生了變化」。此後，使用該工具創建的鏈接仍然有效，但 Google 去年宣佈，隨着縮短網址流量的下降，將開始棄用這些服務。&lt;/p&gt; 
-&lt;p&gt;&lt;img alt="" src="https://oscimg.oschina.net/oscnet/up-3de2e977a212c4b76a27a10e76c003b1a75.png" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;p&gt;Google 在其&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fdevelopers.googleblog.com%2Fen%2Fgoogle-url-shortener-links-will-no-longer-be-available%2F" target="_blank"&gt;2024 年 7 月的博客文章&lt;/a&gt;中表示：「事實上，超過 99% 的縮短網址在過去一個月內沒有任何活動。」&lt;/p&gt; 
-&lt;p&gt;當時，Google 還開始在用戶點擊縮短的網址時顯示一個警告頁面，提示「此鏈接近期將不再有效」。&lt;/p&gt; 
-&lt;p&gt;&lt;img alt="" src="https://oscimg.oschina.net/oscnet/up-0bd067dfa47ef36f85743afb32cf6824b04.png" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;p&gt;距離「goo.gl」鏈接關閉僅剩一個月時間，如果您還沒有將網址轉換到其他縮短服務，現在正是轉換的好時機。&lt;/p&gt;
-                                                                                &lt;/div&gt;
-                                                                            </description>
-      <link>https://www.oschina.net/news/362402</link>
-      <guid isPermaLink="false">https://www.oschina.net/news/362402</guid>
-      <pubDate>Fri, 25 Jul 2025 11:02:00 GMT</pubDate>
-      <author>來源: OSCHINA</author>
-    </item>
-    <item>
-      <title>RWKV7-G0 7.2B 發佈，最強純 RNN 推理模型</title>
-      <description>&lt;div class="content"&gt;
-                                                                    
-                                                        &lt;p&gt;2025 年 7 月 22 日， &lt;strong&gt;RWKV7-G0 7.2B 推理模型&lt;/strong&gt;（Reasoning Model）正式開源發佈，它很可能是迄今為止人類訓練過的最強純 RNN 語言模型。&lt;/p&gt; 
-&lt;p&gt;RWKV7-G0 7.2B 是在 RWKV6-World-V3-7.6B 的基礎上訓練 2T tokens 的純預訓練模型，但在預訓練加入了大量指令/對話/推理數據，可以解決各種推理問題。&lt;/p&gt; 
-&lt;blockquote&gt; 
- &lt;p&gt;如果需要後訓練和對齊，最適合 RNN 的方式是 &lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Frwkv.cn%2Ftutorials%2Fadvanced%2FFine-Tune%2FRWKV-PEFT%2FState-Tuning" target="_blank"&gt;state-tuning&lt;/a&gt;，直接微調 RNN 的初始狀態，相當於終極 context engineering。&lt;/p&gt; 
-&lt;/blockquote&gt; 
-&lt;h2&gt;模型客觀指標評測&lt;/h2&gt; 
-&lt;h3&gt;英語和多語言能力&lt;/h3&gt; 
-&lt;p&gt;RWKV7-G0 7.2B 的基礎英語和多語言能力&lt;strong&gt;均強於同規模的開源模型&lt;/strong&gt;：&lt;/p&gt; 
-&lt;p&gt;&lt;img alt="eval" src="https://oscimg.oschina.net/oscnet/up-3961b82f0302bbedafaae3e26ce721fe159.png" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;p&gt;得益於架構和數據的提升，RWKV7-G0 7.2B 的 MMLU 準確度為 62.7%，顯著超過 RWKV6-World-V3-7.6B 的 54.2%。後續我們會發布訓練 8T tokens 的滿血 RWKV7-G1 7.2B，目標是 MMLU 達到 70%，看齊前沿模型。&lt;/p&gt; 
-&lt;h3&gt;無法作弊的評測&lt;/h3&gt; 
-&lt;blockquote&gt; 
- &lt;p&gt;&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fhuggingface.co%2Fspaces%2FJellyfish042%2FUncheatableEval" target="_blank"&gt;Uncheatable Eval&lt;/a&gt; 是"無法作弊的評測"，它使用最新的論文和新聞文章等實時數據，評估開源大語言模型的真實建模能力和泛化能力。&lt;/p&gt; 
-&lt;/blockquote&gt; 
-&lt;p&gt;RWKV7-G0 7.2B 的 Uncheatable Eval 同樣顯著提升，滿血 8T tokens 預計超越 Llama3 8B（這裏測試 2024-07 數據，後續會測新數據，並對比 Qwen2.5、Qwen3）：&lt;/p&gt; 
-&lt;p&gt;&lt;img alt="uncheatable-eval" src="https://oscimg.oschina.net/oscnet/up-00ee915e6a6642e230984bbad95c7adda04.png" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;h2&gt;模型實戰：解數學題&lt;/h2&gt; 
-&lt;p&gt;我們發現，RWKV7-G0 7.2B 解數學題可使用 &lt;code&gt;temperature top_p penalty&lt;/code&gt; 解碼參數都為 0 的純貪心解碼，且無限復讀現象較少。&lt;/p&gt; 
-&lt;p&gt;但貪心解碼會導致推理過程探索度不足，因此可引入隨機性，例如 &lt;code&gt;temperature=0.3 top_p=0.3 penalty=0&lt;/code&gt;。模型會自動進行多輪驗算（類似 rollout），並可以自我糾錯。&lt;/p&gt; 
-&lt;p&gt;那麼 &lt;code&gt;temperature=0.6 top_p=0.6 penalty=0&lt;/code&gt; 等隨機性更高的參數是否更好，後續我們會通過參數掃描實驗評估。&lt;/p&gt; 
-&lt;p&gt;例子，第一題：&lt;/p&gt; 
-&lt;p&gt;&lt;img alt="math1" src="https://oscimg.oschina.net/oscnet/up-0cd8d78f631ee7405c4bbca2340892aa1c6.png" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;p&gt;修改題目表述，模型換了種做法：&lt;/p&gt; 
-&lt;p&gt;&lt;img alt="math2" src="https://oscimg.oschina.net/oscnet/up-dc97d5561c78acbb5117c3b214de082e7da.png" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;p&gt;第二題，故意將原題的 99 改為 99.1，模型一開始看錯，後來成功糾正了自己：&lt;/p&gt; 
-&lt;p&gt;&lt;img alt="math3" src="https://oscimg.oschina.net/oscnet/up-e607d6ca88eb49ab4caf0e417262eb39b2b.png" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;p&gt;第三題，原題是計算 1 的冪，改為計算 i 的冪，增加難度：&lt;/p&gt; 
-&lt;p&gt;&lt;img alt="math4" src="https://oscimg.oschina.net/oscnet/up-8d5d4f106fec7c3c72836c057b1de89bddd.png" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;p&gt;第四題，原題是 2^8 = 4^x，改為 8^x 增加難度：&lt;/p&gt; 
-&lt;p&gt;&lt;img alt="math5" src="https://oscimg.oschina.net/oscnet/up-4d801cfa9f331b3dca71d086a3c05004e6c.png" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;p&gt;第五題，原題的概率是 1/5，改為 1/4 測試模型：&lt;/p&gt; 
-&lt;p&gt;&lt;img alt="math6" src="https://oscimg.oschina.net/oscnet/up-39c45f49e2a398f59a7dc87fde27cf46756.png" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;p&gt;第六題，原題是 one hat，改為 two hat（故意不加 s 複數形式）測試模型：&lt;/p&gt; 
-&lt;p&gt;&lt;img alt="math7" src="https://oscimg.oschina.net/oscnet/up-2d56afb40928ffd13d17308fc41c6e56369.png" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;p&gt;第七題，模型有點懵，但反覆驗算多次後，成功確認了正確答案：&lt;/p&gt; 
-&lt;p&gt;&lt;img alt="math8" src="https://oscimg.oschina.net/oscnet/up-7730c44785334a3421428c0e7dd153ed6ae.png" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;p&gt;結論：【純 RNN + 純預訓練】可以得到推理模型，而且它理解了一些解題方法，可以用不同方法解決修改過的題目。&lt;/p&gt; 
-&lt;h2&gt;模型實戰：寫代碼&lt;/h2&gt; 
-&lt;p&gt;在此我們測試用戶喜聞樂見的圖像輸出。生成一個有一隻貓的 SVG 的網頁：&lt;/p&gt; 
-&lt;p&gt;&lt;img alt="code" src="https://oscimg.oschina.net/oscnet/up-06f4dbd1a7c9e178ed8408f93d7bb939c4d.png" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;p&gt;用 Three.js 創建一個旋轉的 3D 紅色立方體（完整代碼在文末的附錄中）：&lt;/p&gt; 
-&lt;p&gt;&lt;img alt="code-1" src="https://oscimg.oschina.net/oscnet/up-5965c8a859ccc3bcc7f9db0d86caeb5f612.png" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;p&gt;考慮到這是【純 RNN + 純預訓練 + 只訓練 2T tokens】，表現合理。後續更多數據的滿血版會顯著更強。&lt;/p&gt; 
-&lt;h2&gt;RNN 的抗幹擾能力&lt;/h2&gt; 
-&lt;p&gt;最新論文 &lt;code&gt;Inverse Scaling in Test-Time Compute&lt;/code&gt;（&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Farxiv.org%2Fabs%2F2507.14417%25EF%25BC%2589%25E5%258F%2591%25E7%258E%25B0%25E5%2589%258D%25E6%25B2%25BF%25E6%25A8%25A1%25E5%259E%258B%25E5%259C%25A8%25E2%2580%259C%25E6%2581%25B6%25E6%2584%258F%25E9%2597%25AE%25E9%25A2%2598%25E2%2580%259D%25EF%25BC%2588%25E4%25BE%258B%25E5%25A6%2582%25E5%25B8%25A6%25E5%25B9%25B2%25E6%2589%25B0%25E9%25A1%25B9%25E7%259A%2584%25E8%25AE%25A1%25E6%2595%25B0%25E3%2580%2581%25E5%25B8%25A6%25E8%2599%259A%25E5%2581%2587%25E7%2589%25B9%25E5%25BE%2581%25E7%259A%2584%25E5%259B%259E%25E5%25BD%2592%25E9%25A2%2584%25E6%25B5%258B%25EF%25BC%258C%25E7%25AD%2589%25E7%25AD%2589%25EF%25BC%2589%25E4%25BC%259A%25E5%2587%25BA%25E7%258E%25B0%25E8%25B6%258A%25E6%2583%25B3%25E8%25B6%258A%25E5%25B7%25AE%25E7%259A%2584%25E6%2583%2585%25E5%2586%25B5%25EF%25BC%259A" target="_blank"&gt;https://arxiv.org/abs/2507.14417）發現前沿模型在「惡意問題」（例如帶幹擾項的計數、帶虛假特徵的迴歸預測，等等）會出現越想越差的情況：&lt;/a&gt;&lt;/p&gt; 
-&lt;p&gt;&lt;img alt="Inverse Scaling in Test-Time Compute" src="https://oscimg.oschina.net/oscnet/up-6ae323b74fd47a196c5d2c1f9fa0e6eba61.png" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;p&gt;我們發現 RWKV7-G0 7.2B 可以克服幹擾，得到正確答案：&lt;/p&gt; 
-&lt;p&gt;&lt;img alt="Test-Time-Compute-test" src="https://oscimg.oschina.net/oscnet/up-ae61d209ca82eea02e344618caff2afca92.png" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;p&gt;繼續測試：&lt;/p&gt; 
-&lt;p&gt;&lt;img alt="Test-Time-Compute-test-1" src="https://oscimg.oschina.net/oscnet/up-514174dd1deab6244d08e752e541b0fd36e.png" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;p&gt;修改數字再測試：&lt;/p&gt; 
-&lt;p&gt;&lt;img alt="Test-Time-Compute-test-2" src="https://oscimg.oschina.net/oscnet/up-203991398541247ca9e64b89fa8da85280d.png" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;p&gt;可見 attention 會導致 transformer 更易受前文幹擾，而 RNN 在此有優勢。而且 RNN 的思考過程永遠勻速，不會越想越慢。我們未來訓練更大的 RNN 會更有趣。&lt;/p&gt; 
-&lt;h2&gt;模型下載&lt;/h2&gt; 
-&lt;p&gt;下載 RWKV7-G0 7.2B 模型：&lt;/p&gt; 
-&lt;ul&gt; 
- &lt;li&gt;Hugging Face：&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fhuggingface.co%2FBlinkDL%2Frwkv7-g1%2Ftree%2Fmain" target="_blank"&gt;https://huggingface.co/BlinkDL/rwkv7-g1/tree/main&lt;/a&gt;&lt;/li&gt; 
- &lt;li&gt;魔搭社區：&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fmodelscope.cn%2Fmodels%2FRWKV%2Frwkv7-g1%2Ffiles" target="_blank"&gt;https://modelscope.cn/models/RWKV/rwkv7-g1/files&lt;/a&gt;&lt;/li&gt; 
- &lt;li&gt;WiseModel：&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fwisemodel.cn%2Fmodels%2Frwkv4fun%2FRWKV-7-G1%2Ffile" target="_blank"&gt;https://wisemodel.cn/models/rwkv4fun/RWKV-7-G1/file&lt;/a&gt;&lt;/li&gt; 
-&lt;/ul&gt; 
-&lt;h2&gt;如何使用 RWKV 模型&lt;/h2&gt; 
-&lt;h3&gt;在線 demo（續寫模式）&lt;/h3&gt; 
-&lt;p&gt;可以在 RWKV 官方 Gradio 中試用 RWKV7-G0 7.2B 模型（為避免排隊，這裏限制了輸入和輸出長度）：&lt;/p&gt; 
-&lt;ul&gt; 
- &lt;li&gt;&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fhuggingface.co%2Fspaces%2FBlinkDL%2FRWKV-Gradio-2" target="_blank"&gt;https://huggingface.co/spaces/BlinkDL/RWKV-Gradio-2&lt;/a&gt;&lt;/li&gt; 
-&lt;/ul&gt; 
-&lt;blockquote&gt; 
- &lt;p&gt;Hugging Face Gradio 是續寫模式，使用時需要遵循 &lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Frwkv.cn%2Ftutorials%2Fbasic%2FPrompt-Format" target="_blank"&gt;RWKV 的 prompt 格式&lt;/a&gt;。&lt;/p&gt; 
-&lt;/blockquote&gt; 
-&lt;p&gt;RWKV7-G0 7.2B &lt;strong&gt;不思考模式&lt;/strong&gt;的 QA prompt 格式：&lt;/p&gt; 
-&lt;pre&gt;&lt;code&gt;User: 我可以抽乾太平洋的水然後下去抓魚嗎？
-
-Assistant:
-&lt;/code&gt;&lt;/pre&gt; 
-&lt;p&gt;如需開啓&lt;strong&gt;思考模式&lt;/strong&gt;，可在 QA prompt 的基礎上添加 &lt;code&gt;&amp;lt;think&amp;gt;&lt;/code&gt; 標籤：&lt;/p&gt; 
-&lt;pre&gt;&lt;code&gt;User: 我可以抽乾太平洋的水然後下去抓魚嗎？
-
-Assistant: &amp;lt;think&amp;gt;
-&lt;/code&gt;&lt;/pre&gt; 
-&lt;h3&gt;本地部署 RWKV 模型&lt;/h3&gt; 
-&lt;p&gt;可以使用 RWKV Runner、Ai00、RWKV pip 等推理工具本地部署 RWKV 模型。&lt;/p&gt; 
-&lt;p&gt;此外，RWKV 模型也適配了 llama.cpp、ollama 等熱門的模型推理工具。&lt;/p&gt; 
-&lt;p&gt;由於 RWKV7-G0 7.2B 是新模型，目前建議使用 &lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Frwkv.cn%2Ftutorials%2Fintermediate%2FRWKV-Runner%2FIntroduction" target="_blank"&gt;RWKV Runner&lt;/a&gt; 以保證得到正確結果。&lt;/p&gt; 
-&lt;p&gt;可以在 &lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Frwkv.cn%2Ftutorials%2Fintermediate" target="_blank"&gt;RWKV 官網 - 模型推理教程&lt;/a&gt;中查看上述推理工具的使用教程。&lt;/p&gt; 
-&lt;h2&gt;未來訓練計劃&lt;/h2&gt; 
-&lt;p&gt;我們也正在訓練 RWKV7-G0 13.3B 模型，以及使用更多 tokens、使用 &lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fmp.weixin.qq.com%2Fs%2FYl79XfbMCO6ecAdKGzboRg" target="_blank"&gt;DeepEmbed&lt;/a&gt; 和 &lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fmp.weixin.qq.com%2Fs%2F3q1cldAEsk1576SLK24CTw" target="_blank"&gt;DEA&lt;/a&gt; 技術的 RWKV-7s 模型。&lt;/p&gt; 
-&lt;h2&gt;加入 RWKV 社區&lt;/h2&gt; 
-&lt;p&gt;歡迎大家加入 RWKV 社區，可以從 RWKV 中文官網瞭解 RWKV 模型，也可以加入 RWKV 論壇、QQ 頻道和 QQ 羣聊，一起探討 RWKV 模型。&lt;/p&gt; 
-&lt;ul&gt; 
- &lt;li&gt;&amp;nbsp;RWKV 中文文檔：&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fwww.rwkv.cn" target="_blank"&gt;https://www.rwkv.cn&lt;/a&gt;&lt;/li&gt; 
- &lt;li&gt;&amp;nbsp;RWKV 論壇：&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fcommunity.rwkv.cn%2F" target="_blank"&gt;https://community.rwkv.cn/&lt;/a&gt;&lt;/li&gt; 
- &lt;li&gt;&amp;nbsp;QQ 頻道：&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fpd.qq.com%2Fs%2F9n21eravc" target="_blank"&gt;https://pd.qq.com/s/9n21eravc&lt;/a&gt;&lt;/li&gt; 
- &lt;li&gt;&amp;nbsp;BiliBili 視頻教程：&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fspace.bilibili.com%2F3546689096910933" target="_blank"&gt;https://space.bilibili.com/3546689096910933&lt;/a&gt;&lt;/li&gt; 
-&lt;/ul&gt; 
-&lt;blockquote&gt; 
- &lt;p&gt;歡迎大家基於 RWKV-7 進行創業、科研，我們也會為基於 RWKV 的項目提供技術支持。&lt;/p&gt; 
- &lt;p&gt;如果您的團隊正在基於 RWKV 創業或開展研究，請聯繫我們！（在「RWKV 元始智能」微信公眾號留言您的聯繫方式，或發送郵件到「contact@rwkvos.com」。）&lt;/p&gt; 
-&lt;/blockquote&gt; 
-&lt;h2&gt;附錄：旋轉的紅色立方體&lt;/h2&gt; 
-&lt;p&gt;將以下代碼保存為 &lt;code&gt;3d.html&lt;/code&gt; 並雙擊運行。&lt;/p&gt; 
-&lt;pre&gt;&lt;code&gt;&amp;lt;!DOCTYPE html&amp;gt;
-&amp;lt;html lang="en"&amp;gt;
-&amp;lt;head&amp;gt;
-    &amp;lt;meta charset="UTF-8"&amp;gt;
-    &amp;lt;meta name="viewport" content="width=device-width, initial-scale=1.0"&amp;gt;
-    &amp;lt;title&amp;gt;Rotating Red Box&amp;lt;/title&amp;gt;
-    &amp;lt;style&amp;gt;
-        body {
-            margin: 0;
-            overflow: hidden;
-        }
-        canvas {
-            display: block;
-            width: 100%;
-            height: 100%;
-        }
-    &amp;lt;/style&amp;gt;
-&amp;lt;/head&amp;gt;
-&amp;lt;body&amp;gt;
-    &amp;lt;script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"&amp;gt;&amp;lt;/script&amp;gt;
-    &amp;lt;script&amp;gt;
-        // Create scene
-        const scene = new THREE.Scene();
-        
-        // Create camera
-        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
-        camera.position.z = 5;
-        
-        // Create renderer
-        const renderer = new THREE.WebGLRenderer();
-        renderer.setSize(window.innerWidth, window.innerHeight);
-        document.body.appendChild(renderer.domElement);
-        // Create box geometry and material
-        const geometry = new THREE.BoxGeometry(1, 1, 1);
-        const material = new THREE.MeshBasicMaterial({ color: 0xff0000 }); // Red color
-        
-        // Create box mesh
-        const box = new THREE.Mesh(geometry, material);
-        
-        // Add lighting
-        const light = new THREE.DirectionalLight(0xffffff, 1);
-        light.position.set(0, 0, 10);
-        scene.add(light);
-        
-        // Add box to scene
-        scene.add(box);
-        
-        // Animation loop
-        let angleX = 0;
-        let angleY = 0;
-        
-        function animate() {
-            requestAnimationFrame(animate);
-            
-            // Update rotation angles
-            angleX += 0.01;
-            angleY += 0.01;
-            
-            // Update box rotation
-            box.rotation.x = angleX;
-            box.rotation.y = angleY;
-            
-            // Render scene
-            renderer.render(scene, camera);
-        }
-        
-        animate();
-    &amp;lt;/script&amp;gt;
-&amp;lt;/body&amp;gt;
-&amp;lt;/html&amp;gt;
-&lt;/code&gt;&lt;/pre&gt;
-                                                                                &lt;/div&gt;
-                                                                            </description>
-      <link>https://www.oschina.net/news/362400</link>
-      <guid isPermaLink="false">https://www.oschina.net/news/362400</guid>
-      <pubDate>Fri, 25 Jul 2025 10:54:00 GMT</pubDate>
-      <author>來源: 資訊</author>
-    </item>
-    <item>
-      <title>谷歌 DeepMind 新架構 MoR 有望成為「Transformer 殺手」</title>
-      <description>&lt;div class="content"&gt;
-                                                                    
-                                                        &lt;p&gt;谷歌 DeepMind 團隊發表論文《Mixture-of-Recursions: Learning Dynamic Recursive Depths for Adaptive Token-Level Computation》，&lt;strong&gt;提出新 Transformer 架構 Mixture-of-Recursions（MoR）&lt;/strong&gt;，旨在同時實現參數共享和自適應計算，以解決大型語言模型訓練和部署中的計算與內存開銷問題。&lt;/p&gt; 
-&lt;p&gt;&lt;img alt="" src="https://oscimg.oschina.net/oscnet/up-17000d1f4f6bc815b75098237c70778d99f.png" referrerpolicy="no-referrer"&gt; &lt;img alt="" src="https://oscimg.oschina.net/oscnet/up-c76175988abdc82ca877e5b51ccc663dba8.png" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;p&gt;&lt;em&gt;https://arxiv.org/abs/2507.10524&lt;/em&gt;&lt;/p&gt; 
-&lt;p&gt;MoR 的核心創新包括：&lt;/p&gt; 
-&lt;ul&gt; 
- &lt;li&gt;&lt;strong&gt;參數效率&lt;/strong&gt;：通過共享層堆棧在不同遞歸步驟中複用參數，減少參數量。&lt;/li&gt; 
- &lt;li&gt;&lt;strong&gt;動態計算&lt;/strong&gt;：輕量級路由器為每個 token 動態分配遞歸深度，複雜 token 可深入處理，簡單 token 可提前退出，從而將計算資源精準分配 。&lt;/li&gt; 
- &lt;li&gt;&lt;strong&gt;內存優化&lt;/strong&gt;：採用遞歸級鍵值（KV）緩存機制，僅緩存活躍 token 的 KV 對，顯著降低內存帶寬壓力並提升推理吞吐量 。&lt;/li&gt; 
-&lt;/ul&gt; 
-&lt;p&gt;實驗結果顯示，在 135M 到 1.7B 參數規模的模型中，MoR 在相同訓練計算量下，驗證困惑度更低、少樣本準確率更高，推理吞吐量相比傳統 Transformer 和現有遞歸基線提升至多 2.18 倍，同時降低內存佔用和推理延遲。&lt;/p&gt; 
-&lt;p&gt;因此，MoR 被認為可能在無需承擔大模型成本的情況下實現大模型質量，甚至被稱為「Transformer 殺手」。&lt;/p&gt;
-                                                                                &lt;/div&gt;
-                                                                            </description>
-      <link>https://www.oschina.net/news/362399</link>
-      <guid isPermaLink="false">https://www.oschina.net/news/362399</guid>
-      <pubDate>Fri, 25 Jul 2025 10:53:00 GMT</pubDate>
-      <author>來源: OSCHINA</author>
-    </item>
-    <item>
-      <title>三分之一美國人藉助 AI 工具尋求職業轉型</title>
-      <description>&lt;div class="content"&gt;
-                                                                    
-                                                        &lt;p style="color:#242424; margin-left:0; margin-right:0; text-align:left"&gt;根據東南俄克拉荷馬大學（SOU）&lt;span&gt;最新&lt;/span&gt;發佈的一項報告，約三分之一的美國人已開始使用 AI 工具，如 ChatGPT，來幫助他們進行職業轉型。該報告基於對 1000 名來自四個不同世代的美國人的調查，旨在瞭解 AI 在當前美國勞動市場劇烈變化中的角色。&lt;/p&gt; 
-&lt;p style="color:#242424; margin-left:0; margin-right:0; text-align:left"&gt;調查顯示，超過一半的受訪者表示，他們正在積極考慮換工作或職業轉型，其中以 Z 世代的 57% 比例&lt;span&gt;最高&lt;/span&gt;，隨後是千禧一代的 55%，X 世代的 50%，以及僅 12% 的嬰兒潮一代。&lt;/p&gt; 
-&lt;p style="color:#242424; margin-left:0; margin-right:0; text-align:left"&gt;在那些表示 AI 對他們的職業轉型有所幫助的受訪者中，43% 的人使用 AI 工具撰寫簡歷和求職信，47% 的人則利用 AI 進行新工作機會的研究，包括尋找薪資更高的職位。值得注意的是，近五分之一的受訪者（18%）表示，AI 建議了他們之前未曾考慮過的全新職業路徑。&lt;/p&gt; 
-&lt;p style="color:#242424; margin-left:0; margin-right:0; text-align:left"&gt;不過，儘管有不少人依賴 AI 來提供職業建議，調查也顯示大多數受訪者對 AI 提供的信息持謹慎態度。60% 的受訪者表示，他們更傾向於相信人類職業顧問的意見，而只有 7% 的人選擇相信 AI。一部分人（17%）甚至選擇遵循 AI 的建議，即使這些建議與他們之前從人類顧問那裏得到的意見相悖。&lt;/p&gt; 
-&lt;p style="color:#242424; margin-left:0; margin-right:0; text-align:left"&gt;在各年齡層中，受訪者主要關注的職業機會集中在技術領域，其次是醫療和金融。隨着 AI 技術的不斷發展，許多人認為這可能導致大量白領職位的消失。例如，Anthropic 的首席執行官達裏奧・阿莫德伊預測，AI 將在未來五年內消除一半的白領工作。而亞馬遜首席執行官安迪・賈西也表示，AI 驅動的自動化將取代一些人類工作，同時使其他職位變得更加 「有趣」，並創造出全新的崗位。&lt;/p&gt; 
-&lt;p style="color:#242424; margin-left:0; margin-right:0; text-align:left"&gt;在技術公司招聘方面的數據也表明，隨着 AI 工具開始接管許多原本由年輕、經驗較少的員工完成的日常任務，科技公司對新近計算機科學畢業生的招聘數量有所減少。此外，在硅谷的激烈人才爭奪戰中，企業之間的競爭愈發激烈，特別是在人工智能研究方面的&lt;span&gt;頂尖&lt;/span&gt;人才更是稀缺。許多公司都願意為此支付高額薪資，以吸引那些能夠在技術突破中發揮關鍵作用的優秀研究人員。&lt;/p&gt;
-                                                                                &lt;/div&gt;
-                                                                            </description>
-      <link>https://www.oschina.net/news/362398</link>
-      <guid isPermaLink="false">https://www.oschina.net/news/362398</guid>
-      <pubDate>Fri, 25 Jul 2025 10:52:00 GMT</pubDate>
-      <author>來源: OSCHINA</author>
-    </item>
-    <item>
-      <title>階躍星辰發佈最強開源多模態推理模型 Step3</title>
-      <description>&lt;div class="content"&gt;
-                                                                    
-                                                        &lt;p&gt;&lt;span style="color:#000000"&gt;階躍星辰宣佈發佈新一代基礎大模型 Step3，主打多模態推理。&lt;/span&gt;&lt;/p&gt; 
-&lt;p&gt;&lt;span style="color:#000000"&gt;根據介紹，這是階躍星辰首個全尺寸、原生多模態推理模型。在國產芯片 32K 上下文推理效率最高可達 DeepSeek R1 的 300%，在英偉達 H800 芯片將推理效率提升了 70% 以上。該模型將於 7 月 31 日向全球開源。&lt;/span&gt;&lt;/p&gt; 
-&lt;p&gt;&lt;span style="color:#000000"&gt;&lt;img height="262" src="https://oscimg.oschina.net/oscnet/up-e93e689dafce5406835a7db40fe0043af4b.png" width="500" referrerpolicy="no-referrer"&gt;&lt;/span&gt;&lt;/p&gt; 
-&lt;p&gt;&lt;span style="color:#000000"&gt;此外，階躍星辰宣佈與上海國有資本投資有限公司達成深度戰略合作，並透露上海國投將參與階躍星辰的新一輪融資。&lt;/span&gt;&lt;/p&gt; 
-&lt;p&gt;&lt;span style="color:#000000"&gt;階躍星辰創始人、CEO 姜大昕表示，階躍的商業化的成果體現在了收入數字上，基於上半年的高速增長，公司將全年的衝刺目標定在 10 億元。&lt;/span&gt;&lt;/p&gt; 
-&lt;p&gt;&lt;span style="color:#000000"&gt;會上，階躍還將聯合近 10 家芯片廠商和算力平台成立模新生態創新聯盟。&lt;/span&gt;&lt;/p&gt;
-                                                                                &lt;/div&gt;
-                                                                            </description>
-      <link>https://www.oschina.net/news/362393</link>
-      <guid isPermaLink="false">https://www.oschina.net/news/362393</guid>
-      <pubDate>Fri, 25 Jul 2025 10:21:00 GMT</pubDate>
-      <author>來源: OSCHINA</author>
-    </item>
-    <item>
-      <title>宇樹科技發佈第三款人形機器人 UnitreeR1</title>
-      <description>&lt;div class="content"&gt;
-                                                                    
-                                                        &lt;p&gt;&lt;span style="color:#000000"&gt;宇樹科技在官微宣佈，正式發佈第三款人形機器人「Unitree R1 智能夥伴」，售價 3.99 萬元起，支持開發/改制，靈活超輕量約 25Kg，集成語音和圖像多模態大模型。&lt;/span&gt;&lt;/p&gt; 
-&lt;p&gt;&lt;span style="color:#000000"&gt;宣傳視頻顯示，第三款人形機器人 Unitree R1 擁有 26 個關節，包括腿部 6*2+腰部 2+手臂 5*2+頭 2，可以實現翻跟頭、倒立行走、奔跑、打拳等動作。&lt;/span&gt;&lt;/p&gt; 
-&lt;p&gt;&lt;img height="361" src="https://oscimg.oschina.net/oscnet/up-47996978da023c9ec22be1f2e1c81a666e7.png" width="500" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;p&gt;&lt;span style="color:#000000"&gt;此前，7 月 18 日，中國證監會官網顯示，宇樹科技已開啓上市輔導，由中信證券擔任輔導機構。輔導備案報告顯示，宇樹科技控股股東、實際控制人王興興直接持有公司 23.8216% 股權，並通過上海宇翼企業管理諮詢合夥企業（有限合夥）控制公司 10.9414% 股權，合計控制公司 34.7630% 股權。根據相關規定，宇樹科技最快將於 10 月完成輔導，這意味着宇樹科技有希望在今年年內登陸 A 股。&lt;/span&gt;&lt;/p&gt; 
-&lt;p&gt;&lt;span style="color:#000000"&gt;宇樹科技是一家知名民用機器人公司。2016 年成立於杭州，創始人兼 CEO 是王興興。公司專注於消費級、行業級高性能通用足式/人形機器人及靈巧機械臂的研發、生產和銷售。其明星產品有 Unitree Go1 四足機器人等，2023 年起推出 H1、G1 等人形機器人。&lt;/span&gt;&lt;/p&gt;
-                                                                                &lt;/div&gt;
-                                                                            </description>
-      <link>https://www.oschina.net/news/362388</link>
-      <guid isPermaLink="false">https://www.oschina.net/news/362388</guid>
-      <pubDate>Fri, 25 Jul 2025 10:03:00 GMT</pubDate>
-      <author>來源: OSCHINA</author>
-    </item>
-    <item>
-      <title>科大訊飛推出升級版星火 X1 深度推理大模型</title>
-      <description>&lt;div class="content"&gt;
-                                                                    
-                                                        &lt;p&gt;&lt;span style="color:#000000"&gt;科大訊飛&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fmp.weixin.qq.com%2Fs%2F-crxs5LkH1UoU0BQsJzmkA" target="_blank"&gt;宣佈&lt;/a&gt;正式推出了升級版的星火 X1 深度推理大模型。一些亮點內容如下：&lt;/span&gt;&lt;/p&gt; 
-&lt;ul&gt; 
- &lt;li&gt;&lt;span style="color:#000000"&gt;綜合能力大幅提升。整體效果對標 OpenAI o3 等國內外一流大模型最新版本效果，在翻譯、推理、文本生成、數學等方面保持領先。&lt;/span&gt;&lt;/li&gt; 
- &lt;li&gt;&lt;span style="color:#000000"&gt;幻覺治理取得顯著進步。幻覺問題是掣肘大模型落地應用的關鍵問題，升級後的星火 X1 在幻覺治理方面領先業界主流模型。&lt;/span&gt;&lt;/li&gt; 
- &lt;li&gt;&lt;span style="color:#000000"&gt;多語言能力已覆蓋 130+語種。為世界提供全棧自主可控大模型底座的「第二種選擇」。&lt;/span&gt;&lt;/li&gt; 
- &lt;li&gt;&lt;span style="color:#000000"&gt;基於星火 X1 底座的語音同傳大模型在翻譯效果、實時響應、語音聽感、專業精深等方面大幅躍升，持續行業領先。&lt;/span&gt;&lt;/li&gt; 
- &lt;li&gt;&lt;span style="color:#000000"&gt;得益於星火 X1 模型的升級，教育、醫療、企業應用、代碼、科研等行業大模型和智能體也取得了新的進步，在複雜行業場景任務上進一步解決用戶關鍵剛需。&lt;/span&gt;&lt;/li&gt; 
-&lt;/ul&gt; 
-&lt;p&gt;&lt;span style="color:#000000"&gt;&lt;img height="264" src="https://oscimg.oschina.net/oscnet/up-ff3e38322ebbce182a8c6b9c032f75581ae.png" width="500" referrerpolicy="no-referrer"&gt;&lt;/span&gt;&lt;/p&gt; 
-&lt;p&gt;&lt;span style="color:#000000"&gt;&lt;img height="360" src="https://oscimg.oschina.net/oscnet/up-39ea728edd540a2fd33fd97fef826e1c5a7.png" width="500" referrerpolicy="no-referrer"&gt;&lt;/span&gt;&lt;/p&gt; 
-&lt;p&gt;&lt;span style="color:#000000"&gt;&lt;img height="357" src="https://oscimg.oschina.net/oscnet/up-56fed82205eb5013f0c184ec5ea45dc94a2.png" width="500" referrerpolicy="no-referrer"&gt;&lt;/span&gt;&lt;/p&gt; 
-&lt;p&gt;&lt;span style="color:#000000"&gt;目前，星火 X1 最新升級的各項能力可以通過訊飛星火的網頁版和手機應用體驗，同時新 API 也已上線。&lt;/span&gt;&lt;/p&gt;
-                                                                                &lt;/div&gt;
-                                                                            </description>
-      <link>https://www.oschina.net/news/362377</link>
-      <guid isPermaLink="false">https://www.oschina.net/news/362377</guid>
-      <pubDate>Fri, 25 Jul 2025 09:37:00 GMT</pubDate>
-      <author>來源: OSCHINA</author>
-    </item>
-    <item>
-      <title>Genkit —— 用於構建全棧 AI 應用的框架</title>
-      <description>&lt;div class="content"&gt;
-                                                                                                                                                                                                                            &lt;p style="text-align:start"&gt;&lt;span&gt;&lt;span&gt;&lt;span style="color:#1f2328"&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span style="background-color:#ffffff"&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;Genkit 是一個用於構建全棧 AI 應用的開源框架，由 Google Firebase 構建並投入生產。它為多種編程語言提供 SDK，且穩定性級別各不相同：&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/p&gt;
-
-&lt;ul&gt;
-&lt;li&gt;&lt;strong&gt;JavaScript/TypeScript（穩定）&lt;/strong&gt;：已準備好投入生產，並支持全部功能&lt;/li&gt;
-&lt;li&gt;&lt;strong&gt;Go（測試版）&lt;/strong&gt;：功能齊全，但可能有重大變化&lt;/li&gt;
-&lt;li&gt;&lt;strong&gt;Python（Alpha）&lt;/strong&gt;：具有核心功能的早期開發&lt;/li&gt;
-&lt;/ul&gt;
-
-&lt;p style="text-align:start"&gt;&lt;span&gt;&lt;span&gt;&lt;span style="color:#1f2328"&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span style="background-color:#ffffff"&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;它提供統一的接口，用於集成來自&lt;a href="https://genkit.dev/docs/plugins/google-genai"&gt;Google&lt;/a&gt;、&lt;a href="https://thefireco.github.io/genkit-plugins/docs/plugins/genkitx-openai"&gt;OpenAI&lt;/a&gt;、&lt;a href="https://thefireco.github.io/genkit-plugins/docs/plugins/genkitx-anthropic"&gt;Anthropic&lt;/a&gt;、&lt;a href="https://genkit.dev/docs/plugins/ollama/"&gt;Ollama&lt;/a&gt;等供應商的 AI 模型。使用精簡的 API（用於多模式內容、結構化輸出、工具調用和代理工作流），快速構建和部署可用於生產的聊天機器人、自動化和推薦系統。&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/p&gt;
-
-&lt;p style="text-align:start"&gt;&lt;span&gt;&lt;span&gt;&lt;span style="color:#1f2328"&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span style="background-color:#ffffff"&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;只需幾行代碼即可開始：&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/p&gt;
-
-&lt;div style="text-align:start"&gt;
-&lt;pre&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span style="background-color:#f6f8fa"&gt;&lt;span style="color:#1f2328"&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span style="color:#1f2328"&gt;&lt;span style="background-color:#f6f8fa"&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span style="color:#cf222e"&gt;import&lt;/span&gt;&lt;/span&gt; &lt;span&gt;{&lt;/span&gt; &lt;span&gt;genkit&lt;/span&gt; &lt;span&gt;}&lt;/span&gt; &lt;span&gt;&lt;span style="color:#cf222e"&gt;from&lt;/span&gt;&lt;/span&gt; &lt;span&gt;&lt;span style="color:#0a3069"&gt;'genkit'&lt;/span&gt;&lt;/span&gt;&lt;span&gt;;&lt;/span&gt;
-&lt;span&gt;&lt;span style="color:#cf222e"&gt;import&lt;/span&gt;&lt;/span&gt; &lt;span&gt;{&lt;/span&gt; &lt;span&gt;googleAI&lt;/span&gt; &lt;span&gt;}&lt;/span&gt; &lt;span&gt;&lt;span style="color:#cf222e"&gt;from&lt;/span&gt;&lt;/span&gt; &lt;span&gt;&lt;span style="color:#0a3069"&gt;'@genkit-ai/googleai'&lt;/span&gt;&lt;/span&gt;&lt;span&gt;;&lt;/span&gt;
-
-&lt;span&gt;&lt;span style="color:#cf222e"&gt;const&lt;/span&gt;&lt;/span&gt; &lt;span&gt;ai&lt;/span&gt; &lt;span&gt;&lt;span style="color:#0550ae"&gt;=&lt;/span&gt;&lt;/span&gt; &lt;span&gt;&lt;span style="color:#6639ba"&gt;genkit&lt;/span&gt;&lt;/span&gt;&lt;span&gt;(&lt;/span&gt;&lt;span&gt;{&lt;/span&gt; &lt;span&gt;&lt;span style="color:#0550ae"&gt;plugins&lt;/span&gt;&lt;/span&gt;: &lt;span&gt;[&lt;/span&gt;&lt;span&gt;&lt;span style="color:#6639ba"&gt;googleAI&lt;/span&gt;&lt;/span&gt;&lt;span&gt;(&lt;/span&gt;&lt;span&gt;)&lt;/span&gt;&lt;span&gt;]&lt;/span&gt; &lt;span&gt;}&lt;/span&gt;&lt;span&gt;)&lt;/span&gt;&lt;span&gt;;&lt;/span&gt;
-
-&lt;span&gt;&lt;span style="color:#cf222e"&gt;const&lt;/span&gt;&lt;/span&gt; &lt;span&gt;{&lt;/span&gt; text &lt;span&gt;}&lt;/span&gt; &lt;span&gt;&lt;span style="color:#0550ae"&gt;=&lt;/span&gt;&lt;/span&gt; &lt;span&gt;&lt;span style="color:#cf222e"&gt;await&lt;/span&gt;&lt;/span&gt; &lt;span&gt;ai&lt;/span&gt;&lt;span&gt;.&lt;/span&gt;&lt;span&gt;&lt;span style="color:#6639ba"&gt;generate&lt;/span&gt;&lt;/span&gt;&lt;span&gt;(&lt;/span&gt;&lt;span&gt;{&lt;/span&gt;
-    &lt;span&gt;&lt;span style="color:#0550ae"&gt;model&lt;/span&gt;&lt;/span&gt;: &lt;span&gt;googleAI&lt;/span&gt;&lt;span&gt;.&lt;/span&gt;&lt;span&gt;&lt;span style="color:#6639ba"&gt;model&lt;/span&gt;&lt;/span&gt;&lt;span&gt;(&lt;/span&gt;&lt;span&gt;&lt;span style="color:#0a3069"&gt;'gemini-2.0-flash'&lt;/span&gt;&lt;/span&gt;&lt;span&gt;)&lt;/span&gt;&lt;span&gt;,&lt;/span&gt;
-    &lt;span&gt;&lt;span style="color:#0550ae"&gt;prompt&lt;/span&gt;&lt;/span&gt;: &lt;span&gt;&lt;span style="color:#0a3069"&gt;'Why is Firebase awesome?'&lt;/span&gt;&lt;/span&gt;
-&lt;span&gt;}&lt;/span&gt;&lt;span&gt;)&lt;/span&gt;&lt;span&gt;;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;
-&lt;/pre&gt;
-&lt;/div&gt;
-
-&lt;div style="text-align:start"&gt;
-&lt;h2&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span style="color:#1f2328"&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span style="background-color:#ffffff"&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;關鍵功能&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/h2&gt;
-&lt;/div&gt;
-
-&lt;table cellspacing="0" style="border-collapse:collapse; border-spacing:0px; border:undefined; box-sizing:border-box; display:block; font-variant:tabular-nums; margin-bottom:16px; margin-top:0px; max-width:100%; overflow:auto; width:max-content"&gt;
-&lt;tbody&gt;
-&lt;tr&gt;
-&lt;td style="border-color:#d1d9e0; border-image:none 100% / 1 / 0 stretch; border-style:solid; border-width:0.666667px"&gt;&lt;span&gt;&lt;strong&gt;廣泛的人工智能模型支持&lt;/strong&gt;&lt;/span&gt;&lt;/td&gt;
-&lt;td style="border-color:#d1d9e0; border-image:none 100% / 1 / 0 stretch; border-style:solid; border-width:0.666667px"&gt;&lt;span&gt;使用統一的界面集成來自&lt;a href="https://genkit.dev/docs/plugins/google-genai"&gt;Google&lt;/a&gt;、&lt;a href="https://thefireco.github.io/genkit-plugins/docs/plugins/genkitx-openai"&gt;&amp;nbsp;OpenAI&lt;/a&gt;、&lt;a href="https://thefireco.github.io/genkit-plugins/docs/plugins/genkitx-anthropic"&gt;&amp;nbsp;Anthropic&lt;/a&gt;、&lt;a href="https://genkit.dev/docs/plugins/ollama"&gt;Ollama&lt;/a&gt;等提供商的數百個模型。探索、比較並使用最符合你需求的模型。&lt;/span&gt;&lt;/td&gt;
-&lt;/tr&gt;
-&lt;tr&gt;
-&lt;td style="border-color:#d1d9e0; border-image:none 100% / 1 / 0 stretch; border-style:solid; border-width:0.666667px"&gt;&lt;span&gt;&lt;strong&gt;簡化的 AI 開發&lt;/strong&gt;&lt;/span&gt;&lt;/td&gt;
-&lt;td style="border-color:#d1d9e0; border-image:none 100% / 1 / 0 stretch; border-style:solid; border-width:0.666667px"&gt;&lt;span&gt;使用精簡的 API 構建 AI 功能，包括&lt;a href="https://genkit.dev/docs/models#structured-output"&gt;&amp;nbsp;結構化輸出&lt;/a&gt;、&lt;a href="https://genkit.dev/docs/tool-calling"&gt;代理工具調用&lt;/a&gt;、&lt;a href="https://genkit.dev/docs/rag"&gt;上下文感知生成&lt;/a&gt;、&lt;a href="https://genkit.dev/docs/models#multimodal"&gt;多模態輸入/輸出&lt;/a&gt;等。Genkit 可處理 AI 開發的複雜性，讓你能夠更快地構建和迭代。&lt;/span&gt;&lt;/td&gt;
-&lt;/tr&gt;
-&lt;tr&gt;
-&lt;td style="border-color:#d1d9e0; border-image:none 100% / 1 / 0 stretch; border-style:solid; border-width:0.666667px"&gt;&lt;span&gt;&lt;strong&gt;適用於網絡和移動設備&lt;/strong&gt;&lt;/span&gt;&lt;/td&gt;
-&lt;td style="border-color:#d1d9e0; border-image:none 100% / 1 / 0 stretch; border-style:solid; border-width:0.666667px"&gt;&lt;span&gt;使用專門構建的&lt;a href="https://genkit.dev/docs/firebase"&gt;客戶端 SDK&lt;/a&gt;和幫助程序與 Next.js、React、Angular、iOS、Android 等框架和平台無縫集成。&lt;/span&gt;&lt;/td&gt;
-&lt;/tr&gt;
-&lt;tr&gt;
-&lt;td style="border-color:#d1d9e0; border-image:none 100% / 1 / 0 stretch; border-style:solid; border-width:0.666667px"&gt;&lt;span&gt;&lt;strong&gt;跨語言支持&lt;/strong&gt;&lt;/span&gt;&lt;/td&gt;
-&lt;td style="border-color:#d1d9e0; border-image:none 100% / 1 / 0 stretch; border-style:solid; border-width:0.666667px"&gt;&lt;span&gt;使用最適合你項目的語言進行構建。Genkit 提供 JavaScript/TypeScript（穩定版）、Go（測試版）和 Python（Alpha 版）的 SDK，並在所有支持的語言中提供一致的 API 和功能。&lt;/span&gt;&lt;/td&gt;
-&lt;/tr&gt;
-&lt;tr&gt;
-&lt;td style="border-color:#d1d9e0; border-image:none 100% / 1 / 0 stretch; border-style:solid; border-width:0.666667px"&gt;&lt;span&gt;&lt;strong&gt;隨處部署&lt;/strong&gt;&lt;/span&gt;&lt;/td&gt;
-&lt;td style="border-color:#d1d9e0; border-image:none 100% / 1 / 0 stretch; border-style:solid; border-width:0.666667px"&gt;&lt;span&gt;將 AI 邏輯部署到支持你選擇的編程語言的任何環境，例如&lt;a href="https://genkit.dev/docs/firebase"&gt;Firebase 的 Cloud Functions&lt;/a&gt;、&amp;nbsp;&lt;a href="https://genkit.dev/docs/cloud-run"&gt;Google Cloud Run&lt;/a&gt;或&lt;a href="https://genkit.dev/docs/deploy-node"&gt;第三方平台&lt;/a&gt;（無論是否帶有 Google 服務）。&lt;/span&gt;&lt;/td&gt;
-&lt;/tr&gt;
-&lt;tr&gt;
-&lt;td style="border-color:#d1d9e0; border-image:none 100% / 1 / 0 stretch; border-style:solid; border-width:0.666667px"&gt;&lt;span&gt;&lt;strong&gt;開發人員工具&lt;/strong&gt;&lt;/span&gt;&lt;/td&gt;
-&lt;td style="border-color:#d1d9e0; border-image:none 100% / 1 / 0 stretch; border-style:solid; border-width:0.666667px"&gt;&lt;span&gt;使用專用的本地&lt;a href="https://genkit.dev/docs/devtools"&gt;CLI 和開發者 UI&lt;/a&gt;加速 AI 開發。針對單個輸入或數據集測試提示和流程，比較不同模型的輸出，使用詳細的執行軌跡進行調試，並使用即時視覺反饋快速迭代提示。&lt;/span&gt;&lt;/td&gt;
-&lt;/tr&gt;
-&lt;tr&gt;
-&lt;td style="border-color:#d1d9e0; border-image:none 100% / 1 / 0 stretch; border-style:solid; border-width:0.666667px"&gt;&lt;span&gt;&lt;strong&gt;生產監控&lt;/strong&gt;&lt;/span&gt;&lt;/td&gt;
-&lt;td style="border-color:#d1d9e0; border-image:none 100% / 1 / 0 stretch; border-style:solid; border-width:0.666667px"&gt;&lt;span&gt;使用全面的生產監控，自信地交付 AI 功能。在&lt;a href="https://genkit.dev/docs/observability/getting-started"&gt;專用儀錶板&lt;/a&gt;中跟蹤模型性能、請求量、延遲和錯誤率。通過詳細的可觀察性指標快速識別問題，並確保你的 AI 功能在實際使用中滿足質量和性能目標。&lt;/span&gt;&lt;/td&gt;
-&lt;/tr&gt;
-&lt;/tbody&gt;
-&lt;/table&gt;
-
-                                                                    &lt;/div&gt;
-                                                                </description>
-      <link>https://www.oschina.net/p/genkit</link>
-      <guid isPermaLink="false">https://www.oschina.net/p/genkit</guid>
-      <pubDate>Fri, 25 Jul 2025 09:24:00 GMT</pubDate>
-    </item>
-    <item>
-      <title>一位 Oracle 鐵粉的「真香」轉變</title>
-      <description>&lt;div class="content"&gt;
-                                                                    
-                                                        &lt;p style="color:#000000; text-align:left"&gt;「O 記我用了這麼多年，我最有發言權，我可不敢替，你們誰能搞定，誰上。」&lt;/p&gt; 
-&lt;p style="color:#000000; text-align:left"&gt;老鄧在會上，狠狠甩了一句氣話。&lt;/p&gt; 
-&lt;p style="color:#000000; text-align:center"&gt;&lt;img alt="" src="https://oscimg.oschina.net/oscnet//e5a3c8ce9de050c94ac215768d0a3edb.jpeg" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;p style="color:#000000; text-align:left"&gt;老鄧（鄧銘），某大型期貨交易所信息化主管，數據庫老司機。&lt;/p&gt; 
-&lt;p style="color:#000000; text-align:left"&gt;作為圈裏最早的一批 DBA，老顧是 O 記鐵桿，他的工位裏，最醒目的不是家人照片，而是歷代 O 記認證證書。&lt;/p&gt; 
-&lt;p style="color:#000000; text-align:center"&gt;&lt;img alt="" src="https://oscimg.oschina.net/oscnet//c290049cbab7bb43b66e5287b8f4ddf5.jpeg" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;p style="color:#000000; text-align:left"&gt;開完剛才的「數據庫替代」內部通氣會，老鄧「餘怒」未消。&lt;/p&gt; 
-&lt;p style="color:#000000; text-align:left"&gt;回到工位上，把鍵盤敲得噼裏啪啦響，在工作羣裏瘋狂輸出，一口氣寫出了自己的「六大不敢替」理由↓&lt;/p&gt; 
-&lt;p style="color:#000000; text-align:center"&gt;&lt;img alt="" src="https://oscimg.oschina.net/oscnet//e1371f3a77ac19fc3d0e4478d5d0abc6.png" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;p style="color:#000000; text-align:center"&gt;&lt;img alt="" src="https://oscimg.oschina.net/oscnet//7d4c80b48f32c5c74e48037cc963aac4.jpeg" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;p style="color:#000000; text-align:left"&gt;當然，老鄧也知道，既然監管發文了，這替換的趨勢肯定無法阻擋。&lt;/p&gt; 
-&lt;p style="color:#000000; text-align:left"&gt;只是，作為 O 記鐵粉，他心裏有點意難平。&lt;/p&gt; 
-&lt;p style="color:#000000; text-align:center"&gt;&lt;img alt="" src="https://oscimg.oschina.net/oscnet//f1f0ebe84f89381dca4a256c4aab9248.jpeg" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;p style="color:#000000; text-align:left"&gt;接下來，單位組織了技術選型會，讓一家家國產數據庫廠商來「過堂」。&lt;/p&gt; 
-&lt;p style="color:#000000; text-align:left"&gt;老鄧心説這下可好，看我怎麼懟你們！&lt;/p&gt; 
-&lt;p style="color:#000000; text-align:center"&gt;&lt;img alt="" src="https://oscimg.oschina.net/oscnet//3fc85c074efe5b87262e59a632017c4b.jpeg" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;p style="color:#000000; text-align:left"&gt;事情就像預料的那樣……&lt;/p&gt; 
-&lt;p style="color:#000000; text-align:left"&gt;選型會上，老鄧一頓輸出，把前面幾家廠商都給噴走了。&lt;/p&gt; 
-&lt;p style="color:#000000; text-align:center"&gt;&lt;img alt="" src="https://oscimg.oschina.net/oscnet//1dfc10a63fc696d8dab13398e2ddd315.jpeg" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;p style="color:#000000; text-align:center"&gt;&lt;img alt="" src="https://oscimg.oschina.net/oscnet//6f6bd107217abdfc5f942a777cf3e043.jpeg" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;p style="color:#000000; text-align:left"&gt;終於，輪到最後一家講方案，廠家專家上台了。&lt;/p&gt; 
-&lt;p style="color:#000000; text-align:left"&gt;老鄧翻了翻白眼，buff 已經疊滿了，只等對面講的有漏洞，就開噴。&lt;/p&gt; 
-&lt;p style="color:#000000; text-align:center"&gt;&lt;img alt="" src="https://oscimg.oschina.net/oscnet//bd295f1eb278b037974d22f4534e693b.jpeg" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;p style="color:#000000; text-align:left"&gt;結果…&lt;/p&gt; 
-&lt;p style="color:#000000; text-align:left"&gt;這家一開場，啪啪啪啪啪啪，竟然把老鄧想懟的那些點，全堵上了。&lt;/p&gt; 
-&lt;p style="color:#000000; text-align:center"&gt;&lt;img alt="" src="https://oscimg.oschina.net/oscnet//630199d4c3bce018152de5e751817795.jpeg" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;p style="color:#000000; text-align:left"&gt;老鄧有點懵，他在腦子裏仔細品味剛剛對方講的那幾個點…&lt;/p&gt; 
-&lt;p style="color:#000000; text-align:center"&gt;&lt;img alt="" src="https://oscimg.oschina.net/oscnet//30ff196d752b0d270b44e9436f425076.jpeg" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;p style="color:#000000; text-align:left"&gt;六大痛點怎麼破？&lt;/p&gt; 
-&lt;p style="color:#000000; text-align:left"&gt;請看數據庫平替解決方案&lt;/p&gt; 
-&lt;p style="color:#000000; text-align:left"&gt;痛點 1：擔心應用改造成本高、難度大&lt;/p&gt; 
-&lt;p style="color:#000000; text-align:left"&gt;替換數據庫，最怕動應用，他倆捆綁太深了。&lt;/p&gt; 
-&lt;p style="color:#000000; text-align:center"&gt;&lt;img alt="" src="https://oscimg.oschina.net/oscnet//d6e479d982143780405e2bf6a680f187.jpeg" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;p style="color:#000000; text-align:left"&gt;一旦所選數據庫兼容性不夠，存儲過程、觸發器，甚至 SQL 語句全都得改，一改就是成千上萬行，沒人願意碰。&lt;/p&gt; 
-&lt;p style="color:#000000; text-align:left"&gt;所以説，換數據庫，別動應用才是最大的剛需。&lt;/p&gt; 
-&lt;p style="color:#000000; text-align:left"&gt;怎麼解：不用你改，我們來兼容！&lt;/p&gt; 
-&lt;p style="color:#000000; text-align:left"&gt;應用軟件 SQL、PL/SQL 零修改，如果不兼容，這家公司的數據庫反向適配，這就是底氣。&lt;/p&gt; 
-&lt;p style="color:#000000; text-align:center"&gt;&lt;img alt="" src="https://oscimg.oschina.net/oscnet//d83e9e4fc905ef39447f1c7f7b7b678e.jpeg" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;p style="color:#000000; text-align:left"&gt;都有哪些「姿勢」呢？&lt;/p&gt; 
-&lt;p style="color:#000000; text-align:left"&gt;多語法原生兼容的一體化框架，可插拔、可擴展，支持對 Oracle/MySQL/SQL Server/PostgreSQL 等深度兼容；&lt;/p&gt; 
-&lt;p style="color:#000000; text-align:left"&gt;Oracle 兼容能力接近 100%，常見覆雜語法全支持，真實案例中，銀行系統百萬行 PL/SQL 代碼未改一行，成功遷移上線；&lt;/p&gt; 
-&lt;p style="color:#000000; text-align:left"&gt;MySQL 語法全面覆蓋，在大多數場景下性能甚至優於原庫；&lt;/p&gt; 
-&lt;p style="color:#000000; text-align:left"&gt;SQL Server 常用語法兼容度達 99% 以上。&lt;/p&gt; 
-&lt;p style="color:#000000; text-align:left"&gt;這家公司主打「低難度」遷移—高兼容、零改造。&lt;/p&gt; 
-&lt;p style="color:#000000; text-align:left"&gt;往往，在遷移前，別人的內心戲是這樣的↓&lt;/p&gt; 
-&lt;p style="color:#000000; text-align:center"&gt;&lt;img alt="" src="https://oscimg.oschina.net/oscnet//ec2e575c207b9364fbd8dd9783e2d34d.jpeg" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;p style="color:#000000; text-align:left"&gt;結果呢，再複雜的場景，他們都全部搞定了。&lt;/p&gt; 
-&lt;p style="color:#000000; text-align:left"&gt;看看這些超級複雜的遷移實戰吧，用戶應用代碼全部零修改。&lt;/p&gt; 
-&lt;p style="color:#000000; text-align:center"&gt;&lt;img alt="" src="https://oscimg.oschina.net/oscnet//ce9c4c6b68cb83df8352e4ad19727be2.jpeg" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;p style="color:#000000; text-align:left"&gt;於是，到最後，完美平替！&lt;/p&gt; 
-&lt;p style="color:#000000; text-align:center"&gt;&lt;img alt="" src="https://oscimg.oschina.net/oscnet//66c758b2684c4fe65a89db21e0096f8c.jpeg" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;p style="color:#000000; text-align:left"&gt;痛點 2：擔心數據遷移複雜，工作量大，勞心勞力&lt;/p&gt; 
-&lt;p style="color:#000000; text-align:left"&gt;數據庫遷移的另一大負擔，就是歷史數據量大、流程繁、比對難。&lt;/p&gt; 
-&lt;p style="color:#000000; text-align:center"&gt;&lt;img alt="" src="https://oscimg.oschina.net/oscnet//36db9a916d1508c218ba85c088dba69a.jpeg" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;p style="color:#000000; text-align:left"&gt;歷史數據要搬、增量數據要同步，遷完之後還得一條條校驗一致性。&lt;/p&gt; 
-&lt;p style="color:#000000; text-align:left"&gt;不僅費時費力，稍有差錯就可能返工重來。&lt;/p&gt; 
-&lt;p style="color:#000000; text-align:center"&gt;&lt;img alt="" src="https://oscimg.oschina.net/oscnet//8d6799e1fd36f1de750d0625ff969996.jpeg" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;p style="color:#000000; text-align:left"&gt;怎麼解？&lt;/p&gt; 
-&lt;p style="color:#000000; text-align:left"&gt;這家廠商提供了一整套全自動遷移工具和解決方案↓&lt;/p&gt; 
-&lt;p style="color:#000000; text-align:left"&gt;①「流水線」作業模式，結構遷移 + 全量遷移 + 增量同步，一次走完。&lt;/p&gt; 
-&lt;p style="color:#000000; text-align:center"&gt;&lt;img alt="" src="https://oscimg.oschina.net/oscnet//0cd7016653118b2421fb602f554281f6.png" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;p style="color:#000000; text-align:center"&gt;&lt;img alt="" src="https://oscimg.oschina.net/oscnet//b0ea9d093dccecd94fcf59391d03ccbd.png" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;p style="color:#000000; text-align:left"&gt;②一致性比對，確保新舊數據一致，避免遷完了才發現丟數據或錯數據&lt;/p&gt; 
-&lt;p style="color:#000000; text-align:center"&gt;&lt;img alt="" src="https://oscimg.oschina.net/oscnet//396f9a0508a683459dc494943b6bb916.png" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;p style="color:#000000; text-align:left"&gt;這些工具久經沙場，經過大規模驗證：數據庫原廠人員每年直接為客戶遷移部署近萬套數據庫，服務客戶上線近 2000 個系統。&lt;/p&gt; 
-&lt;p style="color:#000000; text-align:center"&gt;&lt;img alt="" src="https://oscimg.oschina.net/oscnet//14d2657c2c09231e79c61aebbf3b9d94.jpeg" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;p style="color:#000000; text-align:left"&gt;痛點 3：擔心繫統停機時間過長，影響業務連續性&lt;/p&gt; 
-&lt;p style="color:#000000; text-align:left"&gt;在許多業務關鍵、運行敏感的系統中，停機窗口極短，甚至「幾分鐘都不能斷」。&lt;/p&gt; 
-&lt;p style="color:#000000; text-align:left"&gt;這類「無法停」的系統，是數據庫替換中難啃的「硬骨頭」。&lt;/p&gt; 
-&lt;p style="color:#000000; text-align:center"&gt;&lt;img alt="" src="https://oscimg.oschina.net/oscnet//2ca4517d74500884d1fe8bca7b430968.png" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;p style="color:#000000; text-align:left"&gt;怎麼解？他們提供柔性遷移方案，做到重要系統遷移不停機。&lt;/p&gt; 
-&lt;p style="color:#000000; text-align:left"&gt;這套方案，包含一整套柔性遷移工具鏈，包括：KDMS、KDTS 和 KFS。&lt;/p&gt; 
-&lt;p style="color:#000000; text-align:center"&gt;&lt;img alt="" src="https://oscimg.oschina.net/oscnet//a7ce2f271d05002379843e42112baeee.jpeg" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;p style="color:#000000; text-align:left"&gt;其實，這三劍客在前面的數據遷移場景，就已經出過手了。&lt;/p&gt; 
-&lt;p style="color:#000000; text-align:left"&gt;KDMS：完成歷史數據的結構化遷移；&lt;/p&gt; 
-&lt;p style="color:#000000; text-align:left"&gt;KDTS：用於按變更記錄（如 SCN、LSN）進行全量增量數據遷移；&lt;/p&gt; 
-&lt;p style="color:#000000; text-align:left"&gt;KFS：用於在線增量數據的實時同步遷移。&lt;/p&gt; 
-&lt;p style="color:#000000; text-align:left"&gt;現在着重談，如何不停機遷移。&lt;/p&gt; 
-&lt;p style="color:#000000; text-align:center"&gt;&lt;img alt="" src="https://oscimg.oschina.net/oscnet//aecb704aaa1e8c21b56c2a8179703a9c.png" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;p style="color:#000000; text-align:left"&gt;這套方案的核心理念是：整個過程，原系統可以持續對外提供服務，而新系統利用三個工具的配合，在遷移歷史數同時，實時接收變更數據，確保兩邊數據始終一致。&lt;/p&gt; 
-&lt;p style="color:#000000; text-align:left"&gt;有了這套柔性遷移方案，遷移不再等「節假日」或「通宵窗口」，上線更可控，替換更輕鬆。&lt;/p&gt; 
-&lt;p style="color:#000000; text-align:center"&gt;&lt;img alt="" src="https://oscimg.oschina.net/oscnet//047e82cdb96830bd682ba8a7c58a86b6.png" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;p style="color:#000000; text-align:left"&gt;痛點 4：擔心繫統測試無法全面覆蓋生產環境，上線就「翻車」。&lt;/p&gt; 
-&lt;p style="color:#000000; text-align:left"&gt;這是一個靈魂拷問：在遷移測試環境跑得好好的，一上線到生產環境就出問題。&lt;/p&gt; 
-&lt;p style="color:#000000; text-align:center"&gt;&lt;img alt="" src="https://oscimg.oschina.net/oscnet//0e1b6069777e33fe0d364b6df0e671ba.jpeg" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;p style="color:#000000; text-align:left"&gt;傳統測試只能覆蓋一部分功能，而真實生產環境業務邏輯繁雜、併發壓力大、數據鏈路長，很難完全模擬。&lt;/p&gt; 
-&lt;p style="color:#000000; text-align:left"&gt;甚至有些 PoC 測試專挑軟骨頭，刻意避坑，結果，真上線就踩坑。&lt;/p&gt; 
-&lt;p style="color:#000000; text-align:center"&gt;&lt;img alt="" src="https://oscimg.oschina.net/oscnet//9001f323088732f298eec40d2e5e30d0.png" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;p style="color:#000000; text-align:left"&gt;怎麼解？&lt;/p&gt; 
-&lt;p style="color:#000000; text-align:left"&gt;這家廠商提供了基於真實生產負載的全量回歸測試工具，讓企業上線前，就像在真實環境裏「預演」一遍。&lt;/p&gt; 
-&lt;p style="color:#000000; text-align:center"&gt;&lt;img alt="" src="https://oscimg.oschina.net/oscnet//f5f8ec22a3f9e1c5c530e5b30fd99d13.png" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;p style="color:#000000; text-align:left"&gt;這套測試工具的工作方式很直接也很聰明↓&lt;/p&gt; 
-&lt;p style="color:#000000; text-align:left"&gt;從原 O 記系統中捕獲完整業務負載（包括 SQL 語句、事務、執行順序等）將這些業務流量一比一「重放」到自家數據庫上；&lt;/p&gt; 
-&lt;p style="color:#000000; text-align:left"&gt;自動對比執行效果與性能表現，生成分析報告，提前發現潛在問題，提前解決，確保上線後不「踩雷」。&lt;/p&gt; 
-&lt;p style="color:#000000; text-align:center"&gt;&lt;img alt="" src="https://oscimg.oschina.net/oscnet//dce877b174706ead9513de079b64b91f.png" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;p style="color:#000000; text-align:left"&gt;測試工具能做到無需應用源碼、覆蓋全場景、測試結果真實可信。&lt;/p&gt; 
-&lt;p style="color:#000000; text-align:left"&gt;讓系統上線之前，就像在生產環境裏跑了一遍，問題在上線前就被幹掉。&lt;/p&gt; 
-&lt;p style="color:#000000; text-align:center"&gt;&lt;img alt="" src="https://oscimg.oschina.net/oscnet//914f012d035f431f32746223326fb08d.png" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;p style="color:#000000; text-align:left"&gt;痛點 5：擔心國產數據庫可能存在丟數據、宕機的風險，導致業務停擺&lt;/p&gt; 
-&lt;p style="color:#000000; text-align:left"&gt;在關鍵系統中，數據庫一旦完成割接替換，就意味着「只能成功，沒有回頭路」。&lt;/p&gt; 
-&lt;p style="color:#000000; text-align:left"&gt;但實操中，有些意外總是讓人猝不及防。&lt;/p&gt; 
-&lt;p style="color:#000000; text-align:center"&gt;&lt;img alt="" src="https://oscimg.oschina.net/oscnet//c1d6f222372567af0446231f4a58c8ff.jpeg" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;p style="color:#000000; text-align:left"&gt;數據庫替換，不冒險，才是好方案。&lt;/p&gt; 
-&lt;p style="color:#000000; text-align:left"&gt;怎麼解？這家廠商提供雙軌並行，隨時可回退！&lt;/p&gt; 
-&lt;p style="color:#000000; text-align:center"&gt;&lt;img alt="" src="https://oscimg.oschina.net/oscnet//790a6929e0c97106fbab2b468b69eca3.jpeg" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;p style="color:#000000; text-align:left"&gt;上線後如果國產數據庫出現故障，系統可秒級切換回原有數據庫繼續運行，業務不中斷，數據不丟失，真正做到「萬無一失」。&lt;/p&gt; 
-&lt;p style="color:#000000; text-align:left"&gt;上線有保障，失敗可撤回，全程低風險。&lt;/p&gt; 
-&lt;p style="color:#000000; text-align:center"&gt;&lt;img alt="" src="https://oscimg.oschina.net/oscnet//b882f7fa72be590193e0f1d77d42eca9.jpeg" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;p style="color:#000000; text-align:left"&gt;即使是在銀行、電網、軌交這類對連續性要求極高的行業，也能實現替完還可回頭。&lt;/p&gt; 
-&lt;p style="color:#000000; text-align:left"&gt;當然，這其實是一顆定心丸，這家廠商做了無數平替案例，還從來沒用過回退這一招。&lt;/p&gt; 
-&lt;p style="color:#000000; text-align:center"&gt;&lt;img alt="" src="https://oscimg.oschina.net/oscnet//9d545b965390ed987cdd008f103449b6.jpeg" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;p style="color:#000000; text-align:left"&gt;痛點 6：性能能否達到 Oracle 同等水平？&lt;/p&gt; 
-&lt;p style="color:#000000; text-align:left"&gt;這恐怕是包括老鄧在內，最後一個顧慮了：「國產數據庫性能行嗎？能打得過 O 記嗎？」&lt;/p&gt; 
-&lt;p style="color:#000000; text-align:left"&gt;換成國產數據庫後，要是性能掉隊，業務慢半拍，系統卡頓，那真是換了個寂寞啊。&lt;/p&gt; 
-&lt;p style="color:#000000; text-align:center"&gt;&lt;img alt="" src="https://oscimg.oschina.net/oscnet//cf40186565f5ae94841359b6ec1be45f.png" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;p style="color:#000000; text-align:left"&gt;怎麼解？&lt;/p&gt; 
-&lt;p style="color:#000000; text-align:left"&gt;這家廠商有足夠的底氣，他們相信數據庫的性能優化並不是「紙上談兵」，而是&lt;strong&gt;真刀真槍地在覈心繫統中跑出來的&lt;/strong&gt;。&lt;/p&gt; 
-&lt;p style="color:#000000; text-align:center"&gt;&lt;img alt="" src="https://oscimg.oschina.net/oscnet//96bbdabc9e694ce18008da75bcbd0b61.png" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;p style="color:#000000; text-align:left"&gt;目前，他們的數據庫產品已經在&lt;strong&gt;2000+關鍵業務系統&lt;/strong&gt;中實現替換上線，驗證了「替得了、跑得穩、上得去」的能力。&lt;/p&gt; 
-&lt;p style="color:#000000; text-align:center"&gt;&lt;img alt="" src="https://oscimg.oschina.net/oscnet//991c911b18d738cc6d19c9ae40f7d539.png" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;p style="color:#000000; text-align:center"&gt;&lt;img alt="" src="https://oscimg.oschina.net/oscnet//258db050b5e3dea7e60bb04a2fd15718.png" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;p style="color:#000000; text-align:left"&gt;六條講完，嚴絲合縫。&lt;/p&gt; 
-&lt;p style="color:#000000; text-align:left"&gt;老鄧萬萬沒想到，自己竟然聽得津津有味，還記了一大段筆記。&lt;/p&gt; 
-&lt;p style="color:#000000; text-align:left"&gt;不由暗暗感慨：士別三日，國產數據庫的進步這麼大。&lt;/p&gt; 
-&lt;p style="color:#000000; text-align:center"&gt;&lt;img alt="" src="https://oscimg.oschina.net/oscnet//911768e37d0d72a6a859323baa01cc12.png" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;p style="color:#000000; text-align:left"&gt;這時候，台上的廠商專家開始了總結：我們不止能替 O 記，更有「全家桶」級別的國產替代能力，涵蓋主流數據庫全譜系↓&lt;/p&gt; 
-&lt;p style="color:#000000; text-align:center"&gt;&lt;img alt="" src="https://oscimg.oschina.net/oscnet//93d272f74c5f3eba2ff93353ef8b527a.png" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;p style="color:#000000; text-align:left"&gt;講完這些，廠商專家頓了頓，翻到最後一頁——&lt;/p&gt; 
-&lt;p style="color:#000000; text-align:left"&gt;沒錯，這家數據庫廠商就是「金倉數據庫」。&lt;/p&gt; 
-&lt;p style="color:#000000; text-align:left"&gt;一句話，數據庫平替用金倉，讓「不敢替」的痛，變成「能平替」的路！&lt;/p&gt; 
-&lt;p style="color:#000000; text-align:center"&gt;&lt;img alt="" src="https://oscimg.oschina.net/oscnet//0304157f721af366b5a8acc4f835dd78.jpeg" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;p style="color:#000000; text-align:left"&gt;尾聲：&lt;/p&gt; 
-&lt;p style="color:#000000; text-align:left"&gt;老鄧終於放下了執念……&lt;/p&gt; 
-&lt;p style="color:#000000; text-align:left"&gt;項目驗收那晚，老鄧望着穩定運行的系統、波瀾不驚的監控大屏，拿起手機，悄悄發了個朋友圈。&lt;/p&gt; 
-&lt;p style="color:#000000; text-align:center"&gt;&lt;img alt="" src="https://oscimg.oschina.net/oscnet//2b19a56baa8bf8e03a189a362ded5fc3.jpeg" referrerpolicy="no-referrer"&gt;&lt;/p&gt;
-                                                                                &lt;/div&gt;
-                                                                            </description>
-      <link>https://www.oschina.net/news/362375</link>
-      <guid isPermaLink="false">https://www.oschina.net/news/362375</guid>
-      <pubDate>Fri, 25 Jul 2025 09:19:00 GMT</pubDate>
-      <author>作者: 開源科技</author>
-    </item>
-    <item>
-      <title>RWKV7-G0 7.2B 發佈，最強純 RNN 推理模型</title>
-      <description>&lt;div class="content"&gt;
-                                                                    
-                                                        &lt;p&gt;2025 年 7 月 22 日， &lt;strong&gt;RWKV7-G0 7.2B 推理模型&lt;/strong&gt;（Reasoning Model）正式開源發佈，它很可能是迄今為止人類訓練過的最強純 RNN 語言模型。&lt;/p&gt; 
-&lt;p&gt;RWKV7-G0 7.2B 是在 RWKV6-World-V3-7.6B 的基礎上訓練 2T tokens 的純預訓練模型，但在預訓練加入了大量指令/對話/推理數據，可以解決各種推理問題。&lt;/p&gt; 
-&lt;blockquote&gt; 
- &lt;p&gt;如果需要後訓練和對齊，最適合 RNN 的方式是 &lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Frwkv.cn%2Ftutorials%2Fadvanced%2FFine-Tune%2FRWKV-PEFT%2FState-Tuning" target="_blank"&gt;state-tuning&lt;/a&gt;，直接微調 RNN 的初始狀態，相當於終極 context engineering。&lt;/p&gt; 
-&lt;/blockquote&gt; 
-&lt;h2&gt;模型客觀指標評測&lt;/h2&gt; 
-&lt;h3&gt;英語和多語言能力&lt;/h3&gt; 
-&lt;p&gt;RWKV7-G0 7.2B 的基礎英語和多語言能力&lt;strong&gt;均強於同規模的開源模型&lt;/strong&gt;：&lt;/p&gt; 
-&lt;p&gt;&lt;img alt="eval" src="https://oscimg.oschina.net/oscnet/up-3961b82f0302bbedafaae3e26ce721fe159.png" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;p&gt;得益於架構和數據的提升，RWKV7-G0 7.2B 的 MMLU 準確度為 62.7%，顯著超過 RWKV6-World-V3-7.6B 的 54.2%。後續我們會發布訓練 8T tokens 的滿血 RWKV7-G1 7.2B，目標是 MMLU 達到 70%，看齊前沿模型。&lt;/p&gt; 
-&lt;h3&gt;無法作弊的評測&lt;/h3&gt; 
-&lt;blockquote&gt; 
- &lt;p&gt;&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fhuggingface.co%2Fspaces%2FJellyfish042%2FUncheatableEval" target="_blank"&gt;Uncheatable Eval&lt;/a&gt; 是"無法作弊的評測"，它使用最新的論文和新聞文章等實時數據，評估開源大語言模型的真實建模能力和泛化能力。&lt;/p&gt; 
-&lt;/blockquote&gt; 
-&lt;p&gt;RWKV7-G0 7.2B 的 Uncheatable Eval 同樣顯著提升，滿血 8T tokens 預計超越 Llama3 8B（這裏測試 2024-07 數據，後續會測新數據，並對比 Qwen2.5、Qwen3）：&lt;/p&gt; 
-&lt;p&gt;&lt;img alt="uncheatable-eval" src="https://oscimg.oschina.net/oscnet/up-00ee915e6a6642e230984bbad95c7adda04.png" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;h2&gt;模型實戰：解數學題&lt;/h2&gt; 
-&lt;p&gt;我們發現，RWKV7-G0 7.2B 解數學題可使用 &lt;code&gt;temperature top_p penalty&lt;/code&gt; 解碼參數都為 0 的純貪心解碼，且無限復讀現象較少。&lt;/p&gt; 
-&lt;p&gt;但貪心解碼會導致推理過程探索度不足，因此可引入隨機性，例如 &lt;code&gt;temperature=0.3 top_p=0.3 penalty=0&lt;/code&gt;。模型會自動進行多輪驗算（類似 rollout），並可以自我糾錯。&lt;/p&gt; 
-&lt;p&gt;那麼 &lt;code&gt;temperature=0.6 top_p=0.6 penalty=0&lt;/code&gt; 等隨機性更高的參數是否更好，後續我們會通過參數掃描實驗評估。&lt;/p&gt; 
-&lt;p&gt;例子，第一題：&lt;/p&gt; 
-&lt;p&gt;&lt;img alt="math1" src="https://oscimg.oschina.net/oscnet/up-0cd8d78f631ee7405c4bbca2340892aa1c6.png" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;p&gt;修改題目表述，模型換了種做法：&lt;/p&gt; 
-&lt;p&gt;&lt;img alt="math2" src="https://oscimg.oschina.net/oscnet/up-dc97d5561c78acbb5117c3b214de082e7da.png" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;p&gt;第二題，故意將原題的 99 改為 99.1，模型一開始看錯，後來成功糾正了自己：&lt;/p&gt; 
-&lt;p&gt;&lt;img alt="math3" src="https://oscimg.oschina.net/oscnet/up-e607d6ca88eb49ab4caf0e417262eb39b2b.png" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;p&gt;第三題，原題是計算 1 的冪，改為計算 i 的冪，增加難度：&lt;/p&gt; 
-&lt;p&gt;&lt;img alt="math4" src="https://oscimg.oschina.net/oscnet/up-8d5d4f106fec7c3c72836c057b1de89bddd.png" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;p&gt;第四題，原題是 2^8 = 4^x，改為 8^x 增加難度：&lt;/p&gt; 
-&lt;p&gt;&lt;img alt="math5" src="https://oscimg.oschina.net/oscnet/up-4d801cfa9f331b3dca71d086a3c05004e6c.png" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;p&gt;第五題，原題的概率是 1/5，改為 1/4 測試模型：&lt;/p&gt; 
-&lt;p&gt;&lt;img alt="math6" src="https://oscimg.oschina.net/oscnet/up-39c45f49e2a398f59a7dc87fde27cf46756.png" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;p&gt;第六題，原題是 one hat，改為 two hat（故意不加 s 複數形式）測試模型：&lt;/p&gt; 
-&lt;p&gt;&lt;img alt="math7" src="https://oscimg.oschina.net/oscnet/up-2d56afb40928ffd13d17308fc41c6e56369.png" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;p&gt;第七題，模型有點懵，但反覆驗算多次後，成功確認了正確答案：&lt;/p&gt; 
-&lt;p&gt;&lt;img alt="math8" src="https://oscimg.oschina.net/oscnet/up-7730c44785334a3421428c0e7dd153ed6ae.png" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;p&gt;結論：【純 RNN + 純預訓練】可以得到推理模型，而且它理解了一些解題方法，可以用不同方法解決修改過的題目。&lt;/p&gt; 
-&lt;h2&gt;模型實戰：寫代碼&lt;/h2&gt; 
-&lt;p&gt;在此我們測試用戶喜聞樂見的圖像輸出。生成一個有一隻貓的 SVG 的網頁：&lt;/p&gt; 
-&lt;p&gt;&lt;img alt="code" src="https://oscimg.oschina.net/oscnet/up-06f4dbd1a7c9e178ed8408f93d7bb939c4d.png" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;p&gt;用 Three.js 創建一個旋轉的 3D 紅色立方體（完整代碼在文末的附錄中）：&lt;/p&gt; 
-&lt;p&gt;&lt;img alt="code-1" src="https://oscimg.oschina.net/oscnet/up-5965c8a859ccc3bcc7f9db0d86caeb5f612.png" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;p&gt;考慮到這是【純 RNN + 純預訓練 + 只訓練 2T tokens】，表現合理。後續更多數據的滿血版會顯著更強。&lt;/p&gt; 
-&lt;h2&gt;RNN 的抗幹擾能力&lt;/h2&gt; 
-&lt;p&gt;最新論文 &lt;code&gt;Inverse Scaling in Test-Time Compute&lt;/code&gt;（&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Farxiv.org%2Fabs%2F2507.14417%25EF%25BC%2589%25E5%258F%2591%25E7%258E%25B0%25E5%2589%258D%25E6%25B2%25BF%25E6%25A8%25A1%25E5%259E%258B%25E5%259C%25A8%25E2%2580%259C%25E6%2581%25B6%25E6%2584%258F%25E9%2597%25AE%25E9%25A2%2598%25E2%2580%259D%25EF%25BC%2588%25E4%25BE%258B%25E5%25A6%2582%25E5%25B8%25A6%25E5%25B9%25B2%25E6%2589%25B0%25E9%25A1%25B9%25E7%259A%2584%25E8%25AE%25A1%25E6%2595%25B0%25E3%2580%2581%25E5%25B8%25A6%25E8%2599%259A%25E5%2581%2587%25E7%2589%25B9%25E5%25BE%2581%25E7%259A%2584%25E5%259B%259E%25E5%25BD%2592%25E9%25A2%2584%25E6%25B5%258B%25EF%25BC%258C%25E7%25AD%2589%25E7%25AD%2589%25EF%25BC%2589%25E4%25BC%259A%25E5%2587%25BA%25E7%258E%25B0%25E8%25B6%258A%25E6%2583%25B3%25E8%25B6%258A%25E5%25B7%25AE%25E7%259A%2584%25E6%2583%2585%25E5%2586%25B5%25EF%25BC%259A" target="_blank"&gt;https://arxiv.org/abs/2507.14417）發現前沿模型在「惡意問題」（例如帶幹擾項的計數、帶虛假特徵的迴歸預測，等等）會出現越想越差的情況：&lt;/a&gt;&lt;/p&gt; 
-&lt;p&gt;&lt;img alt="Inverse Scaling in Test-Time Compute" src="https://oscimg.oschina.net/oscnet/up-6ae323b74fd47a196c5d2c1f9fa0e6eba61.png" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;p&gt;我們發現 RWKV7-G0 7.2B 可以克服幹擾，得到正確答案：&lt;/p&gt; 
-&lt;p&gt;&lt;img alt="Test-Time-Compute-test" src="https://oscimg.oschina.net/oscnet/up-ae61d209ca82eea02e344618caff2afca92.png" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;p&gt;繼續測試：&lt;/p&gt; 
-&lt;p&gt;&lt;img alt="Test-Time-Compute-test-1" src="https://oscimg.oschina.net/oscnet/up-514174dd1deab6244d08e752e541b0fd36e.png" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;p&gt;修改數字再測試：&lt;/p&gt; 
-&lt;p&gt;&lt;img alt="Test-Time-Compute-test-2" src="https://oscimg.oschina.net/oscnet/up-203991398541247ca9e64b89fa8da85280d.png" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;p&gt;可見 attention 會導致 transformer 更易受前文幹擾，而 RNN 在此有優勢。而且 RNN 的思考過程永遠勻速，不會越想越慢。我們未來訓練更大的 RNN 會更有趣。&lt;/p&gt; 
-&lt;h2&gt;模型下載&lt;/h2&gt; 
-&lt;p&gt;下載 RWKV7-G0 7.2B 模型：&lt;/p&gt; 
-&lt;ul&gt; 
- &lt;li&gt;Hugging Face：&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fhuggingface.co%2FBlinkDL%2Frwkv7-g1%2Ftree%2Fmain" target="_blank"&gt;https://huggingface.co/BlinkDL/rwkv7-g1/tree/main&lt;/a&gt;&lt;/li&gt; 
- &lt;li&gt;魔搭社區：&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fmodelscope.cn%2Fmodels%2FRWKV%2Frwkv7-g1%2Ffiles" target="_blank"&gt;https://modelscope.cn/models/RWKV/rwkv7-g1/files&lt;/a&gt;&lt;/li&gt; 
- &lt;li&gt;WiseModel：&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fwisemodel.cn%2Fmodels%2Frwkv4fun%2FRWKV-7-G1%2Ffile" target="_blank"&gt;https://wisemodel.cn/models/rwkv4fun/RWKV-7-G1/file&lt;/a&gt;&lt;/li&gt; 
-&lt;/ul&gt; 
-&lt;h2&gt;如何使用 RWKV 模型&lt;/h2&gt; 
-&lt;h3&gt;在線 demo（續寫模式）&lt;/h3&gt; 
-&lt;p&gt;可以在 RWKV 官方 Gradio 中試用 RWKV7-G0 7.2B 模型（為避免排隊，這裏限制了輸入和輸出長度）：&lt;/p&gt; 
-&lt;ul&gt; 
- &lt;li&gt;&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fhuggingface.co%2Fspaces%2FBlinkDL%2FRWKV-Gradio-2" target="_blank"&gt;https://huggingface.co/spaces/BlinkDL/RWKV-Gradio-2&lt;/a&gt;&lt;/li&gt; 
-&lt;/ul&gt; 
-&lt;blockquote&gt; 
- &lt;p&gt;Hugging Face Gradio 是續寫模式，使用時需要遵循 &lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Frwkv.cn%2Ftutorials%2Fbasic%2FPrompt-Format" target="_blank"&gt;RWKV 的 prompt 格式&lt;/a&gt;。&lt;/p&gt; 
-&lt;/blockquote&gt; 
-&lt;p&gt;RWKV7-G0 7.2B &lt;strong&gt;不思考模式&lt;/strong&gt;的 QA prompt 格式：&lt;/p&gt; 
-&lt;pre&gt;&lt;code&gt;User: 我可以抽乾太平洋的水然後下去抓魚嗎？
-
-Assistant:
-&lt;/code&gt;&lt;/pre&gt; 
-&lt;p&gt;如需開啓&lt;strong&gt;思考模式&lt;/strong&gt;，可在 QA prompt 的基礎上添加 &lt;code&gt;&amp;lt;think&amp;gt;&lt;/code&gt; 標籤：&lt;/p&gt; 
-&lt;pre&gt;&lt;code&gt;User: 我可以抽乾太平洋的水然後下去抓魚嗎？
-
-Assistant: &amp;lt;think&amp;gt;
-&lt;/code&gt;&lt;/pre&gt; 
-&lt;h3&gt;本地部署 RWKV 模型&lt;/h3&gt; 
-&lt;p&gt;可以使用 RWKV Runner、Ai00、RWKV pip 等推理工具本地部署 RWKV 模型。&lt;/p&gt; 
-&lt;p&gt;此外，RWKV 模型也適配了 llama.cpp、ollama 等熱門的模型推理工具。&lt;/p&gt; 
-&lt;p&gt;由於 RWKV7-G0 7.2B 是新模型，目前建議使用 &lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Frwkv.cn%2Ftutorials%2Fintermediate%2FRWKV-Runner%2FIntroduction" target="_blank"&gt;RWKV Runner&lt;/a&gt; 以保證得到正確結果。&lt;/p&gt; 
-&lt;p&gt;可以在 &lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Frwkv.cn%2Ftutorials%2Fintermediate" target="_blank"&gt;RWKV 官網 - 模型推理教程&lt;/a&gt;中查看上述推理工具的使用教程。&lt;/p&gt; 
-&lt;h2&gt;未來訓練計劃&lt;/h2&gt; 
-&lt;p&gt;我們也正在訓練 RWKV7-G0 13.3B 模型，以及使用更多 tokens、使用 &lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fmp.weixin.qq.com%2Fs%2FYl79XfbMCO6ecAdKGzboRg" target="_blank"&gt;DeepEmbed&lt;/a&gt; 和 &lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fmp.weixin.qq.com%2Fs%2F3q1cldAEsk1576SLK24CTw" target="_blank"&gt;DEA&lt;/a&gt; 技術的 RWKV-7s 模型。&lt;/p&gt; 
-&lt;h2&gt;加入 RWKV 社區&lt;/h2&gt; 
-&lt;p&gt;歡迎大家加入 RWKV 社區，可以從 RWKV 中文官網瞭解 RWKV 模型，也可以加入 RWKV 論壇、QQ 頻道和 QQ 羣聊，一起探討 RWKV 模型。&lt;/p&gt; 
-&lt;ul&gt; 
- &lt;li&gt;📖 RWKV 中文文檔：&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fwww.rwkv.cn" target="_blank"&gt;https://www.rwkv.cn&lt;/a&gt;&lt;/li&gt; 
- &lt;li&gt;💬 RWKV 論壇：&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fcommunity.rwkv.cn%2F" target="_blank"&gt;https://community.rwkv.cn/&lt;/a&gt;&lt;/li&gt; 
- &lt;li&gt;🐧 QQ 頻道：&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fpd.qq.com%2Fs%2F9n21eravc" target="_blank"&gt;https://pd.qq.com/s/9n21eravc&lt;/a&gt;&lt;/li&gt; 
- &lt;li&gt;📺 BiliBili 視頻教程：&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fspace.bilibili.com%2F3546689096910933" target="_blank"&gt;https://space.bilibili.com/3546689096910933&lt;/a&gt;&lt;/li&gt; 
-&lt;/ul&gt; 
-&lt;blockquote&gt; 
- &lt;p&gt;歡迎大家基於 RWKV-7 進行創業、科研，我們也會為基於 RWKV 的項目提供技術支持。&lt;/p&gt; 
- &lt;p&gt;如果您的團隊正在基於 RWKV 創業或開展研究，請聯繫我們！（在「RWKV 元始智能」微信公眾號留言您的聯繫方式，或發送郵件到「contact@rwkvos.com」。）&lt;/p&gt; 
-&lt;/blockquote&gt; 
-&lt;h2&gt;附錄：旋轉的紅色立方體&lt;/h2&gt; 
-&lt;p&gt;將以下代碼保存為 &lt;code&gt;3d.html&lt;/code&gt; 並雙擊運行。&lt;/p&gt; 
-&lt;pre&gt;&lt;code&gt;&amp;lt;!DOCTYPE html&amp;gt;
-&amp;lt;html lang="en"&amp;gt;
-&amp;lt;head&amp;gt;
-    &amp;lt;meta charset="UTF-8"&amp;gt;
-    &amp;lt;meta name="viewport" content="width=device-width, initial-scale=1.0"&amp;gt;
-    &amp;lt;title&amp;gt;Rotating Red Box&amp;lt;/title&amp;gt;
-    &amp;lt;style&amp;gt;
-        body {
-            margin: 0;
-            overflow: hidden;
-        }
-        canvas {
-            display: block;
-            width: 100%;
-            height: 100%;
-        }
-    &amp;lt;/style&amp;gt;
-&amp;lt;/head&amp;gt;
-&amp;lt;body&amp;gt;
-    &amp;lt;script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"&amp;gt;&amp;lt;/script&amp;gt;
-    &amp;lt;script&amp;gt;
-        // Create scene
-        const scene = new THREE.Scene();
-        
-        // Create camera
-        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
-        camera.position.z = 5;
-        
-        // Create renderer
-        const renderer = new THREE.WebGLRenderer();
-        renderer.setSize(window.innerWidth, window.innerHeight);
-        document.body.appendChild(renderer.domElement);
-        // Create box geometry and material
-        const geometry = new THREE.BoxGeometry(1, 1, 1);
-        const material = new THREE.MeshBasicMaterial({ color: 0xff0000 }); // Red color
-        
-        // Create box mesh
-        const box = new THREE.Mesh(geometry, material);
-        
-        // Add lighting
-        const light = new THREE.DirectionalLight(0xffffff, 1);
-        light.position.set(0, 0, 10);
-        scene.add(light);
-        
-        // Add box to scene
-        scene.add(box);
-        
-        // Animation loop
-        let angleX = 0;
-        let angleY = 0;
-        
-        function animate() {
-            requestAnimationFrame(animate);
-            
-            // Update rotation angles
-            angleX += 0.01;
-            angleY += 0.01;
-            
-            // Update box rotation
-            box.rotation.x = angleX;
-            box.rotation.y = angleY;
-            
-            // Render scene
-            renderer.render(scene, camera);
-        }
-        
-        animate();
-    &amp;lt;/script&amp;gt;
-&amp;lt;/body&amp;gt;
-&amp;lt;/html&amp;gt;
-&lt;/code&gt;&lt;/pre&gt;
-                                                                                &lt;/div&gt;
-                                                                            </description>
-      <link>https://www.oschina.net/news/362370</link>
-      <guid isPermaLink="false">https://www.oschina.net/news/362370</guid>
-      <pubDate>Fri, 25 Jul 2025 09:02:00 GMT</pubDate>
-      <author>來源: OSCHINA</author>
-    </item>
-    <item>
-      <title>特斯拉強調輔助駕駛安全性：AI 硬件加持</title>
-      <description>&lt;div class="content"&gt;
-                                                                    
-                                                        &lt;p style="color:#242424; margin-left:0; margin-right:0; text-align:left"&gt;特斯拉官方微博今日發文，重申了輔助駕駛技術在提升車輛安全性方面的重要性。根據特斯拉 2025 年第二季度安全報告，開啓輔助駕駛功能的特斯拉車輛，其安全性是普通車輛的 9.5 倍。&lt;/p&gt; 
-&lt;p style="color:#242424; margin-left:0; margin-right:0; text-align:left"&gt;&lt;img height="414" src="https://oscimg.oschina.net/oscnet/up-96c1d1ada610ee1272da23c291a011df993.png" width="500" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;p style="color:#242424; margin-left:0; margin-right:0; text-align:left"&gt;特斯拉表示，其旗下 S3XY 全系現款在售車型均標配了&lt;strong&gt;AI4 智能輔助駕駛硬件&lt;/strong&gt;和輔助駕駛功能。官方宣稱，得益於這些先進的 AI 技術，特斯拉的輔助駕駛系統比人類駕駛更為可靠。特斯拉強調，其最終目標是實現「零事故」，並承諾將持續努力，確保每一位車主都能安心出行。&lt;/p&gt; 
-&lt;p style="color:#242424; margin-left:0; margin-right:0; text-align:left"&gt;此次表態被視為特斯拉對近期懂車帝輔助駕駛測試的回應。近日，懂車帝聯合央視推出了《懂車智煉場》輔助駕駛科普節目，對 36 款車型進行了實測，測試結果引發了廣泛關注。&lt;/p&gt; 
-&lt;p style="color:#242424; margin-left:0; margin-right:0; text-align:left"&gt;此外，鴻蒙智行官微也疑似回應懂車帝測試表示，已看到某平台所謂「測試」，不予置評。&lt;/p&gt;
-                                                                                &lt;/div&gt;
-                                                                            </description>
-      <link>https://www.oschina.net/news/362357</link>
-      <guid isPermaLink="false">https://www.oschina.net/news/362357</guid>
-      <pubDate>Fri, 25 Jul 2025 08:23:00 GMT</pubDate>
-      <author>來源: OSCHINA</author>
-    </item>
-    <item>
-      <title>Claude 集成設計平台 Canva</title>
-      <description>&lt;div class="content"&gt;
-                                                                    
-                                                        &lt;p&gt;Anthropic&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fx.com%2FAnthropicAI%2Fstatus%2F1948489708385816666" target="_blank"&gt;宣佈&lt;/a&gt;其 AI 服務 Claude 已集成設計平台 Canva，這一集成旨在簡化從文本內容到圖形化表達的創作流程。&lt;/p&gt; 
-&lt;p&gt;&lt;img height="1458" src="https://static.oschina.net/uploads/space/2025/0725/155325_hioI_2720166.png" width="1290" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;p&gt;&lt;img src="https://static.oschina.net/uploads/space/2025/0725/155813_ek4B_2720166.png" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;p&gt;通過這項新功能，用戶可以上傳任何書面內容，如博客文章、產品指南或會議記錄，並要求 Claude 將其轉化為帶有品牌風格的專業視覺設計。&lt;/p&gt;
-                                                                                &lt;/div&gt;
-                                                                            </description>
-      <link>https://www.oschina.net/news/362351</link>
-      <guid isPermaLink="false">https://www.oschina.net/news/362351</guid>
-      <pubDate>Fri, 25 Jul 2025 07:58:00 GMT</pubDate>
-      <author>來源: OSCHINA</author>
-    </item>
-    <item>
-      <title>《2025 年度技術人才報告》解讀：AI+開源重塑人才市場</title>
-      <description>&lt;div class="content"&gt;
-                                                                    
-                                                        &lt;p&gt;&lt;span style="color:#000000"&gt;LF Research 聯合 Linux Foundation Education 正式發佈了《2025 年度技術人才報告》。該報告是基於全球 500 多位招聘和培訓決策者的調研，重點探討了 AI 對技術崗位日益增長的影響、企業如何為這一工作轉型做好準備，以及如何通過開源與技能提升滿足新的人才需求。&lt;/span&gt;&lt;/p&gt; 
-&lt;p&gt;&lt;img height="360" src="https://oscimg.oschina.net/oscnet/up-887ec60bec2ffdf3d0a7092dfbbd202fe35.png" width="500" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;p&gt;&lt;span style="color:#000000"&gt;AI 正在為眾多企業帶來深遠影響，94% 的組織認為 AI 將為其運營帶來顯著價值。但報告指出，不足一半的企業擁有適應 AI 時代所需的核心技術能力，難以釋放其業務與創新潛力。報告主要發現包括：&lt;/span&gt;&lt;/p&gt; 
-&lt;ul&gt; 
- &lt;li&gt;&lt;span style="color:#000000"&gt;68% 的企業缺乏具備 AI/ML 技能的員工；網絡安全與合規（65%）、FinOps（61%）、雲計算（59%）和平台工程（56%）等領域人才短缺的情況加劇了這個問題；&lt;/span&gt;&lt;/li&gt; 
- &lt;li&gt;&lt;span style="color:#000000"&gt;44% 的受訪者認為「技術人才不足」是採納新技術的主要障礙；&lt;/span&gt;&lt;/li&gt; 
- &lt;li&gt;&lt;span style="color:#000000"&gt;半數受訪組織表示，他們正在擴充 AI 專項人才隊伍，新增崗位包括 AI/ML 運維工程主管（64%）與 AI 產品經理（36%）。&lt;/span&gt;&lt;/li&gt; 
-&lt;/ul&gt; 
-&lt;p&gt;&lt;span style="color:#000000"&gt;新興技術與技能缺口已開始實質地改變工作流程。三分之二的組織表示，AI 顯著改變了其團隊的工作方式。開發者需驗證 AI 生成的代碼，新員工需具備 AI 專業技能，許多初級的任務也被 AI 自動化。&lt;/span&gt;&lt;/p&gt; 
-&lt;p&gt;&lt;span style="color:#000000"&gt;為應對這些變化，企業正在加大對技能提升的投入。報告發現：&lt;/span&gt;&lt;/p&gt; 
-&lt;ul&gt; 
- &lt;li&gt;&lt;span style="color:#000000"&gt;72% 的組織正在優先考慮提升現有員工的技能，遠高於 2024 年的 48%；&lt;/span&gt;&lt;/li&gt; 
- &lt;li&gt;&lt;span style="color:#000000"&gt;技能提升的速度比招聘新人才快 62%，且技術培訓項目在提高員工留存率方面的效果高出 91%；&lt;/span&gt;&lt;/li&gt; 
- &lt;li&gt;&lt;span style="color:#000000"&gt;71% 的組織在招聘時重視持有認證的人才，將其視為專業能力的有效驗證；&lt;/span&gt;&lt;/li&gt; 
- &lt;li&gt;&lt;span style="color:#000000"&gt;56% 的組織依靠技能提升來滿足 AI/ML 崗位需求，而非新增招聘或外包。&lt;/span&gt;&lt;/li&gt; 
-&lt;/ul&gt; 
-&lt;p&gt;&lt;span style="color:#000000"&gt;開源技術在 AI 落地中也起到了重要戰略作用。40% 的受訪者表示，企業正在利用開源框架、模型和工具來加速 AI 應用。&lt;/span&gt;&lt;/p&gt; 
-&lt;p&gt;&lt;span style="color:#000000"&gt;調查顯示，採用開源實踐的企業在員工留存與技能發展方面表現更佳：&lt;/span&gt;&lt;/p&gt; 
-&lt;ul&gt; 
- &lt;li&gt;&lt;span style="color:#000000"&gt;91% 的組織認為技術培訓是提高員工留存的有效方式；&lt;/span&gt;&lt;/li&gt; 
- &lt;li&gt;&lt;span style="color:#000000"&gt;84% 的組織表示，擁有開源文化可提高員工穩定性與滿意度。&lt;/span&gt;&lt;/li&gt; 
-&lt;/ul&gt;
-                                                                                &lt;/div&gt;
-                                                                            </description>
-      <link>https://www.oschina.net/news/362350</link>
-      <guid isPermaLink="false">https://www.oschina.net/news/362350</guid>
-      <pubDate>Fri, 25 Jul 2025 07:58:00 GMT</pubDate>
-      <author>來源: OSCHINA</author>
-    </item>
-    <item>
-      <title>Qwen3-Coder 和 Kimi-K2 均已上線模力方舟</title>
-      <description>&lt;div class="content"&gt;
-                                                                    
-                                                        &lt;p&gt;Kimi-K2 和 Qwen3-Coder 這兩個模型是最近在編程任務上表現不錯的開源模型，關於二者的比較可閲讀這篇文章：&lt;em&gt;&lt;u&gt;&lt;a href="https://www.oschina.net/news/362129/kimi-k2-vs-qwen-3-coder-coding-comparison"&gt;Kimi K2 和 Qwen-3 Coder 在編程任務的詳細對比&lt;/a&gt;&lt;/u&gt;&lt;/em&gt;。&lt;/p&gt; 
-&lt;ul&gt; 
- &lt;li&gt;&lt;a href="https://www.oschina.net/news/360215/kimi-k2"&gt;&lt;strong&gt;Kimi K2&lt;/strong&gt;&amp;nbsp;&lt;/a&gt;是一個最先進的混合專家 (MoE) 語言模型，激活參數為 320 億，總參數為 1 萬億。通過 Muon 優化器進行訓練，Kimi K2 在前沿知識、推理和編碼任務上表現出色，同時在智能體能力方面進行了精心優化。&lt;/li&gt; 
- &lt;li&gt;&lt;a href="https://www.oschina.net/news/361848"&gt;&lt;strong&gt;Qwen3-Coder-480B-A35B-Instruct&lt;/strong&gt;&lt;/a&gt;&amp;nbsp; 是一款專為代碼生成、代碼理解和高效開發場景設計的大型語言模型。&lt;/li&gt; 
-&lt;/ul&gt; 
-&lt;p&gt;模力方舟已上線這兩個模型：&lt;/p&gt; 
-&lt;p&gt;&lt;img height="798" src="https://static.oschina.net/uploads/space/2025/0725/153841_vb9V_2720166.png" width="2540" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;p&gt;&lt;img src="https://static.oschina.net/uploads/space/2025/0725/153900_equi_2720166.png" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;p&gt;訪問網址&amp;nbsp;&lt;a href="https://ai.gitee.com/serverless-api" target="_blank"&gt;https://ai.gitee.com/serverless-api&amp;nbsp;&lt;/a&gt;即可體驗。&lt;/p&gt;
-                                                                                &lt;/div&gt;
-                                                                            </description>
-      <link>https://www.oschina.net/news/362345</link>
-      <guid isPermaLink="false">https://www.oschina.net/news/362345</guid>
-      <pubDate>Fri, 25 Jul 2025 07:40:00 GMT</pubDate>
+      <pubDate>Thu, 17 Jul 2025 02:00:00 GMT</pubDate>
       <author>來源: OSCHINA</author>
     </item>
     <item>
