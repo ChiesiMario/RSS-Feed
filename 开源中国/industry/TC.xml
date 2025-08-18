@@ -7,8 +7,338 @@
     <generator>RSSHub</generator>
     <webMaster>contact@rsshub.app (RSSHub)</webMaster>
     <language>zh-tw</language>
-    <lastBuildDate>Sun, 17 Aug 2025 21:40:31 GMT</lastBuildDate>
+    <lastBuildDate>Mon, 18 Aug 2025 03:27:50 GMT</lastBuildDate>
     <ttl>5</ttl>
+    <item>
+      <title>虛引用 GC 耗時分析優化（由 1.2 降低至 0.1 秒）</title>
+      <description>&lt;div class="content"&gt;
+                                                                                                                                                                                                                                        &lt;span id="OSC_h1_1"&gt;&lt;/span&gt; 
+&lt;h1&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;背景&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/h1&gt; 
+&lt;p&gt;&lt;span&gt;&lt;span&gt;&lt;span style="color:#000000"&gt;線上應用頻繁出現超時告警（超時時間 1 s）： getUiToken 接口異常狀態碼「-1」出現 4037 次 (失敗描述:業務請求異常)，超過閾值 50，協議：http，為服務端接口。當前失敗率為 0%，當前平均響應時間為 150ms，TP50 為 2ms,TP90 為 896ms，TP99 為 1024ms,TP999 為 1152ms,MAX 為 1280ms。 &lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/p&gt; 
+&lt;span id="OSC_h1_2"&gt;&lt;/span&gt; 
+&lt;h1&gt;&lt;span&gt;&lt;span&gt;&lt;span style="color:#000000"&gt;環境信息&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/h1&gt; 
+&lt;div&gt; 
+ &lt;span style="color:#000000"&gt;•&lt;/span&gt; 
+ &lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span style="color:#000000"&gt;服務器配置為，Linux 4c8g 標配機器&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt; 
+&lt;/div&gt; 
+&lt;div&gt; 
+ &lt;span style="color:#000000"&gt;•&lt;/span&gt; 
+ &lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span style="color:#000000"&gt;JVM 參數配置：&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt; 
+&lt;/div&gt; 
+&lt;pre&gt;&lt;code&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;-server -Djava.library.path=/usr/local/lib -XX:+HeapDumpOnOutOfMemoryError -XX:HeapDumpPath=/export/log -Djava.awt.headless=true -Dsun.net.client.defaultConnectTimeout=60000 -Dsun.net.client.defaultReadTimeout=60000 -Djmagick.systemclassloader=no -Dnetworkaddress.cache.ttl=300 -Dsun.net.inetaddr.ttl=300 -Xms5G -Xmx5G -XX:+UseG1GC -XX:G1HeapRegionSize=4m -Xloggc:/export/log/$APP_NAME/gc_detail.log -XX:+PrintGCDetails -XX:+PrintGCDateStamps -XX:NumberOfGCLogFiles=5 -XX:GCLogFileSize=10m -XX:MaxTenuringThreshold=15 -XX:+PrintTenuringDistribution -XX:+PrintHeapAtGC&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt; 
+&lt;div&gt; 
+ &lt;span style="color:#000000"&gt;•&lt;/span&gt; 
+ &lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span style="color:#000000"&gt;接口流量情況：&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt; 
+&lt;/div&gt; 
+&lt;p&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;﻿&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/p&gt; 
+&lt;div&gt; 
+ &lt;img alt="" src="https://oscimg.oschina.net/oscnet//c8ebd5b4ebdc22b41187bcf663870fbd.png" referrerpolicy="no-referrer"&gt; 
+&lt;/div&gt; 
+&lt;p&gt;&lt;span style="color:transparent"&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;﻿&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;﻿&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&amp;nbsp;&lt;/p&gt; 
+&lt;span id="OSC_h1_3"&gt;&lt;/span&gt; 
+&lt;h1&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;問題排查&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/h1&gt; 
+&lt;p&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;分析代碼實現，getUiToken 只是簡單的內存數據獲取並返回，沒有其他複雜操作，不存在有耗時操作&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;﻿&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/p&gt; 
+&lt;div&gt; 
+ &lt;img alt="" src="https://oscimg.oschina.net/oscnet//7d264c94f843fd53fefc04a5ec2b61cf.png" referrerpolicy="no-referrer"&gt; 
+&lt;/div&gt; 
+&lt;p&gt;&lt;span style="color:transparent"&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;﻿&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;﻿&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&amp;nbsp;&lt;/p&gt; 
+&lt;p&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;接着藉助 SGM 監控平台分析下接口耗時情況，發現方法執行的耗時都處在等待中，為什麼會有這多長的等待時間呢？&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;﻿&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/p&gt; 
+&lt;div&gt; 
+ &lt;img alt="" src="https://oscimg.oschina.net/oscnet//1c5605b1f1d9d9253dc8ed6c54437413.png" referrerpolicy="no-referrer"&gt; 
+&lt;/div&gt; 
+&lt;p&gt;&lt;span style="color:transparent"&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;﻿&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;﻿&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&amp;nbsp;&lt;/p&gt; 
+&lt;p&gt;&lt;span&gt;&lt;span&gt;&lt;span style="color:#000000"&gt;業務代碼很簡單，只是內存級別的獲取，序列化和反序列化也不可能耗時這麼久， 難道是 GC 的原因 ？ 因為 JVM 之前就配置了 -Xloggc 日誌輸出，所以先分析下 GC 日誌情況，看看 GC 是否存在異常情況（工具 gcViewer）&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;﻿&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/p&gt; 
+&lt;div&gt; 
+ &lt;img alt="" src="https://oscimg.oschina.net/oscnet//a9062cc1660d6f240fa4e602a7cadd85.png" referrerpolicy="no-referrer"&gt; 
+&lt;/div&gt; 
+&lt;p&gt;&lt;span style="color:transparent"&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;﻿&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;﻿&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&amp;nbsp;&lt;/p&gt; 
+&lt;p&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;果然，光看吞吐量 99.3% 和 full gc 次數 0，感覺性能好像還不錯的，但 4227 次 young gc （平均 20 多秒一次） 和 max 1.25 秒的耗時，就有點離譜，分析 GC 日誌詳情&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;﻿&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/p&gt; 
+&lt;div&gt; 
+ &lt;img alt="" src="https://oscimg.oschina.net/oscnet//c7163e4712619389f5446972e0f165f0.png" referrerpolicy="no-referrer"&gt; 
+&lt;/div&gt; 
+&lt;p&gt;&lt;span style="color:transparent"&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;﻿&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;﻿&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&amp;nbsp;&lt;/p&gt; 
+&lt;p&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;隨機搜查了一個 GC 耗時在 1s 以上的日誌，發現 1.02 s 的 gc 有 977.3 ms 是在處理 Ref Proc，為什麼這個耗時會這麼長 ？&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/p&gt; 
+&lt;blockquote&gt; 
+ &lt;span&gt;&lt;span&gt;&lt;span style="background-color:#ffffff; color:#333333"&gt;ref-proc 是對各種軟弱虛引用等的處理，處理 soft、weak、phantom、final、JNI 等等引用的時間&lt;/span&gt;&lt;/span&gt;&lt;/span&gt; 
+&lt;/blockquote&gt; 
+&lt;p&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;具體是那種引用類型的耗時長，可以通過增加 JVM 參數 -XX:+PrintReferenceGC 打印引用 GC 類型 ，重新上線一段時間後觀察 GC 日誌&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;﻿&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/p&gt; 
+&lt;div&gt; 
+ &lt;img alt="" src="https://oscimg.oschina.net/oscnet//557127b6d3daf4dcb964809775d3d0d6.png" referrerpolicy="no-referrer"&gt; 
+&lt;/div&gt; 
+&lt;p&gt;&lt;span style="color:transparent"&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;﻿&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;﻿&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&amp;nbsp;&lt;/p&gt; 
+&lt;p&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;發現耗時基本都在 PhantomReference 類型的對象上，為什麼會有這麼多這個對象？&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/p&gt; 
+&lt;blockquote&gt; 
+ &lt;span&gt;&lt;span&gt;&lt;span&gt;PhantomReference 是什麼？ 1、虛引用也稱為「幽靈引用」，它是最弱的一種引用關係。 2、如果一個對象僅持有虛引用，那麼它就和沒有任何引用一樣，在任何時候都可能被垃圾回收器回收。 3、為一個對象設置虛引用關聯的唯一目的只是為了能在這個對象被收集器回收時收到一個系統通知。 4、當垃圾回收器準備回收一個對象時，如果發現它還有虛引用，就會在垃圾回收後，將這個虛引用加入引用隊列，在其關聯的虛引用出隊前，不會徹底銷燬該對象。所以可以通過檢查引用隊列中是否有相應的虛引用來判斷對象是否已經被回收了。&lt;/span&gt;&lt;/span&gt;&lt;/span&gt; 
+&lt;/blockquote&gt; 
+&lt;p&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;為了搞清楚 PhantomReference 具體都是哪些對象，我們需要 dump 堆文件查看對象的分佈（內存分析工具 MAT），dump 時最好將流量摘除後操作，以免影響線上。查看直方圖中的對象發現有 4340 個虛引用對象，和 GC 日誌中的數量基本對的上。&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;﻿&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/p&gt; 
+&lt;div&gt; 
+ &lt;img alt="" src="https://oscimg.oschina.net/oscnet//5bdbcf18eaa7f63199e2311d76f088ab.png" referrerpolicy="no-referrer"&gt; 
+&lt;/div&gt; 
+&lt;p&gt;&lt;span style="color:transparent"&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;﻿&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;﻿&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&amp;nbsp;&lt;/p&gt; 
+&lt;p&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;那為什麼會有這麼多 ConnectionPhantomReference 對象呢 ？ 這個東西有什麼用呢 ？ 源碼如下 （mysql-connector-java 版本 5.1.44）&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/p&gt; 
+&lt;pre&gt;&lt;code&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;// 相關的核心邏輯&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;public&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt; &lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;class&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt; &lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;NonRegisteringDriver&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt; &lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;implements&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt; &lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;java.sql.Driver&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt; &lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;{&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;
+    &lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;protected&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt; &lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;static&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt; &lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;final&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt; &lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;ConcurrentHashMap&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;&amp;lt;ConnectionPhantomReference, ConnectionPhantomReference&amp;gt;&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt; connectionPhantomRefs &lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;=&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt; &lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;new&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt; &lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;ConcurrentHashMap&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;&amp;lt;ConnectionPhantomReference, ConnectionPhantomReference&amp;gt;&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;(&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;)&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;;&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;
+    &lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;protected&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt; &lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;static&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt; &lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;final&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt; &lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;ReferenceQueue&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;&amp;lt;ConnectionImpl&amp;gt;&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt; refQueue &lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;=&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt; &lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;new&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt; &lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;ReferenceQueue&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;&amp;lt;ConnectionImpl&amp;gt;&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;(&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;)&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;;&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt; 
+
+    &lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;protected&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt; &lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;static&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt; &lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;void&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt; &lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;trackConnection&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;(&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;Connection&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt; newConn&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;)&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt; &lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;{&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;
+        &lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;ConnectionPhantomReference&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt; phantomRef &lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;=&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt; &lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;new&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt; &lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;ConnectionPhantomReference&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;(&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;(&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;ConnectionImpl&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;)&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt; newConn&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;,&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt; refQueue&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;)&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;;&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;
+        connectionPhantomRefs&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;.&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;put&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;(&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;phantomRef&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;,&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt; phantomRef&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;)&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;;&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;
+    &lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;}&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;}&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;
+
+&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;public&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt; &lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;class&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt; &lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;ConnectionImpl&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt; &lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;extends&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt; &lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;ConnectionPropertiesImpl&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt; &lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;implements&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt; &lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;MySQLConnection&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt; &lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;{&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;
+  &lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;public&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt; &lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;ConnectionImpl&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;(&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;String&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt; hostToConnectTo&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;,&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt; &lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;int&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt; portToConnectTo&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;,&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt; &lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;Properties&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt; info&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;,&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt; &lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;String&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt; databaseToConnectTo&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;,&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt; &lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;String&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt; url&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;)&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt; &lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;throws&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt; &lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;SQLException&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt; &lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;{&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;
+    &lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;.&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;.&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;.&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;
+    &lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;NonRegisteringDriver&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;.&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;trackConnection&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;(&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;this&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;)&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;;&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;
+  &lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;}&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;}&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt; 
+&lt;p&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;通過代碼發現，每次新建數據庫連接 Connection 時都會向 connectionPhantomRefs 存放一個對象，那麼已經使用 druid （版本：1.0.15）線程池為什麼還會生成這麼多新鏈接 ？ 接着查看項目中的數據庫配置，發現數據源使用的是默認配置&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/p&gt; 
+&lt;pre&gt;&lt;code&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;# 線程池使用的默認配置
+spring:
+  datasource:
+    url: jdbc:mysql://xxxxxxxxx?useUnicode=true&amp;amp;characterEncoding=utf8&amp;amp;allowMultiQueries=true&amp;amp;serverTimezone=GMT%2B8
+    username: xxxx
+    password: xxxx
+    driver-class-name: com.mysql.jdbc.Driver
+    type: com.alibaba.druid.pool.DruidDataSource&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt; 
+&lt;p&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;﻿&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/p&gt; 
+&lt;div&gt; 
+ &lt;img alt="" src="https://oscimg.oschina.net/oscnet//e1d56e1b7808007139709112a2545684.png" referrerpolicy="no-referrer"&gt; 
+&lt;/div&gt; 
+&lt;p&gt;&lt;span style="color:transparent"&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;﻿&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;﻿&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&amp;nbsp;&lt;/p&gt; 
+&lt;p&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;默認配置中，線程池中的連接存活時間為 30 分鐘，最小閒置線程數為 0，因此雖使用了線程池也還是會不斷的創建新的鏈接，並增加到 connectionPhantomRefs 集合中，累計一定量之後就會影響 ref-proc 耗時。&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/p&gt; 
+&lt;span id="OSC_h1_4"&gt;&lt;/span&gt; 
+&lt;h1&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;如何解決 ？&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/h1&gt; 
+&lt;p&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;既然因為它累計的量大導致 gc 時長變高，那麼我們分析下 connectionPhantomRefs 的作用到底是什麼 ？ &lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;跟進 connectionPhantomRefs 引用處理對象，發現 connectionPhantomRefs 中的元素都是被 AbandonedConnectionCleanupThread 處理的&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/p&gt; 
+&lt;pre&gt;&lt;code&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;/**
+ * This class implements a thread that is responsible for closing abandoned MySQL connections,
+ * i.e., connections that are not explicitly closed. 
+ * There is only one instance of this class and there is a single thread to do this task. 
+ * This thread's executor is statically referenced in this same class.
+ *
+ * 該類實現了一個負責關閉被遺棄的 MySQL 連接的線程，即未顯式關閉的連接。該類的實例只有一個，並且由單個線程執行此任務。該線程的執行器在此類中以靜態方式引用。
+ */&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;public&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt; &lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;class&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt; &lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;AbandonedConnectionCleanupThread&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt; &lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;implements&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt; &lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;Runnable&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt; &lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;{&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;
+    &lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;private&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt; &lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;static&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt; &lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;final&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt; &lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;ExecutorService&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt; cleanupThreadExcecutorService&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;;&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;
+    &lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;static&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt; &lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;Thread&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt; threadRef &lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;=&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt; &lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;null&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;;&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;
+
+    &lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;static&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt; &lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;{&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;
+        cleanupThreadExcecutorService &lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;=&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt; &lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;Executors&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;.&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;newSingleThreadExecutor&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;(&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;new&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt; &lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;ThreadFactory&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;(&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;)&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt; &lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;{&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;
+            &lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;public&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt; &lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;Thread&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt; &lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;newThread&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;(&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;Runnable&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt; r&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;)&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt; &lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;{&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;
+                &lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;Thread&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt; t &lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;=&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt; &lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;new&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt; &lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;Thread&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;(&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;r&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;,&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt; &lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;"Abandoned connection cleanup thread"&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;)&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;;&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;
+                t&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;.&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;setDaemon&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;(&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;true&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;)&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;;&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;
+                t&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;.&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;setContextClassLoader&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;(&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;AbandonedConnectionCleanupThread&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;.&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;class&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;.&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;getClassLoader&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;(&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;)&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;)&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;;&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;
+                &lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;return&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt; threadRef &lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;=&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt; t&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;;&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;
+            &lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;}&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;
+        &lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;}&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;)&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;;&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;
+        cleanupThreadExcecutorService&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;.&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;execute&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;(&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;new&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt; &lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;AbandonedConnectionCleanupThread&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;(&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;)&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;)&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;;&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;
+    &lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;}&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;
+
+    &lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;public&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt; &lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;void&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt; &lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;run&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;(&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;)&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt; &lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;{&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;
+        &lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;for&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt; &lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;(&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;;&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;;&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;)&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt; &lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;{&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;
+            &lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;try&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt; &lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;{&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;
+                &lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;checkContextClassLoaders&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;(&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;)&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;;&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;
+                &lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;Reference&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;&amp;lt;? extends ConnectionImpl&amp;gt;&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt; ref &lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;=&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt; &lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;NonRegisteringDriver&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;.&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;refQueue&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;.&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;remove&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;(&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;5000&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;)&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;;&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;
+                &lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;if&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt; &lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;(&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;ref &lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;!=&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt; &lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;null&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;)&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt; &lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;{&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;
+                    &lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;try&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt; &lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;{&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;
+                        &lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;(&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;(&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;ConnectionPhantomReference&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;)&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt; ref&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;)&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;.&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;cleanup&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;(&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;)&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;;&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;
+                    &lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;}&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt; &lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;finally&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt; &lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;{&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;
+                        &lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;NonRegisteringDriver&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;.&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;connectionPhantomRefs&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;.&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;remove&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;(&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;ref&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;)&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;;&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;
+                    &lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;}&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;
+                &lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;}&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;
+            &lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;}&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt; &lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;catch&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt; &lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;(&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;InterruptedException&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt; e&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;)&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt; &lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;{&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;
+                threadRef &lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;=&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt; &lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;null&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;;&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;
+                &lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;return&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;;&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;
+            &lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;}&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt; &lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;catch&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt; &lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;(&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;Exception&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt; ex&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;)&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt; &lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;{&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;
+                &lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;// Nowhere to really log this.&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;
+            &lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;}&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;
+        &lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;}&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;
+    &lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;}&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;}&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt; 
+&lt;p&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;根據 com.mysql.jdbc.AbandonedConnectionCleanupThread 類註釋信息，發現該類是 mysql 連接的兜底處理邏輯，負責關閉被遺棄的 MySQL 連接，主要有兩種情況&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;1. 未顯式關閉的連接（代碼遺漏）&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;2. 異常未處理的連接（程序崩潰/未捕獲異常/網絡或事務超時導致的連接失效）&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/p&gt; 
+&lt;span id="OSC_h1_5"&gt;&lt;/span&gt; 
+&lt;h1&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;解決方案&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/h1&gt; 
+&lt;p&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;1. 優化 druid 連接池連接數配置 （按實際流量情況評估），增加連接存活時長到 59 分鐘（&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;&lt;span style="background-color:#ffffff; color:#333333"&gt;MySql wait_timeout 默認為 3600 秒&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;），最大限度減少新連接生成&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/p&gt; 
+&lt;pre&gt;&lt;code&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;spring:
+  datasource:
+    url: jdbc:mysql://xxxxxxxxx?useUnicode=true&amp;amp;characterEncoding=utf8&amp;amp;allowMultiQueries=true&amp;amp;serverTimezone=GMT%2B8
+    username: xxxx
+    password: xxxx
+    driver-class-name: com.mysql.jdbc.Driver
+    type: com.alibaba.druid.pool.DruidDataSource
+    druid:
+      # 增加線程數
+      minIdle: 4
+      maxActive: 10
+      initialSize: 4
+      # 啓動檢測線程回收
+      testWhileIdle: true
+      testOnBorrow: false
+      testOnReturn: false
+      validationQuery: select 1
+      timeBetweenEvictionRunsMillis: 60000
+      minEvictableIdleTimeMillis: 3540000&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt; 
+&lt;p&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;2. 開啓 ref-proc 並行處理：&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;&lt;span style="background-color:#f3f5f9; color:#0abf5b"&gt;-XX:+ParallelRefProcEnabled&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt; ，&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;&lt;span style="background-color:#ffffff; color:#333333"&gt; G1 官網建議&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/p&gt; 
+&lt;blockquote&gt; 
+ &lt;span&gt;&lt;span&gt;&lt;span style="background-color:#ffffff; color:#333333"&gt;Reference Object Processing Takes Too Long Information about the time taken for processing of Reference Objects is shown in the Ref Proc and Ref Enq phases. During the Ref Proc phase, G1 updates the referents of Reference Objects according to the requirements of their particular type. In Ref Enq, G1 enqueues Reference Objects into their respective reference queue if their referents were found dead. If these phases take too long, then consider enabling parallelization of these phases by using the option &lt;/span&gt;&lt;/span&gt;&lt;/span&gt; 
+ &lt;span&gt;&lt;span&gt;&lt;span style="background-color:#ffffff; color:#ff4d4f"&gt;-XX:+ParallelRefProcEnabled.&lt;/span&gt;&lt;/span&gt;&lt;/span&gt; 
+&lt;/blockquote&gt; 
+&lt;p&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;3. 由於 connectionPhantomRefs 只是作為異常情況出現的兜底處理，我們項目中使用的線程池都會自動處理資源釋放的情況，不存在手動操作的情況，是不是可以定時清理這部分的內容或者不使用，目前使用最多的兩種方式是&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/p&gt; 
+&lt;div&gt; 
+ &lt;span&gt;•&lt;/span&gt; 
+ &lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;定時任務：清理虛引用列表數據&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt; 
+&lt;/div&gt; 
+&lt;pre&gt;&lt;code&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;@Component&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;public&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt; &lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;class&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt; &lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;CleanPhantomRefsSchedule&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt; &lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;{&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;
+
+    &lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;private&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt; &lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;static&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt; &lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;final&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt; &lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;ScheduledExecutorService&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt; CLEANER_EXECUTOR &lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;=&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt; &lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;Executors&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;.&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;newSingleThreadScheduledExecutor&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;(&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;r &lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;-&amp;gt;&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt; &lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;{&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;
+        &lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;Thread&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt; t &lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;=&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt; &lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;new&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt; &lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;Thread&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;(&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;r&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;,&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt; &lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;"mysql-phantom-ref-cleaner"&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;)&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;;&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;
+        t&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;.&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;setDaemon&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;(&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;true&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;)&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;;&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;
+        &lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;return&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt; t&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;;&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;
+    &lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;}&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;)&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;;&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;
+
+    &lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;@PostConstruct&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;
+    &lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;public&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt; &lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;void&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt; &lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;doTask&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;(&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;)&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt; &lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;{&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;
+        log&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;.&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;info&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;(&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;"CleanPhantomRefsSchedule#doTask start"&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;)&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;;&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;
+        &lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;try&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt; &lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;{&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;
+            &lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;Field&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt; field &lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;=&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt; &lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;NonRegisteringDriver&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;.&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;class&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;.&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;getDeclaredField&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;(&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;"connectionPhantomRefs"&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;)&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;;&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;
+            field&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;.&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;setAccessible&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;(&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;true&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;)&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;;&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;
+            &lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;// 定時輪訓&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;
+            CLEANER_EXECUTOR&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;.&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;scheduleAtFixedRate&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;(&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;(&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;)&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt; &lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;-&amp;gt;&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt; &lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;{&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;
+                &lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;try&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt; &lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;{&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;
+                    &lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;Map&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;&amp;lt;?, ?&amp;gt;&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt; connectionPhantomRefs &lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;=&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt; &lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;(&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;Map&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;&amp;lt;?, ?&amp;gt;&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;)&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt; field&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;.&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;get&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;(&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;null&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;)&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;;&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;
+                    &lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;// 這裏我設置的稍微大一些，對 gc 沒太大影響時不進行幹預&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;
+                   &lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;if&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt; &lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;(&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;connectionPhantomRefs &lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;!=&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt; &lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;null&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt; &lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;&amp;amp;&amp;amp;&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt; connectionPhantomRefs&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;.&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;size&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;(&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;)&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt; &lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;&amp;gt;&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt; &lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;500&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;)&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt; &lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;{&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;
+                        connectionPhantomRefs&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;.&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;clear&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;(&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;)&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;;&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;
+                        log&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;.&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;info&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;(&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;"Cleared MySQL phantom references (count={})"&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;,&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt; connectionPhantomRefs&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;.&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;size&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;(&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;)&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;)&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;;&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;
+                    &lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;}&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;
+                &lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;}&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt; &lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;catch&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt; &lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;(&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;Exception&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt; e&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;)&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt; &lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;{&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;
+                    log&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;.&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;error&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;(&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;"connectionPhantomRefs clear error!"&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;,&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt; e&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;)&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;;&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;
+                &lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;}&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;
+            &lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;}&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;,&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt; &lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;1&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;,&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt; &lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;1&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;,&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt; &lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;TimeUnit&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;.&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;HOURS&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;)&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;;&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;
+        &lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;}&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt; &lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;catch&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt; &lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;(&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;NoSuchFieldException&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt; e&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;)&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt; &lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;{&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;
+            &lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;throw&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt; &lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;new&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt; &lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;IllegalStateException&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;(&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;"Failed to initialize MySQL phantom refs field"&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;,&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt; e&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;)&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;;&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;
+        &lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;}&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;
+    &lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;}&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;
+
+    &lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;@PreDestroy&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;
+    &lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;void&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt; &lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;shutdown&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;(&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;)&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt; &lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;{&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;
+        CLEANER_EXECUTOR&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;.&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;shutdownNow&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;(&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;)&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;;&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;
+    &lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;}&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;}&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt; 
+&lt;div&gt; 
+ &lt;span&gt;•&lt;/span&gt; 
+ &lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;升級 mysql-connector-java 版本（8.0 以上），可以通過參數 -Dcom.mysql.cj.disableAbandonedConnectionCleanup=true 禁用虛引用生成&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt; 
+&lt;/div&gt; 
+&lt;pre&gt;&lt;code&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt; &lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;private&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt; &lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;static&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt; &lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;boolean&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;&amp;nbsp;abandonedConnectionCleanupDisabled&amp;nbsp;&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;=&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;&amp;nbsp;&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;Boolean&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;.&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;getBoolean&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;(&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;"com.mysql.cj.disableAbandonedConnectionCleanup"&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;)&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;;&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;
+
+ &lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;protected&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt; &lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;static&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt; &lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;void&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt; &lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;trackConnection&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;(&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;MysqlConnection&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt; conn&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;,&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt; &lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;NetworkResources&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt; io&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;)&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt; &lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;{&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;
+    &lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;if&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;&amp;nbsp;&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;(&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;!&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;abandonedConnectionCleanupDisabled&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;)&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;&amp;nbsp;&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;{&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;
+&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;···
+&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;ConnectionFinalizerPhantomReference&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;&amp;nbsp;reference&amp;nbsp;&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;=&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;&amp;nbsp;&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;new&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;&amp;nbsp;&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;ConnectionFinalizerPhantomReference&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;(&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;conn&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;,&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;&amp;nbsp;io&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;,&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;&amp;nbsp;referenceQueue&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;)&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;;&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;
+&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;connectionFinalizerPhantomRefs&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;.&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;add&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;(&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;reference&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;)&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;;&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;
+&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;···&amp;nbsp;
+&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;}&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;
+&amp;nbsp;&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;}&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt; 
+&lt;p&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;我採用的是定時任務這種方式，因為項目升級 mysql-connector-java 版本會存在兼容性問題，其次是在虛引用量比較小的情況我希望這種兜底策略依舊可以生效，所以定時任務中只有在 connectionPhantomRefs.size() &amp;gt; 500 時才會幹預清理，而不是直接杜絕使用&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/p&gt; 
+&lt;span id="OSC_h1_6"&gt;&lt;/span&gt; 
+&lt;h1&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;驗證優化結果&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/h1&gt; 
+&lt;p&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;代碼及配置調整完成後再次上線，等待一天後，繼續分析 GC 日誌和堆轉儲文件 &lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;﻿&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/p&gt; 
+&lt;div&gt; 
+ &lt;img alt="" src="https://oscimg.oschina.net/oscnet//6440df82f8599d87cc53b61026e84e84.png" referrerpolicy="no-referrer"&gt; 
+&lt;/div&gt; 
+&lt;p&gt;&lt;span style="color:transparent"&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;﻿&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;﻿&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&amp;nbsp;&lt;/p&gt; 
+&lt;p&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;﻿&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/p&gt; 
+&lt;div&gt; 
+ &lt;img alt="" src="https://oscimg.oschina.net/oscnet//c58d0dbaaa585a67a28e5d7e697da2e7.png" referrerpolicy="no-referrer"&gt; 
+&lt;/div&gt; 
+&lt;p&gt;&lt;span style="color:transparent"&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;﻿&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;﻿&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&amp;nbsp;&lt;/p&gt; 
+&lt;p&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;﻿&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/p&gt; 
+&lt;div&gt; 
+ &lt;img alt="" src="https://oscimg.oschina.net/oscnet//5f41e588501b799ae57e534b121b6004.png" referrerpolicy="no-referrer"&gt; 
+&lt;/div&gt; 
+&lt;p&gt;&lt;span style="color:transparent"&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;﻿&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;﻿&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&amp;nbsp;&lt;/p&gt; 
+&lt;p&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;結論：上線後近 12 小時數據，GC 時間最大停頓時間由原先 1.25 降低至 0.1 秒，young gc 頻率由原先的 20 秒一次優化到 6 分鐘一次，PhantomReference 引用耗時縮減到 0.0001966 s， 持續觀察幾天，線上服務無超時告警且系統響應正常，優化符合預期結果。&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/p&gt;
+                                                                                    &lt;/div&gt;
+                                                                            </description>
+      <link>https://my.oschina.net/u/4090830/blog/18688164</link>
+      <guid isPermaLink="false">https://my.oschina.net/u/4090830/blog/18688164</guid>
+      <pubDate>Mon, 18 Aug 2025 03:08:48 GMT</pubDate>
+      <author>原創</author>
+    </item>
+    <item>
+      <title>360 官宣「All in Agent」戰略</title>
+      <description>&lt;div class="content"&gt;
+                                                                                            &lt;p&gt;在日前舉辦的 360 集團 20 週年榮耀慶典上，創始人周鴻禕發佈 360 集團下一階段的公司戰略：All In Agent。&lt;/p&gt; 
+&lt;p&gt;周鴻禕表示，AI 的巨大機遇就在眼前，智能體將帶來個人角色和組織形態的重塑，當前正是重新出發、轉向新賽道的時刻，All in Agent 就是 360 的明確路線圖。周鴻禕勉勵全體員工要上下同心，堅定聚焦，力爭實現 「三個超級」：&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt;一是鼓勵 360 全員建立 AI 信仰、培養 AI 素養，思考「如何用智能體放大自身價值」，全員都要學會使用、搭建、管理、監督、領導智能體，與智能體深度協同，每個人都可以把自己打造成超級個體、超級員工；&lt;/li&gt; 
+ &lt;li&gt;二是要求全公司各業務線、各部門以智能體化率衡量所有業務流程、崗位職能的進化水平，打造超級團隊、超級組織；&lt;/li&gt; 
+ &lt;li&gt;三是用智能體重塑公司所有產品。在軟件開發 3.0 時代，新產品必須以智能體為範式進行功能開發，已在運營、服務的產品，必須以智能體進行重塑。&lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;p&gt;為適配「All in Agent」戰略，360 全面升級使命、願景與價值觀：使命升級為「讓 AI 世界更安全更美好」，願景升級為「成為最安全的 AI 創新者」，核心價值觀聚焦「用戶為先、始終創業、持續創新、追求卓越、協作律己」五大維度。&lt;/p&gt; 
+&lt;p&gt;&lt;img height="275" src="https://oscimg.oschina.net/oscnet/up-3c375902fe76b5eb714c9f20f3d280a7e19.png" width="500" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p&gt;同時，周鴻禕公佈了公司在智能體領域的技術突破：目前納米 AI 已實現 L3 級推理型智能體連續執行 100 步任務 0 出錯、單次消耗 Token100 萬、調用 100+工具，任務成功率達 98.2%。&lt;/p&gt;
+                                                                                &lt;/div&gt;
+                                                                            </description>
+      <link>https://www.oschina.net/news/366872</link>
+      <guid isPermaLink="false">https://www.oschina.net/news/366872</guid>
+      <pubDate>Mon, 18 Aug 2025 02:58:48 GMT</pubDate>
+      <author>來源: OSCHINA</author>
+    </item>
+    <item>
+      <title>2025 Gtest 全球軟件測試技術峯會售票進行中，前沿技術等你解鎖！</title>
+      <description>&lt;div class="content"&gt;
+                                                                                                                                                                                                                                        &lt;p style="text-align:justify"&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;Gtest 大會，測試人的年度盛宴！&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;span&gt;&lt;span&gt;為促進測試技術與行業應用的深度交流，2025 年 9 月 5 日-9 月 6 日，「全球軟件測試技術峯會」（簡稱：Gtest）將在北京市麗亭華苑酒店舉辦。本屆峯會將聚集超 500 位來自&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;測試、質量、大模型、開源測試工具等&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;領域的行業專家、技術負責人及一線工程師，構建多元化交流與合作平台。&lt;/span&gt;&lt;/span&gt;&lt;/p&gt; 
+&lt;p style="text-align:center"&gt;&lt;img height="312" src="https://oscimg.oschina.net/oscnet/up-c7ebd1f7f5fb6544dff1a03652ee9ed5dc7.png" width="554" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;strong&gt;&lt;span&gt;&lt;span&gt;&lt;span style="color:#000000"&gt;這是一場面向全球測試領域的頂尖技術峯會，如果您關注：&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/strong&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;span&gt;&lt;span&gt;&lt;span style="color:#000000"&gt;·&amp;nbsp;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;&lt;span style="color:#000000"&gt;大模型與智能測試的結合模式與落地實踐&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;span&gt;&lt;span&gt;&lt;span style="color:#000000"&gt;· 銀行、保險等典型行業測試技術的趨勢與創新路徑&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;span&gt;&lt;span&gt;&lt;span style="color:#000000"&gt;· 證券、遊戲等行業領域從業者的實戰經驗與方法論&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;span&gt;&lt;span&gt;&lt;span style="color:#000000"&gt;· 行業標杆企業的測試技術與管理案例&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;span&gt;&lt;span&gt;&lt;span style="color:#000000"&gt;· 測試團隊的組織與效率優化&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;span&gt;&lt;span&gt;&lt;span style="color:#000000"&gt;本次峯會將為您提供深入交流與學習的契機。&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;span&gt;&lt;span&gt;&lt;span style="color:#000000"&gt;&lt;strong&gt;參會您將收穫&lt;/strong&gt;：&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;span&gt;&lt;span&gt;&lt;span style="color:#000000"&gt;· 瞭解軟件測試領域的前沿技術應用與創新趨勢&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;span&gt;&lt;span&gt;&lt;span style="color:#000000"&gt;· 參考行業企業的真實業務實踐案例&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;span&gt;&lt;span&gt;&lt;span style="color:#000000"&gt;· 建立與測試行業從業者及專家的專業聯繫&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;span&gt;&lt;span&gt;&lt;span style="color:#000000"&gt;· 掌握軟件測試行業的發展動態與方向&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/p&gt; 
+&lt;p style="text-align:justify"&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;strong&gt;&lt;span&gt;&lt;span&gt;&lt;strong&gt;精彩議題搶先看：&lt;/strong&gt;&lt;/span&gt;&lt;/span&gt;&lt;/strong&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/p&gt; 
+&lt;p style="text-align:center"&gt;&lt;img height="4618" src="https://oscimg.oschina.net/oscnet/up-2545d00b1641a0a012ed7449712f41ab33c.png" width="1712" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;span&gt;&lt;span&gt;&lt;span style="color:#000000"&gt;時間：2025 年 9 月 5 日-9&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;&lt;span style="color:#000000"&gt;月&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;&lt;span style="color:#000000"&gt;6&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;&lt;span style="color:#000000"&gt;日&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;span&gt;&lt;span&gt;&lt;span style="color:#000000"&gt;地點：北京麗亭華苑酒店 (北京市海淀區知春路 25 號)&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;span&gt;&lt;span&gt;&lt;span style="color:#000000"&gt;席位有限，速來鎖定你的年度技術盛會！&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;span&gt;&lt;span&gt;&lt;span style="color:#000000"&gt;立即購票&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;&lt;span style="color:#000000"&gt;：&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fwww.gtest.net.cn%2Fbuy%2F" rel="nofollow" target="_blank"&gt;&lt;span&gt;&lt;span&gt;&lt;span style="color:#000000"&gt;https://www.gtest.net.cn/buy/&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/a&gt;&lt;/p&gt;
+                                                                                    &lt;/div&gt;
+                                                                            </description>
+      <link>https://my.oschina.net/u/4806939/blog/18688477</link>
+      <guid isPermaLink="false">https://my.oschina.net/u/4806939/blog/18688477</guid>
+      <pubDate>Mon, 18 Aug 2025 02:53:48 GMT</pubDate>
+      <author>原創</author>
+    </item>
     <item>
       <title>先進算力新選擇 | 2025 華為算力場景發佈會暨北京 xPN 夥伴大會成功舉辦</title>
       <description>&lt;div class="content"&gt;
@@ -566,141 +896,55 @@
       <author>來源: OSCHINA</author>
     </item>
     <item>
-      <title>谷歌搜索上線「首選來源」功能，可在搜索結果中設置首選網站</title>
+      <title>馬斯克測試由 Grok 4 Mini 驅動的全新 𝕏 算法</title>
       <description>&lt;div class="content"&gt;
-                                                                                            &lt;p&gt;兩個月前，Google 在搜索實驗室中推出了一項&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fsupport.google.com%2Fwebsearch%2Fanswer%2F16379181%3Fhl%3Den%26co%3DGENIE.Platform%253DAndroid%26oco%3D0" target="_blank"&gt;名為「首選來源」的實驗性功能&lt;/a&gt;，旨在通過允許用戶選擇自己喜歡的新聞來源，從而更好地掌控搜索體驗。&lt;/p&gt; 
-&lt;p&gt;現在，該功能即將走出實驗室，正式投入使用。&lt;/p&gt; 
-&lt;p&gt;&lt;img alt="" src="https://oscimg.oschina.net/oscnet/up-fb00c82d42489e7e3dea4b3faa53b144ffd.png" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;p&gt;該功能與 Google 純算法管理不同，它允許您挑選在搜索結果的「熱門新聞」部分中排名靠前的新聞網站和博客。&lt;/p&gt; 
-&lt;p&gt;要在 Android 或 iOS 設備上開始使用，請在某個主題或近期事件的搜索結果中找到「熱門新聞」部分。點擊「熱門新聞」標題右側的星形圖標。在這裏，您可以通過勾選其名稱旁邊的複選框來搜索並選擇您喜歡的來源；例如，您可以搜索各種感興趣的網站，然後勾選其名稱旁邊的複選框。稍後修改列表也同樣簡單。點擊相同的星形圖標，然後選中或取消選中任意來源旁邊的藍色複選框。&lt;/p&gt; 
-&lt;p&gt;&lt;img alt="" src="https://oscimg.oschina.net/oscnet/up-7d4e154006e096dba21a6822001926254fe.png" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;p&gt;重新加載結果後，來自您來源的內容會更頻繁地出現，有時甚至會在某些查詢的主「熱門新聞」區塊下方專門的「來自您的來源」部分中顯示。Google 指出，在測試階段，超過一半選擇加入的用戶選擇了至少四個來源。&lt;/p&gt; 
-&lt;p&gt;此功能目前適用於美國和印度的英語搜索。如果您在搜索實驗室階段已經設置了偏好設置，Google 已自動將其遷移至新設置，因此您的設置應該已經生效。&lt;/p&gt;
+                                                                                            &lt;p&gt;&lt;span&gt;馬斯克近日&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fx.com%2Felonmusk%2Fstatus%2F1956580440136966203" target="_blank"&gt;透露&lt;/a&gt;，他正在測試由 Grok 4 Mini 驅動的全新 𝕏 算法，並明確表示：「它確實更好。」 &lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;img height="732" src="https://static.oschina.net/uploads/space/2025/0818/102119_fy42_2720166.png" width="1270" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;span&gt;根據他的説法，這一新算法在性能上有明顯提升，但要將其全面推廣給所有用戶，需要動用約 2 萬塊 GPU，並且會帶來更高的延遲。儘管如此，馬斯克仍認為「為了獲得更好的性能，這些代價是值得的」。&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;span&gt;目前尚未公開該算法的具體技術細節，如是否用於推薦系統、內容排序或 AI 生成內容優化等，但從馬斯克的表態來看，Grok 4 Mini 在 𝕏 平台的應用已進入實測階段，未來可能成為 𝕏 體驗升級的核心技術之一。&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;馬斯克透露他正在測試由首次公開的 Grok 4 Mini 模型驅動的𝕏平台新算法，並表示全面推廣需要約 20,000 塊 GPU。&lt;/p&gt;
                                                                                 &lt;/div&gt;
                                                                             </description>
-      <link>https://www.oschina.net/news/366448</link>
-      <guid isPermaLink="false">https://www.oschina.net/news/366448</guid>
-      <pubDate>Fri, 15 Aug 2025 08:31:00 GMT</pubDate>
+      <link>https://www.oschina.net/news/366866</link>
+      <guid isPermaLink="false">https://www.oschina.net/news/366866</guid>
+      <pubDate>Wed, 13 Aug 2025 02:25:00 GMT</pubDate>
       <author>來源: OSCHINA</author>
     </item>
     <item>
-      <title>谷歌擬投資 90 億美元擴大雲計算和 AI 基礎設施</title>
+      <title>我國空間站首次應用專業領域 AI 大模型</title>
       <description>&lt;div class="content"&gt;
-                                                                                            &lt;p&gt;Alphabet 旗下的谷歌週三表示，未來兩年將在俄克拉荷馬州再投資 90 億美元，用於擴展雲計算和人工智能基礎設施。該公司將在斯蒂爾沃特（Stillwater）建立一個新的數據中心園區，並擴大其普賴爾（Pryor）設施，以加強美國的人工智能和雲計算能力，以及教育和勞動力計劃。&lt;/p&gt; 
-&lt;p&gt;&lt;img alt="" src="https://oscimg.oschina.net/oscnet/up-5bd38eb6d8b71340a2e6cee7196e4432493.png" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;p&gt;大型科技公司之間日益激烈的競爭，促使它們在人工智能服務需求激增之際，斥巨資建設新的數據中心站點和技能開發。&lt;/p&gt; 
-&lt;p&gt;谷歌表示，一部分支出包括在其之前宣佈的 2025 年資本支出計劃中，而其餘部分則指定用於未來。&lt;/p&gt; 
-&lt;p&gt;上個月，Alphabet 將年度資本支出計劃從之前的 750 億美元提高到 850 億美元左右，並暗示明年還會有更多的資本支出計劃。&lt;/p&gt; 
-&lt;p&gt;Alphabet 及其同行為他們在人工智能方面的鉅額支出進行了辯護，稱這對推動增長和改進產品至關重要。&lt;/p&gt; 
-&lt;p&gt;上週，谷歌還承諾為美國高等教育機構和非營利組織提供價值 10 億美元的人工智能教育和培訓。OpenAI、Anthropic 和亞馬遜等競爭對手也在教育領域推動了類似的人工智能項目。&lt;/p&gt;
+                                                                                            &lt;p&gt;據中國載人航天工程辦公室消息，北京時間 2025 年 8 月 15 日 22 時 47 分，經過約 6.5 小時的出艙活動，神舟二十號乘組航天員陳冬、陳中瑞、王傑密切協同，在空間站機械臂和地面科研人員的配合支持下，圓滿完成既定任務，出艙航天員陳冬、王傑已安全返回問天實驗艙，出艙活動取得圓滿成功。&lt;/p&gt; 
+&lt;p&gt;與以往不同的是，此次神二十乘組在開展工作時有了一個新的助手，就是由天舟九號貨運飛船搭載上行的「悟空 AI」大模型。在神二十乘組第三次出艙活動的準備工作中，「悟空 AI」大模型就發揮了輔助支撐作用，同時它還為航天員在軌工作提供了智能化、專業化的支持。&lt;/p&gt; 
+&lt;p&gt;「悟空 AI」基於國內開源模型開發，結合載人航天飛行任務需求，採用預訓練和指令微調技術，構建了專業領域大語言模型和以航天飛行知識規範為核心的知識庫。&lt;/p&gt; 
+&lt;p&gt;&lt;strong&gt;中國航天員科研訓練中心，鄒鵬飛：&lt;/strong&gt;航天員根據他的需要去詢問「悟空 AI」，比如説今天有哪些工作，在工作過程中可能有哪些操作的指南性質的、説明性質的知識。&lt;/p&gt; 
+&lt;p&gt;&lt;img height="264" src="https://oscimg.oschina.net/oscnet/up-3f0d42fe3a0577cb2b09461d25dd5333bde.png" width="500" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p&gt;大模型技術在我國空間站首次應用驗證，構建了天地協同的智能問答支持系統，通過地面和在軌兩個模型，分別提供專業知識深度解析能力和解決重難點問題。&lt;/p&gt; 
+&lt;p&gt;&lt;strong&gt;中國航天員科研訓練中心，鄒鵬飛：&lt;/strong&gt;「悟空 AI」大模型為航天員在軌的複雜操作和故障處置提供快速有效的信息支持。助力航天員更有效地開展工作，豐富在軌的心理保障，也有助於天地協同效率的提高。&lt;/p&gt; 
+&lt;p&gt;此外，針對載人航天飛行任務專業多元、類型複雜、數據海量等特點，「悟空 AI」大模型通過開發場景化數據處理等多種功能，確保響應快速，回答內容嚴謹正確，後續可拓展增加&lt;strong&gt;任務規劃、數據分析、智能預測&lt;/strong&gt;等功能。「悟空 AI」大模型在軌一個月運行狀態穩定，乘組航天員反饋良好，這一成果標誌着我國空間站在軌智能化應用取得重要進展。&lt;/p&gt;
                                                                                 &lt;/div&gt;
                                                                             </description>
-      <link>https://www.oschina.net/news/366443</link>
-      <guid isPermaLink="false">https://www.oschina.net/news/366443</guid>
-      <pubDate>Fri, 15 Aug 2025 08:27:00 GMT</pubDate>
+      <link>https://www.oschina.net/news/366864</link>
+      <guid isPermaLink="false">https://www.oschina.net/news/366864</guid>
+      <pubDate>Wed, 13 Aug 2025 02:18:00 GMT</pubDate>
       <author>來源: OSCHINA</author>
     </item>
     <item>
-      <title>英國啓動 AI 犯罪地圖計劃，2030 年前鎖定高風險區域</title>
+      <title>阿里推出多模態深度研究智能體 WebWatcher</title>
       <description>&lt;div class="content"&gt;
-                                                                                            &lt;p style="color:#242424; margin-left:0; margin-right:0; text-align:left"&gt;&lt;span style="color:#000000"&gt;據 neowin 消息，英國政府科學、創新和技術部近日宣佈啓動「犯罪數據集中挑戰賽」，目標是在 2030 年前為英格蘭和威爾士打造一張由人工智能驅動的實時犯罪地圖。該地圖旨在預測持刀犯罪和反社會行為等高風險事件的發生地點，協助警方提前部署力量、主動幹預。&lt;/span&gt;&lt;/p&gt; 
-&lt;p style="color:#242424; margin-left:0; margin-right:0; text-align:left"&gt;&lt;span style="color:#000000"&gt;該項目隸屬英國耗資 5 億英鎊的「研發任務加速器」計劃，初始投資為 400 萬英鎊，原型預計在 2026 年 4 月完成。系統將整合警方、地方議會、社會服務機構等多方數據，包括已知罪犯的犯罪記錄與行為模式，用於支持「更安全街道」計劃——力爭十年內將持刀犯罪及針對女性的暴力犯罪減少一半。&lt;/span&gt;&lt;/p&gt; 
-&lt;p style="color:#242424; margin-left:0; margin-right:0; text-align:left"&gt;&lt;span style="color:#000000"&gt;英國科技大臣彼得·凱爾表示，人工智能應「服務於受害者而非破壞者」，並獲得了鄰裏守望、本·金塞拉信託等組織的支持，認為該技術可成為執法部門高效調配資源的有力工具。&lt;/span&gt;&lt;/p&gt; 
-&lt;p style="color:#242424; margin-left:0; margin-right:0; text-align:left"&gt;&lt;span style="color:#000000"&gt;然而，聖吉爾斯信託基金會首席執行官特蕾西·伯利提醒，該技術需謹慎使用，防止特定羣體遭到不公平對待，並強調應結合早期幹預、反貧困和反不平等等「根本性」措施。一些觀察人士指出，政府尚未明確數據濫用防範和隱私保障的具體細則，這與英國一貫強調 AI 安全的立場形成反差。&lt;/span&gt;&lt;/p&gt; 
-&lt;p style="color:#242424; margin-left:0; margin-right:0; text-align:left"&gt;&lt;span style="color:#000000"&gt;該挑戰賽建立在內政部現有刀具犯罪熱點繪圖技術及「更安全街道」倡議基礎上，將拓展數據源、深化分析，以更精準地識別犯罪模式並評估幹預成效。政府還計劃增派 1.3 萬名警力和執法人員配合新技術應用。&lt;/span&gt;&lt;/p&gt; 
-&lt;p style="color:#242424; margin-left:0; margin-right:0; text-align:left"&gt;&lt;span style="color:#000000"&gt;這是「研發任務加速器」計劃中的第二個重大挑戰。首個挑戰是「清潔能源挑戰」，旨在到 2030 年將夜間和週末電力需求削減 2 吉瓦，相當於 150 萬戶家庭的用電量。政府表示，未來還將把 AI 應用擴展至 NHS（國民醫療服務體系）及經濟增長等更多領域。&lt;/span&gt;&lt;/p&gt;
+                                                                                            &lt;p style="color:#242424; margin-left:0; margin-right:0; text-align:left"&gt;阿里巴巴自然語言處理團隊&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fmp.weixin.qq.com%2Fs%2Fwsm1OBCpYao63TPCnsnFdg" target="_blank"&gt;宣佈&lt;/a&gt;推出 WebWatcher，這是一個開源的多模態深度研究智能體，旨在突破現有閉源系統和開源 Agent 在多模態深度研究領域的侷限性。WebWatcher 通過整合網頁瀏覽、圖像搜索、代碼解釋器和內部 OCR 等多種工具，能夠像人類研究員一樣處理複雜的多模態任務，展現出強大的視覺理解、邏輯推理、知識調用、工具調度和自我驗證能力。&lt;/p&gt; 
+&lt;p style="color:#242424; margin-left:0; margin-right:0; text-align:left"&gt;WebWatcher 的開發團隊指出，儘管現有的閉源系統如 OpenAI 的 DeepResearch 在文本深度研究方面表現出色，但它們大多侷限於純文本環境，難以處理現實世界中複雜的圖像、圖表和混合內容。而現有的開源 Agent 也面臨兩大瓶頸:一類是專注於文本檢索的 Agent，雖然能夠整合信息，但無法處理圖像;另一類是視覺 Agent，雖然能夠識別圖像，但缺乏跨模態推理和多工具協同能力。WebWatcher 正是為瞭解決這些瓶頸而設計的。&lt;/p&gt; 
+&lt;p style="color:#242424; margin-left:0; margin-right:0; text-align:left"&gt;WebWatcher 的技術方案覆蓋了從數據構建到訓練優化的完整鏈路，其核心目標是讓多模態 Agent 在高難度多模態深度研究任務中具備靈活推理和多工具協作能力。為此，研究團隊設計了一個全自動多模態數據生成流程，通過隨機遊走收集跨模態知識鏈，並引入信息模糊化技術，提升任務的不確定性和複雜性。所有複雜問題樣本通過 QA-to-VQA 轉換模塊擴展為多模態版本，進一步增強了模型的跨模態理解能力。&lt;/p&gt; 
+&lt;p style="color:#242424; margin-left:0; margin-right:0; text-align:left"&gt;&lt;img height="222" src="https://oscimg.oschina.net/oscnet/up-49fb7e96ad99da53f5c2a535d842f908428.png" width="500" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p style="color:#242424; margin-left:0; margin-right:0; text-align:left"&gt;在高質量推理軌跡構建與後訓練方面，WebWatcher 採用了 Action-Observation 驅動的軌跡生成方法，通過收集真實的多工具交互軌跡並進行監督微調（SFT），讓模型在訓練初期快速掌握多模態 ReAct 式推理和工具調用的基本模式。隨後，模型進入強化學習階段，通過 GRPO 進一步提升多模態 Agent 在複雜環境下的決策能力。&lt;/p&gt; 
+&lt;p style="color:#242424; margin-left:0; margin-right:0; text-align:left"&gt;為了全面驗證 WebWatcher 的能力，研究團隊提出了 BrowseComp-VL，這是 BrowseComp 在視覺-語言任務上的擴展版本，旨在逼近人類專家的跨模態研究任務難度。在多輪嚴格評測中，WebWatcher 在複雜推理、信息檢索、知識整合以及聚合類信息尋優等任務上全面領先於當前主流的開源與閉源多模態大模型。&lt;/p&gt; 
+&lt;p style="color:#242424; margin-left:0; margin-right:0; text-align:left"&gt;具體來説，在人類&lt;span&gt;終極&lt;/span&gt;考試（Humanity’s Last Exam，HLE-VL）這一多步複雜推理基準上，WebWatcher 以 13.6% 的 Pass@1 分數一舉奪魁，大幅領先於 GPT-4o(9.8%)、Gemini2.5-flash(9.2%) 和 Qwen2.5-VL-72B(8.6%) 等代表性模型。&lt;/p&gt; 
+&lt;p style="color:#242424; margin-left:0; margin-right:0; text-align:left"&gt;在更貼近真實多模態搜索的 MMSearch 評測中，WebWatcher 的 Pass@1 得分高達 55.3%，相比 Gemini2.5-flash(43.9%) 和 GPT-4o(24.1%) 大幅領先。在 LiveVQA 評測中，WebWatcher 的 Pass@1 成績達到 58.7%，領先於其他主流模型。在最具綜合挑戰的 BrowseComp-VL 基準上，WebWatcher 以 27.0% 的平均得分 (Pass@1)&lt;span&gt;遙遙領先&lt;/span&gt;，成績提升超過一倍。&lt;/p&gt;
                                                                                 &lt;/div&gt;
                                                                             </description>
-      <link>https://www.oschina.net/news/366442</link>
-      <guid isPermaLink="false">https://www.oschina.net/news/366442</guid>
-      <pubDate>Fri, 15 Aug 2025 08:26:00 GMT</pubDate>
+      <link>https://www.oschina.net/news/366863</link>
+      <guid isPermaLink="false">https://www.oschina.net/news/366863</guid>
+      <pubDate>Wed, 13 Aug 2025 02:10:00 GMT</pubDate>
       <author>來源: OSCHINA</author>
-    </item>
-    <item>
-      <title>彭博社：美國政府正在討論入股英特爾</title>
-      <description>&lt;div class="content"&gt;
-                                                                                            &lt;p&gt;&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fwww.bloomberg.com%2Fnews%2Farticles%2F2025-08-14%2Ftrump-administration-is-said-to-discuss-us-taking-stake-in-intel" target="_blank"&gt;彭博社&lt;/a&gt;&lt;span style="color:#000000"&gt;報道稱，美國政府正在商談入股英特爾的事宜。該交易旨在幫助英特爾擴大其在美國的製造業務，包括其一再推遲的俄亥俄州芯片工廠。&lt;/span&gt;&lt;/p&gt; 
-&lt;p&gt;&lt;img height="339" src="https://oscimg.oschina.net/oscnet/up-80c6592babe0ff263cc952804448e9cc973.png" width="500" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;p&gt;&lt;span style="color:#000000"&gt;不到一週前，美國總統唐納德·特朗普堅持要求英特爾首席執行官陳立武辭職，理由是其存在利益衝突。&lt;/span&gt;&lt;/p&gt; 
-&lt;p&gt;&lt;span style="color:#000000"&gt;陳立武於 8 月 11 日與特朗普政府會面，旨在平息美國政府的擔憂，並探索公司與政府合作的途徑。據彭博社報道，此次會面引發了美國政府直接入股該公司的討論。&lt;/span&gt;&lt;/p&gt; 
-&lt;p&gt;&lt;span style="color:#000000"&gt;英特爾拒絕發表評論。&lt;/span&gt;&lt;/p&gt; 
-&lt;p&gt;&lt;span style="color:#000000"&gt;英特爾發言人在一份聲明中表示：「英特爾堅定地致力於支持特朗普總統加強美國技術和製造業領導地位的努力。我們期待繼續與特朗普政府合作，推進這些共同的優先事項，但我們不會對謠言或猜測發表評論。」&lt;/span&gt;&lt;/p&gt;
-                                                                                &lt;/div&gt;
-                                                                            </description>
-      <link>https://www.oschina.net/news/366436</link>
-      <guid isPermaLink="false">https://www.oschina.net/news/366436</guid>
-      <pubDate>Fri, 15 Aug 2025 08:11:00 GMT</pubDate>
-      <author>來源: OSCHINA</author>
-    </item>
-    <item>
-      <title>谷歌 Chrome 測試新功能，支持一鍵恢復近期標籤組</title>
-      <description>&lt;div class="content"&gt;
-                                                                                            &lt;p&gt;科技媒體 Windows Report 報道稱，在 Canary 頻道最新 Chrome 瀏覽器中，谷歌引入了多項實驗性改進，進一步提升用戶使用和管理標籤組體驗。&lt;/p&gt; 
-&lt;p&gt;此版本在新標籤頁增加了"你的標籤組"卡片，可展示近期使用的標籤組並支持一鍵恢復。用戶可通過卡片選項隱藏或關閉標籤組，也能快速創建新組。&lt;/p&gt; 
-&lt;p&gt;&lt;img alt="" src="https://oscimg.oschina.net/oscnet/up-b0ea1d6c85d6be1553759ffe4e51c302615.png" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;p&gt;&lt;img alt="" src="https://oscimg.oschina.net/oscnet/up-85c1be8885ce15cbf61e3abbe181b6dc6cb.png" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;p&gt;此外，Chrome 正在測試"新標籤自動加入活躍組"功能，使新打開的頁面自動歸類到當前工作組。&lt;/p&gt; 
-&lt;p&gt;&lt;img alt="" src="https://oscimg.oschina.net/oscnet/up-68d2694902c68fc211e53cb8bdbd27575d8.png" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;p&gt;&lt;img alt="" src="https://oscimg.oschina.net/oscnet/up-9e6b20321712ac644f273f85aaa5d07ffe3.png" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;p&gt;同時，地址欄新增 AI Mode 入口，用戶可通過快捷鍵直接切換至谷歌 AI 搜索界面。這些改進旨在幫助用戶更高效地組織和管理瀏覽會話。&lt;/p&gt;
-                                                                                &lt;/div&gt;
-                                                                            </description>
-      <link>https://www.oschina.net/news/366434</link>
-      <guid isPermaLink="false">https://www.oschina.net/news/366434</guid>
-      <pubDate>Fri, 15 Aug 2025 08:03:00 GMT</pubDate>
-      <author>來源: OSCHINA</author>
-    </item>
-    <item>
-      <title>HarmonyOS NEXT 會議應用——多設備協同與應用接續（高級）</title>
-      <description>&lt;div class="content"&gt;
-                                                                                            &lt;p style="color:#555555; margin-left:0; margin-right:0; text-align:left"&gt;踏入鴻蒙世界的敲門磚，標誌着您在技術征途上的全新起點，提升就業競爭力，獲得行業認可，點亮職業成長先機，快人一步搶佔未來應用開發賽道！&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fdeveloper.huawei.com%2Fconsumer%2Fcn%2Ftraining%2Fdev-cert-detail%2F101666948302721398%3Fha_source%3Dhmosclass-infoq%26ha_sourceId%3D89000233" target="_blank"&gt;https://developer.huawei.com/consumer/cn/training/dev-cert-detail/101666948302721398?ha_source=hmosclass-infoq&amp;amp;ha_sourceId=89000233&lt;/a&gt;&lt;/p&gt; 
-&lt;p style="color:#555555; margin-left:0; margin-right:0; text-align:left"&gt;在當今數字化辦公的大趨勢下，高效的會議協作變得尤為重要。HarmonyOS NEXT 提供了強大的分佈式能力，為開發支持多設備協同與應用接續的會議應用創造了有利條件。本文將詳細闡述如何基於 HarmonyOS NEXT 開發這樣一個會議應用，以提升會議協作效率。&lt;/p&gt; 
-&lt;p style="color:#555555; margin-left:0; margin-right:0; text-align:left"&gt;&lt;strong&gt;會議應用的多端協同架構設計&lt;/strong&gt;&lt;/p&gt; 
-&lt;p style="color:#555555; margin-left:0; margin-right:0; text-align:left"&gt;&lt;strong&gt;核心功能&lt;/strong&gt;&lt;/p&gt; 
-&lt;p style="color:#555555; margin-left:0; margin-right:0; text-align:left"&gt;1.&amp;nbsp;&lt;strong&gt;會議共享：&lt;/strong&gt;允許參會者在不同設備間共享會議相關的資料、文件、演示文稿等，實現信息的實時互通。&lt;/p&gt; 
-&lt;p style="color:#555555; margin-left:0; margin-right:0; text-align:left"&gt;2.&amp;nbsp;&lt;strong&gt;設備無縫切換：&lt;/strong&gt;支持用戶在手機、PC 等不同設備之間自由切換會議進程，確保會議的連續性，就像在同一設備上操作一樣流暢。&lt;/p&gt; 
-&lt;p style="color:#555555; margin-left:0; margin-right:0; text-align:left"&gt;3.&amp;nbsp;&lt;strong&gt;實時內容同步：&lt;/strong&gt;保證會議中的各種內容，如會議記錄、發言內容、文件修改等，在所有參與設備上實時更新，讓參會者獲取一致的信息。&lt;/p&gt; 
-&lt;p style="color:#555555; margin-left:0; margin-right:0; text-align:left"&gt;4.&amp;nbsp;&lt;strong&gt;協同編輯：&lt;/strong&gt;參會者可以同時對會議文檔進行編輯，系統自動處理衝突，實現高效的團隊協作。&lt;/p&gt; 
-&lt;p style="color:#555555; margin-left:0; margin-right:0; text-align:left"&gt;&lt;strong&gt;如何使用 onContinue() + onNewWant() 實現應用接續&lt;/strong&gt;&lt;/p&gt; 
-&lt;p style="color:#555555; margin-left:0; margin-right:0; text-align:left"&gt;在 HarmonyOS NEXT 中，onContinue()&amp;nbsp;和&amp;nbsp;onNewWant()&amp;nbsp;是實現應用接續的關鍵接口。onContinue()&amp;nbsp;用於在源設備上保存會議的當前狀態和數據，例如會議的進行時間、已共享的文件列表、未完成的發言等。而&amp;nbsp;onNewWant()&amp;nbsp;則在目標設備上接收並恢復這些數據，使會議能夠在新設備上繼續進行。&lt;/p&gt; 
-&lt;p style="color:#555555; margin-left:0; margin-right:0; text-align:left"&gt;以下是&amp;nbsp;onContinue()&amp;nbsp;的簡單示例代碼：&lt;/p&gt; 
-&lt;p style="color:#555555; margin-left:0; margin-right:0; text-align:center"&gt;&lt;img alt="圖片 1.png" height="130" src="https://oscimg.oschina.net/oscnet//775234a861d32667ed0eb735ff87a6a1.png" width="600" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;p style="color:#555555; margin-left:0; margin-right:0; text-align:left"&gt;在目標設備的&amp;nbsp;onNewWant()&amp;nbsp;中恢復數據：&lt;/p&gt; 
-&lt;p style="color:#555555; margin-left:0; margin-right:0; text-align:center"&gt;&lt;img alt="圖片 2.png" height="156" src="https://oscimg.oschina.net/oscnet//de63ee8afe6cd8a615b0aafb4eb5e562.png" width="600" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;p style="color:#555555; margin-left:0; margin-right:0; text-align:left"&gt;&lt;strong&gt;&amp;nbsp;如何設計數據同步機制，確保會議內容一致性&lt;/strong&gt;&lt;/p&gt; 
-&lt;p style="color:#555555; margin-left:0; margin-right:0; text-align:left"&gt;為了確保會議內容在不同設備間的一致性，我們可以使用分佈式數據對象（Distributed Data Object）。分佈式數據對象能夠自動處理數據在不同設備間的同步，當一個設備上的數據發生變化時，其他設備會及時更新。&lt;/p&gt; 
-&lt;p style="color:#555555; margin-left:0; margin-right:0; text-align:left"&gt;例如，在創建會議記錄時，可以使用分佈式數據對象：&lt;/p&gt; 
-&lt;p style="color:#555555; margin-left:0; margin-right:0; text-align:center"&gt;&lt;img alt="圖片 3.png" height="77" src="https://oscimg.oschina.net/oscnet//bec32a033e2c3f424e1ae715a34fa27a.png" width="600" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;p style="color:#555555; margin-left:0; margin-right:0; text-align:left"&gt;&lt;strong&gt;實現無縫會議切換 &amp;amp; 共享文檔&lt;/strong&gt;&lt;/p&gt; 
-&lt;p style="color:#555555; margin-left:0; margin-right:0; text-align:left"&gt;&lt;strong&gt;使用 onContinue() 實現會議從手機遷移到 PC&lt;/strong&gt;&lt;/p&gt; 
-&lt;p style="color:#555555; margin-left:0; margin-right:0; text-align:left"&gt;當用戶需要將會議從手機遷移到 PC 時，調用&amp;nbsp;onContinue()&amp;nbsp;方法保存會議狀態。在 PC 端，通過&amp;nbsp;onNewWant()&amp;nbsp;接收並恢復會議狀態，實現無縫切換。具體代碼如上述&amp;nbsp;onContinue()&amp;nbsp;和&amp;nbsp;onNewWant()&amp;nbsp;示例所示。&lt;/p&gt; 
-&lt;p style="color:#555555; margin-left:0; margin-right:0; text-align:left"&gt;&lt;strong&gt;使用 distributedDataObject.create() 讓多設備共享會議記錄&lt;/strong&gt;&lt;/p&gt; 
-&lt;p style="color:#555555; margin-left:0; margin-right:0; text-align:left"&gt;通過創建分佈式數據對象來存儲會議記錄，所有參與會議的設備都可以訪問和更新這些記錄。以下是一個簡單的示例：&lt;/p&gt; 
-&lt;p style="color:#555555; margin-left:0; margin-right:0; text-align:center"&gt;&lt;img alt="圖片 4.png" height="131" src="https://oscimg.oschina.net/oscnet//418462a14d58f2e78f921fc4769e6b42.png" width="600" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;p style="color:#555555; margin-left:0; margin-right:0; text-align:left"&gt;&amp;nbsp;&lt;strong&gt;結合 SystemPasteboard 支持會議文件跨設備複製粘貼&lt;/strong&gt;&lt;/p&gt; 
-&lt;p style="color:#555555; margin-left:0; margin-right:0; text-align:left"&gt;使用系統剪貼板（SystemPasteboard）可以實現會議文件在不同設備間的複製粘貼。例如，在手機上覆制一個會議文件，然後在 PC 上粘貼該文件。&lt;/p&gt; 
-&lt;p style="color:#555555; margin-left:0; margin-right:0; text-align:center"&gt;&lt;img alt="圖片 5.png" height="358" src="https://oscimg.oschina.net/oscnet//9565729d6439923be627ead3cb5648a6.png" width="600" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;p style="color:#555555; margin-left:0; margin-right:0; text-align:left"&gt;&lt;strong&gt;&amp;nbsp;優化體驗：流暢性 + 兼容性 + 安全性&lt;/strong&gt;&lt;/p&gt; 
-&lt;p style="color:#555555; margin-left:0; margin-right:0; text-align:left"&gt;&lt;strong&gt;優化數據同步方式，減少會議遷移時的延遲&lt;/strong&gt;&lt;/p&gt; 
-&lt;p style="color:#555555; margin-left:0; margin-right:0; text-align:left"&gt;為了減少會議遷移時的數據同步延遲，可以採用以下策略：&lt;/p&gt; 
-&lt;p style="color:#555555; margin-left:0; margin-right:0; text-align:left"&gt;·&amp;nbsp;&lt;strong&gt;預取數據：&lt;/strong&gt;在用戶有切換設備的傾向時（如打開目標設備的會議應用），提前從源設備獲取部分必要的數據。&lt;/p&gt; 
-&lt;p style="color:#555555; margin-left:0; margin-right:0; text-align:left"&gt;·&amp;nbsp;&lt;strong&gt;優化網絡傳輸：&lt;/strong&gt;選擇合適的網絡協議和傳輸方式，優先使用高速穩定的網絡連接，如 Wi-Fi。&lt;/p&gt; 
-&lt;p style="color:#555555; margin-left:0; margin-right:0; text-align:left"&gt;·&amp;nbsp;&lt;strong&gt;數據壓縮：&lt;/strong&gt;在傳輸數據前對數據進行壓縮，減少數據量，提高傳輸速度。&lt;/p&gt; 
-&lt;p style="color:#555555; margin-left:0; margin-right:0; text-align:left"&gt;&lt;strong&gt;如何確保不同設備的 UI 適配，避免界面錯位&lt;/strong&gt;&lt;/p&gt; 
-&lt;p style="color:#555555; margin-left:0; margin-right:0; text-align:left"&gt;·&amp;nbsp;&lt;strong&gt;響應式設計&lt;/strong&gt;：使用 HarmonyOS NEXT 的響應式佈局特性，根據設備的屏幕尺寸和分辨率自動調整界面元素的大小和位置。&lt;/p&gt; 
-&lt;p style="color:#555555; margin-left:0; margin-right:0; text-align:left"&gt;·&amp;nbsp;&lt;strong&gt;多設備測試：&lt;/strong&gt;在開發過程中，對不同類型的設備（手機、平板、PC 等）進行充分的測試，及時發現並解決界面適配問題。&lt;/p&gt; 
-&lt;p style="color:#555555; margin-left:0; margin-right:0; text-align:left"&gt;&lt;strong&gt;權限管理：如何防止敏感會議內容在未授權設備上訪問&lt;/strong&gt;&lt;/p&gt; 
-&lt;p style="color:#555555; margin-left:0; margin-right:0; text-align:left"&gt;·&amp;nbsp;&lt;strong&gt;設備認證：&lt;/strong&gt;在設備接入會議時，對設備進行身份認證，確保只有授權的設備可以參與會議。&lt;/p&gt; 
-&lt;p style="color:#555555; margin-left:0; margin-right:0; text-align:left"&gt;·&amp;nbsp;&lt;strong&gt;數據加密：&lt;/strong&gt;對會議中的敏感數據進行加密處理，即使數據在傳輸或存儲過程中被攔截，也無法被破。&lt;/p&gt; 
-&lt;p style="color:#555555; margin-left:0; margin-right:0; text-align:left"&gt;·&amp;nbsp;&lt;strong&gt;權限設置：&lt;/strong&gt;為不同的參會者設置不同的權限，如只讀、可編輯等，限制對敏感內容的訪問和修改。&lt;/p&gt; 
-&lt;p style="color:#555555; margin-left:0; margin-right:0; text-align:left"&gt;通過以上的架構設計、功能實現和優化策略，我們可以開發出一個高效、穩定、安全的會議應用，支持多設備協同與應用接續，為用戶提供優質的會議協作體驗。（轉載自 51CTO，作者：SameX）&lt;/p&gt; 
-&lt;p&gt;&amp;nbsp;&lt;/p&gt;
-                                                                                &lt;/div&gt;
-                                                                            </description>
-      <link>https://www.oschina.net/news/366426</link>
-      <guid isPermaLink="false">https://www.oschina.net/news/366426</guid>
-      <pubDate>Fri, 15 Aug 2025 07:34:00 GMT</pubDate>
-      <author>作者: 開源科技</author>
     </item>
     <item>
       <title>Zed 編輯器團隊發聲：LLM 為何無法真正構建軟件？</title>
