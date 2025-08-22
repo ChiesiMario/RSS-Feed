@@ -7,8 +7,482 @@
     <generator>RSSHub</generator>
     <webMaster>contact@rsshub.app (RSSHub)</webMaster>
     <language>zh-cn</language>
-    <lastBuildDate>Thu, 21 Aug 2025 21:40:37 GMT</lastBuildDate>
+    <lastBuildDate>Fri, 22 Aug 2025 02:42:25 GMT</lastBuildDate>
     <ttl>5</ttl>
+    <item>
+      <title>桌面挂件不能承受之重 —— GIF</title>
+      <description>&lt;div class="content"&gt;
+                                                                                                                    
+                                                                                                                                                    &lt;blockquote&gt; 
+ &lt;p&gt;作者： vivo 互联网客户端团队- Zhang Qin&lt;/p&gt; 
+ &lt;p&gt;本文从桌面挂件开发过程中遇到的 GIF 图片难以加载的问题展开，分别介绍了现有的挂件中加载 GIF 图片的两种可行方案------ViewFlipper 和 AnimatedImageDrawable，同时阐述了两种的方案的优缺点。然后针对现有方案中的痛点，结合现有方案，提出通过网络下发 GIF 并通过逐帧解析得到帧图片，再采用 ViewFlipper 来实现加载的方案，解决痛点中的引入资源过多导致包体增大的问题，使挂件既能不增加包体又能展示 GIF。&lt;/p&gt; 
+&lt;/blockquote&gt; 
+&lt;p&gt;1 分钟看图掌握核心观点👇&lt;/p&gt; 
+&lt;p&gt;&lt;img src="https://oscimg.oschina.net/oscnet/up-d5325ca8313af2d5b4890d4a9843ff55ad2.gif" alt="" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;h1&gt;一、背景&lt;/h1&gt; 
+&lt;p&gt;众所周知，Android 原生的原子组件（AppWidget，又名桌面挂件）所能使用的 View 有限，仅能支持如下的：&lt;/p&gt; 
+&lt;p&gt;&lt;strong&gt;layout（布局）：&lt;/strong&gt;&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt; &lt;p&gt;AdapterViewFlipper&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;FrameLayout&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;GridLayout&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;GridView&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;LinearLayout&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;ListView&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;RelativeLayout&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;StackView&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;ViewFlipper&lt;/p&gt; &lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;p&gt;&lt;strong&gt;widgets（小部件）：&lt;/strong&gt;&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt; &lt;p&gt;AnalogClock&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;Button&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;Chronometer&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;ImageButton&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;ImageView&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;ProgressBar&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;TextClock&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;TextView&lt;/p&gt; &lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;p&gt;从&lt;strong&gt;API 31&lt;/strong&gt;开始，还支持如下的小部件和布局：&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt; &lt;p&gt;CheckBox&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;RadioButton&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;RadioGroup&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;Switch&lt;/p&gt; &lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;p&gt;需要注意一点，除了上述这些之外，其余所有的都不支持，包括继承自这些类的子类同样也不支持。因此我们能够看出，开发 AppWidget 的局限性比较大，只有限定的布局和小部件能够使用，且不能通过继承来实现自定义的炫酷效果。这里也解释了为什么笔者一开始不直接使用 Lottie、PAG 等来实现复杂的动画，完全是被限制了。&lt;/p&gt; 
+&lt;p&gt;不仅如此，组件内由于使用的都是 Remoteviews，Remoteviews 可以在其它进程中进行显示，我们可以跨进程更新它的界面。Remoteviews 在 Android 中的主要应用是通知栏和桌面挂件。也正式挂件中使用的是 Remoteviews，所以我们不能像普通 Android 应用一样使用 findViewById 或者 viewbinding 来获取 View 的对象并通过 view 对象来设置相应的属性等。在挂件中只能使用 Remoteviews 中的一些方法，这些方法基本都是通过反射方式进行封装来实现的，比如设置 ImageView 的图片，Remoteviews 中只提供了如下&lt;strong&gt;四种方法&lt;/strong&gt;：&lt;/p&gt; 
+&lt;pre&gt;&lt;code&gt;/**
+ * Equivalent to calling {@link ImageView#setImageResource(int)}
+ *
+ * @param viewId The id of the view whose drawable should change
+ * @param srcId The new resource id for the drawable
+ */
+publicvoidsetImageViewResource(@IdResint viewId, @DrawableResint srcId){
+    setInt(viewId, "setImageResource", srcId);
+}
+  
+/**
+ * Equivalent to calling {@link ImageView#setImageURI(Uri)}
+ *
+ * @param viewId The id of the view whose drawable should change
+ * @param uri The Uri for the image
+ */
+publicvoidsetImageViewUri(@IdResint viewId, Uri uri){
+    setUri(viewId, "setImageURI", uri);
+}
+  
+/**
+ * Equivalent to calling {@link ImageView#setImageBitmap(Bitmap)}
+ *
+ * @param viewId The id of the view whose bitmap should change
+ * @param bitmap The new Bitmap for the drawable
+ */
+publicvoidsetImageViewBitmap(@IdResint viewId, Bitmap bitmap){
+    setBitmap(viewId, "setImageBitmap", bitmap);
+}
+  
+/**
+ * Equivalent to calling {@link ImageView#setImageIcon(Icon)}
+ *
+ * @param viewId The id of the view whose bitmap should change
+ * @param icon The new Icon for the ImageView
+ */
+publicvoidsetImageViewIcon(@IdResint viewId, Icon icon){
+    setIcon(viewId, "setImageIcon", icon);
+}
+&lt;/code&gt;&lt;/pre&gt; 
+&lt;p&gt;从源码中可以看到，setImageViewResource 方法只能传入 int 类型的资源，也就是在资源文件中的资源 ID，除此之外就是 Bitmap、Uri 和 Icon 类型，无法支持 Drawable 等类型。由此可见，组件中的 View 其实只能包含普通 View 的一部分功能，限制比较明显。&lt;/p&gt; 
+&lt;h1&gt;二、挂件加载 GIF 的可行方案&lt;/h1&gt; 
+&lt;p&gt;言归正传，首先，我们介绍下在组件中加载 GIF 的可行方案，主要有两种：&lt;/p&gt; 
+&lt;h2&gt;2.1 方案一：使用 ViewFlipper 来实现逐帧动画的效果&lt;/h2&gt; 
+&lt;p&gt;此方案是利用 Remoteviews 支持的 ViewFlipper 控件，配合多个 ImageView 来循环显示，达到类似逐帧动画的效果。布局内容如下：&lt;/p&gt; 
+&lt;pre&gt;&lt;code&gt;&amp;lt;ViewFlipper
+    android:layout_width="40dp"
+    android:layout_height="40dp"
+    android:layout_gravity="end|center_vertical"
+    android:autoStart="true"
+    android:flipInterval="90"&amp;gt;
+  
+    &amp;lt;ImageView
+        android:layout_width="40dp"
+        android:layout_height="40dp"
+        android:src="@drawable/before_sign_in_anim0" /&amp;gt;
+  
+    &amp;lt;ImageView
+        android:layout_width="40dp"
+        android:layout_height="40dp"
+        android:src="@drawable/before_sign_in_anim15" /&amp;gt;
+  
+    &amp;lt;ImageView
+        android:layout_width="40dp"
+        android:layout_height="40dp"
+        android:src="@drawable/before_sign_in_anim28" /&amp;gt;
+  
+    &amp;lt;ImageView
+        android:layout_width="40dp"
+        android:layout_height="40dp"
+        android:src="@drawable/before_sign_in_anim43" /&amp;gt;
+  
+    &amp;lt;ImageView
+        android:layout_width="40dp"
+        android:layout_height="40dp"
+        android:src="@drawable/before_sign_in_anim57" /&amp;gt;
+  
+    &amp;lt;ImageView
+        android:layout_width="40dp"
+        android:layout_height="40dp"
+        android:src="@drawable/before_sign_in_anim71" /&amp;gt;
+  
+    &amp;lt;ImageView
+        android:layout_width="40dp"
+        android:layout_height="40dp"
+        android:src="@drawable/before_sign_in_anim85" /&amp;gt;
+  
+    &amp;lt;ImageView
+        android:layout_width="40dp"
+        android:layout_height="40dp"
+        android:src="@drawable/before_sign_in_anim100" /&amp;gt;
+&amp;lt;/ViewFlipper&amp;gt;
+&lt;/code&gt;&lt;/pre&gt; 
+&lt;p&gt;ViewFlipper 中的一些&lt;strong&gt;常用方法&lt;/strong&gt;如下：&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt; &lt;p&gt;&lt;strong&gt;setInAnimation&lt;/strong&gt;：设置 View 或 ImageView 进入屏幕时使用的动画&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;&lt;strong&gt;setOutAnimation&lt;/strong&gt;：设置 View 或 ImageView 退出屏幕时使用的动画&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;&lt;strong&gt;showNext&lt;/strong&gt;：调用该方法来显示 ViewFlipper 里的下一个 View 或 ImageView&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;&lt;strong&gt;showPrevious&lt;/strong&gt;：调用该方法来显示 ViewFlipper 的上一个 View 或 ImageView&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;&lt;strong&gt;setFilpInterval&lt;/strong&gt;：设置 View 或 ImageView 之间切换的时间间隔&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;&lt;strong&gt;startFlipping&lt;/strong&gt;：使用上面设置的时间间隔来开始切换所有的 View 或 ImageView，切换会循环进行&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;&lt;strong&gt;stopFlipping&lt;/strong&gt;：停止 View 或 ImageView 切换&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;&lt;strong&gt;isAutoStart&lt;/strong&gt;：是否自动开始播放&lt;/p&gt; &lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;p&gt;在作为动画设置时，需要在 xml 文件中设置 autoStart 属性为 true，保证动画能够自动播放。&lt;/p&gt; 
+&lt;p&gt;&lt;strong&gt;优点：&lt;/strong&gt;&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt;各版本兼容性好，ViewFlipper 是 API 11 时引入的，目前应该不会有比这低的了；&lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;p&gt;&lt;strong&gt;缺点：&lt;/strong&gt;&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt; &lt;p&gt;ImageView 过多，代码也多，修改替换麻烦；&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;在 Remoteviews 中，ViewFlipper 的很多方法无法使用，比如停止播放等。&lt;/p&gt; &lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;h2&gt;2.2 方案二：使用 AnimatedImageDrawable 来显示 GIF 动画&lt;/h2&gt; 
+&lt;p&gt;Android 9.0 中引入了一个新的 Drawable 来显示 GIF 图片：AnimatedImageDrawable，对应的 xml 标签是，这样一来，我们可以直接将一个 GIF 图片 before_sign_in.gif 放到 drawable 目录中，然后新建一个 before_sign_in_anim.xml 来引用：&lt;/p&gt; 
+&lt;pre&gt;&lt;code&gt;&amp;lt;?xml version="1.0" encoding="utf-8"?&amp;gt;
+&amp;lt;animated-image xmlns:android="http://schemas.android.com/apk/res/android"
+    android:autoStart="true"
+    android:autoMirrored="true"
+    android:src="@drawable/ic_test_gif" /&amp;gt;
+&lt;/code&gt;&lt;/pre&gt; 
+&lt;p&gt;其中的 ic_test_gif 就是我们的.gif 文件。&lt;/p&gt; 
+&lt;p&gt;我们可以看下 AnimatedImageDrawable 的属性：&lt;/p&gt; 
+&lt;pre&gt;&lt;code&gt;&amp;lt;!-- Drawable used to draw animated images(gif). --&amp;gt;
+    &amp;lt;declare-styleable name="AnimatedImageDrawable"&amp;gt;
+        &amp;lt;!-- Identifier of the image file. This attribute is mandatory.
+             It must be an image file with multiple frames, e.g. gif or webp --&amp;gt;
+        &amp;lt;attr name="src" /&amp;gt;
+        &amp;lt;!-- Indicates if the drawable needs to be mirrored when its layout direction is
+             RTL(right-to-left). --&amp;gt;
+        &amp;lt;attr name="autoMirrored" /&amp;gt;
+        &amp;lt;!-- Replace the loop count in the encoded data. A repeat count of 0 means that
+             the animation will play once, regardless of the number of times specified
+             in the encoded data. Setting this to infinite(-1) will result in the
+             animation repeating as long as it is displayed(once start() is called). --&amp;gt;
+        &amp;lt;attr name="repeatCount"/&amp;gt;
+        &amp;lt;!-- When true, automatically start animating. The default is false, meaning
+             that the animation will not start until start() is called. --&amp;gt;
+        &amp;lt;attr name="autoStart" /&amp;gt;
+    &amp;lt;/declare-styleable&amp;gt;
+&lt;/code&gt;&lt;/pre&gt; 
+&lt;p&gt;从中我们可以发现，这里可以设置 repeatCount 循环次数，设置为 0 的话表示只播放一次。&lt;/p&gt; 
+&lt;p&gt;此时，我们只需要将 drawable 设置给 ImageView 即可，在 Remoteviews 中，考虑到版本兼容问题，我们通过如下方式设置：&lt;/p&gt; 
+&lt;pre&gt;&lt;code&gt;remoteViews.setImageViewResource(
+    R.id.abnormal_static_cat,
+    if (Build.VERSION.SDK_INT &amp;gt;= Build.VERSION_CODES.P) {
+        R.drawable.before_sign_in_anim
+    } else {
+        R.drawable.before_sign_in_static
+    }
+)
+&lt;/code&gt;&lt;/pre&gt; 
+&lt;p&gt;&lt;strong&gt;优点：&lt;/strong&gt; 资源少，一个 GIF 只要一个 xml，且替换简单；&lt;/p&gt; 
+&lt;p&gt;&lt;strong&gt;缺点：&lt;/strong&gt; 只有 Android9 以上的系统可以用。&lt;/p&gt; 
+&lt;h2&gt;2.3 现有方案的痛点&lt;/h2&gt; 
+&lt;p&gt;上述描述的两种方案中，都会引入很多资源文件，这必然会增加应用的包体，导致包体增大不少，因此可以考虑通过服务端下发的方式来实现，那么问题就来了：&lt;/p&gt; 
+&lt;p&gt;1）如果通过方案一，那么客户端必须写定一个 xml，写定一定数量的 ImageView 来供下发的图片加载，当然了，可以动态的添加，但这里是组件，动态添加会比普通的 view 动态添加稍微麻烦些，这个我们后面再说。&lt;/p&gt; 
+&lt;p&gt;2）如果通过方案二，那么就有问题了，前面已经提到了，组件里面的 ImageView 是不支持通过 Drawable 对象来设置内容的，这就导致了就算我们能够得到 AnimatedImageDrawable 对象，我们也没办法设置，况且要得到这样一个 Drawable，也比较困难（没有深究如何得到）。&lt;/p&gt; 
+&lt;p&gt;戛然而止了，两个方案实现起来听着都不太靠谱，那么有没有什么好的方案呢？&lt;/p&gt; 
+&lt;h1&gt;三、可行方案探索&lt;/h1&gt; 
+&lt;h2&gt;3.1 初探&lt;/h2&gt; 
+&lt;p&gt;想到这里，大家可能会问，为什么不使用 Glide 呢？这个强大的图片加载库总不会没有这样的方法吧？&lt;/p&gt; 
+&lt;p&gt;确实，Glide 给 AppWidget 提供了专门的图片加载方式，其实现方式如下：&lt;/p&gt; 
+&lt;pre&gt;&lt;code&gt;val appwidgetTarget = AppWidgetTarget(context, R.id.abnormal_static_cat, remoteViews, ComponentName(context, TestWidgetProvider::class.java))
+Glide.with(context)
+   .asBitmap()
+   .load(url)
+   .into(appwidgetTarget)
+&lt;/code&gt;&lt;/pre&gt; 
+&lt;p&gt;但是从上面可以看出，这个只能加载 Bitmap，如果是 asGif，则在 into 时没有 target 这个选项，只能 into（ImageView）。因此这个方法也行不通。&lt;/p&gt; 
+&lt;h2&gt;3.2 思索与尝试&lt;/h2&gt; 
+&lt;p&gt;这里还要说一点，如果是将图片下载到手机本地，再去读取本地文件，还需要考虑存储权限的问题，而这里是原子组件，如果需要请求权限，那么就得找一个落地页去承载，且组件的卡片上最好也需要有这个说明，这样的话 UI 改动会比较大，且如果没有同意权限就会出现展示不了图片的情况，这也很不友好。&lt;/p&gt; 
+&lt;p&gt;综上，只能在请求网络图片时就把 GIF 加载出来，这样既不需要上述的那些繁琐的权限授予过程，也不会增加包体的大小。&lt;/p&gt; 
+&lt;p&gt;受到上面第一个方案的启发，我们可以把 GIF 图的逐帧图片取出来，然后通过方案一来展示，这样就能实现了。&lt;/p&gt; 
+&lt;h3&gt;3.2.1 获取网络 GIF 图片&lt;/h3&gt; 
+&lt;p&gt;首先是拿到网络的 GIF 图片，这里我们采用 Glide 来获取 (Glide 还是好用啊），采用 Glide 还有一个好处是，Glide 会针对图片作缓存，这样我们重复加载同一张图不会重复消耗流量：&lt;/p&gt; 
+&lt;pre&gt;&lt;code&gt;Glide.with(context)
+    .asGif()
+    .load(url)
+    .diskCacheStrategy(DiskCacheStrategy.ALL)
+    .submit(432, 432)
+    .get()
+&lt;/code&gt;&lt;/pre&gt; 
+&lt;h3&gt;3.2.2 得到 GIF 的逐帧图片&lt;/h3&gt; 
+&lt;p&gt;然后是将得到的 GIF 进行解析，得到逐帧的图片，这里我们引入一个工具库：implementation("pl.droidsonroids.gif:android-gif-drawable:1.2.24")，该库在 Vhub 上已有上传，可以直接使用：&lt;/p&gt; 
+&lt;pre&gt;&lt;code&gt;@WorkerThread
+fun getAllFrameBitmapByUrl(context: Context, url: String): MutableList&amp;lt;Bitmap&amp;gt; {
+    val frameBitmaps: MutableList&amp;lt;Bitmap&amp;gt; = ArrayList()
+    var gifDrawable: GifDrawable? = null
+    try {
+        val gif = Glide.with(context)
+            .asGif()
+            .load(url)
+            .diskCacheStrategy(DiskCacheStrategy.ALL)
+            .submit(432, 432)
+            .get()
+        gifDrawable = GifDrawable(gif.buffer)
+        val totalCount = gifDrawable.numberOfFrames
+        for(i in 0 until totalCount){
+            frameBitmaps.add(gifDrawable.seekToFrameAndGet(i))
+        }
+    } catch (t: Throwable) {
+        VLog.e(TAG, "getAllFrameBitmapByUrl Error.", t)
+    } finally {
+        gifDrawable?.stop()
+    }
+    return frameBitmaps
+}
+&lt;/code&gt;&lt;/pre&gt; 
+&lt;p&gt;这样我们就得到了包含 GIF 所有帧图片的列表了（美滋滋~），接下来就可以根据方案一处理每一帧的图片了。&lt;/p&gt; 
+&lt;h3&gt;3.2.3 加载&lt;/h3&gt; 
+&lt;p&gt;然后，就报错了，lang.IllegalArgumentException: RemoteViews for widget update exceeds maximum bitmap memory usage (used: 236588800, max: 15396480)。由于 Remoteviews 是跨进程的传输，并不是传统意义上的 view，其内部是通过 Binder 来实现的，因此当 ImageView 去 setImageBitmap 的时候，需要注意设置进去的 bitmap 是否超过了大小限制。&lt;/p&gt; 
+&lt;p&gt;最大的 Size 公式为：The total Bitmap memory used by the RemoteViews object cannot exceed that required to fill the screen 1.5 times, ie. (screen width x screen height x 4 x 1.5) bytes.也就是 RemoteViews 对象使用的总 Bitmap 内存不能超过填满屏幕 1.5 倍所需的内存，即 (屏幕宽度 x 屏幕高度 x 4 x 1.5) 字节。这个在 AppWidgetServiceImpl.java 中有相应的定义：&lt;/p&gt; 
+&lt;pre&gt;&lt;code&gt;privatevoidcomputeMaximumWidgetBitmapMemory(){
+    Display display = mContext.getDisplayNoVerify();
+    Point size = new Point();
+    display.getRealSize(size);
+    // Cap memory usage at 1.5 times the size of the display
+    // 1.5 * 4 bytes/pixel * w * h ==&amp;gt; 6 * w * h
+    mMaxWidgetBitmapMemory = 6 * size.x * size.y;
+}
+&lt;/code&gt;&lt;/pre&gt; 
+&lt;p&gt;而且，RemoteViews 源码内部维护了一个：BitmapCache mBitmapCache, 每次设置 bitmap 进来，都会被缓存起来，最终计算 RemoteViews 占用内存大小的话，也会把这块算进去。&lt;/p&gt; 
+&lt;pre&gt;&lt;code&gt;/**
+     * Call a method taking one Bitmap on a view in the layout for this RemoteViews.
+     * @more
+     * &amp;lt;p class="note"&amp;gt;The bitmap will be flattened into the parcel if this object is
+     * sent across processes, so it may end up using a lot of memory, and may be fairly slow.&amp;lt;/p&amp;gt;
+     *
+     * @param viewId The id of the view on which to call the method.
+     * @param methodName The name of the method to call.
+     * @param value The value to pass to the method.
+     */
+    publicvoidsetBitmap(@IdResint viewId, String methodName, Bitmap value){
+        addAction(new BitmapReflectionAction(viewId, methodName, value));
+    }
+  
+...
+  
+    BitmapReflectionAction(@IdResint viewId, String methodName, Bitmap bitmap) {
+       this.bitmap = bitmap;
+       this.viewId = viewId;
+       this.methodName = methodName;
+       bitmapId = mBitmapCache.getBitmapId(bitmap);
+    }
+  
+...
+  
+    publicintgetBitmapId(Bitmap b){
+        if (b == null) {
+            return -1;
+        } else {
+            int hash = b.hashCode();
+            int hashId = mBitmapHashes.get(hash, -1);
+            if (hashId != -1) {
+                return hashId;
+            } else {
+                if (b.isMutable()) {
+                    b = b.asShared();
+                }
+                mBitmaps.add(b);
+                mBitmapHashes.put(mBitmaps.size() - 1, hash);
+                mBitmapMemory = -1;
+                return (mBitmaps.size() - 1);
+           }
+       }
+   }
+&lt;/code&gt;&lt;/pre&gt; 
+&lt;p&gt;这里由于 GIF 解析出来的帧图片太多，如果每一张都设置的话，确实太多了，那么就需要采取采样的方式，目前设定的是每 5 张中取一张，然后设置了每一张图片的大小也不能超过阈值，另外总体也设置了一个阈值，防止超过报错。这里就会出现两个问题，一个是单张图片限制了大小阈值，必定会出现压缩、采样，导致单张图片质量下降，不像原先那么高清，第二个是帧图片太多，就算单张限制了阈值，总体也会超过总体的阈值，在超过总体前一帧时直接 return，这样就会导致最终的动画和 GIF 相比可能被截断。反复试验，找了个相对平衡的点，既保证单张图片的清晰度，也保证整体的完整性，但这个方案不够健壮，会随着 GIF 图的变化出现不同的问题。&lt;/p&gt; 
+&lt;p&gt;下面介绍下上面说的这个方案，原理上基本清晰，就是通过 ViewFlipper，向其中动态添加 ImageView，每一个 ImageView 加载一帧图片，从而达到动画效果。&lt;/p&gt; 
+&lt;pre&gt;&lt;code&gt;val viewFlipper = RemoteViews(context.packageName, R.layout.sign_in_view_flipper)
+var allSize = 0
+kotlin.run {
+    frameBitmaps.forEachIndexed { index, it -&amp;gt;
+        logger.d("allSize = $allSize, index = $index")
+        if (index % 5 != 0) {
+            return@forEachIndexed
+        }
+        val ivRemoteViews = RemoteViews(context.packageName, R.layout.sign_in_per_frame_bitmap_view)
+        var bitmapSize = GifDownloadUtils.getBitmapSize(it)
+        var bitmap = it
+        val matrix = Matrix()
+        var scale = 432f / bitmap.width
+        logger.d("start, bitmapSize = $bitmapSize")
+        matrix.setScale(scale, scale)
+        while (bitmapSize &amp;gt;= GifDownloadUtils.MAX_WIDGET_BITMAP_MEMORY) {
+            bitmap = Bitmap.createBitmap(bitmap, 0, 0, bitmap.width, bitmap.height, matrix, true)
+            bitmapSize = GifDownloadUtils.getBitmapSize(bitmap)
+            logger.d("bitmapSize = $bitmapSize, scale = $scale")
+            scale /= 2f
+            matrix.setScale(scale, scale)
+        }
+        allSize += bitmapSize
+        logger.d("allSize = $allSize")
+        if (allSize &amp;gt;= GifDownloadUtils.maxTotalWidgetBitmapMemory()) {
+            return@run
+        }
+        ivRemoteViews.setImageViewBitmap(R.id.iv_per_frame, bitmap)
+        viewFlipper.addView(R.id.view_flipper, ivRemoteViews)
+    }
+}
+  
+logger.d("addView")
+// 这里是由于 addView 添加的 View 都会显示在最上面，所以这里通过在原卡片中添加相同 id 的 view，先把原卡的移除，再把新建的添加进去，达到更新的效果，这样布局的层级就还是原先的层级。
+remoteViews.removeAllViews(R.id.view_flipper)
+remoteViews.addView(R.id.view_flipper, viewFlipper)
+&lt;/code&gt;&lt;/pre&gt; 
+&lt;p&gt;其中 frameBitmaps 就是上面获得的所有图片。&lt;/p&gt; 
+&lt;p&gt;到这里网络 GIF 图片的加载也基本完成了。&lt;/p&gt; 
+&lt;h1&gt;四、总结&lt;/h1&gt; 
+&lt;p&gt;上述提出的加载网络 GIF 的方案，虽然解决了现有方案中加载 GIF 需要引入很多图片资源或者 GIF 资源，导致包体大小增加的问题，但是如果 GIF 图片本身质量较高，通过新方案可能会降低 GIF 的质量。&lt;/p&gt; 
+&lt;p&gt;上述三种方案的优缺点和适用场景总结如下：&lt;/p&gt; 
+&lt;p&gt;&lt;img src="https://oscimg.oschina.net/oscnet/up-463d005c76ff66d9f673986d5bfc57a9830.png" alt="" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p&gt;总而言之，具体采用哪种方案需要根据实际开发的具体需要来实现，综合方案的优缺点和适用场景来选择。&lt;/p&gt;
+                                                                                    &lt;/div&gt;
+                                                                            </description>
+      <link>https://my.oschina.net/vivotech/blog/18688996</link>
+      <guid isPermaLink="false">https://my.oschina.net/vivotech/blog/18688996</guid>
+      <pubDate>Fri, 22 Aug 2025 02:41:23 GMT</pubDate>
+      <author>原创</author>
+    </item>
+    <item>
+      <title>InternLM 开源轻量级多模态推理模型 Intern-S1-mini</title>
+      <description>&lt;div class="content"&gt;
+                                                                    
+                                                        &lt;p&gt;InternLM 发布开源轻量级多模态推理模型 Intern-S1-mini，参数仅 8B，基于 Qwen3-8B 语言模型与 0.3B 视觉编码器 InternViT，预训练总量 5 万亿 token，其中超 2.5 万亿来自化学、物理、生物、材料等科学领域，可解析分子式、蛋白序列并规划合成路径。&lt;/p&gt; 
+&lt;p&gt;&lt;img alt="" src="https://oscimg.oschina.net/oscnet/up-9d1935b0aadaf0faac61a77b0b52791c5f8.png" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p&gt;官方基准显示，Intern-S1-mini 在 MMLU-Pro、MMMU、GPQA、AIME2024/2025 等通用与科学任务上均优于同规模模型，ChemBench 达 76.47，MatBench 61.55，ProteinLMBench 58.47，支持文本、图像、视频输入。模型默认开启思考模式，可通过 enable_thinking 开关切换。&lt;/p&gt; 
+&lt;p&gt;相关链接&lt;/p&gt; 
+&lt;p&gt;https://huggingface.co/internlm/Intern-S1-mini&lt;br&gt; https://chat.intern-ai.org.cn&lt;/p&gt;
+                                                                                &lt;/div&gt;
+                                                                            </description>
+      <link>https://www.oschina.net/news/367788</link>
+      <guid isPermaLink="false">https://www.oschina.net/news/367788</guid>
+      <pubDate>Fri, 22 Aug 2025 02:27:23 GMT</pubDate>
+      <author>来源: OSCHINA</author>
+    </item>
+    <item>
+      <title>腾讯 CodeBuddy IDE 国内版开启公测</title>
+      <description>&lt;div class="content"&gt;
+                                                                    
+                                                        &lt;p style="color:#242424; margin-left:0; margin-right:0; text-align:left"&gt;&lt;span style="color:#000000"&gt;腾讯官方正式&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fmp.weixin.qq.com%2Fs%2FsO3Npl-bTPCZJQkJqShuww" target="_blank"&gt;宣布&lt;/a&gt;，其自主研发的 CodeBuddy IDE 国内版已正式开启公测阶段。&lt;/span&gt;&lt;/p&gt; 
+&lt;p style="color:#242424; margin-left:0; margin-right:0; text-align:left"&gt;&lt;img height="396" src="https://oscimg.oschina.net/oscnet/up-8bbf9553946a85b8a6aab636ecc55685fa3.png" width="300" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p style="color:#242424; margin-left:0; margin-right:0; text-align:left"&gt;&lt;span style="background-color:#ffffff; color:rgba(0, 0, 0, 0.9)"&gt;核心功能一览：&lt;/span&gt;&lt;/p&gt; 
+&lt;p style="color:#242424; margin-left:0; margin-right:0; text-align:left"&gt;&lt;strong&gt;&lt;span style="background-color:#ffffff; color:rgba(0, 0, 0, 0.9)"&gt;产品阶段&lt;/span&gt;&lt;/strong&gt;&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt;&lt;span style="background-color:#ffffff; color:rgba(0, 0, 0, 0.9)"&gt;智能结构化 PRD 文档自动生成&lt;/span&gt;&lt;/li&gt; 
+ &lt;li&gt;&lt;span style="background-color:#ffffff; color:rgba(0, 0, 0, 0.9)"&gt;自然语言、图片、内置组件快速原型生成&lt;/span&gt;&lt;/li&gt; 
+ &lt;li&gt;&lt;span style="background-color:#ffffff; color:rgba(0, 0, 0, 0.9)"&gt;对接 CS，一键部署至沙箱环境生成分享链接&lt;/span&gt;&lt;/li&gt; 
+ &lt;li&gt;&lt;span style="background-color:#ffffff; color:rgba(0, 0, 0, 0.9)"&gt;典型场景：MVP 开发，快速交互原型可视化验证&lt;/span&gt;&lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;p style="color:#242424; margin-left:0; margin-right:0; text-align:left"&gt;&lt;strong&gt;&lt;span style="background-color:#ffffff; color:rgba(0, 0, 0, 0.9)"&gt;设计阶段&lt;/span&gt;&lt;/strong&gt;&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt;&lt;span style="background-color:#ffffff; color:rgba(0, 0, 0, 0.9)"&gt;内置 Figma，视觉稿高精度一键还原代码&lt;/span&gt;&lt;/li&gt; 
+ &lt;li&gt;&lt;span style="background-color:#ffffff; color:rgba(0, 0, 0, 0.9)"&gt;典型场景：不需要连 MCP，Figma 设计稿像素级秒变可维护 HTML 源码&lt;/span&gt;&lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;p style="color:#242424; margin-left:0; margin-right:0; text-align:left"&gt;&lt;strong&gt;&lt;span style="background-color:#ffffff; color:rgba(0, 0, 0, 0.9)"&gt;研发阶段&lt;/span&gt;&lt;/strong&gt;&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt;&lt;span style="background-color:#ffffff; color:rgba(0, 0, 0, 0.9)"&gt;内置 BaaS 服务，提供开箱即用的后端服务&lt;/span&gt;&lt;/li&gt; 
+ &lt;li&gt;&lt;span style="background-color:#ffffff; color:rgba(0, 0, 0, 0.9)"&gt;全能 AI 编程助手：软件开发智能体、实时代码续写、行间/终端内联对话&lt;/span&gt;&lt;/li&gt; 
+ &lt;li&gt;&lt;span style="background-color:#ffffff; color:rgba(0, 0, 0, 0.9)"&gt;典型场景：电商/社交等动态网站开发：一键 BaaS 对接&lt;/span&gt;&lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;p style="color:#242424; margin-left:0; margin-right:0; text-align:left"&gt;&lt;span style="background-color:#ffffff; color:rgba(0, 0, 0, 0.9)"&gt;内测邀请码用户可限时享受 Pro 版本权益，默认享 Claude 等高级模型对话 500 次，截至 25/8/12 0 时。&lt;/span&gt;&lt;/p&gt;
+                                                                                &lt;/div&gt;
+                                                                            </description>
+      <link>https://www.oschina.net/news/367787</link>
+      <guid isPermaLink="false">https://www.oschina.net/news/367787</guid>
+      <pubDate>Fri, 22 Aug 2025 02:24:23 GMT</pubDate>
+      <author>来源: OSCHINA</author>
+    </item>
+    <item>
+      <title>阿里发布面向真实软件工程的 Agentic Coding 平台：Qoder</title>
+      <description>&lt;div class="content"&gt;
+                                                                    
+                                                        &lt;p&gt;阿里巴巴旗下团队&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fmp.weixin.qq.com%2Fs%2FffFSpZ4YCtc5ngITg5Gdug" target="_blank"&gt;推出&lt;/a&gt;Qoder，这是一款面向真实软件工程的 Agentic 编码平台，现提供免费公测，支持 Windows 与 macOS。平台深度接入 Claude、GPT、Gemini 等最新大模型，并通过自动路由为不同任务匹配最优模型，无需用户手动切换。&lt;/p&gt; 
+&lt;p&gt;&lt;img height="691" src="https://static.oschina.net/uploads/space/2025/0822/100602_rXni_2720166.png" width="1280" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p&gt;Qoder 围绕上下文工程能力&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt;内置代码检索引擎，可检索 10 万个代码文件；&lt;/li&gt; 
+ &lt;li&gt;率先支持 Repo Wiki，将代码工程的隐性知识显性化，方便开发者和 AI 理解；&lt;/li&gt; 
+ &lt;li&gt;集成长短期记忆系统，可基于会话历史总结项目经验和个人偏好，并将信息存储为一个「笔记」，实现自我学习和进化，最终让 AI 执行结果更符合用户预期和偏好。&lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;p&gt;例如，用户在开发过程中有「完成任务后要生成单元测试」、「完成任务后提供详细报告」等要求，Qoder 会理解用户习惯并形成记忆，在后续执行任务时自动完成这些工作。&lt;/p&gt; 
+&lt;p&gt;&lt;img alt="" src="https://oscimg.oschina.net/oscnet/up-76b6fe3e1f988999ffa2ae7c0baddd055e4.png" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p&gt;如需体验 Qoder，用户可在 Qoder 官网免费下载体验 &lt;em&gt;https://qoder.com。&lt;/em&gt;&lt;/p&gt;
+                                                                                &lt;/div&gt;
+                                                                            </description>
+      <link>https://www.oschina.net/news/367784</link>
+      <guid isPermaLink="false">https://www.oschina.net/news/367784</guid>
+      <pubDate>Fri, 22 Aug 2025 02:07:23 GMT</pubDate>
+      <author>来源: OSCHINA</author>
+    </item>
+    <item>
+      <title>《初心与成长：Furion 五年路上的得与失》</title>
+      <description>&lt;div class="content"&gt;
+                                                                    
+                                                        &lt;p style="color:#333333; margin-left:0; margin-right:0; text-align:start"&gt;&lt;strong&gt;自 2020 年 9 月 1 日 Furion 写下第一行代码起，这个项目即将迎来它的五周岁生日。&lt;/strong&gt;&lt;/p&gt; 
+&lt;p style="color:#333333; margin-left:0; margin-right:0; text-align:start"&gt;或许是因为自己步入而立、奔向不惑的年纪，人也变得有些怀旧。有时会沉浸于曾经取得的成就中难以自拔，有时又为过往的某些选择或经历感到遗憾与自责。但人总要向前看，&lt;strong&gt;所有的经历都有其意义，它们一笔一画地塑造了今天的我。&lt;/strong&gt;&lt;/p&gt; 
+&lt;p style="color:#333333; margin-left:0; margin-right:0; text-align:start"&gt;Furion 的启动最初源于我对微软新推出的&lt;span&gt;&amp;nbsp;&lt;/span&gt;&lt;code&gt;.NET Core&lt;/code&gt;&lt;span&gt;&amp;nbsp;&lt;/span&gt;平台的学习兴趣。当时刚好参与了一个国外的&lt;span&gt;&amp;nbsp;&lt;/span&gt;&lt;code&gt;.NET&lt;/code&gt;&lt;span&gt;&amp;nbsp;&lt;/span&gt;大型项目，并负责搭建整体架构。在这个过程中，我不断深入理解&lt;span&gt;&amp;nbsp;&lt;/span&gt;&lt;code&gt;.NET Core&lt;/code&gt;，对其掌握也越发熟练。随着该项目的成功交付与上线，我萌生了将其架构重构并以开源项目形式发布的想法。&lt;strong&gt;起初并没有预料到会有人使用，只是本着分享的初衷创建了项目，并每天给自己定下任务，逐步提交架构与功能模块。&lt;/strong&gt;&lt;/p&gt; 
+&lt;p style="color:#333333; margin-left:0; margin-right:0; text-align:start"&gt;正所谓「无心插柳柳成荫」。当时，国内正缺乏适用于企业级开发的&lt;span&gt;&amp;nbsp;&lt;/span&gt;&lt;code&gt;.NET Core&lt;/code&gt;&lt;span&gt;&amp;nbsp;&lt;/span&gt;框架，而 Furion（当时还叫做 Fur）恰在此时开源。没过几天，Gitee 平台推荐了这个项目，于是开始有用户点下 Star。或许还有公众号和其他用户的转发助力，一个多月后，项目竟迅速获得了 1000 个 Star，可谓运气爆棚。随后，越来越多的人开始提交 Issue、反馈问题，也有用户发起 Pull Request——这一切推动着我不断完善项目。用户规模扩大后，我们建立了 QQ 群，没想到加群人数呈爆发式增长，&lt;strong&gt;仅半年时间就开了四个群，总人数超过 7000。&lt;/strong&gt;&lt;/p&gt; 
+&lt;p style="color:#333333; margin-left:0; margin-right:0; text-align:start"&gt;有时候，你本想「躺平」，但事情推着你不得不往前走。于是我硬着头皮坚持下来。在这一过程中，Furion 越来越成熟，我也通过它结识了许多朋友，学到了更多技术，拓宽了认知边界。&lt;strong&gt;一切看起来都很美好：我收获了粉丝、赞助，拿过一些奖项，也得到了一定的经济回报。&lt;/strong&gt;&lt;/p&gt; 
+&lt;p style="color:#333333; margin-left:0; margin-right:0; text-align:start"&gt;&lt;strong&gt;然而，老天似乎不会让一个人一直顺风顺水。有时一句无意的话，就可能让你失去许多&lt;/strong&gt;。请相信，那也许是锻炼，是为了让你变得更好。&lt;/p&gt; 
+&lt;p style="color:#333333; margin-left:0; margin-right:0; text-align:start"&gt;风暴的起因在于：最初开源时，我从未设想过 Furion 会如此受欢迎，更没想过它日后可能成立企业、作为产品运营，甚至占用我主业和陪伴家人朋友的时间，也没预料到需要自掏腰包去维护这个「用爱发电」的项目。因此，&lt;strong&gt;我曾信誓旦旦地承诺：「Furion 的文档和源码永远不会商业化。」&lt;/strong&gt;&lt;/p&gt; 
+&lt;p style="color:#333333; margin-left:0; margin-right:0; text-align:start"&gt;后来，一切慢慢改变。Furion 越来越火，免费的 Gitee Pages 和 GitHub Pages 已无法满足用户对文档的访问需求。于是我开始购买域名、独立服务器、CDN 及 HTTPS 证书等基础设施。由于项目火爆，加我微信和 QQ 的人越来越多，大家不再倾向于发 Issue，而是直接私信。&lt;strong&gt;很快，我的微信和 QQ 好友数量接近一万&lt;/strong&gt;，每天被各种信息轰炸：有的是鼓励，有的是问题反馈，也有纯粹闲聊的。&lt;/p&gt; 
+&lt;p style="color:#333333; margin-left:0; margin-right:0; text-align:start"&gt;但人性中亦有敏感与脆弱。回复稍慢，或未能及时回应，有些用户就会截图聊天记录，公开发布至社交平台，引来议论甚至嘲讽。这类事情常常影响一整天的情绪。&lt;/p&gt; 
+&lt;p style="color:#333333; margin-left:0; margin-right:0; text-align:start"&gt;更关键的是，&lt;strong&gt;我投入在开源与主业上的时间比例，从最初的&lt;span&gt;&amp;nbsp;&lt;/span&gt;&lt;code&gt;1:8&lt;/code&gt;&lt;span&gt;&amp;nbsp;&lt;/span&gt;逐渐变为&lt;span&gt;&amp;nbsp;&lt;/span&gt;&lt;code&gt;10:1&lt;/code&gt;，连私人时间都被大量挤占。&lt;/strong&gt;&lt;span&gt;&amp;nbsp;&lt;/span&gt;后来，一次 DDoS 攻击导致两三天内损失八千多元，再加上发现自己多年熬夜写出的代码被他人申请了软件著作权——&lt;strong&gt;那个夜晚，我失眠了。&lt;/strong&gt;&lt;/p&gt; 
+&lt;p style="color:#333333; margin-left:0; margin-right:0; text-align:start"&gt;于是，&lt;strong&gt;我做出了改变，也违背了当年的「承诺」：Furion 开始尝试商业化自救，推出 99 元的永久文档会员&lt;/strong&gt;。本以为能获得用户的谅解与支持，却没想到迎来的却是铺天盖地的质疑与辱骂：「无良开源作者」「骗子」「别再用了国产项目」……&lt;strong&gt;一切瞬间变了。无论你曾付出多少，仅一个决定，就足以让所有的热爱与坚持被全盘否定。&lt;/strong&gt;&lt;/p&gt; 
+&lt;p style="color:#333333; margin-left:0; margin-right:0; text-align:start"&gt;随后，Furion 网站持续遭受攻击，日请求量高达一两百万。&lt;strong&gt;因早前手机号和微信号曾被公开，我收到了短信与电话轰炸，手机二十多天无法正常使用，成千上万条骚扰蜂拥而至，添加好友的申请中也充斥着辱骂。连公司的固话也被持续占线，客户无法打进。&lt;/strong&gt;&lt;/p&gt; 
+&lt;p style="color:#333333; margin-left:0; margin-right:0; text-align:start"&gt;这段经历让我深感，当前国内的环境对开源作者及开源商业化仍非常不友好，加之各大 IT 平台为引流和提升用户活跃，主动推动相关话题发酵……&lt;strong&gt;扯远了，才想起这篇文章本是为 Furion 五周年而写。&lt;/strong&gt;&lt;/p&gt; 
+&lt;p style="color:#333333; margin-left:0; margin-right:0; text-align:start"&gt;不过，距离 Furion 商业化已近两年，很多事与伤害也随时间慢慢冲淡。&lt;strong&gt;回望这段历程，我认为一切经历都是有价值的&lt;/strong&gt;。人本身就有多面，不同阶段、不同经历会带来不同的想法。只能说，经历决定行为，也改变一个人，让人成长，更加清醒。&lt;/p&gt; 
+&lt;p style="color:#333333; margin-left:0; margin-right:0; text-align:start"&gt;&lt;strong&gt;Furion 的五年，是属于每一位用户、每一位贡献者的五年。感谢所有支持、批评和陪伴过这个项目的人。没有你们，就没有它的今天。&lt;/strong&gt;&lt;/p&gt; 
+&lt;p style="color:#333333; margin-left:0; margin-right:0; text-align:start"&gt;文末也分享几篇我在低谷时期写下的文章。它们记录着我那段时期的反思与成长，或许你愿意读一读：&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt;《感谢看好我们的人，更感谢不看好我们的人》：&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fmp.weixin.qq.com%2Fs%2FsRbi_3LG5cdRvodtmYw9CA" target="_blank"&gt;https://mp.weixin.qq.com/s/sRbi_3LG5cdRvodtmYw9CA&lt;/a&gt;&lt;/li&gt; 
+ &lt;li&gt;《世俗的成功给人自由，你可以不屠龙，但是不能不磨剑》：&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fmp.weixin.qq.com%2Fs%2Fi1uCxmhTmfD_dwoErZZG8A" target="_blank"&gt;https://mp.weixin.qq.com/s/i1uCxmhTmfD_dwoErZZG8A&lt;/a&gt;&lt;/li&gt; 
+ &lt;li&gt;《开源的责任悖论：当「用爱发电」成为道德枷锁》：&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fmp.weixin.qq.com%2Fs%2FZtmkAGsIRP64g1P6Wi97Og" target="_blank"&gt;https://mp.weixin.qq.com/s/ZtmkAGsIRP64g1P6Wi97Og&lt;/a&gt;&lt;/li&gt; 
+ &lt;li&gt;《谋士以身入局，.NET 框架 Furion v4.9.2 发布》：&lt;a href="https://www.oschina.net/news/285603/furion-4-9-2-released"&gt;https://www.oschina.net/news/285603/furion-4-9-2-released&lt;/a&gt;&lt;/li&gt; 
+ &lt;li&gt;《Furion 框架文档收费五个月的回顾》：&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fmp.weixin.qq.com%2Fs%2FJLvodQ6wz1sbvK0sPs1ORw" target="_blank"&gt;https://mp.weixin.qq.com/s/JLvodQ6wz1sbvK0sPs1ORw&lt;/a&gt;&lt;/li&gt; 
+ &lt;li&gt;《Furion 的五年：1123 个版本，370 万字文档，与一个开源作者的坚持》：&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fmp.weixin.qq.com%2Fs%2FJLvodQ6wz1sbvK0sPs1ORw" target="_blank"&gt;https://mp.weixin.qq.com/s/JLvodQ6wz1sbvK0sPs1ORw&lt;/a&gt;&lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;p style="color:#333333; margin-left:0; margin-right:0; text-align:start"&gt;&lt;strong&gt;谢谢你们，一路陪我走到这里。&lt;/strong&gt;&lt;br&gt; 下一个五年，希望还能与你同行。&lt;/p&gt; 
+&lt;p style="color:#333333; margin-left:0; margin-right:0; text-align:start"&gt;&lt;img alt="" height="517" src="https://oscimg.oschina.net/oscnet/up-ced8ce675c88578f37bd283448def3ef5e0.png" width="1695" referrerpolicy="no-referrer"&gt;&lt;/p&gt;
+                                                                                &lt;/div&gt;
+                                                                            </description>
+      <link>https://www.oschina.net/news/367763</link>
+      <guid isPermaLink="false">https://www.oschina.net/news/367763</guid>
+      <pubDate>Mon, 18 Aug 2025 21:38:00 GMT</pubDate>
+      <author>来源: 资讯</author>
+    </item>
     <item>
       <title>「Genspark AI Developer」 正式发布，全自动编程 Agent</title>
       <description>&lt;div class="content"&gt;
@@ -472,144 +946,6 @@
       <guid isPermaLink="false">https://www.oschina.net/news/367671</guid>
       <pubDate>Mon, 18 Aug 2025 09:26:00 GMT</pubDate>
       <author>来源: OSCHINA</author>
-    </item>
-    <item>
-      <title>DeepSeek 透露下一代国产芯片即将发布</title>
-      <description>&lt;div class="content"&gt;
-                                                                    
-                                                        &lt;p&gt;深度求索官方今日正式&lt;a href="https://www.oschina.net/news/367617" target="_blank"&gt;对外发布 DeepSeek-V3.1&lt;/a&gt;，官方提到 DeepSeek-V3.1 使用了 UE8M0 FP8 Scale 的参数精度。&lt;/p&gt; 
-&lt;p&gt;在 DeepSeek 官方公众号文章页面，DeepSeek 进一步解释称：&lt;strong&gt;UE8M0 FP8 是针对即将发布的下一代国产芯片设计&lt;/strong&gt;。&lt;/p&gt; 
-&lt;blockquote&gt; 
- &lt;p&gt;&lt;img height="332" src="https://static.oschina.net/uploads/space/2025/0821/170943_HWBZ_2720166.png" width="1200" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;/blockquote&gt; 
-&lt;p&gt;FP 英文全称为 Floating Point，是 IEEE 定义的标准浮点数类型。UE8M0 FP8 在 AI 模型领域代表一种模型精度。&lt;/p&gt; 
-&lt;p&gt;DeepSeek V3.1 的 Base 模型在 V3 的基础上重新做了外扩训练，一共增加训练了 840B tokens。Base 模型与后训练模型均已在 Huggingface 与魔搭开源。&lt;/p&gt; 
-&lt;p&gt;&lt;strong&gt;Base 模型：&lt;/strong&gt;&lt;/p&gt; 
-&lt;ul&gt; 
- &lt;li&gt; &lt;p&gt;Hugging Face：https://huggingface.co/deepseek-ai/DeepSeek-V3.1-Base&lt;/p&gt; &lt;/li&gt; 
- &lt;li&gt; &lt;p&gt;魔搭：https://modelscope.cn/models/deepseek-ai/DeepSeek-V3.1-Base&lt;/p&gt; &lt;/li&gt; 
-&lt;/ul&gt; 
-&lt;p&gt;&lt;strong&gt;后训练模型：&lt;/strong&gt;&lt;/p&gt; 
-&lt;ul&gt; 
- &lt;li&gt; &lt;p&gt;Hugging Face：https://huggingface.co/deepseek-ai/DeepSeek-V3.1&lt;/p&gt; &lt;/li&gt; 
- &lt;li&gt; &lt;p&gt;魔搭：https://modelscope.cn/models/deepseek-ai/DeepSeek-V3.1&lt;/p&gt; &lt;/li&gt; 
-&lt;/ul&gt;
-                                                                                &lt;/div&gt;
-                                                                            </description>
-      <link>https://www.oschina.net/news/367665</link>
-      <guid isPermaLink="false">https://www.oschina.net/news/367665</guid>
-      <pubDate>Mon, 18 Aug 2025 09:10:00 GMT</pubDate>
-      <author>来源: OSCHINA</author>
-    </item>
-    <item>
-      <title>百度智能云千帆大模型平台赋能文曲智阅：让作文批改迈入智能高效新时代</title>
-      <description>&lt;div class="content"&gt;
-                                                                    
-                                                        &lt;p&gt;在小初高语文教学的日常里，作文批改始终是压在教师肩上的重担——堆积如山的作文本、逐字逐句的批注、重复繁琐的反馈，不仅耗费教师大量精力，更难做到每篇作文都被全面、个性化地剖析。&lt;/p&gt; 
-&lt;p&gt;而当文曲智阅牵手百度智能云千帆大模型平台后，这一教育痛点被彻底重构，为作文批改领域带来了从「低效重复」到「智能精准」的颠覆性变革。&lt;/p&gt; 
-&lt;p&gt;&amp;nbsp;&lt;/p&gt; 
-&lt;h3&gt;&lt;strong&gt;从「教师埋首作业本」到「AI 深度伴学」：技术重构&lt;/strong&gt;&lt;/h3&gt; 
-&lt;p&gt;批改场景传统作文批改的困境，本质是「人力极限」与「个性化需求」的矛盾。一位语文教师日均需批改 30-50 篇作文，每篇耗时 15-20 分钟，不仅易因疲劳导致点评同质化，更难针对不同学段、不同水平的学生提供差异化指导。&lt;/p&gt; 
-&lt;p&gt;而依托&lt;strong&gt;&lt;strong&gt;百度智能云千帆大模型平台&lt;/strong&gt;&lt;/strong&gt;提供的模型服务，文曲智阅 AI 作文批改工具集成了&lt;strong&gt;&lt;strong&gt;百度文心大模型 4.5 Turbo，&lt;strong&gt;千帆大模型平台作为拥有完善企业级运维服务的大模型开发及服务平台&lt;/strong&gt;&lt;/strong&gt;，确保了文心大模型在处理海量文本、理解复杂语义与逻辑结构时的&lt;/strong&gt;&lt;strong&gt;卓越性能与稳定性&lt;/strong&gt;。这赋予了文曲智阅媲美资深教师的文本洞察力，让 AI 批改从「机械纠错」升级为「深度交流」。&lt;/p&gt; 
-&lt;p&gt;对学生而言，批改评语不再是简单的红笔标记，而是涵盖「教师点评」「全文润色」「谋篇布局」的立体反馈。比如将「他很高兴」润色为「他的脸上洋溢着抑制不住的喜悦，仿佛春日里盛开的繁花」，用生动比喻提升文采；通过结构化思路梳理议论文结构，引导学生明确「引论-本论-结论」的逻辑链条。&lt;/p&gt; 
-&lt;p&gt;&lt;img src="https://static.oschina.net/uploads/space/2025/0821/164711_8HjT_2720166.png" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;p&gt;对教师而言，AI 能精准捕捉作文亮点与不足，甚至可以针对不同阶段的学生提供不同认知水平生成差异化评语——给初中生侧重「语句流畅度」「素材贴合度」，给高中生则深入「论证严密性」「思想深度」，让教师从基础批改中解放，专注教学设计与个性化辅导。&lt;/p&gt; 
-&lt;p&gt;&lt;img src="https://static.oschina.net/uploads/space/2025/0821/164730_jR7R_2720166.png" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;p&gt;&amp;nbsp;&lt;/p&gt; 
-&lt;h3&gt;&lt;strong&gt;效率与质量双提升：看得见的技术赋能效果&lt;/strong&gt;&lt;/h3&gt; 
-&lt;p&gt;百度智能云千帆大模型平台的技术支撑，让文曲智阅的「智能批改」不仅有「温度」，更有「速度」与「精度」：&lt;/p&gt; 
-&lt;ul&gt; 
- &lt;li&gt;&lt;strong&gt;效率跃升 85%&lt;/strong&gt;：依托文心大模型 4.5 Turbo 的高速文本处理能力，文曲智阅的文本识别率达 98%，批改一个班级的作文仅需 3 分钟，较人工节省 85% 时间。浙江某中学语文组使用后，教师日均批改时长从 4 小时压缩至 1 小时，得以将更多精力投入课堂教学设计。&lt;/li&gt; 
- &lt;li&gt;&lt;strong&gt;覆盖全学段需求&lt;/strong&gt;：针对小学低年级的「语句通顺度」、初中的「结构完整性」、高中的「逻辑严密性」，模型能精准匹配学段要求。如四年级童话写作任务中，AI 能快速识别「偏离童话体裁」「想象不丰富」等问题，并给出「添加拟人化角色对话」「设计奇幻情节转折」的具体建议。&lt;/li&gt; 
- &lt;li&gt;&lt;strong&gt;数据驱动教学优化&lt;/strong&gt;：通过对学生作文的多维度分析（如「好词好句使用率」「错别字频率」「结构完整度」），文曲智能生成班级整体报告。某九年级语文教师通过报告发现，班级 38 名学生中 70% 存在「结尾升华不足」问题，随即设计专项课堂训练，针对性提升效果显著。&lt;/li&gt; 
-&lt;/ul&gt; 
-&lt;p&gt;&lt;img alt="" src="https://oscimg.oschina.net/oscnet/up-2a273b7e97e79c7419b5910e241327b83e7.png" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;p&gt;&amp;nbsp;&lt;/p&gt; 
-&lt;h3&gt;&lt;strong&gt;从校园到区域：技术赋能的规模化落地&lt;/strong&gt;&lt;/h3&gt; 
-&lt;p&gt;如今，依托百度智能云千帆大模型平台的技术底座，文曲智阅的智能批改能力已在全国 25+省份、3000+学校落地生根日均批改量高达 10W+ 篇，成为众多教师作文批改的首选工具。&lt;/p&gt; 
-&lt;p&gt;&lt;img alt="" src="https://oscimg.oschina.net/oscnet/up-49e7d9b01164f320c66ebb512d5d0b0c12a.png" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;p&gt;这些成果的背后，是百度智能云千帆大模型平台「技术普惠」理念的实践——让前沿大模型能力走出实验室，融入教育教学的每一个细节。当文心大模型 4.5 Turbo 的语义理解、逻辑分析能力与作文批改场景深度融合，不仅解放了教师的双手，更让每个学生都能获得「如师伴学」的个性化指导，真正实现「以技术赋能教育，让每个孩子都能在文字中成长」。&lt;/p&gt; 
-&lt;p&gt;未来，百度智能云千帆大模型平台将持续以技术创新为支点，文曲智阅将持续优化升级，深化对写作规律的理解，提供更智能、更个性化的服务，推动智能教育迈向新高度，让更多师生享受到人工智能带来的高效与便捷，共同书写教育现代化的新篇章。&lt;/p&gt; 
-&lt;p&gt;&lt;strong&gt;即刻体验千帆大模型平台：&lt;/strong&gt;&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fcloud.baidu.com%2Fproduct-s%2Fqianfan_modelbuilder_mobile" target="_blank"&gt;https://cloud.baidu.com/product-s/qianfan_modelbuilder_mobile&lt;/a&gt;&lt;/p&gt;
-                                                                                &lt;/div&gt;
-                                                                            </description>
-      <link>https://www.oschina.net/news/367661</link>
-      <guid isPermaLink="false">https://www.oschina.net/news/367661</guid>
-      <pubDate>Mon, 18 Aug 2025 08:48:00 GMT</pubDate>
-      <author>来源: 资讯</author>
-    </item>
-    <item>
-      <title>英特尔下一代 AI 芯片 Jaguar Shores 开发板首次亮相</title>
-      <description>&lt;div class="content"&gt;
-                                                                    
-                                                        &lt;p&gt;据报道，英特尔正在筹备下一代人工智能架构，Jaguar Shores 将成为该公司首款采用 18A 和 HBM4 的机架规模解决方案，目前相应的开发板已在网上曝光，展示了相当优雅的设计。&lt;/p&gt; 
-&lt;p&gt;&lt;img src="https://static.oschina.net/uploads/space/2025/0821/163751_4llw_2720166.png" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;p&gt;由于未能在市场上提供具有竞争力的解决方案，英特尔在人工智能领域的表现并不出色。我们最近看到的该公司芯片是 Gaudi 3 人工智能加速器，与 NVIDIA 和 AMD 等公司相比，其普及率很低。此外，在首席执行官陈立武 (Lip-Bu Tan) 的领导下，英特尔还取消了备受期待的 Falcon Shores 人工智能 GPU 产品线，转而换阵 Jaguar Shores。如今，后者的产品线首次在镜头前绽放光芒。&lt;/p&gt; 
-&lt;p&gt;Andreas Schilling 分享了一张 Jaguar Shores 开发板的图片，据他介绍，该车目前正由热工程团队使用，可能是为了找到合适的散热解决方案。该车似乎被放置在一块开发板上，芯片本身的封装尺寸巨大，据称尺寸为 92.5 毫米 x 92.5 毫米，这表明它是一个面向高性能计算 (HPC) 的平台。此外，测试车还展示了四种不同的 Tile 和八个 HBM 位置。&lt;/p&gt; 
-&lt;p&gt;&lt;img alt="" src="https://oscimg.oschina.net/oscnet/up-7335ed67f8a221096c43b7bc73c002c2a3c.png" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;p&gt;目前，英特尔下一代 AI 芯片架构的细节尚不确定，但该公司确实透露，其下一代产品将采用机架级解决方案，这意味着 Jaguar Shores 可能是蓝队首个能够与竞争对手相媲美的 AI 平台。&lt;/p&gt; 
-&lt;p&gt;此外，我们最近报道了英特尔计划在 Jaguar Shores 上使用 SK 海力士的 HBM4 内存，这将是一款多域和多 IP 产品。Jaguar Shores 机架将与英特尔即将推出的 Diamond Rapids Xeon CPU 结合使用。&lt;/p&gt; 
-&lt;p&gt;鉴于英特尔正努力应对财务和政治困境，其在人工智能领域的计划目前尚不明朗。目前的首要任务是减少运营亏损，专注于核心业务，但该公司是否对人工智能计算业务感兴趣，我们仍需拭目以待。&lt;/p&gt;
-                                                                                &lt;/div&gt;
-                                                                            </description>
-      <link>https://www.oschina.net/news/367658</link>
-      <guid isPermaLink="false">https://www.oschina.net/news/367658</guid>
-      <pubDate>Mon, 18 Aug 2025 08:37:00 GMT</pubDate>
-      <author>来源: OSCHINA</author>
-    </item>
-    <item>
-      <title>智谱 AI 在深圳成立科技新公司，含 AI 及机器人业务</title>
-      <description>&lt;div class="content"&gt;
-                                                                    
-                                                        &lt;p&gt;&lt;span style="color:#000000"&gt;爱企查 App 显示，深圳智谱聆心科技有限公司于近日正式成立，法定代表人为郑叔亮，注册资本 100 万元人民币。&lt;/span&gt;&lt;/p&gt; 
-&lt;p&gt;&lt;span style="color:#000000"&gt;公司经营范围包括人工智能基础资源与技术平台、人工智能基础软件开发、人工智能应用软件开发、智能机器人的研发等。股权穿透图显示，该公司由智谱 AI 关联公司北京智谱华章科技股份有限公司间接全资持股。&lt;/span&gt;&lt;/p&gt; 
-&lt;p&gt;&lt;img height="283" src="https://oscimg.oschina.net/oscnet/up-605a3e71734688f4b48a153a00c8aff1138.png" width="700" referrerpolicy="no-referrer"&gt;&lt;/p&gt;
-                                                                                &lt;/div&gt;
-                                                                            </description>
-      <link>https://www.oschina.net/news/367656</link>
-      <guid isPermaLink="false">https://www.oschina.net/news/367656</guid>
-      <pubDate>Mon, 18 Aug 2025 08:34:00 GMT</pubDate>
-      <author>来源: OSCHINA</author>
-    </item>
-    <item>
-      <title>AI 工具排行榜：GitHub Copilot 并非开发者首选</title>
-      <description>&lt;div class="content"&gt;
-                                                                                                                    
-                                                                                                                                                    &lt;p&gt;根据最新报告，GitHub Copilot 并非开发者在 AI 工具选择中的绝对王者。一项针对全球开发者的调查显示，尽管 Copilot 在代码补全和生产力提升方面表现优异，但其他 AI 工具正在迅速崛起，凭借更贴合开发者需求的功能和本地化优势，逐渐赢得国内开发者的青睐。&lt;/p&gt; 
-&lt;p&gt;&lt;img src="https://oscimg.oschina.net/oscnet/up-862ddb6d3836d347265eddc818b62b9e679.png" alt="" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;h2&gt;&lt;strong&gt;为什么 Copilot 不是唯一选择？&lt;/strong&gt;&lt;/h2&gt; 
-&lt;p&gt;GitHub Copilot 作为 AI 驱动的代码助手，凭借其强大的代码补全和上下文理解能力，曾被视为开发者生产力的"神器"。然而，报告指出，国内开发者在选择 AI 工具时，更看重以下几点：&lt;/p&gt; 
-&lt;ol&gt; 
- &lt;li&gt;&lt;strong&gt;本地化支持&lt;/strong&gt;：国内开发者更倾向于支持中文语义理解、文档齐全且符合国内开发环境的工具。例如，某些工具针对国内常用的框架（如 Spring Boot、Vue.js）和云服务（如阿里云、腾讯云）提供了更精准的代码建议。&lt;/li&gt; 
- &lt;li&gt;&lt;strong&gt;性价比&lt;/strong&gt;：Copilot 的订阅费用对部分中小型团队或个人开发者来说偏高，而一些新兴 AI 工具提供了免费或低成本的替代方案。&lt;/li&gt; 
- &lt;li&gt;&lt;strong&gt;生态整合&lt;/strong&gt;：国内开发者更希望 AI 工具能无缝融入现有的 IDE（如 IntelliJ IDEA、VS Code）以及 CI/CD 流程，而非单纯依赖单一平台。&lt;/li&gt; 
-&lt;/ol&gt; 
-&lt;h2&gt;&lt;strong&gt;新兴 AI 工具的崛起&lt;/strong&gt;&lt;/h2&gt; 
-&lt;p&gt;报告中提到的几个备受关注的 AI 工具包括：&lt;/p&gt; 
-&lt;ul&gt; 
- &lt;li&gt;&lt;strong&gt;Tabnine&lt;/strong&gt;：以轻量化和跨平台支持著称，Tabnine 在国内开发者中颇受欢迎。它支持多种编程语言，且对中文注释和文档的处理能力更强，适合国内的开发场景。&lt;/li&gt; 
- &lt;li&gt;&lt;strong&gt;DeepCode&lt;/strong&gt;：主打代码审查和错误检测，DeepCode 通过 AI 分析代码库，能够发现潜在的 Bug 和性能瓶颈，特别适合大型项目团队。&lt;/li&gt; 
- &lt;li&gt;&lt;strong&gt;国产 AI 助手&lt;/strong&gt;：一些国内厂商推出的 AI 编程工具（如百度、华为的开发者工具）正在快速迭代，结合本地化需求，提供从代码生成到调试优化的全链路支持。&lt;/li&gt; 
-&lt;/ul&gt; 
-&lt;h2&gt;&lt;strong&gt;国内开发者的实际反馈&lt;/strong&gt;&lt;/h2&gt; 
-&lt;p&gt;在国内技术社区（如 CSDN、知乎、掘金）中，开发者们对 AI 工具的选择呈现多样化趋势。一位前端开发者表示："Copilot 在写 React 代码时确实很快，但遇到复杂逻辑时，建议的代码有时不够精准。相比之下，Tabnine 对我的 Vue 项目支持更好。"另一位后端开发者则提到："DeepCode 帮我在 Spring 项目中发现了好几个隐藏 Bug，效率比手动 Review 高多了。"&lt;/p&gt; 
-&lt;h2&gt;&lt;strong&gt;如何选择适合自己的 AI 工具？&lt;/strong&gt;&lt;/h2&gt; 
-&lt;p&gt;对于国内开发者来说，选择 AI 工具时可以参考以下建议：&lt;/p&gt; 
-&lt;ol&gt; 
- &lt;li&gt;&lt;strong&gt;明确需求&lt;/strong&gt;：如果是快速原型开发，优先选择代码补全能力强的工具；如果是大型项目，注重代码质量和审查的工具可能更适合。&lt;/li&gt; 
- &lt;li&gt;&lt;strong&gt;试用体验&lt;/strong&gt;：大多数 AI 工具提供免费试用，建议在实际项目中测试其效果，尤其是对中文注释和本地框架的支持。&lt;/li&gt; 
- &lt;li&gt;&lt;strong&gt;社区生态&lt;/strong&gt;：关注工具在国内技术社区的讨论热度和插件支持情况，这直接影响后续的维护和扩展。&lt;/li&gt; 
- &lt;li&gt;&lt;strong&gt;成本考量&lt;/strong&gt;：综合评估工具的定价与团队预算，免费或开源方案可能更适合初创团队。&lt;/li&gt; 
-&lt;/ol&gt; 
-&lt;h2&gt;&lt;strong&gt;总结&lt;/strong&gt;&lt;/h2&gt; 
-&lt;p&gt;GitHub Copilot 虽然仍是 AI 编程工具的标杆，但并非国内开发者的唯一选择。随着本地化 AI 工具的快速发展，开发者有了更多元化的选项。无论是追求高效的代码补全，还是专注于代码质量和团队协作，总有一款 AI 工具能满足你的需求。未来，随着 AI 技术的进一步成熟，国内开发者有望迎来更多定制化、高性价比的编程助手。&lt;/p&gt; 
-&lt;p&gt;| &lt;strong&gt;参考资料&lt;/strong&gt;：本文改编自 The New Stack 的报告，结合国内技术社区的反馈整理而成。 | | ------------------------------------------------------------ |&lt;/p&gt;
-                                                                                    &lt;/div&gt;
-                                                                            </description>
-      <link>https://my.oschina.net/powertoolsteam/blog/18688991</link>
-      <guid isPermaLink="false">https://my.oschina.net/powertoolsteam/blog/18688991</guid>
-      <pubDate>Mon, 18 Aug 2025 08:25:00 GMT</pubDate>
-      <author>原创</author>
     </item>
   </channel>
 </rss>
