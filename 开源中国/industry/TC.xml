@@ -7,8 +7,142 @@
     <generator>RSSHub</generator>
     <webMaster>contact@rsshub.app (RSSHub)</webMaster>
     <language>zh-tw</language>
-    <lastBuildDate>Sat, 23 Aug 2025 02:41:43 GMT</lastBuildDate>
+    <lastBuildDate>Sat, 23 Aug 2025 07:41:24 GMT</lastBuildDate>
     <ttl>5</ttl>
+    <item>
+      <title>Solon StateMachine 實現狀態機使用示例詳解</title>
+      <description>&lt;div class="content"&gt;
+                                                                    
+                                                        &lt;h2&gt;什麼是狀態機&lt;/h2&gt; 
+&lt;p style="color:#24292e; text-align:start"&gt;狀態機是計算機科學中的&lt;strong&gt;核心建模工具&lt;/strong&gt;，用於描述對象在其生命週期內狀態變化的邏輯模型。它通過定義&lt;strong&gt;有限狀態集合&lt;/strong&gt;、&lt;strong&gt;狀態轉移規則&lt;/strong&gt;和&lt;strong&gt;觸發事件&lt;/strong&gt;，精確控制系統的行為邏輯。&lt;/p&gt; 
+&lt;p style="color:#24292e; text-align:start"&gt;Solon StateMachine 是 Solon Framework 提供的一個功能強大的狀態機框架，可實現複雜的工作流、訂單管理等需要狀態流轉的場景。通過對狀態、事件和轉移的管理，開發者能夠構建出簡潔而靈活的狀態機邏輯。&lt;/p&gt; 
+&lt;h2&gt;使用示例&lt;/h2&gt; 
+&lt;h4&gt;1、導入 maven 依賴&lt;/h4&gt; 
+&lt;pre&gt;&lt;code class="language-xml"&gt;&lt;span&gt;&amp;lt;&lt;span style="color:#e45649"&gt;dependency&lt;/span&gt;&amp;gt;&lt;/span&gt;
+    &lt;span&gt;&amp;lt;&lt;span style="color:#e45649"&gt;groupId&lt;/span&gt;&amp;gt;&lt;/span&gt;org.noear&lt;span&gt;&amp;lt;/&lt;span style="color:#e45649"&gt;groupId&lt;/span&gt;&amp;gt;&lt;/span&gt;
+    &lt;span&gt;&amp;lt;&lt;span style="color:#e45649"&gt;artifactId&lt;/span&gt;&amp;gt;&lt;/span&gt;solon-statemachine&lt;span&gt;&amp;lt;/&lt;span style="color:#e45649"&gt;artifactId&lt;/span&gt;&amp;gt;&lt;/span&gt;
+    &lt;span&gt;&amp;lt;&lt;span style="color:#e45649"&gt;version&lt;/span&gt;&amp;gt;&lt;/span&gt;3.5.0&lt;span&gt;&amp;lt;/&lt;span style="color:#e45649"&gt;version&lt;/span&gt;&amp;gt;&lt;/span&gt;
+&lt;span&gt;&amp;lt;/&lt;span style="color:#e45649"&gt;dependency&lt;/span&gt;&amp;gt;&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt; 
+&lt;h4&gt;2、創建訂單狀態枚舉類&lt;/h4&gt; 
+&lt;pre&gt;&lt;code class="language-java"&gt;&lt;span style="color:#a626a4"&gt;import&lt;/span&gt; org.noear.solon.statemachine.State;
+
+&lt;span style="color:#a626a4"&gt;public&lt;/span&gt; &lt;span style="color:#a626a4"&gt;enum&lt;/span&gt; &lt;span style="color:#c18401"&gt;OrderStatus&lt;/span&gt; &lt;span style="color:#a626a4"&gt;implements&lt;/span&gt; &lt;span style="color:#c18401"&gt;State&lt;/span&gt;{
+    WAITING_PAYMENT,&lt;em&gt;//待支付&lt;/em&gt;
+    WAITING_RECEIVE,&lt;em&gt;//待取貨&lt;/em&gt;
+    FINISHED,&lt;em&gt;//已完成&lt;/em&gt;
+    CANCELED;&lt;em&gt;//已取消&lt;/em&gt;
+}
+&lt;/code&gt;&lt;/pre&gt; 
+&lt;h4&gt;3、創建訂單轉悠事件枚舉類&lt;/h4&gt; 
+&lt;pre&gt;&lt;code class="language-java"&gt;&lt;span style="color:#a626a4"&gt;import&lt;/span&gt; org.noear.solon.statemachine.Event;
+
+&lt;span style="color:#a626a4"&gt;public&lt;/span&gt; &lt;span style="color:#a626a4"&gt;enum&lt;/span&gt; &lt;span style="color:#c18401"&gt;OrderEvent&lt;/span&gt; &lt;span style="color:#a626a4"&gt;implements&lt;/span&gt; &lt;span style="color:#c18401"&gt;Event&lt;/span&gt; {
+    CREATE_ORDER,&lt;em&gt;//創建訂單&lt;/em&gt;
+    PAY_ORDER,&lt;em&gt;//支付訂單&lt;/em&gt;
+    RECEIVE_ORDER,&lt;em&gt;//取貨&lt;/em&gt;
+    CANCEL_ORDER,&lt;em&gt;//取消訂單&lt;/em&gt;
+    FINISH_ORDER&lt;em&gt;//完成訂單&lt;/em&gt;
+}
+&lt;/code&gt;&lt;/pre&gt; 
+&lt;h4&gt;4、創建訂單實體，並實現 EventContext 接口（也可以不實現，改用 EventContext.of(...)）&lt;/h4&gt; 
+&lt;pre&gt;&lt;code class="language-java"&gt;&lt;span style="color:#a626a4"&gt;public&lt;/span&gt; &lt;span style="color:#a626a4"&gt;class&lt;/span&gt; &lt;span style="color:#c18401"&gt;Order&lt;/span&gt; &lt;span style="color:#a626a4"&gt;implements&lt;/span&gt; &lt;span style="color:#c18401"&gt;EventContext&lt;/span&gt;&amp;lt;OrderStatus, Order&amp;gt; {
+    &lt;span style="color:#a626a4"&gt;private&lt;/span&gt; &lt;span style="color:#a626a4"&gt;final&lt;/span&gt; String orderId;
+    &lt;span style="color:#a626a4"&gt;private&lt;/span&gt; OrderStatus status;
+
+    &lt;span style="color:#a626a4"&gt;public&lt;/span&gt; &lt;span style="color:#4078f2"&gt;Order&lt;/span&gt;&lt;span&gt;(String orderId, OrderStatus status)&lt;/span&gt; {
+        &lt;span style="color:#c18401"&gt;this&lt;/span&gt;.orderId = orderId;
+        &lt;span style="color:#c18401"&gt;this&lt;/span&gt;.status = status;
+    }
+
+    &lt;span style="color:#a626a4"&gt;public&lt;/span&gt; String &lt;span style="color:#4078f2"&gt;getOrderId&lt;/span&gt;&lt;span&gt;()&lt;/span&gt; {
+        &lt;span style="color:#a626a4"&gt;return&lt;/span&gt; orderId;
+    }
+
+    &lt;span style="color:#a626a4"&gt;public&lt;/span&gt; OrderStatus &lt;span style="color:#4078f2"&gt;getStatus&lt;/span&gt;&lt;span&gt;()&lt;/span&gt; {
+        &lt;span style="color:#a626a4"&gt;return&lt;/span&gt; status;
+    }
+
+    &lt;span style="color:#a626a4"&gt;public&lt;/span&gt; &lt;span style="color:#a626a4"&gt;void&lt;/span&gt; &lt;span style="color:#4078f2"&gt;setStatus&lt;/span&gt;&lt;span&gt;(OrderStatus status)&lt;/span&gt; {
+        &lt;span style="color:#c18401"&gt;this&lt;/span&gt;.status = status;
+    }
+
+    &lt;em&gt;// for EventContext&lt;/em&gt;
+
+    &lt;span style="color:#4078f2"&gt;@Override&lt;/span&gt;
+    &lt;span style="color:#a626a4"&gt;public&lt;/span&gt; OrderStatus &lt;span style="color:#4078f2"&gt;getCurrentState&lt;/span&gt;&lt;span&gt;()&lt;/span&gt; {
+        &lt;span style="color:#a626a4"&gt;return&lt;/span&gt; status;
+    }
+
+    &lt;span style="color:#4078f2"&gt;@Override&lt;/span&gt;
+    &lt;span style="color:#a626a4"&gt;public&lt;/span&gt; Order &lt;span style="color:#4078f2"&gt;getPayload&lt;/span&gt;&lt;span&gt;()&lt;/span&gt; {
+        &lt;span style="color:#a626a4"&gt;return&lt;/span&gt; &lt;span style="color:#c18401"&gt;this&lt;/span&gt;;
+    }
+}
+&lt;/code&gt;&lt;/pre&gt; 
+&lt;h4&gt;5、定義訂單狀態機組件，並添加狀態轉移規則。這裏是重點了&lt;/h4&gt; 
+&lt;p style="color:#24292e; text-align:start"&gt;Solon StateMachine 不管理當前狀態，不涉及持久化。具有可複用、多線程安全特性。&lt;/p&gt; 
+&lt;pre&gt;&lt;code class="language-java"&gt;&lt;span style="color:#a626a4"&gt;import&lt;/span&gt; org.noear.solon.annotation.Managed;
+&lt;span style="color:#a626a4"&gt;import&lt;/span&gt; org.noear.solon.statemachine.StateMachine;
+
+&lt;span style="color:#4078f2"&gt;@Managed&lt;/span&gt;
+&lt;span style="color:#a626a4"&gt;public&lt;/span&gt; &lt;span style="color:#a626a4"&gt;class&lt;/span&gt; &lt;span style="color:#c18401"&gt;OrderStateMachine&lt;/span&gt; &lt;span style="color:#a626a4"&gt;extends&lt;/span&gt; &lt;span style="color:#c18401"&gt;StateMachine&lt;/span&gt;&amp;lt;OrderStatus, OrderEvent,Order&amp;gt; {
+    &lt;span style="color:#a626a4"&gt;public&lt;/span&gt; &lt;span style="color:#4078f2"&gt;OrderStateMachine&lt;/span&gt;&lt;span&gt;()&lt;/span&gt; {
+        &lt;em&gt;// 訂單待支付 -&amp;gt; 待取貨&lt;/em&gt;
+        addTransition(t -&amp;gt; t
+                .from(OrderStatus.WAITING_PAYMENT)
+                .to(OrderStatus.WAITING_RECEIVE)
+                .on(OrderEvent.PAY_ORDER)
+                .then(c -&amp;gt; c.getPayload().setStatus(c.getTo())));
+
+        &lt;em&gt;// 訂單待取貨 -&amp;gt; 已完成&lt;/em&gt;
+        addTransition(t -&amp;gt; t
+                .from(OrderStatus.WAITING_RECEIVE)
+                .to(OrderStatus.FINISHED)
+                .on(OrderEvent.FINISH_ORDER)
+                .then(c -&amp;gt; c.getPayload().setStatus(c.getTo())));
+
+        &lt;em&gt;// 訂單待支付 -&amp;gt; 已取消&lt;/em&gt;
+        addTransition(t -&amp;gt; t
+                .from(OrderStatus.WAITING_PAYMENT)
+                .to(OrderStatus.CANCELED)
+                .on(OrderEvent.CANCEL_ORDER)
+                .then(c -&amp;gt; c.getPayload().setStatus(c.getTo())));
+    }
+}
+&lt;/code&gt;&lt;/pre&gt; 
+&lt;h4&gt;6、創建調用示例服務&lt;/h4&gt; 
+&lt;p style="color:#24292e; text-align:start"&gt;Solon StateMachine 在發送事件時，通過 EventContext 傳遞當前狀態和裝載。&lt;/p&gt; 
+&lt;pre&gt;&lt;code class="language-java"&gt;&lt;span style="color:#4078f2"&gt;@Managed&lt;/span&gt;
+&lt;span style="color:#a626a4"&gt;public&lt;/span&gt; &lt;span style="color:#a626a4"&gt;class&lt;/span&gt; &lt;span style="color:#c18401"&gt;OrderService&lt;/span&gt; {
+    &lt;span style="color:#4078f2"&gt;@Inject&lt;/span&gt;
+    &lt;span style="color:#a626a4"&gt;private&lt;/span&gt; OrderStateMachine orderStateMachine;
+
+    &lt;em&gt;//支付&lt;/em&gt;
+    &lt;span style="color:#a626a4"&gt;public&lt;/span&gt; Order &lt;span style="color:#4078f2"&gt;pay&lt;/span&gt;&lt;span&gt;()&lt;/span&gt; {
+        &lt;span style="color:#986801"&gt;Order&lt;/span&gt; &lt;span style="color:#986801"&gt;order&lt;/span&gt; &lt;span&gt;=&lt;/span&gt; &lt;span style="color:#a626a4"&gt;new&lt;/span&gt; &lt;span style="color:#c18401"&gt;Order&lt;/span&gt;(&lt;span style="color:#50a14f"&gt;"1"&lt;/span&gt;, OrderStatus.WAITING_RECEIVE);
+
+        System.out.println(&lt;span style="color:#50a14f"&gt;"嘗試支付，訂單號："&lt;/span&gt; + order.getOrderId());
+
+        &lt;span style="color:#a626a4"&gt;try&lt;/span&gt; {
+            &lt;em&gt;//事件： 支付, 狀態轉換：待支付 → 待發貨&lt;/em&gt;
+            orderStateMachine.sendEvent(OrderEvent.PAY_ORDER, order);
+
+            System.out.println(&lt;span style="color:#50a14f"&gt;"支付成功，訂單號："&lt;/span&gt; + order.getOrderId());
+        } &lt;span style="color:#a626a4"&gt;catch&lt;/span&gt; (Exception ex) {
+            System.out.println(&lt;span style="color:#50a14f"&gt;"支付失敗, 狀態異常，訂單號："&lt;/span&gt; + order.getOrderId());
+        }
+
+        &lt;span style="color:#a626a4"&gt;return&lt;/span&gt; order;
+    }
+}&lt;/code&gt;&lt;/pre&gt;
+                                                                                &lt;/div&gt;
+                                                                            </description>
+      <link>https://www.oschina.net/news/368015</link>
+      <guid isPermaLink="false">https://www.oschina.net/news/368015</guid>
+      <pubDate>Tue, 19 Aug 2025 02:03:00 GMT</pubDate>
+      <author>來源: 資訊</author>
+    </item>
     <item>
       <title>Meta 陷入史上最大 AI 訓練數據侵權案，面臨 3.59 億美元索賠</title>
       <description>&lt;div class="content"&gt;
@@ -527,117 +661,6 @@ const result = streamText({
       <guid isPermaLink="false">https://www.oschina.net/news/367865</guid>
       <pubDate>Mon, 18 Aug 2025 07:38:00 GMT</pubDate>
       <author>來源: OSCHINA</author>
-    </item>
-    <item>
-      <title>美團智能頭盔研發實踐系列 02：軟件功能篇</title>
-      <description>&lt;div class="content"&gt;
-                                                                                                                    
-                                                                                                                                                    &lt;blockquote&gt; 
- &lt;p&gt;本文系《美團智能頭盔研發實踐系列》的第二篇文章，圍繞智能頭盔如何通過主動安全和被動安全相結合的方式有效保護騎手，主要包括智能頭盔騎行通話質量強化、智能語音助手、碰撞摔倒監控等三項軟件能力。&lt;/p&gt; 
-&lt;/blockquote&gt; 
-&lt;p&gt;&lt;img src="https://oscimg.oschina.net/oscnet/up-b82e78f56c21d3c578ed700c4b6b0f0513e.png" alt="" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;ol&gt; 
- &lt;li&gt;引言&lt;/li&gt; 
-&lt;/ol&gt; 
-&lt;hr&gt; 
-&lt;p&gt;美團智能頭盔作為專為外賣騎手打造的智能安全裝備，具備藍牙通話、戴盔識別、智能語音助手、碰撞摔倒監控等功能，核心軟件功能圍繞如何通過主動安全和被動安全相結合的方式有效保護騎手。&lt;/p&gt; 
-&lt;p&gt;本期分享主要介紹智能頭盔騎行通話質量、智能語音助手、碰撞摔倒監控三項軟件能力。其中"騎行通話質量和智能語音助手"降低騎手操作手機導致的"分心"，幫助騎手"防患於未然"。"碰撞摔倒監控"最大限度的保護騎手、快速的感知事故和觸發救治。&lt;/p&gt; 
-&lt;ol start="2"&gt; 
- &lt;li&gt;安全風險與體系&lt;/li&gt; 
-&lt;/ol&gt; 
-&lt;hr&gt; 
-&lt;h3&gt;2.1 安全挑戰&lt;/h3&gt; 
-&lt;p&gt;外賣騎手面臨着獨特的安全挑戰，他們的工作性質，如午晚高峯短時集中的壓力和交通複雜環境，顯著增加了事故風險。&lt;/p&gt; 
-&lt;ul&gt; 
- &lt;li&gt;&lt;strong&gt;事故和違規行為&lt;/strong&gt;：研究表明，工作壓力與騎手的分心駕駛和危險駕駛行為之間存在關聯，這些行為往往導致交通事故的發生。例如，為了趕時間，騎手可能會超速、闖紅燈或逆行。&lt;/li&gt; 
- &lt;li&gt;&lt;strong&gt;車輛類型&lt;/strong&gt;：許多外賣騎手使用摩托車或電動自行車，這些車輛本身就具有不穩定性，且缺乏足夠的安全保護措施 。尤其是在亞洲，摩托車因其效率而成為首選，但也導致了交通安全事故的增加。&lt;/li&gt; 
- &lt;li&gt;&lt;strong&gt;工作環境&lt;/strong&gt;：外賣騎手有時需要在惡劣的天氣條件下工作，這進一步增加了他們的道路安全風險。此外，長時間工作和不規律的休息也可能導致疲勞駕駛，影響騎手的反應能力和判斷力。&lt;/li&gt; 
- &lt;li&gt;&lt;strong&gt;行為因素&lt;/strong&gt;：騎手的安全態度和風險認知對其駕駛行為有重要影響。研究發現，安全知識的缺乏與騎手的不良駕駛行為有關。此外，工作場所的安全氛圍也會影響騎手的安全合規行為。&lt;/li&gt; 
-&lt;/ul&gt; 
-&lt;h3&gt;2.2 安全體系&lt;/h3&gt; 
-&lt;p&gt;騎手安全防護可以分為&lt;strong&gt;主動安全&lt;/strong&gt; 和&lt;strong&gt;被動安全&lt;/strong&gt;兩個方面，它們共同構成了騎行安全的完整體系。&lt;/p&gt; 
-&lt;p&gt;1）&lt;strong&gt;主動安全是指在騎行過程中，通過技術手段和行為規範來預防事故的發生&lt;/strong&gt;。例如，騎手應遵守交通規則，如不闖紅燈、不超速、不隨意變道等，這些行為有助於減少因人為失誤導致的事故。此外，現代兩輪車也配備了多種主動安全技術，如 ABS（防抱死制動系統）、TCS（牽引力控制系統）等，這些系統通過傳感器實時監測車輪狀態，確保在緊急制動或加速時車輛仍能保持穩定。例如，業界某電動車企業在其兩輪車上應用了 AI 視覺輔助系統，結合姿態感應系統，能夠識別車輛傾倒、非正常移動等危險情況，從而提前預警。這些技術的引入，大大提升了騎行的安全性。&lt;/p&gt; 
-&lt;p&gt;2）&lt;strong&gt;被動安全則是在事故發生時，通過防護裝備、傳感裝備，最大限度地減少傷害、及時觸發救治&lt;/strong&gt;。例如，頭盔是騎行者最重要的被動安全裝備之一，它能夠有效保護頭部免受撞擊，降低顱腦損傷的風險。此外，騎行手套、護膝、護肘等防護裝備也能在摔倒時減少擦傷和扭傷。在車輛設計方面，一些高端兩輪車也嘗試引入類似汽車的被動安全設計，如帶式座椅，以在碰撞時保護騎手。然而，由於兩輪車的結構限制，其被動安全系統仍處於發展階段，尚未達到與汽車同等水平。&lt;/p&gt; 
-&lt;p&gt;&lt;strong&gt;主動安全&lt;/strong&gt; 和&lt;strong&gt;被動安全&lt;/strong&gt;並非孤立存在，而是相輔相成。騎手在日常騎行中應注重主動安全意識的培養，如佩戴護具、遵守交通規則、保持車距等，同時也要關注車輛的安全配置，合理利用主動安全技術，以降低事故發生的風險。只有在主動預防的基礎上，被動安全措施才能發揮最大作用，為騎手提供全方位的保護。&lt;/p&gt; 
-&lt;p&gt;隨着科技的發展，越來越多的智能化技術被應用於外賣配送領域，這些技術不僅提升了騎行的安全性，也為未來兩輪車的安全發展提供了更多可能性。&lt;/p&gt; 
-&lt;ol start="3"&gt; 
- &lt;li&gt;智能頭盔安全能力&lt;/li&gt; 
-&lt;/ol&gt; 
-&lt;hr&gt; 
-&lt;h3&gt;3.1 主動安全篇&lt;/h3&gt; 
-&lt;p&gt;1）&lt;strong&gt;第一個主動安全能力------摩托騎行 60km/h 速度下雙向聽得清&lt;/strong&gt;。騎行中操作手機進行通話和應用交互是導致騎手分心駕駛的主要原因，佔比極高。配送騎手載具涵蓋電動車與摩托車，雖然前者一般工況下均速不超過 15km/h，但後者屬於機動車，在部分不禁摩的城市，極端情況下，時速可達 60km/h，對智能頭盔降噪性能提出極限挑戰。智能頭盔作為長時佩戴裝備，舒適性至關重要，開放式藍牙耳機設計面臨技術瓶頸：低頻泄漏導致音質劣化、私密性差、環境噪聲幹擾嚴重以及高速風噪與回聲對通話質量的毀滅性衝擊。&lt;/p&gt; 
-&lt;p&gt;智能硬件團隊連續攻關物理降噪技術、波束成型技術、AGC 和 AEC 算法技術，有效攻克了 60km/h 時速下降噪問題。物理降噪技術，採用氣動學優化的頭盔結構，結合輕量化抗衝擊材料，從源頭抑制風噪。波束成型（Beamforming）技術，通過調整兩個麥克風的擺放位置和靈敏度，形成一個"拾音束"，保留目標方向的聲音（人聲），同時屏蔽其他方向的噪聲。AGC 自動增益控制算法、AEC 回聲消除算法，60km/h 時速下精準分離人聲與噪聲。&lt;/p&gt; 
-&lt;p&gt;依託仿真人頭系統、精密麥克風陣列及人工嘴等專業設備進行聲學驗證，在嚴格模擬的 60km/h 騎行噪聲、複雜社會生活及工地噪聲背景下，智能頭盔成功實現了對哈曼曲線目標的穩定達成------在時速 60km 的嚴苛環境下確保通話清晰度與私密性，顯著減少騎手因操作手機導致的分心風險。&lt;/p&gt; 
-&lt;p&gt;&lt;img src="https://oscimg.oschina.net/oscnet//806159b1f94c20e1c8fedb5787b46fec.png" alt="" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;p&gt;2）&lt;strong&gt;第二個主動安全能力------智能語音助手降低手機操作繁瑣性&lt;/strong&gt;。除了通話，騎手騎行過程中存在大量手機交互需求，如接單/查看訂單、回覆消息、導航設置等。傳統界面操作方式在騎行場景下存在重大安全隱患，根據數據統計騎手騎行時大概 90% 以上的操作都是與配送行為強相關。&lt;/p&gt; 
-&lt;p&gt;安全需求和數據調研表明，語音交互是騎手在騎行或處理訂單時更安全的交互方式，解放雙手和雙眼。伴隨着 AI 大模型在意圖理解、內容生成和泛化方面能力提升，通過 AI 助手 + 智能頭盔結合，提升騎手 Hands-Off 能力、降低安全風險成為可能。&lt;/p&gt; 
-&lt;p&gt;智能頭盔內置語音關鍵詞識別算法，"小靈小靈"一鍵喚醒智能助手。通過藍牙與騎手手機連接，通過語音交互隨時隨地召喚 AI 能力助力接單決策、訂單配送、違規申訴、IM 溝通。"小靈小靈"，一句輕喚喚醒智能頭盔連接履約垂域大模型。這不僅是語音助手，更是騎手的"雲端搭檔"。智能頭盔連接履約垂域大模型，成為騎手 AI 能力的入口。&lt;/p&gt; 
-&lt;ul&gt; 
- &lt;li&gt;&lt;strong&gt;決策賦能&lt;/strong&gt;：實時分析周邊訂單熱力（如"現代城訂單密集"），結合騎手位置智能規劃路徑，提升接單效率；&lt;/li&gt; 
- &lt;li&gt;&lt;strong&gt;情感交互&lt;/strong&gt;：識別"訂單太少"的焦慮情緒，提供解決方案，替代手機操作降低騎行風險；&lt;/li&gt; 
- &lt;li&gt;&lt;strong&gt;無縫協同&lt;/strong&gt;：通過 IM 溝通模塊自動生成話術模板，申訴違規訂單時化身"數字律師"，守護騎手權益。&lt;/li&gt; 
-&lt;/ul&gt; 
-&lt;blockquote&gt; 
- &lt;p&gt;"小靈小靈，一會兒路上幫我接順路的訂單"。 "已幫你找到順路訂單"。 "小靈小靈，最近訂單太少怎麼辦"。 "距您 4 公里的現代城目前訂單較多，建議前往"。&lt;/p&gt; 
-&lt;/blockquote&gt; 
-&lt;p&gt;&lt;img src="https://oscimg.oschina.net/oscnet//3a9273f44b2e5fe277a21a09294f4d3e.png" alt="" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;h3&gt;3.2 被動安全篇&lt;/h3&gt; 
-&lt;p&gt;1）&lt;strong&gt;第一個被動安全能力------可靠的、苛刻的物理防護能力&lt;/strong&gt;。智能頭盔設計需要滿足國家強制標準，行業上，電動車頭盔設計滿足電動自行車乘員頭盔標準就足夠了（GB 811-2022 B3 電動自行車乘員頭盔國家標準）。但從騎手安全角度出發，我們主動將設計標準提升至摩托車頭盔級別（GB 811-2022 A3 摩托車乘員頭盔國家標準）。世界衞生組織（WHO）數據顯示，佩戴頭盔能顯著降低摩托車事故傷亡率，可減少近 40% 的死亡風險、超 70% 的嚴重受傷概率。美團智能頭盔從基礎防護層面，為騎手安全築牢根基：&lt;/p&gt; 
-&lt;ul&gt; 
- &lt;li&gt;&lt;strong&gt;保護頭部免受衝擊&lt;/strong&gt;：智能頭盔是外賣騎手最重要的安全裝備之一，它能夠有效吸收碰撞時產生的衝擊力，防止頭部受到嚴重傷害。在交通事故中，頭部是最脆弱的部位，一旦與堅硬的路面或電線杆、行道樹發生碰撞，後果不堪設想。頭盔可以起到緩衝、減震的作用，從而降低受傷比例和死亡率。&lt;/li&gt; 
- &lt;li&gt;&lt;strong&gt;提高可見性&lt;/strong&gt;：雖然頭盔本身並不直接提高可見性，但其設計通常包括透氣孔和通風系統，有助於騎手在騎行過程中保持頭部的乾爽和舒適。此外，頭盔的反光背心等配件可以在夜間或光線不足的環境中提高騎手的可見性，減少交通事故的發生。&lt;/li&gt; 
- &lt;li&gt;&lt;strong&gt;增強舒適性和實用性&lt;/strong&gt;：頭盔的設計不僅注重安全性能，還兼顧了舒適性和實用性。例如，頭盔內部設有緩衝層，可以吸收外力衝擊，同時頭盔內置的風道和前後換氣口可以保持頭部的通風和乾燥。此外，一些高端頭盔還配備了護目鏡，可以有效阻擋灰塵和雨水，確保騎手的視野清晰。&lt;/li&gt; 
-&lt;/ul&gt; 
-&lt;p&gt;&lt;img src="https://oscimg.oschina.net/oscnet//52a55281195d7fd7c24a9a787b1b6c73.png" alt="" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;p&gt;2）&lt;strong&gt;第二個被動安全能力------意外摔倒監護功能&lt;/strong&gt;。交通事故是造成騎手和三者人身傷亡、財產損失的重要原因之一。當騎手不幸出現交通事故時，智能頭盔不僅在物理上保護騎手，還可以通過傳感器和相關算法識別事故的發生，同時聯動前端和後台，實現：&lt;/p&gt; 
-&lt;ul&gt; 
- &lt;li&gt;&lt;strong&gt;平台報警與人工介入&lt;/strong&gt;。AI 外呼騎手確認事故，大象消息推送商管安全員。&lt;/li&gt; 
- &lt;li&gt;快速呼叫救援。支持一鍵撥打 120。&lt;/li&gt; 
- &lt;li&gt;&lt;strong&gt;信息收集&lt;/strong&gt;。時間地點、事故前速度、傳感器數據、現場音視頻等。&lt;/li&gt; 
- &lt;li&gt;&lt;strong&gt;騎手關懷&lt;/strong&gt;。事故後第一時間 App 彈窗、AI 外呼，搭建騎手和平台之間的溝通橋樑，讓騎手感知到平台時刻關注騎手安全。&lt;/li&gt; 
-&lt;/ul&gt; 
-&lt;p&gt;同時，有助於事故後信息分析、處理和事故預防，包括：&lt;/p&gt; 
-&lt;ul&gt; 
- &lt;li&gt;&lt;strong&gt;事故還原&lt;/strong&gt;。通過事故採集信息可最大程度還原事故經過。&lt;/li&gt; 
- &lt;li&gt;&lt;strong&gt;保險協助&lt;/strong&gt;。通過精確的事故時間、地點等信息，有助於騎手與保險公司之間事故理賠。&lt;/li&gt; 
- &lt;li&gt;&lt;strong&gt;高風險路段提前預警&lt;/strong&gt;。多名騎手發生事故路段/地點，標記為高風險位置，為其他路過騎手提前預警。&lt;/li&gt; 
-&lt;/ul&gt; 
-&lt;p&gt;&lt;img src="https://oscimg.oschina.net/oscnet//33bcfd231f97e70b12a81515a67fb2ca.png" alt="" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;p&gt;當騎手發生事故後，端、邊、雲各個組件協同工作，完成整個碰撞摔倒監控功能，包括：&lt;/p&gt; 
-&lt;ul&gt; 
- &lt;li&gt;頭盔藉助於內置的加速度傳感器和自研運動特徵識別算法，識別到騎手疑似出現碰撞，並將疑似事故信息上報手機 App。&lt;/li&gt; 
- &lt;li&gt;騎手 App 進一步融合了手機中多種特徵和傳感器原始數據，確認是否為真實事故。&lt;/li&gt; 
- &lt;li&gt;騎手 App（在騎手授權的情況下）將會錄製一段時間的事故現場音視頻，留存現場音視頻信息。&lt;/li&gt; 
- &lt;li&gt;與此同時，騎手 App 將彈出反饋頁面等待騎手反饋，若騎手選擇自己可以解決或者沒摔倒，則表示此事件為小事故或誤報，不再後續處理。&lt;/li&gt; 
- &lt;li&gt;若騎手一鍵撥打 120 或長時間未得到反饋，則表示此事件可能為嚴重事故，雲端將會執行 AI 外呼騎手，進一步確認事故。&lt;/li&gt; 
- &lt;li&gt;若確認為嚴重事故，或騎手長時間未接聽，則此事故信息將會被自動推送站長和安全員，人工介入。&lt;/li&gt; 
-&lt;/ul&gt; 
-&lt;p&gt;&lt;img src="https://oscimg.oschina.net/oscnet//25130d8086f0d95a2d1fd24b2a56b9d0.png" alt="" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;p&gt;除了事故實時處理的相關功能外，碰撞摔倒監控收到的數據，有助於事故進一步分析，包括：速度、特徵、位置、傳感器參數分析等。&lt;/p&gt; 
-&lt;p&gt;&lt;img src="https://oscimg.oschina.net/oscnet//52251664c5a7014a962ad4326d245896.png" alt="" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;p&gt;碰撞摔倒監控功能使用端、邊、雲協同處理框架。&lt;/p&gt; 
-&lt;ul&gt; 
- &lt;li&gt;&lt;strong&gt;端&lt;/strong&gt;：智能頭盔通過分析騎手頭盔運動特徵，提供碰撞/摔倒原始實時感知；&lt;/li&gt; 
- &lt;li&gt;&lt;strong&gt;邊&lt;/strong&gt;：手機提供速度、IOD、姿態等高密度、高實時性關鍵信息並支撐融合算法的執行，對疑似事故進一步篩選判斷，同時使用 App 彈窗與騎手確認事故，並在事故後自動錄製音視頻；&lt;/li&gt; 
- &lt;li&gt;&lt;strong&gt;雲&lt;/strong&gt;：雲服務器提供數據記錄、AI 站長助理、大象消息推送、事故音視頻 AI 解析等能力，進一步確認事故，併為人工介入提供服務幫助。&lt;/li&gt; 
-&lt;/ul&gt; 
-&lt;p&gt;端、邊、雲協同處理，有效提升了感知系統的準確性和實時性。&lt;/p&gt; 
-&lt;p&gt;&lt;img src="https://oscimg.oschina.net/oscnet//553e3e97c8ce5aff7ed4aba211ce6ef4.png" alt="" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;ol start="4"&gt; 
- &lt;li&gt;總結和展望&lt;/li&gt; 
-&lt;/ol&gt; 
-&lt;hr&gt; 
-&lt;p&gt;美團智能頭盔作為騎手配送的核心生產工具，已在實際應用中取得顯著成效。通過語音交互技術替代傳統手機操作，優化了騎手在配送過程中的多任務處理難題，大幅降低了分心駕駛帶來的安全隱患。實際數據顯示，使用智能頭盔的騎手在配送效率和安全指標上均有明顯提升。一線騎手反饋表明，這一工具已成為日常工作不可或缺的裝備，特別在高峯時段和複雜路況下價值更為突出。&lt;/p&gt; 
-&lt;p&gt;2025 年，美團將會研發下一代智能頭盔。新型號將不再僅是一個交互工具，而是美團自研多模態大模型的重要入口和數據採集平台。硬件本身將會提供更全面的環境感知能力，不僅提升配送效率和安全性，這將為整個即時配送行業帶來一場技術革新。&lt;/p&gt; 
-&lt;p&gt;| 關注「美團技術團隊」微信公眾號，在公眾號菜單欄對話框回覆【2024 年貨】、【2023 年貨】、【2022 年貨】、【2021 年貨】、【2020 年貨】、【2019 年貨】、【2018 年貨】、【2017 年貨】等關鍵詞，可查看美團技術團隊歷年技術文章合集。&lt;/p&gt; 
-&lt;p&gt;&lt;img src="https://oscimg.oschina.net/oscnet//cfa84bd9f6d0ac9aacadd6874b5b035b.png" alt="" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;p&gt;| 本文系美團技術團隊出品，著作權歸屬美團。歡迎出於分享和交流等非商業目的轉載或使用本文內容，敬請註明"內容轉載自美團技術團隊"。本文未經許可，不得進行商業性轉載或者使用。任何商用行為，請發送郵件至 &lt;a href="https://www.oschina.net/action/GoToLink?url=mailto%3Atech%40meituan.com" target="_blank"&gt;tech@meituan.com&lt;/a&gt; 申請授權。&lt;/p&gt;
-                                                                                    &lt;/div&gt;
-                                                                            </description>
-      <link>https://my.oschina.net/meituantech/blog/18688334</link>
-      <guid isPermaLink="false">https://my.oschina.net/meituantech/blog/18688334</guid>
-      <pubDate>Mon, 18 Aug 2025 07:32:00 GMT</pubDate>
-      <author>原創</author>
     </item>
   </channel>
 </rss>
