@@ -7,328 +7,8 @@
     <generator>RSSHub</generator>
     <webMaster>contact@rsshub.app (RSSHub)</webMaster>
     <language>zh-tw</language>
-    <lastBuildDate>Sun, 24 Aug 2025 12:42:05 GMT</lastBuildDate>
+    <lastBuildDate>Sun, 24 Aug 2025 16:44:54 GMT</lastBuildDate>
     <ttl>5</ttl>
-    <item>
-      <title>XXL-JOB v3.2.0 | 分佈式任務調度平台</title>
-      <description>&lt;div class="content"&gt;
-                                                                    
-                                                        &lt;h3&gt;Release Notes&lt;/h3&gt; 
-&lt;ul&gt; 
- &lt;li&gt;1、【強化】AI 任務（ollamaJobHandler）優化：針對 「model」 模型配置信息，從執行器側文件類配置調整至調度中心「任務參數」動態配置，支持集成多模型、並結合任務動態配置切換。&lt;/li&gt; 
- &lt;li&gt;2、【安全】登錄認證重構：密碼加密算法從 Md5 改為 Sha256；登錄態改為登錄後動態隨機生成；提升系統安全性；（需要針對用戶表進行字段調整，同時需要重新初始化密碼信息；相關 SQL 腳本如下）&lt;/li&gt; 
-&lt;/ul&gt; 
-&lt;pre&gt;&lt;code&gt;// 1、用戶表 password 字段需要調整長度，執行如下命令
-ALTER TABLE xxl_job_user
-    MODIFY COLUMN `password` varchar(100) NOT NULL COMMENT '密碼加密信息';
-ALTER TABLE xxl_job_user
-    ADD COLUMN `token` varchar(100) DEFAULT NULL COMMENT '登錄 token';
-    
-// 2、存量用戶密碼需要修改，可執行如下命令將密碼初始化 「123456」；也可以自行通過 「SHA256Tool.sha256」 工具生成其他初始化密碼；
-UPDATE xxl_job_user t SET t.password = '8d969eef6ecad3c29a3a629280e686cf0c3f5d5a86aff3ca12020c923adc6c92' WHERE t.username = {用戶名};
-&lt;/code&gt;&lt;/pre&gt; 
-&lt;ul&gt; 
- &lt;li&gt;3、【強化】GLUE 模式 (Python) 擴展，支持 "GLUE(Python3)" 與 "GLUE(Python2)" 兩種模式，分別支持 python3/2 多版本；&lt;/li&gt; 
- &lt;li&gt;4、【強化】調度中心繫統日誌調整，支持啓動時指定 -DLOG_HOME 參數自定義日誌位置；同時優化日誌格式提升易讀性；&lt;/li&gt; 
- &lt;li&gt;5、【優化】任務 Bean 掃描規則調整，過濾冗餘不必要掃描，避免系統組件提前初始化；&lt;/li&gt; 
- &lt;li&gt;6、【優化】登錄信息頁面空值處理優化，避免空值影響 ftl 渲染；&lt;/li&gt; 
- &lt;li&gt;7、【優化】異常頁面處理邏輯優化，新增兜底落地頁配置；&lt;/li&gt; 
- &lt;li&gt;8、【重構】ReturnT 重構，簡化代碼結構，提升 API 易用性以及可維護性；&lt;/li&gt; 
- &lt;li&gt;9、【重構】項目結構重構，提升可維護性與易讀性；&lt;/li&gt; 
- &lt;li&gt;10、【修復】漏洞修復（CVE-2025-7787），針對 httpJobHandler 支持配置 URL 白名單限制，防止服務器端請求偽造（SSRF）攻擊。&lt;/li&gt; 
- &lt;li&gt;11、【修復】合併 PR-3738，修復拼寫問題；&lt;/li&gt; 
- &lt;li&gt;12、【修復】合併 PR-3506，修復小概率情況下任務重複調度問題；&lt;/li&gt; 
- &lt;li&gt;13、【修復】合併 PR-3747，修復異常情況下資源泄漏風險；&lt;/li&gt; 
- &lt;li&gt;14、【修復】IDOR 越權問題修復，提升任務操作及日誌管理安全性；&lt;/li&gt; 
- &lt;li&gt;15、【升級】升級多項 maven 依賴至較新版本，如 netty、groovy、mybatis、spring、spring-ai、dify 等；&lt;/li&gt; 
-&lt;/ul&gt; 
-&lt;h3&gt;「AI 任務」接入示例&lt;/h3&gt; 
-&lt;p&gt;此處以 difyWorkflowJobHandler 為例，注意需要前置部署 AI 執行器（xxl-job-executor-sample-ai），可參考官方文檔説明。&lt;/p&gt; 
-&lt;p&gt;步驟一：調度中心，新建 difyWorkflowJobHandler 任務&lt;/p&gt; 
-&lt;p&gt;&lt;img height="1588" src="https://oscimg.oschina.net/oscnet/up-0cdf1b5008884996f04f270572df610e207.png" width="1786" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;h4&gt;步驟二：任務執行，查看任務進度及日誌&lt;/h4&gt; 
-&lt;p&gt;&lt;img height="1868" src="https://oscimg.oschina.net/oscnet/up-21814e49cd0d65cc16c66c04bea0bfffccf.png" width="2608" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;h3&gt;「常規任務」接入示例&lt;/h3&gt; 
-&lt;p&gt;XXL-JOB 支持多模式任務，下文以簡單的「Bean 模式任務」為例介紹，三步快速開發接入。&lt;/p&gt; 
-&lt;p&gt;步驟一：執行器，開發 Job 方法&lt;/p&gt; 
-&lt;pre&gt;&lt;code&gt;@XxlJob("demoJobHandler")
- public void demoJobHandler() throws Exception {
-    XxlJobHelper.log("XXL-JOB, Hello World.");
-}
-&lt;/code&gt;&lt;/pre&gt; 
-&lt;h4&gt;步驟二：調度中心，新建調度任務&lt;/h4&gt; 
-&lt;p&gt;&lt;img height="1017" src="https://oscimg.oschina.net/oscnet/up-c3f2864564db9e47e49c5cdcf721e63897f.png" width="1200" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;h4&gt;步驟三：任務執行，查看任務進度及日誌&lt;/h4&gt; 
-&lt;p&gt;&lt;img height="348" src="https://oscimg.oschina.net/oscnet/up-563cc047e76dccfbcf7c98c3f10018d9ddb.png" width="1200" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;h3&gt;簡介&lt;/h3&gt; 
-&lt;p&gt;XXL-JOB 是一個輕量級分佈式任務調度平台，其核心設計目標是開發迅速、學習簡單、輕量級、易擴展。現已開放源代碼並接入多家公司線上產品線，開箱即用。&lt;/p&gt; 
-&lt;ul&gt; 
- &lt;li&gt;&lt;a href="https://www.oschina.net/action/GoToLink?url=http%3A%2F%2Fwww.xuxueli.com%2Fxxl-job%2F" target="_blank"&gt;中文文檔：http://www.xuxueli.com/xxl-job/ &lt;/a&gt;&lt;/li&gt; 
- &lt;li&gt;&lt;a href="https://www.oschina.net/action/GoToLink?url=http%3A%2F%2Fwww.xuxueli.com%2Fpage%2Fcommunity.html" target="_blank"&gt;社區交流：http://www.xuxueli.com/page/community.html &lt;/a&gt;&lt;/li&gt; 
-&lt;/ul&gt; 
-&lt;p&gt;&lt;img height="631" src="https://oscimg.oschina.net/oscnet/up-732014b16ae496963715102544cd923bb8d.png" width="1200" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;h3&gt;特性&lt;/h3&gt; 
-&lt;ul&gt; 
- &lt;li&gt;1、簡單：支持通過 Web 頁面對任務進行 CRUD 操作，操作簡單，一分鐘上手；&lt;/li&gt; 
- &lt;li&gt;2、動態：支持動態修改任務狀態、啓動/停止任務，以及終止運行中任務，即時生效；&lt;/li&gt; 
- &lt;li&gt;3、調度中心 HA（中心式）：調度採用中心式設計，「調度中心」自研調度組件並支持集羣部署，可保證調度中心 HA；&lt;/li&gt; 
- &lt;li&gt;4、執行器 HA（分佈式）：任務分佈式執行，任務"執行器"支持集羣部署，可保證任務執行 HA；&lt;/li&gt; 
- &lt;li&gt;5、註冊中心: 執行器會週期性自動註冊任務, 調度中心將會自動發現註冊的任務並觸發執行。同時，也支持手動錄入執行器地址；&lt;/li&gt; 
- &lt;li&gt;6、彈性擴容縮容：一旦有新執行器機器上線或者下線，下次調度時將會重新分配任務；&lt;/li&gt; 
- &lt;li&gt;7、觸發策略：提供豐富的任務觸發策略，包括：Cron 觸發、固定間隔觸發、固定延時觸發、API（事件）觸發、人工觸發、父子任務觸發；&lt;/li&gt; 
- &lt;li&gt;8、調度過期策略：調度中心錯過調度時間的補償處理策略，包括：忽略、立即補償觸發一次等；&lt;/li&gt; 
- &lt;li&gt;9、阻塞處理策略：調度過於密集執行器來不及處理時的處理策略，策略包括：單機串行（默認）、丟棄後續調度、覆蓋之前調度；&lt;/li&gt; 
- &lt;li&gt;10、任務超時控制：支持自定義任務超時時間，任務運行超時將會主動中斷任務；&lt;/li&gt; 
- &lt;li&gt;11、任務失敗重試：支持自定義任務失敗重試次數，當任務失敗時將會按照預設的失敗重試次數主動進行重試；其中分片任務支持分片粒度的失敗重試；&lt;/li&gt; 
- &lt;li&gt;12、任務失敗告警；默認提供郵件方式失敗告警，同時預留擴展接口，可方便的擴展短信、釘釘等告警方式；&lt;/li&gt; 
- &lt;li&gt;13、路由策略：執行器集羣部署時提供豐富的路由策略，包括：第一個、最後一個、輪詢、隨機、一致性 HASH、最不經常使用、最近最久未使用、故障轉移、忙碌轉移等；&lt;/li&gt; 
- &lt;li&gt;14、分片廣播任務：執行器集羣部署時，任務路由策略選擇"分片廣播"情況下，一次任務調度將會廣播觸發集羣中所有執行器執行一次任務，可根據分片參數開發分片任務；&lt;/li&gt; 
- &lt;li&gt;15、動態分片：分片廣播任務以執行器為維度進行分片，支持動態擴容執行器集羣從而動態增加分片數量，協同進行業務處理；在進行大數據量業務操作時可顯著提升任務處理能力和速度。&lt;/li&gt; 
- &lt;li&gt;16、故障轉移：任務路由策略選擇"故障轉移"情況下，如果執行器集羣中某一台機器故障，將會自動 Failover 切換到一台正常的執行器發送調度請求。&lt;/li&gt; 
- &lt;li&gt;17、任務進度監控：支持實時監控任務進度；&lt;/li&gt; 
- &lt;li&gt;18、Rolling 實時日誌：支持在線查看調度結果，並且支持以 Rolling 方式實時查看執行器輸出的完整的執行日誌；&lt;/li&gt; 
- &lt;li&gt;19、GLUE：提供 Web IDE，支持在線開發任務邏輯代碼，動態發佈，實時編譯生效，省略部署上線的過程。支持 30 個版本的歷史版本回溯。&lt;/li&gt; 
- &lt;li&gt;20、腳本任務：支持以 GLUE 模式開發和運行腳本任務，包括 Shell、Python、NodeJS、PHP、PowerShell 等類型腳本;&lt;/li&gt; 
- &lt;li&gt;21、命令行任務：原生提供通用命令行任務 Handler（Bean 任務，"CommandJobHandler"）；業務方只需要提供命令行即可；&lt;/li&gt; 
- &lt;li&gt;22、任務依賴：支持配置子任務依賴，當父任務執行結束且執行成功後將會主動觸發一次子任務的執行, 多個子任務用逗號分隔；&lt;/li&gt; 
- &lt;li&gt;23、一致性：「調度中心」通過 DB 鎖保證集羣分佈式調度的一致性, 一次任務調度只會觸發一次執行；&lt;/li&gt; 
- &lt;li&gt;24、自定義任務參數：支持在線配置調度任務入參，即時生效；&lt;/li&gt; 
- &lt;li&gt;25、調度線程池：調度系統多線程觸發調度運行，確保調度精確執行，不被堵塞；&lt;/li&gt; 
- &lt;li&gt;26、數據加密：調度中心和執行器之間的通訊進行數據加密，提升調度信息安全性；&lt;/li&gt; 
- &lt;li&gt;27、郵件報警：任務失敗時支持郵件報警，支持配置多郵件地址羣發報警郵件；&lt;/li&gt; 
- &lt;li&gt;28、推送 maven 中央倉庫: 將會把最新穩定版推送到 maven 中央倉庫, 方便用戶接入和使用;&lt;/li&gt; 
- &lt;li&gt;29、運行報表：支持實時查看運行數據，如任務數量、調度次數、執行器數量等；以及調度報表，如調度日期分佈圖，調度成功分佈圖等；&lt;/li&gt; 
- &lt;li&gt;30、全異步：任務調度流程全異步化設計實現，如異步調度、異步運行、異步回調等，有效對密集調度進行流量削峯，理論上支持任意時長任務的運行；&lt;/li&gt; 
- &lt;li&gt;31、跨語言/OpenAPI：調度中心與執行器提供語言無關的 OpenApi（RESTful 格式），第三方任意語言可據此對接調度中心或者實現執行器，實現多語言支持。除此之外，還提供了 「多任務模式」和「httpJobHandler」等其他跨語言方案；&lt;/li&gt; 
- &lt;li&gt;32、國際化：調度中心支持國際化設置，提供中文、英文兩種可選語言，默認為中文；&lt;/li&gt; 
- &lt;li&gt;33、容器化：提供官方 docker 鏡像，並實時更新推送 dockerhub，進一步實現產品開箱即用；&lt;/li&gt; 
- &lt;li&gt;34、線程池隔離：調度線程池進行隔離拆分，慢任務自動降級進入"Slow"線程池，避免耗盡調度線程，提高系統穩定性；&lt;/li&gt; 
- &lt;li&gt;35、用戶管理：支持在線管理系統用戶，存在管理員、普通用戶兩種角色；&lt;/li&gt; 
- &lt;li&gt;36、權限控制：執行器維度進行權限控制，管理員擁有全量權限，普通用戶需要分配執行器權限後才允許相關操作；&lt;/li&gt; 
- &lt;li&gt;37、AI 任務：原生提供 AI 執行器，並內置多個 AI 任務 Handler，與 spring-ai、ollama、dify 等集成打通，支持快速開發 AI 類任務。&lt;/li&gt; 
-&lt;/ul&gt;
-                                                                                &lt;/div&gt;
-                                                                            </description>
-      <link>https://www.oschina.net/news/368158/xxl-job-3-2-0-released</link>
-      <guid isPermaLink="false">https://www.oschina.net/news/368158/xxl-job-3-2-0-released</guid>
-      <pubDate>Tue, 19 Aug 2025 08:54:00 GMT</pubDate>
-      <author>來源: 資訊</author>
-    </item>
-    <item>
-      <title>🎉Laravel + Vue3 前後端分離後端框架 CatchAdmin v4.1.0 發佈</title>
-      <description>&lt;div class="content"&gt;
-                                                                    
-                                                        &lt;h1&gt;介紹&lt;/h1&gt; 
-&lt;p style="color:#333333; margin-left:0; margin-right:0; text-align:left"&gt;&lt;code&gt;CatchAdmin&lt;/code&gt;&lt;span&gt;&amp;nbsp;&lt;/span&gt;是一款基於&lt;span&gt;&amp;nbsp;&lt;/span&gt;&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Flaravel.com%2F" target="_blank"&gt;Laravel&lt;/a&gt;&lt;span&gt;&amp;nbsp;&lt;/span&gt;和&lt;span&gt;&amp;nbsp;&lt;/span&gt;&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Felement-plus.org%2F" target="_blank"&gt;Element Plus&lt;/a&gt;&lt;span&gt;&amp;nbsp;&lt;/span&gt;二次開發而成後台管理系統。&lt;code&gt;Laravel&lt;/code&gt;&lt;span&gt;&amp;nbsp;&lt;/span&gt;社區也有許多非常優秀的後台管理系統，例如&lt;span&gt;&amp;nbsp;&lt;/span&gt;&lt;code&gt;Nova&lt;/code&gt;, 官方出品，當然是收費的，免費的有基於&lt;span&gt;&amp;nbsp;&lt;/span&gt;&lt;code&gt;Livewire&lt;/code&gt;&lt;span&gt;&amp;nbsp;&lt;/span&gt;的&lt;span&gt;&amp;nbsp;&lt;/span&gt;&lt;code&gt;Filament&lt;/code&gt;，還有不得不説的&lt;span&gt;&amp;nbsp;&lt;/span&gt;&lt;code&gt;Laravel Admin&lt;/code&gt;。&lt;code&gt;CatchAdmin&lt;/code&gt;&lt;span&gt;&amp;nbsp;&lt;/span&gt;還是採用傳統的前後端分離策略，&lt;code&gt;Laravel&lt;/code&gt;&lt;span&gt;&amp;nbsp;&lt;/span&gt;框架僅僅作為&lt;span&gt;&amp;nbsp;&lt;/span&gt;&lt;code&gt;Api&lt;/code&gt;&lt;span&gt;&amp;nbsp;&lt;/span&gt;輸出。將管理系統模塊之間的耦合降到了最低限度。每個模塊之間都有獨立的控制器，路由，模型，數據表。在開發上儘可能將模塊之間的影響降到最低，降低了開發上的難度。基於&lt;span&gt;&amp;nbsp;&lt;/span&gt;&lt;code&gt;CatchAdmin&lt;span&gt;&amp;nbsp;&lt;/span&gt;&lt;/code&gt;&lt;span&gt;&amp;nbsp;&lt;/span&gt;可以開發&lt;span&gt;&amp;nbsp;&lt;/span&gt;&lt;code&gt;CMS&lt;/code&gt;，&lt;code&gt;CRM&lt;/code&gt;，&lt;code&gt;OA&lt;/code&gt;&lt;span&gt;&amp;nbsp;&lt;/span&gt;等，等系統。也封裝了很多實用的工具，提升開發體驗。&lt;/p&gt; 
-&lt;h2&gt;V4.1.0 日誌&lt;/h2&gt; 
-&lt;ul&gt; 
- &lt;li&gt;修復 Query Log 日誌格式錯誤&lt;/li&gt; 
- &lt;li&gt;新增 restore 方法，支持軟刪除數據恢復&lt;/li&gt; 
- &lt;li&gt;增強了代碼生成功能&lt;/li&gt; 
- &lt;li&gt;修復使用內置緩存路由命令導致路由失效&lt;/li&gt; 
- &lt;li&gt;新增 CMS 模塊&lt;/li&gt; 
- &lt;li&gt;優化了系統模塊導入&lt;/li&gt; 
- &lt;li&gt;前端新增了全局加載，防止白屏&lt;/li&gt; 
- &lt;li&gt;前端修復用戶退出後沒有清空前一個登錄用戶的 tab 標籤頁&lt;/li&gt; 
- &lt;li&gt;前端優化了菜單欄展示方式，刪除默認的策略點&lt;/li&gt; 
- &lt;li&gt;前端新增 warphost 方法，適配本地上傳的文件和圖片顯示&lt;/li&gt; 
- &lt;li&gt;前端優化了其他組件以及新增 cms 模塊&lt;/li&gt; 
-&lt;/ul&gt; 
-&lt;p style="color:#333333; margin-left:0; margin-right:0; text-align:left"&gt;&lt;strong&gt;視頻&lt;/strong&gt;&lt;/p&gt; 
-&lt;p style="color:#333333; margin-left:0; margin-right:0; text-align:left"&gt;&amp;nbsp;&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fwww.bilibili.com%2Fvideo%2FBV1jP41127aW%2F" target="_blank"&gt;catchadmin 模塊創建&lt;/a&gt;&lt;/p&gt; 
-&lt;p style="color:#333333; margin-left:0; margin-right:0; text-align:left"&gt;&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fwww.bilibili.com%2Fvideo%2FBV1Qh4y1J7eB%2F" target="_blank"&gt;catchadmin 之快速開發&lt;/a&gt;&lt;/p&gt; 
-&lt;h2&gt;功能&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fcatchadmin.com%2Fdocs%2F3.0%2Fintro%23%25E5%258A%259F%25E8%2583%25BD" target="_blank"&gt;&lt;/a&gt;&lt;/h2&gt; 
-&lt;ul&gt; 
- &lt;li&gt;&lt;span&gt;&amp;nbsp;&lt;/span&gt;用戶管理，後台用戶管理&lt;/li&gt; 
- &lt;li&gt;&lt;span&gt;&amp;nbsp;&lt;/span&gt;部門管理，配置公司的部門結構，支持樹形結構&lt;/li&gt; 
- &lt;li&gt;&lt;span&gt;&amp;nbsp;&lt;/span&gt;崗位管理，配置後台用戶的職務&lt;/li&gt; 
- &lt;li&gt;&lt;span&gt;&amp;nbsp;&lt;/span&gt;菜單管理，配置系統菜單，按鈕等等&lt;/li&gt; 
- &lt;li&gt;&lt;span&gt;&amp;nbsp;&lt;/span&gt;角色管理，配置用戶擔當的角色，分配權限&lt;/li&gt; 
- &lt;li&gt;&lt;span&gt;&amp;nbsp;&lt;/span&gt;操作日誌，後台用戶操作記錄&lt;/li&gt; 
- &lt;li&gt;&lt;span&gt;&amp;nbsp;&lt;/span&gt;登錄日誌，後台系統用戶的登錄記錄&lt;/li&gt; 
- &lt;li&gt;&lt;span&gt;&amp;nbsp;&lt;/span&gt;代碼生成，生成 API 端的 CURD 操作&lt;/li&gt; 
- &lt;li&gt;&lt;span&gt;&amp;nbsp;&lt;/span&gt;Schema 管理，生成表結構&lt;/li&gt; 
- &lt;li&gt;&lt;span&gt;&amp;nbsp;&lt;/span&gt;模塊管理，系統模塊管理&lt;/li&gt; 
-&lt;/ul&gt; 
-&lt;h2&gt;額外模塊&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fcatchadmin.com%2Fdocs%2F3.0%2Fintro%23%25E9%25A2%259D%25E5%25A4%2596%25E6%25A8%25A1%25E5%259D%2597" target="_blank"&gt;&lt;/a&gt;&lt;/h2&gt; 
-&lt;ul&gt; 
- &lt;li&gt;&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fgithub.com%2Fcatch-admin%2Fcms" target="_blank"&gt;CMS 模塊&lt;/a&gt;&lt;/li&gt; 
-&lt;/ul&gt; 
-&lt;h2&gt;項目地址&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fcatchadmin.com%2Fdocs%2F3.0%2Fintro%23%25E9%25A1%25B9%25E7%259B%25AE%25E5%259C%25B0%25E5%259D%2580" target="_blank"&gt;&lt;/a&gt;&lt;/h2&gt; 
-&lt;ul&gt; 
- &lt;li&gt;&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fgithub.com%2Fjaguarjack%2Fcatch-admin" target="_blank"&gt;github 地址&lt;/a&gt;&lt;/li&gt; 
- &lt;li&gt;&lt;a href="https://gitee.com/jaguarjack/catchAdmin" target="_blank"&gt;gitee 地址&lt;/a&gt;&lt;/li&gt; 
-&lt;/ul&gt; 
-&lt;h2&gt;預覽&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fcatchadmin.com%2Fdocs%2F3.0%2Fintro%23%25E9%25A2%2584%25E8%25A7%2588" target="_blank"&gt;&lt;/a&gt;&lt;/h2&gt; 
-&lt;h2&gt;&lt;img alt="" height="1200" src="https://oscimg.oschina.net/oscnet/up-20bd51527a55b9d851dc657619e88a12335.png" width="2418" referrerpolicy="no-referrer"&gt;&lt;/h2&gt; 
-&lt;p style="color:#333333; margin-left:0; margin-right:0; text-align:left"&gt;&lt;img alt="" height="1200" src="https://oscimg.oschina.net/oscnet/up-550a85e9eb29136f8ac63e2323e32362357.png" width="2556" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;p style="color:#333333; margin-left:0; margin-right:0; text-align:left"&gt;&lt;img alt="" height="1200" src="https://oscimg.oschina.net/oscnet/up-67561ab2c9d6455c0d6e8bd77d020ab8258.png" width="2631" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;p style="color:#333333; margin-left:0; margin-right:0; text-align:left"&gt;&lt;img alt="" height="1200" src="https://oscimg.oschina.net/oscnet/up-388ac7e9361aa37a4b9260520d16935f993.png" width="2552" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;h2&gt;體驗地址&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fcatchadmin.com%2Fdocs%2F3.0%2Fintro%23%25E4%25BD%2593%25E9%25AA%258C%25E5%259C%25B0%25E5%259D%2580" target="_blank"&gt;&lt;/a&gt;&lt;/h2&gt; 
-&lt;p style="color:#333333; margin-left:0; margin-right:0; text-align:left"&gt;&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fv3.catchadmin.com%2F" target="_blank"&gt;demo 地址&lt;/a&gt;&lt;/p&gt; 
-&lt;ul&gt; 
- &lt;li&gt;賬戶:&lt;span&gt;&amp;nbsp;&lt;/span&gt;&lt;code&gt;catch@admin.com&lt;/code&gt;&lt;/li&gt; 
- &lt;li&gt;密碼:&lt;span&gt;&amp;nbsp;&lt;/span&gt;&lt;code&gt;catchadmin&lt;/code&gt;&lt;/li&gt; 
-&lt;/ul&gt; 
-&lt;h2&gt;感謝🙏&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fcatchadmin.com%2Fdocs%2F3.0%2Fintro%23%25E6%2584%259F%25E8%25B0%25A2" target="_blank"&gt;&lt;/a&gt;&lt;/h2&gt; 
-&lt;blockquote&gt; 
- &lt;p style="margin-left:0; margin-right:0"&gt;排名不分先後&lt;/p&gt; 
-&lt;/blockquote&gt; 
-&lt;ul&gt; 
- &lt;li&gt;&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Flaravel.com%2F" target="_blank"&gt;Laravel&lt;/a&gt;&lt;/li&gt; 
- &lt;li&gt;&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fcn.vuejs.org%2F" target="_blank"&gt;Vue&lt;/a&gt;&lt;/li&gt; 
- &lt;li&gt;&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Felement-plus.org%2F" target="_blank"&gt;ElementPlus&lt;/a&gt;&lt;/li&gt; 
- &lt;li&gt;&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fdocusaurus.com%2F" target="_blank"&gt;Docusaurus&lt;/a&gt;&lt;/li&gt; 
- &lt;li&gt;&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fwww.jetbrains.com%2F" target="_blank"&gt;JetBrains&lt;/a&gt;&lt;/li&gt; 
-&lt;/ul&gt; 
-&lt;p&gt;&amp;nbsp;&lt;/p&gt;
-                                                                                &lt;/div&gt;
-                                                                            </description>
-      <link>https://www.oschina.net/news/368154</link>
-      <guid isPermaLink="false">https://www.oschina.net/news/368154</guid>
-      <pubDate>Tue, 19 Aug 2025 07:39:00 GMT</pubDate>
-      <author>來源: 資訊</author>
-    </item>
-    <item>
-      <title>不會寫 SQL 也能出報表？積木報表 + AI 30 秒自動生成報表和圖表</title>
-      <description>&lt;div class="content"&gt;
-                                                                    
-                                                        &lt;p style="color:#333333; margin-left:0; margin-right:0; text-align:left"&gt;還在為報表寫複雜 SQL 抓耳撓腮？報表製作太複雜不會用？來試試積木報表吧，通過 AI 30 秒即可生成報表和圖表，真的是超簡單。&lt;/p&gt; 
-&lt;blockquote&gt; 
- &lt;p style="margin-left:0; margin-right:0"&gt;積木報表 v1.9.6 + 版本新增了 AI 助手功能，AI 助手可以幫助用戶快速生成 sql 語句、快速生成報表和圖表，極大的提高了報表設計的效率&lt;/p&gt; 
-&lt;/blockquote&gt; 
-&lt;h2&gt;一、效果&lt;/h2&gt; 
-&lt;h3&gt;1.1 AI 根據&lt;strong&gt;業務描述&lt;/strong&gt;生成&lt;span&gt;&amp;nbsp;&lt;/span&gt;&lt;strong&gt;sql 語句&lt;/strong&gt;:&lt;/h3&gt; 
-&lt;p style="color:#333333; margin-left:0; margin-right:0; text-align:left"&gt;&lt;img alt="" src="https://oscimg.oschina.net/oscnet/up-9d3a2ef3992840f13d0c8697c5e346ab25d.gif" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;h3&gt;1.2 AI 根據&lt;strong&gt;業務描述&lt;/strong&gt;生成&lt;strong&gt;報表設計&lt;/strong&gt;:&lt;/h3&gt; 
-&lt;p style="color:#333333; margin-left:0; margin-right:0; text-align:left"&gt;&lt;img alt="" src="https://oscimg.oschina.net/oscnet/up-6a8d4e8e872a19442a58081637270fddcd1.gif" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;h3&gt;1.3 AI 根據&lt;strong&gt;業務描述&lt;/strong&gt;生成&lt;strong&gt;圖表設計&lt;/strong&gt;&lt;/h3&gt; 
-&lt;p style="color:#333333; margin-left:0; margin-right:0; text-align:left"&gt;&lt;img alt="" src="https://oscimg.oschina.net/oscnet/up-45030e3d156e26c4aedbc7abf36f9791358.gif" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;h2&gt;二、實現方式&lt;/h2&gt; 
-&lt;h3&gt;2.1 前置條件&lt;/h3&gt; 
-&lt;p style="color:#333333; margin-left:0; margin-right:0; text-align:left"&gt;積木報表的 AI 助手功能依賴於&lt;span&gt;&amp;nbsp;&lt;/span&gt;&lt;code&gt;JeecgBoot&lt;/code&gt;&lt;span&gt;&amp;nbsp;&lt;/span&gt;系統的&lt;span&gt;&amp;nbsp;&lt;/span&gt;&lt;code&gt;AI 大模型&lt;/code&gt;模塊，所以若想使用該功能，需要運行&lt;span&gt;&amp;nbsp;&lt;/span&gt;&lt;code&gt;JeecgBoot&lt;/code&gt;&lt;span&gt;&amp;nbsp;&lt;/span&gt;系統，並且在系統中配置好&lt;span&gt;&amp;nbsp;&lt;/span&gt;&lt;code&gt;AI 大模型&lt;/code&gt;模塊的相關參數；或者將&lt;code&gt;積木報表&lt;/code&gt;集成在&lt;span&gt;&amp;nbsp;&lt;/span&gt;&lt;code&gt;JeecgBoot&lt;/code&gt;&lt;span&gt;&amp;nbsp;&lt;/span&gt;系統中使用。&lt;/p&gt; 
-&lt;h3&gt;2.2 JeecgBoot 配置&lt;/h3&gt; 
-&lt;p style="color:#333333; margin-left:0; margin-right:0; text-align:left"&gt;在&lt;span&gt;&amp;nbsp;&lt;/span&gt;&lt;code&gt;JeecgBoot&lt;/code&gt;&lt;span&gt;&amp;nbsp;&lt;/span&gt;系統中，需要配置自己的&lt;span&gt;&amp;nbsp;&lt;/span&gt;&lt;code&gt;LLM&lt;/code&gt;&lt;span&gt;&amp;nbsp;&lt;/span&gt;模型，並且更新 AI 工作流中 LLM 節點的配置參數，具體配置步驟如下：&lt;/p&gt; 
-&lt;ol&gt; 
- &lt;li&gt; &lt;p style="margin-left:0; margin-right:0"&gt;進入&lt;span&gt;&amp;nbsp;&lt;/span&gt;&lt;code&gt;JeecgBoot&lt;/code&gt;&lt;span&gt;&amp;nbsp;&lt;/span&gt;系統的&lt;span&gt;&amp;nbsp;&lt;/span&gt;&lt;code&gt;AI 大模型&lt;/code&gt;模塊，點擊左側菜單中的&lt;span&gt;&amp;nbsp;&lt;/span&gt;&lt;code&gt;AI 模型配置&lt;/code&gt;，進入配置頁面&lt;/p&gt; &lt;/li&gt; 
- &lt;li&gt; &lt;p style="margin-left:0; margin-right:0"&gt;點擊左上角的&lt;code&gt;添加模型&lt;/code&gt;按鈕，添加自己的模型配置&lt;span&gt;&amp;nbsp;&lt;/span&gt;&lt;img alt="" src="https://oscimg.oschina.net/oscnet/up-b5bc4167f35e5f28de41fe9fc34b1788655.png" referrerpolicy="no-referrer"&gt;&lt;/p&gt; &lt;/li&gt; 
- &lt;li&gt; &lt;p style="margin-left:0; margin-right:0"&gt;在彈出的對話框中，選擇模型供應商（本例使用千問），下一步。&lt;span&gt;&amp;nbsp;&lt;/span&gt;&lt;img alt="" src="https://oscimg.oschina.net/oscnet/up-a46623fb9602a69fc6a36b732c4677060d9.png" referrerpolicy="no-referrer"&gt;&lt;/p&gt; &lt;/li&gt; 
- &lt;li&gt; &lt;p style="margin-left:0; margin-right:0"&gt;輸入模型名稱、選擇模型類型（語言模型）、填寫基礎模型 (qwen-coder-plus)、模型地址、鑑權等信息，點擊&lt;code&gt;保存&lt;/code&gt;按鈕。&lt;span&gt;&amp;nbsp;&lt;/span&gt;&lt;img alt="" src="https://oscimg.oschina.net/oscnet/up-dcbe6a67a9b80eec8b18a0de676cc031ea1.png" referrerpolicy="no-referrer"&gt;&lt;/p&gt; &lt;/li&gt; 
- &lt;li&gt; &lt;p style="margin-left:0; margin-right:0"&gt;點擊左側菜單中的&lt;span&gt;&amp;nbsp;&lt;/span&gt;&lt;code&gt;AI 工作流&lt;/code&gt;，進入工作流配置頁面，點擊內置的工作流：&lt;code&gt;JimuReport AI 引擎&lt;/code&gt;，進入編排頁面。&lt;/p&gt; &lt;/li&gt; 
-&lt;/ol&gt; 
-&lt;p style="color:#333333; margin-left:0; margin-right:0; text-align:left"&gt;&lt;img alt="" src="https://oscimg.oschina.net/oscnet/up-0bf62b7d0b6d41c00547d5af7bdd52c5d2c.png" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;ol&gt; 
- &lt;li&gt;在編排頁面中，點擊&lt;span&gt;&amp;nbsp;&lt;/span&gt;&lt;code&gt;LLM&lt;/code&gt;&lt;span&gt;&amp;nbsp;&lt;/span&gt;節點，進入節點配置頁面；&lt;/li&gt; 
- &lt;li&gt;分別點擊大模型節點，將模型修改為剛剛我們創建的模型。&lt;span&gt;&amp;nbsp;&lt;/span&gt;&lt;img alt="" src="https://oscimg.oschina.net/oscnet/up-75f9b2fc9880751f884a6100395d8ff1802.png" referrerpolicy="no-referrer"&gt;&lt;/li&gt; 
- &lt;li&gt;點擊&lt;code&gt;保存&lt;/code&gt;按鈕，完成工作流的配置。&lt;/li&gt; 
-&lt;/ol&gt; 
-&lt;h3&gt;2.3 積木報表配置&lt;/h3&gt; 
-&lt;p style="color:#333333; margin-left:0; margin-right:0; text-align:left"&gt;如果積木報表是獨立使用的，或者集成在其他系統中使用，需要在&lt;code&gt;積木報表&lt;/code&gt;的配置文件中配置 AI 助手的相關參數，具體配置步驟如下：&lt;/p&gt; 
-&lt;ol&gt; 
- &lt;li&gt;打開積木報表的配置文件&lt;span&gt;&amp;nbsp;&lt;/span&gt;&lt;code&gt;application.yml&lt;/code&gt;，在&lt;span&gt;&amp;nbsp;&lt;/span&gt;&lt;code&gt;jeecg.jmreport.ai.service-url&lt;/code&gt;&lt;span&gt;&amp;nbsp;&lt;/span&gt;節點配置&lt;span&gt;&amp;nbsp;&lt;/span&gt;&lt;code&gt;JeecgAI 服務&lt;/code&gt;的地址，格式為&lt;span&gt;&amp;nbsp;&lt;/span&gt;&lt;code&gt;http://domain/url&lt;/code&gt;，例如：&lt;code&gt;http://localhost:8080/jeecgboot/airag/flow/run&lt;/code&gt;&lt;/li&gt; 
-&lt;/ol&gt; 
-&lt;pre&gt;&lt;code class="language-yaml"&gt;&lt;span style="color:#005cc5"&gt;jeecg&lt;/span&gt;:
-  &lt;span style="color:#005cc5"&gt;jmreport&lt;/span&gt;:
-    &lt;span style="color:#005cc5"&gt;ai&lt;/span&gt;:
-      &lt;span style="color:#005cc5"&gt;service-url&lt;/span&gt;: &lt;span style="color:#005cc5"&gt;http&lt;/span&gt;:&lt;span style="color:#6a737d"&gt;//localhost:8080/jeecgboot/airag/flow/run&lt;/span&gt;
-&lt;/code&gt;&lt;/pre&gt; 
-&lt;p style="color:#333333; margin-left:0; margin-right:0; text-align:left"&gt;如果積木報表是集成在&lt;span&gt;&amp;nbsp;&lt;/span&gt;&lt;code&gt;JeecgBoot&lt;/code&gt;&lt;span&gt;&amp;nbsp;&lt;/span&gt;系統中使用的，則不需要配置該參數。&lt;/p&gt; 
-&lt;h2&gt;三、使用方式&lt;/h2&gt; 
-&lt;h3&gt;3.1 AI 根據&lt;strong&gt;業務描述&lt;/strong&gt;生成&lt;span&gt;&amp;nbsp;&lt;/span&gt;&lt;strong&gt;sql 語句&lt;/strong&gt;:&lt;/h3&gt; 
-&lt;ol&gt; 
- &lt;li&gt;進入積木報表的設計頁面，點擊左側數據集新建按鈕，進入 Sql 數據集新建頁面。&lt;/li&gt; 
- &lt;li&gt;先選定數據源 (若不選擇，則默認使用系統的數據源)&lt;span&gt;&amp;nbsp;&lt;/span&gt;&lt;img alt="" src="https://oscimg.oschina.net/oscnet/up-ee54af9054cfc8966d9a008be87f3ba2848.png" referrerpolicy="no-referrer"&gt;&lt;/li&gt; 
- &lt;li&gt;然後點擊 sql 語句輸入框右上的&lt;span&gt;&amp;nbsp;&lt;/span&gt;&lt;code&gt;AI 生成 SQL&lt;/code&gt;&lt;span&gt;&amp;nbsp;&lt;/span&gt;按鈕，彈出 AI 生成 SQL 語句對話框&lt;span&gt;&amp;nbsp;&lt;/span&gt;&lt;img alt="" src="https://oscimg.oschina.net/oscnet/up-b166b337cbefcf1e8273a7489ccfd6d2157.png" referrerpolicy="no-referrer"&gt;&lt;/li&gt; 
- &lt;li&gt;在對話框中輸入業務描述，例如：&lt;code&gt;查詢 2018 年 1 月到 2019 年 12 月的入庫記錄&lt;/code&gt;，點擊&lt;code&gt;生成 SQL&lt;/code&gt;&lt;span&gt;&amp;nbsp;&lt;/span&gt;按鈕，AI 助手會分幾個步驟完成生成 SQL 語句的過程: 
-  &lt;ol&gt; 
-   &lt;li&gt;分析理解用戶輸入的業務描述&lt;/li&gt; 
-   &lt;li&gt;從數據庫中選擇符合業務需求的數據庫表&lt;/li&gt; 
-   &lt;li&gt;生成 Sql 語句&lt;/li&gt; 
-   &lt;li&gt;執行 Sql 語句，返回結果&lt;span&gt;&amp;nbsp;&lt;/span&gt;&lt;img alt="" src="https://oscimg.oschina.net/oscnet/up-d095357604674f6a2f76ce93397c8cfdaa2.png" referrerpolicy="no-referrer"&gt;&lt;/li&gt; 
-  &lt;/ol&gt; &lt;/li&gt; 
- &lt;li&gt;若對生成的 sql 語句不滿意，可以修改需求描述，再次點擊&lt;code&gt;生成 SQL&lt;/code&gt;&lt;span&gt;&amp;nbsp;&lt;/span&gt;按鈕，AI 助手會重新生成 sql 語句&lt;/li&gt; 
- &lt;li&gt;若生成的 sql 語句符合預期，點擊&lt;code&gt;使用此 SQL&lt;/code&gt;&lt;span&gt;&amp;nbsp;&lt;/span&gt;按鈕，完成 sql 語句的生成&lt;/li&gt; 
-&lt;/ol&gt; 
-&lt;h3&gt;3.2 AI 根據&lt;strong&gt;業務描述&lt;/strong&gt;生成&lt;strong&gt;報表設計&lt;/strong&gt;:&lt;/h3&gt; 
-&lt;ol&gt; 
- &lt;li&gt;進入積木報表的設計頁面，確保已經維護好數據集數據。&lt;/li&gt; 
- &lt;li&gt;點擊右下角的&lt;span&gt;&amp;nbsp;&lt;/span&gt;&lt;code&gt;AI 助手&lt;/code&gt;按鈕，彈出 AI 助手對話框&lt;span&gt;&amp;nbsp;&lt;/span&gt;&lt;img alt="" src="https://oscimg.oschina.net/oscnet/up-ee903e1dc34135646573e2e0c70e344d858.png" referrerpolicy="no-referrer"&gt;&lt;/li&gt; 
- &lt;li&gt;在對話框中輸入業務描述，例如：&lt;code&gt;展示物料列表，需要展示物料的名稱、分類、供應商、庫存數量&lt;/code&gt;，點擊&lt;code&gt;確定&lt;/code&gt;按鈕，AI 助手會分幾個步驟完成生成報表設計的過程: 
-  &lt;ol&gt; 
-   &lt;li&gt;分析理解用戶輸入的業務描述&lt;/li&gt; 
-   &lt;li&gt;從多個數據集 (若有) 中選擇一個最合適的數據集&lt;/li&gt; 
-   &lt;li&gt;生成報表設計&lt;/li&gt; 
-   &lt;li&gt;將報表設計渲染到頁面上&lt;span&gt;&amp;nbsp;&lt;/span&gt;&lt;img alt="" src="https://oscimg.oschina.net/oscnet/up-cc51f2f0779241d2e6446883a25f264c86d.png" referrerpolicy="no-referrer"&gt;&lt;/li&gt; 
-  &lt;/ol&gt; &lt;/li&gt; 
- &lt;li&gt;生成完成後系統會自動將設計渲染到設計頁面上&lt;span&gt;&amp;nbsp;&lt;/span&gt;&lt;img alt="" src="https://oscimg.oschina.net/oscnet/up-5c112c74a0c00d9a48cdaee81bff70ec71e.png" referrerpolicy="no-referrer"&gt;&lt;/li&gt; 
-&lt;/ol&gt; 
-&lt;h3&gt;3.3 AI 根據&lt;strong&gt;業務描述&lt;/strong&gt;生成&lt;strong&gt;圖表設計&lt;/strong&gt;:&lt;/h3&gt; 
-&lt;ol&gt; 
- &lt;li&gt;進入積木報表的設計頁面，確保已經維護好數據集數據。&lt;/li&gt; 
- &lt;li&gt;點擊添加圖表按鈕，打開添加圖表彈窗。&lt;span&gt;&amp;nbsp;&lt;/span&gt;&lt;img alt="" src="https://oscimg.oschina.net/oscnet/up-6d766e23709b464790aded8325211812151.png" referrerpolicy="no-referrer"&gt;&lt;/li&gt; 
- &lt;li&gt;在彈窗左上角點擊&lt;span&gt;&amp;nbsp;&lt;/span&gt;&lt;code&gt;AI 生成&lt;/code&gt;按鈕，彈出 AI 助手對話框。&lt;span&gt;&amp;nbsp;&lt;/span&gt;&lt;img alt="" src="https://oscimg.oschina.net/oscnet/up-72a2f502ea58a7b7c7b701171b8828be7d9.png" referrerpolicy="no-referrer"&gt;&lt;/li&gt; 
- &lt;li&gt;在對話框中輸入業務描述，例如：&lt;code&gt;展示物料列表庫存的柱狀圖&lt;/code&gt;，點擊&lt;code&gt;確定&lt;/code&gt;按鈕，AI 助手會分幾個步驟完成生成圖表設計的過程: 
-  &lt;ol&gt; 
-   &lt;li&gt;分析理解用戶輸入的業務描述&lt;/li&gt; 
-   &lt;li&gt;從多個數據集 (若有) 中選擇一個最合適的數據集&lt;/li&gt; 
-   &lt;li&gt;生成圖表設計&lt;/li&gt; 
-   &lt;li&gt;將圖表設計渲染到頁面上&lt;span&gt;&amp;nbsp;&lt;/span&gt;&lt;img alt="" src="https://oscimg.oschina.net/oscnet/up-c159560b26798deff9ecc5410200136d8c4.png" referrerpolicy="no-referrer"&gt;&lt;/li&gt; 
-  &lt;/ol&gt; &lt;/li&gt; 
- &lt;li&gt;生成完成後，系統會自動將設計渲染到設計頁面上.&lt;span&gt;&amp;nbsp;&lt;/span&gt;&lt;img alt="" src="https://oscimg.oschina.net/oscnet/up-767b278de00ca10e51f1e7eb8afd2970448.png" referrerpolicy="no-referrer"&gt;&lt;/li&gt; 
-&lt;/ol&gt; 
-&lt;p&gt;&amp;nbsp;&lt;/p&gt;
-                                                                                &lt;/div&gt;
-                                                                            </description>
-      <link>https://www.oschina.net/news/368143</link>
-      <guid isPermaLink="false">https://www.oschina.net/news/368143</guid>
-      <pubDate>Tue, 19 Aug 2025 06:12:00 GMT</pubDate>
-      <author>來源: 資訊</author>
-    </item>
-    <item>
-      <title>鴻蒙元應用與卡片使用 @LocalStorageProp 進行通訊的技術分享</title>
-      <description>&lt;div class="content"&gt;
-                                                                    
-                                                        &lt;p style="color:#555555; margin-left:0; margin-right:0; text-align:left"&gt;踏入鴻蒙世界的敲門磚，標誌着您在技術征途上的全新起點，提升就業競爭力，獲得行業認可，點亮職業成長先機，快人一步搶佔未來應用開發賽道！&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fdeveloper.huawei.com%2Fconsumer%2Fcn%2Ftraining%2Fdev-cert-detail%2F101666948302721398%3Fha_source%3Dhmosclass-bokeyuan%26ha_sourceId%3D89000444" target="_blank"&gt;https://developer.huawei.com/consumer/cn/training/dev-cert-detail/101666948302721398?ha_source=hmosclass-bokeyuan&amp;amp;ha_sourceId=89000444&lt;/a&gt;&lt;/p&gt; 
-&lt;p style="color:#555555; margin-left:0; margin-right:0; text-align:left"&gt;在鴻蒙系統（HarmonyOS）的開發中，@LocalStorageProp 是一個非常有用的裝飾器，用於在組件之間共享狀態或數據。特別是在卡片（Card）和元服務（Meta Service）之間進行通訊時，@LocalStorageProp 可以幫助我們實現數據的持久化和同步。本文將通過一個具體的案例，詳細介紹如何使用 @LocalStorageProp 進行通訊。&lt;/p&gt; 
-&lt;p style="color:#555555; margin-left:0; margin-right:0; text-align:left"&gt;1、案例背景&lt;/p&gt; 
-&lt;p style="color:#555555; margin-left:0; margin-right:0; text-align:left"&gt;假設我們正在開發一個幸運號生成器應用，其中包含一個卡片組件 LotteryNumbersWidgetCard。這個卡片組件需要顯示生成的幸運號碼，並且這些號碼需要在不同的卡片實例之間共享。為了實現這一功能，我們可以使用 @LocalStorageProp 來存儲和同步幸運號碼。&lt;/p&gt; 
-&lt;p style="color:#555555; margin-left:0; margin-right:0; text-align:left"&gt;2、案例代碼分析&lt;/p&gt; 
-&lt;p style="color:#555555; margin-left:0; margin-right:0; text-align:left"&gt;以下是我們提供的 LotteryNumbersWidgetCard.ets 文件的內容，其中展示瞭如何使用 @LocalStorageProp 進行通訊。&lt;/p&gt; 
-&lt;p style="color:#555555; margin-left:0; margin-right:0; text-align:center"&gt;&lt;img alt="圖片 1.png" height="341" src="https://oscimg.oschina.net/oscnet//10d19320d2d6ac4ee945812b4207bc59.png" width="600" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;p style="color:#555555; margin-left:0; margin-right:0; text-align:center"&gt;&lt;img alt="圖片 2.png" height="339" src="https://oscimg.oschina.net/oscnet//d8050442a00398012a56a67374732431.png" width="600" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;p style="color:#555555; margin-left:0; margin-right:0; text-align:center"&gt;&lt;img alt="圖片 3.png" height="338" src="https://oscimg.oschina.net/oscnet//9e77246d89d2a040da849aa744e9f05c.png" width="600" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;p style="color:#555555; margin-left:0; margin-right:0; text-align:center"&gt;&lt;img alt="圖片 4.png" height="275" src="https://oscimg.oschina.net/oscnet//0787940d2b5f9d3eac74cfce8b7028e3.png" width="600" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;p style="color:#555555; margin-left:0; margin-right:0; text-align:left"&gt;3、關鍵點解析&lt;/p&gt; 
-&lt;p style="color:#555555; margin-left:0; margin-right:0; text-align:left"&gt;3.1. 使用 @LocalStorageProp&lt;/p&gt; 
-&lt;p style="color:#555555; margin-left:0; margin-right:0; text-align:left"&gt;在上述代碼中，@LocalStorageProp 裝飾器用於定義需要持久化的屬性。這些屬性會在組件實例之間共享，並且在應用重啓後仍然保留其值。&lt;/p&gt; 
-&lt;p style="color:#555555; margin-left:0; margin-right:0; text-align:center"&gt;&lt;img alt="圖片 5.png" height="30" src="https://oscimg.oschina.net/oscnet//908f460a71abd4d79f12224900c4b10c.png" width="600" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;p style="color:#555555; margin-left:0; margin-right:0; text-align:left"&gt;·&amp;nbsp;lotteryType: 定義了幸運號碼的類型，默認值為 「5+2」。&lt;/p&gt; 
-&lt;p style="color:#555555; margin-left:0; margin-right:0; text-align:left"&gt;·&amp;nbsp;lotteryNumArr: 定義了生成的幸運號碼數組，默認值為 [‘11 &lt;a href="tel:12 13 14 15"&gt;12 13 14 15&lt;/a&gt; 16’, ‘21’]。&lt;/p&gt; 
-&lt;p style="color:#555555; margin-left:0; margin-right:0; text-align:left"&gt;3.2. 數據更新與同步&lt;/p&gt; 
-&lt;p style="color:#555555; margin-left:0; margin-right:0; text-align:left"&gt;當用戶點擊「生成幸運號碼」按鈕時，會調用 GenerateLotteryUtil.generateLottery(this.lotteryType) 方法生成新的幸運號碼，並更新 lotteryNumArr 屬性。&lt;/p&gt; 
-&lt;p style="color:#555555; margin-left:0; margin-right:0; text-align:center"&gt;&lt;img alt="圖片 6.png" height="83" src="https://oscimg.oschina.net/oscnet//80eddc649bada4ed668adeafbbf1d8db.png" width="600" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;p style="color:#555555; margin-left:0; margin-right:0; text-align:left"&gt;由於 lotteryNumArr 使用了 @LocalStorageProp 裝飾器，其值會被自動持久化，並在其他卡片實例中同步更新。&lt;/p&gt; 
-&lt;p style="color:#555555; margin-left:0; margin-right:0; text-align:left"&gt;3.3. 生命週期方法&lt;/p&gt; 
-&lt;p style="color:#555555; margin-left:0; margin-right:0; text-align:left"&gt;在 aboutToDisappear 生命週期方法中，通過 postCardAction 方法將當前的 lotteryType 和 lotteryNumArr 發送到卡片動作中。&lt;/p&gt; 
-&lt;p style="color:#555555; margin-left:0; margin-right:0; text-align:center"&gt;&lt;img alt="圖片 7.png" height="81" src="https://oscimg.oschina.net/oscnet//f01f3aebc2605ca343badc24c8f31208.png" width="600" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;p style="color:#555555; margin-left:0; margin-right:0; text-align:left"&gt;這一步確保了在卡片消失時，當前的狀態會被正確地傳遞出去。&lt;/p&gt; 
-&lt;p style="color:#555555; margin-left:0; margin-right:0; text-align:left"&gt;4、實際開發中的注意事項&lt;/p&gt; 
-&lt;p style="color:#555555; margin-left:0; margin-right:0; text-align:left"&gt;在實際開發過程中，使用 @LocalStorageProp 進行通訊時需要注意以下幾點：&lt;/p&gt; 
-&lt;p style="color:#555555; margin-left:0; margin-right:0; text-align:left"&gt;·&amp;nbsp;數據類型：確保 @LocalStorageProp 裝飾的屬性是可序列化的，例如基本數據類型、數組、對象等。&lt;/p&gt; 
-&lt;p style="color:#555555; margin-left:0; margin-right:0; text-align:left"&gt;·&amp;nbsp;性能考慮：頻繁地更新 @LocalStorageProp 屬性可能會影響性能，因此應避免不必要的更新。&lt;/p&gt; 
-&lt;p style="color:#555555; margin-left:0; margin-right:0; text-align:left"&gt;·&amp;nbsp;數據一致性：在多實例共享數據時，確保數據的一致性和同步性，避免數據衝突。&lt;/p&gt; 
-&lt;p style="color:#555555; margin-left:0; margin-right:0; text-align:left"&gt;5、總結&lt;/p&gt; 
-&lt;p style="color:#555555; margin-left:0; margin-right:0; text-align:left"&gt;通過使用 @LocalStorageProp 裝飾器，我們可以輕鬆地在鴻蒙系統的卡片組件之間共享和同步數據。這不僅簡化了數據管理，還提高了應用的響應速度和用戶體驗。希望本文的技術分享能幫助大家更好地理解和應用 @LocalStorageProp 進行通訊。&lt;/p&gt; 
-&lt;p style="color:#555555; margin-left:0; margin-right:0; text-align:left"&gt;（轉載自 51CTO，作者：魔眼天王）&lt;/p&gt; 
-&lt;p style="color:#555555; margin-left:0; margin-right:0; text-align:center"&gt;&lt;img alt="圖片 8.png" height="200" src="https://oscimg.oschina.net/oscnet//97bd40fc541c6161f85405d0257372fb.png" width="600" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;p&gt;&amp;nbsp;&lt;/p&gt;
-                                                                                &lt;/div&gt;
-                                                                            </description>
-      <link>https://www.oschina.net/news/368046</link>
-      <guid isPermaLink="false">https://www.oschina.net/news/368046</guid>
-      <pubDate>Mon, 18 Aug 2025 07:33:00 GMT</pubDate>
-      <author>作者: 開源科技</author>
-    </item>
     <item>
       <title>​維基框架 (Wiki Framework) 1.1.0 版本發佈​ 提供多模型 AI 輔助開發</title>
       <description>&lt;div class="content"&gt;
@@ -1134,7 +814,7 @@ public class AiUtils {
                                                                             </description>
       <link>https://www.oschina.net/news/367954</link>
       <guid isPermaLink="false">https://www.oschina.net/news/367954</guid>
-      <pubDate>Sun, 17 Aug 2025 14:26:00 GMT</pubDate>
+      <pubDate>Fri, 22 Aug 2025 14:26:00 GMT</pubDate>
       <author>來源: 資訊</author>
     </item>
     <item>
@@ -1209,7 +889,7 @@ public class AiUtils {
                                                                             </description>
       <link>https://www.oschina.net/news/367944</link>
       <guid isPermaLink="false">https://www.oschina.net/news/367944</guid>
-      <pubDate>Sun, 17 Aug 2025 13:21:00 GMT</pubDate>
+      <pubDate>Fri, 22 Aug 2025 13:21:00 GMT</pubDate>
       <author>來源: 資訊</author>
     </item>
     <item>
@@ -1249,7 +929,7 @@ public class AiUtils {
                                                                             </description>
       <link>https://www.oschina.net/news/367934</link>
       <guid isPermaLink="false">https://www.oschina.net/news/367934</guid>
-      <pubDate>Sun, 17 Aug 2025 11:40:00 GMT</pubDate>
+      <pubDate>Fri, 22 Aug 2025 11:40:00 GMT</pubDate>
       <author>來源: 資訊</author>
     </item>
     <item>
@@ -1283,7 +963,7 @@ public class AiUtils {
                                                                             </description>
       <link>https://www.oschina.net/news/367925</link>
       <guid isPermaLink="false">https://www.oschina.net/news/367925</guid>
-      <pubDate>Sun, 17 Aug 2025 10:40:00 GMT</pubDate>
+      <pubDate>Fri, 22 Aug 2025 10:40:00 GMT</pubDate>
       <author>來源: 資訊</author>
     </item>
     <item>
@@ -1309,7 +989,7 @@ public class AiUtils {
                                                                             </description>
       <link>https://www.oschina.net/news/367909/syncthing-2-0-3-released</link>
       <guid isPermaLink="false">https://www.oschina.net/news/367909/syncthing-2-0-3-released</guid>
-      <pubDate>Sun, 17 Aug 2025 09:31:00 GMT</pubDate>
+      <pubDate>Fri, 22 Aug 2025 09:31:00 GMT</pubDate>
       <author>來源: OSCHINA</author>
     </item>
     <item>
@@ -1499,7 +1179,7 @@ public class SysUserVo {
                                                                             </description>
       <link>https://www.oschina.net/news/367890/xbatis-1-9-0-released</link>
       <guid isPermaLink="false">https://www.oschina.net/news/367890/xbatis-1-9-0-released</guid>
-      <pubDate>Sun, 17 Aug 2025 08:16:00 GMT</pubDate>
+      <pubDate>Fri, 22 Aug 2025 08:16:00 GMT</pubDate>
       <author>來源: 資訊</author>
     </item>
     <item>
@@ -1573,7 +1253,7 @@ public class SysUserVo {
                                                                             </description>
       <link>https://www.oschina.net/news/367868/spring-boot-3-5-5-released</link>
       <guid isPermaLink="false">https://www.oschina.net/news/367868/spring-boot-3-5-5-released</guid>
-      <pubDate>Sun, 17 Aug 2025 07:41:00 GMT</pubDate>
+      <pubDate>Fri, 22 Aug 2025 07:41:00 GMT</pubDate>
       <author>來源: OSCHINA</author>
     </item>
     <item>
@@ -1602,7 +1282,7 @@ public class SysUserVo {
                                                                             </description>
       <link>https://www.oschina.net/news/367850/calibre-8-9-released</link>
       <guid isPermaLink="false">https://www.oschina.net/news/367850/calibre-8-9-released</guid>
-      <pubDate>Sun, 17 Aug 2025 06:55:00 GMT</pubDate>
+      <pubDate>Fri, 22 Aug 2025 06:55:00 GMT</pubDate>
       <author>來源: OSCHINA</author>
     </item>
     <item>
@@ -1700,7 +1380,7 @@ public class SysUserVo {
                                                                             </description>
       <link>https://www.oschina.net/news/367834/aibrix-0-4-0-released</link>
       <guid isPermaLink="false">https://www.oschina.net/news/367834/aibrix-0-4-0-released</guid>
-      <pubDate>Sun, 17 Aug 2025 05:45:00 GMT</pubDate>
+      <pubDate>Fri, 22 Aug 2025 05:45:00 GMT</pubDate>
       <author>來源: OSCHINA</author>
     </item>
     <item>
@@ -1722,7 +1402,7 @@ public class SysUserVo {
                                                                             </description>
       <link>https://www.oschina.net/news/367803/ng-zorro-antd-20-1-3-released</link>
       <guid isPermaLink="false">https://www.oschina.net/news/367803/ng-zorro-antd-20-1-3-released</guid>
-      <pubDate>Sun, 17 Aug 2025 03:07:00 GMT</pubDate>
+      <pubDate>Fri, 22 Aug 2025 03:07:00 GMT</pubDate>
       <author>來源: OSCHINA</author>
     </item>
     <item>
@@ -1805,7 +1485,7 @@ public class SysUserVo {
                                                                             </description>
       <link>https://www.oschina.net/news/367796/nocobase-updated</link>
       <guid isPermaLink="false">https://www.oschina.net/news/367796/nocobase-updated</guid>
-      <pubDate>Sun, 17 Aug 2025 02:51:00 GMT</pubDate>
+      <pubDate>Fri, 22 Aug 2025 02:51:00 GMT</pubDate>
       <author>來源: 資訊</author>
     </item>
     <item>
@@ -1872,7 +1552,7 @@ public class SysUserVo {
                                                                             </description>
       <link>https://www.oschina.net/news/367786/knative-1-19-released</link>
       <guid isPermaLink="false">https://www.oschina.net/news/367786/knative-1-19-released</guid>
-      <pubDate>Sun, 17 Aug 2025 02:18:00 GMT</pubDate>
+      <pubDate>Fri, 22 Aug 2025 02:18:00 GMT</pubDate>
       <author>來源: OSCHINA</author>
     </item>
     <item>
@@ -1929,7 +1609,7 @@ public class SysUserVo {
                                                                             </description>
       <link>https://www.oschina.net/news/367779/rook-1-18-released</link>
       <guid isPermaLink="false">https://www.oschina.net/news/367779/rook-1-18-released</guid>
-      <pubDate>Sun, 17 Aug 2025 02:01:00 GMT</pubDate>
+      <pubDate>Fri, 22 Aug 2025 02:01:00 GMT</pubDate>
       <author>來源: OSCHINA</author>
     </item>
     <item>
@@ -1959,7 +1639,7 @@ public class SysUserVo {
                                                                             </description>
       <link>https://www.oschina.net/news/367766/wgcloud-1-1-released</link>
       <guid isPermaLink="false">https://www.oschina.net/news/367766/wgcloud-1-1-released</guid>
-      <pubDate>Sun, 17 Aug 2025 00:25:00 GMT</pubDate>
+      <pubDate>Fri, 22 Aug 2025 00:25:00 GMT</pubDate>
       <author>來源: 資訊</author>
     </item>
     <item>
@@ -2114,7 +1794,7 @@ public class SysUserVo {
                                                                             </description>
       <link>https://www.oschina.net/news/367765</link>
       <guid isPermaLink="false">https://www.oschina.net/news/367765</guid>
-      <pubDate>Sun, 17 Aug 2025 00:19:00 GMT</pubDate>
+      <pubDate>Fri, 22 Aug 2025 00:19:00 GMT</pubDate>
       <author>來源: 資訊</author>
     </item>
     <item>
@@ -2133,8 +1813,328 @@ public class SysUserVo {
                                                                             </description>
       <link>https://www.oschina.net/news/367758/bomiot-1-0-3-released</link>
       <guid isPermaLink="false">https://www.oschina.net/news/367758/bomiot-1-0-3-released</guid>
-      <pubDate>Sat, 16 Aug 2025 19:17:00 GMT</pubDate>
+      <pubDate>Thu, 21 Aug 2025 19:17:00 GMT</pubDate>
       <author>來源: 資訊</author>
+    </item>
+    <item>
+      <title>XXL-JOB v3.2.0 | 分佈式任務調度平台</title>
+      <description>&lt;div class="content"&gt;
+                                                                    
+                                                        &lt;h3&gt;Release Notes&lt;/h3&gt; 
+&lt;ul&gt; 
+ &lt;li&gt;1、【強化】AI 任務（ollamaJobHandler）優化：針對 「model」 模型配置信息，從執行器側文件類配置調整至調度中心「任務參數」動態配置，支持集成多模型、並結合任務動態配置切換。&lt;/li&gt; 
+ &lt;li&gt;2、【安全】登錄認證重構：密碼加密算法從 Md5 改為 Sha256；登錄態改為登錄後動態隨機生成；提升系統安全性；（需要針對用戶表進行字段調整，同時需要重新初始化密碼信息；相關 SQL 腳本如下）&lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;pre&gt;&lt;code&gt;// 1、用戶表 password 字段需要調整長度，執行如下命令
+ALTER TABLE xxl_job_user
+    MODIFY COLUMN `password` varchar(100) NOT NULL COMMENT '密碼加密信息';
+ALTER TABLE xxl_job_user
+    ADD COLUMN `token` varchar(100) DEFAULT NULL COMMENT '登錄 token';
+    
+// 2、存量用戶密碼需要修改，可執行如下命令將密碼初始化 「123456」；也可以自行通過 「SHA256Tool.sha256」 工具生成其他初始化密碼；
+UPDATE xxl_job_user t SET t.password = '8d969eef6ecad3c29a3a629280e686cf0c3f5d5a86aff3ca12020c923adc6c92' WHERE t.username = {用戶名};
+&lt;/code&gt;&lt;/pre&gt; 
+&lt;ul&gt; 
+ &lt;li&gt;3、【強化】GLUE 模式 (Python) 擴展，支持 "GLUE(Python3)" 與 "GLUE(Python2)" 兩種模式，分別支持 python3/2 多版本；&lt;/li&gt; 
+ &lt;li&gt;4、【強化】調度中心繫統日誌調整，支持啓動時指定 -DLOG_HOME 參數自定義日誌位置；同時優化日誌格式提升易讀性；&lt;/li&gt; 
+ &lt;li&gt;5、【優化】任務 Bean 掃描規則調整，過濾冗餘不必要掃描，避免系統組件提前初始化；&lt;/li&gt; 
+ &lt;li&gt;6、【優化】登錄信息頁面空值處理優化，避免空值影響 ftl 渲染；&lt;/li&gt; 
+ &lt;li&gt;7、【優化】異常頁面處理邏輯優化，新增兜底落地頁配置；&lt;/li&gt; 
+ &lt;li&gt;8、【重構】ReturnT 重構，簡化代碼結構，提升 API 易用性以及可維護性；&lt;/li&gt; 
+ &lt;li&gt;9、【重構】項目結構重構，提升可維護性與易讀性；&lt;/li&gt; 
+ &lt;li&gt;10、【修復】漏洞修復（CVE-2025-7787），針對 httpJobHandler 支持配置 URL 白名單限制，防止服務器端請求偽造（SSRF）攻擊。&lt;/li&gt; 
+ &lt;li&gt;11、【修復】合併 PR-3738，修復拼寫問題；&lt;/li&gt; 
+ &lt;li&gt;12、【修復】合併 PR-3506，修復小概率情況下任務重複調度問題；&lt;/li&gt; 
+ &lt;li&gt;13、【修復】合併 PR-3747，修復異常情況下資源泄漏風險；&lt;/li&gt; 
+ &lt;li&gt;14、【修復】IDOR 越權問題修復，提升任務操作及日誌管理安全性；&lt;/li&gt; 
+ &lt;li&gt;15、【升級】升級多項 maven 依賴至較新版本，如 netty、groovy、mybatis、spring、spring-ai、dify 等；&lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;h3&gt;「AI 任務」接入示例&lt;/h3&gt; 
+&lt;p&gt;此處以 difyWorkflowJobHandler 為例，注意需要前置部署 AI 執行器（xxl-job-executor-sample-ai），可參考官方文檔説明。&lt;/p&gt; 
+&lt;p&gt;步驟一：調度中心，新建 difyWorkflowJobHandler 任務&lt;/p&gt; 
+&lt;p&gt;&lt;img height="1588" src="https://oscimg.oschina.net/oscnet/up-0cdf1b5008884996f04f270572df610e207.png" width="1786" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;h4&gt;步驟二：任務執行，查看任務進度及日誌&lt;/h4&gt; 
+&lt;p&gt;&lt;img height="1868" src="https://oscimg.oschina.net/oscnet/up-21814e49cd0d65cc16c66c04bea0bfffccf.png" width="2608" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;h3&gt;「常規任務」接入示例&lt;/h3&gt; 
+&lt;p&gt;XXL-JOB 支持多模式任務，下文以簡單的「Bean 模式任務」為例介紹，三步快速開發接入。&lt;/p&gt; 
+&lt;p&gt;步驟一：執行器，開發 Job 方法&lt;/p&gt; 
+&lt;pre&gt;&lt;code&gt;@XxlJob("demoJobHandler")
+ public void demoJobHandler() throws Exception {
+    XxlJobHelper.log("XXL-JOB, Hello World.");
+}
+&lt;/code&gt;&lt;/pre&gt; 
+&lt;h4&gt;步驟二：調度中心，新建調度任務&lt;/h4&gt; 
+&lt;p&gt;&lt;img height="1017" src="https://oscimg.oschina.net/oscnet/up-c3f2864564db9e47e49c5cdcf721e63897f.png" width="1200" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;h4&gt;步驟三：任務執行，查看任務進度及日誌&lt;/h4&gt; 
+&lt;p&gt;&lt;img height="348" src="https://oscimg.oschina.net/oscnet/up-563cc047e76dccfbcf7c98c3f10018d9ddb.png" width="1200" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;h3&gt;簡介&lt;/h3&gt; 
+&lt;p&gt;XXL-JOB 是一個輕量級分佈式任務調度平台，其核心設計目標是開發迅速、學習簡單、輕量級、易擴展。現已開放源代碼並接入多家公司線上產品線，開箱即用。&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt;&lt;a href="https://www.oschina.net/action/GoToLink?url=http%3A%2F%2Fwww.xuxueli.com%2Fxxl-job%2F" target="_blank"&gt;中文文檔：http://www.xuxueli.com/xxl-job/ &lt;/a&gt;&lt;/li&gt; 
+ &lt;li&gt;&lt;a href="https://www.oschina.net/action/GoToLink?url=http%3A%2F%2Fwww.xuxueli.com%2Fpage%2Fcommunity.html" target="_blank"&gt;社區交流：http://www.xuxueli.com/page/community.html &lt;/a&gt;&lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;p&gt;&lt;img height="631" src="https://oscimg.oschina.net/oscnet/up-732014b16ae496963715102544cd923bb8d.png" width="1200" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;h3&gt;特性&lt;/h3&gt; 
+&lt;ul&gt; 
+ &lt;li&gt;1、簡單：支持通過 Web 頁面對任務進行 CRUD 操作，操作簡單，一分鐘上手；&lt;/li&gt; 
+ &lt;li&gt;2、動態：支持動態修改任務狀態、啓動/停止任務，以及終止運行中任務，即時生效；&lt;/li&gt; 
+ &lt;li&gt;3、調度中心 HA（中心式）：調度採用中心式設計，「調度中心」自研調度組件並支持集羣部署，可保證調度中心 HA；&lt;/li&gt; 
+ &lt;li&gt;4、執行器 HA（分佈式）：任務分佈式執行，任務"執行器"支持集羣部署，可保證任務執行 HA；&lt;/li&gt; 
+ &lt;li&gt;5、註冊中心: 執行器會週期性自動註冊任務, 調度中心將會自動發現註冊的任務並觸發執行。同時，也支持手動錄入執行器地址；&lt;/li&gt; 
+ &lt;li&gt;6、彈性擴容縮容：一旦有新執行器機器上線或者下線，下次調度時將會重新分配任務；&lt;/li&gt; 
+ &lt;li&gt;7、觸發策略：提供豐富的任務觸發策略，包括：Cron 觸發、固定間隔觸發、固定延時觸發、API（事件）觸發、人工觸發、父子任務觸發；&lt;/li&gt; 
+ &lt;li&gt;8、調度過期策略：調度中心錯過調度時間的補償處理策略，包括：忽略、立即補償觸發一次等；&lt;/li&gt; 
+ &lt;li&gt;9、阻塞處理策略：調度過於密集執行器來不及處理時的處理策略，策略包括：單機串行（默認）、丟棄後續調度、覆蓋之前調度；&lt;/li&gt; 
+ &lt;li&gt;10、任務超時控制：支持自定義任務超時時間，任務運行超時將會主動中斷任務；&lt;/li&gt; 
+ &lt;li&gt;11、任務失敗重試：支持自定義任務失敗重試次數，當任務失敗時將會按照預設的失敗重試次數主動進行重試；其中分片任務支持分片粒度的失敗重試；&lt;/li&gt; 
+ &lt;li&gt;12、任務失敗告警；默認提供郵件方式失敗告警，同時預留擴展接口，可方便的擴展短信、釘釘等告警方式；&lt;/li&gt; 
+ &lt;li&gt;13、路由策略：執行器集羣部署時提供豐富的路由策略，包括：第一個、最後一個、輪詢、隨機、一致性 HASH、最不經常使用、最近最久未使用、故障轉移、忙碌轉移等；&lt;/li&gt; 
+ &lt;li&gt;14、分片廣播任務：執行器集羣部署時，任務路由策略選擇"分片廣播"情況下，一次任務調度將會廣播觸發集羣中所有執行器執行一次任務，可根據分片參數開發分片任務；&lt;/li&gt; 
+ &lt;li&gt;15、動態分片：分片廣播任務以執行器為維度進行分片，支持動態擴容執行器集羣從而動態增加分片數量，協同進行業務處理；在進行大數據量業務操作時可顯著提升任務處理能力和速度。&lt;/li&gt; 
+ &lt;li&gt;16、故障轉移：任務路由策略選擇"故障轉移"情況下，如果執行器集羣中某一台機器故障，將會自動 Failover 切換到一台正常的執行器發送調度請求。&lt;/li&gt; 
+ &lt;li&gt;17、任務進度監控：支持實時監控任務進度；&lt;/li&gt; 
+ &lt;li&gt;18、Rolling 實時日誌：支持在線查看調度結果，並且支持以 Rolling 方式實時查看執行器輸出的完整的執行日誌；&lt;/li&gt; 
+ &lt;li&gt;19、GLUE：提供 Web IDE，支持在線開發任務邏輯代碼，動態發佈，實時編譯生效，省略部署上線的過程。支持 30 個版本的歷史版本回溯。&lt;/li&gt; 
+ &lt;li&gt;20、腳本任務：支持以 GLUE 模式開發和運行腳本任務，包括 Shell、Python、NodeJS、PHP、PowerShell 等類型腳本;&lt;/li&gt; 
+ &lt;li&gt;21、命令行任務：原生提供通用命令行任務 Handler（Bean 任務，"CommandJobHandler"）；業務方只需要提供命令行即可；&lt;/li&gt; 
+ &lt;li&gt;22、任務依賴：支持配置子任務依賴，當父任務執行結束且執行成功後將會主動觸發一次子任務的執行, 多個子任務用逗號分隔；&lt;/li&gt; 
+ &lt;li&gt;23、一致性：「調度中心」通過 DB 鎖保證集羣分佈式調度的一致性, 一次任務調度只會觸發一次執行；&lt;/li&gt; 
+ &lt;li&gt;24、自定義任務參數：支持在線配置調度任務入參，即時生效；&lt;/li&gt; 
+ &lt;li&gt;25、調度線程池：調度系統多線程觸發調度運行，確保調度精確執行，不被堵塞；&lt;/li&gt; 
+ &lt;li&gt;26、數據加密：調度中心和執行器之間的通訊進行數據加密，提升調度信息安全性；&lt;/li&gt; 
+ &lt;li&gt;27、郵件報警：任務失敗時支持郵件報警，支持配置多郵件地址羣發報警郵件；&lt;/li&gt; 
+ &lt;li&gt;28、推送 maven 中央倉庫: 將會把最新穩定版推送到 maven 中央倉庫, 方便用戶接入和使用;&lt;/li&gt; 
+ &lt;li&gt;29、運行報表：支持實時查看運行數據，如任務數量、調度次數、執行器數量等；以及調度報表，如調度日期分佈圖，調度成功分佈圖等；&lt;/li&gt; 
+ &lt;li&gt;30、全異步：任務調度流程全異步化設計實現，如異步調度、異步運行、異步回調等，有效對密集調度進行流量削峯，理論上支持任意時長任務的運行；&lt;/li&gt; 
+ &lt;li&gt;31、跨語言/OpenAPI：調度中心與執行器提供語言無關的 OpenApi（RESTful 格式），第三方任意語言可據此對接調度中心或者實現執行器，實現多語言支持。除此之外，還提供了 「多任務模式」和「httpJobHandler」等其他跨語言方案；&lt;/li&gt; 
+ &lt;li&gt;32、國際化：調度中心支持國際化設置，提供中文、英文兩種可選語言，默認為中文；&lt;/li&gt; 
+ &lt;li&gt;33、容器化：提供官方 docker 鏡像，並實時更新推送 dockerhub，進一步實現產品開箱即用；&lt;/li&gt; 
+ &lt;li&gt;34、線程池隔離：調度線程池進行隔離拆分，慢任務自動降級進入"Slow"線程池，避免耗盡調度線程，提高系統穩定性；&lt;/li&gt; 
+ &lt;li&gt;35、用戶管理：支持在線管理系統用戶，存在管理員、普通用戶兩種角色；&lt;/li&gt; 
+ &lt;li&gt;36、權限控制：執行器維度進行權限控制，管理員擁有全量權限，普通用戶需要分配執行器權限後才允許相關操作；&lt;/li&gt; 
+ &lt;li&gt;37、AI 任務：原生提供 AI 執行器，並內置多個 AI 任務 Handler，與 spring-ai、ollama、dify 等集成打通，支持快速開發 AI 類任務。&lt;/li&gt; 
+&lt;/ul&gt;
+                                                                                &lt;/div&gt;
+                                                                            </description>
+      <link>https://www.oschina.net/news/368158/xxl-job-3-2-0-released</link>
+      <guid isPermaLink="false">https://www.oschina.net/news/368158/xxl-job-3-2-0-released</guid>
+      <pubDate>Mon, 18 Aug 2025 08:54:00 GMT</pubDate>
+      <author>來源: 資訊</author>
+    </item>
+    <item>
+      <title>🎉Laravel + Vue3 前後端分離後端框架 CatchAdmin v4.1.0 發佈</title>
+      <description>&lt;div class="content"&gt;
+                                                                    
+                                                        &lt;h1&gt;介紹&lt;/h1&gt; 
+&lt;p style="color:#333333; margin-left:0; margin-right:0; text-align:left"&gt;&lt;code&gt;CatchAdmin&lt;/code&gt;&lt;span&gt;&amp;nbsp;&lt;/span&gt;是一款基於&lt;span&gt;&amp;nbsp;&lt;/span&gt;&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Flaravel.com%2F" target="_blank"&gt;Laravel&lt;/a&gt;&lt;span&gt;&amp;nbsp;&lt;/span&gt;和&lt;span&gt;&amp;nbsp;&lt;/span&gt;&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Felement-plus.org%2F" target="_blank"&gt;Element Plus&lt;/a&gt;&lt;span&gt;&amp;nbsp;&lt;/span&gt;二次開發而成後台管理系統。&lt;code&gt;Laravel&lt;/code&gt;&lt;span&gt;&amp;nbsp;&lt;/span&gt;社區也有許多非常優秀的後台管理系統，例如&lt;span&gt;&amp;nbsp;&lt;/span&gt;&lt;code&gt;Nova&lt;/code&gt;, 官方出品，當然是收費的，免費的有基於&lt;span&gt;&amp;nbsp;&lt;/span&gt;&lt;code&gt;Livewire&lt;/code&gt;&lt;span&gt;&amp;nbsp;&lt;/span&gt;的&lt;span&gt;&amp;nbsp;&lt;/span&gt;&lt;code&gt;Filament&lt;/code&gt;，還有不得不説的&lt;span&gt;&amp;nbsp;&lt;/span&gt;&lt;code&gt;Laravel Admin&lt;/code&gt;。&lt;code&gt;CatchAdmin&lt;/code&gt;&lt;span&gt;&amp;nbsp;&lt;/span&gt;還是採用傳統的前後端分離策略，&lt;code&gt;Laravel&lt;/code&gt;&lt;span&gt;&amp;nbsp;&lt;/span&gt;框架僅僅作為&lt;span&gt;&amp;nbsp;&lt;/span&gt;&lt;code&gt;Api&lt;/code&gt;&lt;span&gt;&amp;nbsp;&lt;/span&gt;輸出。將管理系統模塊之間的耦合降到了最低限度。每個模塊之間都有獨立的控制器，路由，模型，數據表。在開發上儘可能將模塊之間的影響降到最低，降低了開發上的難度。基於&lt;span&gt;&amp;nbsp;&lt;/span&gt;&lt;code&gt;CatchAdmin&lt;span&gt;&amp;nbsp;&lt;/span&gt;&lt;/code&gt;&lt;span&gt;&amp;nbsp;&lt;/span&gt;可以開發&lt;span&gt;&amp;nbsp;&lt;/span&gt;&lt;code&gt;CMS&lt;/code&gt;，&lt;code&gt;CRM&lt;/code&gt;，&lt;code&gt;OA&lt;/code&gt;&lt;span&gt;&amp;nbsp;&lt;/span&gt;等，等系統。也封裝了很多實用的工具，提升開發體驗。&lt;/p&gt; 
+&lt;h2&gt;V4.1.0 日誌&lt;/h2&gt; 
+&lt;ul&gt; 
+ &lt;li&gt;修復 Query Log 日誌格式錯誤&lt;/li&gt; 
+ &lt;li&gt;新增 restore 方法，支持軟刪除數據恢復&lt;/li&gt; 
+ &lt;li&gt;增強了代碼生成功能&lt;/li&gt; 
+ &lt;li&gt;修復使用內置緩存路由命令導致路由失效&lt;/li&gt; 
+ &lt;li&gt;新增 CMS 模塊&lt;/li&gt; 
+ &lt;li&gt;優化了系統模塊導入&lt;/li&gt; 
+ &lt;li&gt;前端新增了全局加載，防止白屏&lt;/li&gt; 
+ &lt;li&gt;前端修復用戶退出後沒有清空前一個登錄用戶的 tab 標籤頁&lt;/li&gt; 
+ &lt;li&gt;前端優化了菜單欄展示方式，刪除默認的策略點&lt;/li&gt; 
+ &lt;li&gt;前端新增 warphost 方法，適配本地上傳的文件和圖片顯示&lt;/li&gt; 
+ &lt;li&gt;前端優化了其他組件以及新增 cms 模塊&lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;p style="color:#333333; margin-left:0; margin-right:0; text-align:left"&gt;&lt;strong&gt;視頻&lt;/strong&gt;&lt;/p&gt; 
+&lt;p style="color:#333333; margin-left:0; margin-right:0; text-align:left"&gt;&amp;nbsp;&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fwww.bilibili.com%2Fvideo%2FBV1jP41127aW%2F" target="_blank"&gt;catchadmin 模塊創建&lt;/a&gt;&lt;/p&gt; 
+&lt;p style="color:#333333; margin-left:0; margin-right:0; text-align:left"&gt;&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fwww.bilibili.com%2Fvideo%2FBV1Qh4y1J7eB%2F" target="_blank"&gt;catchadmin 之快速開發&lt;/a&gt;&lt;/p&gt; 
+&lt;h2&gt;功能&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fcatchadmin.com%2Fdocs%2F3.0%2Fintro%23%25E5%258A%259F%25E8%2583%25BD" target="_blank"&gt;&lt;/a&gt;&lt;/h2&gt; 
+&lt;ul&gt; 
+ &lt;li&gt;&lt;span&gt;&amp;nbsp;&lt;/span&gt;用戶管理，後台用戶管理&lt;/li&gt; 
+ &lt;li&gt;&lt;span&gt;&amp;nbsp;&lt;/span&gt;部門管理，配置公司的部門結構，支持樹形結構&lt;/li&gt; 
+ &lt;li&gt;&lt;span&gt;&amp;nbsp;&lt;/span&gt;崗位管理，配置後台用戶的職務&lt;/li&gt; 
+ &lt;li&gt;&lt;span&gt;&amp;nbsp;&lt;/span&gt;菜單管理，配置系統菜單，按鈕等等&lt;/li&gt; 
+ &lt;li&gt;&lt;span&gt;&amp;nbsp;&lt;/span&gt;角色管理，配置用戶擔當的角色，分配權限&lt;/li&gt; 
+ &lt;li&gt;&lt;span&gt;&amp;nbsp;&lt;/span&gt;操作日誌，後台用戶操作記錄&lt;/li&gt; 
+ &lt;li&gt;&lt;span&gt;&amp;nbsp;&lt;/span&gt;登錄日誌，後台系統用戶的登錄記錄&lt;/li&gt; 
+ &lt;li&gt;&lt;span&gt;&amp;nbsp;&lt;/span&gt;代碼生成，生成 API 端的 CURD 操作&lt;/li&gt; 
+ &lt;li&gt;&lt;span&gt;&amp;nbsp;&lt;/span&gt;Schema 管理，生成表結構&lt;/li&gt; 
+ &lt;li&gt;&lt;span&gt;&amp;nbsp;&lt;/span&gt;模塊管理，系統模塊管理&lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;h2&gt;額外模塊&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fcatchadmin.com%2Fdocs%2F3.0%2Fintro%23%25E9%25A2%259D%25E5%25A4%2596%25E6%25A8%25A1%25E5%259D%2597" target="_blank"&gt;&lt;/a&gt;&lt;/h2&gt; 
+&lt;ul&gt; 
+ &lt;li&gt;&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fgithub.com%2Fcatch-admin%2Fcms" target="_blank"&gt;CMS 模塊&lt;/a&gt;&lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;h2&gt;項目地址&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fcatchadmin.com%2Fdocs%2F3.0%2Fintro%23%25E9%25A1%25B9%25E7%259B%25AE%25E5%259C%25B0%25E5%259D%2580" target="_blank"&gt;&lt;/a&gt;&lt;/h2&gt; 
+&lt;ul&gt; 
+ &lt;li&gt;&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fgithub.com%2Fjaguarjack%2Fcatch-admin" target="_blank"&gt;github 地址&lt;/a&gt;&lt;/li&gt; 
+ &lt;li&gt;&lt;a href="https://gitee.com/jaguarjack/catchAdmin" target="_blank"&gt;gitee 地址&lt;/a&gt;&lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;h2&gt;預覽&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fcatchadmin.com%2Fdocs%2F3.0%2Fintro%23%25E9%25A2%2584%25E8%25A7%2588" target="_blank"&gt;&lt;/a&gt;&lt;/h2&gt; 
+&lt;h2&gt;&lt;img alt="" height="1200" src="https://oscimg.oschina.net/oscnet/up-20bd51527a55b9d851dc657619e88a12335.png" width="2418" referrerpolicy="no-referrer"&gt;&lt;/h2&gt; 
+&lt;p style="color:#333333; margin-left:0; margin-right:0; text-align:left"&gt;&lt;img alt="" height="1200" src="https://oscimg.oschina.net/oscnet/up-550a85e9eb29136f8ac63e2323e32362357.png" width="2556" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p style="color:#333333; margin-left:0; margin-right:0; text-align:left"&gt;&lt;img alt="" height="1200" src="https://oscimg.oschina.net/oscnet/up-67561ab2c9d6455c0d6e8bd77d020ab8258.png" width="2631" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p style="color:#333333; margin-left:0; margin-right:0; text-align:left"&gt;&lt;img alt="" height="1200" src="https://oscimg.oschina.net/oscnet/up-388ac7e9361aa37a4b9260520d16935f993.png" width="2552" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;h2&gt;體驗地址&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fcatchadmin.com%2Fdocs%2F3.0%2Fintro%23%25E4%25BD%2593%25E9%25AA%258C%25E5%259C%25B0%25E5%259D%2580" target="_blank"&gt;&lt;/a&gt;&lt;/h2&gt; 
+&lt;p style="color:#333333; margin-left:0; margin-right:0; text-align:left"&gt;&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fv3.catchadmin.com%2F" target="_blank"&gt;demo 地址&lt;/a&gt;&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt;賬戶:&lt;span&gt;&amp;nbsp;&lt;/span&gt;&lt;code&gt;catch@admin.com&lt;/code&gt;&lt;/li&gt; 
+ &lt;li&gt;密碼:&lt;span&gt;&amp;nbsp;&lt;/span&gt;&lt;code&gt;catchadmin&lt;/code&gt;&lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;h2&gt;感謝🙏&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fcatchadmin.com%2Fdocs%2F3.0%2Fintro%23%25E6%2584%259F%25E8%25B0%25A2" target="_blank"&gt;&lt;/a&gt;&lt;/h2&gt; 
+&lt;blockquote&gt; 
+ &lt;p style="margin-left:0; margin-right:0"&gt;排名不分先後&lt;/p&gt; 
+&lt;/blockquote&gt; 
+&lt;ul&gt; 
+ &lt;li&gt;&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Flaravel.com%2F" target="_blank"&gt;Laravel&lt;/a&gt;&lt;/li&gt; 
+ &lt;li&gt;&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fcn.vuejs.org%2F" target="_blank"&gt;Vue&lt;/a&gt;&lt;/li&gt; 
+ &lt;li&gt;&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Felement-plus.org%2F" target="_blank"&gt;ElementPlus&lt;/a&gt;&lt;/li&gt; 
+ &lt;li&gt;&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fdocusaurus.com%2F" target="_blank"&gt;Docusaurus&lt;/a&gt;&lt;/li&gt; 
+ &lt;li&gt;&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fwww.jetbrains.com%2F" target="_blank"&gt;JetBrains&lt;/a&gt;&lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;p&gt;&amp;nbsp;&lt;/p&gt;
+                                                                                &lt;/div&gt;
+                                                                            </description>
+      <link>https://www.oschina.net/news/368154</link>
+      <guid isPermaLink="false">https://www.oschina.net/news/368154</guid>
+      <pubDate>Mon, 18 Aug 2025 07:39:00 GMT</pubDate>
+      <author>來源: 資訊</author>
+    </item>
+    <item>
+      <title>不會寫 SQL 也能出報表？積木報表 + AI 30 秒自動生成報表和圖表</title>
+      <description>&lt;div class="content"&gt;
+                                                                    
+                                                        &lt;p style="color:#333333; margin-left:0; margin-right:0; text-align:left"&gt;還在為報表寫複雜 SQL 抓耳撓腮？報表製作太複雜不會用？來試試積木報表吧，通過 AI 30 秒即可生成報表和圖表，真的是超簡單。&lt;/p&gt; 
+&lt;blockquote&gt; 
+ &lt;p style="margin-left:0; margin-right:0"&gt;積木報表 v1.9.6 + 版本新增了 AI 助手功能，AI 助手可以幫助用戶快速生成 sql 語句、快速生成報表和圖表，極大的提高了報表設計的效率&lt;/p&gt; 
+&lt;/blockquote&gt; 
+&lt;h2&gt;一、效果&lt;/h2&gt; 
+&lt;h3&gt;1.1 AI 根據&lt;strong&gt;業務描述&lt;/strong&gt;生成&lt;span&gt;&amp;nbsp;&lt;/span&gt;&lt;strong&gt;sql 語句&lt;/strong&gt;:&lt;/h3&gt; 
+&lt;p style="color:#333333; margin-left:0; margin-right:0; text-align:left"&gt;&lt;img alt="" src="https://oscimg.oschina.net/oscnet/up-9d3a2ef3992840f13d0c8697c5e346ab25d.gif" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;h3&gt;1.2 AI 根據&lt;strong&gt;業務描述&lt;/strong&gt;生成&lt;strong&gt;報表設計&lt;/strong&gt;:&lt;/h3&gt; 
+&lt;p style="color:#333333; margin-left:0; margin-right:0; text-align:left"&gt;&lt;img alt="" src="https://oscimg.oschina.net/oscnet/up-6a8d4e8e872a19442a58081637270fddcd1.gif" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;h3&gt;1.3 AI 根據&lt;strong&gt;業務描述&lt;/strong&gt;生成&lt;strong&gt;圖表設計&lt;/strong&gt;&lt;/h3&gt; 
+&lt;p style="color:#333333; margin-left:0; margin-right:0; text-align:left"&gt;&lt;img alt="" src="https://oscimg.oschina.net/oscnet/up-45030e3d156e26c4aedbc7abf36f9791358.gif" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;h2&gt;二、實現方式&lt;/h2&gt; 
+&lt;h3&gt;2.1 前置條件&lt;/h3&gt; 
+&lt;p style="color:#333333; margin-left:0; margin-right:0; text-align:left"&gt;積木報表的 AI 助手功能依賴於&lt;span&gt;&amp;nbsp;&lt;/span&gt;&lt;code&gt;JeecgBoot&lt;/code&gt;&lt;span&gt;&amp;nbsp;&lt;/span&gt;系統的&lt;span&gt;&amp;nbsp;&lt;/span&gt;&lt;code&gt;AI 大模型&lt;/code&gt;模塊，所以若想使用該功能，需要運行&lt;span&gt;&amp;nbsp;&lt;/span&gt;&lt;code&gt;JeecgBoot&lt;/code&gt;&lt;span&gt;&amp;nbsp;&lt;/span&gt;系統，並且在系統中配置好&lt;span&gt;&amp;nbsp;&lt;/span&gt;&lt;code&gt;AI 大模型&lt;/code&gt;模塊的相關參數；或者將&lt;code&gt;積木報表&lt;/code&gt;集成在&lt;span&gt;&amp;nbsp;&lt;/span&gt;&lt;code&gt;JeecgBoot&lt;/code&gt;&lt;span&gt;&amp;nbsp;&lt;/span&gt;系統中使用。&lt;/p&gt; 
+&lt;h3&gt;2.2 JeecgBoot 配置&lt;/h3&gt; 
+&lt;p style="color:#333333; margin-left:0; margin-right:0; text-align:left"&gt;在&lt;span&gt;&amp;nbsp;&lt;/span&gt;&lt;code&gt;JeecgBoot&lt;/code&gt;&lt;span&gt;&amp;nbsp;&lt;/span&gt;系統中，需要配置自己的&lt;span&gt;&amp;nbsp;&lt;/span&gt;&lt;code&gt;LLM&lt;/code&gt;&lt;span&gt;&amp;nbsp;&lt;/span&gt;模型，並且更新 AI 工作流中 LLM 節點的配置參數，具體配置步驟如下：&lt;/p&gt; 
+&lt;ol&gt; 
+ &lt;li&gt; &lt;p style="margin-left:0; margin-right:0"&gt;進入&lt;span&gt;&amp;nbsp;&lt;/span&gt;&lt;code&gt;JeecgBoot&lt;/code&gt;&lt;span&gt;&amp;nbsp;&lt;/span&gt;系統的&lt;span&gt;&amp;nbsp;&lt;/span&gt;&lt;code&gt;AI 大模型&lt;/code&gt;模塊，點擊左側菜單中的&lt;span&gt;&amp;nbsp;&lt;/span&gt;&lt;code&gt;AI 模型配置&lt;/code&gt;，進入配置頁面&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p style="margin-left:0; margin-right:0"&gt;點擊左上角的&lt;code&gt;添加模型&lt;/code&gt;按鈕，添加自己的模型配置&lt;span&gt;&amp;nbsp;&lt;/span&gt;&lt;img alt="" src="https://oscimg.oschina.net/oscnet/up-b5bc4167f35e5f28de41fe9fc34b1788655.png" referrerpolicy="no-referrer"&gt;&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p style="margin-left:0; margin-right:0"&gt;在彈出的對話框中，選擇模型供應商（本例使用千問），下一步。&lt;span&gt;&amp;nbsp;&lt;/span&gt;&lt;img alt="" src="https://oscimg.oschina.net/oscnet/up-a46623fb9602a69fc6a36b732c4677060d9.png" referrerpolicy="no-referrer"&gt;&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p style="margin-left:0; margin-right:0"&gt;輸入模型名稱、選擇模型類型（語言模型）、填寫基礎模型 (qwen-coder-plus)、模型地址、鑑權等信息，點擊&lt;code&gt;保存&lt;/code&gt;按鈕。&lt;span&gt;&amp;nbsp;&lt;/span&gt;&lt;img alt="" src="https://oscimg.oschina.net/oscnet/up-dcbe6a67a9b80eec8b18a0de676cc031ea1.png" referrerpolicy="no-referrer"&gt;&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p style="margin-left:0; margin-right:0"&gt;點擊左側菜單中的&lt;span&gt;&amp;nbsp;&lt;/span&gt;&lt;code&gt;AI 工作流&lt;/code&gt;，進入工作流配置頁面，點擊內置的工作流：&lt;code&gt;JimuReport AI 引擎&lt;/code&gt;，進入編排頁面。&lt;/p&gt; &lt;/li&gt; 
+&lt;/ol&gt; 
+&lt;p style="color:#333333; margin-left:0; margin-right:0; text-align:left"&gt;&lt;img alt="" src="https://oscimg.oschina.net/oscnet/up-0bf62b7d0b6d41c00547d5af7bdd52c5d2c.png" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;ol&gt; 
+ &lt;li&gt;在編排頁面中，點擊&lt;span&gt;&amp;nbsp;&lt;/span&gt;&lt;code&gt;LLM&lt;/code&gt;&lt;span&gt;&amp;nbsp;&lt;/span&gt;節點，進入節點配置頁面；&lt;/li&gt; 
+ &lt;li&gt;分別點擊大模型節點，將模型修改為剛剛我們創建的模型。&lt;span&gt;&amp;nbsp;&lt;/span&gt;&lt;img alt="" src="https://oscimg.oschina.net/oscnet/up-75f9b2fc9880751f884a6100395d8ff1802.png" referrerpolicy="no-referrer"&gt;&lt;/li&gt; 
+ &lt;li&gt;點擊&lt;code&gt;保存&lt;/code&gt;按鈕，完成工作流的配置。&lt;/li&gt; 
+&lt;/ol&gt; 
+&lt;h3&gt;2.3 積木報表配置&lt;/h3&gt; 
+&lt;p style="color:#333333; margin-left:0; margin-right:0; text-align:left"&gt;如果積木報表是獨立使用的，或者集成在其他系統中使用，需要在&lt;code&gt;積木報表&lt;/code&gt;的配置文件中配置 AI 助手的相關參數，具體配置步驟如下：&lt;/p&gt; 
+&lt;ol&gt; 
+ &lt;li&gt;打開積木報表的配置文件&lt;span&gt;&amp;nbsp;&lt;/span&gt;&lt;code&gt;application.yml&lt;/code&gt;，在&lt;span&gt;&amp;nbsp;&lt;/span&gt;&lt;code&gt;jeecg.jmreport.ai.service-url&lt;/code&gt;&lt;span&gt;&amp;nbsp;&lt;/span&gt;節點配置&lt;span&gt;&amp;nbsp;&lt;/span&gt;&lt;code&gt;JeecgAI 服務&lt;/code&gt;的地址，格式為&lt;span&gt;&amp;nbsp;&lt;/span&gt;&lt;code&gt;http://domain/url&lt;/code&gt;，例如：&lt;code&gt;http://localhost:8080/jeecgboot/airag/flow/run&lt;/code&gt;&lt;/li&gt; 
+&lt;/ol&gt; 
+&lt;pre&gt;&lt;code class="language-yaml"&gt;&lt;span style="color:#005cc5"&gt;jeecg&lt;/span&gt;:
+  &lt;span style="color:#005cc5"&gt;jmreport&lt;/span&gt;:
+    &lt;span style="color:#005cc5"&gt;ai&lt;/span&gt;:
+      &lt;span style="color:#005cc5"&gt;service-url&lt;/span&gt;: &lt;span style="color:#005cc5"&gt;http&lt;/span&gt;:&lt;span style="color:#6a737d"&gt;//localhost:8080/jeecgboot/airag/flow/run&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt; 
+&lt;p style="color:#333333; margin-left:0; margin-right:0; text-align:left"&gt;如果積木報表是集成在&lt;span&gt;&amp;nbsp;&lt;/span&gt;&lt;code&gt;JeecgBoot&lt;/code&gt;&lt;span&gt;&amp;nbsp;&lt;/span&gt;系統中使用的，則不需要配置該參數。&lt;/p&gt; 
+&lt;h2&gt;三、使用方式&lt;/h2&gt; 
+&lt;h3&gt;3.1 AI 根據&lt;strong&gt;業務描述&lt;/strong&gt;生成&lt;span&gt;&amp;nbsp;&lt;/span&gt;&lt;strong&gt;sql 語句&lt;/strong&gt;:&lt;/h3&gt; 
+&lt;ol&gt; 
+ &lt;li&gt;進入積木報表的設計頁面，點擊左側數據集新建按鈕，進入 Sql 數據集新建頁面。&lt;/li&gt; 
+ &lt;li&gt;先選定數據源 (若不選擇，則默認使用系統的數據源)&lt;span&gt;&amp;nbsp;&lt;/span&gt;&lt;img alt="" src="https://oscimg.oschina.net/oscnet/up-ee54af9054cfc8966d9a008be87f3ba2848.png" referrerpolicy="no-referrer"&gt;&lt;/li&gt; 
+ &lt;li&gt;然後點擊 sql 語句輸入框右上的&lt;span&gt;&amp;nbsp;&lt;/span&gt;&lt;code&gt;AI 生成 SQL&lt;/code&gt;&lt;span&gt;&amp;nbsp;&lt;/span&gt;按鈕，彈出 AI 生成 SQL 語句對話框&lt;span&gt;&amp;nbsp;&lt;/span&gt;&lt;img alt="" src="https://oscimg.oschina.net/oscnet/up-b166b337cbefcf1e8273a7489ccfd6d2157.png" referrerpolicy="no-referrer"&gt;&lt;/li&gt; 
+ &lt;li&gt;在對話框中輸入業務描述，例如：&lt;code&gt;查詢 2018 年 1 月到 2019 年 12 月的入庫記錄&lt;/code&gt;，點擊&lt;code&gt;生成 SQL&lt;/code&gt;&lt;span&gt;&amp;nbsp;&lt;/span&gt;按鈕，AI 助手會分幾個步驟完成生成 SQL 語句的過程: 
+  &lt;ol&gt; 
+   &lt;li&gt;分析理解用戶輸入的業務描述&lt;/li&gt; 
+   &lt;li&gt;從數據庫中選擇符合業務需求的數據庫表&lt;/li&gt; 
+   &lt;li&gt;生成 Sql 語句&lt;/li&gt; 
+   &lt;li&gt;執行 Sql 語句，返回結果&lt;span&gt;&amp;nbsp;&lt;/span&gt;&lt;img alt="" src="https://oscimg.oschina.net/oscnet/up-d095357604674f6a2f76ce93397c8cfdaa2.png" referrerpolicy="no-referrer"&gt;&lt;/li&gt; 
+  &lt;/ol&gt; &lt;/li&gt; 
+ &lt;li&gt;若對生成的 sql 語句不滿意，可以修改需求描述，再次點擊&lt;code&gt;生成 SQL&lt;/code&gt;&lt;span&gt;&amp;nbsp;&lt;/span&gt;按鈕，AI 助手會重新生成 sql 語句&lt;/li&gt; 
+ &lt;li&gt;若生成的 sql 語句符合預期，點擊&lt;code&gt;使用此 SQL&lt;/code&gt;&lt;span&gt;&amp;nbsp;&lt;/span&gt;按鈕，完成 sql 語句的生成&lt;/li&gt; 
+&lt;/ol&gt; 
+&lt;h3&gt;3.2 AI 根據&lt;strong&gt;業務描述&lt;/strong&gt;生成&lt;strong&gt;報表設計&lt;/strong&gt;:&lt;/h3&gt; 
+&lt;ol&gt; 
+ &lt;li&gt;進入積木報表的設計頁面，確保已經維護好數據集數據。&lt;/li&gt; 
+ &lt;li&gt;點擊右下角的&lt;span&gt;&amp;nbsp;&lt;/span&gt;&lt;code&gt;AI 助手&lt;/code&gt;按鈕，彈出 AI 助手對話框&lt;span&gt;&amp;nbsp;&lt;/span&gt;&lt;img alt="" src="https://oscimg.oschina.net/oscnet/up-ee903e1dc34135646573e2e0c70e344d858.png" referrerpolicy="no-referrer"&gt;&lt;/li&gt; 
+ &lt;li&gt;在對話框中輸入業務描述，例如：&lt;code&gt;展示物料列表，需要展示物料的名稱、分類、供應商、庫存數量&lt;/code&gt;，點擊&lt;code&gt;確定&lt;/code&gt;按鈕，AI 助手會分幾個步驟完成生成報表設計的過程: 
+  &lt;ol&gt; 
+   &lt;li&gt;分析理解用戶輸入的業務描述&lt;/li&gt; 
+   &lt;li&gt;從多個數據集 (若有) 中選擇一個最合適的數據集&lt;/li&gt; 
+   &lt;li&gt;生成報表設計&lt;/li&gt; 
+   &lt;li&gt;將報表設計渲染到頁面上&lt;span&gt;&amp;nbsp;&lt;/span&gt;&lt;img alt="" src="https://oscimg.oschina.net/oscnet/up-cc51f2f0779241d2e6446883a25f264c86d.png" referrerpolicy="no-referrer"&gt;&lt;/li&gt; 
+  &lt;/ol&gt; &lt;/li&gt; 
+ &lt;li&gt;生成完成後系統會自動將設計渲染到設計頁面上&lt;span&gt;&amp;nbsp;&lt;/span&gt;&lt;img alt="" src="https://oscimg.oschina.net/oscnet/up-5c112c74a0c00d9a48cdaee81bff70ec71e.png" referrerpolicy="no-referrer"&gt;&lt;/li&gt; 
+&lt;/ol&gt; 
+&lt;h3&gt;3.3 AI 根據&lt;strong&gt;業務描述&lt;/strong&gt;生成&lt;strong&gt;圖表設計&lt;/strong&gt;:&lt;/h3&gt; 
+&lt;ol&gt; 
+ &lt;li&gt;進入積木報表的設計頁面，確保已經維護好數據集數據。&lt;/li&gt; 
+ &lt;li&gt;點擊添加圖表按鈕，打開添加圖表彈窗。&lt;span&gt;&amp;nbsp;&lt;/span&gt;&lt;img alt="" src="https://oscimg.oschina.net/oscnet/up-6d766e23709b464790aded8325211812151.png" referrerpolicy="no-referrer"&gt;&lt;/li&gt; 
+ &lt;li&gt;在彈窗左上角點擊&lt;span&gt;&amp;nbsp;&lt;/span&gt;&lt;code&gt;AI 生成&lt;/code&gt;按鈕，彈出 AI 助手對話框。&lt;span&gt;&amp;nbsp;&lt;/span&gt;&lt;img alt="" src="https://oscimg.oschina.net/oscnet/up-72a2f502ea58a7b7c7b701171b8828be7d9.png" referrerpolicy="no-referrer"&gt;&lt;/li&gt; 
+ &lt;li&gt;在對話框中輸入業務描述，例如：&lt;code&gt;展示物料列表庫存的柱狀圖&lt;/code&gt;，點擊&lt;code&gt;確定&lt;/code&gt;按鈕，AI 助手會分幾個步驟完成生成圖表設計的過程: 
+  &lt;ol&gt; 
+   &lt;li&gt;分析理解用戶輸入的業務描述&lt;/li&gt; 
+   &lt;li&gt;從多個數據集 (若有) 中選擇一個最合適的數據集&lt;/li&gt; 
+   &lt;li&gt;生成圖表設計&lt;/li&gt; 
+   &lt;li&gt;將圖表設計渲染到頁面上&lt;span&gt;&amp;nbsp;&lt;/span&gt;&lt;img alt="" src="https://oscimg.oschina.net/oscnet/up-c159560b26798deff9ecc5410200136d8c4.png" referrerpolicy="no-referrer"&gt;&lt;/li&gt; 
+  &lt;/ol&gt; &lt;/li&gt; 
+ &lt;li&gt;生成完成後，系統會自動將設計渲染到設計頁面上.&lt;span&gt;&amp;nbsp;&lt;/span&gt;&lt;img alt="" src="https://oscimg.oschina.net/oscnet/up-767b278de00ca10e51f1e7eb8afd2970448.png" referrerpolicy="no-referrer"&gt;&lt;/li&gt; 
+&lt;/ol&gt; 
+&lt;p&gt;&amp;nbsp;&lt;/p&gt;
+                                                                                &lt;/div&gt;
+                                                                            </description>
+      <link>https://www.oschina.net/news/368143</link>
+      <guid isPermaLink="false">https://www.oschina.net/news/368143</guid>
+      <pubDate>Mon, 18 Aug 2025 06:12:00 GMT</pubDate>
+      <author>來源: 資訊</author>
+    </item>
+    <item>
+      <title>鴻蒙元應用與卡片使用 @LocalStorageProp 進行通訊的技術分享</title>
+      <description>&lt;div class="content"&gt;
+                                                                    
+                                                        &lt;p style="color:#555555; margin-left:0; margin-right:0; text-align:left"&gt;踏入鴻蒙世界的敲門磚，標誌着您在技術征途上的全新起點，提升就業競爭力，獲得行業認可，點亮職業成長先機，快人一步搶佔未來應用開發賽道！&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fdeveloper.huawei.com%2Fconsumer%2Fcn%2Ftraining%2Fdev-cert-detail%2F101666948302721398%3Fha_source%3Dhmosclass-bokeyuan%26ha_sourceId%3D89000444" target="_blank"&gt;https://developer.huawei.com/consumer/cn/training/dev-cert-detail/101666948302721398?ha_source=hmosclass-bokeyuan&amp;amp;ha_sourceId=89000444&lt;/a&gt;&lt;/p&gt; 
+&lt;p style="color:#555555; margin-left:0; margin-right:0; text-align:left"&gt;在鴻蒙系統（HarmonyOS）的開發中，@LocalStorageProp 是一個非常有用的裝飾器，用於在組件之間共享狀態或數據。特別是在卡片（Card）和元服務（Meta Service）之間進行通訊時，@LocalStorageProp 可以幫助我們實現數據的持久化和同步。本文將通過一個具體的案例，詳細介紹如何使用 @LocalStorageProp 進行通訊。&lt;/p&gt; 
+&lt;p style="color:#555555; margin-left:0; margin-right:0; text-align:left"&gt;1、案例背景&lt;/p&gt; 
+&lt;p style="color:#555555; margin-left:0; margin-right:0; text-align:left"&gt;假設我們正在開發一個幸運號生成器應用，其中包含一個卡片組件 LotteryNumbersWidgetCard。這個卡片組件需要顯示生成的幸運號碼，並且這些號碼需要在不同的卡片實例之間共享。為了實現這一功能，我們可以使用 @LocalStorageProp 來存儲和同步幸運號碼。&lt;/p&gt; 
+&lt;p style="color:#555555; margin-left:0; margin-right:0; text-align:left"&gt;2、案例代碼分析&lt;/p&gt; 
+&lt;p style="color:#555555; margin-left:0; margin-right:0; text-align:left"&gt;以下是我們提供的 LotteryNumbersWidgetCard.ets 文件的內容，其中展示瞭如何使用 @LocalStorageProp 進行通訊。&lt;/p&gt; 
+&lt;p style="color:#555555; margin-left:0; margin-right:0; text-align:center"&gt;&lt;img alt="圖片 1.png" height="341" src="https://oscimg.oschina.net/oscnet//10d19320d2d6ac4ee945812b4207bc59.png" width="600" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p style="color:#555555; margin-left:0; margin-right:0; text-align:center"&gt;&lt;img alt="圖片 2.png" height="339" src="https://oscimg.oschina.net/oscnet//d8050442a00398012a56a67374732431.png" width="600" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p style="color:#555555; margin-left:0; margin-right:0; text-align:center"&gt;&lt;img alt="圖片 3.png" height="338" src="https://oscimg.oschina.net/oscnet//9e77246d89d2a040da849aa744e9f05c.png" width="600" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p style="color:#555555; margin-left:0; margin-right:0; text-align:center"&gt;&lt;img alt="圖片 4.png" height="275" src="https://oscimg.oschina.net/oscnet//0787940d2b5f9d3eac74cfce8b7028e3.png" width="600" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p style="color:#555555; margin-left:0; margin-right:0; text-align:left"&gt;3、關鍵點解析&lt;/p&gt; 
+&lt;p style="color:#555555; margin-left:0; margin-right:0; text-align:left"&gt;3.1. 使用 @LocalStorageProp&lt;/p&gt; 
+&lt;p style="color:#555555; margin-left:0; margin-right:0; text-align:left"&gt;在上述代碼中，@LocalStorageProp 裝飾器用於定義需要持久化的屬性。這些屬性會在組件實例之間共享，並且在應用重啓後仍然保留其值。&lt;/p&gt; 
+&lt;p style="color:#555555; margin-left:0; margin-right:0; text-align:center"&gt;&lt;img alt="圖片 5.png" height="30" src="https://oscimg.oschina.net/oscnet//908f460a71abd4d79f12224900c4b10c.png" width="600" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p style="color:#555555; margin-left:0; margin-right:0; text-align:left"&gt;·&amp;nbsp;lotteryType: 定義了幸運號碼的類型，默認值為 「5+2」。&lt;/p&gt; 
+&lt;p style="color:#555555; margin-left:0; margin-right:0; text-align:left"&gt;·&amp;nbsp;lotteryNumArr: 定義了生成的幸運號碼數組，默認值為 [‘11 &lt;a href="tel:12 13 14 15"&gt;12 13 14 15&lt;/a&gt; 16’, ‘21’]。&lt;/p&gt; 
+&lt;p style="color:#555555; margin-left:0; margin-right:0; text-align:left"&gt;3.2. 數據更新與同步&lt;/p&gt; 
+&lt;p style="color:#555555; margin-left:0; margin-right:0; text-align:left"&gt;當用戶點擊「生成幸運號碼」按鈕時，會調用 GenerateLotteryUtil.generateLottery(this.lotteryType) 方法生成新的幸運號碼，並更新 lotteryNumArr 屬性。&lt;/p&gt; 
+&lt;p style="color:#555555; margin-left:0; margin-right:0; text-align:center"&gt;&lt;img alt="圖片 6.png" height="83" src="https://oscimg.oschina.net/oscnet//80eddc649bada4ed668adeafbbf1d8db.png" width="600" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p style="color:#555555; margin-left:0; margin-right:0; text-align:left"&gt;由於 lotteryNumArr 使用了 @LocalStorageProp 裝飾器，其值會被自動持久化，並在其他卡片實例中同步更新。&lt;/p&gt; 
+&lt;p style="color:#555555; margin-left:0; margin-right:0; text-align:left"&gt;3.3. 生命週期方法&lt;/p&gt; 
+&lt;p style="color:#555555; margin-left:0; margin-right:0; text-align:left"&gt;在 aboutToDisappear 生命週期方法中，通過 postCardAction 方法將當前的 lotteryType 和 lotteryNumArr 發送到卡片動作中。&lt;/p&gt; 
+&lt;p style="color:#555555; margin-left:0; margin-right:0; text-align:center"&gt;&lt;img alt="圖片 7.png" height="81" src="https://oscimg.oschina.net/oscnet//f01f3aebc2605ca343badc24c8f31208.png" width="600" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p style="color:#555555; margin-left:0; margin-right:0; text-align:left"&gt;這一步確保了在卡片消失時，當前的狀態會被正確地傳遞出去。&lt;/p&gt; 
+&lt;p style="color:#555555; margin-left:0; margin-right:0; text-align:left"&gt;4、實際開發中的注意事項&lt;/p&gt; 
+&lt;p style="color:#555555; margin-left:0; margin-right:0; text-align:left"&gt;在實際開發過程中，使用 @LocalStorageProp 進行通訊時需要注意以下幾點：&lt;/p&gt; 
+&lt;p style="color:#555555; margin-left:0; margin-right:0; text-align:left"&gt;·&amp;nbsp;數據類型：確保 @LocalStorageProp 裝飾的屬性是可序列化的，例如基本數據類型、數組、對象等。&lt;/p&gt; 
+&lt;p style="color:#555555; margin-left:0; margin-right:0; text-align:left"&gt;·&amp;nbsp;性能考慮：頻繁地更新 @LocalStorageProp 屬性可能會影響性能，因此應避免不必要的更新。&lt;/p&gt; 
+&lt;p style="color:#555555; margin-left:0; margin-right:0; text-align:left"&gt;·&amp;nbsp;數據一致性：在多實例共享數據時，確保數據的一致性和同步性，避免數據衝突。&lt;/p&gt; 
+&lt;p style="color:#555555; margin-left:0; margin-right:0; text-align:left"&gt;5、總結&lt;/p&gt; 
+&lt;p style="color:#555555; margin-left:0; margin-right:0; text-align:left"&gt;通過使用 @LocalStorageProp 裝飾器，我們可以輕鬆地在鴻蒙系統的卡片組件之間共享和同步數據。這不僅簡化了數據管理，還提高了應用的響應速度和用戶體驗。希望本文的技術分享能幫助大家更好地理解和應用 @LocalStorageProp 進行通訊。&lt;/p&gt; 
+&lt;p style="color:#555555; margin-left:0; margin-right:0; text-align:left"&gt;（轉載自 51CTO，作者：魔眼天王）&lt;/p&gt; 
+&lt;p style="color:#555555; margin-left:0; margin-right:0; text-align:center"&gt;&lt;img alt="圖片 8.png" height="200" src="https://oscimg.oschina.net/oscnet//97bd40fc541c6161f85405d0257372fb.png" width="600" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p&gt;&amp;nbsp;&lt;/p&gt;
+                                                                                &lt;/div&gt;
+                                                                            </description>
+      <link>https://www.oschina.net/news/368046</link>
+      <guid isPermaLink="false">https://www.oschina.net/news/368046</guid>
+      <pubDate>Sun, 17 Aug 2025 07:33:00 GMT</pubDate>
+      <author>作者: 開源科技</author>
     </item>
   </channel>
 </rss>
