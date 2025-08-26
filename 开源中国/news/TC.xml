@@ -7,8 +7,954 @@
     <generator>RSSHub</generator>
     <webMaster>contact@rsshub.app (RSSHub)</webMaster>
     <language>zh-tw</language>
-    <lastBuildDate>Tue, 26 Aug 2025 02:42:59 GMT</lastBuildDate>
+    <lastBuildDate>Tue, 26 Aug 2025 07:43:24 GMT</lastBuildDate>
     <ttl>5</ttl>
+    <item>
+      <title>得物新商品審核鏈路建設分享</title>
+      <description>&lt;div class="content"&gt;
+                                                                                                                    
+                                                                                                                                                    &lt;span id="OSC_h1_1"&gt;&lt;/span&gt; 
+&lt;h1&gt;一、 前言&lt;/h1&gt; 
+&lt;p&gt;得物近年來發展迅猛，平台商品類目覆蓋越來越廣，商品量級越來越大。而以往得物的上新動作更多依賴於傳統方式，效率較低，無法滿足現有的上新訴求。那麼如何能實現更加快速的上新、更加高效的上新，就成為了一個至關重要的命題。&lt;/p&gt; 
+&lt;p&gt;近兩年 AI 大模型技術的發展，使得發佈和審核逐漸向 AI 驅動的方式轉變成為可能。因此，我們可以探索利用算法能力和大模型能力，結合業務自身規則，構建更加全面和精準的規則審核點，以實現更高效的工作流程，最終達到我們的目標。&lt;/p&gt; 
+&lt;p&gt;本文圍繞 AI 審核，介紹機審鏈路建設思想、規則審核點實現快速接入等核心邏輯。&lt;/p&gt; 
+&lt;span id="OSC_h1_2"&gt;&lt;/span&gt; 
+&lt;h1&gt;二、如何實現高效審核&lt;/h1&gt; 
+&lt;p&gt;對於高效審核的理解，主要可以拆解成「高質量」、「高效率」。目前對於「高質量」的動作包括，基於不同的類目建設對應的機審規則、機審能力，再通過人工抽查、問題 Case 分析的方式，優化算法能力，逐步推進「高質量」的效果。&lt;/p&gt; 
+&lt;p&gt;而「高效率」，核心又可以分成業務高效與技術高效。&lt;/p&gt; 
+&lt;p&gt;&lt;strong&gt;業務高效&lt;/strong&gt;&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt;逐步通過機器審核能力優化審核流程，以解決資源不足導致上新審核時出現進展阻礙的問題。&lt;/li&gt; 
+ &lt;li&gt;通過建設機審配置業務，產品、業務可以直觀的維護類目-機審規則-白名單配置，從而高效的調整機審策略。&lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;p&gt;&lt;strong&gt;技術高效&lt;/strong&gt;&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt;通過建設動態配置能力，實現快速接入新的機審規則、調整機審規則等，無需代碼發佈，即配即生效。&lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;p&gt;Q2 在搭建了動態配置能力之後，算法相關的機審規則接入效率提升了 70% 左右。&lt;/p&gt; 
+&lt;span id="OSC_h1_3"&gt;&lt;/span&gt; 
+&lt;h1&gt;三、動態配置實現思路&lt;/h1&gt; 
+&lt;p&gt;建設新版機審鏈路前的調研中，我們對於老機審鏈路的規則以及新機審規則進行了分析，發現算法類機審規則佔比超過 70% 以上，而算法類的機審規則接入的流程比較固化，核心分成三步：&lt;/p&gt; 
+&lt;ol&gt; 
+ &lt;li&gt;與算法同學溝通定義好接口協議&lt;/li&gt; 
+ &lt;li&gt;基於商品信息構建請求參數，通過 HTTP 請求算法提供的 URL，從而獲取到算法結果。&lt;/li&gt; 
+ &lt;li&gt;解析算法返回的結果，與自身商品信息結合，輸出最終的機審結果。&lt;/li&gt; 
+&lt;/ol&gt; 
+&lt;p&gt;而算法協議所需要的信息通常都可以從商品中獲取到，因此通過引入「反射機制」、「HTTP 泛化調用」、「規則引擎」等能力，實現算法規則通過 JSON 配置即可實現算法接入。&lt;/p&gt; 
+&lt;span id="OSC_h1_4"&gt;&lt;/span&gt; 
+&lt;h1&gt;四、商品審核方式演進介紹&lt;/h1&gt; 
+&lt;p&gt;&lt;img alt="" src="https://mp.toutiao.com/mp/agw/article_material/open_image/get?code=YmRjMjQ4ZmI2YTM2MmZkMWE4ZDI0NzI4MzhmMDA0ZGUsMTc1NjE4OTk2Nzc1Ng==" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p&gt;商品審核方式的演進&lt;/p&gt; 
+&lt;p&gt;&lt;strong&gt;人審&lt;/strong&gt;&lt;/p&gt; 
+&lt;p&gt;依賴商管、運營，對商品上架各字段是否符合得物上新標準進行人工覈查。&lt;/p&gt; 
+&lt;p&gt;&lt;strong&gt;機審&lt;/strong&gt;&lt;/p&gt; 
+&lt;p&gt;對於部分明確的業務規則，比如白底圖、圖片清晰度、是否重複品、是否同質品等，機審做前置校驗並輸出機審結果，輔助人工審核，降低審核成本，提升審核效率。&lt;/p&gt; 
+&lt;p&gt;&lt;strong&gt;AI 審核&lt;/strong&gt;&lt;/p&gt; 
+&lt;p&gt;通過豐富算法能力、強化 AI 大模型能力、雷達技術等，建設越來越多的商品審核點，並推動召回率、準確率的提升，達標的審核點可通過自動駁回、自動修改等 action 接管商品審核，降低人工審核的佔比，降低人工成本。&lt;/p&gt; 
+&lt;span id="OSC_h1_5"&gt;&lt;/span&gt; 
+&lt;h1&gt;五、現狀問題分析&lt;/h1&gt; 
+&lt;p&gt;&lt;strong&gt;產品層面&lt;/strong&gt;&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt; &lt;p&gt;機審能力不足，部分字段沒覆蓋，部分規則不合理：&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; 
+  &lt;ul&gt; 
+   &lt;li&gt;&lt;strong&gt;機審字段覆蓋度待提升&lt;/strong&gt;&lt;/li&gt; 
+   &lt;li&gt;&lt;strong&gt;機審規則採納率不足&lt;/strong&gt;&lt;/li&gt; 
+   &lt;li&gt;&lt;strong&gt;部分機審規則不合理&lt;/strong&gt;&lt;/li&gt; 
+  &lt;/ul&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;缺少產品配置化能力，配置黑盒化，需求迭代費力度較高：&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; 
+  &lt;ul&gt; 
+   &lt;li&gt;&lt;strong&gt;規則配置黑盒&lt;/strong&gt;&lt;/li&gt; 
+   &lt;li&gt;&lt;strong&gt;規則執行結果缺乏 trace 和透傳&lt;/strong&gt;&lt;/li&gt; 
+   &lt;li&gt;&lt;strong&gt;調整規則依賴開發和發佈&lt;/strong&gt;&lt;/li&gt; 
+   &lt;li&gt;&lt;strong&gt;缺少規則執行數據埋點&lt;/strong&gt;&lt;/li&gt; 
+  &lt;/ul&gt; &lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;p&gt;&lt;strong&gt;技術層面&lt;/strong&gt;&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt; &lt;p&gt;系統可擴展性不足，研發效率低：&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; 
+  &lt;ul&gt; 
+   &lt;li&gt;&lt;strong&gt;業務鏈路（AI 發品、審核、預檢等）不支持配置化和複用&lt;/strong&gt;&lt;/li&gt; 
+   &lt;li&gt;&lt;strong&gt;規則節點不支持配置化和複用&lt;/strong&gt;&lt;/li&gt; 
+  &lt;/ul&gt; &lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;span id="OSC_h1_6"&gt;&lt;/span&gt; 
+&lt;h1&gt;六、流程介紹&lt;/h1&gt; 
+&lt;p&gt;搭建機審配置後台，可以通過配置應用場景+業務身份+商品維度配置來確定所需執行的全量規則，規則可複用。&lt;/p&gt; 
+&lt;p&gt;其中應用場景代表業務場景，如商品上新審核、商家發品預檢、AI 發品預檢等；業務身份則表示不同業務場景下不同方式，如常規渠道商品上新的業務場景下，AI 發佈、常規商品上新（商家後台、交易後台等）、FSPU 同款發佈品等。&lt;/p&gt; 
+&lt;p&gt;當商品變更，通過 Binlog 日誌觸發機審，根據當前的應用場景+業務身份+商品信息，構建對應的機審執行鏈（ProcessChain）完成機審執行，不同的機審規則不通過支持不同的 action，如自動修正、自動駁回、自動通過等。&lt;/p&gt; 
+&lt;p&gt;鏈路執行流程圖如下：&lt;/p&gt; 
+&lt;p&gt;&lt;img alt="" src="https://mp.toutiao.com/mp/agw/article_material/open_image/get?code=NjYyNDM4M2JmNzY2Njg5ZDFjYmI4MDQwZTkzZTkwODMsMTc1NjE4OTk2Nzc1Ng==" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;span id="OSC_h1_7"&gt;&lt;/span&gt; 
+&lt;h1&gt;七、詳細設計&lt;/h1&gt; 
+&lt;p&gt;&lt;strong&gt;整體架構圖&lt;/strong&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;img alt="" src="https://mp.toutiao.com/mp/agw/article_material/open_image/get?code=MjZiYmQyYWJhMWFjYTJjNzU3NzM3Zjg1NGQ4OTMyNWMsMTc1NjE4OTk2Nzc1Ng==" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;strong&gt;業務實體&lt;/strong&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;strong&gt;ER 圖&lt;/strong&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;img alt="" src="https://mp.toutiao.com/mp/agw/article_material/open_image/get?code=ODQyN2IzNjk1ZjU3NDJiYmY4MGYxNzQwNTNiODBlMmEsMTc1NjE4OTk2Nzc1Ng==" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;strong&gt;含義解釋&lt;/strong&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;strong&gt;※ 業務場景&lt;/strong&gt;&lt;/p&gt; 
+&lt;p&gt;觸發機審的應用場景，如新品發佈、商家新品預檢等。&lt;/p&gt; 
+&lt;p&gt;&lt;strong&gt;※ 業務身份&lt;/strong&gt;&lt;/p&gt; 
+&lt;p&gt;對於某個應用場景，進一步區分業務場景，如新品發佈的場景下，又有 AI 發品、常規發品、FSPU 同款發品等。&lt;/p&gt; 
+&lt;p&gt;&lt;strong&gt;※ 業務規則&lt;/strong&gt;&lt;/p&gt; 
+&lt;p&gt;各行業線對於商品的審核規則，如校驗圖片是否是白底圖、結構化標題中的類目需與商品類目一致、發售日期不能超過 60 天等。同一個業務規則可以因為業務線不同，配置不同的機審規則。&lt;/p&gt; 
+&lt;p&gt;&lt;strong&gt;※ 規則組&lt;/strong&gt;&lt;/p&gt; 
+&lt;p&gt;對規則的分類，通常是商品字段模塊的名稱，&lt;strong&gt;一個規則組下可以有多個業務規則，如商品輪播圖作為規則組，可以有校驗圖片是否白底圖、校驗圖片是否清晰、校驗模特姿勢是否合規&lt;/strong&gt;等。&lt;/p&gt; 
+&lt;p&gt;&lt;strong&gt;※ 機審規則&lt;/strong&gt;&lt;/p&gt; 
+&lt;p&gt;對商品某個商品字段模塊的識別並給出審核結果，&lt;strong&gt;數據依賴機審能力以及 spu 本身&lt;/strong&gt;。&lt;/p&gt; 
+&lt;p&gt;&lt;strong&gt;※ 機審能力&lt;/strong&gt;&lt;/p&gt; 
+&lt;p&gt;商品信息（一個或多個商品字段模塊）的審核數據獲取，&lt;strong&gt;通常需要調用外部接口&lt;/strong&gt;，用於機審規則審核識別。&lt;/p&gt; 
+&lt;p&gt;&lt;strong&gt;※ 業務&amp;amp;機審規則關聯關係&lt;/strong&gt;&lt;/p&gt; 
+&lt;p&gt;描述業務規則和機審規則的關聯關係，同一個業務規則可以根據不同業務線，給予不同的機審規則，如輪播圖校驗正背面，部分業務線要求校驗全量輪播圖，部分業務線只需要校驗輪播圖首圖/規格首圖。&lt;/p&gt; 
+&lt;p&gt;&lt;strong&gt;機審執行流程框架&lt;/strong&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;strong&gt;流程框架&lt;/strong&gt;&lt;/p&gt; 
+&lt;p&gt;通過責任鏈、策略模式等設計模式實現流程框架。&lt;/p&gt; 
+&lt;p&gt;觸發機審後會根據當前的業務場景、業務身份、商品信息等，獲取到對應的業務身份執行鏈（不同業務身份綁定不同的執行節點，最終構建出來一個執行鏈）並啓動機審流程執行。&lt;/p&gt; 
+&lt;p&gt;由於機審規則中存在數據獲取 rt 較長的情況，如部分依賴大模型的算法能力、雷達獲取三方數據等，我們通過異步回調的方式解決這種場景，也因此衍生出了「異步結果更新機審觸發」。&lt;/p&gt; 
+&lt;p&gt;&lt;strong&gt;※ 完整機審觸發&lt;/strong&gt;&lt;/p&gt; 
+&lt;p&gt;完整機審觸發是指商品變更後，通過 Binlog 日誌校驗當前商品是否滿足觸發機審，命中的機審規則中如果依賴異步回調的能力，則會生成 pendingId，並記錄對應的機審結果為「pending」（其他規則不受該 pending 結果的影響），並監聽對應的 topic。&lt;/p&gt; 
+&lt;p&gt;&lt;img alt="" src="https://mp.toutiao.com/mp/agw/article_material/open_image/get?code=ZGM5YTNjMzUyMzA5YjQzMDczZDgzNzc0ODQyOWNiMzIsMTc1NjE4OTk2Nzc1Ng==" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;strong&gt;※ 異步結果更新機審觸發&lt;/strong&gt;&lt;/p&gt; 
+&lt;p&gt;部分 pending 規則產出結果後發送消息到機審場景，通過 pendingId 以及對應的商品信息確認業務身份，獲取異步結果更新責任鏈（&lt;strong&gt;與完整機審的責任鏈不同&lt;/strong&gt;）再次執行機審執行責任鏈。&lt;/p&gt; 
+&lt;p&gt;&lt;img alt="" src="https://mp.toutiao.com/mp/agw/article_material/open_image/get?code=ODdlOWEyYTc1MTA2MGU2YzM4YTJmNTRlOWFmOGFlNzIsMTc1NjE4OTk2Nzc1Ng==" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;strong&gt;動態配置能力建設&lt;/strong&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;strong&gt;調研&lt;/strong&gt;&lt;/p&gt; 
+&lt;p&gt;新機審鏈路建設不僅要支持機審規則複用，支持不同業務身份配置接入，還要&lt;strong&gt;支持新機審規則快速接入&lt;/strong&gt;，降低開發投入的同時，還能快速響應業務的訴求。&lt;/p&gt; 
+&lt;p&gt;經過分析，機審規則絕大部分下游為算法鏈路，並且算法的接入方式較為固化，即「構建請求參數」 -&amp;gt; 「發起請求」 -&amp;gt; 「結果解析」，並且數據模型通常較為簡單。因此技術調研之後，通過&lt;strong&gt;HTTP 泛化調用&lt;/strong&gt;實現&lt;strong&gt;構建請求參數&lt;/strong&gt;、&lt;strong&gt;發起請求&lt;/strong&gt;，利用**規則引擎（規則表達式）**實現結果解析。&lt;/p&gt; 
+&lt;p&gt;&lt;strong&gt;規則引擎技術選型&lt;/strong&gt;&lt;/p&gt; 
+&lt;p&gt;調研市面上的幾種常用規則引擎，基於歷史使用經驗、上手難度、文檔閲讀難度、性能等方面綜合考慮，最終決定選用&lt;strong&gt;QLExpress&lt;/strong&gt;。&lt;/p&gt; 
+&lt;p&gt;&lt;img alt="" src="https://mp.toutiao.com/mp/agw/article_material/open_image/get?code=N2Y4ZDNlOWE1ZWNkODE4OGExZmRlZmU2ODIxNDVmODUsMTc1NjE4OTk2Nzc1Ng==" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p&gt;**&amp;nbsp;HTTP 泛化調用能力建設**&lt;/p&gt; 
+&lt;p&gt;&lt;strong&gt;※ 實現邏輯&lt;/strong&gt;&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt; &lt;p&gt;定義 MachineAuditAbilityEnum 統一的動態配置枚舉，並基於 MachineAuditAbilityProcess 實現其實現類。&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;統一入參為 Map 結構，通過反射機制、動態 Function 等方式，實現商品信息映射成算法請求參數；&lt;strong&gt;另外為了提升反射的效率，利用預編譯緩存的方式，將字段轉成 MethodHandle&lt;/strong&gt;，後續對同一個字段做反射時，可直接獲取對應的 MethodHandle，提升效率。&lt;/p&gt; &lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;pre&gt;&lt;code&gt;/**
+&amp;nbsp;* 緩存類字段的 MethodHandle（Key: Class+FieldName, Value: MethodHandle）
+&amp;nbsp; */
+private&amp;nbsp;static&amp;nbsp;final&amp;nbsp;Map&amp;lt;String,&amp;nbsp;MethodHandle&amp;gt;&amp;nbsp;FIELD_HANDLE_CACHE&amp;nbsp;=&amp;nbsp;new&amp;nbsp;ConcurrentHashMap&amp;lt;&amp;gt;();
+
+
+/**
+&amp;nbsp;* 根據配置從對象中提取字段值到 Map
+&amp;nbsp;*&amp;nbsp;@return&amp;nbsp;提取後的 Map
+&amp;nbsp;*/
+public&amp;nbsp;Map&amp;lt;String,&amp;nbsp;Object&amp;gt;&amp;nbsp;fieldValueMapping(AutoMachineAlgoRequestConfig requestConfig,&amp;nbsp;Object&amp;nbsp;spuResDTO) {
+&amp;nbsp; &amp;nbsp;&amp;nbsp;AutoMachineAlgoRequestConfig.RequestMappingConfig&amp;nbsp;requestMappingConfig = requestConfig.getRequestMappingConfig();
+&amp;nbsp; &amp;nbsp;&amp;nbsp;Map&amp;lt;String,&amp;nbsp;Object&amp;gt; targetMap =&amp;nbsp;Maps.newHashMap();
+&amp;nbsp; &amp;nbsp;&amp;nbsp;//1.簡單映射關係，直接將 obj 裏的信息映射到 resultMap 當中
+
+
+&amp;nbsp; &amp;nbsp;&amp;nbsp;//2.遍歷複雜映射關係，value 是基礎類型
+&amp;nbsp; &amp;nbsp;&amp;nbsp;//3.遍歷複雜映射關係，value 是對象
+
+
+&amp;nbsp;&amp;nbsp;
+&amp;nbsp; &amp;nbsp;&amp;nbsp;return&amp;nbsp;targetMap;
+}
+
+
+/**
+&amp;nbsp;* &amp;nbsp;預編譯 FieldMapping
+&amp;nbsp; */
+private&amp;nbsp;List&amp;lt;AutoMachineAlgoRequestConfig.FieldMapping&amp;gt;&amp;nbsp;compileConfig(List&amp;lt;AutoMachineAlgoRequestConfig.FieldMapping&amp;gt; fieldMappingList,&amp;nbsp;Object&amp;nbsp;obj) {
+&amp;nbsp;
+&amp;nbsp; &amp;nbsp;&amp;nbsp;List&amp;lt;AutoMachineAlgoRequestConfig.FieldMapping&amp;gt; mappings =&amp;nbsp;new&amp;nbsp;ArrayList&amp;lt;&amp;gt;(fieldMappingList.size());
+&amp;nbsp; &amp;nbsp;&amp;nbsp;//緩存反射 mapping
+&amp;nbsp; &amp;nbsp;&amp;nbsp;return&amp;nbsp;mappings;
+}
+
+
+private&amp;nbsp;Object&amp;nbsp;getFieldValue(Object&amp;nbsp;request,&amp;nbsp;String&amp;nbsp;fieldName) throws&amp;nbsp;Throwable&amp;nbsp;{
+&amp;nbsp; &amp;nbsp;&amp;nbsp;String&amp;nbsp;cacheKey = request.getClass().getName() +&amp;nbsp;"#"&amp;nbsp;+ fieldName;
+&amp;nbsp; &amp;nbsp;&amp;nbsp;MethodHandle&amp;nbsp;handle =&amp;nbsp;FIELD_HANDLE_CACHE.get(cacheKey);
+&amp;nbsp; &amp;nbsp;&amp;nbsp;return&amp;nbsp;handle !=&amp;nbsp;null&amp;nbsp;? handle.invoke(request) :&amp;nbsp;null;
+}
+&lt;/code&gt;&lt;/pre&gt; 
+&lt;ul&gt; 
+ &lt;li&gt; &lt;p&gt;基於實現@FeignClient 註解，實現 HTTP 調用的執行器，其中@FeignClient 中的 URL 表示域名，autoMachineAuditAlgo 方法中的 path 表示具體的 URL，requestBody 是請求體，另外還包含 headers，不同算法需要不同 headers 也可動態配置。&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;返回結果均為 String，而後解析成 Map&amp;lt;String,Object&amp;gt;用於規則解析。&lt;/p&gt; &lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;pre&gt;&lt;code&gt;@FeignClient(
+&amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; name =&amp;nbsp;"xxx",
+&amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; url =&amp;nbsp;"${}"
+)
+public&amp;nbsp;interface&amp;nbsp;GenericAlgoFeignClient&amp;nbsp;{
+
+
+&amp;nbsp; &amp;nbsp;&amp;nbsp;@PostMapping(value =&amp;nbsp;"/{path}")
+&amp;nbsp; &amp;nbsp;&amp;nbsp;String&amp;nbsp;autoMachineAuditAlgo(
+&amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp;&amp;nbsp;@PathVariable("path")&amp;nbsp;String&amp;nbsp;path,
+&amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp;&amp;nbsp;@RequestBody&amp;nbsp;Object&amp;nbsp;requestBody,
+&amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp;&amp;nbsp;@RequestHeader&amp;nbsp;Map&amp;lt;String,&amp;nbsp;String&amp;gt; headers
+&amp;nbsp; &amp;nbsp; );
+&amp;nbsp; &amp;nbsp;
+&amp;nbsp; &amp;nbsp;&amp;nbsp;@GetMapping("/{path}")
+&amp;nbsp; &amp;nbsp;&amp;nbsp;String&amp;nbsp;autoMachineAuditAlgoGet(
+&amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp;&amp;nbsp;@PathVariable("path")&amp;nbsp;String&amp;nbsp;path,
+&amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp;&amp;nbsp;@RequestParam&amp;nbsp;Map&amp;lt;String,&amp;nbsp;Object&amp;gt; queryParams,
+&amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp;&amp;nbsp;@RequestHeader&amp;nbsp;Map&amp;lt;String,&amp;nbsp;String&amp;gt; headers
+&amp;nbsp; &amp;nbsp; );
+
+
+}
+&lt;/code&gt;&lt;/pre&gt; 
+&lt;ul&gt; 
+ &lt;li&gt;動態配置 JSON。&lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;pre&gt;&lt;code&gt;{
+&amp;nbsp; &amp;nbsp;&amp;nbsp;"url":&amp;nbsp;"/ai-check/demo1",
+&amp;nbsp; &amp;nbsp;&amp;nbsp;"requestMappingConfig":&amp;nbsp;{
+&amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp;&amp;nbsp;"fieldMappingList":&amp;nbsp;[
+&amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp;&amp;nbsp;{
+&amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp;&amp;nbsp;"sourceFieldName":&amp;nbsp;"categoryId",
+&amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp;&amp;nbsp;"targetKey":&amp;nbsp;"categoryId"
+&amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp;&amp;nbsp;},
+&amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp;&amp;nbsp;{
+&amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp;&amp;nbsp;"sourceFieldName":&amp;nbsp;"brandId",
+&amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp;&amp;nbsp;"targetKey":&amp;nbsp;"brandId"
+&amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp;&amp;nbsp;}
+&amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp;&amp;nbsp;],
+&amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp;&amp;nbsp;"perItemMapping":&amp;nbsp;{
+&amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp;&amp;nbsp;"mappingFunctionCode":&amp;nbsp;"firstAndFirstGroundPic",
+&amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp;&amp;nbsp;"fieldMappingList":&amp;nbsp;[
+&amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp;&amp;nbsp;{
+&amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp;&amp;nbsp;"sourceFieldName":&amp;nbsp;"imgId",
+&amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp;&amp;nbsp;"targetKey":&amp;nbsp;"imgId"
+&amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp;&amp;nbsp;},
+&amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp;&amp;nbsp;{
+&amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp;&amp;nbsp;"sourceFieldName":&amp;nbsp;"imgUrl",
+&amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp;&amp;nbsp;"targetKey":&amp;nbsp;"imgUrl"
+&amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp;&amp;nbsp;}
+&amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp;&amp;nbsp;]
+&amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp;&amp;nbsp;}
+&amp;nbsp; &amp;nbsp;&amp;nbsp;}
+}
+&lt;/code&gt;&lt;/pre&gt; 
+&lt;p&gt;&lt;strong&gt;機審規則動態解析建設&lt;/strong&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;strong&gt;※ 實現邏輯&lt;/strong&gt;&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt; &lt;p&gt;定義 MachineAuditRuleEnum 統一的動態配置枚舉，並基於 MachineAuditRuleProcess 實現其統一實現類。&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;搭建 QLExpress 規則引擎，&lt;strong&gt;為了提升 QLExpress 規則引擎的效率，同樣引入了緩存機制&lt;/strong&gt;，在機審規則配置表達式時，則觸發 loadRuleFromJson，將表達式轉換成規則引擎並注入到緩存當中，真正機審流程執行時會直接從緩存裏獲取規則引擎並執行，效率上有很大提升。&lt;/p&gt; &lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;pre&gt;&lt;code&gt;// 規則引擎實例緩存
+private&amp;nbsp;static&amp;nbsp;final&amp;nbsp;Map&amp;lt;String,&amp;nbsp;ExpressRunner&amp;gt; runnerCache =&amp;nbsp;new&amp;nbsp;ConcurrentHashMap&amp;lt;&amp;gt;();
+
+
+// 規則配置緩存
+private&amp;nbsp;static&amp;nbsp;final&amp;nbsp;Map&amp;lt;String,&amp;nbsp;GenericEngineRule&amp;gt; ruleConfigCache =&amp;nbsp;new&amp;nbsp;ConcurrentHashMap&amp;lt;&amp;gt;();
+
+
+// 規則版本信息
+private&amp;nbsp;static&amp;nbsp;final&amp;nbsp;Map&amp;lt;String,&amp;nbsp;Integer&amp;gt; ruleVersionCache =&amp;nbsp;new&amp;nbsp;ConcurrentHashMap&amp;lt;&amp;gt;();
+
+
+/**
+&amp;nbsp;* 加載 JSON 規則配置
+&amp;nbsp;*&amp;nbsp;@param&amp;nbsp;jsonConfig 規則 JSON 配置
+&amp;nbsp;*/
+public&amp;nbsp;GenericEngineRule&amp;nbsp;loadRuleFromJson(String&amp;nbsp;ruleCode,&amp;nbsp;String&amp;nbsp;jsonConfig) {
+
+
+&amp;nbsp; &amp;nbsp;&amp;nbsp;//如果緩存裏已經有並且是最新版本，則直接返回
+&amp;nbsp; &amp;nbsp;&amp;nbsp;if(machineAuditCache.isSameRuleConfigVersion(ruleCode) &amp;amp;&amp;amp; machineAuditCache.getRuleConfigCache(ruleCode) !=&amp;nbsp;null) {
+&amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp;&amp;nbsp;return&amp;nbsp;machineAuditCache.getRuleConfigCache(ruleCode);
+&amp;nbsp; &amp;nbsp; }
+&amp;nbsp; &amp;nbsp;&amp;nbsp;// 如果是可緩存的規則，預加載
+
+
+&amp;nbsp;&amp;nbsp;
+&amp;nbsp; &amp;nbsp;&amp;nbsp;return&amp;nbsp;rule;
+}
+&lt;/code&gt;&lt;/pre&gt; 
+&lt;ul&gt; 
+ &lt;li&gt;機審規則執行時，通過配置中的規則名稱，獲取對應的規則引擎進行執行。&lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;pre&gt;&lt;code&gt;/**
+&amp;nbsp;* 根據規則名稱執行規則
+&amp;nbsp;*&amp;nbsp;@param&amp;nbsp;ruleCode 規則名稱
+&amp;nbsp;*&amp;nbsp;@param&amp;nbsp;context 上下文數據
+&amp;nbsp;*&amp;nbsp;@return&amp;nbsp;規則執行結果
+&amp;nbsp;*/
+public&amp;nbsp;MachineAuditRuleResult&amp;nbsp;executeRuleByCode(String&amp;nbsp;ruleCode,&amp;nbsp;Map&amp;lt;String,&amp;nbsp;Object&amp;gt; context, MachineAuditRuleProcessData ruleProcessData) {
+&amp;nbsp; &amp;nbsp;&amp;nbsp;if&amp;nbsp;(StringUtils.isBlank(ruleCode)) {
+&amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp;&amp;nbsp;throw&amp;nbsp;new&amp;nbsp;IllegalArgumentException("機審-通用協議-規則-規則名稱不能為空");
+&amp;nbsp; &amp;nbsp; }
+
+
+&amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp;&amp;nbsp;//從緩存中獲取規則引擎
+
+
+&amp;nbsp; &amp;nbsp;&amp;nbsp;//基於規則引擎執行 condition
+
+
+&amp;nbsp; &amp;nbsp;&amp;nbsp;//統一日誌
+}
+&lt;/code&gt;&lt;/pre&gt; 
+&lt;p&gt;&lt;strong&gt;※ 配置 demo&lt;/strong&gt;&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt;動態配置 JSON。&lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;pre&gt;&lt;code&gt;{
+&amp;nbsp; &amp;nbsp;&amp;nbsp;"ruleCode":&amp;nbsp;"demo1",
+&amp;nbsp; &amp;nbsp;&amp;nbsp;"name":&amp;nbsp;"規則 demo1",
+&amp;nbsp; &amp;nbsp;&amp;nbsp;"ruleType":&amp;nbsp;1,
+&amp;nbsp; &amp;nbsp;&amp;nbsp;"priority":&amp;nbsp;100,
+&amp;nbsp; &amp;nbsp;&amp;nbsp;"functions":&amp;nbsp;[
+&amp;nbsp; &amp;nbsp;&amp;nbsp;],
+&amp;nbsp; &amp;nbsp;&amp;nbsp;"conditions":&amp;nbsp;[
+&amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp;&amp;nbsp;{
+&amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp;&amp;nbsp;"expression":&amp;nbsp;"result.code == null || result.code != 0",
+&amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp;&amp;nbsp;"action":&amp;nbsp;{
+&amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp;&amp;nbsp;"type":&amp;nbsp;"NO_RESULT",
+&amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp;&amp;nbsp;"messageExpression":&amp;nbsp;"'無結果'"
+&amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp;&amp;nbsp;}
+&amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp;&amp;nbsp;},
+&amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp;&amp;nbsp;{
+&amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp;&amp;nbsp;"expression":&amp;nbsp;"result.data == 0",
+&amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp;&amp;nbsp;"action":&amp;nbsp;{
+&amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp;&amp;nbsp;"type":&amp;nbsp;"PASS",
+&amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp;&amp;nbsp;"messageExpression":&amp;nbsp;"'機審通過"
+&amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp;&amp;nbsp;}
+&amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp;&amp;nbsp;},
+&amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp;&amp;nbsp;{
+&amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp;&amp;nbsp;"expression":&amp;nbsp;"result.data == 1",
+&amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp;&amp;nbsp;"action":&amp;nbsp;{
+&amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp;&amp;nbsp;"type":&amp;nbsp;"REJECT",
+&amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp;&amp;nbsp;"messageExpression":&amp;nbsp;"'異常結果 1'",
+&amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp;&amp;nbsp;"suggestType":&amp;nbsp;2,
+&amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp;&amp;nbsp;"suggestKey":&amp;nbsp;"imgId",
+&amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp;&amp;nbsp;"preAuditSuggestKey":&amp;nbsp;"imgUrl"
+&amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp;&amp;nbsp;}
+&amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp;&amp;nbsp;},
+&amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp;&amp;nbsp;{
+&amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp;&amp;nbsp;"expression":&amp;nbsp;"result.data == 2",
+&amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp;&amp;nbsp;"action":&amp;nbsp;{
+&amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp;&amp;nbsp;"type":&amp;nbsp;"REJECT",
+&amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp;&amp;nbsp;"messageExpression":&amp;nbsp;"'異常結果 2'",
+&amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp;&amp;nbsp;"suggestType":&amp;nbsp;2,
+&amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp;&amp;nbsp;"suggestKey":&amp;nbsp;"imgId",
+&amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp;&amp;nbsp;"preAuditSuggestKey":&amp;nbsp;"imgUrl"
+&amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp;&amp;nbsp;}
+&amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp;&amp;nbsp;}
+&amp;nbsp; &amp;nbsp;&amp;nbsp;],
+&amp;nbsp; &amp;nbsp;&amp;nbsp;"defaultAction":&amp;nbsp;{
+&amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp;&amp;nbsp;"type":&amp;nbsp;"PASS"
+&amp;nbsp; &amp;nbsp;&amp;nbsp;}
+}
+&lt;/code&gt;&lt;/pre&gt; 
+&lt;span id="OSC_h1_8"&gt;&lt;/span&gt; 
+&lt;h1&gt;八、關於數據分析&amp;amp;指標提升&lt;/h1&gt; 
+&lt;p&gt;在經歷了 2-3 個版本搭建完新機審鏈路 + 數據埋點之後，指標一直沒有得到很好的提升，曾經一度只是維持在 20% 以內，甚至有部分時間降低到了 10% 以下；經過大量的數據分析之後，識別出了部分規則產品邏輯存在漏洞、算法存在誤識別等情況，並較為有效的通過數據推動了產品優化邏輯、部分類目規則調整、算法迭代優化等，在一系列的動作做完之後，指標提升了 50%+。&lt;/p&gt; 
+&lt;p&gt;在持續了比較長的一段時間的 50%+覆蓋率之後，對數據進行了進一步的剖析，發現這 50%+在那個時間點應該是到了瓶頸，原因是像「標題描述包含顏色相關字樣」、「標題存在重複文案」以及部分輪播圖規則，實際就是會存在不符合預期的情況，因此緊急與產品溝通，後續的非緊急需求停止，先考慮將這部分天然不符合預期的情況進行處理。&lt;/p&gt; 
+&lt;p&gt;之後指標提升的動作主要圍繞：&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt;算法側產出各算法能力的召回率、準確率，達標的算法由產品與業務拉齊，是否配置自動駁回的能力。&lt;/li&gt; 
+ &lt;li&gt;部分缺乏自動修改能力的機審規則，補充臨時需求建設對應的能力。&lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;p&gt;經過產研業務各方的配合，以最快速度將這些動作進行落地，指標也得到了較大的提升。&lt;/p&gt; 
+&lt;p&gt;&amp;nbsp;&lt;/p&gt; 
+&lt;p&gt;&lt;strong&gt;往期回顧&lt;/strong&gt;&lt;/p&gt; 
+&lt;p&gt;1.營銷會場預覽直通車實踐｜得物技術&lt;/p&gt; 
+&lt;p&gt;2.基於 TinyMce 富文本編輯器的客服自研知識庫的技術探索和實踐｜得物技術&lt;/p&gt; 
+&lt;p&gt;3.AI 質量專項報告自動分析生成｜得物技術&lt;/p&gt; 
+&lt;p&gt;4.社區搜索離線回溯系統設計：架構、挑戰與性能優化｜得物技術&lt;/p&gt; 
+&lt;p&gt;5.eBPF 助力 NAS 分鐘級別 Pod 實例溯源｜得物技術&lt;/p&gt; 
+&lt;p&gt;&amp;nbsp;&lt;/p&gt; 
+&lt;p&gt;文 / 沃克&lt;/p&gt; 
+&lt;p&gt;關注得物技術，每週更新技術乾貨&lt;/p&gt; 
+&lt;p&gt;要是覺得文章對你有幫助的話，歡迎評論轉發點贊～&lt;/p&gt; 
+&lt;p&gt;未經得物技術許可嚴禁轉載，否則依法追究法律責任。&lt;/p&gt;
+                                                                                    &lt;/div&gt;
+                                                                            </description>
+      <link>https://my.oschina.net/u/5783135/blog/18689561</link>
+      <guid isPermaLink="false">https://my.oschina.net/u/5783135/blog/18689561</guid>
+      <pubDate>Tue, 26 Aug 2025 07:04:07 GMT</pubDate>
+      <author>原創</author>
+    </item>
+    <item>
+      <title>阿里國際發佈並開源新一代多模態大模型 Ovis2</title>
+      <description>&lt;div class="content"&gt;
+                                                                    
+                                                        &lt;p&gt;阿里國際&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fmp.weixin.qq.com%2Fs%2FHTfKZDEzf197FzXEMn8htw" target="_blank"&gt;正式發佈&lt;/a&gt;新一代多模態大模型 Ovis2.5。Ovis2.5 是一款面向原生分辨率視覺感知、深度推理與高性價比場景設計的多模態大模型。據稱在主流多模態評測套件 OpenCompass 上的綜合得分相較 Ovis2 進一步提升，並在同類開源模型中繼續保持&amp;nbsp;SOTA 水平。&lt;/p&gt; 
+&lt;p&gt;&lt;img src="https://static.oschina.net/uploads/space/2025/0826/150018_hr7W_2720166.jpg" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p&gt;本次開源包含兩個版本：&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt; &lt;p&gt;Ovis2.5-9B：OpenCompass 綜合得分&amp;nbsp;78.3，超越眾多更大參數量的模型，在 40B 以下參數規模的開源模型中排名第一。&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;Ovis2.5-2B：OpenCompass 綜合得分 73.9，延續了 Ovis 系列「小身板，大能量」的理念，在同尺寸模型中性能顯著領先，是端側和資源受限場景的理想選擇。&lt;/p&gt; &lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;p&gt;Ovis2 整體框架：&lt;/p&gt; 
+&lt;p&gt;&lt;img height="1131" src="https://static.oschina.net/uploads/space/2025/0826/145646_bXvR_2720166.png" width="1080" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p&gt;官方介紹稱，Ovis2.5 在架構、訓練與數據三方面進行了系統性創新。&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt;模型架構：延續 Ovis 系列創新的結構化嵌入對齊設計。Ovis2.5 由三大組件構成：動態分辨率 ViT 高效提取視覺特徵，Ovis 視覺詞表模塊實現視覺與文本嵌入的結構對齊，最後由強大的 Qwen3 作為語言基座，處理多模態嵌入並生成文本輸出。&lt;/li&gt; 
+ &lt;li&gt;訓練策略：採用更精細的五階段訓練範式，從基礎的視覺預訓練、多模態預訓練、大規模指令微調，到利用 DPO 和 GRPO 等算法進行偏好對齊和推理能力強化，循序漸進構建模型能力。同時，通過多模態數據打包和混合並行等優化，實現了 3-4 倍的端到端訓練加速。&lt;/li&gt; 
+ &lt;li&gt;數據工程：Ovis2.5 的數據規模相比 Ovis2 增加了 50%，重點聚焦視覺推理、圖表、OCR、Grounding 等關鍵方向。尤其是合成了大量與 Qwen3 深度適配的「思考（thinking）」數據，有效激發了模型的反思與推理潛能。&lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;p&gt;&lt;strong&gt;詳情查看&lt;/strong&gt;&lt;/p&gt; 
+&lt;p&gt;代碼：https://github.com/AIDC-AI/Ovis&lt;br&gt; 模型： https://huggingface.co/AIDC-AI/&lt;br&gt; Ovis2.5-2B https://huggingface.co/AIDC-AI/&lt;br&gt; Ovis2.5-9B Demo： https://huggingface.co/spaces/AIDC-AI/&lt;br&gt; Ovis2.5-2B https://huggingface.co/spaces/AIDC-AI/&lt;br&gt; Ovis2.5-9B 技術報告: https://arxiv.org/abs/2508.11737&lt;/p&gt;
+                                                                                &lt;/div&gt;
+                                                                            </description>
+      <link>https://www.oschina.net/news/368548</link>
+      <guid isPermaLink="false">https://www.oschina.net/news/368548</guid>
+      <pubDate>Tue, 26 Aug 2025 07:03:07 GMT</pubDate>
+      <author>來源: OSCHINA</author>
+    </item>
+    <item>
+      <title>AI 搜索創企 Perplexity AI 推出版權收入分成模式</title>
+      <description>&lt;div class="content"&gt;
+                                                                    
+                                                        &lt;p&gt;AI 搜索創企 Perplexity AI 宣佈了一&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fwww.bloomberg.com%2Fnews%2Farticles%2F2025-08-25%2Fperplexity-to-let-publishers-share-in-revenue-from-ai-searches" target="_blank"&gt;項重大舉措&lt;/a&gt;，將設立數百萬美元資金用於支付給媒體出版商和記者，旨在構建一種全新的搜索收入共享模式。&lt;/p&gt; 
+&lt;p&gt;據這家總部位於舊金山的初創公司透露，其媒體合作伙伴很快將在作品被 Perplexity 的瀏覽器或 AI 助手用於解答用戶疑問與請求時獲得報酬。Perplexity 團隊在一篇博客文章中表示：「&lt;strong&gt;我們正以適合人工智能時代的模式對出版商進行補償。&lt;/strong&gt;」&lt;/p&gt; 
+&lt;p&gt;此次資金髮放將通過一項名為 Comet Plus 的訂閲服務實施，該服務預計在未來幾個月推出。據悉，Perplexity 已預留 4250 萬美元資金用於與出版商分享，且該資金池有望隨時間增長。Comet Plus 每月訂閲費用為 5 美元，這對於已付費使用 Perplexity 高級版本的用戶來説是一項額外福利。&lt;/p&gt; 
+&lt;p&gt;此前，Perplexity AI 面臨諸多媒體機構的訴訟，如《華爾街日報》《紐約時報》以及日本《讀賣新聞》等，這些機構指控該公司不正當地從其作品中獲利。而此次收入共享模式的推出，或可視為 Perplexity AI 向出版商拋出的 「橄欖枝」，以改善關係並應對相關指控。&lt;/p&gt;
+                                                                                &lt;/div&gt;
+                                                                            </description>
+      <link>https://www.oschina.net/news/368546</link>
+      <guid isPermaLink="false">https://www.oschina.net/news/368546</guid>
+      <pubDate>Tue, 26 Aug 2025 06:53:07 GMT</pubDate>
+      <author>來源: OSCHINA</author>
+    </item>
+    <item>
+      <title>宇樹科技人形機器人足專利獲授權</title>
+      <description>&lt;div class="content"&gt;
+                                                                    
+                                                        &lt;p&gt;天眼查 App 顯示，杭州宇樹科技股份有限公司 8 月 26 日申請的「一種人形機器人足和一種人形機器人」專利獲授權。&lt;/p&gt; 
+&lt;p&gt;&lt;img height="287" src="https://oscimg.oschina.net/oscnet/up-85540c9e38b8e5950068b200c4d25b74447.png" width="500" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p&gt;摘要顯示，本實用新型涉及人形機器人技術領域，提供的一種人形機器人足，包括足部外殼和彈性足底件，足部外殼和彈性足底件固定連接，彈性足底件內設有若干可形變的氣腔，氣腔連接有穿過足部外殼並與外部連通的氣管件。&lt;/p&gt; 
+&lt;p&gt;本實用新型提供的一種人形機器人足，將傳感器等脆弱部件設置在遠離頻繁與地面撞擊的位置，僅在彈性足底件內設置形變氣腔，不易受到碰撞而損壞；通過氣管件與氣腔的空間變化傳遞擠壓信息，響應快，不受電機本身特性的影響；彈性足底件與氣腔一體化設計，更換維修方便快捷。&lt;/p&gt;
+                                                                                &lt;/div&gt;
+                                                                            </description>
+      <link>https://www.oschina.net/news/368544</link>
+      <guid isPermaLink="false">https://www.oschina.net/news/368544</guid>
+      <pubDate>Tue, 26 Aug 2025 06:42:07 GMT</pubDate>
+      <author>來源: OSCHINA</author>
+    </item>
+    <item>
+      <title>開發者反饋 DeepSeek-V3.1 出現嚴重 bug：返回內容隨機插入「極/極/extreme」等字符</title>
+      <description>&lt;div class="content"&gt;
+                                                                    
+                                                        &lt;p&gt;近日有開發者&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Flinux.do%2Ft%2Ftopic%2F898502" target="_blank"&gt;反饋&lt;/a&gt;DeepSeek V3.1 在生成文本時會在完全不可預期的位置插入「極」「極」「extreme」三個 token。&lt;/p&gt; 
+&lt;p&gt;&lt;img src="https://static.oschina.net/uploads/space/2025/0826/142557_OpI9_2720166.png" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p&gt;開源社區用戶給出多組復現場景：在 Go 等語言生成裏，模型會把詞元「粘」到標識符中，`Second` 前隨機插入「極/極/extreme」，即便是 `top_k=1， temperature=1` 的保守解碼也躲不過。&lt;/p&gt; 
+&lt;p&gt;&lt;img alt="" src="https://oscimg.oschina.net/oscnet/up-5528ee293cd32634855ecedec24f895f010.png" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p&gt;問題最早在火山、chutes 等第三方 API 被發現，最初懷疑與 IQ1_S 高壓縮量化、imatrix 校準數據異常或部署配置錯誤有關，但隨後測試證實官方網頁端在 FP8 全精度下亦出現同樣現象，&lt;strong&gt;且官方端出現概率最低，第三方顯著升高&lt;/strong&gt;。&lt;/p&gt; 
+&lt;p&gt;&lt;img src="https://static.oschina.net/uploads/space/2025/0826/142634_Kbh4_2720166.png" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;blockquote&gt; 
+ &lt;p&gt;中文簡體「極」對應 ID 2577，繁體「極」對應 ID 16411，英文「extreme」對應 ID 15075。&lt;/p&gt; 
+&lt;/blockquote&gt; 
+&lt;p&gt;社區推測可能是訓練數據清洗殘留，或與模型「偷懶」機制相關，但部分案例仍無法解釋。一旦觸發，後續生成會愈發頻繁，已嚴重影響編程及任何對結構敏感的任務可用性。&lt;/p&gt;
+                                                                                &lt;/div&gt;
+                                                                            </description>
+      <link>https://www.oschina.net/news/368538</link>
+      <guid isPermaLink="false">https://www.oschina.net/news/368538</guid>
+      <pubDate>Tue, 19 Aug 2025 06:27:00 GMT</pubDate>
+      <author>來源: OSCHINA</author>
+    </item>
+    <item>
+      <title>新一代中國操作系統銀河麒麟 V11 正式發佈</title>
+      <description>&lt;div class="content"&gt;
+                                                                    
+                                                        &lt;p&gt;&lt;span style="color:#000000"&gt;全新一代中國操作系統——銀河麒麟操作系統 V11 在 2025 中國操作系統產業大會正式發佈。&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;img height="332" src="https://oscimg.oschina.net/oscnet/up-e78b1fe4f30a2acbeef45b2c7d54dfd9611.png" width="300" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;span style="color:#000000"&gt;這款系統使用了全新磐石架構，操作體驗、安全性和生態豐富度大幅提升。作為首個突破百萬生態的國產操作系統，銀河麒麟的生態成熟度國內領先，與國產主流 CPU、GPU 及板卡實現全面兼容，構建起完整的國產化生態體系。已在嫦娥探月、天問探火等國家重大工程中發揮支撐作用，在政務領域保持較高覆蓋率，同時在金融、能源、教育、醫療等行業實現長期規模化應用。&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;span style="color:#000000"&gt;目前，銀河麒麟操作系統已部署超 1600 萬套。&lt;/span&gt;&lt;/p&gt;
+                                                                                &lt;/div&gt;
+                                                                            </description>
+      <link>https://www.oschina.net/news/368537</link>
+      <guid isPermaLink="false">https://www.oschina.net/news/368537</guid>
+      <pubDate>Tue, 19 Aug 2025 06:23:00 GMT</pubDate>
+      <author>來源: OSCHINA</author>
+    </item>
+    <item>
+      <title>68% 的科技專業人士對 AI 招聘工具不信任</title>
+      <description>&lt;div class="content"&gt;
+                                                                    
+                                                        &lt;p style="color:#242424; margin-left:0; margin-right:0; text-align:left"&gt;&lt;span&gt;最新&lt;/span&gt;發佈的 Dice 報告指出，68% 的科技專業人士對 AI 驅動的招聘系統表示不信任，同時 80% 的人更傾向於人類主導的招聘方法。&lt;/p&gt; 
+&lt;p style="color:#242424; margin-left:0; margin-right:0; text-align:left"&gt;報告顯示，近 30% 的受訪者考慮完全離開科技行業，因為他們對 AI 增強招聘過程的挫敗感更為強烈，尤其是女性羣體對此反應更為明顯。&lt;/p&gt; 
+&lt;p style="color:#242424; margin-left:0; margin-right:0; text-align:left"&gt;在接受 TechRepublic 的電子郵件採訪時，Dice 首席執行官阿特・齊爾（Art Zeile）表示，儘管 AI 在提升招聘團隊的工作效率方面發揮了積極作用，但 68% 的不信任比例 「並非小數目，這一信號表明，從候選人的角度來看，招聘系統的根本性問題依然存在。」 他補充説，30% 科技工作者考慮退出行業的調查結果尤其令人擔憂。&lt;/p&gt; 
+&lt;p style="color:#242424; margin-left:0; margin-right:0; text-align:left"&gt;齊爾指出，這種不信任的根本原因在於 AI 在招聘中的應用方式，尤其是在缺乏透明度和人類監督的情況下。他強調：「候選人明確表示，當招聘過程像一個黑箱時，信任感就會消失。」 儘管僱主可能在提高運營效率，但如果這導致&lt;span&gt;頂尖&lt;/span&gt;人才的疏遠，那對於整個行業來説就是一個雙輸的局面。&lt;/p&gt; 
+&lt;p style="color:#242424; margin-left:0; margin-right:0; text-align:left"&gt;根據 Dice 報告，92% 的科技專業人士認為，由於 AI 工具偏向於關鍵詞優化，很多合格的候選人可能被忽視。齊爾表示：「這反映出一種認知，認為系統更看重一致性而非能力。」 此外，78% 的受訪者感覺目前的招聘實踐迫使他們誇大自己的資歷，65% 的人已經調整過簡歷，以便更好地符合 AI 篩選的標準。&lt;/p&gt; 
+&lt;p style="color:#242424; margin-left:0; margin-right:0; text-align:left"&gt;齊爾強調，Dice 報告表明 AI 並不是敵人，而是需要更具思考性的整合。科技專業人士並非拒絕創新，而是希望招聘過程更加公平、有人性和透明。&lt;/p&gt; 
+&lt;p style="color:#242424; margin-left:0; margin-right:0; text-align:left"&gt;他表示：「解決方案不是放棄 AI，而是更負責任地應用它。採用 AI 來支持而不是取代人類決策的混合招聘模型，其信任度是完全自動化方法的三倍。」&lt;/p&gt;
+                                                                                &lt;/div&gt;
+                                                                            </description>
+      <link>https://www.oschina.net/news/368529</link>
+      <guid isPermaLink="false">https://www.oschina.net/news/368529</guid>
+      <pubDate>Tue, 19 Aug 2025 05:46:00 GMT</pubDate>
+      <author>來源: OSCHINA</author>
+    </item>
+    <item>
+      <title>通義萬相預告新模型 Wan2.2-S2V</title>
+      <description>&lt;div class="content"&gt;
+                                                                    
+                                                        &lt;p&gt;通義萬相團隊深夜&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fx.com%2FAlibaba_Wan%2Fstatus%2F1960012297059057935" target="_blank"&gt;發佈預告推文&lt;/a&gt;，稱即將推出新模型 Wan2.2-S2V，該模型將具備生成帶音頻視頻的能力。&lt;/p&gt; 
+&lt;p&gt;&lt;img height="1774" src="https://static.oschina.net/uploads/space/2025/0826/115937_9VKc_2720166.png" width="2356" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p&gt;通義萬相 Wan2.2 是一款開源視頻生成模型，它率先在視頻生成擴散模型中引入 MoE 架構，有效解決視頻生成處理 Token 過長導致的計算資源消耗大問題。Wan2.2 還首創了「電影美學控制系統」，光影、色彩、構圖、微表情等能力媲美專業電影水平。例如，用戶輸入「黃昏」、「柔光」、「邊緣光」、「暖色調」「中心構圖」等關鍵詞，模型可自動生成金色的落日餘暉的浪漫畫面；使用「冷色調」、「硬光」、「平衡圖」、「低角度」的組合，則可以生成接近科幻片的畫面效果。&lt;/p&gt;
+                                                                                &lt;/div&gt;
+                                                                            </description>
+      <link>https://www.oschina.net/news/368515</link>
+      <guid isPermaLink="false">https://www.oschina.net/news/368515</guid>
+      <pubDate>Tue, 19 Aug 2025 04:04:00 GMT</pubDate>
+      <author>來源: OSCHINA</author>
+    </item>
+    <item>
+      <title>阿里開源 Vivid-VR：AI 視頻修復神器</title>
+      <description>&lt;div class="content"&gt;
+                                                                    
+                                                        &lt;p style="color:#242424; margin-left:0; margin-right:0; text-align:left"&gt;阿里雲推出了一款名為 Vivid-VR 的開源生成式視頻修復工具，基於先進的文本到視頻（T2V）基礎模型，結合 ControlNet 技術，確保視頻生成過程中的內容一致性。&lt;/p&gt; 
+&lt;p style="color:#242424; margin-left:0; margin-right:0; text-align:left"&gt;&lt;img height="211" src="https://static.oschina.net/uploads/space/2025/0826/112840_Ip58_4252687.png" width="700" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p style="color:#242424; margin-left:0; margin-right:0; text-align:left"&gt;該工具能夠有效修復真實視頻或 AIGC(AI 生成內容) 視頻中的質量問題，消除閃爍、抖動等常見缺陷，為內容創作者提供了一個高效的素材補救方案。無論是對低質量視頻的修復，還是對生成視頻的優化，Vivid-VR 都展現出了卓越的性能。&lt;/p&gt; 
+&lt;p style="color:#242424; margin-left:0; margin-right:0; text-align:left"&gt;Vivid-VR 的核心技術在於其結合了 T2V 基礎模型與 ControlNet 的創新架構。T2V 模型通過深度學習生成高質量視頻內容，而 ControlNet 則通過精準的控制機制，確保修復後的視頻在幀間保持高度的時間一致性，避免了常見的閃爍或抖動問題。&lt;/p&gt; 
+&lt;p style="color:#242424; margin-left:0; margin-right:0; text-align:left"&gt;據悉，該工具在生成過程中能夠動態調整語義特徵，顯著提升視頻的紋理真實感和視覺生動性。這種技術組合不僅提高了修復效率，還為視頻內容保持了更高的視覺穩定性。&lt;/p&gt; 
+&lt;p style="color:#242424; margin-left:0; margin-right:0; text-align:left"&gt;Vivid-VR 的另一大亮點是其廣泛的適用性。無論是傳統拍攝的真實視頻，還是基於 AI 生成的內容，Vivid-VR 都能提供高效的修復支持。&lt;/p&gt; 
+&lt;p style="color:#242424; margin-left:0; margin-right:0; text-align:left"&gt;對於內容創作者而言，低質量素材常常是創作過程中的痛點，而 Vivid-VR 能夠通過智能分析和增強，快速修復模糊、噪點或不連貫的視頻片段，為短視頻、影視後期製作等領域提供了實用工具。&lt;/p&gt; 
+&lt;p style="color:#242424; margin-left:0; margin-right:0; text-align:left"&gt;此外，該工具支持多種輸入格式，開發者可以根據需求靈活調整修復參數，進一步提升創作效率。&lt;/p&gt;
+                                                                                &lt;/div&gt;
+                                                                            </description>
+      <link>https://www.oschina.net/news/368510</link>
+      <guid isPermaLink="false">https://www.oschina.net/news/368510</guid>
+      <pubDate>Tue, 19 Aug 2025 03:31:00 GMT</pubDate>
+      <author>來源: OSCHINA</author>
+    </item>
+    <item>
+      <title>微軟開源文本轉語音模型 VibeVoice，支持最多 4 位説話人同時發聲</title>
+      <description>&lt;div class="content"&gt;
+                                                                    
+                                                        &lt;p&gt;微軟正式開源了其最新的文本轉語音（TTS）模型&amp;nbsp;&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fmicrosoft.github.io%2FVibeVoice%2F"&gt;VibeVoice-1.5B&lt;/a&gt;，該模型主打 「超長、多人、高壓縮」，單次即可生成長達 90 分鐘的連續語音，並支持最多 4 位説話人同時發聲。&lt;/p&gt; 
+&lt;p&gt;&lt;img alt="" src="https://oscimg.oschina.net/oscnet/up-b4cb0ed81f165defca082e67898ced868fb.png" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p&gt;VibeVoice-1.5B 的核心創新在於其雙 Tokenizer 設計。模型分為兩個獨立但協同工作的模塊。&lt;/p&gt; 
+&lt;p&gt;&lt;img alt="" src="https://oscimg.oschina.net/oscnet/up-0a84db4a09d68c549f237fc0f439ca53cec.png" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;strong&gt;1. 聲學 Tokenizer：負責保留聲音特徵並實現高壓縮率&lt;/strong&gt;&lt;/p&gt; 
+&lt;p&gt;採用變分自編碼器（VAE）的對稱編碼 - 解碼結構，解決了傳統 VAE 在長序列建模中容易出現的 「方差坍縮」 問題（即數據多樣性丟失）。&lt;/p&gt; 
+&lt;p&gt;通過 7 階段的改進型 Transformer 模塊和 1D 深度可分離因果卷積，將 24kHz 採樣率的原始音頻壓縮為每秒僅 7.5 個潛在向量，累計壓縮率達 3200 倍，壓縮效率是主流 Encodec 模型的 80 倍。&lt;/p&gt; 
+&lt;p&gt;&lt;strong&gt;2. 語義 Tokenizer：專注於提取與文本對齊的語義特徵。&amp;nbsp;&amp;nbsp;&lt;/strong&gt;&lt;/p&gt; 
+&lt;p&gt;架構與聲學 Tokenizer 的編碼器部分一致，但移除了變分自編碼器組件，以確保語義特徵的確定性。&lt;/p&gt; 
+&lt;p&gt;訓練過程中，語義 Tokenizer 通過 「自動語音識別」 任務強制綁定語音與文本，最終捨棄解碼器以提升推理速度 40%。&lt;/p&gt; 
+&lt;p&gt;這種分工協作的模式，既保留了語音的細節（如音色、節奏），又確保了內容與文本的語義一致性，避免了傳統模型中常見的 「音色與情緒不匹配」 問題。&lt;/p&gt; 
+&lt;p&gt;&amp;nbsp;&lt;/p&gt; 
+&lt;p&gt;開源地址&lt;/p&gt; 
+&lt;p&gt;&lt;em&gt;https://github.com/microsoft/VibeVoice&lt;/em&gt;&lt;br&gt; https://huggingface.co/microsoft/VibeVoice-1.5B&lt;/p&gt;
+                                                                                &lt;/div&gt;
+                                                                            </description>
+      <link>https://www.oschina.net/news/368509</link>
+      <guid isPermaLink="false">https://www.oschina.net/news/368509</guid>
+      <pubDate>Tue, 19 Aug 2025 03:31:00 GMT</pubDate>
+      <author>來源: OSCHINA</author>
+    </item>
+    <item>
+      <title>播放器視頻後處理實踐</title>
+      <description>&lt;div class="content"&gt;
+                                                                                                                    
+                                                                                                                                                    &lt;span id="OSC_h1_1"&gt;&lt;/span&gt; 
+&lt;h1&gt;&lt;strong&gt;&lt;strong&gt;1. 前言&lt;/strong&gt;&lt;/strong&gt;&lt;/h1&gt; 
+&lt;p&gt;在播放器架構不斷演進的今天，視頻後處理技術正在成為提升用戶體驗的關鍵環節。相比傳統的解碼即播，現代播放器越來越多地引入後處理鏈路，通過增強畫質、渲染氛圍等手段，為用戶提供更具沉浸感的視聽體驗。&lt;/p&gt; 
+&lt;p&gt;本系列文章將系統介紹我們在播放器視頻後處理模塊中的技術方案與工程實現，涵蓋從效果設計、算法選型，到性能優化和跨平台兼容的全鏈路細節。第一期內容聚焦在兩類核心能力：&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt; &lt;p&gt;視頻增強：提升畫面清晰度、對比度與色彩表現，尤其針對暗場、低碼率等場景進行針對性優化；&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;氛圍模式：基於視頻內容實時生成邊緣延展光效，打造更強沉浸感，適配大屏與移動端場景。&lt;/p&gt; &lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;p&gt;本文將着重介紹我們如何在性能受限的設備上實現視頻增強效果，如何結合 GPU/OpenGL、Shader 編程以及平台圖像處理 API 構建高效可控的處理鏈路。後續我們將陸續推出如氛圍模式等視頻後處理文章，敬請期待。&lt;/p&gt; 
+&lt;span id="OSC_h1_2"&gt;&lt;/span&gt; 
+&lt;h1&gt;&lt;strong&gt;&lt;strong&gt;2. 視頻增強（亮度和色彩）&lt;/strong&gt;&lt;/strong&gt;&lt;/h1&gt; 
+&lt;span id="OSC_h2_3"&gt;&lt;/span&gt; 
+&lt;h2&gt;&lt;strong&gt;丨 2.1 什麼是視頻增強技術&lt;/strong&gt;&lt;/h2&gt; 
+&lt;p&gt;視頻增強技術是指一系列用於改善視頻質量的技術手段，其目的是在不改變原始內容的情況下提升視頻的視覺效果。技術的應用場景包括視頻播放、編輯、傳輸、存儲等領域，常用於提高圖像清晰度、對比度、色彩飽和度等，使觀看者獲得更好的視覺體驗。&lt;/p&gt; 
+&lt;span id="OSC_h2_4"&gt;&lt;/span&gt; 
+&lt;h2&gt;&lt;strong&gt;丨 2.2 常見視頻增強技術&lt;/strong&gt;&lt;/h2&gt; 
+&lt;p&gt;&lt;img src="https://oscimg.oschina.net/oscnet/up-9e08c3b613e8e25991a9a403c48dbb6b777.png" alt="圖片" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;img src="https://oscimg.oschina.net/oscnet/up-dae5e8769705e37ee7fe3451db365b10a0c.png" alt="圖片" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p&gt;移動端實踐：亮度與色彩增強。針對 Android/iOS 平台的視頻播放場景，我們重點實現了亮度增強與色彩增強兩項關鍵技術。本文將分享技術落地中的核心方案與優化經驗。&lt;/p&gt; 
+&lt;span id="OSC_h2_5"&gt;&lt;/span&gt; 
+&lt;h2&gt;&lt;strong&gt;丨 2.3 亮度增強&lt;/strong&gt;&lt;/h2&gt; 
+&lt;p&gt;&lt;img src="https://oscimg.oschina.net/oscnet/up-111882e6b535a736ac5c3ae7f921187c316.png" alt="圖片" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p&gt;亮度增強效果示意圖（左：原圖，右：增強後）&lt;/p&gt; 
+&lt;span id="OSC_h3_6"&gt;&lt;/span&gt; 
+&lt;h3&gt;2.3.1 技術選型&lt;/h3&gt; 
+&lt;p&gt;亮度增強是圖像/視頻處理中非常基礎且常見的操作，常見的亮度增強原理可以分為以下幾類，每種方式背後的核心思想略有不同。下面是詳細的分類和解釋：&lt;/p&gt; 
+&lt;ol&gt; 
+ &lt;li&gt;線性亮度增強（線性增益）&lt;/li&gt; 
+&lt;/ol&gt; 
+&lt;p&gt;原理：RGB 整體直接乘以一個大於 1 的係數（或加一個偏移量）。&lt;/p&gt; 
+&lt;p&gt;公式：&lt;/p&gt; 
+&lt;pre&gt;&lt;code&gt;color.rgb&amp;nbsp;= color.rgb * gain; &amp;nbsp; &amp;nbsp; &amp;nbsp; // 乘法增強 color.rgb = color.rgb + offset; &amp;nbsp; &amp;nbsp; // 加法增強
+
+&lt;/code&gt;&lt;/pre&gt; 
+&lt;ul&gt; 
+ &lt;li&gt; &lt;p&gt;簡而言之，這種做法就是簡單粗暴的在原本的 RGB 上進行提升，從這裏，可以想到 RGB 顏色調整後容易出現色偏。&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;那麼我們可能會想到，如果先將 RGB 轉換為 YUV，調節 Y 分量，再反變換為 RGB。&lt;/p&gt; &lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;p&gt;公式：&lt;/p&gt; 
+&lt;pre&gt;&lt;code&gt;Y&amp;nbsp;=&amp;nbsp;0.299*R +&amp;nbsp;0.587*G +&amp;nbsp;0.114*B;
+Y_new&amp;nbsp;= Y * gain;
+
+&lt;/code&gt;&lt;/pre&gt; 
+&lt;ul&gt; 
+ &lt;li&gt; &lt;p&gt;這確實是視頻增強中一種常用且理論上「更穩」的方式，因為它分離了亮度（Y）和色彩（UV / IQ / CbCr）信息。&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;但這種處理方式有一個嚴重的問題，不處理圖像的對比度或中間的關係，且不能保留高光細節（Clipping），也就是調整後，超過範圍[0.0,1.0]的值會被截斷（clamp），造成高光過曝。&lt;/p&gt; &lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;ol start="2"&gt; 
+ &lt;li&gt;直方圖均衡（Histogram Equalization）&lt;/li&gt; 
+&lt;/ol&gt; 
+&lt;p&gt;原理：通過調整像素分佈，讓亮度值均勻分佈在整個區間，從而整體提升視覺亮度。&lt;/p&gt; 
+&lt;p&gt;特點：增強暗部和亮部的對比，對低對比度圖像尤其有效。&lt;/p&gt; 
+&lt;p&gt;實現相對複雜，不常用於實時 shader，考慮到其運算複雜性，我們也 pass 了這種方式。&lt;/p&gt; 
+&lt;ol start="3"&gt; 
+ &lt;li&gt;Gamma 變換（冪律調整）&lt;/li&gt; 
+&lt;/ol&gt; 
+&lt;p&gt;原理：使用冪函數對像素進行非線性拉伸。&lt;/p&gt; 
+&lt;p&gt;公式：&lt;/p&gt; 
+&lt;pre&gt;&lt;code&gt;color.rgb&amp;nbsp;= pow(color.rgb, vec3(gamma));
+
+&lt;/code&gt;&lt;/pre&gt; 
+&lt;p&gt;特點：γ &amp;lt; 1：圖像變亮，主要拉昇暗部；γ &amp;gt; 1：圖像變暗，壓縮亮部。&lt;/p&gt; 
+&lt;p&gt;具有兩個優點：&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt; &lt;p&gt;調整方式具有非線性特點，能更細膩地控制中間調亮度，避免簡單加法可能引起的局部過曝或暗部細節丟失。&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;模擬現實中顯示設備的響應曲線，效果較為自然。&lt;/p&gt; &lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;p&gt;這也是我們最後選擇的方式，他的運算量簡單，適合端上視頻播放的實時處理。&lt;/p&gt; 
+&lt;span id="OSC_h3_7"&gt;&lt;/span&gt; 
+&lt;h3&gt;2.3.2 背後的原理&lt;/h3&gt; 
+&lt;p&gt;我們引申一下，這種方式的優點是怎麼得出來的呢。&lt;/p&gt; 
+&lt;ol&gt; 
+ &lt;li&gt;為何能避免簡單加法可能引起的局部過曝或暗部細節丟失&lt;/li&gt; 
+&lt;/ol&gt; 
+&lt;p&gt;從公式看，原本亮度較低的像素會被相對「提亮」更多，而原本亮度較高的像素提升幅度較小。暗部像素相對於原值會獲得更大的「提拉」，而亮部像素則變化較小，從而既能提升整體曝光，又能保留高光細節。&lt;/p&gt; 
+&lt;ol start="2"&gt; 
+ &lt;li&gt;為什麼説模擬現實中顯示設備的響應曲線，更為自然呢？&lt;/li&gt; 
+&lt;/ol&gt; 
+&lt;p&gt;因為顯示器、人眼視覺和視頻編碼，都是非線性系統，不是簡單線性變化。&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt; &lt;p&gt;真實世界的光亮度是線性的，比如兩支燈加起來就是兩倍亮。&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;但人眼感知亮度是對數感知的（小亮度變化很敏感，大亮度變化不敏感）。&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;視頻和圖像在存儲時通常經過一個 Gamma 編碼，原本線性光 → 壓縮（比如取 1/2.2 次方） → 存成文件。這種光和電的轉換過程，就是 OETF/EOTF 響應曲線。&lt;/p&gt; &lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;p&gt;所以這種 pow(color, gamma) 的調整方式，實際就是在模擬顯示端的響應曲線。&lt;/p&gt; 
+&lt;p&gt;總結一句話：&lt;/p&gt; 
+&lt;blockquote&gt; 
+ &lt;p&gt;編碼有 Gamma，所以顯示端或後處理也必須按照 Gamma 空間規則來調節，才能保持自然感知。&lt;/p&gt; 
+&lt;/blockquote&gt; 
+&lt;span id="OSC_h2_8"&gt;&lt;/span&gt; 
+&lt;h2&gt;&lt;strong&gt;丨 2.4 色彩增強&lt;/strong&gt;&lt;/h2&gt; 
+&lt;p&gt;&lt;img src="https://oscimg.oschina.net/oscnet/up-329f6cfe91ee30986ddb96559406ffacab5.png" alt="圖片" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p&gt;色彩增強效果示意圖（左：原圖，右：增強後）&lt;/p&gt; 
+&lt;p&gt;從上圖可以看到山體、草地上的花，飽和度增強。&lt;/p&gt; 
+&lt;span id="OSC_h3_9"&gt;&lt;/span&gt; 
+&lt;h3&gt;2.4.1 調節的目標&lt;/h3&gt; 
+&lt;p&gt;1. 增強色彩感知&lt;/p&gt; 
+&lt;p&gt;提高圖像的「鮮豔度」或「視覺吸引力」，讓圖像更生動。&lt;/p&gt; 
+&lt;p&gt;特別是在圖像顏色偏灰、曝光不佳或圖像壓縮後顏色損失的情況下。&lt;/p&gt; 
+&lt;p&gt;2. 突出主體&lt;/p&gt; 
+&lt;p&gt;通過飽和度調節，增強主體與背景之間的色彩對比，提高視覺聚焦度。&lt;/p&gt; 
+&lt;p&gt;3. 修復/還原真實色彩&lt;/p&gt; 
+&lt;p&gt;對攝像頭採集後色彩不足的圖像進行還原，尤其是膚色、植物、天空等自然色彩。&lt;/p&gt; 
+&lt;p&gt;針對上述目標，我們主要依賴主觀評測感受，同時需要避免以下問題：&lt;/p&gt; 
+&lt;p&gt;主觀評估（人眼視覺）&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt; &lt;p&gt;色彩鮮明但不刺眼：增強後色彩更加明顯但不過飽和。&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;膚色自然：人臉或皮膚色調不過紅或黃（膚色是視覺最敏感區域）。&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;色彩分佈均衡：圖像中顏色種類豐富但不過分集中某一色調。&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;無色彩斷層：調節後顏色過渡應平滑，不能有色階突變。&lt;/p&gt; &lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;span id="OSC_h3_10"&gt;&lt;/span&gt; 
+&lt;h3&gt;2.4.2 技術選型&lt;/h3&gt; 
+&lt;p&gt;目前業界對色彩增強主要有以下 2 種方向的研究：&lt;/p&gt; 
+&lt;ol&gt; 
+ &lt;li&gt; &lt;p&gt;傳統 SDR 色彩增強。&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;SDR2HDR，模擬 HDR 效果，達到增強目的。&lt;/p&gt; &lt;/li&gt; 
+&lt;/ol&gt; 
+&lt;p&gt;從實現方式上，主要也有 2 種主流方式：&lt;/p&gt; 
+&lt;p&gt;1. 非神經網絡（傳統算法 or 結合 lut 查找表）&lt;/p&gt; 
+&lt;p&gt;2. 基於神經網絡（模型）&lt;/p&gt; 
+&lt;p&gt;模型需要較高的技術儲備，且在移動端運行耗時大，所以目前我們沒有選擇這種方式，而是尋找效果較好且可控的算法。&lt;/p&gt; 
+&lt;span id="OSC_h4_11"&gt;&lt;/span&gt; 
+&lt;h4&gt;2.4.2.1 色彩三要素&lt;/h4&gt; 
+&lt;p&gt;我們先了解下「色彩三要素」。他們是色彩學中用於描述顏色感知的三個基本維度，分別是：色相、飽和度、明度。這三者共同定義了一個顏色的完整視覺特性。&lt;/p&gt; 
+&lt;p&gt;&lt;img src="https://oscimg.oschina.net/oscnet/up-2b30a9ad27103861d53891b58e1a3e94cdb.png" alt="圖片" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;img src="https://oscimg.oschina.net/oscnet/up-732e1f0d9f8fb805edc7e32085ce32787f6.jpg" alt="圖片" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p&gt;色相&lt;/p&gt; 
+&lt;p&gt;&lt;img src="https://oscimg.oschina.net/oscnet/up-84e06db649fa950d64da12884126416abef.png" alt="圖片" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p&gt;飽和度&lt;/p&gt; 
+&lt;p&gt;&lt;img src="https://oscimg.oschina.net/oscnet/up-627291ade068565461ff9ac2bbf87a6ece7.png" alt="圖片" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p&gt;明度&lt;/p&gt; 
+&lt;p&gt;在色彩增強中，一般主要調節的是飽和度（Saturation），其次可能會適當調整明度（Brightness / Value） ，而色相（Hue）通常不會主動改變。原因如下：&lt;/p&gt; 
+&lt;p&gt;常調節的要素及原因：&lt;/p&gt; 
+&lt;p&gt;1. 飽和度（Saturation）&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt;最常調節的要素，增強後畫面顯得更鮮豔、更有吸引力，尤其適用於風景、商品、動漫類畫面。可提升視覺衝擊力和色彩表現力。&lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;ol start="2"&gt; 
+ &lt;li&gt;明度 / 亮度（Brightness / Value）&lt;/li&gt; 
+&lt;/ol&gt; 
+&lt;ul&gt; 
+ &lt;li&gt;有時作為輔助增強項，提高整體圖像的通透感。與 Gamma 調節、曝光補償常一起使用，即配合使用上一章節的亮度調整即可。&lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;ol start="3"&gt; 
+ &lt;li&gt;色相（Hue）&lt;/li&gt; 
+&lt;/ol&gt; 
+&lt;ul&gt; 
+ &lt;li&gt;一般不調整，因為改變色相會改變物體本身顏色，可能導致不真實（如人臉偏色、草地變藍等）。只在需要藝術化或特殊濾鏡（如復古風格、紅外效果）時才會使用。&lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;span id="OSC_h4_12"&gt;&lt;/span&gt; 
+&lt;h4&gt;2.4.2.2 顏色空間的選擇&lt;/h4&gt; 
+&lt;p&gt;選擇好色彩增強的調節方向為『飽和度』後，第二步，我們需要選擇好顏色空間。&lt;/p&gt; 
+&lt;p&gt;當視頻一幀畫面作為 GL 紋理輸入到後處理鏈路時，為 RGB 顏色模型，我們想要調節飽和度，則需要將其轉換為其他顏色空間進行調節，那麼面臨的第一個問題是如何選擇合適的顏色模型去進行算法設計？&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt; &lt;p&gt;RGB&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;HSV&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;LCH/LAB&lt;/p&gt; &lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;span id="OSC_h4_13"&gt;&lt;/span&gt; 
+&lt;h4&gt;2.4.2.3 基於 RGB 空間&lt;/h4&gt; 
+&lt;ol&gt; 
+ &lt;li&gt;基於 RGB 顏色直接調節&lt;/li&gt; 
+&lt;/ol&gt; 
+&lt;p&gt;們可以理解，飽和度是色彩的純度，即色彩相對於灰度（無色）的程度。那麼我們可以基於 RGB 顏色模型，並根據灰度進行差值混合即可。&lt;/p&gt; 
+&lt;p&gt;如 GPUImage 的 GPUImageSaturationFilter 提供了類似例子，它對飽和度調節，是基於 RGB 顏色，然後取出灰度值通過在原始顏色和灰度之間插值，mix(vec3(luma), color.rgb, saturation) 實現了飽和度的變化：&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt; &lt;p&gt;插值因子 saturation 越接近 0，圖像越趨向於灰度；&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;saturation 越高，圖像越接近原始顏色或超出原始飽和度，色彩更鮮豔。&lt;/p&gt; &lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;p&gt;這種簡單的算法存在一個問題：原本局部飽和度已經比較高，如果依然提高飽和度，則局部細節消失。&lt;/p&gt; 
+&lt;p&gt;&lt;img src="https://oscimg.oschina.net/oscnet/up-27d7b0994fc4fac57b89d002c584918656a.png" alt="圖片" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p&gt;過飽和，細節丟失&lt;/p&gt; 
+&lt;p&gt;2. 為瞭解決上述問題，我們基於自然飽和度的調整。&lt;/p&gt; 
+&lt;p&gt;自然飽和度（Vibrance）的概念最先由 photoshop 提出，重點在於適應性，自然飽和度調整後一般比飽和度調整要自然。其核心特點：&lt;/p&gt; 
+&lt;p&gt;&lt;img src="https://oscimg.oschina.net/oscnet/up-d0784de60346b9dcbeef45c7d5a1ca98fcc.png" alt="圖片" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p&gt;進行自適應飽和度調節的流程：&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt; &lt;p&gt;計算亮度（Luma）：使用加權平均公式從 RGB 獲取亮度：luma = 0.2126 * r + 0.7152 * g + 0.0722 * b&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;計算飽和度（Saturation）：使用 RGB 最大值和最小值之差估算色彩純度：saturation = max(r, g, b) - min(r, g, b)&lt;/p&gt; &lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;p&gt;&lt;img src="https://oscimg.oschina.net/oscnet/up-1a7eddfe1e8eed43260770fef02643989f3.png" alt="圖片" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt; &lt;p&gt;計算調節因子 k：根據當前飽和度和用戶設置的 Vibrance 強度進行非線性調節：k = 1.0 + Vibrance * (1.0 - saturation / 255.0)（Vibrance 取值範圍通常為 0.0 ~ 1.0）&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;應用顏色調整：將顏色向亮度方向插值，使低飽和度顏色更鮮豔，同時高飽和區域變化較小：color.rgb = mix(vec3(luma), color.rgb, k)&lt;/p&gt; &lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;p&gt;其調整傾向於將 RGB 值往同一個 luma 值進行靠近，也是無法保證顏色保持穩定，容易會發生偏色的情況。&lt;/p&gt; 
+&lt;p&gt;&lt;img src="https://oscimg.oschina.net/oscnet/up-6e84cd82793fb316a2c29384bc13928c8cc.png" alt="圖片" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p&gt;色彩增強效果示意圖（左：原圖，右：自然飽和度增強後）&lt;/p&gt; 
+&lt;p&gt;於是，我們繼續探索其他的顏色模型。&lt;/p&gt; 
+&lt;span id="OSC_h4_14"&gt;&lt;/span&gt; 
+&lt;h4&gt;2.4.2.4 基於 HSV 顏色模型的飽和度調整&lt;/h4&gt; 
+&lt;p&gt;基於 HSV 飽和度的調整方法是將 RGB 顏色模型轉換為 HSV 顏色模型，其中 HSV 分別表示色相（Hue）、飽和度（Saturation）、明度（Value）。只調整飽和度可以在不影響明暗和色相的情況下增強色彩的鮮豔程度。&lt;/p&gt; 
+&lt;p&gt;&lt;img src="https://oscimg.oschina.net/oscnet/up-8f18a721fd76edb4555d4d7841ea77d99e9.png" alt="圖片" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p&gt;將常見的調整方法有整體抬升，按比例增加，或者曲線調整，達到將整體飽和度提高的目的。但是飽和度調整同時提升所有顏色的強度，比較粗暴。&lt;/p&gt; 
+&lt;p&gt;有可能導致：&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt; &lt;p&gt;本來局部飽和度已經比較高，調節後過飽和，局部細節的消失。(和上一章節例子一樣)。&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;本來局部飽和度較低，接近白色，加大飽和度後，容易出現色塊。&lt;/p&gt; &lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;p&gt;&lt;img src="https://oscimg.oschina.net/oscnet/up-57e3e6fbadb52f1a1f7d3ffa28d34c30508.png" alt="圖片" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p&gt;普通調節&lt;/p&gt; 
+&lt;p&gt;如何優化：&lt;/p&gt; 
+&lt;ol&gt; 
+ &lt;li&gt; &lt;p&gt;對此引入對源的飽和度的檢測，設定上下限制，平滑調節。&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;在 HSV 顏色模型上，引入了類似自適應飽和度調整的方式。&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;目的：在低飽和度區域，避免突然增加飽和度。低飽和度的顏色（例如接近灰色的顏色）通常對飽和度調整非常敏感，因此需要一種平滑的方式。&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;目的：在高飽和度區域減少權重，避免過度增強飽和度。高飽和度的區域本身已經很飽和，進一步增加飽和度會導致過飽和，視覺上顯得不自然。&lt;/p&gt; &lt;/li&gt; 
+&lt;/ol&gt; 
+&lt;p&gt;&lt;img src="https://oscimg.oschina.net/oscnet/up-aba8ad7b559850b5ef9d9043a47954299ca.png" alt="圖片" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p&gt;加入自適應後&lt;/p&gt; 
+&lt;span id="OSC_h4_15"&gt;&lt;/span&gt; 
+&lt;h4&gt;2.4.2.5 膚色保護&lt;/h4&gt; 
+&lt;p&gt;採用 HSV 空間調整後，我們還需要考慮一個核心問題：&lt;/p&gt; 
+&lt;p&gt;在圖像色彩增強（如飽和度調整、色調映射）時，膚色區域容易因過度調整而失真（如過紅、過黃或慘白）。需通過膚色識別技術，對檢測到的膚色區域進行保護，限制增強幅度，保持自然觀感。&lt;/p&gt; 
+&lt;p&gt;在此引入了基於 HSV 色彩模型的膚色識別，HSV 色彩模型也同樣將亮度與顏色進行了分離，因此對於光照變化也有很強的抗幹擾能力，可以較好的識別出膚色。&lt;/p&gt; 
+&lt;p&gt;結合 HSV 色彩模型和高斯概率模型實現膚色保護，具體步驟如下：參考 GPUImageSkinToneFilter 的膚色識別方法。&lt;/p&gt; 
+&lt;p&gt;(1) RGB 轉 HSV 空間&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt; &lt;p&gt;將圖像從 RGB 轉換到 HSV 空間，分離色調（H）、飽和度（S）、亮度（V）。&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;優勢：HSV 的色調通道（H）對光照變化魯棒，更適合膚色識別。&lt;/p&gt; &lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;p&gt;(2) 膚色概率計算&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt; &lt;p&gt;膚色色調模型：&lt;/p&gt; &lt;p&gt;統計膚色色調的均值 skinHue = 0.05（典型值，對應黃紅色調）。&lt;/p&gt; &lt;p&gt;方差相關參數 skinHueThreshold = 40（控制膚色範圍寬度）。&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;距離計算：&lt;/p&gt; &lt;p&gt;計算當前像素色調 h 與 skinHue 的歸一化距離。&lt;/p&gt; &lt;p&gt;dist = abs(h - skinHue) / 0.5 高斯權重（概率）。&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;通過高斯函數計算膚色概率：&lt;/p&gt; &lt;p&gt;skinProb = exp(-dist * dist * skinHueThreshold) 結果範圍 [0, 1]，越接近 1 表示越可能是膚色。&lt;/p&gt; &lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;p&gt;(3) 膚色區域保護&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt; &lt;p&gt;閾值分割：&lt;/p&gt; &lt;p&gt;設定閾值（如 skinProb &amp;gt; 0.95），二值化得到膚色掩膜（Mask）。&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;動態衰減增強強度：&lt;/p&gt; &lt;p&gt;對檢測到的膚色區域，按 skinProb 權重衰減色彩增強效果。例如：enhanced_pixel = original_pixel * (1 - skinProb) + adjusted_pixel * skinProb * alphaalpha 為衰減係數（如 0.2），控制保護力度。&lt;/p&gt; &lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;p&gt;增加膚色保護後，可以看到效果明顯更好，人臉不會有過於突兀的顏色變化。&lt;/p&gt; 
+&lt;p&gt;&lt;img src="https://oscimg.oschina.net/oscnet/up-6986499c034b5ea751eaffd6e0ff1778e9d.png" alt="圖片" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p&gt;左：增強（無保護）中：原圖 &amp;nbsp;右：增強（膚色保護）&lt;/p&gt; 
+&lt;span id="OSC_h3_16"&gt;&lt;/span&gt; 
+&lt;h3&gt;2.4.3 效果對比&lt;/h3&gt; 
+&lt;ul&gt; 
+ &lt;li&gt; &lt;p&gt;HSV 空間的調節後色彩更加自然。&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;RGB 空間調節則更加絢麗。但容易色偏。&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;基於綜合考慮，我們採用 HSV 空間調節，以適應更多的源，避免色偏。&lt;/p&gt; &lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;span id="OSC_h1_17"&gt;&lt;/span&gt; 
+&lt;h1&gt;&lt;strong&gt;&lt;strong&gt;三. 總結與展望&lt;/strong&gt;&lt;/strong&gt;&lt;/h1&gt; 
+&lt;p&gt;本研究聚焦於移動端視頻增強技術的工程化落地，重點驗證了亮度增強與色彩增強兩種核心算法的實際應用效果。從主觀評測效果看，在部分視頻上，兩項技術均能顯著提升視頻觀感質量，有效改善用戶體驗。&lt;/p&gt; 
+&lt;p&gt;目前，亮度增強功能已在「好看 App」成功上線，且收穫了良好的應用效果。現階段，我們正着力研發亮度增強與色彩增強相疊加的綜合優化方案，計劃通過這一方案對更多視頻內容進行品質升級，從而為用戶帶來更優質的觀看體驗。以下為您呈現亮度增強結合色彩增強的部分應用案例：&lt;/p&gt; 
+&lt;p&gt;&lt;img src="https://oscimg.oschina.net/oscnet/up-7b37220cf68793bbd80ae5e7ad807cc0e2f.png" alt="圖片" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p&gt;例子 1：後層次感更好（右）&lt;/p&gt; 
+&lt;p&gt;&lt;img src="https://oscimg.oschina.net/oscnet/up-e3ba30fd9431f8cbf07932f3a0bb380f123.png" alt="圖片" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p&gt;例子 2：色彩更鮮明（右）&lt;/p&gt; 
+&lt;p&gt;&lt;img src="https://oscimg.oschina.net/oscnet/up-c4cc30ba8a7c9cbe11075a6e6bac0dea018.png" alt="圖片" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p&gt;例子 3：畫面更清晰明亮（右）&lt;/p&gt; 
+&lt;p&gt;未來研究將圍繞以下方向展開：&lt;/p&gt; 
+&lt;ol&gt; 
+ &lt;li&gt; &lt;p&gt;場景化優化：建立典型場景特徵庫，針對性優化算法參數配置。&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;實時性提升：通過模型輕量化與硬件加速技術，更加快速的視頻實時處理。&lt;/p&gt; &lt;/li&gt; 
+&lt;/ol&gt;
+                                                                                    &lt;/div&gt;
+                                                                            </description>
+      <link>https://my.oschina.net/u/4939618/blog/18689451</link>
+      <guid isPermaLink="false">https://my.oschina.net/u/4939618/blog/18689451</guid>
+      <pubDate>Tue, 19 Aug 2025 03:20:00 GMT</pubDate>
+      <author>原創</author>
+    </item>
+    <item>
+      <title>英偉達發佈 Jetson AGX Thor 開發者套件： 基於 Blackwell 架構、專為物理 AI 和機器人打造</title>
+      <description>&lt;div class="content"&gt;
+                                                                    
+                                                        &lt;p&gt;英偉達宣佈&amp;nbsp;&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fwww.nvidia.cn%2Fautonomous-machines%2Fembedded-systems%2Fjetson-thor%2F" target="_blank"&gt;NVIDIA Jetson AGX Thor™&lt;/a&gt;&amp;nbsp;開發者套件和量產級模組現已發售。這是一款功能強大的新一代機器人計算機，旨在為製造、物流、交通、醫療、農業和零售等行業的數百萬台機器人提供算力支持。&lt;/p&gt; 
+&lt;p&gt;&lt;img alt="" src="https://oscimg.oschina.net/oscnet/up-2947794e4a78f4a5e0dfa4396d7c54809a3.png" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p&gt;Jetson Thor 基於 NVIDIA Jetson™ 軟件平台，專為物理 AI 和人形機器人打造，支持所有主流 AI 框架與生成式 AI 模型。同時，它完全兼容 NVIDIA 從雲到邊緣的軟件棧，包括用於機器人仿真與開發的 NVIDIA Isaac、人形機器人基礎模型 Isaac GR00T、用於視覺 AI 的 NVIDIA Metropolis 以及用於實時傳感器處理的 NVIDIA Holoscan。&lt;/p&gt; 
+&lt;p&gt;&lt;img alt="" src="https://oscimg.oschina.net/oscnet/up-35c925129f4a1c612c53f4f41decaa3e78b.png" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p&gt;Jetson AGX Thor 核心信息：&amp;nbsp;&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt; &lt;p&gt;套件搭載 &lt;strong&gt;Blackwell 架構 GPU&lt;/strong&gt;，峯值算力可達 &lt;strong&gt;2070 TFLOPS（FP4 稀疏運算）&lt;/strong&gt;，相較前代 Orin 提升 &lt;strong&gt;7.5 倍算力&lt;/strong&gt;、&lt;strong&gt;3.5 倍能效&lt;/strong&gt;。內置 &lt;strong&gt;128GB LPDDR5X 內存&lt;/strong&gt;，帶寬高達 &lt;strong&gt;273GB/s&lt;/strong&gt;。&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;配備 14 核 Arm Neoverse-V3AE CPU、2560 CUDA 核心及 96 個 Tensor 核心，並支持 MIG 技術，可將 GPU 切分成多個隔離實例。功耗範圍 &lt;strong&gt;40–130W&lt;/strong&gt;，兼顧性能與能效。&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;包含 Jetson T5000 模組、參考載板、主動散熱系統、電源適配器及豐富 I/O（如 QSFP28 100GbE、HDMI/DP、USB-C、1TB NVMe SSD、Wi-Fi 6E 等）。&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;開發者套件售價 &lt;strong&gt;3499 美元&lt;/strong&gt;；量產模塊 &lt;strong&gt;T5000&lt;/strong&gt; 在千片級訂單中單價 &lt;strong&gt;2999 美元&lt;/strong&gt;。&lt;/p&gt; &lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;p&gt;詳情查看&amp;nbsp;&lt;em&gt;https://blogs.nvidia.cn/blog/nvidia-blackwell-powered-jetson-thor-now-available-accelerating-the-age-of-general-robotics/&lt;/em&gt;&lt;/p&gt;
+                                                                                &lt;/div&gt;
+                                                                            </description>
+      <link>https://www.oschina.net/news/368504</link>
+      <guid isPermaLink="false">https://www.oschina.net/news/368504</guid>
+      <pubDate>Tue, 19 Aug 2025 03:18:00 GMT</pubDate>
+      <author>來源: OSCHINA</author>
+    </item>
+    <item>
+      <title>亞馬遜 AGI 實驗室掌門人首度回應</title>
+      <description>&lt;div class="content"&gt;
+                                                                    
+                                                        &lt;p style="color:#242424; margin-left:0; margin-right:0; text-align:left"&gt;去年，當亞馬遜以一種前所未有的方式招攬 AI 初創公司 Adept 的創始團隊時，整個行業都為之震動。這種被稱為"反向人才收購"的全新交易模式，讓大型科技公司無需完全收購初創企業，而是通過挖走核心團隊並獲得技術授權來達到目的。&lt;/p&gt; 
+&lt;p style="color:#242424; margin-left:0; margin-right:0; text-align:left"&gt;這場交易的核心人物 David Luan，從 Adept 聯合創始人兼 CEO 搖身一變，成為了亞馬遜全新 AGI 實驗室的掌舵人。如今，面對外界的質疑聲浪，Luan 終於打破沉默，在接受 The Verge 採訪時為自己的選擇進行了辯護。&lt;/p&gt; 
+&lt;p style="color:#242424; margin-left:0; margin-right:0; text-align:left"&gt;&lt;img height="272" src="https://oscimg.oschina.net/oscnet/up-16d507b464b128d9ba6a42ba65af0fa1d69.png" width="500" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p style="color:#242424; margin-left:0; margin-right:0; text-align:left"&gt;當被問及這種"反向人才收購"趨勢時，Luan 的回應頗具深意。他坦言希望自己未來能夠"作為 AI 研究創新者而非交易結構創新者被人們銘記"。但從他的角度來看，像亞馬遜這樣的科技巨頭在當下"集中人才和計算資源的關鍵質量"是完全合理的戰略選擇。&lt;/p&gt; 
+&lt;p style="color:#242424; margin-left:0; margin-right:0; text-align:left"&gt;更加引人深思的是 Luan 對於離開自己創立公司的解釋。他毫不諱言地表示，自己並不願意將 Adept 打造成"一家只銷售小型模型的企業級公司"。在他眼中，還有"通向 AGI 的四個關鍵研究難題"亟待解決，而這正是他真正的使命所在。&lt;/p&gt; 
+&lt;p style="color:#242424; margin-left:0; margin-right:0; text-align:left"&gt;最令人震撼的是 Luan 對於資源需求的坦率描述。他直言不諱地指出，要解決這些核心問題，"每一個都需要價值數百億美元的計算集羣來運行"。面對如此天文數字般的資源需求，他反問道："除此之外，我還有什麼其他機會能夠實現這個目標呢?"&lt;/p&gt;
+                                                                                &lt;/div&gt;
+                                                                            </description>
+      <link>https://www.oschina.net/news/368502</link>
+      <guid isPermaLink="false">https://www.oschina.net/news/368502</guid>
+      <pubDate>Tue, 19 Aug 2025 03:09:00 GMT</pubDate>
+      <author>來源: OSCHINA</author>
+    </item>
+    <item>
+      <title>谷歌 NotebookLM 升級：支持 80 種語言的視頻與音頻概述</title>
+      <description>&lt;div class="content"&gt;
+                                                                    
+                                                        &lt;p&gt;谷歌&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fblog.google%2Ftechnology%2Fgoogle-labs%2Fnotebook-lm-audio-video-overviews-more-languages-longer-content%2F"&gt;宣佈&lt;/a&gt;其 AI 研究助手 NotebookLM 迎來重大更新，其 「Video Overviews（視頻概述）」 功能現已支持 80 種語言（包括簡體中文），並同步升級了 Audio Overviews（音頻概述）。Video Overviews 最初於 7 月&lt;a href="https://www.oschina.net/news/362937" target="_blank"&gt;推出&lt;/a&gt;，此次更新後，全球用戶可用本地語言生成筆記本內容的視頻摘要。 &lt;img alt="" src="https://oscimg.oschina.net/oscnet/up-11ee666c4dac7986a9fc9a46eb5a50015b2.png" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;img alt="" src="https://oscimg.oschina.net/oscnet/up-ea7002e11e165dbd0fe526919e864976102.png" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p&gt;此次升級的核心亮點如下：&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt; &lt;p&gt;視頻概述擴展至 80 種語言：NotebookLM 的 AI 講解視頻功能現已面向全球用戶，支持多達 80 種語言。用戶可將筆記內容自動生成帶有畫面和解説的視頻，更適合需要視覺化學習或分享的場景。&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;音頻概述全面升級：原本僅提供簡短亮點的 「音頻概述」 如今擴展為完整版本，覆蓋與英文版同等質量的連貫講解，並同步支持多語言。這意味着無論用戶選擇何種語言，都能獲得深度的音頻總結體驗。&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;內容更長，生成更靈活：Google 同時強化了 NotebookLM 的 Studio 面板。用戶現在可在一個筆記本中生成多個不同版本的音頻或視頻概述，以滿足不同受眾與學習目標的需求。&lt;/p&gt; &lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;p&gt;從最初的 「播客式音頻總結」 到如今支持圖表、網頁、幻燈片甚至視頻講解，NotebookLM 正逐步演變為一個集多模態知識提煉、個性化講解於一體的 AI 學習與研究助手。&lt;/p&gt;
+                                                                                &lt;/div&gt;
+                                                                            </description>
+      <link>https://www.oschina.net/news/368497</link>
+      <guid isPermaLink="false">https://www.oschina.net/news/368497</guid>
+      <pubDate>Tue, 19 Aug 2025 03:03:00 GMT</pubDate>
+      <author>來源: OSCHINA</author>
+    </item>
+    <item>
+      <title>快手可靈&amp;港大提出 Context-as-Memory，上下文記憶力媲美 Genie3 且問世更早</title>
+      <description>&lt;div class="content"&gt;
+                                                                    
+                                                        &lt;p&gt;&lt;span style="color:#000000"&gt;香港大學和快手可靈團隊近日聯合&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fmp.weixin.qq.com%2Fs%2FlsLYxySrtNN7QY3g7dVoZA" target="_blank"&gt;發表&lt;/a&gt;論文《Context as Memory: Scene-Consistent Interactive Long Video Generation with Memory Retrieval》，提出一種創新性方法：將歷史生成的上下文作為「記憶」（即 Context-as-Memory），通過 context learning 技術學習上下文條件，從而實現對長視頻前後場景一致性的有效控制。研究發現：視頻生成模型能夠隱式學習視頻數據中的 3D 先驗，無需顯式 3D 建模輔助，這一理念與 Genie 3 不謀而合。&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;span style="color:#000000"&gt;為了高效利用理論上可無限延長的歷史幀序列，論文還提出了基於相機軌跡視場（FOV）的記憶檢索機制（Memory Retrieval），從全部歷史幀中篩選出與當前生成視頻高度相關的幀作為記憶條件，大幅提升視頻生成的計算效率並降低訓練成本。&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;span style="color:#000000"&gt;在數據構建上，研究團隊基於 Unreal Engine 5 收集了多樣化場景、帶有精確相機軌跡標註的長視頻，用於充分訓練和測試上述技術。用戶只需提供一張初始圖像，即可沿設定的相機軌跡自由探索生成的虛擬世界。&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;span style="color:#000000"&gt;根據介紹，Context as Memory 可以在幾十秒的時間尺度下保持原視頻中的靜態場景記憶力，並在不同場景有較好的泛化性。Context as Memory 方法旨在實現無需顯式三維建模的場景一致的長視頻生成。該方法的核心創新包括：&lt;/span&gt;&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt;&lt;span style="color:#000000"&gt;提出了 Context as Memory 方法，強調將歷史生成的上下文作為記憶，無需顯式 3D 建模即可實現場景一致的長視頻生成。&lt;/span&gt;&lt;/li&gt; 
+ &lt;li&gt;&lt;span style="color:#000000"&gt;設計了 Memory Retrieval 方法，採用基於視場（FOV）重疊的相機軌跡規則進行動態檢索，顯著減少了需要學習的上下文數量，從而提高了模型訓練與推理效率。&lt;/span&gt;&lt;/li&gt; 
+ &lt;li&gt;&lt;span style="color:#000000"&gt;實驗結果表明，Context as Memory 在長視頻生成中的場景記憶力表現優越，顯著超越了現有的 SOTA 方法，並且能夠在未見過的開放域場景中保持記憶。&lt;/span&gt;&lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;p&gt;&lt;img height="193" src="https://oscimg.oschina.net/oscnet/up-a93eaecc14503bf0ea35d8a0966f2d4dbc6.png" width="700" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p style="color:#3e3e3e; margin-left:0; margin-right:0; text-align:justify"&gt;&lt;span style="color:#000000"&gt;如上圖（a）所示，Context-as-Memory 的長視頻生成是通過基於 Context learning 的視頻自迴歸生成來實現的，其中，所有歷史生成的視頻幀作為 context，它們被視為記憶力的載體。&lt;/span&gt;&lt;/p&gt; 
+&lt;p style="color:#3e3e3e; margin-left:0; margin-right:0; text-align:justify"&gt;&lt;span style="color:#000000"&gt;如上圖（b）所示，為了避免將所有歷史幀納入計算所帶來的過高計算開銷，提出了 Memory Retrieval 模塊。該模塊通過根據相機軌跡的視場（FOV）來判斷預測幀與歷史幀之間的重疊關係，從而動態篩選出與預測視頻最相關的歷史幀作為記憶條件。此方法顯著減少了需要學習的上下文數量，大幅提高了模型訓練和推理的效率。&lt;/span&gt;&lt;/p&gt; 
+&lt;p style="color:#3e3e3e; margin-left:0; margin-right:0; text-align:justify"&gt;&lt;span style="color:#000000"&gt;在實驗中，研究者將 Context-as-Memory 與最先進的方法進行了比較，結果表明，Context-as-Memory 在長視頻生成的場景記憶力方面，相較於這些方法，表現出了顯著的性能提升。&lt;/span&gt;&lt;/p&gt; 
+&lt;p style="color:#3e3e3e; margin-left:0; margin-right:0; text-align:justify"&gt;&lt;img height="192" src="https://oscimg.oschina.net/oscnet/up-1dcc527f72fd57d136741cd74d4c8831830.png" width="500" referrerpolicy="no-referrer"&gt;&lt;/p&gt;
+                                                                                &lt;/div&gt;
+                                                                            </description>
+      <link>https://www.oschina.net/news/368496</link>
+      <guid isPermaLink="false">https://www.oschina.net/news/368496</guid>
+      <pubDate>Tue, 19 Aug 2025 02:55:00 GMT</pubDate>
+      <author>來源: OSCHINA</author>
+    </item>
+    <item>
+      <title>微軟分享有關開源 Windows 11 UI 的新細節</title>
+      <description>&lt;div class="content"&gt;
+                                                                    
+                                                        &lt;p&gt;本月初， 微軟公佈了&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fwww.neowin.net%2Fnews%2Fmicrosoft-is-taking-steps-to-open-sourcing-windows-11-user-interface-framework%2F" target="_blank"&gt;有關開源&lt;/a&gt;&amp;nbsp;Windows 11 用戶界面框架 WinUI 的細節。開源 WinUI 一直是開發者們的長期呼聲，但實現起來並非輕而易舉。由於 WinUI 在操作系統的專有層面「根深蒂固」，開源該框架需要謹慎且深思熟慮的方法。在首次發佈幾周後， 微軟準備分享更多關於 WinUI OSS 項目的信息。&lt;/p&gt; 
+&lt;p&gt;&lt;img src="https://oscimg.oschina.net/oscnet/up-a574d1f8d2589c1f12d0d92889eb094019d.png" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p&gt;微軟希望分四個階段完成這項任務。第一階段主要是在 GitHub 上提供更多內部貢獻。第二階段將允許開發人員克隆存儲庫並在本地構建 WinUI。第三階段將允許第三方開發人員為該項目做出貢獻，最後階段將 GitHub 設為「開發、問題跟蹤和社區參與的主要場所」，並逐步淘汰內部存儲庫。&lt;/p&gt; 
+&lt;p&gt;目前， &lt;strong&gt;微軟開發人員正忙於將 WinUI 從 Windows 中無法公開共享的專有部分中「解開」&lt;/strong&gt;。一旦 Windows App SDK 1.8 於本月晚些時候發佈（目前處於預覽階段，WinUI 與 WASDK 綁定），開發人員將開始在 GitHub 上實施拉取請求。 微軟計劃在 2025 年 10 月初完成第一階段。&lt;/p&gt; 
+&lt;p&gt;至於允許第三方開發者克隆代碼庫並在本地構建，&amp;nbsp;微軟表示目前正在「積極探索」這個想法。這需要採取更加謹慎的態度，因此預計該公司還需要一些時間才能公佈更多細節。以下是該公司的聲明：&lt;/p&gt; 
+&lt;blockquote&gt; 
+ &lt;p&gt;由於 WinUI 的發佈計劃與 Windows App SDK 緊密相關，我們的分支策略現在允許我們在即將發佈的 WASDK 1.8 版本的同時開始完成 PR。1.8 預覽版已於 8 月 19 日發佈，穩定版也即將發佈，這為我們開始集成變更奠定了良好的基礎。基於此，我們計劃在 10 月初完成第一階段的工作。&lt;/p&gt; 
+ &lt;p&gt;第二階段仍在積極探索中，雖然我們對此更加謹慎，但我們希望很快分享切實的進展。&lt;/p&gt; 
+&lt;/blockquote&gt; 
+&lt;p&gt;&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fgithub.com%2Fmicrosoft%2Fmicrosoft-ui-xaml%2Fdiscussions%2F10700" target="_blank"&gt;您可以在 GitHub 上&lt;/a&gt;關注有關 WinUI 開源的討論。&lt;/p&gt;
+                                                                                &lt;/div&gt;
+                                                                            </description>
+      <link>https://www.oschina.net/news/368494</link>
+      <guid isPermaLink="false">https://www.oschina.net/news/368494</guid>
+      <pubDate>Tue, 19 Aug 2025 02:53:00 GMT</pubDate>
+      <author>來源: OSCHINA</author>
+    </item>
+    <item>
+      <title>華為鴻蒙 HarmonyOS 5 終端設備數突破 1200 萬</title>
+      <description>&lt;div class="content"&gt;
+                                                                    
+                                                        &lt;p&gt;鴻蒙生態發展再獲新進展。8 月 25 日，在智界及問界秋季新品發佈會上，華為技術有限公司（以下簡稱「華為」）常務董事、終端 BG 董事長餘承東宣佈搭載 HarmonyOS 5（以下簡稱「鴻蒙 5」）的終端設備數量突破 1200 萬台。&lt;/p&gt; 
+&lt;p&gt;而這距離今年 7 月 30 日，餘承東透露鴻蒙 5 終端數量突破千萬台，僅不足一個月，再次創造了「鴻蒙速度」。&lt;/p&gt; 
+&lt;p&gt;&lt;img src="https://static.oschina.net/uploads/space/2025/0826/104411_Nc6e_2720166.png" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p&gt;自鴻蒙 5 系統發佈以來，其終端設備數量呈現指數級增長。從 7 月 30 日突破 1000 萬台到 8 月 25 日已達 1200 萬台，鴻蒙 5 終端設備數量用了不到一個月時間新增 200 萬台，增速達 20%。&lt;/p&gt; 
+&lt;p&gt;餘承東表示，鴻蒙生態的高速發展，是每一位開發者、夥伴和消費者的共同託舉，讓鴻蒙生態走向正循環。 &amp;nbsp;同時，鴻蒙生態向全場景滲透，覆蓋手機、平板、電腦、智能穿戴、智能家居及汽車等設備，其中華為 Mate 70 系列、Mate X6 系列等 50 餘款主力機型開啓 HarmonyOS 5.1 升級，進一步擴大用戶覆蓋面。 &amp;nbsp;&lt;/p&gt; 
+&lt;p&gt;餘承東此前在接受採訪時透露，鴻蒙 5.0 設備已經超過 1000 萬，度過了鴻蒙生態的一個生死線。在生態這個領域，感謝中國整個科技產業的集體衝鋒，把不可能變成了可能。華為存量幾個億用戶的手機也會陸陸續續開放升級到鴻蒙 5.0，升級之後會更流暢，體驗更絲滑。&lt;/p&gt;
+                                                                                &lt;/div&gt;
+                                                                            </description>
+      <link>https://www.oschina.net/news/368493</link>
+      <guid isPermaLink="false">https://www.oschina.net/news/368493</guid>
+      <pubDate>Tue, 19 Aug 2025 02:44:00 GMT</pubDate>
+      <author>來源: OSCHINA</author>
+    </item>
+    <item>
+      <title>字節跳動內測全新 3D 模型生成工具 「3D Model Generator」</title>
+      <description>&lt;div class="content"&gt;
+                                                                    
+                                                        &lt;p style="color:#242424; margin-left:0; margin-right:0; text-align:left"&gt;《&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fmp.weixin.qq.com%2Fs%2FU5zMvqko4Ckz_YKa4WwQig" target="_blank"&gt;讀佳&lt;/a&gt;》消息稱，&lt;span style="background-color:#ffffff; color:rgba(0, 0, 0, 0.9)"&gt;&lt;span style="color:rgba(0, 0, 0, 0.9)"&gt;字節&lt;/span&gt;&lt;/span&gt;&lt;span style="background-color:#ffffff; color:rgba(0, 0, 0, 0.9)"&gt;&lt;span style="color:rgba(0, 0, 0, 0.9)"&gt;的&lt;/span&gt;&lt;/span&gt;&lt;span style="background-color:#ffffff; color:rgba(0, 0, 0, 0.9)"&gt;&lt;span style="color:rgba(0, 0, 0, 0.9)"&gt;豆包內部正在研發測試名為「3D Model Generator」的 3D 模型生成工具。該工具致力於可控大規模生成模型，為創建高質量 3D 資產提供有力支持，&lt;strong&gt;尤其在遊戲中的 3D 建模領域&lt;/strong&gt;。該工具或不久後對外開放使用。&lt;/span&gt;&lt;/span&gt;&lt;/p&gt; 
+&lt;p style="color:#242424; margin-left:0; margin-right:0; text-align:left"&gt;&lt;img height="254" src="https://oscimg.oschina.net/oscnet/up-339b979e24b142fa3e8ef2b96f2731b7fef.png" width="500" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p style="color:#242424; margin-left:0; margin-right:0; text-align:left"&gt;&lt;span style="background-color:#ffffff; color:rgba(0, 0, 0, 0.9)"&gt;從測試頁面可以看出，「3D Model Generator」支持兩種生成方式，一種是基於圖像生成，選取本地圖像文件，點擊「生成」，即可快速生成 3D 模型，降低了 3D 建模的入門門檻。&lt;/span&gt;&lt;/p&gt; 
+&lt;p style="color:#242424; margin-left:0; margin-right:0; text-align:left"&gt;&lt;img height="228" src="https://oscimg.oschina.net/oscnet/up-8483f178e9e5f6f5cff323eb4fd921324db.png" width="500" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p style="color:#242424; margin-left:0; margin-right:0; text-align:left"&gt;&lt;span style="background-color:#ffffff; color:rgba(0, 0, 0, 0.9)"&gt;另外一種是基於圖像+模型生成，通過圖像文件與模型文件的結合，實現更復雜或更具針對性的 3D 資產創作，這對於遊戲建模等需要大量 3D 素材的場景來説，具備實際應用價值。&lt;/span&gt;&lt;/p&gt; 
+&lt;p style="color:#242424; margin-left:0; margin-right:0; text-align:left"&gt;&lt;img height="197" src="https://oscimg.oschina.net/oscnet/up-bc28c3c09e53aab094043b85aec04f160bd.png" width="500" referrerpolicy="no-referrer"&gt;&lt;/p&gt;
+                                                                                &lt;/div&gt;
+                                                                            </description>
+      <link>https://www.oschina.net/news/368492</link>
+      <guid isPermaLink="false">https://www.oschina.net/news/368492</guid>
+      <pubDate>Tue, 19 Aug 2025 02:42:00 GMT</pubDate>
+      <author>來源: OSCHINA</author>
+    </item>
     <item>
       <title>bboss v7.5.0 重磅發佈，新增 OSS 文件採集功能，優化 httpproxy 重試機制</title>
       <description>&lt;div class="content"&gt;
@@ -38,7 +984,7 @@
                                                                             </description>
       <link>https://www.oschina.net/news/368490</link>
       <guid isPermaLink="false">https://www.oschina.net/news/368490</guid>
-      <pubDate>Tue, 26 Aug 2025 02:31:54 GMT</pubDate>
+      <pubDate>Tue, 19 Aug 2025 02:31:00 GMT</pubDate>
       <author>來源: 資訊</author>
     </item>
     <item>
@@ -55,709 +1001,7 @@
                                                                             </description>
       <link>https://www.oschina.net/news/368488</link>
       <guid isPermaLink="false">https://www.oschina.net/news/368488</guid>
-      <pubDate>Tue, 26 Aug 2025 02:15:48 GMT</pubDate>
-      <author>來源: OSCHINA</author>
-    </item>
-    <item>
-      <title>xAI 起訴蘋果和 OpenAI，指控阻礙 AI 競爭</title>
-      <description>&lt;div class="content"&gt;
-                                                                    
-                                                        &lt;p style="color:#242424; margin-left:0; margin-right:0; text-align:left"&gt;埃隆・馬斯克（Elon Musk）創立的人工智能公司 xAI 於週一在美國德克薩斯州聯邦法院對蘋果公司及 ChatGPT 的開發商 OpenAI 提起訴訟。xAI 指控這兩家公司非法合謀，阻礙了人工智能領域的競爭，損害了其他創新公司的發展機會。&lt;/p&gt; 
-&lt;p style="color:#242424; margin-left:0; margin-right:0; text-align:left"&gt;&lt;img height="260" src="https://oscimg.oschina.net/oscnet/up-d70b8e1fb8c51a8402bf64c7a00068a6fcb.png" width="700" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;p style="color:#242424; margin-left:0; margin-right:0; text-align:left"&gt;在訴訟中，xAI 聲稱，蘋果與 OpenAI 通過達成排他性協議，封鎖了市場，使得像 xAI 和其開發的應用 X 在競爭中處於劣勢。訴訟指出，若不是因為這種合謀，蘋果就應更積極地展示 xAI 的應用 Grok。xAI 因此要求蘋果和 OpenAI 賠償數十億美元的損失。&lt;/p&gt; 
-&lt;p style="color:#242424; margin-left:0; margin-right:0; text-align:left"&gt;隨後，馬斯克在社交媒體平台 X 上發帖回應了這一訴訟，他表示：「@Grok 擁有 100 萬條評論，平均評分達到 4.9，但蘋果依然拒絕將 Grok 列入任何榜單。」 馬斯克的言論強調了他對蘋果在市場競爭中角色的質疑，並進一步支持了 xAI 的訴訟主張。&lt;/p&gt; 
-&lt;p style="color:#242424; margin-left:0; margin-right:0; text-align:left"&gt;對此，OpenAI 發言人在一份聲明中表示，xAI 的訴訟符合馬斯克一貫的騷擾模式，暗示這是馬斯克在藉助法律手段施壓競爭對手的行為。截至目前，蘋果尚未對此事件發表任何公開評論。&lt;/p&gt;
-                                                                                &lt;/div&gt;
-                                                                            </description>
-      <link>https://www.oschina.net/news/368483</link>
-      <guid isPermaLink="false">https://www.oschina.net/news/368483</guid>
-      <pubDate>Tue, 26 Aug 2025 01:58:48 GMT</pubDate>
-      <author>來源: OSCHINA</author>
-    </item>
-    <item>
-      <title>xsha v0.4.0 版本發佈 | AI 驅動的項目開發平台</title>
-      <description>&lt;div class="content"&gt;
-                                                                    
-                                                        &lt;p style="color:#333333; margin-left:0; margin-right:0; text-align:left"&gt;本次更新內容如下：&lt;/p&gt; 
-&lt;ul&gt; 
- &lt;li&gt;為任務對話添加模型選擇功能&lt;/li&gt; 
- &lt;li&gt;在任務對話列表中添加了調度標籤和執行時間&lt;/li&gt; 
- &lt;li&gt;為聊天對話添加圖像支持&lt;/li&gt; 
- &lt;li&gt;為聊天對話添加 PDF 支持&lt;/li&gt; 
- &lt;li&gt;重構後端日誌系統&lt;/li&gt; 
- &lt;li&gt;修復了由於容器執行輸入日誌每行超過 64KB 導致的任務對話狀態異常問題&lt;/li&gt; 
- &lt;li&gt;優化任務對話重試機制 - 在新機制下，只有最新的失敗或取消的任務對話可以重試&lt;/li&gt; 
-&lt;/ul&gt; 
-&lt;p&gt;&lt;img height="1686" src="https://oscimg.oschina.net/oscnet/up-ea8adf59e5398619d352ac2fc8233b36913.jpg" width="2348" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;h1&gt;🚀 XSha - Cursor Background 開源替代&lt;/h1&gt; 
-&lt;p style="color:#333333; margin-left:0; margin-right:0; text-align:left"&gt;XSha 是一款將項目管理、Git、基於 AI 驅動的需求開發結合的軟件系統。現基於 Claude Code 實現了通過任務對話即可完成項目任務開發，可同時多個任務併發執行，每個任務擁有獨立的工作空間。通過 Docker 容器分配每個任務的執行環境從而保證了安全性。基於 ENV 環境變量的配置，可以輕鬆簡答的接入 Kimi2、GLM 4.5、Qwen Coder 等更有性價比的大模型。 ✨&lt;/p&gt; 
-&lt;h2&gt;🔥 核心特性&lt;/h2&gt; 
-&lt;ul&gt; 
- &lt;li&gt;&lt;strong&gt;🧠 AI 驅動的項目任務自動開發：&lt;/strong&gt;&lt;span&gt;&amp;nbsp;&lt;/span&gt;於 Claude Code 封裝，開發能力上線取決於 Claude Code 的上限。同時支持 Kimi2/GLM 4.5/Qwen Coder 等模型。&lt;/li&gt; 
- &lt;li&gt;&lt;strong&gt;🛡️ 執行環境隔離：&lt;/strong&gt;&lt;span&gt;&amp;nbsp;&lt;/span&gt;基於 Docker 的容器運行方案，每個 Claude Code 的執行都在獨立的容器內部，保證安全性。&lt;/li&gt; 
- &lt;li&gt;&lt;strong&gt;⚡ 併發執行任務：&lt;/strong&gt;&lt;span&gt;&amp;nbsp;&lt;/span&gt;可控制的併發數量讓項目任務開發更快速。&lt;/li&gt; 
- &lt;li&gt;&lt;strong&gt;🔄 Git 接入：&lt;/strong&gt;&lt;span&gt;&amp;nbsp;&lt;/span&gt;直接導入 Git 倉庫，項目任務開發完成後一鍵推送到倉庫，還可以在線查看 Git Diff 。&lt;/li&gt; 
-&lt;/ul&gt; 
-&lt;p style="color:#333333; margin-left:0; margin-right:0; text-align:left"&gt;Github:&amp;nbsp;&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fgithub.com%2FXShaLabs%2Fxsha" target="_blank"&gt;https://github.com/XShaLabs/xsha&lt;/a&gt;&lt;/p&gt;
-                                                                                &lt;/div&gt;
-                                                                            </description>
-      <link>https://www.oschina.net/news/368478</link>
-      <guid isPermaLink="false">https://www.oschina.net/news/368478</guid>
-      <pubDate>Tue, 19 Aug 2025 01:39:00 GMT</pubDate>
-      <author>來源: 資訊</author>
-    </item>
-    <item>
-      <title>調問更新 8.15~8.22：SPSS 導出+自定義選項編號+4 項功能+9 項功能優化+10 項 Bug 修復</title>
-      <description>&lt;div class="content"&gt;
-                                                                    
-                                                        &lt;div&gt;
- &amp;nbsp;
-&lt;/div&gt; 
-&lt;div&gt; 
- &lt;div&gt; 
-  &lt;p style="margin-left:0; margin-right:0; text-align:left"&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span style="background-color:#ffffff"&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span style="color:#40485b"&gt;&lt;span&gt;&lt;span&gt;調問自開源以來一直堅持前後端所有代碼 100% 開源💯，保證所有功能的穩定與可改造能力👏。&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/p&gt; 
-  &lt;p style="margin-left:0; margin-right:0; text-align:left"&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span style="background-color:#ffffff"&gt;&lt;span&gt;&lt;strong&gt;&lt;span&gt;&lt;span style="color:#40485b"&gt;&lt;span&gt;&lt;span&gt;🔥 安裝下載地址（安裝包）：&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/strong&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;a href="https://gitee.com/link?target=https%3A%2F%2Fwww.diaowen.net%2Finstall%2Fdocker"&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;u&gt;&lt;span style="color:#1e6fff"&gt;&lt;span&gt;&lt;span&gt;https://www.diaowen.net/install/docker&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/u&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/a&gt;&lt;/span&gt;&lt;/span&gt;&lt;/p&gt; 
-  &lt;p style="margin-left:0; margin-right:0; text-align:left"&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span style="background-color:#ffffff"&gt;&lt;span&gt;&lt;strong&gt;&lt;span&gt;&lt;span style="color:#40485b"&gt;&lt;span&gt;&lt;span&gt;🔥 源碼下載地址： &lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/strong&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;a href="https://gitee.com/wkeyuan/DWSurvey"&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;u&gt;&lt;span style="color:#1e6fff"&gt;&lt;span&gt;&lt;span&gt;https://gitee.com/wkeyuan/DWSurvey&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/u&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/a&gt;&lt;/span&gt;&lt;/span&gt;&lt;/p&gt; 
-  &lt;p style="margin-left:0; margin-right:0; text-align:justify"&gt;&amp;nbsp;&lt;/p&gt; 
-  &lt;p style="margin-left:0; margin-right:0; text-align:justify"&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span style="color:#333333"&gt;&lt;span&gt;&lt;span&gt;本週對數據導出進行了重大更新，在專業的調研場景中，將收集數據導出到 SPSS 進行進一步更新，是分析數據的必要步驟。調問上週支持了直接將調研數據導出為 SPSS 文件格式，直接從 spss 軟件進行打開，為專業場景提供了更加便利、可行的功能支持：&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/p&gt; 
-  &lt;p style="margin-left:0; margin-right:0; text-align:justify"&gt;&amp;nbsp;&lt;/p&gt; 
-  &lt;p style="margin-left:0; margin-right:0; text-align:justify"&gt;&amp;nbsp;&lt;/p&gt; 
-  &lt;p style="margin-left:0; margin-right:0; text-align:justify"&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span style="color:#333333"&gt;&lt;span&gt;&lt;span&gt;除此之外，還增加了快速編碼自定義配置功能，可以快速批量配置自定義問卷與選項編碼，這樣就可以為每個選項定義指定格式的編號，支持在考試場景中，方便更加直觀的統計結果數據：&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/p&gt; 
-  &lt;p style="margin-left:0; margin-right:0; text-align:justify"&gt;&amp;nbsp;&lt;/p&gt; 
-  &lt;p style="margin-left:0; margin-right:0; text-align:justify"&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span style="color:#333333"&gt;&lt;span&gt;&lt;span&gt;此外還增加了部門導出功能、自定義網站 icon 圖標功能。歡迎大家來體驗試用。&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&lt;/span&gt;&lt;/span&gt;&lt;/p&gt; 
-  &lt;p style="margin-left:0; margin-right:0; text-align:justify"&gt;&amp;nbsp;&lt;/p&gt; 
-  &lt;p style="margin-left:0; margin-right:0; text-align:justify"&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span style="color:#000000"&gt;&lt;span&gt;&lt;span&gt;歡迎夥伴們，在 surveyform.cn 上進行體驗、試用！！！&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fsurveyform.cn%2F" target="_blank"&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;u&gt;&lt;span style="color:#1e6fff"&gt;&lt;span&gt;&lt;span&gt;https://www.surveyform.cn&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/u&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/a&gt;&lt;/span&gt;&lt;/span&gt;&lt;/p&gt; 
-  &lt;p style="margin-left:0; margin-right:0; text-align:justify"&gt;&amp;nbsp;&lt;/p&gt; 
-  &lt;p style="margin-left:0; margin-right:0; text-align:justify"&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;strong&gt;&lt;span&gt;&lt;span style="color:#000000"&gt;&lt;span&gt;&lt;span&gt;本週更新：&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/strong&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/p&gt; 
-  &lt;p style="margin-left:0; margin-right:0; text-align:justify"&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;strong&gt;&lt;span&gt;&lt;span style="color:#1abc9c"&gt;&lt;span&gt;&lt;span&gt;功能新增：&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/strong&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/p&gt; 
-  &lt;ul&gt; 
-   &lt;li&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span style="color:#333333"&gt;&lt;span&gt;&lt;span&gt;增加 spss 原始數據導出功能，增加三種原始數據導出模式，分別是分值、序號、spss；&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/li&gt; 
-   &lt;li&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span style="color:#333333"&gt;&lt;span&gt;&lt;span&gt;增加自定義網站 icon 圖標，同時在初始加載就出現；&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/li&gt; 
-   &lt;li&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span style="color:#333333"&gt;&lt;span&gt;&lt;span&gt;增加部門導出功能；&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/li&gt; 
-   &lt;li&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span style="color:#333333"&gt;&lt;span&gt;&lt;span&gt;增加快速編碼自定義配置功能，可以快速批量配置自定義問卷與選項編碼。&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/li&gt; 
-  &lt;/ul&gt; 
-  &lt;p style="margin-left:0; margin-right:0; text-align:justify"&gt;&amp;nbsp;&lt;/p&gt; 
-  &lt;p style="margin-left:0; margin-right:0; text-align:justify"&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;strong&gt;&lt;span&gt;&lt;span style="color:#1abc9c"&gt;&lt;span&gt;&lt;span&gt;功能優化：&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/strong&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/p&gt; 
-  &lt;ul&gt; 
-   &lt;li&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span style="color:#333333"&gt;&lt;span&gt;&lt;span&gt;優化模板導入及模板複製時的問卷類型，防止與文件夾衝突；&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/li&gt; 
-   &lt;li&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span style="color:#333333"&gt;&lt;span&gt;&lt;span&gt;優化設計問卷自動保存邏輯，修改保存問卷提示信息位置，並防止重複提示，設置防止保存提示影響用戶功能操作；&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/li&gt; 
-   &lt;li&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span style="color:#333333"&gt;&lt;span&gt;&lt;span&gt;重複回答啓用驗證碼增加次數自定限制，啓用密碼答卷功能增加提示配置；&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/li&gt; 
-   &lt;li&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span style="color:#333333"&gt;&lt;span&gt;&lt;span&gt;優化 DSL 驗證語句提示自定義錯誤信息配置；&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/li&gt; 
-   &lt;li&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span style="color:#333333"&gt;&lt;span&gt;&lt;span&gt;優化問卷協管員權限配置；&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/li&gt; 
-   &lt;li&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span style="color:#333333"&gt;&lt;span&gt;&lt;span&gt;優化協管員、權限控制、修改默認提示偏離位置；&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/li&gt; 
-   &lt;li&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span style="color:#333333"&gt;&lt;span&gt;&lt;span&gt;對代碼的優化，優化後端代碼結構目錄，使用其更加易於理解，解決前端編譯時前端樣式警告，優化樣式的實現；&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/li&gt; 
-   &lt;li&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span style="color:#333333"&gt;&lt;span&gt;&lt;span&gt;優化分組題答題佈局邊距，優化自定義編碼彈框樣式及保存覆蓋提醒，解決默認編碼可能未生成問題，樣式上傳圖片類型限制，頁面按鈕修改未保存；&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/li&gt; 
-   &lt;li&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span style="color:#333333"&gt;&lt;span&gt;&lt;span&gt;優化協管員問卷數據權限過濾。&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/li&gt; 
-  &lt;/ul&gt; 
-  &lt;p style="margin-left:0; margin-right:0; text-align:justify"&gt;&amp;nbsp;&lt;/p&gt; 
-  &lt;p style="margin-left:0; margin-right:0; text-align:justify"&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;strong&gt;&lt;span&gt;&lt;span style="color:#1abc9c"&gt;&lt;span&gt;&lt;span&gt;BUG 修復：&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/strong&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/p&gt; 
-  &lt;ul&gt; 
-   &lt;li&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span style="color:#333333"&gt;&lt;span&gt;&lt;span&gt;優化後台自定義登錄頁信息加載同步問題，解決站點名稱修改不同步更新問題；&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/li&gt; 
-   &lt;li&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span style="color:#333333"&gt;&lt;span&gt;&lt;span&gt;解決設計問卷自動保存關閉後還在執行的問題；&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/li&gt; 
-   &lt;li&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span style="color:#333333"&gt;&lt;span&gt;&lt;span&gt;增加切屏根據限制次數進行提示，解決答卷結束頁面切屏還提示問題；&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/li&gt; 
-   &lt;li&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span style="color:#333333"&gt;&lt;span&gt;&lt;span&gt;解決自定義隱藏底部及優化頭部多餘信息；&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/li&gt; 
-   &lt;li&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span style="color:#333333"&gt;&lt;span&gt;&lt;span&gt;修復修改後頁籤小圖標未顯示問題；&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/li&gt; 
-   &lt;li&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span style="color:#333333"&gt;&lt;span&gt;&lt;span&gt;解決導入數據下載模板在生產環境可能地址不對，對導入問卷進行優化，並升級導入問卷的 UI；&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/li&gt; 
-   &lt;li&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span style="color:#333333"&gt;&lt;span&gt;&lt;span&gt;修復默認焦點樣式跟隨主題變化；&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/li&gt; 
-   &lt;li&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span style="color:#333333"&gt;&lt;span&gt;&lt;span&gt;解決 DSL not 取反失效問題；&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/li&gt; 
-   &lt;li&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span style="color:#333333"&gt;&lt;span&gt;&lt;span&gt;解決返回矩陣填空數據答案選項錯誤，引起的返回數據異常；&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/li&gt; 
-   &lt;li&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span style="color:#333333"&gt;&lt;span&gt;&lt;span&gt;解決原舊數據可能存在問卷列表查詢不出問題。&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/li&gt; 
-  &lt;/ul&gt; 
- &lt;/div&gt; 
-&lt;/div&gt; 
-&lt;p&gt;&amp;nbsp;&lt;/p&gt;
-                                                                                &lt;/div&gt;
-                                                                            </description>
-      <link>https://www.oschina.net/news/368440</link>
-      <guid isPermaLink="false">https://www.oschina.net/news/368440</guid>
-      <pubDate>Mon, 18 Aug 2025 15:30:00 GMT</pubDate>
-      <author>來源: 資訊</author>
-    </item>
-    <item>
-      <title>開源編輯器 Kilo Code 已內置支持 AGENTS.md</title>
-      <description>&lt;div class="content"&gt;
-                                                                    
-                                                        &lt;p&gt;開源編輯器 Kilo Code &lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fx.com%2FKilo_Code%2Fstatus%2F1958892580290101271" target="_blank"&gt;宣佈&lt;/a&gt;現已內置支持 AGENTS.md。Kilo 團隊強調其開源與透明理念，並對該標準被跨平台採納表示歡迎。&lt;/p&gt; 
-&lt;p&gt;&lt;img alt="" src="https://oscimg.oschina.net/oscnet/up-472d4db67b007598de41f2e78304e9c0c56.png" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;p&gt;從展示的圖片來看，Gemini CLI 、Zed 和 OpenCode 等工具也支持了該項目。&lt;/p&gt; 
-&lt;p&gt;&lt;span style="background-color:#ffffff; color:#333333"&gt;AGENTS.md 被定位為 「&lt;/span&gt;&lt;strong&gt;為 Agent 設計的 README&lt;/strong&gt;&lt;span style="background-color:#ffffff; color:#333333"&gt;」，是一個簡單、開放的格式，用於向編碼 Agent 提供指導。其設計初衷是為了補充專為人類開發者設計的 README.md 文件。&lt;/span&gt;&lt;/p&gt; 
-&lt;p&gt;&lt;img src="https://static.oschina.net/uploads/space/2025/0825/193337_X7hQ_2720166.png" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;p&gt;&lt;span style="background-color:#ffffff; color:#333333"&gt;README.md 通常包含快速入門、項目描述和貢獻指南，而 AGENTS.md 則專注於提供編碼 Agent 所需的額外、詳細的上下文信息，例如構建步驟、測試指令、項目結構、代碼約定和安全注意事項等。&lt;/span&gt;&lt;/p&gt;
-                                                                                &lt;/div&gt;
-                                                                            </description>
-      <link>https://www.oschina.net/news/368415</link>
-      <guid isPermaLink="false">https://www.oschina.net/news/368415</guid>
-      <pubDate>Mon, 18 Aug 2025 11:31:00 GMT</pubDate>
-      <author>來源: OSCHINA</author>
-    </item>
-    <item>
-      <title>Mogan 更名為「Mogan STEM」，v2025.1.1 正式發佈</title>
-      <description>&lt;div class="content"&gt;
-                                                                    
-                                                        &lt;div&gt; 
- &lt;div&gt;
-  我們正式發佈
-  &lt;strong&gt; &lt;span style="color:#ffffff"&gt;&lt;span style="background-color:#3498db"&gt;Mogan v2025.1.1&lt;/span&gt;&lt;/span&gt;&lt;/strong&gt;，並將項目更名為
-  &lt;span style="color:#ffffff"&gt;&lt;strong&gt;&lt;span style="background-color:#3498db"&gt;「Mogan STEM」&lt;/span&gt;&lt;/strong&gt;&lt;/span&gt;——一款面向科學與工程創作的現代化編輯器。
- &lt;/div&gt; 
- &lt;div&gt;
-  新版本帶來全新 UI、智能補全、穩定性與性能的大幅提升，歡迎下載體驗。
- &lt;/div&gt; 
- &lt;div&gt;
-  &amp;nbsp;
- &lt;/div&gt; 
- &lt;ul&gt; 
-  &lt;li&gt; 
-   &lt;div&gt;
-    &lt;strong&gt;發佈頁與下載&lt;/strong&gt;：&amp;lt;https://github.com/XmacsLabs/mogan/releases/tag/v2025.1.1&amp;gt;
-   &lt;/div&gt; &lt;/li&gt; 
- &lt;/ul&gt; 
- &lt;div&gt;
-  Mogan STEM 的底層升級到了 TeXmacs 2.1.4，並內嵌了自研編程語言 
-  &lt;a href="https://gitee.com/XmacsLabs/goldfish#https://gitee.com/"&gt;goldfish scheme&lt;/a&gt; 。
- &lt;/div&gt; 
- &lt;div&gt;
-  &amp;nbsp;
- &lt;/div&gt; 
- &lt;div&gt;
-  本文檔所記錄的僅為墨幹社區的研發成果，未記錄 GNU TeXmacs 2.1.2 -&amp;gt; GNU TeXmacs 2.1.4 的更新內容。
- &lt;/div&gt; 
- &lt;div&gt;
-  &amp;nbsp;
- &lt;/div&gt; 
- &lt;h2&gt;什麼是 Mogan STEM&lt;/h2&gt; 
- &lt;div&gt;
-  Mogan STEM 是一款專為理工科設計的智能寫作與排版工具，集成了強大的公式編輯、自動排版、AI 輔助和視覺識別等功能。不論是備課、講義編寫還是學生做課堂筆記，都能大大提升效率。
- &lt;/div&gt; 
- &lt;ul&gt; 
-  &lt;li&gt; 
-   &lt;div&gt;
-    &lt;strong&gt;一鍵排版，規範美觀&lt;/strong&gt;：只需輸入內容，Mogan STEM 自動生成結構化、符合學術規範的講義和筆記，無需再為排版頭疼。
-   &lt;/div&gt; &lt;/li&gt; 
-  &lt;li&gt; 
-   &lt;div&gt;
-    &lt;strong&gt;數學公式輸入超快&lt;/strong&gt;：提供大量易於記憶的公式輸入方法，所見即所得，無需敲代碼，效率百倍於 
-    &lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;\(\LaTeX\)&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;
-   &lt;/div&gt; &lt;/li&gt; 
-  &lt;li&gt; 
-   &lt;div&gt;
-    &lt;strong&gt;魔法粘貼&lt;/strong&gt;：從 ChatGPT、DeepSeek、知乎等處複製內容，自動格式化，省去排版煩惱。
-   &lt;/div&gt; &lt;/li&gt; 
-  &lt;li&gt; 
-   &lt;div&gt;
-    &lt;strong&gt;規範與創新兼顧&lt;/strong&gt;：Mogan STEM 實現了從課堂筆記、課後整理到論文寫作的完整閉環，幫助學生養成學術規範，激發創新能力。
-   &lt;/div&gt; &lt;/li&gt; 
- &lt;/ul&gt; 
- &lt;div&gt;
-  &lt;span style="color:#3498db"&gt;&lt;strong&gt;比手寫更快、更規範、更高效！&lt;/strong&gt;&lt;/span&gt; Mogan STEM 的操作門檻極低，大一新生也能快速上手，從「亂糟糟的草稿本」升級, 大概一週的練習就可以寫出這樣的文本（來自
-  &lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fliiistem.cn%2Flibrary%2Fnotes%2FSTAT850.html" target="_blank"&gt;南科大統計系的一位學生用 Mogan STEM 寫的筆記&lt;/a&gt;）
- &lt;/div&gt; 
- &lt;h2&gt;全新現代化圖標和主題！&lt;em&gt;By Yifan Lu and Shiqi Yu&lt;/em&gt;&lt;/h2&gt; 
- &lt;div&gt;
-  Mogan STEM 1.1 版本現推出 Liii 和 Liii Dark （Liii 的暗夜版本）兩個全新的主題。其中 Liii 主題將是 Mogan STEM 和 Liii STEM 今後的默認主題。
- &lt;/div&gt; 
- &lt;blockquote&gt; 
-  &lt;div&gt;
-   用戶可在 
-   &lt;code&gt;編輯&lt;/code&gt;-&amp;gt;
-   &lt;code&gt;首選項&lt;/code&gt;-&amp;gt;
-   &lt;code&gt;用戶界面主題&lt;/code&gt; 中恢復舊主題。
-  &lt;/div&gt; 
- &lt;/blockquote&gt; 
- &lt;h3&gt;全新主題一覽&lt;/h3&gt; 
- &lt;div&gt;
-  &lt;img src="https://oscimg.oschina.net/oscnet//bd136525174cad6079eae5ca9b0e98a0.jpg" referrerpolicy="no-referrer"&gt;
- &lt;/div&gt; 
- &lt;h3&gt;全新暗夜主題一覽&lt;/h3&gt; 
- &lt;div&gt;
-  &lt;img src="https://oscimg.oschina.net/oscnet//c53ebb123fc158293911dc51611216da.jpg" referrerpolicy="no-referrer"&gt;
- &lt;/div&gt; 
- &lt;h3&gt;界面更新總結&lt;/h3&gt; 
- &lt;ul&gt; 
-  &lt;li&gt; 
-   &lt;div&gt;
-    刪除了兩種打印機字體的圖標，用戶現在可以用快捷鍵 F6，F7 或者，使用&amp;nbsp;
-    &lt;span&gt;\(\LaTeX\)&lt;/span&gt; 命令 
-    &lt;code&gt;\texttt&lt;/code&gt; 以及 
-    &lt;code&gt;\textsc&lt;/code&gt;調用
-    &lt;strong&gt;打印機字體&lt;/strong&gt;的環境。
-   &lt;/div&gt; &lt;/li&gt; 
-  &lt;li&gt; 
-   &lt;div&gt;
-    文本模式下增加了
-    &lt;strong&gt;高亮環境&lt;/strong&gt;的圖標
-   &lt;/div&gt; &lt;/li&gt; 
- &lt;/ul&gt; 
- &lt;div&gt;
-  &lt;img src="https://oscimg.oschina.net/oscnet//5c1f6705a965767a86d96879297e2d58.jpg" referrerpolicy="no-referrer"&gt;
- &lt;/div&gt; 
- &lt;ul&gt; 
-  &lt;li&gt; 
-   &lt;div&gt;
-    增加了
-    &lt;strong&gt;插入內置 AI 塊&lt;/strong&gt;的圖標（Liii STEM 獨有功能，Mogan 點擊該圖標會跳轉 Liii STEM 官網）
-   &lt;/div&gt; &lt;/li&gt; 
- &lt;/ul&gt; 
- &lt;div&gt;
-  &lt;img src="https://oscimg.oschina.net/oscnet//e3211445739b8e98451348368cc4aece.jpg" referrerpolicy="no-referrer"&gt;
- &lt;/div&gt; 
- &lt;ul&gt; 
-  &lt;li&gt; 
-   &lt;div&gt;
-    將大量非矢量圖圖標修正為
-    &lt;strong&gt;矢量圖&lt;/strong&gt;。
-   &lt;/div&gt; &lt;/li&gt; 
-  &lt;li&gt; 
-   &lt;div&gt;
-    改變背景配色使風格更加統一。
-   &lt;/div&gt; &lt;/li&gt; 
-  &lt;li&gt; 
-   &lt;div&gt;
-    修改了幾乎全部圖標，增加了圖標的辨識度。
-   &lt;/div&gt; &lt;/li&gt; 
- &lt;/ul&gt; 
- &lt;h2&gt;支持 Tab 窗口補全！文本，數學，甚至宏！&lt;em&gt;By Zhiyu Zhou&lt;/em&gt;&lt;/h2&gt; 
- &lt;h3&gt;數學補全&lt;/h3&gt; 
- &lt;div&gt;
-  數學模式下 Tab 循環提供全字符顯示彈窗 ：在公式編輯時可通過 Tab 在形狀相似的字符之間進行切換選擇
- &lt;/div&gt; 
- &lt;div&gt;
-  &lt;img src="https://oscimg.oschina.net/oscnet//bb9e8f2212cdcd799385562d38c3fcc7.jpg" referrerpolicy="no-referrer"&gt;
- &lt;/div&gt; 
- &lt;div&gt;
-  &amp;nbsp;
- &lt;/div&gt; 
- &lt;h3&gt;雙向引用補全&lt;/h3&gt; 
- &lt;div&gt;
-  文字模式下 Tab 補全 label 和單詞：支持顯示所有 label 並一鍵補全；相同開頭單詞中隨意切換選擇
- &lt;/div&gt; 
- &lt;div&gt;
-  &lt;img src="https://oscimg.oschina.net/oscnet//86e765cd46f3baa92b3f8b78d7770767.jpg" referrerpolicy="no-referrer"&gt;
- &lt;/div&gt; 
- &lt;div&gt;
-  &amp;nbsp;
- &lt;/div&gt; 
- &lt;h3&gt;文字補全&lt;/h3&gt; 
- &lt;div&gt;
-  &lt;img src="https://oscimg.oschina.net/oscnet//c9ded08d68e98c19ff6db3646475f2a8.jpg" referrerpolicy="no-referrer"&gt;
- &lt;/div&gt; 
- &lt;div&gt;
-  &amp;nbsp;
- &lt;/div&gt; 
- &lt;h3&gt;命令宏補全&lt;/h3&gt; 
- &lt;div&gt;
-  &lt;img src="https://oscimg.oschina.net/oscnet//a9ecf26ed10438570df3a5312407b5a6.jpg" referrerpolicy="no-referrer"&gt;
- &lt;/div&gt; 
- &lt;h2&gt;其餘更新&lt;/h2&gt; 
- &lt;ol&gt; 
-  &lt;li&gt; 
-   &lt;div&gt;
-    更名與版本發佈：項目正式更名為「Mogan STEM」，發佈 2025.1.1 正式版
-   &lt;/div&gt; &lt;/li&gt; 
-  &lt;li&gt; 
-   &lt;div&gt;
-    macOS 上用 
-    &lt;code&gt;cmd&lt;/code&gt;+
-    &lt;code&gt;T&lt;/code&gt;快捷鍵可以添加新標籤頁 
-    &lt;em&gt;&lt;strong&gt;&lt;span&gt;&lt;span&gt;@Zhiyu Zhou &lt;/span&gt;&lt;/span&gt;&lt;/strong&gt;&lt;/em&gt;
-   &lt;/div&gt; &lt;/li&gt; 
-  &lt;li&gt; 
-   &lt;div&gt;
-    macOS 上用 
-    &lt;code&gt;cmd&lt;/code&gt;+ 1-6 快捷鍵可以切換標籤頁 
-    &lt;em&gt;&lt;strong&gt;&lt;span&gt;&lt;span&gt;@Zhiyu Zhou &lt;/span&gt;&lt;/span&gt;&lt;/strong&gt;&lt;/em&gt;
-   &lt;/div&gt; &lt;/li&gt; 
-  &lt;li&gt; 
-   &lt;div&gt;
-    多標籤頁可用性提升：新增了管理附着與脫離的功能，並修復大量多標籤頁相關問題。複雜場景更可靠。
-    &lt;em&gt;&lt;strong&gt;&lt;span&gt;&lt;span&gt;@Zhiyu Zhou &lt;/span&gt;&lt;/span&gt;&lt;/strong&gt;&lt;/em&gt;
-   &lt;/div&gt; &lt;/li&gt; 
-  &lt;li&gt; 
-   &lt;div&gt;
-    保存/另存為/打開中的可選文件格式的羅列
-    &lt;em&gt;&lt;strong&gt; &lt;span&gt;&lt;span&gt;@Zewen Fu &lt;/span&gt;&lt;/span&gt;&lt;/strong&gt;&lt;/em&gt;
-   &lt;/div&gt; &lt;/li&gt; 
-  &lt;li&gt; 
-   &lt;div&gt;
-    性能大幅優化：啓動、編輯與渲染更流暢&amp;nbsp;
-    &lt;em&gt;&lt;strong&gt;&lt;span&gt;&lt;span&gt;@唐一帆 &lt;/span&gt;&lt;/span&gt;&lt;/strong&gt;&lt;/em&gt;
-   &lt;/div&gt; &lt;/li&gt; 
-  &lt;li&gt; 
-   &lt;div&gt;
-    支持 Emoji（內測中）！更強「魔法粘貼」：支持 emoji 與更多內容類型的智能粘貼
-    &lt;em&gt;&lt;strong&gt;&amp;nbsp;&lt;span&gt;&lt;span&gt;@宋明潤 &lt;/span&gt;&lt;/span&gt;&lt;/strong&gt;&lt;/em&gt;
-   &lt;/div&gt; &lt;/li&gt; 
- &lt;/ol&gt; 
- &lt;div&gt;
-  &lt;img src="https://oscimg.oschina.net/oscnet//d4c0b6ca315789b96c83aa1a9037e326.jpg" referrerpolicy="no-referrer"&gt;
- &lt;/div&gt; 
- &lt;ol&gt; 
-  &lt;li&gt; 
-   &lt;div&gt;
-    語義塊：定義、定理等環境的編號，默認採用 European Numbering Style （不同語義塊獨立編號）
-    &lt;em&gt;&lt;strong&gt; &lt;span&gt;&lt;span&gt;@Yansong Li &lt;/span&gt;&lt;/span&gt;&lt;/strong&gt;&lt;/em&gt;
-   &lt;/div&gt; &lt;/li&gt; 
-  &lt;li&gt; 
-   &lt;div&gt;
-    語義塊：新增 Assumption 語義塊環境，感謝用戶 
-    &lt;strong&gt;Weixiao Sun&lt;/strong&gt; 
-    &lt;em&gt;&lt;strong&gt;&lt;span&gt;&lt;span&gt;@Yansong Li &lt;/span&gt;&lt;/span&gt;&lt;/strong&gt;&lt;/em&gt;
-   &lt;/div&gt; &lt;/li&gt; 
-  &lt;li&gt; 
-   &lt;div&gt;
-    數學：數學模式輸入乘法，默認顯示 
-    &lt;span&gt;\(\times\)&lt;/span&gt;，另外的乘法可以使用 Tab 調整 
-    &lt;em&gt;&lt;strong&gt;&lt;span&gt;&lt;span&gt;@Yansong Li &lt;/span&gt;&lt;/span&gt;&lt;/strong&gt;&lt;/em&gt;
-   &lt;/div&gt; &lt;/li&gt; 
-  &lt;li&gt; 
-   &lt;div&gt;
-    數學：支持
-    &lt;code&gt;\iint&lt;/code&gt;, 
-    &lt;code&gt;\oiint,&lt;/code&gt; 
-    &lt;code&gt;\iiint&lt;/code&gt;, 
-    &lt;code&gt;\oint&lt;/code&gt;，
-    &lt;code&gt;\idotsint&lt;/code&gt; 積分符號的 
-    &lt;span&gt;\(\LaTeX\)&lt;/span&gt;&amp;nbsp;宏命令&amp;nbsp;
-    &lt;em&gt;&lt;strong&gt;&lt;span&gt;&lt;span&gt;@Zihao Chen &lt;/span&gt;&lt;/span&gt;&lt;/strong&gt;&lt;/em&gt;
-   &lt;/div&gt; &lt;/li&gt; 
-  &lt;li&gt; 
-   &lt;div&gt;
-    搜索替換：結構化搜索替換窗口嵌入併成為輔助窗口，用戶搜索或替換數學公式等複雜結構時，可以直接使用模式工具欄快速輸入 
-    &lt;em&gt;&lt;strong&gt;&lt;span&gt;&lt;span&gt;@Zhiyu Zhou &lt;/span&gt;&lt;/span&gt;&lt;/strong&gt;&lt;/em&gt;
-   &lt;/div&gt; &lt;/li&gt; 
- &lt;/ol&gt; 
- &lt;h2&gt;致謝&lt;/h2&gt; 
- &lt;div&gt;
-  在此，我們謹向中國科學院軟件研究所「開源之夏」、南方科技大學數學系、南方科技大學物理系以及香港城市大學（東莞）致以誠摯謝意。
- &lt;/div&gt; 
- &lt;div&gt;
-  &amp;nbsp;
- &lt;/div&gt; 
- &lt;div&gt;
-  尤其感謝
-  &lt;em&gt; &lt;/em&gt;
-  &lt;strong&gt;&lt;span&gt;&lt;span&gt;&lt;em&gt;Zhiyu Zhou&lt;/em&gt; &lt;/span&gt;&lt;/span&gt;&lt;/strong&gt; 同學——他不僅以卓越水準完成「開源之夏」全部任務，更主動貢獻了遠超項目要求的優質代碼，為社區帶來持久而深遠的影響。
- &lt;/div&gt; 
- &lt;h2&gt;加入社區&lt;/h2&gt; 
- &lt;ul&gt; 
-  &lt;li&gt; 
-   &lt;div&gt;
-    &lt;strong&gt;Discord 頻道&lt;/strong&gt;：&amp;lt;https://discord.com/invite/M5Gg8yAsTx&amp;gt;
-   &lt;/div&gt; &lt;/li&gt; 
-  &lt;li&gt; 
-   &lt;div&gt;
-    &lt;strong&gt;墨幹社區 QQ 羣&lt;/strong&gt;：934456971
-   &lt;/div&gt; &lt;/li&gt; 
-  &lt;li&gt; 
-   &lt;div&gt;
-    &lt;strong&gt;社區負責人微信號&lt;/strong&gt;：HaggittLi
-   &lt;/div&gt; &lt;/li&gt; 
- &lt;/ul&gt; 
- &lt;div&gt;
-  &amp;nbsp;
- &lt;/div&gt; 
- &lt;div&gt;
-  &lt;span style="color:#3498db"&gt;&lt;strong&gt;更多更新細節&lt;/strong&gt;&lt;/span&gt;詳見 
-  &lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fh02wf0jq8yp.feishu.cn%2Fwiki%2FNPM5wO1O1iZkbtkhofVcAFGPnrc" target="_blank"&gt;Mogan STEM Changelog v2025.1.1&lt;/a&gt; 。
- &lt;/div&gt; 
-&lt;/div&gt;
-                                                                                &lt;/div&gt;
-                                                                            </description>
-      <link>https://www.oschina.net/news/368414</link>
-      <guid isPermaLink="false">https://www.oschina.net/news/368414</guid>
-      <pubDate>Mon, 18 Aug 2025 11:31:00 GMT</pubDate>
-      <author>來源: 資訊</author>
-    </item>
-    <item>
-      <title>Linux 基金會成立「開發者關係基金會」</title>
-      <description>&lt;div class="content"&gt;
-                                                                    
-                                                        &lt;p&gt;在 2025 年 8 月 25 日於阿姆斯特丹舉行的歐洲開源峯會（Open-Source Summit Europe 2025）上，Linux 基金會&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fwww.linuxfoundation.org%2Fpress%2Flinux-foundation-announces-the-formation-of-the-developer-relations-foundation" target="_blank"&gt;宣佈&lt;/a&gt;成立「開發者關係基金會」（Developer Relations Foundation，簡稱 DRF）。&lt;/p&gt; 
-&lt;p&gt;開發者關係基金會是一個社區驅動的項目，旨在提升開發者關係（DevRel）專業實踐的水平，並提高其作為推動業務價值的關鍵角色的認知度。&lt;/p&gt; 
-&lt;p&gt;&lt;img height="1702" src="https://static.oschina.net/uploads/space/2025/0825/190712_Ytfd_2720166.png" width="2130" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;p&gt;自 2024 年 9 月宣佈成立意向以來，DRF 專注於建立治理流程和工作組，以解決 DevRel 領域長期存在的挑戰。根據 2024 年《第 11 屆 DevRel 年度報告》中的數據，以及來自全球開發者關係社區的反饋，過去 12 個月的工作重點包括：&lt;/p&gt; 
-&lt;ol&gt; 
- &lt;li&gt; &lt;p&gt;&lt;strong&gt;連接性&lt;/strong&gt;：DevRel 連接產品、營銷、支持、工程和銷售，以實現業務目標。然而，50% 的調查受訪者表示，DevRel 的影響力缺乏認知。&lt;/p&gt; &lt;/li&gt; 
- &lt;li&gt; &lt;p&gt;&lt;strong&gt;誤解&lt;/strong&gt;：該職業面臨着目的和角色認知的挑戰。&lt;/p&gt; &lt;/li&gt; 
- &lt;li&gt; &lt;p&gt;&lt;strong&gt;對齊性&lt;/strong&gt;：61% 的 DevRel 專業人士認為，他們在證明影響力方面面臨困難。&lt;/p&gt; &lt;/li&gt; 
-&lt;/ol&gt; 
-&lt;p&gt;在過去 12 個月中，DRF 通過資源整合和社區建設的工作組，開發了四個開源項目，以支持 DevRel 專業社區，包括：&lt;/p&gt; 
-&lt;ul&gt; 
- &lt;li&gt; &lt;p&gt;一個包含 24 個定義的人物角色庫（Persona Library）。&lt;/p&gt; &lt;/li&gt; 
- &lt;li&gt; &lt;p&gt;一個包含 36 個定義的工具目錄（Tools Catalog）。&lt;/p&gt; &lt;/li&gt; 
- &lt;li&gt; &lt;p&gt;一個事件目錄（Events Directory）。&lt;/p&gt; &lt;/li&gt; 
- &lt;li&gt; &lt;p&gt;社區戰略框架和模板。&lt;/p&gt; &lt;/li&gt; 
-&lt;/ul&gt; 
-&lt;p&gt;此外，DRF 還建立了指導委員會的結構和選舉流程，計劃於 2025 年 11 月進行選舉。DRF 得到了全球 DevRel 社區和組織的廣泛支持，包括 Aerospike、Ant Group、Hookdeck、MoonGift、SUSE 和 TraceLink 等。這些組織將繼續通過合作和創建特定興趣小組，提升 DevRel 實踐。&lt;/p&gt; 
-&lt;p&gt;Linux 基金會執行董事 Jim Zemlin 表示：「我們很高興支持開發者關係基金會，這將統一 DevRel 社區，提升實踐並推動創新。」&lt;/p&gt; 
-&lt;p&gt;DRF 的使命是提供支持和統一最佳實踐、共同語言和度量標準的環境、方法和框架，以促進 DevRel 社區的發展。如需瞭解更多信息或參與其中，請訪問&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fdev-rel.org%2F" target="_blank"&gt;dev-rel.org&lt;/a&gt;。&lt;/p&gt;
-                                                                                &lt;/div&gt;
-                                                                            </description>
-      <link>https://www.oschina.net/news/368408</link>
-      <guid isPermaLink="false">https://www.oschina.net/news/368408</guid>
-      <pubDate>Mon, 18 Aug 2025 11:11:00 GMT</pubDate>
-      <author>來源: OSCHINA</author>
-    </item>
-    <item>
-      <title>華為雲回應組織架構調整：將更多資源投入到 AI 產業和算力產業上</title>
-      <description>&lt;div class="content"&gt;
-                                                                    
-                                                        &lt;p&gt;華為雲近日宣佈組織架構調整，將整合多個事業部並重心轉向 AI 發展。&lt;/p&gt; 
-&lt;p&gt;調整重點圍繞產品部、公有云服務部及研發部等核心團隊，涉及數十個下層部門與組織。雲 EI（企業智能）產品線下的盤古大模型相關部門被明確撤銷。此次調整將聚焦「3+2+1」業務，其中：3 是通算、智算、存儲；2 是 AI PaaS、數據庫；1 為安全業務。&lt;/p&gt; 
-&lt;p&gt;&lt;a href="https://www.oschina.net/action/GoToLink?url=http%3A%2F%2F%E6%8D%AE%E6%8A%A5%E9%81%93%EF%BC%8C" target="_blank"&gt;華為雲回應稱&lt;/a&gt;，此次調整旨在通過軟硬協同、架構創新，為客戶提供更領先的雲服務，並加大 AI 和算力產業投入。&lt;/p&gt; 
-&lt;p&gt;2024 年華為發佈的財報顯示，公司雲計算業務包含跨分部交易的收入金額為 688 億元，同比增長 24.4%。Canalys 數據顯示，2025 年第一季度，阿里雲在中國雲服務市場中佔據 33% 的份額，華為雲為 18%，騰訊雲為 10%。&lt;/p&gt;
-                                                                                &lt;/div&gt;
-                                                                            </description>
-      <link>https://www.oschina.net/news/368405</link>
-      <guid isPermaLink="false">https://www.oschina.net/news/368405</guid>
-      <pubDate>Mon, 18 Aug 2025 11:02:00 GMT</pubDate>
-      <author>來源: OSCHINA</author>
-    </item>
-    <item>
-      <title>字節 Seed 大模型視覺基礎研究團隊負責人馮佳時離職</title>
-      <description>&lt;div class="content"&gt;
-                                                                    
-                                                        &lt;p&gt;&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fmp.weixin.qq.com%2Fs%2FI_DPFbxlzS-u5JfuYZQyvw" target="_blank"&gt;據媒體報道&lt;/a&gt;，字節 Seed 大模型視覺基礎研究團隊負責人馮佳時已經離職，根據他的彙報關係以及字節對於 AI 大模型研究人員的溢價，職級應該在 4-1 或者 4-2。&lt;/p&gt; 
-&lt;p&gt;&lt;img src="https://static.oschina.net/uploads/space/2025/0825/184907_1Uub_2720166.png" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;p&gt;據相關公開信息，馮佳時是計算機視覺領域頂尖專家，本科畢業於中國科學技術大學，碩士畢業於中國科學院自動化研究所，博士就讀於新加坡國立大學，曾在新加坡國立大學擔任助理教授，2019 年（另有報道稱 2021 年）加入字節跳動，負責視覺基礎研究及多模態生成模型開發，發表論文超 400 篇，獲 MIT TR35 亞洲創新者等榮譽。後來，字節把相關 AI 基礎研究部門統一到 Seed，馮佳時擔任視覺基礎研究負責人。&lt;/p&gt; 
-&lt;p&gt;目前主要研究多模態基礎模型、生成模型、3D 建模。曾獲得麻省理工科技評論 35 歲以下創新者（亞洲），ACM MM 最佳學生論文獎，ICCV TASK-CV 討論會最佳論文獎，CVPR2021 最佳論文獎提名。曾擔任 CVPR、ICML、ICLR、NeurIPS 等會議的領域主席。&lt;/p&gt;
-                                                                                &lt;/div&gt;
-                                                                            </description>
-      <link>https://www.oschina.net/news/368402</link>
-      <guid isPermaLink="false">https://www.oschina.net/news/368402</guid>
-      <pubDate>Mon, 18 Aug 2025 10:49:00 GMT</pubDate>
-      <author>來源: OSCHINA</author>
-    </item>
-    <item>
-      <title>​出版行業面臨 「谷歌零點擊」 危機，尋求新出路</title>
-      <description>&lt;div class="content"&gt;
-                                                                    
-                                                        &lt;p style="color:#242424; margin-left:0; margin-right:0; text-align:left"&gt;隨着 AI 工具的崛起，出版行業正面臨着 「谷歌零點擊」（Google Zero）的威脅。許多媒體高管擔心，谷歌推出的 AI 功能將導致網站流量大幅下降。就在 7 月，谷歌的&lt;span&gt;最新&lt;/span&gt;&lt;span&gt;&amp;nbsp;&lt;/span&gt;AI 工具在英國上線，許多出版商警告説，已經明顯減少的流量可能會加速下降。&lt;/p&gt; 
-&lt;p style="color:#242424; margin-left:0; margin-right:0; text-align:left"&gt;谷歌的 AI 模式會在搜索結果頂部提供詳盡的答案，甚至會在用戶沒有點擊來源網站的情況下總結結果。Immediate Media 的首席執行官肖恩・科恩韋爾表示：「我們確實感受到了 AI 綜述的影響。AI 的進步是指數級的，我們必須假設未來的流量下降會相當明顯。」&lt;/p&gt; 
-&lt;p style="color:#242424; margin-left:0; margin-right:0; text-align:left"&gt;根據 Enders 和專業出版協會的一份報告，約有一半的出版商在過去一年中報告了搜索流量的下降。報告指出，AI 綜述正在侵蝕網站訪問量，四成用戶在搜索中依賴 「零點擊搜索結果」。&lt;/p&gt; 
-&lt;p style="color:#242424; margin-left:0; margin-right:0; text-align:left"&gt;最近的研究表明，當搜索結果中出現 AI 摘要時，谷歌用戶點擊鏈接的概率明顯降低。儘管谷歌對此表示反對，稱這些報告的方法論存在 「根本性缺陷」，並強調整體的流量相對穩定，且用戶點擊質量有所提升。&lt;/p&gt; 
-&lt;p style="color:#242424; margin-left:0; margin-right:0; text-align:left"&gt;在這種背景下，出版商們正在積極尋求新的發展路徑。People Inc 的首席執行官尼爾・沃格爾提到，「谷歌零點擊」 已經成為其戰略的核心。該公司從 Dotdash Meredith 重新品牌為 People Inc，以反映其以人為本的新聞理念。他認為，谷歌的搜索推薦流量已經從五年前的 65% 下降至目前的 30%。&lt;/p&gt; 
-&lt;p style="color:#242424; margin-left:0; margin-right:0; text-align:left"&gt;出版商們也在探索多樣化的營收方式，如通過舉辦現場活動和會議來吸引受眾。Immediate Media 的科恩韋爾表示，關鍵在於通過數字訂閲建立與讀者的直接關係，以應對搜索流量的下降。&lt;/p&gt; 
-&lt;p style="color:#242424; margin-left:0; margin-right:0; text-align:left"&gt;此外，出版商們正在積極適應這一變化。Reach 的首席執行官皮爾斯・諾斯表示，他們正在努力構建一個多樣化的流量來源，以減少對谷歌的依賴。其他出版商則通過社交媒體、新聞通訊和蘋果新聞等平台尋找新的收入機會。&lt;/p&gt;
-                                                                                &lt;/div&gt;
-                                                                            </description>
-      <link>https://www.oschina.net/news/368400</link>
-      <guid isPermaLink="false">https://www.oschina.net/news/368400</guid>
-      <pubDate>Mon, 18 Aug 2025 10:40:00 GMT</pubDate>
-      <author>來源: OSCHINA</author>
-    </item>
-    <item>
-      <title>谷歌修復 Chrome V8 引擎高危漏洞 CVE-2025-9132</title>
-      <description>&lt;div class="content"&gt;
-                                                                    
-                                                        &lt;p&gt;Google 近日&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fchromereleases.googleblog.com%2F2025%2F08%2Fstable-channel-update-for-desktop_19.html" target="_blank"&gt;發佈 Chrome 穩定版更新&lt;/a&gt;，修復了 V8 JavaScript 引擎中的一個高危漏洞（CVE-2025-9132）。該漏洞屬於 &lt;strong&gt;越界寫入（out-of-bounds write）&lt;/strong&gt;，攻擊者可通過惡意網頁觸發內存破壞，進而導致瀏覽器崩潰或遠程代碼執行。&lt;/p&gt; 
-&lt;p&gt;此次更新覆蓋 &lt;strong&gt;Chrome 139.0.7258.138/.139（Windows、macOS）&lt;/strong&gt; 和 &lt;strong&gt;139.0.7258.138（Linux）&lt;/strong&gt;，並影響所有基於 Chromium 的瀏覽器（如 Edge、Brave、Opera 等）。該漏洞由 Google 自研的 AI 安全檢測系統 &lt;strong&gt;Big Sleep&lt;/strong&gt; 發現，並被評為 &lt;strong&gt;CVSS 8.8（高危）&lt;/strong&gt;。&lt;/p&gt; 
-&lt;p&gt;Google 表示，為防止漏洞被利用，在大部分用戶完成更新前不會公開更多技術細節。安全專家建議用戶立即更新至最新版本並重啓瀏覽器，以確保修復生效；同時，企業和使用其他 Chromium 瀏覽器的用戶也需關注後續補丁發佈。&lt;/p&gt;
-                                                                                &lt;/div&gt;
-                                                                            </description>
-      <link>https://www.oschina.net/news/368399</link>
-      <guid isPermaLink="false">https://www.oschina.net/news/368399</guid>
-      <pubDate>Mon, 18 Aug 2025 10:40:00 GMT</pubDate>
-      <author>來源: OSCHINA</author>
-    </item>
-    <item>
-      <title>羣核科技發佈空間大模型 ，後續將逐步開源</title>
-      <description>&lt;div class="content"&gt;
-                                                                    
-                                                        &lt;p&gt;&lt;span style="color:#000000"&gt;羣核科技在首屆技術開放日上&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fmp.weixin.qq.com%2Fs%2FUTav_-E_ql1nR7KqVVS-mw" target="_blank"&gt;發佈&lt;/a&gt;新一代空間語言模型 SpatialLM 1.5 與空間生成模型 SpatialGen，後續將逐步面向全球開發者開源。&lt;/span&gt;&lt;/p&gt; 
-&lt;p&gt;&lt;img height="280" src="https://oscimg.oschina.net/oscnet/up-e973050472401f0b19389e68c61035f649e.png" width="500" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;p&gt;&lt;span style="color:#000000"&gt;根據介紹，本次發佈的 SpatialLM 1.5 是一款基於大語言模型訓練的空間語言模型，支持用戶通過對話交互系統 SpatialLM-Chat 進行可交互場景的端到端生成。相比於傳統大語言模型對物理世界幾何與空間關係的理解侷限，SpatialLM 1.5 不僅能理解文本指令，還能輸出包含空間結構、物體關係、物理參數的「空間語言」。例如，當用戶輸入簡單文本描述時，SpatialLM 1.5 可自動生成結構化場景腳本，智能匹配傢俱模型並完成佈局，並支持後續通過自然語言進行問答或編輯。&lt;/span&gt;&lt;/p&gt; 
-&lt;p&gt;&lt;span style="color:#000000"&gt;SpatialLM 1.5 生成的場景富含物理正確的結構化信息，且能快速批量輸出大量符合要求的多樣化場景，可用於機器人路徑規劃、避障訓練、任務執行等場景，這將有效解決當前機器人訓練「缺數據」的難題。&lt;/span&gt;&lt;/p&gt; 
-&lt;p&gt;&lt;span style="color:#000000"&gt;SpatialGen 是一款基於擴散模型架構的多視角圖像生成模型，可根據文字描述、參考圖像和 3D 空間佈局，生成具有時空一致性的多視角圖像，並支持進一步生成 3D 高斯（3DGS）場景並渲染漫遊視頻。&lt;/span&gt;&lt;/p&gt; 
-&lt;p&gt;&lt;span style="color:#000000"&gt;此外，《科創板日報》還獲悉，羣核科技正在研發一款基於 3D 技術的 AI 視頻生成產品，並計劃在今年內正式發佈。&lt;/span&gt;&lt;/p&gt;
-                                                                                &lt;/div&gt;
-                                                                            </description>
-      <link>https://www.oschina.net/news/368392</link>
-      <guid isPermaLink="false">https://www.oschina.net/news/368392</guid>
-      <pubDate>Mon, 18 Aug 2025 10:20:00 GMT</pubDate>
-      <author>來源: OSCHINA</author>
-    </item>
-    <item>
-      <title>加密貨幣交易平台 Coinbase 強制全員上手 AI 工具，拒絕者直接開除</title>
-      <description>&lt;div class="content"&gt;
-                                                                    
-                                                        &lt;p&gt;Coinbase&amp;nbsp; CEO 布萊恩・阿姆斯特朗（Brian Armstrong）最近在公司內部推行了一項非常激進的政策：拒絕使用 AI 編程工具的員工被直接解僱。&lt;/p&gt; 
-&lt;p&gt;據瞭解，Coinbase 為所有工程師統一採購了 GitHub Copilot 和 Cursor 兩款 AI 編程工具的企業版許可。阿姆斯特朗設定的目標是，本季度結束前讓公司 50% 的代碼由 AI 生成，這一比例超過了微軟和谷歌目前宣稱的 30%。&lt;/p&gt; 
-&lt;p&gt;&lt;img alt="" src="https://oscimg.oschina.net/oscnet/up-8b24ce0088c31bdf32e7d093acd91bf649c.png" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;p&gt;然而阿姆斯特朗被告知，在購買了覆蓋所有工程師的企業許可證後，全員採用 AI 的速度將會很慢，要讓一半的工程師用上 AI 工具可能需要數月時間，他對此感到震驚，於是直接在 Slack 下達強制令：所有工程師必須在一週內開始嘗試使用 AI 工具，並表示未按要求註冊使用 AI 工具的員工需要在週六參加會議解釋原因，那些沒有正當理由而拒絕使用 AI 的工程師當場被解僱。&lt;/p&gt; 
-&lt;p&gt;他説道：「AI 很重要。我們需要你們都學習它，至少要上手試一試。在我們進行一些培訓之前，你們不必每天都使用它，但至少在本週末之前要嘗試一下。如果還沒註冊，我會在週六和所有還沒開始的人開個會，我想和你們見面，瞭解一下原因。」&lt;/p&gt; 
-&lt;p&gt;他回憶表示，在會上，有些人給出了合理解釋，比如正外出度假，但也有一些人沒有合理理由 —— 而這些人直接被解僱了。雖然只有少數幾人（a couple people）被開除，但這種做法還是引起了公司內一些人的不滿。&lt;/p&gt; 
-&lt;p&gt;Armstrong 也承認這是一種「高壓手段」，公司裏有些人「不喜歡」。但他希望的是明確表達自己的態度：AI 不是可選項，而是必須要用的。他還表示未來將加大 AI 培訓：公司每月都會舉辦會議，那些掌握了創造性使用 AI 方法的團隊會分享他們的經驗。&lt;/p&gt;
-                                                                                &lt;/div&gt;
-                                                                            </description>
-      <link>https://www.oschina.net/news/368385</link>
-      <guid isPermaLink="false">https://www.oschina.net/news/368385</guid>
-      <pubDate>Mon, 18 Aug 2025 10:01:00 GMT</pubDate>
-      <author>來源: OSCHINA</author>
-    </item>
-    <item>
-      <title>30 年前的今天：Windows 95 正式發佈，首日就賣了 7.2 億美元</title>
-      <description>&lt;div class="content"&gt;
-                                                                    
-                                                        &lt;p&gt;30 年前的今天，1995 年 8 月 24 日，微軟正式發佈了 Windows 95，當時計算機愛好者們在午夜時分排隊參加發佈活動，場面十分壯觀。在 Windows 95 發佈之前，PC 用戶已經可以使用 Windows 操作系統以及其他類似的 WIMP（窗口、圖標、菜單、指針）操作系統。&lt;/p&gt; 
-&lt;p&gt;&lt;img alt="" src="https://oscimg.oschina.net/oscnet/up-3d9dacf3d5d6150d8fb551c3b4a100f435b.png" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;p&gt;而 Windows 95 則被宣傳為微軟 DOS 和 Windows 產品的統一融合體，並且帶來了諸多新的用戶界面，包括開始菜單和許多我們至今仍在使用的元素。&lt;/p&gt; 
-&lt;p&gt;&lt;strong&gt;Windows 95 還引入了許多首次在 PC 上普及的功能，例如 32 位多任務架構、任務欄、即插即用硬件支持、長文件名支持等。&lt;/strong&gt;&lt;/p&gt; 
-&lt;p&gt;&lt;img alt="" src="https://oscimg.oschina.net/oscnet/up-3ee446958bd527db82f6945b78a683464a8.png" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;p&gt;為了促進從 Windows 3.1 的升級，Windows 95 的官方系統要求設置得相當低，用戶需要配備 Intel 386DX 處理器、4MB 內存、VGA 或更好的顯示器，55MB 的硬盤空間用於安裝。&lt;/p&gt; 
-&lt;p&gt;對於希望充分利用新多任務功能和互聯網功能（如 MSN 和 Exchange）的用戶，推薦配置更高，包括 486 或更好的 CPU、8MB 內存、SVGA 顯示器以及更多的存儲空間。&lt;/p&gt; 
-&lt;p&gt;&lt;img alt="" src="https://oscimg.oschina.net/oscnet/up-fcbab800c3c10d9ceb6d10e4c219fbb1861.png" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;p&gt;當時的 PC 愛好者們要麼購買預裝 Windows 95 的新電腦，要麼支付 209 美元購買操作系統，按通貨膨脹調整後，這在 2025 年相當於近 400 美元。&lt;/p&gt; 
-&lt;p&gt;雖然價格不菲，但微軟的大規模廣告預算和促銷還是取得了成功，據報道，&lt;strong&gt;Windows 95 發佈首日的銷售收入就達到了 7.2 億美元，而在發佈後的第四天，已經出貨了 100 萬份。&lt;/strong&gt;&lt;/p&gt; 
-&lt;p&gt;1996 年，微軟慶祝 Windows 95 發佈一週年時宣佈，該操作系統已經在全球範圍內出貨 4000 萬份。&lt;/p&gt; 
-&lt;p&gt;Windows 95 的成功還體現在遊戲和互聯網的普及上，當時，前 20 名 PC 遊戲發行商中有 10 家已經支持基於 Windows 95 的遊戲；同時隨着 Netscape 和微軟分別發佈其新瀏覽器，互聯網的使用也在加速普及。&lt;/p&gt;
-                                                                                &lt;/div&gt;
-                                                                            </description>
-      <link>https://www.oschina.net/news/368383</link>
-      <guid isPermaLink="false">https://www.oschina.net/news/368383</guid>
-      <pubDate>Mon, 18 Aug 2025 09:51:00 GMT</pubDate>
-      <author>來源: OSCHINA</author>
-    </item>
-    <item>
-      <title>豆包內置「相關視頻」推薦功能引發爭議</title>
-      <description>&lt;div class="content"&gt;
-                                                                    
-                                                        &lt;p style="color:#242424; margin-left:0; margin-right:0; text-align:left"&gt;據鳳凰網科技報道，字節跳動旗下 AI 產品「豆包」近日因其內置的「相關視頻」推薦功能引發廣泛爭議。多位家長反映，該功能在用戶提問時自動附帶抖音短視頻鏈接且無法關閉，導致「AI 學習」場景被娛樂內容侵佔，使用戶，特別是青少年，面臨從工具轉向娛樂的潛在風險。&lt;/p&gt; 
-&lt;p style="color:#242424; margin-left:0; margin-right:0; text-align:left"&gt;該爭議的核心在於&lt;strong&gt;產品定位與用戶體驗的脫節&lt;/strong&gt;。有家長尖鋭指出：「相當於在豆包裏面有個抖音。」他們習慣於通過管控短視頻應用來限制孩子的屏幕時間，但卻忽略了 AI 學習工具中可能存在的類似入口。這揭示了一個新的用戶管理盲區，也對 AI 產品開發者提出了新的倫理挑戰。&lt;/p&gt; 
-&lt;p style="color:#242424; margin-left:0; margin-right:0; text-align:left"&gt;&lt;img height="236" src="https://oscimg.oschina.net/oscnet/up-9a011f67b9fd40c1f5b2816eccae5848d9e.png" width="300" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;p style="color:#242424; margin-left:0; margin-right:0; text-align:left"&gt;據瞭解，該功能不僅默認開啓，且在用戶嘗試通過指令「關閉視頻」後，仍會在次日恢復默認推送狀態，用戶表示此舉「沒什麼用，還會接着推」。部分家長進一步反饋，此前豆包的設置中曾明確提供相關開關選項，但該功能卻在近期悄然移除，這使得用戶失去了自主選擇權，加劇了用戶的負面情緒。&lt;/p&gt; 
-&lt;p style="color:#242424; margin-left:0; margin-right:0; text-align:left"&gt;從產品策略角度看，將短視頻內容整合進 AI 應用，可能是為了增加用戶黏性或實現流量交叉，但這一做法顯然犧牲了工具的純粹性，並引發了關於&lt;strong&gt;用戶隱私、內容控制和未成年人保護&lt;/strong&gt;的討論。在追求商業增長的同時，如何平衡用戶需求與產品倫理，是所有 AI 產品開發者需要深思的問題。&lt;/p&gt;
-                                                                                &lt;/div&gt;
-                                                                            </description>
-      <link>https://www.oschina.net/news/368377</link>
-      <guid isPermaLink="false">https://www.oschina.net/news/368377</guid>
-      <pubDate>Mon, 18 Aug 2025 09:21:00 GMT</pubDate>
-      <author>來源: OSCHINA</author>
-    </item>
-    <item>
-      <title>Wave Terminal - 實現無縫工作流程的跨平台終端</title>
-      <description>&lt;div class="content"&gt;
-                                                                                                                                                                        
-                                                                                    &lt;p style="text-align:start"&gt;&lt;span&gt;&lt;span&gt;&lt;span style="color:#1f2328"&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span style="background-color:#ffffff"&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;Wave 是一個開源終端，它將傳統終端功能與文件預覽、網頁瀏覽和 AI 輔助等圖形功能相結合。它可在 MacOS、Linux 和 Windows 上運行。&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/p&gt;
-
-&lt;p style="text-align:start"&gt;&lt;span&gt;&lt;span&gt;&lt;span style="color:#1f2328"&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span style="background-color:#ffffff"&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;現代開發需要在終端和瀏覽器之間不斷切換——查看文檔、預覽文件、監控系統以及使用 AI 工具。Wave 將這些圖形工具直接引入終端，讓你可以通過命令行控制它們。這意味着你可以繼續使用終端工作流程，同時仍然可以訪問所需的可視化界面。&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/p&gt;
-
-&lt;p style="text-align:start"&gt;&lt;img height="315" src="https://static.oschina.net/uploads/space/2025/0821/154115_6tyT_4252687.png" width="500" referrerpolicy="no-referrer"&gt;&lt;/p&gt;
-
-&lt;div style="text-align:start"&gt;
-&lt;h2&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span style="color:#1f2328"&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span style="background-color:#ffffff"&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;主要特點&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/h2&gt;
-&lt;/div&gt;
-
-&lt;ul&gt;
-&lt;li&gt;靈活的拖放界面，用於組織終端塊、編輯器、Web 瀏覽器和 AI 助手&lt;/li&gt;
-&lt;li&gt;內置編輯器，可通過語法突出顯示和現代編輯器功能無縫編輯遠程文件&lt;/li&gt;
-&lt;li&gt;豐富的遠程文件預覽系統（markdown、圖像、視頻、PDF、CSV、目錄）&lt;/li&gt;
-&lt;li&gt;集成 AI 聊天，支持多種模型（OpenAI、Claude、Azure、Perplexity、Ollama）&lt;/li&gt;
-&lt;li&gt;命令塊用於隔離和監控帶有自動關閉選項的單個命令&lt;/li&gt;
-&lt;li&gt;一鍵遠程連接，可完全訪問終端和文件系統&lt;/li&gt;
-&lt;li&gt;豐富的自定義功能，包括標籤主題、終端樣式和背景圖像&lt;/li&gt;
-&lt;li&gt;強大的&lt;code&gt;wsh&lt;/code&gt;命令系統，用於從 CLI 管理你的工作區並在終端會話之間共享數據&lt;/li&gt;
-&lt;/ul&gt;
-
-                                                                    &lt;/div&gt;
-                                                                </description>
-      <link>https://www.oschina.net/p/waveterm</link>
-      <guid isPermaLink="false">https://www.oschina.net/p/waveterm</guid>
-      <pubDate>Mon, 18 Aug 2025 08:48:00 GMT</pubDate>
-    </item>
-    <item>
-      <title>開源中國聯合 IOTE 國際物聯網展發起「硬科技加速計劃」</title>
-      <description>&lt;div class="content"&gt;
-                                                                    
-                                                        &lt;p&gt;為推動 AI 硬件及硬科技創新項目的加速落地，促進 AI 教育創新與普及，打造線上線下結合的創新展示與交流平台，開源中國聯合 IOTE 國際物聯網展發起&lt;span style="color:#2980b9"&gt;&lt;strong&gt;「硬科技加速計劃」&lt;/strong&gt;&lt;/span&gt;。計劃依託&lt;span style="color:#2980b9"&gt;&lt;strong&gt;造物社區網站&lt;/strong&gt;&lt;/span&gt;（線上展示與交流）與&lt;span style="color:#2980b9"&gt;&lt;strong&gt;北京&lt;strong&gt;&lt;strong&gt;經開區&lt;/strong&gt;&lt;/strong&gt;「AI 與未來世界」科技展廳&lt;/strong&gt;&lt;/span&gt;（實體展示與對接），聯合政府、產業與資本資源，希望為參與者與企業提供曝光、對接落地、項目孵化及業務延展等全方位的扶持。&lt;/p&gt; 
-&lt;p&gt;開源中國運營着 1800 萬開發者聚集的 &lt;a href="http://oschina.net/" target="_blank"&gt;oschina.net&lt;/a&gt; 社區及代碼託管平台 Gitee，服務 36 萬企業級用戶。公司自主研發的 DevOps 工具鏈已在金融、軍工等關鍵領域實現 80% 市場滲透率，成為信創替代工程的標杆案例，驗證了開源商業化的中國路徑。2024 年公司推出 AI 大模型平台「模力方舟」，首創「模型數據 - 算力調度 - 應用開發」全棧服務體系。&lt;/p&gt; 
-&lt;p&gt;IOTE 物聯網展會創辦於 2009 年，是國內目前規模宏大、專業度高的物聯網展之一，同時也已成為國內物聯網產業發展的風向標。&lt;/p&gt; 
-&lt;h3&gt;&lt;strong&gt;參與對象&lt;/strong&gt;&lt;/h3&gt; 
-&lt;ul&gt; 
- &lt;li&gt; &lt;p&gt;AI 硬件廠商、團隊&lt;/p&gt; &lt;/li&gt; 
- &lt;li&gt; &lt;p&gt;高校及科研院所的技術轉化項目&lt;/p&gt; &lt;/li&gt; 
- &lt;li&gt; &lt;p&gt;個人創客及開源硬件愛好者&lt;/p&gt; &lt;/li&gt; 
- &lt;li&gt; &lt;p&gt;&lt;strong&gt;AI 教育教具廠商及硬件課程研發團隊&lt;/strong&gt;&lt;/p&gt; &lt;/li&gt; 
-&lt;/ul&gt; 
-&lt;h3&gt;&lt;strong&gt;加入「硬科技加速計劃」，你的項目將獲得&lt;/strong&gt;&lt;/h3&gt; 
-&lt;ul&gt; 
- &lt;li&gt; &lt;p&gt;開源中國全站流量曝光&lt;/p&gt; &lt;/li&gt; 
- &lt;li&gt; &lt;p&gt;「造物社區網站」專題頁面長期展示&lt;/p&gt; &lt;/li&gt; 
- &lt;li&gt; &lt;p&gt;項目可在北京經開區「AI 與未來世界」線下科技展廳獲得長期/階段性展出位置&lt;/p&gt; &lt;/li&gt; 
- &lt;li&gt; &lt;p&gt;邀請參與政府及產業對接活動&lt;/p&gt; &lt;/li&gt; 
- &lt;li&gt; &lt;p&gt;優先推薦進入政府扶持、採購及投融資項目庫&lt;/p&gt; &lt;/li&gt; 
- &lt;li&gt; &lt;p&gt;具有教育孵化價值的可納入「AI 與未來世界」合作項目名錄，進行孵化或聯合開發&lt;/p&gt; &lt;/li&gt; 
-&lt;/ul&gt; 
-&lt;h3&gt;&lt;strong&gt;參與方式&lt;/strong&gt;&lt;/h3&gt; 
-&lt;ol&gt; 
- &lt;li&gt; &lt;p&gt;&lt;strong&gt;企業/團隊/個人入駐造物社區，上傳項目。鏈接 &lt;em&gt;&lt;a href="https://www.oschina.net/ai-creation/" target="_blank"&gt;https://www.oschina.net/ai-creation/&lt;/a&gt;&lt;/em&gt;&lt;/strong&gt;&lt;/p&gt; &lt;/li&gt; 
- &lt;li&gt; &lt;p&gt;請掃描下方二維碼，申請硬科技加速計劃。&lt;/p&gt; &lt;/li&gt; 
-&lt;/ol&gt; 
-&lt;p&gt;&lt;img src="https://static.oschina.net/uploads/space/2025/0825/163647_UDca_2720166.png" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;h3&gt;&lt;strong&gt;&lt;strong&gt;參與項目作品&lt;/strong&gt;&lt;/strong&gt;&lt;/h3&gt; 
-&lt;p&gt;AI 技術正以前所未有的態勢重塑各個領域。為進一步推動 AI 技術的創新應用，促進 AI 愛好者、開發者以及專業團隊之間的交流與合作，我們的 AI 造物社區現面向全球開啓作品徵集活動。無論你是深耕智能硬件的極客，還是專注於交互體驗創新的設計師，亦或是在 AI 教育領域積極探索的先鋒，我們都誠摯地邀請你參與到本次徵集活動中來，一同為 AI 的發展添磚加瓦，讓創意在社區中落地生根，綻放光彩。&lt;/p&gt; 
-&lt;ul&gt; 
- &lt;li&gt;&lt;span style="color:#2980b9"&gt;&lt;strong&gt;&lt;strong&gt;智能硬件與產品&lt;/strong&gt;&lt;/strong&gt;&lt;/span&gt;&lt;/li&gt; 
- &lt;li&gt;&lt;span style="color:#2980b9"&gt;&lt;strong&gt;&lt;strong&gt;AI 交互體驗項目（含沉浸式交互體驗裝置）&lt;/strong&gt;&lt;/strong&gt;&lt;/span&gt;&lt;/li&gt; 
- &lt;li&gt;&lt;span style="color:#2980b9"&gt;&lt;strong&gt;&lt;strong&gt;開源硬件創意作品&lt;/strong&gt;&lt;/strong&gt;&lt;/span&gt;&lt;/li&gt; 
- &lt;li&gt;&lt;span style="color:#2980b9"&gt;&lt;strong&gt;&lt;strong&gt;AI 教具及創新科教產品&lt;/strong&gt;&lt;/strong&gt;&lt;/span&gt;&lt;/li&gt; 
- &lt;li&gt;&lt;span style="color:#2980b9"&gt;&lt;strong&gt;&lt;strong&gt;AI 開源硬件課程&lt;/strong&gt;&lt;/strong&gt;&lt;/span&gt;&lt;/li&gt; 
-&lt;/ul&gt; 
-&lt;h3&gt;&lt;strong&gt;關於&amp;nbsp;AI 造物社區&lt;/strong&gt;&lt;/h3&gt; 
-&lt;p&gt;AI 造物社區，一個以 (硬件類) 技術項目為核心的一站式創新平台，依託開源中國（OSChina）的龐大開發者生態和 Gitee 的研發工具能力，深度整合 GiteeAI 模力方舟的大模型資源、數據集與算力，為創客和創業團隊提供全棧式 AI 產品化解決方案。社區通過連接 AI 能力供應商、智能硬件供應商及供應鏈廠商，加速從創意孵化到產品落地的進程，推動技術共享與商業化實踐。&lt;/p&gt; 
-&lt;p&gt;詳情請見：&lt;em&gt;&lt;a href="https://www.oschina.net/ai-creation" target="_blank"&gt;https://www.oschina.net/ai-creation&lt;/a&gt;&lt;/em&gt;&lt;/p&gt; 
-&lt;h3&gt;&lt;strong&gt;關於北京&lt;strong&gt;&lt;strong&gt;經開區「AI 與未來世界」科技&lt;/strong&gt;&lt;/strong&gt;展廳&lt;/strong&gt;&lt;/h3&gt; 
-&lt;p&gt;「AI 與未來世界」科技展廳作為北京經開區與開源中國聯合打造的標杆性平台，集產業升級賦能、成果展示推廣、創新科技教育三大核心功能於一體，既是「模力方舟」（Gitee AI 應用共創平台）開放創新生態的重要支撐，也是開展前沿科技教育的關鍵載體。&lt;/p&gt; 
-&lt;p&gt;展廳聚焦人工智能前沿技術與創新應用，通過集中化、場景化的展示，加速科技成果轉化，為產業數字化、智能化轉型注入強勁動力。並與高校、中小學校、青少年宮構建「產學研用」深度協同的人工智能人才培養體系，助力人工智能教育持續健康發展。&lt;/p&gt; 
-&lt;h3 style="margin-left:0.0001pt; margin-right:0px; text-align:left"&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;strong&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;關於 IOTE 品牌展會&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/strong&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/h3&gt; 
-&lt;p style="margin-left:.0001pt; margin-right:0; text-align:left"&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;IOTE 物聯網展會由物聯傳媒創辦於 2009 年 6 月份，是國內目前規模宏大、專業度高的物聯網展之一，同時也已成為國內物聯網產業發展的風向標。&amp;nbsp;&amp;nbsp;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/p&gt; 
-&lt;p style="margin-left:.0001pt; margin-right:0; text-align:left"&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;IOTE &amp;nbsp;是一個關於物聯網完整產業鏈的展會&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;，覆蓋物聯網感知層、網絡層、運算與平台層、應用層，其涉及 RFID、傳感器、移動支付、中間件、短距離無線通訊、低功耗廣域網、大數據、 &amp;nbsp;雲計算、邊緣計算、雲平台、實時定位等物聯網技術。&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/p&gt; 
-&lt;p style="margin-left:.0001pt; margin-right:0; text-align:left"&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;詳情請見：&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fwww.iotexpo.com.cn" target="_blank"&gt;https://www.iotexpo.com.cn&lt;/a&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/p&gt;
-                                                                                &lt;/div&gt;
-                                                                            </description>
-      <link>https://www.oschina.net/news/368364</link>
-      <guid isPermaLink="false">https://www.oschina.net/news/368364</guid>
-      <pubDate>Mon, 18 Aug 2025 08:37:00 GMT</pubDate>
-      <author>來源: OSCHINA</author>
-    </item>
-    <item>
-      <title>Andrej Karpathy：我的 AI LLM 輔助編程體驗</title>
-      <description>&lt;div class="content"&gt;
-                                                                    
-                                                        &lt;p&gt;「Vibe Coding」概念提出者 Andrej Karpathy &lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fx.com%2Fkarpathy%2Fstatus%2F1959703967694545296" target="_blank"&gt;分享&lt;/a&gt;了他的 AI LLM 輔助編程體驗：&lt;/p&gt; 
-&lt;hr&gt; 
-&lt;p&gt;繼續探索最佳的 LLM 輔助編程體驗。特別是，我發現，與其專注於某個完美的單一方式，我的使用方式正越來越多樣化，分佈在幾個不同的工作流中，並將它們的優缺點「拼接」起來：&lt;/p&gt; 
-&lt;p&gt;1、對我來説，LLM 輔助的核心功能（大約佔 75%？）依然是（Cursor）的 Tab 補全。這是因為我發現，自己在代碼的正確位置編寫具體的代碼片段或註釋，是一種高帶寬的方式來向 LLM 傳達「任務規範」。也就是説，這主要是關於任務規範的信息量——用文字表達我想要的內容需要太多信息量和太高的延遲，而直接在代碼中、在正確的位置演示會更快。有時 Tab 補全模型會讓人煩躁，所以我經常切換它的開啓/關閉狀態。&lt;/p&gt; 
-&lt;p&gt;2、更高一層的用法是，選中一段具體的代碼，然後請求進行某種修改。&lt;/p&gt; 
-&lt;p&gt;3、再往上一層是 Claude Code / Codex 等工具，在 Cursor 旁邊運行，我會用它們來處理一些功能塊較大、但也相對容易在提示中明確説明的任務。它們非常有用，但整體效果依然參差不齊，有時還會讓人有些沮喪。我不會用 YOLO 模式運行，因為它們可能會跑偏，做一些你不想要/不需要的蠢事，所以我經常按 ESC。我也還沒學會如何高效地並行使用多個實例——一個就已經夠難應付了。我還沒找到一個好的方法來保持 CLAUDE[.]md 的質量或及時更新。&lt;/p&gt; 
-&lt;p&gt;我經常需要進行一輪「清理」，以調整代碼風格或代碼品味方面的問題。比如，它們過於防禦性，常常濫用 try/catch 語句，經常讓抽象過於複雜，使代碼臃腫（例如用嵌套的 if-then-else 結構，而列表推導式或單行 if-then-else 就能解決），或者重複代碼塊而不是創建一個優雅的輔助函數，諸如此類……基本上，它們沒有代碼品味。 在我涉足一些更偏向「氛圍編程」的領域、自己不太熟悉的情況下，它們是不可或缺的（例如最近寫了一些 Rust，或者 SQL 命令，或者其他我以前做得比較少的事情）。&lt;/p&gt; 
-&lt;p&gt;我也嘗試過讓 CC 在編寫代碼的同時教我相關知識，但這完全行不通——它更想寫代碼，而不是在過程中解釋任何東西。我還試過讓 CC 做超參數調優，這過程非常有趣。它們在各種低風險的一次性定製可視化、工具或調試代碼方面也非常有用，這些代碼我平時根本不會去寫，因為會花費太多時間。&lt;/p&gt; 
-&lt;p&gt;比如，CC 可以一次性寫出 1000 行龐大的臨時可視化/代碼，只為定位一個特定的 bug，找到後立刻全部刪除。現在是代碼後稀缺時代——你可以隨時創建並刪除成千上萬行高度定製、極其短暫的代碼，這沒問題，它不再是那種珍貴昂貴的東西了。&lt;/p&gt; 
-&lt;p&gt;4、最後一道防線是 GPT5 Pro，我會用它來處理最棘手的問題。比如，有幾次我、Cursor 和 CC 都在同一個 bug 上卡了 10 分鐘，但當我把整個內容複製粘貼到 5 Pro 時，它會運行 10 分鐘，然後真的能找到一個非常微妙的 bug。它非常強大，能挖掘出各種深奧的文檔、論文等。我也用它來處理其他更復雜的任務，比如給出如何清理抽象的建議（結果參差不齊，有時有好主意，但並非總是如此），或者做一整個關於人們如何做某事的文獻綜述，並能返回很好的相關資源和參考。&lt;/p&gt; 
-&lt;p&gt;總之，編程現在在多種「類型」的編程方式和多種工具（各有優缺點）之間充滿了可能性。很難避免那種焦慮感——擔心自己沒有站在集體能力的最前沿，因此才有了這種隨機的週日淋浴時的思緒，以及對別人發現了什麼的強烈好奇心。&lt;/p&gt; 
-&lt;blockquote&gt; 
- &lt;p&gt;來源：&lt;em&gt;https://weibo.com/1233486457/Q1rXTahiG&lt;/em&gt;&lt;/p&gt; 
-&lt;/blockquote&gt;
-                                                                                &lt;/div&gt;
-                                                                            </description>
-      <link>https://www.oschina.net/news/368362</link>
-      <guid isPermaLink="false">https://www.oschina.net/news/368362</guid>
-      <pubDate>Mon, 18 Aug 2025 08:32:00 GMT</pubDate>
-      <author>來源: OSCHINA</author>
-    </item>
-    <item>
-      <title>宇樹科技被起訴，案由為侵害發明專利權糾紛</title>
-      <description>&lt;div class="content"&gt;
-                                                                    
-                                                        &lt;p&gt;天眼查 APP 顯示，宇樹科技近日新增 1 條開庭公告，原告為杭州露韋美日化有限公司，案由為侵害發明專利權糾紛。該案件將於 8 月 26 日在杭州市中級人民法院開庭審理。&lt;/p&gt; 
-&lt;p&gt;&lt;img height="176" src="https://oscimg.oschina.net/oscnet/up-88c94f4a40da6926a2d4e2a78d686d53f77.png" width="700" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;p&gt;杭州露韋美日化有限公司成立於 2005 年 6 月，法定代表人為周建軍，註冊資本 55 萬人民幣，經營範圍包括食品互聯網銷售、農副產品銷售、日用百貨銷售等，由周建軍、徐燕共同持股。&lt;/p&gt; 
-&lt;p&gt;知識產權信息顯示，該公司已在 2016 年申請了「一種電子狗」專利，2018 年獲得授權；2023 年申請了「一種會議同聲智能系統」專利，目前正在實質審查階段。&lt;/p&gt;
-                                                                                &lt;/div&gt;
-                                                                            </description>
-      <link>https://www.oschina.net/news/368352</link>
-      <guid isPermaLink="false">https://www.oschina.net/news/368352</guid>
-      <pubDate>Mon, 18 Aug 2025 08:05:00 GMT</pubDate>
+      <pubDate>Tue, 19 Aug 2025 02:15:00 GMT</pubDate>
       <author>來源: OSCHINA</author>
     </item>
   </channel>
