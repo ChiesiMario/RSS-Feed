@@ -7,8 +7,166 @@
     <generator>RSSHub</generator>
     <webMaster>contact@rsshub.app (RSSHub)</webMaster>
     <language>zh-tw</language>
-    <lastBuildDate>Tue, 26 Aug 2025 21:42:10 GMT</lastBuildDate>
+    <lastBuildDate>Wed, 27 Aug 2025 02:43:53 GMT</lastBuildDate>
     <ttl>5</ttl>
+    <item>
+      <title>vivo 等提出 DiMo-GUI：模態分治 + 動態聚焦，GUI 智能體推理時擴展的新範式</title>
+      <description>&lt;div class="content"&gt;
+                                                                                                                    
+                                                                                                                                                    &lt;blockquote&gt; 
+ &lt;p style="margin-left:0; margin-right:0"&gt;作者：vivo 互聯網算法團隊&lt;/p&gt; 
+ &lt;p style="margin-left:0; margin-right:0"&gt;&lt;span style="color:#40a9ff"&gt;&lt;strong&gt;本文入選 EMNLP 2025 Main Conference&lt;/strong&gt;&lt;/span&gt;&lt;/p&gt; 
+ &lt;p style="margin-left:0; margin-right:0"&gt;&lt;strong&gt;EMNLP 會議&lt;/strong&gt;全稱為 Conference on Empirical Methods in Natural Language Processing，由國際計算語言學協會 ACL 舉辦，是自然語言處理和人工智能領域最重要的學術會議之一。EMNLP 2025 會議共有 8174 篇投稿，Main Conference 接收率僅為 22.16%。&lt;/p&gt; 
+&lt;/blockquote&gt; 
+&lt;div&gt; 
+ &lt;div&gt; 
+  &lt;img src="https://oscimg.oschina.net/oscnet//53e017ae0673a706f87b381b014e1ca6.png" referrerpolicy="no-referrer"&gt; 
+ &lt;/div&gt; 
+&lt;/div&gt; 
+&lt;p style="color:#303030; margin-left:0; margin-right:0; text-align:start"&gt;項目主頁：&lt;/p&gt; 
+&lt;p style="color:#303030; margin-left:0; margin-right:0; text-align:start"&gt;&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fxie.infoq.cn%2Flink%3Ftarget%3Dhttps%253A%252F%252Fgithub.com%252Fvivo%252FDiMo-GUI" rel="nofollow" target="_blank"&gt;https://github.com/vivo/DiMo-GUI&lt;/a&gt;&lt;/p&gt; 
+&lt;blockquote&gt; 
+ &lt;p style="margin-left:0; margin-right:0"&gt;&lt;strong&gt;摘要：&lt;/strong&gt;&lt;/p&gt; 
+ &lt;p style="margin-left:0; margin-right:0"&gt;本文介紹了一種無需額外訓練的 GUI 定位框架 DiMo-GUI，針對多模態大語言模型（MLLMs）在複雜圖形用戶界面（GUI）定位任務中的挑戰，通過動態視覺推理與模態感知優化顯著提升性能。DiMo-GUI 採用逐級縮放的動態定位機制，迭代裁剪聚焦目標區域，減少視覺冗餘；同時分離文本與圖標模態，獨立推理後結合指令評估確定最終目標，有效平衡多模態處理能力。在 GUI 定位任務最新的基準數據集上，DiMo-GUI 相較基線展現顯著性能提升。作為即插即用框架，DiMo-GUI 適用於網頁導航、移動應用自動化等場景，未來可通過回溯機制進一步提升魯棒性。&lt;/p&gt; 
+ &lt;p style="margin-left:0; margin-right:0"&gt;該工作由 vivo 互聯網算法團隊、加州大學默塞德分校、昆士蘭大學共同完成。&lt;/p&gt; 
+&lt;/blockquote&gt; 
+&lt;span id="OSC_h1_1"&gt;&lt;/span&gt; 
+&lt;h1&gt;一、引言&lt;/h1&gt; 
+&lt;p style="color:#303030; margin-left:0; margin-right:0; text-align:start"&gt;隨着&lt;strong&gt;圖形用戶界面（Graphical User Interface, GUI）&lt;/strong&gt;在自動化導航和操作系統控制等領域的廣泛應用，基於自然語言查詢的 &lt;strong&gt;GUI 定位（GUI Grounding）&lt;/strong&gt;成為&lt;strong&gt;多模態大語言模型（multimodal large language models, MLLMs）&lt;/strong&gt;的重要研究方向。然而，GUI 環境的視覺複雜性、語言歧義以及空間雜亂等問題為精準定位帶來了顯著挑戰。&lt;/p&gt; 
+&lt;p style="color:#303030; margin-left:0; margin-right:0; text-align:start"&gt;本文基於最新研究《DiMo-GUI: Advancing Test-time Scaling in GUI Grounding via Modality-Aware Visual Reasoning》，介紹了一種無需額外訓練的 GUI 定位框架——&lt;strong&gt;DiMo-GUI&lt;/strong&gt;，通過動態視覺推理和模態感知優化顯著提升了多模態大模型在複雜 GUI 環境中的定位性能，推動了&lt;strong&gt;推理時擴展（test-time scaling）&lt;/strong&gt;在該領域的發展。&lt;/p&gt; 
+&lt;div&gt; 
+ &lt;div&gt; 
+  &lt;img src="https://oscimg.oschina.net/oscnet//0dc3cd4bfdb7f8a14c2a2fde07e79ed9.png" referrerpolicy="no-referrer"&gt; 
+ &lt;/div&gt; 
+&lt;/div&gt; 
+&lt;p style="color:#303030; margin-left:0; margin-right:0; text-align:start"&gt;日常生活中，我們與電腦、手機的交互離不開圖形用戶界面。小到點贊、大到數據分析，我們都希望 AI 能像人一樣，理解屏幕上的每一個按鈕、每一段文字，並準確執行指令。然而，對於飛速發展中的多模態大模型來説，這卻是前所未有的艱鉅挑戰。在一個複雜的 App、網頁或桌面軟件中，用戶可能隨手一句「點擊開始播放」，但對於 AI 來説，準確找到這個指令對應的圖標/按鈕並不簡單：&lt;/p&gt; 
+&lt;blockquote&gt; 
+ &lt;ul&gt; 
+  &lt;li&gt; &lt;p style="margin-left:0; margin-right:0"&gt;&lt;strong&gt;模態混雜&lt;/strong&gt;：用戶界面同時包含文本、圖標、背景、裝飾性元素等，幹擾多；並且大多數 VLM 對文字理解更強，圖標處理卻弱，造成嚴重偏差；&lt;/p&gt; &lt;/li&gt; 
+  &lt;li&gt; &lt;p style="margin-left:0; margin-right:0"&gt;&lt;strong&gt;冗餘信息&lt;/strong&gt;：高分辨率 UI 中，重要區域可能只佔整體的幾十分之一，模型容易定位錯誤區域。&lt;/p&gt; &lt;/li&gt; 
+ &lt;/ul&gt; 
+&lt;/blockquote&gt; 
+&lt;p style="color:#303030; margin-left:0; margin-right:0; text-align:start"&gt;研究發現，傳統方法如基於文本推理或單次視覺定位的管道在高分辨率、視覺擁擠的 GUI 中表現不佳。例如在最新的 ScreenSpot-Pro 數據集上，大多數通用模型如 GPT-4o, Qwen2-VL 等只有 1% 左右的正確率， 即使是針對於 GUI 定位任務的 ShowUI, Aria-UI 等智能體也只有 10% 左右的正確率。&lt;/p&gt; 
+&lt;span id="OSC_h1_2"&gt;&lt;/span&gt; 
+&lt;h1&gt;二、關鍵改進：模態分離 + 動態定位&lt;/h1&gt; 
+&lt;p style="color:#303030; margin-left:0; margin-right:0; text-align:start"&gt;從上述問題出發，該研究推出零訓練成本的 DiMo-GUI，通過模態感知的視覺推理推進訓練時擴展，顯著提升多模態大模型的圖形界面（GUI）理解能力。主要的改進方式包括以下兩點：&lt;/p&gt; 
+&lt;blockquote&gt; 
+ &lt;ul&gt; 
+  &lt;li&gt; &lt;p style="margin-left:0; margin-right:0"&gt;&lt;strong&gt;動態視覺定位&lt;/strong&gt;：DiMo-GUI 採用逐級縮放機制，從粗略預測開始，基於初始座標生成候選焦點區域，並通過迭代裁剪逐步聚焦目標。例如，首次推理後，模型以預測座標為中心裁剪半個圖像大小的區域作為下一輪輸入，顯著減少視覺冗餘。動態迭代機制根據前後預測的座標距離（小於圖像對角線六分之一時停止）實現自適應停止，避免「過度思考」。&lt;/p&gt; &lt;/li&gt; 
+  &lt;li&gt; &lt;p style="margin-left:0; margin-right:0"&gt;&lt;strong&gt;模態感知優化&lt;/strong&gt;：DiMo-GUI 將 GUI 元素分為文本和圖標兩類，分別進行獨立的定位推理，生成文本座標（C_text）和圖標座標（C_icon）。隨後，模型結合原始指令和全分辨率圖像評估兩個候選座標，確定最終目標 （C*），有效平衡文本和圖標的處理能力。&lt;/p&gt; &lt;/li&gt; 
+ &lt;/ul&gt; 
+&lt;/blockquote&gt; 
+&lt;p style="color:#303030; margin-left:0; margin-right:0; text-align:start"&gt;這樣的方式推動了&lt;strong&gt;推理時拓展（Test-time Scaling）&lt;/strong&gt;在 GUI 定位這一領域的發展，提供了新的思路和方式。&lt;/p&gt; 
+&lt;div&gt; 
+ &lt;div&gt; 
+  &lt;img src="https://oscimg.oschina.net/oscnet//e83f73873fbad7e248e1da405b99f189.png" referrerpolicy="no-referrer"&gt; 
+ &lt;/div&gt; 
+&lt;/div&gt; 
+&lt;p style="color:#303030; margin-left:0; margin-right:0; text-align:start"&gt;&amp;nbsp;&lt;/p&gt; 
+&lt;span id="OSC_h1_3"&gt;&lt;/span&gt; 
+&lt;h1&gt;三、實驗結果：無需訓練和任何額外數據，只在推理階段就可以大幅提升性能&lt;/h1&gt; 
+&lt;div&gt; 
+ &lt;div&gt; 
+  &lt;img src="https://oscimg.oschina.net/oscnet//b3d3d49204e1faa771ec0ad0791dea74.png" referrerpolicy="no-referrer"&gt; 
+ &lt;/div&gt; 
+&lt;/div&gt; 
+&lt;p style="color:#303030; margin-left:0; margin-right:0; text-align:start"&gt;團隊在最新的高分辨率 GUI 數據集 ScreenSpot-Pro 上驗證發現：&lt;/p&gt; 
+&lt;blockquote&gt; 
+ &lt;ul&gt; 
+  &lt;li&gt; &lt;p style="margin-left:0; margin-right:0"&gt;DiMo-GUI 可以作為即插即用的框架大幅提升多個 GUI 模型的性能。&lt;/p&gt; &lt;/li&gt; 
+  &lt;li&gt; &lt;p style="margin-left:0; margin-right:0"&gt;其中 OS-Atlas-7B 在引入 DiMo-GUI 之後獲得了超過兩倍的指標提升（18.9% -- 49.7%）, UGround-7B 和 UGround-V1-7B 也均獲得了超過 10% 的指標提升。&lt;/p&gt; &lt;/li&gt; 
+ &lt;/ul&gt; 
+&lt;/blockquote&gt; 
+&lt;p style="color:#303030; margin-left:0; margin-right:0; text-align:start"&gt;在相對簡單的 ScreenSpot 數據集上，DiMo-GUI 同樣可以提升多個模型的性能。&lt;/p&gt; 
+&lt;div&gt; 
+ &lt;div&gt; 
+  &lt;img src="https://oscimg.oschina.net/oscnet//92892c7de106ba9aac72c1532918459f.png" referrerpolicy="no-referrer"&gt; 
+ &lt;/div&gt; 
+&lt;/div&gt; 
+&lt;p style="color:#303030; margin-left:0; margin-right:0; text-align:start"&gt;定性結果表示，模型加入 DiMo-GUI 之後可以通過動態定位逐步逼近正確結果。&lt;/p&gt; 
+&lt;div&gt; 
+ &lt;div&gt; 
+  &lt;img src="https://oscimg.oschina.net/oscnet//b763f01354805dae541a9ab9898a0ae1.png" referrerpolicy="no-referrer"&gt; 
+ &lt;/div&gt; 
+&lt;/div&gt; 
+&lt;span id="OSC_h1_4"&gt;&lt;/span&gt; 
+&lt;h1&gt;四、總結&lt;/h1&gt; 
+&lt;p style="color:#303030; margin-left:0; margin-right:0; text-align:start"&gt;&lt;strong&gt;DiMo-GUI&lt;/strong&gt;&amp;nbsp;提供了一種高效、通用且無需訓練的 &lt;strong&gt;GUI 定位框架&lt;/strong&gt;，通過動態視覺推理和模態感知優化顯著提升了多模態大語言模型在複雜 GUI 環境中的表現。其&lt;strong&gt;「即插即用」&lt;/strong&gt;特性使其可無縫集成到現有 &lt;strong&gt;GUI Agent &lt;/strong&gt;中，適用於網頁導航、移動應用自動化等場景。未來研究可探索引入回溯機制以糾正早期錯誤，進一步提升定位魯棒性。&lt;/p&gt;
+                                                                                    &lt;/div&gt;
+                                                                            </description>
+      <link>https://my.oschina.net/vivotech/blog/18689577</link>
+      <guid isPermaLink="false">https://my.oschina.net/vivotech/blog/18689577</guid>
+      <pubDate>Wed, 27 Aug 2025 02:37:52 GMT</pubDate>
+      <author>原創</author>
+    </item>
+    <item>
+      <title>谷歌發佈新圖像生成模型 nano banana</title>
+      <description>&lt;div class="content"&gt;
+                                                                    
+                                                        &lt;p&gt;谷歌正式&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fdevelopers.googleblog.com%2Fen%2Fintroducing-gemini-2-5-flash-image%2F" target="_blank"&gt;發佈&lt;/a&gt;了其最先進的圖像生成與編輯模型——Gemini 2.5 Flash Image（又名 nano banana）。&lt;/p&gt; 
+&lt;p&gt;&lt;img alt="" src="https://oscimg.oschina.net/oscnet/up-9cb4376ea1cc064051cdbcd5e04a019d086.png" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;img alt="" src="https://oscimg.oschina.net/oscnet/up-cd68bfaad4042c2de322bf1198b1e09f449.png" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;strong&gt;據官方介紹，Gemini 2.5 Flash Image 的主要特點包括下面幾點：&lt;/strong&gt;&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt;充分保持角色的一致性：它可以輕鬆地將同一個角色置於不同的環境中，或者從多個角度展示同一款產品，同時完美地保持其核心主體不變。&lt;/li&gt; 
+ &lt;li&gt;基於提示的圖片編輯：允許用戶通過簡單的自然語言指令，對圖片進行精準的局部修改 。&lt;/li&gt; 
+ &lt;li&gt;利用 Gemini 的現實世界知識：模型可藉助 Gemini 強大的世界知識庫，讓圖像生成變得更加「智能」。&lt;/li&gt; 
+ &lt;li&gt;多幅圖像融合：可以將一張圖片中的物體「放」進另一張圖片的場景裏，整個過程只需一條提示指令就能完成。&lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;p&gt;性能表現上，Gemini 2.5 Flash Image 在多項基準測試上均為第一名，超越 OpenAI ChatGPT 4o（GPT Image 1 high）、Qwen Image Edit 等模型。&lt;/p&gt; 
+&lt;p&gt;&lt;img alt="" src="https://oscimg.oschina.net/oscnet/up-bfee07407ab38e2b001fd0dbe895d36f242.png" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p&gt;關於調用 API，具體的定價是每百萬輸出 token 30 美元，官方介紹，生成一張圖片大約消耗 1290 個輸出 token，也就是説，每張圖片的成本約為 0.039 美元，換算下來人民幣不到 3 毛錢。&lt;/p&gt; 
+&lt;p&gt;目前，Gemini 2.5 Flash Image 已經可以通過 Gemini APP、Gemini API、Google AI Studio 和 Vertex AI 進行訪問。&lt;/p&gt;
+                                                                                &lt;/div&gt;
+                                                                            </description>
+      <link>https://www.oschina.net/news/368669/google-gemini-2-5-flash-image</link>
+      <guid isPermaLink="false">https://www.oschina.net/news/368669/google-gemini-2-5-flash-image</guid>
+      <pubDate>Wed, 27 Aug 2025 02:21:21 GMT</pubDate>
+      <author>來源: OSCHINA</author>
+    </item>
+    <item>
+      <title>蘋果內部正探討收購 Mistral 和 Perlextity 可能性</title>
+      <description>&lt;div class="content"&gt;
+                                                                    
+                                                        &lt;p&gt;據報道，蘋果公司內部已就收購法國人工智能初創公司 Mistral 以及美國的 Perplexity 展開討論。這一舉措旨在增強其人工智能能力，以應對谷歌和三星等競爭對手的領先優勢。&lt;/p&gt; 
+&lt;p&gt;此前，蘋果首席執行官蒂姆・庫克在上個月暗示，公司對大規模人工智能相關收購持開放態度，以加速其人工智能發展路線圖，這與蘋果以往在併購方面的保守姿態有所不同。Mistral 在去年 B 輪融資後估值超過 60 億美元，本月有報道稱該公司正在洽談以 100 億美元估值籌集 10 億美元資金。今年早些時候，彭博社也曾報道，蘋果高管內部討論過對 Perplexity 的潛在收購意向。&lt;/p&gt; 
+&lt;p&gt;據《The Information》報道，蘋果服務業務主管埃迪・庫伊是收購人工智能公司以增強蘋果產品實力的主要倡導者，他曾提議收購 Netflix 和特斯拉，但均被庫克否決。而軟件業務主管克雷格・費德里吉則對大規模人工智能收購持謹慎態度，他認為蘋果有能力內部構建人工智能技術。&lt;/p&gt; 
+&lt;p&gt;目前，蘋果對這兩起潛在收購仍存顧慮，因其可能涉及鉅額資金，而蘋果歷史上極少有超億美元的收購交易。若聯邦裁決終止蘋果與谷歌 200 億美元的默認搜索引擎合作，蘋果或更有動力收購人工智能搜索初創公司填補空缺。&lt;/p&gt; 
+&lt;p&gt;截至目前，蘋果、Mistral 和 Perplexity 均未對此置評。&lt;/p&gt;
+                                                                                &lt;/div&gt;
+                                                                            </description>
+      <link>https://www.oschina.net/news/368665</link>
+      <guid isPermaLink="false">https://www.oschina.net/news/368665</guid>
+      <pubDate>Wed, 27 Aug 2025 02:13:21 GMT</pubDate>
+      <author>來源: OSCHINA</author>
+    </item>
+    <item>
+      <title>Opera 二季度營收同比增長 30%，AI 生態開啓新一輪增長週期</title>
+      <description/>
+      <link>https://www.oschina.net/news/368662</link>
+      <guid isPermaLink="false">https://www.oschina.net/news/368662</guid>
+      <pubDate>Wed, 27 Aug 2025 02:06:21 GMT</pubDate>
+    </item>
+    <item>
+      <title>阿里開源視頻生成模型 Wan2.2-S2V</title>
+      <description>&lt;div class="content"&gt;
+                                                                    
+                                                        &lt;p&gt;&lt;span style="color:#000000"&gt;阿里&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fmp.weixin.qq.com%2Fs%2F5FwE7TvjzDYQabnpnMru6Q" target="_blank"&gt;宣佈&lt;/a&gt;開源全新多模態視頻生成模型通義萬相 Wan2.2-S2V，通過一張靜態圖片和一段音頻，可生成電影級數字人視頻，該模型單次生成的視頻時長可達分鐘級，提升數字人直播、影視製作、AI 教育等行業的視頻創作效率。&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;img height="256" src="https://oscimg.oschina.net/oscnet/up-da3fb7fdb3af007528ceab6ea0bd26a6902.png" width="500" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;span style="color:#000000"&gt;根據介紹，Wan2.2-S2V 可驅動真人、卡通、動物、數字人等多種類型圖片，並支持肖像、半身以及全身等任意畫幅，上傳一段音頻後，模型就能讓圖片中的主體形象完成説話、唱歌和表演等動作。&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;span style="color:#000000"&gt;通義團隊基於通義萬相的通用視頻生成能力，融合了文本引導的全局運動控制和音頻驅動的細粒度局部運動，實現了複雜場景的音頻驅動視頻生成；引入 AdaIN 和 CrossAttention 兩種控制機制，實現了更準確更動態的音頻控制效果。&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;span style="color:#000000"&gt;生成時長上，Wan2.2-S2V 單次生成的視頻時長可達業界領先的分鐘級。&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;span style="color:#000000"&gt;Wan2.2-S2V 通過層次化幀壓縮技術，大幅降低了歷史幀的 Token 數量，通過該方式將 motion frames(歷史參考幀) 的長度從數幀拓展到 73 幀， 從而實現了穩定的長視頻生成效果。&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;span style="color:#000000"&gt;Wan2.2-S2V 還支持文本控制，輸入 Prompt 後還可對視頻畫面進行控制，實現鏡頭運動、角色軌跡和實體間互動，讓視頻主體的運動和背景的變化更豐富。&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;span style="color:#000000"&gt;在模型訓練上，通義團隊構建了超 60 萬個片段的音視頻數據集，通過混合並行訓練進行全參數化訓練，充分挖掘了 Wan2.2-S2V 模型的性能。&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;span style="color:#000000"&gt;同時通過多分辨率訓練、支持模型多分辨率的推理，Wan2.2-S2V 可支持不同分辨率場景的視頻生成需求, 如豎屏短視頻、橫屏影視劇。&lt;/span&gt;&lt;/p&gt;
+                                                                                &lt;/div&gt;
+                                                                            </description>
+      <link>https://www.oschina.net/news/368660</link>
+      <guid isPermaLink="false">https://www.oschina.net/news/368660</guid>
+      <pubDate>Wed, 27 Aug 2025 01:59:21 GMT</pubDate>
+      <author>來源: OSCHINA</author>
+    </item>
     <item>
       <title>國務院：建立健全人工智能開源貢獻評價和激勵機制，鼓勵高校將開源貢獻納入學生學分認證和教師成果認定</title>
       <description>&lt;div class="content"&gt;
@@ -100,20 +258,10 @@
     </item>
     <item>
       <title>國務院發佈《「人工智能+」行動意見》 2035 年邁入智能社會</title>
-      <description>&lt;div class="content"&gt;
-                                                                    
-                                                        &lt;p style="color:#242424; margin-left:0; margin-right:0; text-align:left"&gt;&lt;span&gt;國務院近日正式印發《&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fwww.gov.cn%2Fzhengce%2Fcontent%2F202508%2Fcontent_7037861.htm" target="_blank"&gt;關於深入實施「人工智能+」行動的意見&lt;/a&gt;》，提出明確時間表與發展目標，全面推動人工智能技術賦能經濟社會高質量發展。&lt;/span&gt;&lt;/p&gt; 
-&lt;p style="color:#242424; margin-left:0; margin-right:0; text-align:left"&gt;&lt;img height="237" src="https://oscimg.oschina.net/oscnet/up-f8b9dd452974599b0158dc3c5ff04d27931.png" width="500" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;p style="color:#242424; margin-left:0; margin-right:0; text-align:left"&gt;根據《意見》，到 2027 年，我國將率先在 6 大重點領域實現人工智能的廣泛深度融合，新一代智能終端和智能體等核心應用普及率將超過 70%，智能經濟核心產業規模快速增長。同時，人工智能在公共治理領域的應用將顯著增強，開放合作體系日趨完善。&lt;/p&gt; 
-&lt;p style="color:#242424; margin-left:0; margin-right:0; text-align:left"&gt;到 2030 年，人工智能將全面賦能各行業高質量發展，核心應用普及率進一步提升至 90% 以上，智能經濟成為中國經濟新的增長極，帶動技術普惠和創新成果共享。&lt;/p&gt; 
-&lt;p style="color:#242424; margin-left:0; margin-right:0; text-align:left"&gt;展望 2035 年，我國將全面邁入智能經濟與智能社會新階段，人工智能將成為實現社會主義現代化的重要支撐力量。&lt;/p&gt; 
-&lt;p style="color:#242424; margin-left:0; margin-right:0; text-align:left"&gt;此次《意見》的發佈，標誌着我國「人工智能+」戰略正式進入系統推進階段，為全球人工智能發展注入中國方案。&lt;/p&gt;
-                                                                                &lt;/div&gt;
-                                                                            </description>
+      <description/>
       <link>https://www.oschina.net/news/368591</link>
       <guid isPermaLink="false">https://www.oschina.net/news/368591</guid>
       <pubDate>Mon, 18 Aug 2025 09:58:00 GMT</pubDate>
-      <author>來源: OSCHINA</author>
     </item>
     <item>
       <title>百度發佈 AI 智能搜索工具「梯子 AI 」</title>
@@ -455,110 +603,6 @@ cc main.c -lgdi32 -lwinmm -o main.exe &amp;amp;&amp;amp; main.exe&lt;/code&gt;&l
       <guid isPermaLink="false">https://my.oschina.net/u/3859945/blog/18689590</guid>
       <pubDate>Mon, 18 Aug 2025 08:34:00 GMT</pubDate>
       <author>原創</author>
-    </item>
-    <item>
-      <title>谷歌收緊 Android 側載功能，將僅允許通過「開發者驗證」的應用進行安裝</title>
-      <description>&lt;div class="content"&gt;
-                                                                    
-                                                        &lt;p&gt;谷歌&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fandroid-developers.googleblog.com%2F2025%2F08%2Felevating-android-security.html" target="_blank"&gt;宣佈&lt;/a&gt;，從 2026 年起，只有通過驗證的開發者發佈的應用才能安裝在認證 Android 設備上。&lt;/p&gt; 
-&lt;blockquote&gt; 
- &lt;p&gt;&lt;strong&gt;從明年開始，Android 將要求所有應用程序必須由經過驗證的開發者進行註冊，用戶才能在認證的 Android 設備上安裝這些應用程序。&lt;/strong&gt;&lt;/p&gt; 
-&lt;/blockquote&gt; 
-&lt;p&gt;所謂「認證 Android 設備」指的是預裝 Google Play Protect 和其他 Google 應用的設備，這些設備需遵循新的開發者驗證流程才能安裝應用。&lt;/p&gt; 
-&lt;p&gt;開發者在驗證過程中將需要向谷歌提供以下信息：&lt;/p&gt; 
-&lt;ul&gt; 
- &lt;li&gt;個人開發者：法定全名、地址、電子郵箱和電話號碼。&lt;/li&gt; 
- &lt;li&gt;企業開發者：還需提供網站和 D-U-N-S 編號&lt;/li&gt; 
-&lt;/ul&gt; 
-&lt;p&gt;需要注意的是，這些信息將由谷歌保存用於驗證，但「不會向用戶公開」。同時，谷歌提供了專門的 Android Developer Console 來處理這些驗證流程，這與 Play 商店的開發者控制枱有所區別。&lt;/p&gt; 
-&lt;p&gt;谷歌表示，來自網絡側載（非 Play 商店）的應用含有的惡意軟件數量是 Play 商店的 50 倍以上，儘管 Play 商店從 2023 年就已要求開發者驗證。這項措施旨在提高開發者的責任感，降低匿名惡意開發者傳播惡意軟件和詐騙行為的機會。&lt;/p&gt;
-                                                                                &lt;/div&gt;
-                                                                            </description>
-      <link>https://www.oschina.net/news/368572</link>
-      <guid isPermaLink="false">https://www.oschina.net/news/368572</guid>
-      <pubDate>Mon, 18 Aug 2025 08:27:00 GMT</pubDate>
-      <author>來源: OSCHINA</author>
-    </item>
-    <item>
-      <title>豆包正式上線未成年人保護模式</title>
-      <description>&lt;div class="content"&gt;
-                                                                    
-                                                        &lt;p style="color:#242424; margin-left:0; margin-right:0; text-align:left"&gt;豆包宣佈正式上線未成年人保護模式。家長朋友們輸入密碼，開啓該模式後，推薦視頻、瀏覽第三方網頁、和豆包以外的智能體對話、AI 創作功能將被默認關閉。&lt;/p&gt; 
-&lt;p style="color:#242424; margin-left:0; margin-right:0; text-align:left"&gt;&lt;span style="color:#222222"&gt;此前，有網友反饋稱因豆包會在問答結果中提供相應短視頻作為參考，部分兒童可能借此瀏覽視頻內容，分散注意力。&lt;/span&gt;&lt;/p&gt; 
-&lt;p style="color:#242424; margin-left:0; margin-right:0; text-align:left"&gt;&lt;img height="347" src="https://oscimg.oschina.net/oscnet/up-2aa91bbdaff54539d9e6e13d2b0fb2d9314.png" width="300" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;p style="color:#242424; margin-left:0; margin-right:0; text-align:left"&gt;開啓該功能後，翻譯、深入研究等功能仍能正常使用。官方表示，未成年人模式是為家長提供的工具，以方便關閉部分功能，防止小朋友拿到設備後可能的不適當使用。&lt;/p&gt;
-                                                                                &lt;/div&gt;
-                                                                            </description>
-      <link>https://www.oschina.net/news/368569</link>
-      <guid isPermaLink="false">https://www.oschina.net/news/368569</guid>
-      <pubDate>Mon, 18 Aug 2025 08:15:00 GMT</pubDate>
-      <author>來源: OSCHINA</author>
-    </item>
-    <item>
-      <title>2028 年人形機器人芯片市場有望突破 4800 萬美元</title>
-      <description>&lt;div class="content"&gt;
-                                                                    
-                                                        &lt;p style="color:#212121; margin-left:0; margin-right:0; text-align:justify"&gt;TrendForce 集邦諮詢最新研究，英偉達近日新推出的 Jetson Thor 能夠為機器人提供更強的算力支持，有望帶動芯片市場擴容。在 Agility Robotics(敏捷機器人)、Boston Dynamics(波士頓動力)、Amazon(亞馬遜) 等廠商陸續採用與建置生態圈的趨勢下，預估人形機器人芯片市場規模有望於 2028 年突破 4,800 萬美元。&lt;/p&gt; 
-&lt;p style="color:#212121; margin-left:0; margin-right:0; text-align:justify"&gt;&lt;span&gt;&lt;span&gt;TrendForce 集邦諮詢表示，&lt;/span&gt;英偉達&lt;/span&gt;近日推出的 Jetson Thor 被視為機器人的物理智慧核心，以 Blackwell GPU、128 GB 記憶體堆疊出 2070 FP4 TFLOPS AI 算力，是前代 Jetson Orin 的 7.5 倍。這不僅是單純的數字躍升，還是幫助終端本體能即時處理龐大感測數據與大型語言模型 (LLM)，一定程度上讓高階人形機器人真正的看見、思考與行動。&lt;/p&gt; 
-&lt;p style="color:#212121; margin-left:0; margin-right:0; text-align:justify"&gt;&lt;img height="273" src="https://oscimg.oschina.net/oscnet/up-3b480094725e5441ad7caf09a3f01e8367c.png" width="300" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;p style="color:#212121; margin-left:0; margin-right:0; text-align:justify"&gt;隨着人形機器人軟硬件技術推陳出新，影響放量關鍵的應用場景仍為產業關注重點。根據國際機器人聯合會 (IFR)2025 年下半年發佈的最新論文，各國人形機器人發展雖依技術、目的有所不同，不過短期多以試點補位為主，中期進入製造與服務規模化，長期可望普及至家庭日常場景，高階 SoC 在此階段的效用更加關鍵。TrendForce 集邦諮詢此前認為，全球人形機器人需待 2032 年前後穩定走入家庭，才能真正放量突破 10 萬台，切合 IFR 提出之階段發展。&lt;/p&gt; 
-&lt;p style="color:#212121; margin-left:0; margin-right:0; text-align:justify"&gt;TrendForce 集邦諮詢指出，儘管 NVIDIA Jetson Thor 系列提供強大效能，但其開發套件價格達 3,499 美元，相較於前代 Jetson Orin 的 1,499 美元大幅提高。但因產業趨勢希望通過降低人形機器人價格以利推廣，對於短、中期僅規劃人形機器人執行相對單純作業的廠商而言，一般較平價的芯片即可滿足需求。&lt;/p&gt; 
-&lt;p style="color:#212121; margin-left:0; margin-right:0; text-align:justify"&gt;在此前提下，NVIDIA 或將再次善用其軟硬件綁定之優勢，後續為 Jetson Thor 推出更多能發揮其效能之軟件平台，達到縮短開發時間、執行特定任務等之效益，以提升墊高 AI 算力成本的價值。&lt;/p&gt;
-                                                                                &lt;/div&gt;
-                                                                            </description>
-      <link>https://www.oschina.net/news/368561</link>
-      <guid isPermaLink="false">https://www.oschina.net/news/368561</guid>
-      <pubDate>Mon, 18 Aug 2025 07:51:00 GMT</pubDate>
-      <author>來源: OSCHINA</author>
-    </item>
-    <item>
-      <title>Label Studio —— 開源、可配置的數據標註工具</title>
-      <description>&lt;div class="content"&gt;
-                                                                                                                                                                        
-                                                                                    &lt;p&gt;Label Studio 開源、可配置的數據標註平台，其目的是使您能夠使用標準化輸出格式的最方便的界面標記不同類型的數據。&lt;/p&gt;
-
-&lt;p&gt;它使團隊能夠使用靈活的 UI 標註各種數據類型，並與機器學習工作流程集成。&lt;/p&gt;
-
-&lt;p&gt;主要功能&lt;/p&gt;
-
-&lt;ul&gt;
-&lt;li&gt;標註&lt;strong&gt;多種數據類型&lt;/strong&gt;，包括圖像、音頻、文本、HTML、視頻和時間序列數據&lt;/li&gt;
-&lt;li&gt;通過簡單的配置系統創建&lt;strong&gt;可定製的標註界面&lt;/strong&gt;&lt;/li&gt;
-&lt;li&gt;支持&lt;strong&gt;多用戶協作&lt;/strong&gt;，並具有基於角色的訪問控制&lt;/li&gt;
-&lt;li&gt;連接到&lt;strong&gt;各種存儲解決方案&lt;/strong&gt;，包括 S3、GCS、Azure Blob Storage 和本地文件系統&lt;/li&gt;
-&lt;li&gt;與&lt;strong&gt;機器學習模型&lt;/strong&gt;集成，進行預標註和主動學習&lt;/li&gt;
-&lt;/ul&gt;
-
-&lt;p&gt;&lt;img src="https://static.oschina.net/uploads/space/2025/0826/154435_qP3p_2720166.gif" referrerpolicy="no-referrer"&gt;&lt;/p&gt;
-
-                                                                    &lt;/div&gt;
-                                                                </description>
-      <link>https://www.oschina.net/p/label-studio</link>
-      <guid isPermaLink="false">https://www.oschina.net/p/label-studio</guid>
-      <pubDate>Mon, 18 Aug 2025 07:47:00 GMT</pubDate>
-    </item>
-    <item>
-      <title>AI 瀏覽器被曝新型攻擊方式：間接提示詞注入</title>
-      <description>&lt;div class="content"&gt;
-                                                                    
-                                                        &lt;p&gt;瀏覽器&amp;nbsp;&lt;span style="font-family:-apple-system,BlinkMacSystemFont,&amp;quot;Apple Color Emoji&amp;quot;,&amp;quot;Segoe UI Emoji&amp;quot;,&amp;quot;Segoe UI Symbol&amp;quot;,&amp;quot;Segoe UI&amp;quot;,&amp;quot;PingFang SC&amp;quot;,&amp;quot;Hiragino Sans GB&amp;quot;,&amp;quot;Microsoft YaHei&amp;quot;,&amp;quot;Helvetica Neue&amp;quot;,Helvetica,Arial,sans-serif"&gt;Brave 團隊近日&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fbrave.com%2Fblog%2Fcomet-prompt-injection%2F" target="_blank"&gt;披露&lt;/a&gt;了一類新型安全威脅——&lt;strong&gt;基於&amp;nbsp;&lt;/strong&gt;&lt;/span&gt;&lt;strong style="font-family:-apple-system,BlinkMacSystemFont,&amp;quot;Apple Color Emoji&amp;quot;,&amp;quot;Segoe UI Emoji&amp;quot;,&amp;quot;Segoe UI Symbol&amp;quot;,&amp;quot;Segoe UI&amp;quot;,&amp;quot;PingFang SC&amp;quot;,&amp;quot;Hiragino Sans GB&amp;quot;,&amp;quot;Microsoft YaHei&amp;quot;,&amp;quot;Helvetica Neue&amp;quot;,Helvetica,Arial,sans-serif"&gt;&lt;strong&gt;A&lt;/strong&gt;I 瀏覽器的間接提示注入（Indirect Prompt Injection）&lt;/strong&gt;&lt;span style="font-family:-apple-system,BlinkMacSystemFont,&amp;quot;Apple Color Emoji&amp;quot;,&amp;quot;Segoe UI Emoji&amp;quot;,&amp;quot;Segoe UI Symbol&amp;quot;,&amp;quot;Segoe UI&amp;quot;,&amp;quot;PingFang SC&amp;quot;,&amp;quot;Hiragino Sans GB&amp;quot;,&amp;quot;Microsoft YaHei&amp;quot;,&amp;quot;Helvetica Neue&amp;quot;,Helvetica,Arial,sans-serif"&gt;，並演示了該攻擊在 Perplexity Comet 瀏覽器上的真實案例。&lt;/span&gt;&lt;/p&gt; 
-&lt;p&gt;&lt;img src="https://static.oschina.net/uploads/space/2025/0826/153730_NzVw_2720166.png" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;p&gt;研究人員發現，攻擊者可以在網頁內容（例如 Reddit 評論、PDF 或隱藏文字）中植入惡意指令。當用戶通過 Comet 等 AI 瀏覽器插件執行「總結網頁」等操作時，插件會錯誤地將這些指令當作用戶輸入來執行。結果，攻擊者可誘導插件讀取用戶郵箱、竊取一次性驗證碼（OTP），甚至遠程控制賬戶。&lt;/p&gt; 
-&lt;p&gt;這類攻擊繞過了傳統 Web 安全機制（如同源策略和 CORS），危害極大，因為 AI 瀏覽器往往擁有與用戶相同的登錄權限，意味着銀行、郵箱、雲存儲等敏感服務都可能受到威脅。&lt;/p&gt; 
-&lt;p&gt;&lt;img height="507" src="https://static.oschina.net/uploads/space/2025/0826/154036_DVFR_2720166.gif" width="800" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;p&gt;Brave 指出，修復此類問題不能僅依賴模型對齊，而需要從架構層面增強防護。包括：&lt;/p&gt; 
-&lt;ul&gt; 
- &lt;li&gt; &lt;p&gt;&lt;strong&gt;區分用戶指令與網頁內容&lt;/strong&gt;，避免網頁指令被誤執行；&lt;/p&gt; &lt;/li&gt; 
- &lt;li&gt; &lt;p&gt;&lt;strong&gt;增加安全檢查與用戶確認&lt;/strong&gt;，對 AI 生成的瀏覽動作進行限制；&lt;/p&gt; &lt;/li&gt; 
- &lt;li&gt; &lt;p&gt;&lt;strong&gt;最小權限原則&lt;/strong&gt;，避免 AI 在後台不必要地訪問敏感數據。&lt;/p&gt; &lt;/li&gt; 
-&lt;/ul&gt; 
-&lt;p&gt;業內人士認為，這一案例揭示了「Agentic 瀏覽器」設計中的根本缺陷，未來 AI 瀏覽器的發展必須在智能與安全之間尋求新的平衡。&lt;/p&gt;
-                                                                                &lt;/div&gt;
-                                                                            </description>
-      <link>https://www.oschina.net/news/368558/comet-prompt-injection</link>
-      <guid isPermaLink="false">https://www.oschina.net/news/368558/comet-prompt-injection</guid>
-      <pubDate>Mon, 18 Aug 2025 07:41:00 GMT</pubDate>
-      <author>來源: OSCHINA</author>
     </item>
   </channel>
 </rss>
