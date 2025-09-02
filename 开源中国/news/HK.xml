@@ -7,8 +7,741 @@
     <generator>RSSHub</generator>
     <webMaster>contact@rsshub.app (RSSHub)</webMaster>
     <language>zh-hk</language>
-    <lastBuildDate>Mon, 01 Sep 2025 21:42:37 GMT</lastBuildDate>
+    <lastBuildDate>Tue, 02 Sep 2025 02:44:54 GMT</lastBuildDate>
     <ttl>5</ttl>
+    <item>
+      <title>R8 疑難雜症分析實戰：外聯優化設計缺陷引起的崩潰</title>
+      <description>&lt;div class="content"&gt;
+                                                                                                                                                                                                                                        &lt;span id="OSC_h1_1"&gt;&lt;/span&gt; 
+&lt;h1&gt;一、背景&lt;/h1&gt; 
+&lt;p style="margin-left:0; margin-right:0"&gt;&lt;span&gt;&lt;span&gt;&lt;span style="color:#3e3e3e"&gt;&lt;span style="background-color:#ffffff"&gt;R8 作為谷歌官方的編譯優化工具，在編譯階段會對字節碼進行大規模修改，以追求包體優化和性能提升。但是 Android 應用開發者數量太過龐大，無論測試流程多麼完善，終究難以避免在一些特定場景下出現問題。&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/p&gt; 
+&lt;p style="margin-left:0; margin-right:0"&gt;&lt;span&gt;&lt;span&gt;&lt;span style="color:#3e3e3e"&gt;&lt;span style="background-color:#ffffff"&gt;近期我們在升級項目的 AGP，遇到了一個指向系統 SurfaceTexture 類的 native 崩潰問題。經反編譯分析發現問題最終指向了 smali 字節碼中多餘的一行 new-instance 指令。&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/p&gt; 
+&lt;div&gt; 
+ &lt;img src="https://oscimg.oschina.net/oscnet//c5f08cf575756e08466c223dc6283005.jpg" referrerpolicy="no-referrer"&gt; 
+&lt;/div&gt; 
+&lt;div&gt; 
+ &lt;img src="https://oscimg.oschina.net/oscnet//1c03aaa90c06e347c22e752eeb0ccb1d.jpg" referrerpolicy="no-referrer"&gt; 
+&lt;/div&gt; 
+&lt;p style="margin-left:0; margin-right:0"&gt;&lt;span&gt;&lt;span&gt;&lt;span style="color:#3e3e3e"&gt;&lt;span style="background-color:#ffffff"&gt;該指令創建了一個 SurfaceTexture 對象，但是並未調用其&amp;lt;init&amp;gt;方法，這意味着構造方法沒有執行，但是這個類重寫了 finalize 方法，後續被 gc 回收時會調用其中的 nativeFinalize 這個 JNI 方法，最終在 native 層執行析構函數時觸發了 SIGNALL 11 的內存訪問錯誤.&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/p&gt; 
+&lt;div&gt; 
+ &lt;img src="https://oscimg.oschina.net/oscnet//d639c13a4be57106726e6ea52ee6c3f4.jpg" referrerpolicy="no-referrer"&gt; 
+&lt;/div&gt; 
+&lt;div&gt; 
+ &lt;img src="https://oscimg.oschina.net/oscnet//2210f4a541d54e36690a7e1fbfb16627.jpg" referrerpolicy="no-referrer"&gt; 
+&lt;/div&gt; 
+&lt;span id="OSC_h1_2"&gt;&lt;/span&gt; 
+&lt;h1&gt;二、復現問題&lt;/h1&gt; 
+&lt;p style="margin-left:0; margin-right:0"&gt;&lt;span&gt;&lt;span&gt;&lt;span style="color:#3e3e3e"&gt;&lt;span style="background-color:#ffffff"&gt;我們注意到多出來的 new-instance 指令下面緊接着的是對 a0.e 類中的靜態方法 i() 的調用，其內部實現就是 SurfaceTexture 的構造方法。這是典型的代碼外聯操作，即一段相同的代碼在工程中多次出現，則會被抽出來單獨作為一個靜態函數，原先的調用點則替換成該函數的調用，這樣可以減小代碼體積，是常見的編碼思路。&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/p&gt; 
+&lt;p style="margin-left:0; margin-right:0"&gt;&lt;span&gt;&lt;span&gt;&lt;span style="color:#3e3e3e"&gt;&lt;span style="background-color:#ffffff"&gt;例如：&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/p&gt; 
+&lt;pre&gt;&lt;code&gt;class&amp;nbsp;Activity{
+&amp;nbsp; &amp;nbsp;&amp;nbsp;void&amp;nbsp;onCreate(){
+&amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp;&amp;nbsp;// ...
+&amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp;&amp;nbsp;String&amp;nbsp;a = xx.xxx();
+&amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp;&amp;nbsp;String&amp;nbsp;b = xx.xxx();
+&amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp;&amp;nbsp;Log.e("log",a+b);
+&amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp;&amp;nbsp;//...
+&amp;nbsp; &amp;nbsp; }
+
+
+&amp;nbsp; &amp;nbsp;&amp;nbsp;void&amp;nbsp;onReusme(){
+&amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp;&amp;nbsp;// ...
+&amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp;&amp;nbsp;String&amp;nbsp;a = xx.xxx();
+&amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp;&amp;nbsp;String&amp;nbsp;b = xx.xxx();
+&amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp;&amp;nbsp;Log.e("log",a+b);
+&amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp;&amp;nbsp;//...
+&amp;nbsp; &amp;nbsp; }
+
+
+}&lt;/code&gt;&lt;/pre&gt; 
+&lt;pre&gt;&lt;code&gt;class&amp;nbsp;Activity{
+&amp;nbsp; &amp;nbsp;&amp;nbsp;void&amp;nbsp;onCreate(){
+&amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp;&amp;nbsp;// ...
+&amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp;&amp;nbsp;Activity$Outline.log();
+&amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp;&amp;nbsp;//...
+&amp;nbsp; &amp;nbsp; }
+
+
+&amp;nbsp; &amp;nbsp;&amp;nbsp;void&amp;nbsp;onReusme(){
+&amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp;&amp;nbsp;// ...
+&amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp;&amp;nbsp;Activity$Outline.log();
+&amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp;&amp;nbsp;//...
+&amp;nbsp; &amp;nbsp; }
+}
+//外聯生成的類
+class&amp;nbsp;Activity$Outline{
+&amp;nbsp; &amp;nbsp;&amp;nbsp;public&amp;nbsp;static&amp;nbsp;void&amp;nbsp;log(){
+&amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp;&amp;nbsp;String&amp;nbsp;a = xx.xxx();
+&amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp;&amp;nbsp;String&amp;nbsp;b = xx.xxx();
+&amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp;&amp;nbsp;Log.e("log",a+b);
+&amp;nbsp; &amp;nbsp; }
+}&lt;/code&gt;&lt;/pre&gt; 
+&lt;p style="margin-left:0; margin-right:0"&gt;&lt;span&gt;&lt;span&gt;&lt;span style="color:#3e3e3e"&gt;&lt;span style="background-color:#ffffff"&gt;我們根據這個生成類的類名可以知道是 R8 中 ApiModelOutline 功能生成了這個類。&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/p&gt; 
+&lt;div&gt; 
+ &lt;img src="https://oscimg.oschina.net/oscnet//832dad3a1078a82298590ae249e4c937.jpg" referrerpolicy="no-referrer"&gt; 
+&lt;/div&gt; 
+&lt;p style="margin-left:0; margin-right:0"&gt;&lt;span&gt;&lt;span&gt;&lt;span style="color:#3e3e3e"&gt;&lt;span style="background-color:#ffffff"&gt;我們進到 R8 工程中檢索下相關的關鍵字，再加上 demo 多次嘗試，可以確認滿足以下條件能夠必現該問題:&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/p&gt; 
+&lt;p style="margin-left:0; margin-right:0"&gt;&amp;nbsp;&lt;/p&gt; 
+&lt;ol&gt; 
+ &lt;li&gt;&lt;span&gt;&lt;span&gt;&lt;span style="color:#3e3e3e"&gt;&lt;span style="background-color:#ffffff"&gt;使用了高於當前 minSdkVersion 的系統函數/變量（僅限系統類，自己寫的無效）&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/li&gt; 
+ &lt;li&gt;&lt;span&gt;&lt;span&gt;&lt;span style="color:#3e3e3e"&gt;&lt;span style="background-color:#ffffff"&gt;用 synchronized 或者 try 語句塊包裹了該調用，或者給該函數傳參時有任何計算行為（除了傳局部變量）。例如：&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt; 
+  &lt;ol&gt; 
+   &lt;li&gt;&lt;span&gt;&lt;span&gt;&lt;span style="color:#3e3e3e"&gt;&lt;span style="background-color:#ffffff"&gt;new SurfaceTexture( getParmas() )&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/li&gt; 
+   &lt;li&gt;&lt;span&gt;&lt;span&gt;&lt;span style="color:#3e3e3e"&gt;&lt;span style="background-color:#ffffff"&gt;new SurfaceTexture( if(enable) 1 : 2)&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/li&gt; 
+   &lt;li&gt;&lt;span&gt;&lt;span&gt;&lt;span style="color:#3e3e3e"&gt;&lt;span style="background-color:#ffffff"&gt;new SurfaceTexture ( (boolean) enable )&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/li&gt; 
+  &lt;/ol&gt; &lt;/li&gt; 
+&lt;/ol&gt; 
+&lt;span id="OSC_h1_3"&gt;&lt;/span&gt; 
+&lt;h1&gt;三、問題分析&lt;/h1&gt; 
+&lt;p style="margin-left:0; margin-right:0"&gt;&lt;span&gt;&lt;span&gt;&lt;span style="color:#3e3e3e"&gt;&lt;span style="background-color:#ffffff"&gt;在確認復現條件之後，我們帶着幾個問題來逐個分析。&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/p&gt; 
+&lt;p style="margin-left:16px; margin-right:16px; text-align:center"&gt;&lt;span&gt;&lt;strong&gt;&lt;span style="color:#000000"&gt;&lt;span style="background-color:#ffffff"&gt;ApiModel 外聯是什麼？&lt;/span&gt;&lt;/span&gt;&lt;/strong&gt;&lt;/span&gt;&lt;/p&gt; 
+&lt;p style="margin-left:0; margin-right:0"&gt;&lt;span&gt;&lt;em&gt;&lt;span&gt;&lt;span style="color:#6a6a6a"&gt;&lt;span style="background-color:#ffffff"&gt;R8 中的優化大多數跟包體優化有關，代碼外聯也是其中一種，但是外聯的前提是代碼重複的次數滿足一定閾值，但是 ApiModel 會對所有調用了高版本系統 API 的代碼做外聯，包括只調用一次的場景。&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/em&gt;&lt;/span&gt;&lt;/p&gt; 
+&lt;p style="margin-left:0; margin-right:0"&gt;&amp;nbsp;&lt;/p&gt; 
+&lt;p style="margin-left:0; margin-right:0"&gt;&lt;span&gt;&lt;span&gt;&lt;span style="color:#3e3e3e"&gt;&lt;span style="background-color:#ffffff"&gt;ApiModel 並非為了包體優化，我們通過 R8 工程的 issueTracker&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;em&gt;&lt;span&gt;&lt;span style="color:#3e3e3e"&gt;&lt;span style="background-color:#ffffff"&gt;（https://issuetracker.google.com/issues/333477035）&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/em&gt;&lt;span&gt;&lt;span style="color:#3e3e3e"&gt;&lt;span style="background-color:#ffffff"&gt;檢索到了相關的信息：&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/p&gt; 
+&lt;div&gt; 
+ &lt;img src="https://oscimg.oschina.net/oscnet//5020bee9863c252049d9f1d8f055c200.jpg" referrerpolicy="no-referrer"&gt; 
+&lt;/div&gt; 
+&lt;p style="margin-left:0; margin-right:0"&gt;&lt;span&gt;&lt;span&gt;&lt;span style="color:#3e3e3e"&gt;&lt;span style="background-color:#ffffff"&gt;譯：AGP 新增的 ApiModel 功能是為了防止在低版本設備上不可能執行的代碼引起類驗證錯誤，從而降低 App 啓動耗時。&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/p&gt; 
+&lt;p style="margin-left:0; margin-right:0"&gt;&amp;nbsp;&lt;/p&gt; 
+&lt;p style="margin-left:0; margin-right:0"&gt;&lt;span&gt;&lt;span&gt;&lt;span style="color:#3e3e3e"&gt;&lt;span style="background-color:#ffffff"&gt;從這篇介紹 ART 虛擬機類驗證的文檔&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;em&gt;&lt;span&gt;&lt;span style="color:#3e3e3e"&gt;&lt;span style="background-color:#ffffff"&gt;（https://chromium.googlesource.com/chromium/src/+/HEAD/build/android/docs/class_verification_failures.md#chromium_s-solution）&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/em&gt;&lt;span&gt;&lt;span style="color:#3e3e3e"&gt;&lt;span style="background-color:#ffffff"&gt;就能夠理解上面這句話的含義：&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/p&gt; 
+&lt;p style="margin-left:0; margin-right:0"&gt;&amp;nbsp;&lt;/p&gt; 
+&lt;p style="margin-left:0; margin-right:0"&gt;&lt;span&gt;&lt;span&gt;&lt;span style="color:#3e3e3e"&gt;&lt;span style="background-color:#ffffff"&gt;ART 虛擬機會在 APK 安裝之後立刻執行 AOT class verification，即對 dex 文件中所有的類進行驗證，如果驗證成功則後續運行時將不需要再進行驗證，反之若失敗，則該 class 會被 ART 打上&lt;/span&gt;&lt;/span&gt;&lt;span style="color:#3e3e3e"&gt;&lt;span style="background-color:#e5e5e5"&gt;RetryVerificationAtRuntime&lt;/span&gt;&lt;/span&gt;&lt;span style="color:#3e3e3e"&gt;的標記，後續運行時還得重新執行類驗證。&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/p&gt; 
+&lt;p style="margin-left:0; margin-right:0"&gt;&amp;nbsp;&lt;/p&gt; 
+&lt;p style="margin-left:0; margin-right:0"&gt;&lt;span&gt;&lt;span&gt;&lt;span style="color:#3e3e3e"&gt;&lt;span style="background-color:#ffffff"&gt;同時這些失敗的類也將無法被 dex2oat 優化成 oat 格式的優化字節碼（oat 字節碼的加載和執行速度更快）。&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/p&gt; 
+&lt;div&gt; 
+ &lt;img src="https://oscimg.oschina.net/oscnet//5d3b99565c562dff751ba4ac636da574.jpg" referrerpolicy="no-referrer"&gt; 
+&lt;/div&gt; 
+&lt;p style="margin-left:0; margin-right:0"&gt;&lt;span&gt;&lt;span&gt;&lt;span style="color:#3e3e3e"&gt;&lt;span style="background-color:#ffffff"&gt;如果是在 MainActivity，啓動任務中使用了這些高版本 API，那麼在低版本設備 App 啓動時就必須額外執行一次類驗證（比較耗時，有的類能到 8ms&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;em&gt;&lt;span&gt;&lt;span style="color:#3e3e3e"&gt;&lt;span style="background-color:#ffffff"&gt;&amp;nbsp;https://issues.chromium.org/issues/40574431&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/em&gt;&lt;span&gt;&lt;span style="color:#3e3e3e"&gt;&lt;span style="background-color:#ffffff"&gt;），而 ApiModel 外聯則是相當於將這些肯定驗證失敗的函數的調用單獨抽到一個生成類中，&lt;/span&gt;&lt;/span&gt;&lt;strong&gt;&lt;span style="color:#3e3e3e"&gt;&lt;span style="background-color:#ffffff"&gt;這樣運行時就能將類驗證失敗問題徹底隔離在生成類中，從而規避運行時的類驗證耗時。&lt;/span&gt;&lt;/span&gt;&lt;/strong&gt;&lt;/span&gt;&lt;/span&gt;&lt;/p&gt; 
+&lt;pre&gt;&lt;code&gt;//安裝 apk 後驗證失敗，運行時驗證失敗，但是能正常執行
+class&amp;nbsp;MainActivity{
+&amp;nbsp; &amp;nbsp;&amp;nbsp;void&amp;nbsp;onCreate(){
+&amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp;&amp;nbsp;if(android.sdk&amp;nbsp;&amp;gt;&amp;nbsp;26){
+&amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp;&amp;nbsp;new&amp;nbsp;SurfaceTexture(false);
+&amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; }
+&amp;nbsp; &amp;nbsp; }
+}&lt;/code&gt;&lt;/pre&gt; 
+&lt;p style="margin-left:0; margin-right:0"&gt;&lt;span&gt;&lt;span&gt;&lt;span style="color:#3e3e3e"&gt;&lt;span style="background-color:#ffffff"&gt;ApiModel 後&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/p&gt; 
+&lt;pre&gt;&lt;code&gt;class&amp;nbsp;MainActivity{
+&amp;nbsp; &amp;nbsp;&amp;nbsp;void&amp;nbsp;onCreate(){
+&amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp;&amp;nbsp;if(android.sdk &amp;gt;&amp;nbsp;26){
+&amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; a0.b();&amp;nbsp;//這樣類驗證就能成功
+&amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; }
+&amp;nbsp; &amp;nbsp; }
+}
+//生成的外聯類，類驗證會失敗，但是運行時不可能走到，不影響
+class&amp;nbsp;a0{
+&amp;nbsp; &amp;nbsp;&amp;nbsp;public&amp;nbsp;static&amp;nbsp;void&amp;nbsp;b(){
+&amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp;&amp;nbsp;new&amp;nbsp;SurfaceTexture(false);
+&amp;nbsp; &amp;nbsp; }
+}&lt;/code&gt;&lt;/pre&gt; 
+&lt;p style="margin-left:0; margin-right:0"&gt;&lt;span&gt;&lt;span&gt;&lt;span style="color:#3e3e3e"&gt;&lt;span style="background-color:#ffffff"&gt;更多關於 ApiModel 的詳細介紹，見這篇文章：&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;em&gt;&lt;span&gt;&lt;span style="color:#3e3e3e"&gt;&lt;span style="background-color:#ffffff"&gt;https://medium.com/androiddevelopers/mitigating-soft-verification-issues-in-r8-and-d8-7e9e06827dfd&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/em&gt;&lt;/span&gt;&lt;/p&gt; 
+&lt;p style="margin-left:0; margin-right:0"&gt;&amp;nbsp;&lt;/p&gt; 
+&lt;p style="margin-left:16px; margin-right:16px; text-align:center"&gt;&lt;span&gt;&lt;strong&gt;&lt;span style="color:#000000"&gt;&lt;span style="background-color:#ffffff"&gt;為什麼會多生成一個&lt;/span&gt;&lt;/span&gt;&lt;/strong&gt;&lt;/span&gt;&lt;/p&gt; 
+&lt;p style="margin-left:16px; margin-right:16px; text-align:center"&gt;&lt;span&gt;&lt;strong&gt;&lt;span style="color:#000000"&gt;&lt;span style="background-color:#ffffff"&gt;new-instance 指令?&lt;/span&gt;&lt;/span&gt;&lt;/strong&gt;&lt;/span&gt;&lt;/p&gt; 
+&lt;p style="margin-left:0; margin-right:0"&gt;&lt;span&gt;&lt;span&gt;&lt;span style="color:#3e3e3e"&gt;&lt;span style="background-color:#ffffff"&gt;介紹完 ApiModel 之後，我們已經知道了為什麼&amp;lt;init&amp;gt;方法的調用被替換成了一個生成函數的調用，接下來我們再分析下導致崩潰的罪魁禍首 new-instance 指令是如何出現的。&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/p&gt; 
+&lt;p style="margin-left:0; margin-right:0"&gt;&amp;nbsp;&lt;/p&gt; 
+&lt;p style="margin-left:0; margin-right:0"&gt;&lt;span&gt;&lt;span&gt;&lt;span style="color:#3e3e3e"&gt;&lt;span style="background-color:#ffffff"&gt;我們先來瞭解下 java 文件在編譯過程中的格式轉換過程，因為 ApiModel 是基於 IRCode 格式（R8 自定義的格式）來做外聯。&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/p&gt; 
+&lt;p style="margin-left:0; margin-right:0; text-align:left"&gt;&lt;span&gt;&lt;span&gt;&lt;strong&gt;&lt;span style="color:#000000"&gt;&lt;span style="background-color:#ffffff"&gt;文件轉換&lt;/span&gt;&lt;/span&gt;&lt;/strong&gt;&lt;/span&gt;&lt;/span&gt;&lt;/p&gt; 
+&lt;p style="margin-left:0; margin-right:0"&gt;&lt;span&gt;&lt;span&gt;&lt;strong&gt;&lt;span style="color:#000000"&gt;&lt;span style="background-color:#ffffff"&gt;javac&lt;/span&gt;&lt;/span&gt;&lt;/strong&gt;&lt;/span&gt;&lt;/span&gt;&lt;/p&gt; 
+&lt;p style="margin-left:0; margin-right:0"&gt;&lt;span&gt;&lt;em&gt;&lt;span&gt;&lt;span style="color:#6a6a6a"&gt;&lt;span style="background-color:#ffffff"&gt;javac 將 java 文件編譯成 class 文件&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/em&gt;&lt;/span&gt;&lt;/p&gt; 
+&lt;p style="margin-left:0; margin-right:0"&gt;&amp;nbsp;&lt;/p&gt; 
+&lt;p style="margin-left:0; margin-right:0"&gt;&lt;span&gt;&lt;span&gt;&lt;span style="color:#3e3e3e"&gt;&lt;span style="background-color:#ffffff"&gt;值得一提的是 sychronized 語句塊在 javac 編譯之後會為其內部代碼生成 try-catch，這是為了確保在語句塊拋異常時能夠正常釋放鎖，因此和問題有關的是 try-catch 語句塊，和 synchronized 無關。&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/p&gt; 
+&lt;div&gt; 
+ &lt;img src="https://oscimg.oschina.net/oscnet//36889c510c4d4a88957306d93cdf7d59.jpg" referrerpolicy="no-referrer"&gt; 
+&lt;/div&gt; 
+&lt;p style="margin-left:0; margin-right:0"&gt;&amp;nbsp;&lt;/p&gt; 
+&lt;p style="margin-left:0; margin-right:0"&gt;&lt;span&gt;&lt;span&gt;&lt;strong&gt;&lt;span style="color:#000000"&gt;&lt;span style="background-color:#ffffff"&gt;D8&lt;/span&gt;&lt;/span&gt;&lt;/strong&gt;&lt;/span&gt;&lt;/span&gt;&lt;/p&gt; 
+&lt;p style="margin-left:0; margin-right:0"&gt;&lt;span&gt;&lt;em&gt;&lt;span&gt;&lt;span style="color:#6a6a6a"&gt;&lt;span style="background-color:#ffffff"&gt;目前 R8 已經整合 D8，因此輸入 class 文件之後就會先通過 D8 轉為 dex 格式，並持有在內存中。&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/em&gt;&lt;/span&gt;&lt;/p&gt; 
+&lt;p style="margin-left:0; margin-right:0"&gt;&amp;nbsp;&lt;/p&gt; 
+&lt;p style="margin-left:0; margin-right:0"&gt;&lt;span&gt;&lt;span&gt;&lt;span style="color:#3e3e3e"&gt;&lt;span style="background-color:#ffffff"&gt;轉換之後的指令基本和 class 字節碼基本類似。&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/p&gt; 
+&lt;div&gt; 
+ &lt;img src="https://oscimg.oschina.net/oscnet//876e7cf561f3a8aa1ee57005986ae7f0.jpg" referrerpolicy="no-referrer"&gt; 
+&lt;/div&gt; 
+&lt;p style="margin-left:0; margin-right:0"&gt;&lt;span&gt;&lt;span&gt;&lt;strong&gt;&lt;span style="color:#000000"&gt;&lt;span style="background-color:#ffffff"&gt;IRcode&lt;/span&gt;&lt;/span&gt;&lt;/strong&gt;&lt;/span&gt;&lt;/span&gt;&lt;/p&gt; 
+&lt;p style="margin-left:0; margin-right:0"&gt;&lt;span&gt;&lt;span&gt;&lt;span style="color:#3e3e3e"&gt;&lt;span style="background-color:#ffffff"&gt;為了做進一步的優化，會將 dex 格式的代碼轉化成 R8 自定義的 IRcode 格式，其特點是代碼分塊。&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/p&gt; 
+&lt;p style="margin-left:0; margin-right:0"&gt;&amp;nbsp;&lt;/p&gt; 
+&lt;p style="margin-left:0; margin-right:0"&gt;&lt;span&gt;&lt;span&gt;&lt;span style="color:#3e3e3e"&gt;&lt;span style="background-color:#ffffff"&gt;案例：&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/p&gt; 
+&lt;div&gt; 
+ &lt;img src="https://oscimg.oschina.net/oscnet//b04a46ddb675fd3446029e19aa3fc632.jpg" referrerpolicy="no-referrer"&gt; 
+&lt;/div&gt; 
+&lt;p style="margin-left:0; margin-right:0; text-align:left"&gt;&lt;span&gt;&lt;span&gt;&lt;strong&gt;&lt;span style="color:#000000"&gt;&lt;span style="background-color:#ffffff"&gt;問題根因&lt;/span&gt;&lt;/span&gt;&lt;/strong&gt;&lt;/span&gt;&lt;/span&gt;&lt;/p&gt; 
+&lt;p style="margin-left:0; margin-right:0"&gt;&lt;span&gt;&lt;span&gt;&lt;span style="color:#3e3e3e"&gt;&lt;span style="background-color:#ffffff"&gt;在 R8 工程裏檢索 ApiModel 關鍵字，最終定位到針對構造函數生成外聯函數和指令替換的代碼：&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/p&gt; 
+&lt;p style="margin-left:0; margin-right:0"&gt;&lt;span&gt;&lt;span&gt;&lt;span style="color:#3e3e3e"&gt;&lt;span style="background-color:#e5e5e5"&gt;InstanceInitializerOutliner-&amp;gt;rewriteCode&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/p&gt; 
+&lt;p style="margin-left:0; margin-right:0"&gt;&amp;nbsp;&lt;/p&gt; 
+&lt;p style="margin-left:0; margin-right:0"&gt;&lt;span&gt;&lt;span&gt;&lt;span style="color:#3e3e3e"&gt;&lt;span style="background-color:#ffffff"&gt;執行此方法之前的指令如下：&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/p&gt; 
+&lt;pre&gt;&lt;code&gt;java：
+new&amp;nbsp;SurfaceTexture(false);&lt;/code&gt;&lt;/pre&gt; 
+&lt;pre&gt;&lt;code&gt;dex：
+:&amp;nbsp;-1:&amp;nbsp;NewInstance &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp;v1&amp;nbsp;&amp;lt;- &amp;nbsp;android.graphics.SurfaceTexture
+: -1: ConstNumber &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp;v2(0) &amp;lt;- &amp;nbsp;0 (INT)
+: -1: Invoke-Direct &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp;v1,&amp;nbsp;v2(0); method:&amp;nbsp;void&amp;nbsp;android.graphics.SurfaceTexture.&amp;lt;init&amp;gt;(boolean)&lt;/code&gt;&lt;/pre&gt; 
+&lt;ul&gt; 
+ &lt;li&gt;&lt;span&gt;&lt;span&gt;&lt;span style="background-color:#ffffff"&gt;對整個方法中所有的指令從上往下進行遍歷，第一次遍歷主要是：&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;ul&gt; 
+ &lt;li&gt; 
+  &lt;ul&gt; 
+   &lt;li&gt;&lt;span&gt;&lt;span&gt;&lt;span style="background-color:#ffffff"&gt;檢索 &amp;lt;init&amp;gt;方法調用的指令&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/li&gt; 
+   &lt;li&gt;&lt;span&gt;&lt;span&gt;&lt;span style="background-color:#ffffff"&gt;判斷該方法的 androidApiLevel 是否高於 minSDK&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/li&gt; 
+   &lt;li&gt;&lt;span&gt;&lt;span&gt;&lt;span style="background-color:#ffffff"&gt;生成包含完整構造函數指令的外聯函數，並替換&amp;lt;init&amp;gt;函數調用為外聯函數調用。&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/li&gt; 
+   &lt;li&gt;&lt;span&gt;&lt;span&gt;&lt;span style="background-color:#ffffff"&gt;執行完替換邏輯，就記錄信息到 map 中，key 是&amp;lt;init&amp;gt;對應的 new-instance 指令，value 是前一步中替換的新指令。&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/li&gt; 
+  &lt;/ul&gt; &lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;p style="margin-left:0; margin-right:0"&gt;&amp;nbsp;&lt;/p&gt; 
+&lt;p style="margin-left:0; margin-right:0"&gt;&lt;span&gt;&lt;span&gt;&lt;span style="color:#3e3e3e"&gt;&lt;span style="background-color:#ffffff"&gt;經過這一步，字節碼會變成這樣：&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/p&gt; 
+&lt;div&gt; 
+ &lt;img src="https://oscimg.oschina.net/oscnet//e6b105ab1ca583830e11bee8baafc4e5.jpg" referrerpolicy="no-referrer"&gt; 
+&lt;/div&gt; 
+&lt;p style="margin-left:0; margin-right:0"&gt;&lt;span&gt;&lt;span&gt;&lt;span style="color:#3e3e3e"&gt;&lt;span style="background-color:#ffffff"&gt;具體替換邏輯如下（可以參考註釋理解）：&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/p&gt; 
+&lt;div&gt; 
+ &lt;img src="https://oscimg.oschina.net/oscnet//c919c6ad05e651de339fb13da747bfaa.jpg" referrerpolicy="no-referrer"&gt; 
+&lt;/div&gt; 
+&lt;ul&gt; 
+ &lt;li&gt;&lt;span&gt;&lt;span&gt;&lt;span style="color:#3e3e3e"&gt;&lt;span style="background-color:#ffffff"&gt;第二次遍歷則是對 new-instance 指令的處理：&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt; 
+  &lt;ul&gt; 
+   &lt;li&gt;&lt;span&gt;&lt;span&gt;&lt;span style="color:#3e3e3e"&gt;&lt;span style="background-color:#ffffff"&gt;找到 new-instance 指令&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/li&gt; 
+   &lt;li&gt;&lt;span&gt;&lt;span&gt;&lt;span style="color:#3e3e3e"&gt;&lt;span style="background-color:#ffffff"&gt;查詢 map，確認&amp;lt;init&amp;gt;方法已完成替換&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/li&gt; 
+   &lt;li&gt;&lt;span&gt;&lt;span&gt;&lt;span style="color:#3e3e3e"&gt;&lt;span style="background-color:#ffffff"&gt;根據&lt;/span&gt;&lt;/span&gt;&lt;strong&gt;&lt;span style="color:#3e3e3e"&gt;&lt;span style="background-color:#ffffff"&gt;canSkipClInit&lt;/span&gt;&lt;/span&gt;&lt;/strong&gt;&lt;span style="color:#3e3e3e"&gt;&lt;span style="background-color:#ffffff"&gt;方法返回的結果分為兩種場景：&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/li&gt; 
+  &lt;/ul&gt; &lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;ul&gt; 
+ &lt;li&gt; 
+  &lt;ul&gt; 
+   &lt;li&gt; 
+    &lt;ul&gt; 
+     &lt;li&gt;&lt;span&gt;&lt;span&gt;&lt;span style="color:#3e3e3e"&gt;&lt;span style="background-color:#ffffff"&gt;無類初始化邏輯：直接移除 new-instance 指令，不影響原代碼的語義。&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/li&gt; 
+    &lt;/ul&gt; &lt;/li&gt; 
+  &lt;/ul&gt; &lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;div&gt; 
+ &lt;img src="https://oscimg.oschina.net/oscnet//f1f56bfb61c5396de49e85cc7eec3a7e.jpg" referrerpolicy="no-referrer"&gt; 
+&lt;/div&gt; 
+&lt;ul&gt; 
+ &lt;li&gt; 
+  &lt;ul&gt; 
+   &lt;li&gt; 
+    &lt;ul&gt; 
+     &lt;li&gt;&lt;span&gt;&lt;span&gt;&lt;span style="color:#3e3e3e"&gt;&lt;span style="background-color:#ffffff"&gt;有類初始化邏輯：生成外聯函數，只包含該 new-instance 指令，和前一次遍歷一樣進行指令替換。&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/li&gt; 
+    &lt;/ul&gt; &lt;/li&gt; 
+  &lt;/ul&gt; &lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;div&gt; 
+ &lt;img src="https://oscimg.oschina.net/oscnet//1959f35cfade28f57d11667c652bea3e.jpg" referrerpolicy="no-referrer"&gt; 
+&lt;/div&gt; 
+&lt;p style="margin-left:0; margin-right:0"&gt;&lt;span&gt;&lt;span&gt;&lt;span style="color:#3e3e3e"&gt;&lt;span style="background-color:#ffffff"&gt;具體替換邏輯:&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/p&gt; 
+&lt;div&gt; 
+ &lt;img src="https://oscimg.oschina.net/oscnet//fac201236889edc5ad19870621442c23.jpg" referrerpolicy="no-referrer"&gt; 
+&lt;/div&gt; 
+&lt;ul&gt; 
+ &lt;li&gt;&lt;span&gt;&lt;span&gt;&lt;span style="color:#3e3e3e"&gt;&lt;span style="background-color:#ffffff"&gt;問題重點就在於&lt;/span&gt;&lt;/span&gt;&lt;strong&gt;&lt;span style="color:#3e3e3e"&gt;&lt;span style="background-color:#ffffff"&gt;canSkipClInit&lt;/span&gt;&lt;/span&gt;&lt;/strong&gt;&lt;span style="color:#3e3e3e"&gt;&lt;span style="background-color:#ffffff"&gt;這個函數的實現。&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;p style="margin-left:0; margin-right:0"&gt;&amp;nbsp;&lt;/p&gt; 
+&lt;p style="margin-left:0; margin-right:0"&gt;&lt;span&gt;&lt;span&gt;&lt;span style="color:#3e3e3e"&gt;&lt;span style="background-color:#ffffff"&gt;它會檢查 new-intance 指令和 invoke &amp;lt;init&amp;gt;指令之間是否存在任何局部變量聲明以外的指令，如果存在，他會認為這些指令是這個類初始化的邏輯，因此為了保留源代碼的執行順序，這種情況下就是需要額外執行一次 new-instance 指令來觸發類初始化。&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/p&gt; 
+&lt;div&gt; 
+ &lt;img src="https://oscimg.oschina.net/oscnet//9fe3bbc584708c6a61e6b7a0d4e808bd.jpg" referrerpolicy="no-referrer"&gt; 
+&lt;/div&gt; 
+&lt;p style="margin-left:0; margin-right:0"&gt;&lt;span&gt;&lt;span&gt;&lt;span style="color:#3e3e3e"&gt;&lt;span style="background-color:#ffffff"&gt;但是實際上，如果在調用這個構造函數傳參時執行了任何運算（和類加載無關），都會生成相關的指令插在中間，例如：&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/p&gt; 
+&lt;table&gt; 
+ &lt;tbody&gt; 
+  &lt;tr&gt; 
+   &lt;td&gt; &lt;p style="margin-left:16px; margin-right:16px"&gt;&lt;span&gt;&lt;span&gt;&lt;span style="color:#3e3e3e"&gt;&lt;span style="background-color:#ffffff"&gt;java 寫法&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/p&gt; &lt;/td&gt; 
+   &lt;td&gt; &lt;p style="margin-left:16px; margin-right:16px"&gt;&lt;span&gt;&lt;span&gt;&lt;span style="color:#3e3e3e"&gt;&lt;span style="background-color:#ffffff"&gt;new-intance 和 invoke &amp;lt;init&amp;gt;指令之間的指令&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/p&gt; &lt;/td&gt; 
+  &lt;/tr&gt; 
+  &lt;tr&gt; 
+   &lt;td&gt; &lt;p style="margin-left:16px; margin-right:16px"&gt;&lt;span&gt;&lt;span&gt;&lt;span style="color:#3e3e3e"&gt;&lt;span style="background-color:#ffffff"&gt;new SurfaceTexture( getParmas() )&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/p&gt; &lt;/td&gt; 
+   &lt;td&gt; &lt;p style="margin-left:16px; margin-right:16px"&gt;&lt;span&gt;&lt;span&gt;&lt;span style="color:#3e3e3e"&gt;&lt;span style="background-color:#ffffff"&gt;invoke-virtual &amp;nbsp; v2 &amp;lt;-; method: void xx.xx.xx&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/p&gt; &lt;/td&gt; 
+  &lt;/tr&gt; 
+  &lt;tr&gt; 
+   &lt;td&gt; &lt;p style="margin-left:16px; margin-right:16px"&gt;&lt;span&gt;&lt;span&gt;&lt;span style="color:#3e3e3e"&gt;&lt;span style="background-color:#ffffff"&gt;new SurfaceTexture( if(enable) 1 : 2)&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/p&gt; &lt;/td&gt; 
+   &lt;td&gt; &lt;p style="margin-left:16px; margin-right:16px"&gt;&lt;span&gt;&lt;span&gt;&lt;span style="color:#3e3e3e"&gt;&lt;span style="background-color:#ffffff"&gt;StaticGet &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp;v3 &amp;lt;- ; field: boolean &amp;nbsp;xxx.xxx.xx&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/p&gt; &lt;/td&gt; 
+  &lt;/tr&gt; 
+  &lt;tr&gt; 
+   &lt;td&gt; &lt;p style="margin-left:16px; margin-right:16px"&gt;&lt;span&gt;&lt;span&gt;&lt;span style="color:#3e3e3e"&gt;&lt;span style="background-color:#ffffff"&gt;new SurfaceTexture ( (boolean) enable )&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/p&gt; &lt;/td&gt; 
+   &lt;td&gt; &lt;p style="margin-left:16px; margin-right:16px"&gt;&lt;span&gt;&lt;span&gt;&lt;span style="color:#3e3e3e"&gt;&lt;span style="background-color:#ffffff"&gt;: -1: CheckCast &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp;v5 &amp;lt;- v3; java.lang.Boolean&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/p&gt; &lt;p style="margin-left:16px; margin-right:16px"&gt;&lt;span&gt;&lt;span&gt;&lt;span style="color:#3e3e3e"&gt;&lt;span style="background-color:#ffffff"&gt;: -1: Invoke-Virtual &amp;nbsp; &amp;nbsp; &amp;nbsp; v6 &amp;lt;- v5; method: boolean java.lang.Boolean.booleanValue()&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/p&gt; &lt;/td&gt; 
+  &lt;/tr&gt; 
+ &lt;/tbody&gt; 
+&lt;/table&gt; 
+&lt;p style="margin-left:0; margin-right:0"&gt;&lt;span&gt;&lt;span&gt;&lt;span style="color:#3e3e3e"&gt;&lt;span style="background-color:#ffffff"&gt;從作者留下的 todo 也能看出，後續準備擴展這個方法，實現對這些夾在中間的指令的判斷，如果是對類初始化無影響的入參計算邏輯，則也將正常移除 new-intance 指令。&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/p&gt; 
+&lt;div&gt; 
+ &lt;img src="https://oscimg.oschina.net/oscnet//fa19a3d661f5f19c0bf5fdb01d8c8aba.jpg" referrerpolicy="no-referrer"&gt; 
+&lt;/div&gt; 
+&lt;p style="margin-left:0; margin-right:0"&gt;&lt;span&gt;&lt;span&gt;&lt;span style="color:#3e3e3e"&gt;&lt;span style="background-color:#ffffff"&gt;值得一提的是，我們最終 APK 裏 new-intance 指令並沒有被外聯，這是因為 SurfaceTexture 這個類本身在安卓 21 之前的版本就已經存在，只是入參為 bool 類型的構造方法是在安卓 26 新增的，所以他其實是被外聯之後又被內聯回到了調用處，因此看起來像是沒有被外聯。&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/p&gt; 
+&lt;div&gt; 
+ &lt;img src="https://oscimg.oschina.net/oscnet//48f375f6e8c147cd435c140b6c8864ba.jpg" referrerpolicy="no-referrer"&gt; 
+&lt;/div&gt; 
+&lt;p style="margin-left:0; margin-right:0"&gt;&amp;nbsp;&lt;/p&gt; 
+&lt;p style="margin-left:0; margin-right:0; text-align:left"&gt;&lt;span&gt;&lt;span&gt;&lt;strong&gt;&lt;span style="color:#000000"&gt;&lt;span style="background-color:#ffffff"&gt;小結&lt;/span&gt;&lt;/span&gt;&lt;/strong&gt;&lt;/span&gt;&lt;/span&gt;&lt;/p&gt; 
+&lt;p style="margin-left:0; margin-right:0"&gt;&lt;span&gt;&lt;span&gt;&lt;span style="color:#3e3e3e"&gt;&lt;span style="background-color:#ffffff"&gt;至此，我們就明白了多出來一個看似無用的 new-intance 指令，實際上是為了保全源代碼的語義，&lt;/span&gt;&lt;/span&gt;&lt;strong&gt;&lt;span style="color:#3e3e3e"&gt;&lt;span style="background-color:#ffffff"&gt;觸發類加載&lt;/span&gt;&lt;/span&gt;&lt;/strong&gt;&lt;span style="color:#3e3e3e"&gt;&lt;span style="background-color:#ffffff"&gt;用的，但是作者沒有考慮到這些被優化的類可能重寫了 finalize 方法來釋放一些本就不存在的資源。&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/p&gt; 
+&lt;p style="margin-left:0; margin-right:0"&gt;&amp;nbsp;&lt;/p&gt; 
+&lt;p style="margin-left:0; margin-right:0"&gt;&lt;span&gt;&lt;span&gt;&lt;span style="color:#3e3e3e"&gt;&lt;span style="background-color:#ffffff"&gt;而且不侷限於調用 native 函數，只要是重寫了 finalize，並在裏面訪問一些在構造函數中初始化的成員變量，一樣可能造成 NPE 等崩潰。&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/p&gt; 
+&lt;p style="margin-left:0; margin-right:0"&gt;&amp;nbsp;&lt;/p&gt; 
+&lt;p style="margin-left:16px; margin-right:16px; text-align:center"&gt;&lt;span&gt;&lt;strong&gt;&lt;span style="color:#000000"&gt;&lt;span style="background-color:#ffffff"&gt;R8 是如何計算出 API 的版本？&lt;/span&gt;&lt;/span&gt;&lt;/strong&gt;&lt;/span&gt;&lt;/p&gt; 
+&lt;div&gt; 
+ &lt;img src="https://oscimg.oschina.net/oscnet//d58a071ec92ca506d6e4f3e1ab4c7122.jpg" referrerpolicy="no-referrer"&gt; 
+&lt;/div&gt; 
+&lt;p style="margin-left:0; margin-right:0"&gt;&lt;span&gt;&lt;span&gt;&lt;span style="color:#3e3e3e"&gt;&lt;span style="background-color:#ffffff"&gt;R83.3 版本開始，它編譯時會下載一個.ser 格式的數據庫文件，裏面記錄了所有系統 API、變量與安卓版本號的映射信息，在運行時通過行號和偏移量來尋找各自的版本號。&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/p&gt; 
+&lt;div&gt; 
+ &lt;img src="https://oscimg.oschina.net/oscnet//9842b0b5f78805c080d71cbda30f1c44.jpg" referrerpolicy="no-referrer"&gt; 
+&lt;/div&gt; 
+&lt;p style="margin-left:0; margin-right:0"&gt;&amp;nbsp;&lt;/p&gt; 
+&lt;p style="margin-left:16px; margin-right:16px; text-align:center"&gt;&lt;span&gt;&lt;strong&gt;&lt;span style="color:#000000"&gt;&lt;span style="background-color:#ffffff"&gt;為什麼 try-catch&lt;/span&gt;&lt;/span&gt;&lt;/strong&gt;&lt;/span&gt;&lt;/p&gt; 
+&lt;p style="margin-left:16px; margin-right:16px; text-align:center"&gt;&lt;span&gt;&lt;strong&gt;&lt;span style="color:#000000"&gt;&lt;span style="background-color:#ffffff"&gt;也會導致該問題？&lt;/span&gt;&lt;/span&gt;&lt;/strong&gt;&lt;/span&gt;&lt;/p&gt; 
+&lt;p style="margin-left:0; margin-right:0"&gt;&lt;span&gt;&lt;span&gt;&lt;span style="color:#3e3e3e"&gt;&lt;span style="background-color:#ffffff"&gt;前面解釋了在構造函數入參中添加函數調用等寫法導致的字節碼異常原因，但是實際上這次我們遇到的崩潰場景是在 sychronized 裏 new 了一個 SurfaceTexture。&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/p&gt; 
+&lt;div&gt; 
+ &lt;img src="https://oscimg.oschina.net/oscnet//cec26da2ccbd01a385a47d0914cbd615.jpg" referrerpolicy="no-referrer"&gt; 
+&lt;/div&gt; 
+&lt;p style="margin-left:0; margin-right:0"&gt;&lt;span&gt;&lt;span&gt;&lt;span style="color:#3e3e3e"&gt;&lt;span style="background-color:#ffffff"&gt;前文中已經解釋過，sychronized 在編譯成 class 後會生成 try-catch 語句塊，這段代碼改成用 try-catch 語句塊包裹，一樣會復現崩潰，因此我們跟蹤 try-catch 在文件轉換過程中對字節碼的影響即可。&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/p&gt; 
+&lt;p style="margin-left:0; margin-right:0"&gt;&amp;nbsp;&lt;/p&gt; 
+&lt;p style="margin-left:0; margin-right:0"&gt;&lt;span&gt;&lt;span&gt;&lt;span style="color:#3e3e3e"&gt;&lt;span style="background-color:#ffffff"&gt;回到 class 文件轉 dex 文件的階段，我們發現 try 語句塊中的每一行指令，都會在其後生成一條 FALLTHROUGH 指令。&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/p&gt; 
+&lt;p style="margin-left:0; margin-right:0"&gt;&amp;nbsp;&lt;/p&gt; 
+&lt;p style="margin-left:0; margin-right:0"&gt;&lt;span&gt;&lt;span&gt;&lt;span style="color:#3e3e3e"&gt;&lt;span style="background-color:#ffffff"&gt;dex 格式：&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/p&gt; 
+&lt;div&gt; 
+ &lt;img src="https://oscimg.oschina.net/oscnet//dc87199452140addbab0d7de45794ad8.jpg" referrerpolicy="no-referrer"&gt; 
+&lt;/div&gt; 
+&lt;p style="margin-left:0; margin-right:0"&gt;&lt;span&gt;&lt;span&gt;&lt;strong&gt;&lt;span style="color:#3e3e3e"&gt;&lt;span style="background-color:#ffffff"&gt;FALLTHROUGH 是什麼指令，他是做什麼的？&lt;/span&gt;&lt;/span&gt;&lt;/strong&gt;&lt;/span&gt;&lt;/span&gt;&lt;/p&gt; 
+&lt;p style="margin-left:0; margin-right:0"&gt;&amp;nbsp;&lt;/p&gt; 
+&lt;p style="margin-left:0; margin-right:0"&gt;&lt;span&gt;&lt;span&gt;&lt;strong&gt;&lt;span style="color:#3e3e3e"&gt;&lt;span style="background-color:#ffffff"&gt;FALLTHROUGH 指令表示指令自然流轉，沒有實際含義，它主要是為了幫助優化器識別哪些指令是可達的。&lt;/span&gt;&lt;/span&gt;&lt;/strong&gt;&lt;/span&gt;&lt;/span&gt;&lt;/p&gt; 
+&lt;p style="margin-left:0; margin-right:0"&gt;&amp;nbsp;&lt;/p&gt; 
+&lt;p style="margin-left:0; margin-right:0"&gt;&lt;span&gt;&lt;span&gt;&lt;span style="color:#3e3e3e"&gt;&lt;span style="background-color:#ffffff"&gt;例如下面這種寫法，case1 沒有寫 break，這樣會接着執行 case2 的代碼：&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/p&gt; 
+&lt;pre&gt;&lt;code&gt;switch&amp;nbsp;(value) {
+&amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp;&amp;nbsp;case&amp;nbsp;1:
+&amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; System.out.println("One");
+&amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp;&amp;nbsp;// 故意不寫 break
+&amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp;&amp;nbsp;case&amp;nbsp;2:
+&amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; System.out.println("Two");
+&amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp;&amp;nbsp;break;
+&amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp;&amp;nbsp;case&amp;nbsp;3:
+&amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; System.out.println("Three");
+&amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp;&amp;nbsp;break;
+&amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; }&lt;/code&gt;&lt;/pre&gt; 
+&lt;p style="margin-left:0; margin-right:0"&gt;&lt;span&gt;&lt;span&gt;&lt;span style="color:#3e3e3e"&gt;&lt;span style="background-color:#ffffff"&gt;其字節碼如下：&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/p&gt; 
+&lt;p style="margin-left:0; margin-right:0"&gt;&amp;nbsp;&lt;/p&gt; 
+&lt;p style="margin-left:0; margin-right:0"&gt;&lt;span&gt;&lt;span&gt;&lt;span style="color:#3e3e3e"&gt;&lt;span style="background-color:#ffffff"&gt;正常有 break 的話，會對應一條 GOTO 指令跳轉到 switch 語句塊最後一行，但是沒寫 break 的話，就會出現：&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/p&gt; 
+&lt;p style="margin-left:0; margin-right:0"&gt;&amp;nbsp;&lt;/p&gt; 
+&lt;p style="margin-left:0; margin-right:0"&gt;&lt;span&gt;&lt;span&gt;&lt;span style="color:#3e3e3e"&gt;&lt;span style="background-color:#ffffff"&gt;在 12 行執行 goto 13 跳轉到 13 行的指令，這種指令毫無意義，且運行時會消耗性能，因此可以替換成 FALLTHROUGH 指令，這樣最終在生成 dex 文件時會被移除掉，從而避免浪費性能。&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/p&gt; 
+&lt;pre&gt;&lt;code&gt;public&amp;nbsp;static&amp;nbsp;void&amp;nbsp;switchWithFallthrough(int);
+&amp;nbsp; Code:
+&amp;nbsp; &amp;nbsp; stack=2, locals=1, args_size=1
+
+
+&amp;nbsp; &amp;nbsp;&amp;nbsp;// 加載參數
+&amp;nbsp; &amp;nbsp;&amp;nbsp;0: iload_0
+
+
+&amp;nbsp; &amp;nbsp;&amp;nbsp;// 檢查 case 1
+&amp;nbsp; &amp;nbsp;&amp;nbsp;1: iconst_1
+&amp;nbsp; &amp;nbsp;&amp;nbsp;2: if_icmpne&amp;nbsp;13&amp;nbsp; &amp;nbsp;&amp;nbsp;// 如果不等於 1，跳轉到 case 2
+&amp;nbsp; &amp;nbsp;&amp;nbsp;5: getstatic #2&amp;nbsp; &amp;nbsp;&amp;nbsp;// Field java/lang/System.out:Ljava/io/PrintStream;
+&amp;nbsp; &amp;nbsp;&amp;nbsp;8: ldc #3&amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp;&amp;nbsp;// String One
+&amp;nbsp; &amp;nbsp;&amp;nbsp;10: invokevirtual #4&amp;nbsp;// Method java/io/PrintStream.println:(Ljava/lang/String;)V
+&amp;nbsp; &amp;nbsp;&amp;nbsp;12:&amp;nbsp;goto&amp;nbsp;13
+
+
+&amp;nbsp; &amp;nbsp;&amp;nbsp;// case 2 (fallthrough 目標)
+&amp;nbsp; &amp;nbsp;&amp;nbsp;13: iconst_2
+&amp;nbsp; &amp;nbsp;&amp;nbsp;14: if_icmpne&amp;nbsp;28&amp;nbsp; &amp;nbsp;// 如果不等於 2，跳轉到 case 3
+&amp;nbsp; &amp;nbsp;&amp;nbsp;17: getstatic #2&amp;nbsp; &amp;nbsp;// Field java/lang/System.out:Ljava/io/PrintStream;
+&amp;nbsp; &amp;nbsp;&amp;nbsp;20: ldc #5&amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp;// String Two
+&amp;nbsp; &amp;nbsp;&amp;nbsp;22: invokevirtual #4&amp;nbsp;// Method java/io/PrintStream.println:(Ljava/lang/String;)V
+&amp;nbsp; &amp;nbsp;&amp;nbsp;25:&amp;nbsp;goto&amp;nbsp;40&amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp;&amp;nbsp;// 跳轉到 switch 結束
+
+
+&amp;nbsp; &amp;nbsp;&amp;nbsp;// case 3
+&amp;nbsp; &amp;nbsp;&amp;nbsp;28: iconst_3
+&amp;nbsp; &amp;nbsp;&amp;nbsp;29: if_icmpne&amp;nbsp;40&amp;nbsp; &amp;nbsp;// 如果不等於 3，跳轉到結束
+&amp;nbsp; &amp;nbsp;&amp;nbsp;32: getstatic #2&amp;nbsp; &amp;nbsp;// Field java/lang/System.out:Ljava/io/PrintStream;
+&amp;nbsp; &amp;nbsp;&amp;nbsp;35: ldc #6&amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp;// String Three
+&amp;nbsp; &amp;nbsp;&amp;nbsp;37: invokevirtual #4&amp;nbsp;// Method java/io/PrintStream.println:(Ljava/lang/String;)V
+
+
+&amp;nbsp; &amp;nbsp;&amp;nbsp;// switch 結束
+&amp;nbsp; &amp;nbsp;&amp;nbsp;40:&amp;nbsp;return&lt;/code&gt;&lt;/pre&gt; 
+&lt;p style="margin-left:0; margin-right:0"&gt;&lt;span&gt;&lt;span&gt;&lt;strong&gt;&lt;span style="color:#3e3e3e"&gt;&lt;span style="background-color:#ffffff"&gt;既然沒用為什麼還要加這個指令？&lt;/span&gt;&lt;/span&gt;&lt;/strong&gt;&lt;/span&gt;&lt;/span&gt;&lt;/p&gt; 
+&lt;p style="margin-left:0; margin-right:0"&gt;&amp;nbsp;&lt;/p&gt; 
+&lt;p style="margin-left:0; margin-right:0"&gt;&lt;span&gt;&lt;span&gt;&lt;span style="color:#3e3e3e"&gt;&lt;span style="background-color:#ffffff"&gt;class 文件是通過 Exception table 來指定異常處理的指令範圍，而 dex 文件則是通過為每一行可能產生 throwable 的指令後面添加 FALLTHROUGH 指令來實現 try-catch。&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/p&gt; 
+&lt;p style="margin-left:0; margin-right:0"&gt;&amp;nbsp;&lt;/p&gt; 
+&lt;p style="margin-left:0; margin-right:0"&gt;&lt;span&gt;&lt;span&gt;&lt;span style="color:#3e3e3e"&gt;&lt;span style="background-color:#ffffff"&gt;這裏會把每一行可能崩潰的指令都鏈接到 catch 指令所在的 block 中，確保任意位置的崩潰都能正常走到 catch 中。&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/p&gt; 
+&lt;div&gt; 
+ &lt;img src="https://oscimg.oschina.net/oscnet//144f461c63929a79f8346da8a6731ecb.jpg" referrerpolicy="no-referrer"&gt; 
+&lt;/div&gt; 
+&lt;p style="margin-left:0; margin-right:0"&gt;&lt;span&gt;&lt;span&gt;&lt;strong&gt;&lt;span style="color:#3e3e3e"&gt;&lt;span style="background-color:#ffffff"&gt;問題根因&lt;/span&gt;&lt;/span&gt;&lt;/strong&gt;&lt;/span&gt;&lt;/span&gt;&lt;/p&gt; 
+&lt;p style="margin-left:0; margin-right:0"&gt;&amp;nbsp;&lt;/p&gt; 
+&lt;p style="margin-left:0; margin-right:0"&gt;&lt;span&gt;&lt;span&gt;&lt;span style="color:#3e3e3e"&gt;&lt;span style="background-color:#ffffff"&gt;在 R8 4.0.26 版本，IRCode 翻譯器新增了對 FALLTHROUGH 指令的處理，即新建一個 block 並&lt;/span&gt;&lt;/span&gt;&lt;strong&gt;&lt;span style="color:#3e3e3e"&gt;&lt;span style="background-color:#ffffff"&gt;生成一條 GOTO 指令指向新的 block。&lt;/span&gt;&lt;/span&gt;&lt;/strong&gt;&lt;/span&gt;&lt;/span&gt;&lt;/p&gt; 
+&lt;div&gt; 
+ &lt;img src="https://oscimg.oschina.net/oscnet//941934987c5518db50e697aacc04d794.jpg" referrerpolicy="no-referrer"&gt; 
+&lt;/div&gt; 
+&lt;p style="margin-left:0; margin-right:0"&gt;&lt;span&gt;&lt;span&gt;&lt;span style="color:#3e3e3e"&gt;&lt;span style="background-color:#ffffff"&gt;根據前文的結論，GOTO 指令一樣會被認為是類初始化相關的邏輯，因此 try-catch 語句塊一樣會導致最終多出來一個 new-instance 字節碼。&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/p&gt; 
+&lt;p style="margin-left:0; margin-right:0"&gt;&amp;nbsp;&lt;/p&gt; 
+&lt;p style="margin-left:16px; margin-right:16px; text-align:center"&gt;&lt;span&gt;&lt;strong&gt;&lt;span style="color:#000000"&gt;&lt;span style="background-color:#ffffff"&gt;為什麼只升級 AGP 會導致&lt;/span&gt;&lt;/span&gt;&lt;/strong&gt;&lt;/span&gt;&lt;/p&gt; 
+&lt;p style="margin-left:16px; margin-right:16px; text-align:center"&gt;&lt;span&gt;&lt;strong&gt;&lt;span style="color:#000000"&gt;&lt;span style="background-color:#ffffff"&gt;R8 功能出問題？&lt;/span&gt;&lt;/span&gt;&lt;/strong&gt;&lt;/span&gt;&lt;/p&gt; 
+&lt;p style="margin-left:0; margin-right:0"&gt;&lt;span&gt;&lt;span&gt;&lt;span style="color:#3e3e3e"&gt;&lt;span style="background-color:#ffffff"&gt;我們在數個版本之前就已經單獨升級了 R8，正好涵蓋了 ApiModel 這個變更，但是直到近期才升級了 AGP。&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/p&gt; 
+&lt;p style="margin-left:0; margin-right:0"&gt;&amp;nbsp;&lt;/p&gt; 
+&lt;p style="margin-left:0; margin-right:0"&gt;&lt;span&gt;&lt;span&gt;&lt;span style="color:#3e3e3e"&gt;&lt;span style="background-color:#ffffff"&gt;可以看到從 AGP7.3-beta 版本開始，才默認打開 ApiModel 功能，這就解釋了為什麼升級 AGP 之後才出現此崩潰。&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/p&gt; 
+&lt;div&gt; 
+ &lt;img src="https://oscimg.oschina.net/oscnet//09bde1db3ff6dd55f96188f2c6337b24.jpg" referrerpolicy="no-referrer"&gt; 
+&lt;/div&gt; 
+&lt;p style="margin-left:0; margin-right:0"&gt;&amp;nbsp;&lt;/p&gt; 
+&lt;span id="OSC_h1_4"&gt;&lt;/span&gt; 
+&lt;h1&gt;四、解決方案&lt;/h1&gt; 
+&lt;p style="margin-left:16px; margin-right:16px; text-align:center"&gt;&lt;span&gt;&lt;strong&gt;&lt;span style="color:#000000"&gt;&lt;span style="background-color:#ffffff"&gt;禁用 ApiModel&lt;/span&gt;&lt;/span&gt;&lt;/strong&gt;&lt;/span&gt;&lt;/p&gt; 
+&lt;p style="margin-left:0; margin-right:0"&gt;&lt;span&gt;&lt;span&gt;&lt;span style="color:#3e3e3e"&gt;&lt;span style="background-color:#ffffff"&gt;ApiModel 通過犧牲些微包體，換來啓動階段類驗證耗時，但是從他覆蓋的類範圍來看，對啓動速度的收益微乎其微，因此可以直接通過配置開關關閉整個功能。&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/p&gt; 
+&lt;pre&gt;&lt;code&gt;System.setProperty("com.android.tools.r8.disableApiModeling",&amp;nbsp;"1")&lt;/code&gt;&lt;/pre&gt; 
+&lt;p style="margin-left:0; margin-right:0"&gt;&lt;span&gt;&lt;span&gt;&lt;span style="color:#3e3e3e"&gt;&lt;span style="background-color:#ffffff"&gt;雖説這是個實驗中的功能，且邏輯相對獨立，但是考慮到後續還有內聯優化等操作，貿然關閉整個功能無法評估影響面，潛在的穩定性風險較高。&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/p&gt; 
+&lt;p style="margin-left:0; margin-right:0"&gt;&amp;nbsp;&lt;/p&gt; 
+&lt;p style="margin-left:16px; margin-right:16px; text-align:center"&gt;&lt;span&gt;&lt;span&gt;&lt;strong&gt;&lt;span style="color:#000000"&gt;&lt;span style="background-color:#ffffff"&gt;官方修復&lt;/span&gt;&lt;/span&gt;&lt;/strong&gt;&lt;/span&gt;&lt;/span&gt;&lt;/p&gt; 
+&lt;p style="margin-left:0; margin-right:0"&gt;&lt;span&gt;&lt;span&gt;&lt;span style="color:#3e3e3e"&gt;&lt;span style="background-color:#ffffff"&gt;該問題反饋給 R8 團隊後，官方提供了臨時規避的方案，即確保高版本 API 在單獨的函數中調用。&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/p&gt; 
+&lt;p style="margin-left:0; margin-right:0"&gt;&amp;nbsp;&lt;/p&gt; 
+&lt;p style="margin-left:0; margin-right:0"&gt;&lt;span&gt;&lt;em&gt;&lt;span&gt;&lt;span style="color:#3e3e3e"&gt;&lt;span style="background-color:#ffffff"&gt;https://issuetracker.google.com/issues/441137561&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/em&gt;&lt;/span&gt;&lt;/p&gt; 
+&lt;div&gt; 
+ &lt;img src="https://oscimg.oschina.net/oscnet//358c6b1b9714ab22bdff45c27378289c.jpg" referrerpolicy="no-referrer"&gt; 
+&lt;/div&gt; 
+&lt;p style="margin-left:0; margin-right:0"&gt;&lt;span&gt;&lt;span&gt;&lt;span style="color:#3e3e3e"&gt;&lt;span style="background-color:#ffffff"&gt;隨後不久就提了 MR 針對 SurfaceTexture 這個類禁用了 ApiModel，並未徹底解決此問題。&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;em&gt;&lt;span&gt;&lt;span style="color:#3e3e3e"&gt;&lt;span style="background-color:#ffffff"&gt;https://r8-review.googlesource.com/c/r8/+/109044&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/em&gt;&lt;/span&gt;&lt;/p&gt; 
+&lt;div&gt; 
+ &lt;img src="https://oscimg.oschina.net/oscnet//403f68ae953ddd19b67dc90602d69475.jpg" referrerpolicy="no-referrer"&gt; 
+&lt;/div&gt; 
+&lt;p style="margin-left:0; margin-right:0"&gt;&lt;span&gt;&lt;span&gt;&lt;span style="color:#3e3e3e"&gt;&lt;span style="background-color:#ffffff"&gt;官方的修復方案比較權威，且影響面較小，但是並未徹底解決問題。&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/p&gt; 
+&lt;p style="margin-left:0; margin-right:0"&gt;&amp;nbsp;&lt;/p&gt; 
+&lt;p style="margin-left:16px; margin-right:16px; text-align:center"&gt;&lt;span&gt;&lt;span&gt;&lt;strong&gt;&lt;span style="color:#000000"&gt;&lt;span style="background-color:#ffffff"&gt;自行修復&lt;/span&gt;&lt;/span&gt;&lt;/strong&gt;&lt;/span&gt;&lt;/span&gt;&lt;/p&gt; 
+&lt;p style="margin-left:0; margin-right:0"&gt;&lt;span&gt;&lt;span&gt;&lt;span style="color:#3e3e3e"&gt;&lt;span style="background-color:#ffffff"&gt;如果要修復此問題，關鍵是要將多餘的 new-instance 指令替換成一個合適的觸發類加載的指令，根據 java 官方文檔裏的介紹，只有 new 對象，訪問靜態的成員變量或者函數的指令才能安全的觸發類加載，比較理想的方案是改成訪問靜態變量，但是很多類並沒有靜態變量，比如 SurfaceTexture 就沒有。&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/p&gt; 
+&lt;p style="margin-left:0; margin-right:0"&gt;&amp;nbsp;&lt;/p&gt; 
+&lt;p style="margin-left:0; margin-right:0"&gt;&lt;span&gt;&lt;em&gt;&lt;span&gt;&lt;span style="color:#3e3e3e"&gt;&lt;span style="background-color:#ffffff"&gt;https://docs.oracle.com/javase/specs/jvms/se8/html/jvms-5.html#jvms-5.5&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/em&gt;&lt;/span&gt;&lt;/p&gt; 
+&lt;div&gt; 
+ &lt;img src="https://oscimg.oschina.net/oscnet//168eeaad61d7b9e162730708773e256d.jpg" referrerpolicy="no-referrer"&gt; 
+&lt;/div&gt; 
+&lt;p style="margin-left:0; margin-right:0"&gt;&lt;span&gt;&lt;span&gt;&lt;span style="color:#3e3e3e"&gt;&lt;span style="background-color:#ffffff"&gt;因此我們可以考慮結合 getStatic 指令和掃描 finalize 的方式來解決該問題：&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/p&gt; 
+&lt;div&gt; 
+ &lt;img src="https://oscimg.oschina.net/oscnet//baa3977f849ce680a7684f38a4d68176.jpg" referrerpolicy="no-referrer"&gt; 
+&lt;/div&gt; 
+&lt;p style="margin-left:0; margin-right:0"&gt;&lt;span&gt;&lt;span&gt;&lt;span style="color:#3e3e3e"&gt;&lt;span style="background-color:#ffffff"&gt;雖説可以通過打印日誌來約束此改動的影響面，但畢竟要自行修改並編譯 R8 的 jar 包，且需要自行長期維護，整體影響面還是偏大，對穩定性要求高的 App 不建議採用該方案。&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/p&gt; 
+&lt;p style="margin-left:0; margin-right:0"&gt;&amp;nbsp;&lt;/p&gt; 
+&lt;p style="margin-left:16px; margin-right:16px; text-align:center"&gt;&lt;span&gt;&lt;span&gt;&lt;strong&gt;&lt;span style="color:#000000"&gt;&lt;span style="background-color:#ffffff"&gt;業務改造（推薦）&lt;/span&gt;&lt;/span&gt;&lt;/strong&gt;&lt;/span&gt;&lt;/span&gt;&lt;/p&gt; 
+&lt;p style="margin-left:0; margin-right:0"&gt;&lt;span&gt;&lt;span&gt;&lt;span style="color:#3e3e3e"&gt;&lt;span style="background-color:#ffffff"&gt;在前文中提到的外聯函數生成處打印日誌，即可感知到工程中有哪些類受 ApiModel 影響，如果數量不多，分別讓業務改造其相關的寫法，確保傳參時是局部變量且無 try-catch/synchronized 語句塊即可。&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/p&gt; 
+&lt;div&gt; 
+ &lt;img src="https://oscimg.oschina.net/oscnet//a7fd6ee2c6b96d340b89116b8a76d5d5.jpg" referrerpolicy="no-referrer"&gt; 
+&lt;/div&gt; 
+&lt;p style="margin-left:0; margin-right:0"&gt;&lt;span&gt;&lt;span&gt;&lt;span style="color:#3e3e3e"&gt;&lt;span style="background-color:#ffffff"&gt;考慮到 App 整體的穩定性，最終我們採用了業務改造的方式繞過了此問題，並在 R8 異常代碼處添加了日誌告警來預防後續增量問題，並仿照官方 MR 中的寫法補充了類的黑名單，用於應對無法編輯的三方庫引入此問題的場景。&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/p&gt; 
+&lt;p style="margin-left:0; margin-right:0"&gt;&amp;nbsp;&lt;/p&gt; 
+&lt;span id="OSC_h1_5"&gt;&lt;/span&gt; 
+&lt;h1&gt;五、總結&lt;/h1&gt; 
+&lt;p style="margin-left:0; margin-right:0"&gt;&lt;span&gt;&lt;span&gt;&lt;span style="color:#3e3e3e"&gt;&lt;span style="background-color:#ffffff"&gt;在 Android 開發中，即使是 AGP、R8 這樣的官方工具鏈升級，也要保持足夠的警惕。畢竟 Android 生態太過複雜，再加上開發者們千奇百怪的代碼寫法，不論多麼完善的測試流程都無法規避這類特定場景的 bug。&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/p&gt; 
+&lt;p style="margin-left:0; margin-right:0"&gt;&amp;nbsp;&lt;/p&gt; 
+&lt;p style="margin-left:0; margin-right:0"&gt;&lt;span&gt;&lt;span&gt;&lt;span style="color:#3e3e3e"&gt;&lt;span style="background-color:#ffffff"&gt;這次的 ApiModel 外聯優化問題就是一個很好的例子——它只在特定條件下才會暴露，但一旦出現就是必現的 native 崩潰。所以對於這種影響面無法評估的重大升級，還是需要經過足夠長時間的獨立灰度驗證，才能合入主幹分支。&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/p&gt; 
+&lt;p style="margin-left:0; margin-right:0"&gt;&amp;nbsp;&lt;/p&gt; 
+&lt;p style="margin-left:24px; margin-right:24px; text-align:center"&gt;&lt;span&gt;&lt;strong&gt;&lt;span style="color:#ffffff"&gt;&lt;span style="background-color:#5caae9"&gt;往期回顧&lt;/span&gt;&lt;/span&gt;&lt;/strong&gt;&lt;/span&gt;&lt;/p&gt; 
+&lt;p style="margin-left:16px; margin-right:16px"&gt;&amp;nbsp;&lt;/p&gt; 
+&lt;p style="margin-left:16px; margin-right:16px"&gt;&lt;span&gt;&lt;span&gt;&lt;span style="color:#6a6a6a"&gt;&lt;span style="background-color:#e9faff"&gt;1.&amp;nbsp;可擴展系統設計的黃金法則與 Go 語言實踐｜得物技術&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/p&gt; 
+&lt;p style="margin-left:16px; margin-right:16px"&gt;&lt;span&gt;&lt;span&gt;&lt;span style="color:#6a6a6a"&gt;&lt;span style="background-color:#e9faff"&gt;2.&amp;nbsp;得物新商品審核鏈路建設分享&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/p&gt; 
+&lt;p style="margin-left:16px; margin-right:16px"&gt;&lt;span&gt;&lt;span&gt;&lt;span style="color:#6a6a6a"&gt;&lt;span style="background-color:#e9faff"&gt;3.&amp;nbsp;營銷會場預覽直通車實踐｜得物技術&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/p&gt; 
+&lt;p style="margin-left:16px; margin-right:16px"&gt;&lt;span&gt;&lt;span&gt;&lt;span style="color:#6a6a6a"&gt;&lt;span style="background-color:#e9faff"&gt;4.&amp;nbsp;基於 TinyMce 富文本編輯器的客服自研知識庫的技術探索和實踐｜得物技術&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/p&gt; 
+&lt;p style="margin-left:16px; margin-right:16px"&gt;&lt;span&gt;&lt;span&gt;&lt;span style="color:#6a6a6a"&gt;&lt;span style="background-color:#e9faff"&gt;5.&amp;nbsp;AI 質量專項報告自動分析生成｜得物技術&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/p&gt; 
+&lt;p style="margin-left:0; margin-right:0"&gt;&amp;nbsp;&lt;/p&gt; 
+&lt;p style="margin-left:0; margin-right:0; text-align:center"&gt;&lt;span&gt;&lt;span&gt;&lt;span style="color:#3e3e3e"&gt;&lt;span style="background-color:#ffffff"&gt;文 / 永樂&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/p&gt; 
+&lt;p style="margin-left:0; margin-right:0; text-align:center"&gt;&amp;nbsp;&lt;/p&gt; 
+&lt;p style="margin-left:0; margin-right:0; text-align:center"&gt;&lt;span&gt;&lt;span&gt;&lt;span style="color:#3e3e3e"&gt;&lt;span style="background-color:#ffffff"&gt;關注得物技術，每週更新技術乾貨&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/p&gt; 
+&lt;p style="margin-left:0; margin-right:0; text-align:center"&gt;&lt;span&gt;&lt;span&gt;&lt;span style="color:#3e3e3e"&gt;&lt;span style="background-color:#ffffff"&gt;要是覺得文章對你有幫助的話，歡迎評論轉發點贊～&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/p&gt; 
+&lt;p style="margin-left:0; margin-right:0; text-align:center"&gt;&lt;span&gt;&lt;span&gt;&lt;span style="color:#3e3e3e"&gt;&lt;span style="background-color:#ffffff"&gt;未經得物技術許可嚴禁轉載，否則依法追究法律責任。&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&amp;nbsp;&lt;/p&gt;
+                                                                                    &lt;/div&gt;
+                                                                            </description>
+      <link>https://my.oschina.net/u/5783135/blog/18690286</link>
+      <guid isPermaLink="false">https://my.oschina.net/u/5783135/blog/18690286</guid>
+      <pubDate>Tue, 02 Sep 2025 02:30:37 GMT</pubDate>
+      <author>原創</author>
+    </item>
+    <item>
+      <title>跨平台遊戲引擎 Axmol-2.8.0 發佈</title>
+      <description>&lt;div class="content"&gt;
+                                                                    
+                                                        &lt;p&gt;&lt;em&gt;Axmol 2.8.0 版本是一個以錯誤修復和功能改進為主的次要 &lt;code&gt;LTS&lt;/code&gt; 長期支持版本，發佈時間: 2025 年 9 月 1 日&lt;/em&gt;&lt;/p&gt; 
+&lt;p&gt;🙏感謝所有對 axmol 項目的貢獻者，包括財務贊助者：@scorewarrior、@peterkharitonov、@duong、@thienphuoc、@bingsoo、@asnagni、 @paulocoutinhox 以及 &lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fgithub.com%2Fsponsors%2Faxmolengine" target="_blank"&gt;歷史贊助者&lt;/a&gt;&lt;/p&gt; 
+&lt;h2&gt;倉庫地址&lt;/h2&gt; 
+&lt;ul&gt; 
+ &lt;li&gt;GitHub (官方): &lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fgithub.com%2Faxmolengine%2Faxmol" target="_blank"&gt;https://github.com/axmolengine/axmol&lt;/a&gt;&lt;/li&gt; 
+ &lt;li&gt;Gitee (鏡像): &lt;a href="https://gitee.com/simdsoft/axmol"&gt;https://gitee.com/simdsoft/axmol&lt;/a&gt;&lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;h2&gt;錯誤修復&lt;/h2&gt; 
+&lt;ul&gt; 
+ &lt;li&gt;修復 #2669：由於 DriverGL 初始化失敗，Windows 11 上的 Windows UWP 無法運行，由 @halx99 修復。&lt;/li&gt; 
+ &lt;li&gt;修復 #2655：在 Android 場景包含 ImGui 圖層時多點觸控不起作用，由 @halx99 修復。&lt;/li&gt; 
+ &lt;li&gt;修復 #2674：Linux 上最終應用未鏈接 OpenSSL，由 @halx99 修復（PR：&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fgithub.com%2Faxmolengine%2Faxmol%2Fpull%2F2675%25EF%25BC%2589%25E3%2580%2582" target="_blank"&gt;https://github.com/axmolengine/axmol/pull/2675）。&lt;/a&gt;&lt;/li&gt; 
+ &lt;li&gt;修復從普通模式切換到 SDF 時標籤渲染的 FontAtlas 錯誤，由 @halx99 修復（PR：&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fgithub.com%2Faxmolengine%2Faxmol%2Fpull%2F2629%25EF%25BC%2589%25E3%2580%2582" target="_blank"&gt;https://github.com/axmolengine/axmol/pull/2629）。&lt;/a&gt;&lt;/li&gt; 
+ &lt;li&gt;修復 wasm 中 Device::getTextureDataForText 處理空白文本時拋出異常，由 @halx99 修復。&lt;/li&gt; 
+ &lt;li&gt;修復 Linux 上當 LabelType 為 STRING_TEXTURE 時標籤顏色不正確的問題，由 @halx99 修復。&lt;/li&gt; 
+ &lt;li&gt;修復錯誤的 fmt::format_to 用法，由 @halx99 修復（PR：&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fgithub.com%2Faxmolengine%2Faxmol%2Fpull%2F2612%25EF%25BC%2589%25E3%2580%2582" target="_blank"&gt;https://github.com/axmolengine/axmol/pull/2612）。&lt;/a&gt;&lt;/li&gt; 
+ &lt;li&gt;修復 genbindings.ps1 中 LLVM 版本截取邏輯問題，由 @halx99 修復。&lt;/li&gt; 
+ &lt;li&gt;修復 Label 的 SDF 在字體縮放時的渲染問題及其他相關錯誤，由 @halx99 修復（PR：&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fgithub.com%2Faxmolengine%2Faxmol%2Fpull%2F2625%25EF%25BC%2589%25E3%2580%2582" target="_blank"&gt;https://github.com/axmolengine/axmol/pull/2625）。&lt;/a&gt;&lt;/li&gt; 
+ &lt;li&gt;修復項目包含 Swift 代碼時的編譯錯誤，由 @halx99 修復（PR：&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fgithub.com%2Faxmolengine%2Faxmol%2Fpull%2F2632%25EF%25BC%2589%25E3%2580%2582" target="_blank"&gt;https://github.com/axmolengine/axmol/pull/2632）。&lt;/a&gt;&lt;/li&gt; 
+ &lt;li&gt;修復 wasm Downloader 以錯誤權限打開文件（#2666），由 @AlexandreK38 修復（PR：&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fgithub.com%2Faxmolengine%2Faxmol%2Fpull%2F2666%25EF%25BC%2589%25E3%2580%2582" target="_blank"&gt;https://github.com/axmolengine/axmol/pull/2666）。&lt;/a&gt;&lt;/li&gt; 
+ &lt;li&gt;修復在 CMake 4.1 以 Windows 為目標時「找不到彙編器」的構建失敗問題，由 @halx99 修復。&lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;h2&gt;功能改進&lt;/h2&gt; 
+&lt;ul&gt; 
+ &lt;li&gt;改進 Apple iOS 平台的渲染視圖創建，由 @halx99 提交（PR：&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fgithub.com%2Faxmolengine%2Faxmol%2Fpull%2F2600%25EF%25BC%2589%25E3%2580%2582" target="_blank"&gt;https://github.com/axmolengine/axmol/pull/2600）。&lt;/a&gt;&lt;/li&gt; 
+ &lt;li&gt;將 GLView 重命名為 RenderView，由 @halx99 提交（PR：&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fgithub.com%2Faxmolengine%2Faxmol%2Fpull%2F2602%25EF%25BC%2589%25E3%2580%2582" target="_blank"&gt;https://github.com/axmolengine/axmol/pull/2602）。&lt;/a&gt;&lt;/li&gt; 
+ &lt;li&gt;在 2.6.0 版本發佈説明中增加 emsdk 降級提示，作者 @halx99。&lt;/li&gt; 
+ &lt;li&gt;改進 wasm 開發環境配置説明，作者 @halx99。&lt;/li&gt; 
+ &lt;li&gt;將 &lt;code&gt;GLContextAttrs&lt;/code&gt; 重命名為 &lt;code&gt;GfxContextAttrs&lt;/code&gt;，作者 @halx99。&lt;/li&gt; 
+ &lt;li&gt;更新 pull_request_template.md，作者 @aismann（PR：&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fgithub.com%2Faxmolengine%2Faxmol%2Fpull%2F2609%25EF%25BC%2589%25E3%2580%2582" target="_blank"&gt;https://github.com/axmolengine/axmol/pull/2609）。&lt;/a&gt;&lt;/li&gt; 
+ &lt;li&gt;改進 UTF-8 字符計數，移除 strlen 調用，作者 @halx99（PR：&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fgithub.com%2Faxmolengine%2Faxmol%2Fpull%2F2614%25EF%25BC%2589%25E3%2580%2582" target="_blank"&gt;https://github.com/axmolengine/axmol/pull/2614）。&lt;/a&gt;&lt;/li&gt; 
+ &lt;li&gt;改進 UTF-8 文本處理，作者 @halx99。&lt;/li&gt; 
+ &lt;li&gt;移除 sprintf/snprintf 存根，作者 @halx99（PR：&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fgithub.com%2Faxmolengine%2Faxmol%2Fpull%2F2615%25EF%25BC%2589%25E3%2580%2582" target="_blank"&gt;https://github.com/axmolengine/axmol/pull/2615）。&lt;/a&gt;&lt;/li&gt; 
+ &lt;li&gt;改進 Android SDK 設置，Axmol 指定的 Android SDK 目錄優先級：&lt;code&gt;android project local properties&lt;/code&gt; &amp;gt; &lt;code&gt;ANDROID_HOME&lt;/code&gt; &amp;gt; &lt;code&gt;ANDROID_SDK_ROOT&lt;/code&gt; &amp;gt; &lt;code&gt;axmol/tools/external/adt/sdk&lt;/code&gt;，作者 @halx99。&lt;/li&gt; 
+ &lt;li&gt;更多頭文件使用 pragma once，作者 @halx99（PR：&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fgithub.com%2Faxmolengine%2Faxmol%2Fpull%2F2616%25EF%25BC%2589%25E3%2580%2582" target="_blank"&gt;https://github.com/axmolengine/axmol/pull/2616）。&lt;/a&gt;&lt;/li&gt; 
+ &lt;li&gt;新增窗口尺寸限制設置支持，作者 @NgVThangBz（PR：&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fgithub.com%2Faxmolengine%2Faxmol%2Fpull%2F2618%25EF%25BC%2589%25E3%2580%2582" target="_blank"&gt;https://github.com/axmolengine/axmol/pull/2618）。&lt;/a&gt;&lt;/li&gt; 
+ &lt;li&gt;將 cpp-tests 中「Node: Label - New API」重命名為「Node: Label」，作者 @aismann（PR：&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fgithub.com%2Faxmolengine%2Faxmol%2Fpull%2F2627%25EF%25BC%2589%25E3%2580%2582" target="_blank"&gt;https://github.com/axmolengine/axmol/pull/2627）。&lt;/a&gt;&lt;/li&gt; 
+ &lt;li&gt;更新 ImGui 多視口提示信息，作者 @halx99。&lt;/li&gt; 
+ &lt;li&gt;改進測試（統一 cpp-/lua- 測試中的菜單項命名），作者 @aismann（PR：&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fgithub.com%2Faxmolengine%2Faxmol%2Fpull%2F2640%25EF%25BC%2589%25E3%2580%2582" target="_blank"&gt;https://github.com/axmolengine/axmol/pull/2640）。&lt;/a&gt;&lt;/li&gt; 
+ &lt;li&gt;將 SIMD 可用性檢測移入獨立的 CMake 文件，作者 @j-jorge（PR：&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fgithub.com%2Faxmolengine%2Faxmol%2Fpull%2F2642%25EF%25BC%2589%25E3%2580%2582" target="_blank"&gt;https://github.com/axmolengine/axmol/pull/2642）。&lt;/a&gt;&lt;/li&gt; 
+ &lt;li&gt;將 CMAKE_MSVC_DEBUG_INFORMATION_FORMAT 設為 Embedded，以解決 PDB 體積過大問題，作者 @halx99。&lt;/li&gt; 
+ &lt;li&gt;改進 NuGet 包管理，作者 @halx99（PR：&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fgithub.com%2Faxmolengine%2Faxmol%2Fpull%2F2671%25EF%25BC%2589%25E3%2580%2582" target="_blank"&gt;https://github.com/axmolengine/axmol/pull/2671）。&lt;/a&gt;&lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;h2&gt;SDK 和工具更新&lt;/h2&gt; 
+&lt;ul&gt; 
+ &lt;li&gt;AGP: 8.11.0 =&amp;gt; 8.11.1&lt;/li&gt; 
+ &lt;li&gt;gradle: 8.14.3 =&amp;gt; 9.0.0&lt;/li&gt; 
+ &lt;li&gt;cmake: 4.0.3 =&amp;gt; 4.1.1&lt;/li&gt; 
+ &lt;li&gt;webview2 (msedge): 1.0.992.28 =&amp;gt; 1.0.3045.78&lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;h2&gt;三方庫更新&lt;/h2&gt; 
+&lt;ul&gt; 
+ &lt;li&gt;curl: 8.13.0 =&amp;gt; 8.15.0&lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;h2&gt;發佈文件 MD5 校驗值&lt;/h2&gt; 
+&lt;ul&gt; 
+ &lt;li&gt;&lt;code&gt;axmol-2.8.0.zip&lt;/code&gt;: 0100b8b0a73d25b0fb020590fc2e8a54&lt;/li&gt; 
+ &lt;li&gt;&lt;code&gt;axmol-bs-2.8.0.zip&lt;/code&gt;: 114afdb56e2f507c831163e6cd6385e8&lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;h2&gt;下載&lt;/h2&gt; 
+&lt;h3&gt;GitHub&lt;/h3&gt; 
+&lt;p&gt;&lt;em&gt;國內用户可嘗試複製鏈接使用迅雷下載&lt;/em&gt;&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt;&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fgithub.com%2Faxmolengine%2Faxmol%2Freleases%2Fdownload%2Fv2.8.0%2Faxmol-2.8.0.zip" target="_blank"&gt;axmol-2.8.0.zip&lt;/a&gt;&lt;/li&gt; 
+ &lt;li&gt;&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fgithub.com%2Faxmolengine%2Faxmol%2Freleases%2Fdownload%2Fv2.8.0%2Faxmol-bs-2.8.0.zip" target="_blank"&gt;axmol-bs-2.8.0.zip&lt;/a&gt;&lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;h3&gt;百度網盤&lt;/h3&gt; 
+&lt;ul&gt; 
+ &lt;li&gt;&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fpan.baidu.com%2Fs%2F1-gWTCIqU8psNrgaLWNFqeg%3Fpwd%3Dj7p7" target="_blank"&gt;axmol-2.8.0.zip&lt;/a&gt;&lt;/li&gt; 
+ &lt;li&gt;&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fpan.baidu.com%2Fs%2F1fBdSZZuctwLsEmJH4QgLMg%3Fpwd%3D3bbk" target="_blank"&gt;axmol-bs-2.8.0.zip&lt;/a&gt;&lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;h3&gt;SourceForge&lt;/h3&gt; 
+&lt;p&gt;&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fsourceforge.net%2Fprojects%2Faxmol-engine.mirror%2Ffiles%2Fv2.8.0%2F" target="_blank"&gt;Axmol-2.8.0&lt;/a&gt;&lt;/p&gt; 
+&lt;h2&gt;本版亮點詳解&lt;/h2&gt; 
+&lt;ul&gt; 
+ &lt;li&gt;&lt;strong&gt;NuGet 包管理優化&lt;/strong&gt;&lt;br&gt; 本版本對 NuGet 包管理進行了改進：Axmol 依賴的 Microsoft Edge WebView2 和 CppWinRT 包將在 CMake 配置階段統一下載至 &lt;code&gt;&amp;lt;AX_ROOT&amp;gt;/cache/packages&lt;/code&gt; 目錄。&lt;br&gt; 這樣，即使刪除 &lt;code&gt;build&lt;/code&gt; 目錄，這些依賴包也無需重新下載。此前版本會將依賴下載到 &lt;code&gt;CMAKE_BINARY_DIR&lt;/code&gt;，導致清理構建目錄後需重複下載。&lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;h2&gt;Axmol 項目最新動態&lt;/h2&gt; 
+&lt;ul&gt; 
+ &lt;li&gt; &lt;p&gt;&lt;strong&gt;分支管理優化&lt;/strong&gt;&lt;br&gt; 為了讓開發者更直觀地選擇適合生產環境的分支，倉庫分支結構進行了調整：&lt;/p&gt; 
+  &lt;ul&gt; 
+   &lt;li&gt;原 &lt;code&gt;dev&lt;/code&gt; 分支更名為 &lt;code&gt;release/2.x&lt;/code&gt;，作為 &lt;strong&gt;2.x LTS&lt;/strong&gt; 穩定維護與發佈分支&lt;/li&gt; 
+   &lt;li&gt;原 &lt;code&gt;wip-v3&lt;/code&gt; 分支更名為 &lt;code&gt;dev/v3&lt;/code&gt;，並設為默認開發分支（尚未正式發佈，雖處於開發階段，但依託 CI 持續集成，確保構建與運行始終可用）&lt;/li&gt; 
+  &lt;/ul&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;&lt;strong&gt;目錄結構優化（dev/v3）&lt;/strong&gt;&lt;br&gt; 將引擎核心代碼目錄 &lt;code&gt;core&lt;/code&gt; 重命名為 &lt;code&gt;axmol&lt;/code&gt;，並統一替換引擎代碼中的 include 語句為 &lt;code&gt;#include "axmol/xxx/xxx.h"&lt;/code&gt;，以簡化頭文件引用路徑。&lt;br&gt; 此調整不僅使代碼結構更清晰，還能更方便地與其他代碼庫協同使用，減少頭文件命名衝突的風險。&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;&lt;strong&gt;渲染後端重構（dev/v3）&lt;/strong&gt;&lt;br&gt; &lt;code&gt;dev/v3&lt;/code&gt; 分支對渲染後端進行了重構，新增 &lt;strong&gt;D3D11 渲染支持&lt;/strong&gt;。在 Windows 平台上，相比原 GLES API，性能提升約 &lt;strong&gt;13.6%&lt;/strong&gt;。&lt;br&gt; 同時，&lt;code&gt;axmol/renderer/backend&lt;/code&gt; 目錄已重命名並遷移至 &lt;code&gt;axmol/rhi&lt;/code&gt;，詳細説明可參考 &lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fgithub.com%2Faxmolengine%2Faxmol%2Fwiki%2FAbout-RHI-in-axmol-v3" target="_blank"&gt;About-RHI-in-axmol-v3&lt;/a&gt;。&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;&lt;strong&gt;clang-format 增強（dev/v3）&lt;/strong&gt;&lt;br&gt; 為保持引擎核心代碼格式統一與規範，增強並完善了 &lt;code&gt;clang-format&lt;/code&gt; Lint CI，對每個 PR 自動檢查代碼格式是否符合規範。&lt;br&gt; 同時新增 &lt;code&gt;/clang-format&lt;/code&gt; 機器人評論指令：在 PR 評論中發送該指令，機器人將自動修正代碼格式並推送至 PR 原分支（需確保提交 PR 時勾選「允許維護者編輯」選項）。&lt;/p&gt; &lt;/li&gt; 
+&lt;/ul&gt;
+                                                                                &lt;/div&gt;
+                                                                            </description>
+      <link>https://www.oschina.net/news/369794</link>
+      <guid isPermaLink="false">https://www.oschina.net/news/369794</guid>
+      <pubDate>Tue, 02 Sep 2025 02:25:41 GMT</pubDate>
+      <author>來源: 資訊</author>
+    </item>
+    <item>
+      <title>我國智能算力規模達 788 百億億次/秒</title>
+      <description>&lt;div class="content"&gt;
+                                                                    
+                                                        &lt;p&gt;&lt;span style="color:#000000"&gt;人民日報北京 9 月 1 日電 &amp;nbsp;（記者劉温馨、鄭洋洋）截至今年 6 月底，我國在用算力中心機架總規模達 1085 萬標準機架，智能算力規模達 788 百億億次/秒 (EFLOPS)；存力規模超過 1680 艾字節 (EB)，相比 2023 年增長約 40%；已發佈 1509 個大模型，在全球位居前列。&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;img height="334" src="https://oscimg.oschina.net/oscnet/up-f7c4902ec7cb7f48c81c629fb38170914e5.png" width="300" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;span style="color:#000000"&gt;近日，中國算力平台完成山西、遼寧、上海、江蘇、浙江、山東、河南、青海、寧夏、新疆 10 個省份分平台接入工作，實現「平台、主體、資源、生態、場景」全面貫通。&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;span style="color:#000000"&gt;作為國家級綜合性算力服務平台，中國算力平台集「供、需、服」於一體，可實現不同系統、平台和工具之間的兼容性和互操作性。截至 7 月底，平台運營層註冊企業用户超 1000 家，入駐算力服務商逾 100 家，上架優質算力產品 110 餘項，接入主流基礎大模型和垂類模型 90 餘個，累計沉澱數十億條算力監測大數據。&lt;/span&gt;&lt;/p&gt;
+                                                                                &lt;/div&gt;
+                                                                            </description>
+      <link>https://www.oschina.net/news/369793</link>
+      <guid isPermaLink="false">https://www.oschina.net/news/369793</guid>
+      <pubDate>Tue, 02 Sep 2025 02:23:37 GMT</pubDate>
+      <author>來源: OSCHINA</author>
+    </item>
+    <item>
+      <title>智譜上線 Claude Code 專屬包月套餐，月費低至 20 元</title>
+      <description>&lt;div class="content"&gt;
+                                                                    
+                                                        &lt;p&gt;智譜&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fmp.weixin.qq.com%2Fs%2FJKSKSrjw3aqUODEN_LzRMg" target="_blank"&gt;宣佈&lt;/a&gt;，自 9 月 1 日起推出 Claude Code 專屬「GLM Coding Plan」限時套餐，月費低至 20 元。&lt;/p&gt; 
+&lt;p&gt;該套餐適用於智譜最新旗艦模型 GLM-4.5 及 GLM-4.5-Air。用户可通過掃描活動海報二維碼，或者登錄智譜開放平台&amp;nbsp;&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fbigmodel.cn%2Fclaude-code" target="_blank"&gt;bigmodel.cn&lt;/a&gt;，直接購買並獲取詳細使用攻略。&lt;/p&gt; 
+&lt;p&gt;首期主推 Claude Code，未來將拓展到更多 Coding 工具。目前，GLM-4.5 已接入包括 Claude Code、Cline、Gemini CLI、Grok CLI、CodeGeeX、Kilo Code、Roo Code、Trae 在內的多款主流編程工具，全面支持日常開發流程。&lt;/p&gt; 
+&lt;p&gt;&lt;img src="https://static.oschina.net/uploads/space/2025/0902/101910_Nw8D_2720166.png" referrerpolicy="no-referrer"&gt;&lt;/p&gt;
+                                                                                &lt;/div&gt;
+                                                                            </description>
+      <link>https://www.oschina.net/news/369792</link>
+      <guid isPermaLink="false">https://www.oschina.net/news/369792</guid>
+      <pubDate>Tue, 02 Sep 2025 02:20:37 GMT</pubDate>
+      <author>來源: OSCHINA</author>
+    </item>
+    <item>
+      <title>騰訊開源 Hunyuan-MT-7B 翻譯模型</title>
+      <description>&lt;div class="content"&gt;
+                                                                    
+                                                        &lt;p&gt;騰訊&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fmp.weixin.qq.com%2Fs%2FrKcf7jXAYlCKcwan0o756Q" target="_blank"&gt;宣佈&lt;/a&gt;開源在國際機器翻譯比賽拿下 30 個第 1 名的翻譯模型 Hunyuan-MT-7B，除了中文、英語、日語等常見語種，也包含捷克語、馬拉地語、愛沙尼亞語、冰島語等小語種。&lt;/p&gt; 
+&lt;p&gt;Hunyuan-MT-7B 總參數量僅 7B，支持 33 個語種、5 種民漢語言/方言互譯，是一個能力全面的輕量級翻譯模型。&lt;/p&gt; 
+&lt;p&gt;&lt;img height="293" src="https://oscimg.oschina.net/oscnet/up-dfbb59995d2db0c828e006ce4d0041931a0.png" width="300" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p&gt;同時開源的還有一個翻譯集成模型 Hunyuan-MT-Chimera-7B （奇美拉），是業界首個翻譯集成模型，它能夠根據原文和多個翻譯模型給出的不同內容，再生成一個更優的翻譯結果，不僅原生支持 Hunyuan-MT-7B，也支持接入 deepseek 等模型，對於一些有專業翻譯需求的用户和場景，可以提供更加準確的回覆。&lt;/p&gt; 
+&lt;p&gt;公告稱，在業界常用的翻譯能力測評數據集 Flores200 上，騰訊混元 Hunyuan-MT-7B 模型也有卓越的效果表現，明顯領先於同尺寸模型，與超大尺寸模型效果對比也不遜色。&lt;/p&gt; 
+&lt;p&gt;取得全面領先的成績，離不開技術上的全面突破，針對翻譯場景，騰訊混元提出了一個完整的翻譯模型訓練範式，覆蓋從預訓練、到 CPT 再到監督調參、翻譯強化和集成強化全鏈條，使得模型的翻譯效果達到業界最優。&lt;/p&gt; 
+&lt;p&gt;&lt;img height="188" src="https://oscimg.oschina.net/oscnet/up-66e18aed212fea1e14be8e0b31d401ea4a1.png" width="500" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p&gt;Hunyuan-MT-7B 的特點在於僅用少量的參數，就達到甚至超過了更大規模模型的效果，這也為模型的應用帶來了眾多優勢。&lt;/p&gt; 
+&lt;p&gt;首先是計算效率，7B 模型的推理速度明顯快於大型模型，在相同硬件條件下能夠處理更多的翻譯請求，並且，基於騰訊自研的 AngelSlim 大模型壓縮工具對 Hunyuan-MT-7B 進行 FP8 量化壓縮，推理性能進一步提升 30%。&lt;/p&gt; 
+&lt;p&gt;其次是部署友好性，Hunyuan-MT-7B 能夠在更多樣化的硬件環境中部署，從高端服務器到邊緣設備都能良好運行，並且模型的部署成本、運行成本和維護成本都相對更低，在保證翻譯質量的前提下，為企業和開發者提供了更具吸引力的解決方案。&lt;/p&gt; 
+&lt;p&gt;目前，騰訊混元翻譯模型已經接入騰訊多個業務，包括騰訊會議、企業微信、QQ 瀏覽器、翻譯君翻譯、騰訊海外客服翻譯等，助力產品體驗提升。&lt;/p&gt;
+                                                                                &lt;/div&gt;
+                                                                            </description>
+      <link>https://www.oschina.net/news/369791</link>
+      <guid isPermaLink="false">https://www.oschina.net/news/369791</guid>
+      <pubDate>Tue, 02 Sep 2025 02:17:37 GMT</pubDate>
+      <author>來源: OSCHINA</author>
+    </item>
+    <item>
+      <title>DeepSeek 公開模型原理與訓練方法説明</title>
+      <description>&lt;div class="content"&gt;
+                                                                    
+                                                        &lt;p&gt;DeepSeek 發佈官方説明，披露了其大語言模型的訓練原理、數據來源等信息。DeepSeek 表示其線上服務基於深度神經網絡大模型，採用「預訓練—優化訓練」兩階段流程。&lt;/p&gt; 
+&lt;p&gt;&lt;img src="https://static.oschina.net/uploads/space/2025/0902/100812_xXNj_2720166.png" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p&gt;在預訓練階段，模型通過大規模自監督學習獲取通用語言能力；在優化訓練階段，則使用有監督微調（SFT）或強化學習（RL）對模型進行任務適配；最終部署的模型以自迴歸方式實時生成文本，而非簡單的信息檢索。&lt;/p&gt; 
+&lt;p&gt;數據來源方面，預訓練語料由互聯網公開信息和第三方合作數據組成，不主動收集個人信息。優化訓練階段的數據由研究團隊自建問答對，少量樣本可能源自用户輸入，但均經過了去標識化、加密及匿名化處理，併為用户提供了退出機制。&lt;/p&gt; 
+&lt;p&gt;完整內容查看：&lt;em&gt;https://cdn.deepseek.com/policies/zh-CN/model-algorithm-disclosure.html&lt;/em&gt;&lt;/p&gt;
+                                                                                &lt;/div&gt;
+                                                                            </description>
+      <link>https://www.oschina.net/news/369790</link>
+      <guid isPermaLink="false">https://www.oschina.net/news/369790</guid>
+      <pubDate>Tue, 02 Sep 2025 02:09:37 GMT</pubDate>
+      <author>來源: OSCHINA</author>
+    </item>
+    <item>
+      <title>🚀 AI + 低代碼引擎發佈 0.13.15: 全面支持 vue-i18n 國際化，完善企業級應用開發能力</title>
+      <description>&lt;div class="content"&gt;
+                                                                    
+                                                        &lt;p style="color:#3c3c43; margin-left:0; margin-right:0; text-align:start"&gt;領先的開源 AI 低代碼引擎&lt;strong&gt;VTJ.PRO&lt;/strong&gt;正式發佈&lt;strong&gt;v0.13.15&lt;/strong&gt;版本。該版本重點推出了對&lt;strong&gt;vue-i18n&lt;/strong&gt;國際化的深度集成支持，標誌着 VTJ.PRO 已完成對企業級應用核心能力的全面構建。繼先前版本支持應用&lt;strong&gt;全局配置&lt;/strong&gt;、&lt;strong&gt;Swagger API 一鍵導入&lt;/strong&gt;等功能後，VTJ.PRO 現已具備讓開發者快速構建現代化、標準化、國際化企業應用的所有關鍵要素。&lt;/p&gt; 
+&lt;p style="color:#3c3c43; margin-left:0; margin-right:0; text-align:start"&gt;&lt;img alt="" src="https://oscimg.oschina.net/oscnet//c947b7a3962c53110b6db614f002ca41.png" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;h2&gt;完善企業級開發「最後一公里」&lt;/h2&gt; 
+&lt;p style="color:#3c3c43; margin-left:0; margin-right:0; text-align:start"&gt;在企業數字化轉型浪潮中，應用開發不僅要求高效快速，更需要符合規範、易於維護並支持全球業務。VTJ.PRO 自誕生之初便致力於為開發者提供高性能、高自由度的低代碼開發體驗。本次更新可視為其邁向&lt;strong&gt;成熟企業級解決方案&lt;/strong&gt;的關鍵一步。&lt;/p&gt; 
+&lt;p style="color:#3c3c43; margin-left:0; margin-right:0; text-align:start"&gt;最新支持的 vue-i18n 國際化功能，允許開發者在可視化設計器中輕鬆管理多語言詞條，綁定動態文本，並實現一鍵切換語言環境，極大地簡化了多語言應用的開發流程。&lt;/p&gt; 
+&lt;h2&gt;本次版本核心更新亮點&lt;/h2&gt; 
+&lt;h3&gt;🌍 內置國際化（i18n）支持&lt;/h3&gt; 
+&lt;ul&gt; 
+ &lt;li&gt;&lt;strong&gt;可視化詞條管理：&lt;/strong&gt;&lt;span&gt;&amp;nbsp;&lt;/span&gt;無需手動編寫語言文件，在設計器中即可輕鬆完成詞條的添加、翻譯和維護。&lt;/li&gt; 
+ &lt;li&gt;&lt;strong&gt;無縫組件集成：&lt;/strong&gt;&lt;span&gt;&amp;nbsp;&lt;/span&gt;所有 VTJ.PRO 組件均支持國際化屬性綁定，UI 與邏輯徹底分離。&lt;/li&gt; 
+ &lt;li&gt;&lt;strong&gt;實時預覽切換：&lt;/strong&gt;&lt;span&gt;&amp;nbsp;&lt;/span&gt;在設計階段即可實時預覽不同語言下的效果，極大提升開發調試效率。=&lt;/li&gt; 
+ &lt;li&gt;&lt;strong&gt;符合開發規範：&lt;/strong&gt;&lt;span&gt;&amp;nbsp;&lt;/span&gt;完全基於社區標準的 vue-i18n 庫構建，開發者原有經驗和習慣可無縫遷移。&lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;h3&gt;🔗 此前版本的企業級功能積澱&lt;/h3&gt; 
+&lt;ul&gt; 
+ &lt;li&gt;&lt;strong&gt;應用全局配置：&lt;/strong&gt;&lt;span&gt;&amp;nbsp;&lt;/span&gt;支持統一設置主題、網絡請求、權限等全局參數，保障應用風格和行為的一致性。&lt;/li&gt; 
+ &lt;li&gt;&lt;strong&gt;Swagger API 導入：&lt;/strong&gt;&lt;span&gt;&amp;nbsp;&lt;/span&gt;可一鍵導入 Swagger 接口文檔，自動生成 TypeScript 類型聲明和調用代碼，極大提升了前後端協作效率。&lt;/li&gt; 
+ &lt;li&gt;&lt;strong&gt;企業級權限與控制：&lt;/strong&gt;&lt;span&gt;&amp;nbsp;&lt;/span&gt;提供精細化的路由守衞和功能權限控制，滿足企業內部系統的安全要求。&lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;h2&gt;為開發者創造真正價值&lt;/h2&gt; 
+&lt;p style="color:#3c3c43; margin-left:0; margin-right:0; text-align:start"&gt;VTJ.PRO 始終秉持「&lt;strong&gt;降低複雜度，不降低自由度&lt;/strong&gt;」的理念。它不是將開發者禁錮在封閉的系統中，而是通過提供一系列開箱即用的高端能力（如基於 Vite + Vue 3 + TypeScript 的現代開發棧），將開發者從繁瑣的配置和重複勞動中解放出來，讓其能更專注於業務邏輯和創新。&lt;/p&gt; 
+&lt;p style="color:#3c3c43; margin-left:0; margin-right:0; text-align:start"&gt;「v0.13.15 版本的發佈，對 VTJ.PRO 而言是一個里程碑。」項目核心貢獻者表示，「&lt;strong&gt;國際化是許多成熟產品走向世界的必經之路&lt;/strong&gt;。現在，從基礎的項目搭建、全局配置，到接口聯調、權限管理，再到最後的國際化，VTJ.PRO 已經為企業級應用開發提供了一條完整、流暢的高效生產線。&lt;/p&gt; 
+&lt;h2&gt;未來展望&lt;/h2&gt; 
+&lt;p style="color:#3c3c43; margin-left:0; margin-right:0; text-align:start"&gt;隨着企業級開發能力的完善，VTJ.PRO 團隊接下來的重點將轉向進一步提升&lt;strong&gt;AI 輔助開發&lt;/strong&gt;的體驗，探索通過自然語言生成組件、業務邏輯甚至完整頁面的可能性，持續踐行其作為「AI 低代碼引擎」的願景。&lt;br&gt; &lt;img alt="" src="https://oscimg.oschina.net/oscnet//42bb2f3b02fe382d897f4263a6e72838.png" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;h2&gt;體驗與瞭解更多&lt;/h2&gt; 
+&lt;p style="color:#3c3c43; margin-left:0; margin-right:0; text-align:start"&gt;VTJ.PRO 是一個開源項目，開發者可以免費使用並參與貢獻。&lt;/p&gt; 
+&lt;blockquote&gt; 
+ &lt;ul&gt; 
+  &lt;li&gt;立即在線體驗：&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fvtj.pro%2F" target="_blank"&gt;https://vtj.pro&lt;/a&gt;&lt;/li&gt; 
+  &lt;li&gt;Gitee 開源地址：&lt;a href="https://gitee.com/newgateway/vtj" target="_blank"&gt;https://gitee.com/newgateway/vtj&lt;/a&gt;&lt;/li&gt; 
+ &lt;/ul&gt; 
+&lt;/blockquote&gt; 
+&lt;h3&gt;關於 VTJ.PRO：&lt;/h3&gt; 
+&lt;p style="color:#3c3c43; margin-left:0; margin-right:0; text-align:start"&gt;VTJ.PRO 是一款開源 AI 低代碼引擎，基於 Vite + Vue 3 + TypeScript 技術棧構建。它通過可視化設計器與底層代碼的雙向驅動，幫助開發者快速構建 Web、H5、UniApp 等多端企業級應用，在金融、電商、中後台管理系統等領域有廣泛應用前景。&lt;/p&gt;
+                                                                                &lt;/div&gt;
+                                                                            </description>
+      <link>https://www.oschina.net/news/369771</link>
+      <guid isPermaLink="false">https://www.oschina.net/news/369771</guid>
+      <pubDate>Mon, 01 Sep 2025 00:38:00 GMT</pubDate>
+      <author>來源: 資訊</author>
+    </item>
+    <item>
+      <title>🚀 Xinference v1.9.1 強勢來襲！Qwen-Image 系列重大升級！！！速覽！！！</title>
+      <description>&lt;div class="content"&gt;
+                                                                    
+                                                        &lt;p&gt;Xorbits Inference（Xinference）是一個，性能強大且功能全面的，分佈式，推理框架。可用於大語言模型（LLM），語音識別模型，多模態模型等各種模型的推理。通過 Xorbits Inference，你可以輕鬆地，一鍵部署你自己的模型或內置的前沿開源模型 - &lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fgithub.com%2Fxorbitsai%2Finference" target="_blank"&gt;https://github.com/xorbitsai/inference&lt;/a&gt;。&lt;/p&gt; 
+&lt;p&gt;無論你是研究者，開發者，或是數據科學家，都可以通過 Xorbits Inference 與最前沿的 AI 模型，發掘更多可能。 &amp;nbsp;&lt;/p&gt; 
+&lt;p&gt;Xinference 的功能和亮點有：&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt;🌟 模型推理，輕而易舉：大語言模型，語音識別模型，多模態模型的部署流程被大大簡化。一個命令即可完成模型的部署工作。&lt;/li&gt; 
+ &lt;li&gt;⚡️ 前沿模型，應有盡有：框架內置眾多中英文的前沿大語言模型，包括 baichuan，chatglm2 等，一鍵即可體驗！內置模型列表還在快速更新中！&lt;/li&gt; 
+ &lt;li&gt;🖥 異構硬件，快如閃電：通過 ggml，同時使用你的 GPU 與 CPU 進行推理，降低延遲，提高吞吐！&lt;/li&gt; 
+ &lt;li&gt;⚙️ 接口調用，靈活多樣：提供多種使用模型的接口，包括 OpenAI 兼容的 RESTful API（包括 Function Calling），RPC，命令行，web UI 等等。方便模型的管理與交互。&lt;/li&gt; 
+ &lt;li&gt;🌐 集羣計算，分佈協同：支持分佈式部署，通過內置的資源調度器，讓不同大小的模型按需調度到不同機器，充分使用集羣資源。&lt;/li&gt; 
+ &lt;li&gt;🔌 開放生態，無縫對接：與流行的三方庫無縫對接，包括 LangChain， LlamaIndex， Dify，以及 Chatbox。&lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;p&gt;🚀 Xinference v1.9.1 更新日誌&lt;/p&gt; 
+&lt;p&gt;✅ 本次亮點&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt; &lt;p&gt;🖼️ Qwen-Image 系列重大升級&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;Qwen-Image：新增，文生圖 / 圖生圖 / 局部重繪（inpainting）&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;Qwen-Image-Edit：增強圖片編輯體驗&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;Lightning LoRA 加速支持（&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Finference.readthedocs.io%2Fzh-cn%2Flatest%2Fmodels%2Fmodel_abilities%2Fimage.html%23lightning-lora-support%25EF%25BC%2589" target="_blank"&gt;https://inference.readthedocs.io/zh-cn/latest/models/model_abilities/image.html#lightning-lora-support）&lt;/a&gt;&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;支持 4 步或 8 步生圖&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;在 H20 上，生圖速度從 35 秒降到 3 秒&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;模型性能基本保持不變&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;🧠 新增前沿模型支持&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;Wan 2.2&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;Seed-OSS-36B&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;DeepSeek-V3.1 量化與工具調用&lt;/p&gt; &lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;p&gt;🌐 社區版更新&lt;/p&gt; 
+&lt;p&gt;📦 安裝方式&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt;pip 安裝：pip install 'xinference==1.9.1'&lt;/li&gt; 
+ &lt;li&gt;Docker 使用：拉取最新版鏡像，或在容器中使用 pip 更新&lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;p&gt;🆕 新模型支持&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt;Qwen-Image-Edit&lt;/li&gt; 
+ &lt;li&gt;Wan 2.2&lt;/li&gt; 
+ &lt;li&gt;Qwen-Image-Lightning&lt;/li&gt; 
+ &lt;li&gt;Seed-OSS-36B&lt;/li&gt; 
+ &lt;li&gt;DeepSeek-V3.1 Quantized&lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;p&gt;✨ 新特性&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt;Qwen-Image：支持文生圖 / 圖生圖 / inpainting&lt;/li&gt; 
+ &lt;li&gt;Qwen-Image 與 Qwen-Image-Edit：支持 Lightning LoRA 加速&lt;/li&gt; 
+ &lt;li&gt;UI：圖像模型支持 gpu_count 配置&lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;p&gt;🛠 功能增強&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt;音頻模型新增零樣本 &amp;amp; 聲音克隆能力&lt;/li&gt; 
+ &lt;li&gt;Qwen3 Reranker 支持 vLLM 模板&lt;/li&gt; 
+ &lt;li&gt;llama.cpp 支持 chat_template_kwargs&lt;/li&gt; 
+ &lt;li&gt;cosyvoice2 依賴升級&lt;/li&gt; 
+ &lt;li&gt;兼容 xllamacpp 0.2.0&lt;/li&gt; 
+ &lt;li&gt;清理 Docker 構建遺留緩存&lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;p&gt;🐞 Bug 修復&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt;當 GPU 計算能力 &amp;lt; 8.0 時禁用 flash_attention&lt;/li&gt; 
+ &lt;li&gt;修復 rerank 模型創建問題&lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;p&gt;📚 文檔更新&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt;更新自定義模型説明&lt;/li&gt; 
+ &lt;li&gt;新增多模態文檔中圖片數量限制説明&lt;/li&gt; 
+ &lt;li&gt;更新模型列表與 README&lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;p&gt;🏢 企業版更新&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt;本次版本企業版日常，穩定性與 Bug 修復優化。&lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;p&gt;我們感謝每一位參與的社區夥伴對 Xinference 的幫助和支持，也歡迎更多使用者和開發者參與體驗和使用 Xinference。 &amp;nbsp;&lt;/p&gt; 
+&lt;p&gt;歡迎您在 &lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fgithub.com%2Fxorbitsai%2Finference" target="_blank"&gt;https://github.com/xorbitsai/inference&lt;/a&gt; 給我們一個，星標，這樣你就可以在 GitHub 上及時收到每個新版本的通知。&lt;/p&gt;
+                                                                                &lt;/div&gt;
+                                                                            </description>
+      <link>https://www.oschina.net/news/369751/xinference-1-9-1-released</link>
+      <guid isPermaLink="false">https://www.oschina.net/news/369751/xinference-1-9-1-released</guid>
+      <pubDate>Sun, 31 Aug 2025 15:04:00 GMT</pubDate>
+      <author>來源: 資訊</author>
+    </item>
     <item>
       <title>飛致雲開源社區月度動態報告（2025 年 8 月）</title>
       <description>&lt;div class="content"&gt;
@@ -156,10 +889,41 @@
     </item>
     <item>
       <title>用 deepin 的人，也是吃上好的了</title>
-      <description/>
+      <description>&lt;div class="content"&gt;
+                                                                                                                                                                                                                                        &lt;p&gt;deepin 搞了個 AI 助手，叫 UOS AI。&lt;/p&gt; 
+&lt;p&gt;應該沒有人不知道 deepin （&lt;span&gt;&lt;span&gt;深度操作系統&lt;/span&gt;&lt;/span&gt;）吧？&lt;span&gt;&lt;span&gt;它是中國第一個具備國際影響力的&lt;span&gt;&amp;nbsp;Linux&amp;nbsp;&lt;/span&gt;發行版本，支持全球&lt;span&gt;33&lt;/span&gt;種語言，在國際&lt;span&gt;&amp;nbsp;Linux&lt;/span&gt;&amp;nbsp;發行版排行榜中穩居前十。&lt;/span&gt;&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;你是不是也跟我一樣好奇，搞操作系統的，為什麼也要來搞 AI 助手？&lt;/p&gt; 
+&lt;p&gt;跟其他大部分只會聊天、寫文章，最多生成 PPT 文件相比的 AI 小助手相比，UOS AI&amp;nbsp;有什麼不一樣，是不是會有更多系統級別的能力？&lt;/p&gt; 
+&lt;p&gt;&lt;strong&gt;答案就是當然有 ！這就是搞操作系統的人搞 AI 的優勢了。&lt;/strong&gt;&lt;/p&gt; 
+&lt;p&gt;目前大部分的 AI 助手，能回答問題，寫文章、生成圖片，但它動不了我們的電腦——想整理文件、調個設置、裝個軟件，還是得自己動手，它始終活聊天框裏。&lt;/p&gt; 
+&lt;p&gt;而 UOS AI，像是這個電腦系統的大管家。它長在了系統裏，擁有其他 AI 助手所沒有的權限，你動動嘴，它就能直接動手幫你操作。&lt;/p&gt; 
+&lt;p&gt;比如，你想批量整理系統文件，只需打開 UOS AI 助手，跟它説「把項目資料文件夾的所有文件，命名為 UOS 項目資料，按數字順序排好」，UOS MCP 立刻識別文件，幾秒鐘就能完成批量重命名。&lt;/p&gt; 
+&lt;p&gt;或者你説「把屏幕調亮點兒，再幫我連一下藍牙音箱」，它不用教、不用你動手，幾秒鐘就能直接幫你搞定。&lt;/p&gt; 
+&lt;p&gt;&lt;strong&gt;簡單説，最大的不一樣就是：別的 AI 是説説而已，UOS AI 可以説到做到。&lt;/strong&gt;&lt;/p&gt; 
+&lt;p&gt;就算是複雜操作，也能完成。這都是因為 deepin 開發了系統級的 MCP 服務器，高達 120+ 項系統控制，一鍵就能完成系統設置、應用管理、文件管理、聯網搜索等。&lt;/p&gt; 
+&lt;p&gt;此外，UOS AI 還支持快速接入第三方 MCP 工具或智能體，不管是想用它辦公、學習，還是娛樂都可以。&lt;/p&gt; 
+&lt;p&gt;總之就是別人有的，它也有了。&lt;/p&gt; 
+&lt;p&gt;比如，你想要續寫文檔，根本不需要打開文檔，對 UOS AI 説「續寫桌面上的 AI 技術報告第三章，要 3 個分論點」，它就能順着前文風格生成邏輯連貫的內容，直接保存到文檔。&lt;/p&gt; 
+&lt;p&gt;&lt;strong&gt;也是沒想到，用 deepin 系統的人吃得這麼好！&lt;/strong&gt;感興趣的朋友可以，前往官網下載最新版 deepin 體驗：&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fwww.deepin.org%2Findex%2Fzh" target="_blank"&gt;https://www.deepin.org/index/zh&lt;/a&gt;&lt;/p&gt; 
+&lt;p&gt;另外，我們也想探究一下， UOS AI 的 AI 能力是怎麼實現的？以後還會有哪些令人期待的地方？&lt;/p&gt; 
+&lt;p&gt;9 月 5 日晚，開源中國將邀請 UOS AI 產品負責人姜琬瑩，做客《技術領航》欄目直播間，跟大家分享&amp;nbsp;UOS AI 的能力及實現。&lt;br&gt; &lt;br&gt; &lt;img height="740" src="https://oscimg.oschina.net/oscnet/up-210deaf87c39f1459061b78f9bfd676f627.jpg" width="500" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;div&gt; 
+ &lt;p&gt;&lt;strong&gt;直播福利：&lt;/strong&gt;&lt;/p&gt; 
+ &lt;p&gt;福袋抽獎：直播中將有 5 輪抽獎，參與就有機會獲得 OSC T 恤、馬建倉蛇年公仔（限量版）、代碼聖盃、馬克杯、冰箱貼、前沿技術書籍等。&lt;/p&gt; 
+&lt;/div&gt; 
+&lt;p style="color:#333333; margin-left:0; margin-right:0; text-align:left"&gt;&lt;img alt="up-d0ddd08ceeff2b5526d3def6537a6ac649b.png" height="253" src="https://oscimg.oschina.net/oscnet/up-d0ddd08ceeff2b5526d3def6537a6ac649b.png" width="400" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;div&gt; 
+ &lt;hr&gt; 
+ &lt;p style="color:#333333; margin-left:0; margin-right:0; text-align:left"&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;《技術領航》是開源中國 OSCHINA 推出的一檔直播欄目，旨在為&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;開源軟件、商業產品、前沿技術、知名品牌活動等各類項目&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;提供一個展示平台，基本上每週五晚上開播&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;。&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;欄目邀請項目的創始人、核心團隊成員或資深用户作為嘉賓，通過路演式直播分享項目的亮點和經驗，有助於提高項目的知名度，吸引更多的用户和開發者關注。&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/p&gt; 
+ &lt;p style="color:#333333; margin-left:0; margin-right:0; text-align:left"&gt;&lt;span&gt;&lt;span style="background-color:#ffffff"&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;如果你手上也有好的項目，想要跟同行交流分享，歡迎聯繫我，欄目隨時開放～&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/p&gt; 
+ &lt;p style="color:#333333; margin-left:0px; margin-right:0px; text-align:center"&gt;&lt;img height="537" src="https://oscimg.oschina.net/oscnet/up-4dd54c1b0b817689ceefa15aa66d79cfae8.png" width="400" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;/div&gt;
+                                                                                    &lt;/div&gt;
+                                                                            </description>
       <link>https://my.oschina.net/u/3859945/blog/18690242</link>
       <guid isPermaLink="false">https://my.oschina.net/u/3859945/blog/18690242</guid>
       <pubDate>Sun, 31 Aug 2025 10:40:00 GMT</pubDate>
+      <author>原創</author>
     </item>
     <item>
       <title>Firecrawl 將於 9 月 8 日開源 AI 適應性檢測工具</title>
@@ -483,329 +1247,6 @@
       <link>https://www.oschina.net/news/369688</link>
       <guid isPermaLink="false">https://www.oschina.net/news/369688</guid>
       <pubDate>Sun, 31 Aug 2025 09:28:00 GMT</pubDate>
-      <author>來源: OSCHINA</author>
-    </item>
-    <item>
-      <title>IntelliJ IDEA 2025.2.1 發佈</title>
-      <description>&lt;div class="content"&gt;
-                                                                    
-                                                        &lt;p&gt;&lt;span style="color:#000000"&gt;IntelliJ IDEA 2025.2.1 現已&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fblog.jetbrains.com%2Fidea%2F2025%2F08%2Fintellij-idea-2025-2-1%2F" target="_blank"&gt;發佈&lt;/a&gt;，此版本包括以下改進：&lt;/span&gt;&lt;/p&gt; 
-&lt;ul style="margin-left:0; margin-right:0"&gt; 
- &lt;li&gt;IDE 現可如預期正確解析和管理 EAR 構件配置。[&amp;nbsp;&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fyoutrack.jetbrains.com%2Fissue%2FIDEA-373295" target="_blank"&gt;IDEA-373295&lt;/a&gt;&amp;nbsp;]&lt;/li&gt; 
- &lt;li&gt;現在可以從 UI 所有區域再次訪問 Create Branch&amp;nbsp;操作。[&amp;nbsp;&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fyoutrack.jetbrains.com%2Fissue%2FIJPL-199191" target="_blank"&gt;IJPL-199191&lt;/a&gt;&amp;nbsp;]&lt;/li&gt; 
- &lt;li&gt;現在可以按預期將圖表導出為 SVG。[&amp;nbsp;&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fyoutrack.jetbrains.com%2Fissue%2FIJPL-174653" target="_blank"&gt;IJPL-174653&lt;/a&gt;&amp;nbsp;]&lt;/li&gt; 
- &lt;li&gt;Maven Runner 現在可以按預期正確識別和處理 VM 選項字段中以 -X 前綴開頭的 JVM 選項。[&amp;nbsp;&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fyoutrack.jetbrains.com%2Fissue%2FIDEA-376845" target="_blank"&gt;IDEA-376845&lt;/a&gt;&amp;nbsp;]&lt;/li&gt; 
- &lt;li&gt;Windows 系統上的終端進程現可正常終止。[&amp;nbsp;&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fyoutrack.jetbrains.com%2Fissue%2FIJPL-159752" target="_blank"&gt;IJPL-159752&lt;/a&gt;&amp;nbsp;]&lt;/li&gt; 
- &lt;li&gt;IDE 再次正確識別有效的 WebLogic 服務器主路徑並運行 WebLogic 服務器。[&amp;nbsp;&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fyoutrack.jetbrains.com%2Fissue%2FIDEA-376172" target="_blank"&gt;IDEA-376172&lt;/a&gt;，&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fyoutrack.jetbrains.com%2Fissue%2FIDEA-377454" target="_blank"&gt;IDEA-377454&lt;/a&gt;&amp;nbsp;]&lt;/li&gt; 
- &lt;li&gt;IDE 現在可以正確運行使用 Gradle 9.0 構建的 Kotlin 項目中的 main() 函數。[&amp;nbsp;&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fyoutrack.jetbrains.com%2Fissue%2FIDEA-376030" target="_blank"&gt;IDEA-376030&lt;/a&gt;&amp;nbsp;]&lt;/li&gt; 
- &lt;li&gt;Maven 運行配置再次正確識別並執行使用 -f 選項指定的自定義 POM 文件。[&amp;nbsp;&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fyoutrack.jetbrains.com%2Fissue%2FIDEA-376875" target="_blank"&gt;IDEA-376875&lt;/a&gt;&amp;nbsp;]&amp;nbsp;&lt;/li&gt; 
-&lt;/ul&gt; 
-&lt;p style="margin-left:0; margin-right:0; text-align:start"&gt;&lt;img alt="" height="281" src="https://oscimg.oschina.net/oscnet/up-16e0987f816b5813e33a3d053a567586cca.webp" width="500" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;p style="margin-left:0; margin-right:0; text-align:start"&gt;&lt;span style="color:#19191c"&gt;要了解有關已解決問題的更多信息，可參閲&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fyoutrack.jetbrains.com%2Farticles%2FIDEA-A-2100662491%2FIntelliJ-IDEA-2025.2.1-252.25557.131-build-Release-Notes" target="_blank"&gt;發行説明&lt;/a&gt;。&lt;/span&gt;&lt;/p&gt;
-                                                                                &lt;/div&gt;
-                                                                            </description>
-      <link>https://www.oschina.net/news/369679/intellij-idea-2025-2-1</link>
-      <guid isPermaLink="false">https://www.oschina.net/news/369679/intellij-idea-2025-2-1</guid>
-      <pubDate>Sun, 31 Aug 2025 09:01:00 GMT</pubDate>
-      <author>來源: OSCHINA</author>
-    </item>
-    <item>
-      <title>微軟發佈開源數學推理模型 rStar2-Agent</title>
-      <description>&lt;div class="content"&gt;
-                                                                    
-                                                        &lt;p&gt;微軟近日發佈了名為「rStar2-Agent」的開源模型，這是一個 14B 參數的數學推理模型，通過智能而非冗長的思考，實現了與 671B DeepSeek-R1 相當的性能&lt;strong&gt;。&lt;/strong&gt;&lt;/p&gt; 
-&lt;p&gt;該模型通過自主規劃、推理和使用代碼工具來高效地探索、驗證和反思複雜問題的解決方案。其能力依賴於三大創新：GRPO-RoC 算法、可擴展的高效 RL 基礎設施，以及從非推理 SFT 開始的 Agent 訓練方案。&lt;/p&gt; 
-&lt;p&gt;&lt;img alt="" src="https://oscimg.oschina.net/oscnet/up-9b6d7c27cd2a66813c3797df2919819a9cc.png" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;p&gt;rStar2-Agent 的核心在於實現更智能的思考而非單純延長推理時間，通過純粹的智能體強化學習，其性能可媲美 6710 億參數的 DeepSeek-R1 模型。&lt;/p&gt; 
-&lt;p&gt;該模型能自主規劃、推理並運用編碼工具，高效完成探索、驗證與反思以解決更復雜問題。&lt;/p&gt; 
-&lt;ul&gt; 
- &lt;li&gt;GRPO-RoC 算法——採用創新的「正確時重採樣」推演策略，優化編碼工具使用，通過選擇性保留高質量成功軌跡（同時完整保存失敗案例）實現更短更智能的推理；&lt;/li&gt; 
- &lt;li&gt;可擴展高效的 RL 基礎設施，支持高吞吐量工具調用執行，同時降低智能體 RL 推演的高成本，使有限 GPU 資源（64 塊 MI300X GPU）也能實現高效訓練；&lt;/li&gt; 
- &lt;li&gt;Agent 訓練方案：從非推理式 SFT 起步，通過多階段 RL 逐步推進，各階段採用精簡的最大響應長度並逐步提升數據集難度。&lt;/li&gt; 
-&lt;/ul&gt; 
-&lt;p&gt;為此，rStar2-Agent 僅用一週時間通過 510 步 RL 訓練，將預訓練的 140 億參數模型提升至頂尖水平，在 AIME24 和 AIME25 數據集上分別實現 80.6% 和 69.8% 的平均通過率，以更短響應超越 DeepSeek-R1（6710 億參數）。除數學領域外，rStar2-Agent-14B 在對齊、科學推理及智能體工具使用任務中也展現出強大的泛化能力。&lt;/p&gt; 
-&lt;p&gt;開源地址：&lt;em&gt;https://github.com/microsoft/rStar&lt;/em&gt;&lt;/p&gt;
-                                                                                &lt;/div&gt;
-                                                                            </description>
-      <link>https://www.oschina.net/news/369674</link>
-      <guid isPermaLink="false">https://www.oschina.net/news/369674</guid>
-      <pubDate>Sun, 31 Aug 2025 08:48:00 GMT</pubDate>
-      <author>來源: OSCHINA</author>
-    </item>
-    <item>
-      <title>騰訊開源混元翻譯模型 Hunyuan-MT</title>
-      <description>&lt;div class="content"&gt;
-                                                                    
-                                                        &lt;p&gt;騰訊混元團隊正式開源了面向翻譯場景的 Hunyuan-MT 系列模型。該系列目前包含兩個版本：&lt;/p&gt; 
-&lt;ol&gt; 
- &lt;li&gt;&lt;strong&gt;Hunyuan-MT-7B&lt;/strong&gt;：單模型版本，支持 33 種語言之間的雙向翻譯，覆蓋中、英、日、法等主流語種以及藏、維、蒙、哈、朝 5 種中國少數民族語言；在 WMT25 競賽的 31 個語言方向上取得領先成績 。&lt;/li&gt; 
- &lt;li&gt;&lt;strong&gt;Hunyuan-MT-Chimera-7B&lt;/strong&gt;：集成模型，通過融合多路翻譯結果進一步提升譯文質量 。&lt;/li&gt; 
-&lt;/ol&gt; 
-&lt;p&gt;Hunyuan-MT-7B 在同等規模下達到了業界領先的翻譯性能，而 Hunyuan-MT-Chimera-7B 通過集成多路翻譯輸出進一步提升了質量。&lt;/p&gt; 
-&lt;p&gt;&lt;strong&gt;核心特性與優勢&lt;/strong&gt;&lt;/p&gt; 
-&lt;ul&gt; 
- &lt;li&gt;WMT25 參賽 31 語種之中 30 語種獲得第一名的成績。&lt;/li&gt; 
- &lt;li&gt;Hunyuan-MT-7B 同尺寸業界效果最優&lt;/li&gt; 
- &lt;li&gt;Hunyuan-MT-Chimera-7B 是業界首個開源翻譯集成模型，可以將翻譯效果再拉高一個檔次&lt;/li&gt; 
- &lt;li&gt;提出了一個完整的翻譯模型訓練範式，從 Pretrain-&amp;gt;CPT-&amp;gt;SFT-&amp;gt; 翻譯強化 -&amp;gt; 集成強化，翻譯效果達到同尺寸 SOTA。&lt;/li&gt; 
-&lt;/ul&gt; 
-&lt;p&gt;&lt;strong&gt;效果&lt;/strong&gt;&lt;/p&gt; 
-&lt;p&gt;&lt;img alt="" src="https://oscimg.oschina.net/oscnet/up-5bd2919794ff20550f3ce6d3102fb6d0fae.png" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;p&gt;開源地址：&lt;em&gt;https://github.com/Tencent-Hunyuan/Hunyuan-MT&lt;/em&gt;&lt;/p&gt;
-                                                                                &lt;/div&gt;
-                                                                            </description>
-      <link>https://www.oschina.net/news/369672</link>
-      <guid isPermaLink="false">https://www.oschina.net/news/369672</guid>
-      <pubDate>Sun, 31 Aug 2025 08:29:00 GMT</pubDate>
-      <author>來源: OSCHINA</author>
-    </item>
-    <item>
-      <title>AI 網關代理 RAG 檢索：Dify 輕鬆對接外部知識庫的新實踐</title>
-      <description>&lt;div class="content"&gt;
-                                                                                                                                                                                                                                        &lt;p&gt;作者：趙源筱、王灝廷&lt;/p&gt; 
-&lt;p&gt;Dify 是一款開源的 AI 應用開發平台，旨在幫助開發者和非技術人員快速構建和運營基於生成式 AI 的應用。截至目前，Dify 開源 Star 數量已經突破 11 萬，具有龐大的用户羣體，已成為構建生成式 AI 應用的熱門選擇之一。&lt;/p&gt; 
-&lt;p&gt;然而，隨着 Dify 在實際生產實踐中持續落地，根據雲上客户以及社區反饋，其內置的 RAG 引擎逐漸暴露出複雜文本分塊處理能力低、檢索功能薄弱、配置不夠簡潔智能等問題，這些問題直接導致 Dify 內置 RAG 的召回質量不理想，進而影響了大模型生成內容的準確性與可靠性，難以滿足企業級生產環境對高精度知識檢索的需求。&lt;/p&gt; 
-&lt;p&gt;為解決上述雲上客户以及社區用户反饋的問題，Higress AI 網關通過提供關鍵橋樑作用，支持 Dify 應用便捷對接業界成熟的 RAG 引擎。通過 AI 網關將 Dify 的高效編排能力與專業 RAG 引擎的檢索效能結合，企業可在保留現有 Dify 應用資產的同時，有效規避其內置 RAG 的侷限，顯著提升知識驅動型 AI 應用的生產環境表現。&lt;/p&gt; 
-&lt;h2&gt;Dify 內置 RAG 引擎的侷限&lt;/h2&gt; 
-&lt;p&gt;通過分析 Dify 開源社區近幾個月的 Issue，同時結合雲上客户以及內部的 Dify 生產實踐，儘管目前 Dify 提供了開箱即用的內置 RAG 引擎，但在實際落地中，依然會遇到一些問題，其中被雲上以及社區客户反饋比較多的問題包括：&lt;/p&gt; 
-&lt;ul&gt; 
- &lt;li&gt;複雜文檔處理能力不足：對含圖片、圖表、PDF 等非結構化文檔的解析與分塊能力較弱，信息提取精度有限。&lt;/li&gt; 
- &lt;li&gt;檢索功能薄弱：內置檢索策略在複雜查詢或大型知識庫場景下，召回效果和相關性排序表現欠佳，導致關鍵信息遺漏或排序不當。&lt;/li&gt; 
- &lt;li&gt;配置不夠簡潔智能：分塊策略、參數調整等配置項繁多，缺乏自適應優化，用户需較高技術門檻才能調優，易用性不足。&lt;/li&gt; 
-&lt;/ul&gt; 
-&lt;p&gt;這些問題導致 Dify 內置 RAG 引擎和業界被廣泛認可的高質量 RAG 引擎相比，仍存在一定的提升空間。從開源視角來看，Dify 內置 RAG 能力的提升，是一項需要持續迭代和優化的過程。&lt;/p&gt; 
-&lt;h2&gt;通過 AI 網關幫助 Dify 應用"開掛"&lt;/h2&gt; 
-&lt;p&gt;目前，市面上的 RAG 引擎層出不窮，但易用性和運行效果上也良莠不齊，想要構建一套優秀的 RAG 引擎，並不僅僅是向量化、向量存儲與向量匹配那麼簡單，還需要優質的內容理解與處理算法以及檢索優化策略，並且持續不斷的調優。&lt;/p&gt; 
-&lt;p&gt;好在市面上已經逐漸湧現了許多優秀的 RAG 引擎，逐漸得到越來越多的開發者認可。例如阿里雲百鍊知識庫以其配置簡潔、開箱即用的特性，加之以底層持續調優，其 RAG 效果也得到越來越多企業用户的認可；以深度文檔理解能力著稱的 RagFlow，作為一款開源的專業 RAG 引擎，得到許多對數據存儲有安全和隱私性要求用户的青睞，目前能夠通過阿里雲 SAE 一鍵部署高可用的 RagFlow 實例，極大降低自部署和運維的成本。&lt;/p&gt; 
-&lt;p&gt;因此，快速打通更專業更優質的 RAG 引擎，現階段也不失為一個更優解。&lt;/p&gt; 
-&lt;p&gt;為了突破 Dify 內置知識庫的限制，Higress AI 網關支持 Dify 應用快速對接外部優質 RAG 引擎，以更高質量的 RAG 能力替代其原生功能，從而實現讓用户在使用 Dify 強大的 Workflow、Agent 編排能力同時，獲得更專業的文本處理與信息檢索體驗。&lt;/p&gt; 
-&lt;p&gt;根據用户對檢索結果處理方式的不同需求，Higress AI 網關提供了兩種靈活的集成方案：&lt;/p&gt; 
-&lt;ul&gt; 
- &lt;li&gt; &lt;p&gt;&lt;strong&gt;方案一&lt;/strong&gt;：RAG 檢索代理。Higress AI 網關僅做檢索並返回給用户，由用户自主處理檢索結果，並更新到 Context 中。適用於場景相對複雜，用户對信息整合有自定義訴求的場景。&lt;/p&gt; &lt;/li&gt; 
- &lt;li&gt; &lt;p&gt;&lt;strong&gt;方案二&lt;/strong&gt;：自動檢索注入。在調用 LLM 的鏈路中，Higress AI 網關自動執行 RAG 檢索結果並將接入注入到 Context 中。適用於場景相對簡單，用户只關注 LLM 調用結果，無信息自主處理的場景。&lt;/p&gt; &lt;/li&gt; 
-&lt;/ul&gt; 
-&lt;h3&gt;方案一：RAG 檢索代理&lt;/h3&gt; 
-&lt;p&gt;基於 Dify 外部知識庫擴展功能，通過 Higress AI 網關代理，能夠實現在 Dify 知識庫中創建並連接 RagFlow 以及百鍊知識庫。對於 Workflow，可以使用知識檢索節點選擇對應外部知識庫獲取檢索結果；對於 Agent，可以直接選擇對應外部知識庫實現檢索。詳細介紹請見 AI RAG 檢索代理 &lt;strong&gt;[&lt;/strong&gt; &lt;strong&gt;1]&lt;/strong&gt; 。&lt;/p&gt; 
-&lt;p&gt;&lt;img src="https://oscimg.oschina.net/oscnet/up-50022f9250479a4f65adce4098314a7590e.png" alt="" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;p&gt;這種方式專門針對 Dify 應用設計，更符合 Dify 的標準用法，通過 Dify 知識庫擴展的能力實現了對外部知識庫的訪問，同時能夠便捷的通過 Dify 內置的觀測能力觀察知識檢索節點的輸入輸出信息。&lt;/p&gt; 
-&lt;p&gt;&lt;img src="https://oscimg.oschina.net/oscnet/up-029a85347f2c8716ec6d005e559f008df57.png" alt="" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;h3&gt;方案二：自動檢索注入&lt;/h3&gt; 
-&lt;p&gt;Dify 應用訪問 LLM 時，使用 Higress AI 網關的 Model API 代理，Higress AI 網關在發起 LLM 調用前，自動執行 RAG 檢索並把結果寫入到調用模型的 Context 中。其中，Context 的寫入方式包括：追加新的系統提示詞；添加到用户指定的 Prompt 模版位置中。詳細介紹請見 AI 檢索增強生成（加強版） &lt;strong&gt;[&lt;/strong&gt; &lt;strong&gt;2]&lt;/strong&gt; 。&lt;/p&gt; 
-&lt;p&gt;&lt;img src="https://oscimg.oschina.net/oscnet/up-37317d346525f1308d6134a70522562da3c.png" alt="" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;p&gt;這種方式能夠實現對應用開發者透明，無需手動實現複雜的知識庫檢索步驟，只需直接調用模型即可自動獲得開箱即用的 RAG 能力。此外，該方式同樣適用於 Spring AI Alibaba、N8N 等不同平台或框架。&lt;/p&gt; 
-&lt;p&gt;&lt;img src="https://oscimg.oschina.net/oscnet/up-f5fcf65535c2b10d24ede8cf7f01f19f366.png" alt="" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;h2&gt;實操指南與效果展示&lt;/h2&gt; 
-&lt;p&gt;接下來，本文將分別以使用 RAG 檢索代理方案打通 Dify 與百鍊知識庫、使用自動檢索注入方案打通 Dify 與 RagFlow 為例，詳細介紹上述兩種方案的操作方式，並展示實際效果。&lt;/p&gt; 
-&lt;h3&gt;實踐案例一：Dify 知識檢索節點訪問百鍊知識庫&lt;/h3&gt; 
-&lt;p&gt;本節將以 Dify 應用打通已經存在的百鍊知識庫為例，介紹 RAG 檢索代理方案的操作方式與實際效果。&lt;/p&gt; 
-&lt;ol&gt; 
- &lt;li&gt;AI 網關創建百鍊服務、自定義 Agent API 路由，作為 Dify 外部知識庫 API。&lt;/li&gt; 
-&lt;/ol&gt; 
-&lt;p&gt;a. AI 網關創建百鍊檢索服務。&lt;/p&gt; 
-&lt;p&gt;&lt;img src="https://oscimg.oschina.net/oscnet/up-148c0d00f39b5199dbbe46389c47176625c.png" alt="" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;p&gt;b. 創建自定義 Agent API。點擊 Agent API-創建 Agent API，域名和 Base Path 可按需自定義，協議選擇自定義，如下圖所示。&lt;/p&gt; 
-&lt;p&gt;&lt;img src="https://oscimg.oschina.net/oscnet/up-9ac33d5851e7f877d84b253346380a98137.png" alt="" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;p&gt;c. 創建 Agent API 路由。進入已經創建的 Agent API，點擊創建路由，注意需要確保路徑後綴為/retrieval，服務選擇前述步驟創建的百鍊服務。&lt;/p&gt; 
-&lt;p&gt;&lt;img src="https://oscimg.oschina.net/oscnet/up-bbba2ddbeb01cd5832aabdb6901806eeade.png" alt="" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;ol start="2"&gt; 
- &lt;li&gt;AI 網關配置插件。&lt;/li&gt; 
-&lt;/ol&gt; 
-&lt;p&gt;a. 獲取百鍊 API KEY。登錄阿里雲百鍊平台 API Key &lt;strong&gt;[&lt;/strong&gt; &lt;strong&gt;3]&lt;/strong&gt; 並獲取 API Key。&lt;/p&gt; 
-&lt;p&gt;b. 配置插件。在網關實例控制枱，點擊插件-安裝插件-AI，選擇 &lt;strong&gt;AI RAG 檢索代理&lt;/strong&gt;插件，點擊安裝並配置規則，設置啓用並點擊保存後，插件即可生效，如下圖所示。&lt;/p&gt; 
-&lt;p&gt;&lt;img src="https://oscimg.oschina.net/oscnet/up-4a71365d273d7a1b2712ce0c66cf6e6469c.png" alt="" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;ol start="3"&gt; 
- &lt;li&gt;Dify 創建百鍊知識庫。&lt;/li&gt; 
-&lt;/ol&gt; 
-&lt;p&gt;a. Dify 知識庫創建外部 API。在 Dify 控制枱，點擊知識庫-外部知識庫 API-添加外部知識庫 API，配置示例如下圖所示。&lt;/p&gt; 
-&lt;p&gt;&lt;img src="https://oscimg.oschina.net/oscnet/up-0e30fc4c4aed2179bbbe9e15426f8734feb.png" alt="" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;p&gt;b. 獲取知識庫 ID。前往百鍊知識庫控制枱，選擇待檢索的知識庫並獲取 ID，如下圖所示。&lt;/p&gt; 
-&lt;p&gt;&lt;img src="https://oscimg.oschina.net/oscnet/up-979d1e29b06fadfeae2c16c4b78e7061058.png" alt="" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;p&gt;c. 配置知識庫信息。在 Dify 控制枱，點擊知識庫-連接外部知識庫，配置示例如下圖所示。&lt;/p&gt; 
-&lt;p&gt;&lt;img src="https://oscimg.oschina.net/oscnet/up-68e17e5fed0881b2794e4a7fd4958ee09a4.png" alt="" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;ol start="4"&gt; 
- &lt;li&gt;驗證檢索連通性。在 Dify 知識庫頁面點擊上述步驟創建的知識庫，在召回測試輸入源文本進行驗證，能夠根據召回設置返回文本分塊，即説明實現連通。接下來就可以在 Workflow 和 Agent 中通過訪問已創建好的知識庫進行百鍊 RAG 檢索。&lt;/li&gt; 
-&lt;/ol&gt; 
-&lt;p&gt;&lt;img src="https://oscimg.oschina.net/oscnet/up-df8b970e03130d997af9f92ecc9ca27d8db.png" alt="" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;p&gt;&lt;img src="https://oscimg.oschina.net/oscnet/up-c245fbe79de6ea728d6f3e612e6a256640b.png" alt="" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;h3&gt;實踐案例二：模型調用前自動檢索 RagFlow&lt;/h3&gt; 
-&lt;p&gt;接下來，本節以 Dify 應用打通已經存在的 RagFlow 知識庫為例，介紹自動檢索注入方案的操作方式與實際效果。&lt;/p&gt; 
-&lt;ol&gt; 
- &lt;li&gt; &lt;p&gt;部署 RagFlow 、創建知識庫並上傳知識。對於企業級場景，推薦使用阿里雲 SAE 一鍵部署高可用版本 RagFlow 服務，降低部署和運維成本，詳情請見 RAGFlow 社區版-Serverless 部署 &lt;strong&gt;[&lt;/strong&gt; &lt;strong&gt;4]&lt;/strong&gt; 。&lt;/p&gt; &lt;/li&gt; 
- &lt;li&gt; &lt;p&gt;在 AI 網關創建 AI 服務和文本生成場景 Model API，讓 Dify 應用通過調用該 API 訪問模型。使用 AI 網關代理 Dify 模型流量操作方式可參考&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fmp.weixin.qq.com%2Fs%3F__biz%3DMzUzNzYxNjAzMg%3D%3D%26mid%3D2247576813%26idx%3D1%26sn%3Dc515eb8c39eb3133e9b44a0d7ad17610%26scene%3D21%23wechat_redirect" target="_blank"&gt;Dify 性能瓶頸？Higress AI 網關為它注入「高可用之魂」！&lt;/a&gt;。&lt;/p&gt; &lt;/li&gt; 
- &lt;li&gt; &lt;p&gt;AI 網關插件配置。&lt;/p&gt; &lt;/li&gt; 
-&lt;/ol&gt; 
-&lt;p&gt;a. AI 網關創建 RagFlow 服務，同時獲取 RagFlow 服務的 FQDN 和 Port。&lt;/p&gt; 
-&lt;p&gt;&lt;img src="https://oscimg.oschina.net/oscnet/up-5d60d80f89f735da7cd3fefbd597bd60c57.png" alt="" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;p&gt;b. 獲取 RagFlow API Key。進入 RAGFlow 控制枱，點擊右上角用户頭像 -&amp;gt; 左側選擇 API -&amp;gt; API KEY，獲取 API Key。&lt;/p&gt; 
-&lt;p&gt;&lt;img src="https://oscimg.oschina.net/oscnet/up-e3eeaa4a2170349a024e49c3fc7f7fada21.png" alt="" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;p&gt;c. 獲取 RagFlow 知識庫 ID。在 RAGFlow 知識庫頁面，點擊對應知識庫，網頁 url 中的 id 即為知識庫 ID。&lt;/p&gt; 
-&lt;p&gt;&lt;img src="https://oscimg.oschina.net/oscnet/up-03c3db5ccb6253879a352c39e8ce0210888.png" alt="" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;p&gt;d. 配置網關插件。在網關實例控制枱，點擊插件-安裝插件-AI，選擇 &lt;strong&gt;AI 檢索增強生成（&lt;strong&gt;加強版&lt;/strong&gt;）&lt;/strong&gt; 插件，點擊安裝並配置規則，配置到對應的生效範圍，將前述步驟獲取的參數添入到指定參數位置，配置示意如下圖所示。&lt;/p&gt; 
-&lt;p&gt;&lt;img src="https://oscimg.oschina.net/oscnet/up-33412f7f370eb15f0f7377949cdf26f703a.png" alt="" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;ol start="4"&gt; 
- &lt;li&gt;調試並驗證效果。在 AI 網關實例控制枱，點擊插件作用生效的 Model API 並調試，驗證添加自動檢索能力之後的模型返回結果。驗證無誤後，在 Dify 中通過訪問該 API 進行模型訪問，即可具備打通 RagFlow 知識庫的 RAG 能力。&lt;/li&gt; 
-&lt;/ol&gt; 
-&lt;p&gt;&lt;img src="https://oscimg.oschina.net/oscnet/up-2cd4c8b2cd0eea653b1f45d4cd259cd2078.png" alt="" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;h2&gt;總結與展望&lt;/h2&gt; 
-&lt;p&gt;由於 Dify 內置 RAG 引擎在生產實踐中的效果侷限，許多 Dify 應用開發者期望能便捷的為 Dify 系統打通更多外部知識庫，豐富 RAG 系統的選型。Higress AI 網關提供了快速打通外部 RAG 引擎的方案，將 Dify 的高效編排能力與專業 RAG 引擎的檢索效能結合。通過幫助 Dify 應用"開外掛"，主要帶來以下增益：&lt;/p&gt; 
-&lt;ol&gt; 
- &lt;li&gt; &lt;p&gt;效果躍升：通過集成 RAGFlow、百鍊知識庫等專業引擎，顯著提升知識分塊質量與檢索準確性。&lt;/p&gt; &lt;/li&gt; 
- &lt;li&gt; &lt;p&gt;無縫增強：配置化實現，無需改造 Dify 應用代碼即可獲得高階 RAG 能力，0 開發成本。&lt;/p&gt; &lt;/li&gt; 
- &lt;li&gt; &lt;p&gt;靈活適配：支持開源引擎私有化部署或 SaaS 化服務的 RAG 引擎選型，滿足多樣化場景需求。&lt;/p&gt; &lt;/li&gt; 
-&lt;/ol&gt; 
-&lt;p&gt;目前，該能力已經上線至阿里云云原生 AI 網關 &lt;strong&gt;[&lt;/strong&gt; &lt;strong&gt;5]&lt;/strong&gt; 中，除此以外，Higress AI 網關還提供了安全、高可用治理等其他豐富能力，提升 Dify 應用安全性和可用性。在 RAG 方面， Higress AI 網關將持續深化 RAG 能力，在多模態、生態擴展、場景擴展等方面持續探索，幫助 Dify 等 AI 應用從"可用"走向"高精度、高可靠"的企業級知識中樞。&lt;/p&gt; 
-&lt;p&gt;&lt;strong&gt;相關鏈接：&lt;/strong&gt;&lt;/p&gt; 
-&lt;p&gt;[1] AI RAG 檢索代理&lt;/p&gt; 
-&lt;p&gt;&lt;em&gt;&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fhelp.aliyun.com%2Fzh%2Fapi-gateway%2Fai-gateway%2Fuser-guide%2Fai-retrieval-agent" target="_blank"&gt;https://help.aliyun.com/zh/api-gateway/ai-gateway/user-guide/ai-retrieval-agent&lt;/a&gt;&lt;/em&gt;&lt;/p&gt; 
-&lt;p&gt;[2] AI 檢索增強生成（加強版）&lt;/p&gt; 
-&lt;p&gt;&lt;em&gt;&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fhelp.aliyun.com%2Fzh%2Fapi-gateway%2Fai-gateway%2Fuser-guide%2Fai-retrieval-enhanced-generation-enhanced-version" target="_blank"&gt;https://help.aliyun.com/zh/api-gateway/ai-gateway/user-guide/ai-retrieval-enhanced-generation-enhanced-version&lt;/a&gt;&lt;/em&gt;&lt;/p&gt; 
-&lt;p&gt;[3] API Key&lt;/p&gt; 
-&lt;p&gt;&lt;em&gt;&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fbailian.console.aliyun.com%2F%3Ftab%3Dmodel%23%2Fapi-key" target="_blank"&gt;https://bailian.console.aliyun.com/?tab=model#/api-key&lt;/a&gt;&lt;/em&gt;&lt;/p&gt; 
-&lt;p&gt;[4] RAGFlow 社區版-Serverless 部署&lt;/p&gt; 
-&lt;p&gt;&lt;em&gt;&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fsaenext.console.aliyun.com%2Fcn-hangzhou%2Fscene-market%2Fmarket%2Fdetail%2Fservice-611f1d5343924329a69e%3Ftab%3Ddocument%26name%3DRAGFlow%25E7%25A4%25BE%25E5%258C%25BA%25E7%2589%2588-Serverless%25E9%2583%25A8%25E7%25BD%25B2%26dataSource%3DcomputeNest" target="_blank"&gt;https://saenext.console.aliyun.com/cn-hangzhou/scene-market/market/detail/service-611f1d5343924329a69e?tab=document&amp;amp;name=RAGFlow%E7%A4%BE%E5%8C%BA%E7%89%88-Serverless%E9%83%A8%E7%BD%B2&amp;amp;dataSource=computeNest&lt;/a&gt;&lt;/em&gt;&lt;/p&gt; 
-&lt;p&gt;[5] 阿里云云原生 AI 網關&lt;/p&gt; 
-&lt;p&gt;&lt;em&gt;&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fwww.aliyun.com%2Fproduct%2Fapigate" target="_blank"&gt;https://www.aliyun.com/product/apigate&lt;/a&gt;&lt;/em&gt;&lt;/p&gt; 
-&lt;hr&gt; 
-&lt;p&gt;🔥🔥擁抱 AI 原生！&lt;/p&gt; 
-&lt;p&gt;8 月 29 日深圳，企業實踐工作坊火熱報名中！&lt;/p&gt; 
-&lt;p&gt;阿里雲誠摯邀請您參加【AI 原生，智構未來------AI 原生架構與企業實踐】工作坊，從開發範式到工程化實踐，全鏈路解析 AI 原生架構奧秘，與 AI 先行者共探增長新機遇。&lt;/p&gt; 
-&lt;p&gt;⬇️ 點擊&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fdeveloper.aliyun.com%2Farticle%2F1678323" target="_blank"&gt;此處&lt;/a&gt;，立即瞭解完整議程！&lt;/p&gt;
-                                                                                    &lt;/div&gt;
-                                                                            </description>
-      <link>https://my.oschina.net/u/3874284/blog/18690020</link>
-      <guid isPermaLink="false">https://my.oschina.net/u/3874284/blog/18690020</guid>
-      <pubDate>Sun, 31 Aug 2025 08:17:00 GMT</pubDate>
-      <author>原創</author>
-    </item>
-    <item>
-      <title>DBeaver 25.2 發佈</title>
-      <description>&lt;div class="content"&gt;
-                                                                    
-                                                        &lt;p&gt;&lt;span style="color:#000000"&gt;DBeaver 是一個免費開源的通用數據庫工具，適用於開發人員和數據庫管理員。DBeaver 25.2 已發佈&lt;/span&gt;&lt;span style="color:#000000"&gt;，自 25.1.5 以來的變更：&lt;/span&gt;&lt;/p&gt; 
-&lt;ul&gt; 
- &lt;li&gt;AI 助手： 
-  &lt;ul&gt; 
-   &lt;li&gt;為 @ai 命令和 AI 聊天查詢確認添加了查詢預覽&lt;/li&gt; 
-   &lt;li&gt;增加了對自定義 OpenAI API base URL 的支持&lt;/li&gt; 
-   &lt;li&gt;改進的查詢分析性能&lt;/li&gt; 
-  &lt;/ul&gt; &lt;/li&gt; 
- &lt;li&gt;SQL Editor： 
-  &lt;ul&gt; 
-   &lt;li&gt;解決了 schemas/tables&amp;nbsp;自動補全速度慢的問題&lt;/li&gt; 
-   &lt;li&gt;上下文信息（F2）已修復，無需選擇文本即可工作&lt;/li&gt; 
-   &lt;li&gt;修復了腳本末尾查詢重新解析的問題&lt;/li&gt; 
-   &lt;li&gt;修復了方言不支持別名補全的問題&lt;/li&gt; 
-   &lt;li&gt;修復腳本格式化後滾動的問題&lt;/li&gt; 
-  &lt;/ul&gt; &lt;/li&gt; 
- &lt;li&gt;Data Editor： 
-  &lt;ul&gt; 
-   &lt;li&gt;修復了沒有鍵的表格的高級粘貼問題&lt;/li&gt; 
-   &lt;li&gt;修復通過外鍵切換到記錄時的值顯示問題&lt;/li&gt; 
-  &lt;/ul&gt; &lt;/li&gt; 
- &lt;li&gt;ER Diagram：修復了具有自引用列的表的錯誤鍵高亮顯示&lt;/li&gt; 
- &lt;li&gt;Data transfer：改進了導出和導入提供商的圖標&lt;/li&gt; 
- &lt;li&gt;Connectivity：修復了連接設置中的滾動顯示&lt;/li&gt; 
- &lt;li&gt;General： 
-  &lt;ul&gt; 
-   &lt;li&gt;更新了測試和生產連接類型以及查詢管理器的顏色&lt;/li&gt; 
-   &lt;li&gt;修復了運行 DBeaver 作為 Eclipse 插件時不一致的字體變化&lt;/li&gt; 
-   &lt;li&gt;優化了深色主題下的工具欄配色方案&lt;/li&gt; 
-   &lt;li&gt;修復了深色主題中的背景渲染問題&lt;/li&gt; 
-   &lt;li&gt;狀態欄中的時區名稱現在反映夏令時&lt;/li&gt; 
-  &lt;/ul&gt; &lt;/li&gt; 
- &lt;li&gt;New driver：增加了對 TimechoDB/IoTDB 的支持&lt;/li&gt; 
- &lt;li&gt;&lt;span style="background-color:#ffffff; color:#555555"&gt;Databases&lt;/span&gt;： 
-  &lt;ul&gt; 
-   &lt;li&gt;ClickHouse： 
-    &lt;ul&gt; 
-     &lt;li&gt;數據編輯器中地圖現以字符串形式顯示&lt;/li&gt; 
-     &lt;li&gt;修復了只讀用户的連接問題&lt;/li&gt; 
-    &lt;/ul&gt; &lt;/li&gt; 
-   &lt;li&gt;CUBRID： 
-    &lt;ul&gt; 
-     &lt;li&gt;更正了元數據編輯器中視圖的標籤名稱&lt;/li&gt; 
-     &lt;li&gt;增加了對 SMALLINT 和 NUMERIC(x,0) 列類型的 AUTO_INCREMENT 支持&lt;/li&gt; 
-    &lt;/ul&gt; &lt;/li&gt; 
-   &lt;li&gt;MySQL：改進了外鍵和引用讀取的性能&lt;/li&gt; 
-   &lt;li&gt;&lt;span style="background-color:#ffffff; color:#555555"&gt;Oracle&lt;/span&gt;： 
-    &lt;ul&gt; 
-     &lt;li&gt;改進了列複製&lt;/li&gt; 
-     &lt;li&gt;public synonyms&amp;nbsp;加載問題已修復&lt;/li&gt; 
-     &lt;li&gt;連接設置中添加了新的優化器偏好選項&lt;/li&gt; 
-    &lt;/ul&gt; &lt;/li&gt; 
-   &lt;li&gt;Snowflake：增加了對 SHOW、GRAN 和 TRUNCATE 關鍵字的支持&lt;/li&gt; 
-   &lt;li&gt;SQL Server：修復導出期間的數據映射問題&lt;/li&gt; 
-  &lt;/ul&gt; &lt;/li&gt; 
-&lt;/ul&gt; 
-&lt;p&gt;更新説明：&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fdbeaver.io%2F2025%2F08%2F31%2Fdbeaver-25-2%2F" target="_blank"&gt;https://dbeaver.io/2025/08/31/dbeaver-25-2/&lt;/a&gt;&lt;/p&gt;
-                                                                                &lt;/div&gt;
-                                                                            </description>
-      <link>https://www.oschina.net/news/369666/dbeaver-25-2-released</link>
-      <guid isPermaLink="false">https://www.oschina.net/news/369666/dbeaver-25-2-released</guid>
-      <pubDate>Sun, 31 Aug 2025 08:03:00 GMT</pubDate>
-      <author>來源: OSCHINA</author>
-    </item>
-    <item>
-      <title>Chrome 市佔率突破 70%</title>
-      <description>&lt;div class="content"&gt;
-                                                                    
-                                                        &lt;p&gt;根據 Statcounter 最新數據，截至 2025 年 8 月，Google Chrome 在桌面瀏覽器市場的份額達到了 &lt;strong&gt;70.25%。&lt;/strong&gt;&lt;/p&gt; 
-&lt;p&gt;&lt;img alt="" src="https://oscimg.oschina.net/oscnet/up-01c74261cc2dbfb7c696b2470d49ab94115.png" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;p&gt;&lt;img alt="" src="https://oscimg.oschina.net/oscnet/up-c2f7a0ea50348f5fb173220fa35d6164e8d.png" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;p&gt;下面是各主要瀏覽器市場佔比變化&lt;/p&gt; 
-&lt;ul&gt; 
- &lt;li&gt; &lt;p&gt;&lt;strong&gt;Microsoft Edge&lt;/strong&gt;：穩居第二，但市場份額僅為 &lt;strong&gt;11.8%&lt;/strong&gt;，比上月略增 0.01 個百分點&lt;/p&gt; &lt;/li&gt; 
- &lt;li&gt; &lt;p&gt;&lt;strong&gt;Safari&lt;/strong&gt;：雖為第三，但僅佔 &lt;strong&gt;6.34%&lt;/strong&gt;，月增幅高達 1.04 個百分點&lt;/p&gt; &lt;/li&gt; 
- &lt;li&gt; &lt;p&gt;&lt;strong&gt;Firefox&lt;/strong&gt;：市場佔比為 &lt;strong&gt;4.94%&lt;/strong&gt;，環比下降 0.36 個百分點&lt;/p&gt; &lt;/li&gt; 
- &lt;li&gt; &lt;p&gt;&lt;strong&gt;Opera&lt;/strong&gt;：排名第五，僅佔 &lt;strong&gt;2.06%&lt;/strong&gt;，環比減少 0.13 個百分點&lt;/p&gt; &lt;/li&gt; 
-&lt;/ul&gt; 
-&lt;p&gt;整體來看，Chrome 的市場份額持續上升，而其他競爭瀏覽器則表現相對疲軟，其市場份額普遍有所下滑，尤其是 Firefox 和 Opera。Safari 略有回升，但仍遠遠落後於 Chrome 和 Edge。&lt;/p&gt;
-                                                                                &lt;/div&gt;
-                                                                            </description>
-      <link>https://www.oschina.net/news/369661/chrome-increases-its-overwhelming-market-share-now-over-70</link>
-      <guid isPermaLink="false">https://www.oschina.net/news/369661/chrome-increases-its-overwhelming-market-share-now-over-70</guid>
-      <pubDate>Sun, 31 Aug 2025 07:32:00 GMT</pubDate>
-      <author>來源: OSCHINA</author>
-    </item>
-    <item>
-      <title>螞蟻開源醫學智能體 MedResearcher-R1</title>
-      <description>&lt;div class="content"&gt;
-                                                                    
-                                                        &lt;p&gt;&lt;span style="color:#000000"&gt;螞蟻集團聯合研究團隊近日開源發佈了針對醫療領域的知識驅動軌跡合成框架 MedResearcher-R1。旨在解決領域特定 AI 推理的挑戰，通過智能化的數據生成和合成，為醫療研究提供支持。&lt;/span&gt;&lt;/p&gt; 
-&lt;p&gt;&lt;span style="color:#000000"&gt;MedResearcher-R1 包含三個集成的核心模塊，分別是知識圖譜構建、軌跡生成管道和評估管道。&lt;/span&gt;&lt;/p&gt; 
-&lt;p&gt;&lt;span style="color:#000000"&gt;&lt;img alt="" height="455" src="https://oscimg.oschina.net/oscnet/up-aec107f3f7a8b85da21f5a8356da520584b.png" width="500" referrerpolicy="no-referrer"&gt;&lt;/span&gt;&lt;/p&gt; 
-&lt;p style="color:#242424; margin-left:0; margin-right:0; text-align:left"&gt;&lt;span style="color:#000000"&gt;知識圖譜構建模塊是該框架的核心創新。該模塊能夠將領域知識轉化為高質量的問答對，藉助自動推理路徑生成，構建出完整的知識圖譜。此外，系統還提供了交互式網絡可視化，用户可以通過 D3.js 力導向圖來直觀展示知識圖譜結構。先進的採樣算法和統一的問答生成方法，使得複雜的子圖提取與多種形式的問題合成得以實現。&lt;/span&gt;&lt;/p&gt; 
-&lt;p style="color:#242424; margin-left:0; margin-right:0; text-align:left"&gt;&lt;span style="color:#000000"&gt;接下來是軌跡生成管道。該模塊實現了多輪推理與工具集成的自動化處理，可以將問答對轉換為多輪推理軌跡，並進行質量過濾。通過高效的質量過濾機制，系統能夠檢測到錯誤並進行自動修正，確保生成內容的準確性。&lt;/span&gt;&lt;/p&gt; 
-&lt;p style="color:#242424; margin-left:0; margin-right:0; text-align:left"&gt;&lt;span style="color:#000000"&gt;評估管道為模型的推理性能提供了全面的評估與驗證框架。它不僅支持單問題模式的詳細過程可視化，還可以進行批量數據集評估，提高評估效率。通過這些模塊，MedResearcher-R1 提供了一整套從知識提取到模型訓練數據生成和評估的解決方案，推動醫療領域專用推理模型的開發。&lt;/span&gt;&lt;/p&gt; 
-&lt;p style="color:#242424; margin-left:0; margin-right:0; text-align:left"&gt;&lt;span style="color:#000000"&gt;該框架還開源了由知識圖譜構建模塊生成的高質量問答數據集，包含複雜推理問答對和詳細的推理路徑，為研究者提供了寶貴的資源。&lt;/span&gt;&lt;/p&gt;
-                                                                                &lt;/div&gt;
-                                                                            </description>
-      <link>https://www.oschina.net/news/369660</link>
-      <guid isPermaLink="false">https://www.oschina.net/news/369660</guid>
-      <pubDate>Sun, 31 Aug 2025 07:28:00 GMT</pubDate>
-      <author>來源: OSCHINA</author>
-    </item>
-    <item>
-      <title>UltraRAG 2.0 發佈，基於 MCP 架構設計的開源 RAG 框架</title>
-      <description>&lt;div class="content"&gt;
-                                                                    
-                                                        &lt;p&gt;清華大學 THUNLP 實驗室、東北大學 NEUIR 實驗室、OpenBMB 與 AI9Stars 聯合推出 UltraRAG 2.0 （UR-2.0），這是首個基於 Model Context Protocol (MCP) 架構設計的開源 RAG 框架。&lt;/p&gt; 
-&lt;p&gt;UltraRAG 2.0 框架示意圖：&lt;/p&gt; 
-&lt;p&gt;&lt;img alt="" src="https://oscimg.oschina.net/oscnet/up-e725bd56a6a1b4d875b21297cdeaea9e95d.png" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;p&gt;這一設計讓科研人員只需編寫 YAML 文件，就可以直接聲明串行、循環、條件分支等複雜邏輯，從而以極低的代碼量快速實現多階段推理系統。&lt;/p&gt; 
-&lt;p&gt;&lt;strong&gt;UltraRAG 2.0 亮點一覽&lt;/strong&gt;&lt;/p&gt; 
-&lt;ul&gt; 
- &lt;li&gt;組件化封裝：將 RAG 的核心組件封裝為標準化的獨立 MCP Server；&lt;/li&gt; 
- &lt;li&gt;靈活調用與擴展：提供函數級 Tool 接口，支持功能的靈活調用與擴展；&lt;/li&gt; 
- &lt;li&gt;輕量流程編排：藉助 MCP Client，建立自上而下的簡潔化鏈路搭建；與傳統框架相比，UltraRAG 2.0 顯著降低了複雜 RAG 系統的技術門檻與學習成本，讓研究者能夠將更多精力投入到實驗設計與算法創新上，而不是陷入冗長的工程實現。&lt;/li&gt; 
-&lt;/ul&gt; 
-&lt;p&gt;➤&amp;nbsp;&amp;nbsp;相關鏈接&lt;/p&gt; 
-&lt;p&gt;&lt;strong&gt;Github 鏈接：&lt;/strong&gt;&lt;em&gt;https://github.com/OpenBMB/UltraRAG&lt;/em&gt;&lt;br&gt; &lt;strong&gt;項目主頁&lt;/strong&gt;&lt;em&gt;&lt;strong&gt;：&lt;/strong&gt;https://openbmb.github.io/UltraRAG/&lt;/em&gt;&lt;br&gt; &lt;strong&gt;教程文檔&lt;/strong&gt;&lt;em&gt;&lt;strong&gt;：&lt;/strong&gt;https://ultrarag.openbmb.cn/&lt;/em&gt;&lt;br&gt; &lt;strong&gt;開源數據集：&lt;/strong&gt;&lt;em&gt;https://huggingface.co/datasets/UltraRAG/UltraRAG_Benchmark&lt;/em&gt;&lt;/p&gt;
-                                                                                &lt;/div&gt;
-                                                                            </description>
-      <link>https://www.oschina.net/news/369659</link>
-      <guid isPermaLink="false">https://www.oschina.net/news/369659</guid>
-      <pubDate>Sun, 31 Aug 2025 07:20:00 GMT</pubDate>
       <author>來源: OSCHINA</author>
     </item>
   </channel>
