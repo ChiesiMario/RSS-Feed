@@ -7,8 +7,440 @@
     <generator>RSSHub</generator>
     <webMaster>contact@rsshub.app (RSSHub)</webMaster>
     <language>zh-cn</language>
-    <lastBuildDate>Tue, 02 Sep 2025 21:43:06 GMT</lastBuildDate>
+    <lastBuildDate>Wed, 03 Sep 2025 02:46:00 GMT</lastBuildDate>
     <ttl>5</ttl>
+    <item>
+      <title>OpenAI 收购产品测试初创公司 Statsig</title>
+      <description>&lt;div class="content"&gt;
+                                                                    
+                                                        &lt;p&gt;OpenAI &lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fx.com%2FOpenAI%2Fstatus%2F1962943308935864793" target="_blank"&gt;宣布&lt;/a&gt;将以全股票交易方式收购产品测试初创公司&amp;nbsp;Statsig。此次交易基于 OpenAI 当前 3000 亿美元（现汇率约合 2.14 万亿元人民币）的估值，交易金额约为 11 亿美元（现汇率约合 78.48 亿元人民币）。&lt;/p&gt; 
+&lt;p&gt;&lt;img height="1430" src="https://static.oschina.net/uploads/space/2025/0903/103919_Da3c_2720166.png" width="1278" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p&gt;据 OpenAI 安排，Statsig 首席执行官 Vijaye Raji 加盟后将出任 OpenAI 应用技术负责人，负责推动公司在人工智能产品上的发展。Vijaye Raji 将领导 ChatGPT 和代码生成工具 Codex 的产品工程工作，涵盖核心系统及包括基础设施在内的产品线。&lt;/p&gt; 
+&lt;p&gt;OpenAI 表示，Statsig 将继续独立运营，并在西雅图办公室为其客户群提供服务。&lt;/p&gt;
+                                                                                &lt;/div&gt;
+                                                                            </description>
+      <link>https://www.oschina.net/news/369990</link>
+      <guid isPermaLink="false">https://www.oschina.net/news/369990</guid>
+      <pubDate>Wed, 03 Sep 2025 02:41:59 GMT</pubDate>
+      <author>来源: OSCHINA</author>
+    </item>
+    <item>
+      <title>系统梳理 RAG 系统的 21 种分块策略</title>
+      <description>&lt;div class="content"&gt;
+                                                                                                                    
+                                                                                                                                                    &lt;blockquote&gt; 
+ &lt;p&gt;&lt;strong&gt;编者按：&lt;/strong&gt; 我们今天为大家带来的文章，作者的观点是：分块（chunking）才是决定 RAG 系统成败的真正关键因素，不同场景需要匹配相应的分块策略。&lt;/p&gt; 
+ &lt;p&gt;本文系统梳理了从基础到进阶的 21 种分块策略，涵盖了基础分块法、定长分块法、滑动窗口分块等传统方法，以及语义分块、上下文增强分块、多模态分块等前沿技术。&lt;/p&gt; 
+&lt;/blockquote&gt; 
+&lt;p&gt;&lt;strong&gt;作者 | Anjolaoluwa Ajayi&lt;/strong&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;strong&gt;编译 | 岳扬&lt;/strong&gt;&lt;/p&gt; 
+&lt;p&gt;检索增强生成（RAG）是许多 AI 工程师又爱又恨的技术（包括我）。&lt;/p&gt; 
+&lt;p&gt;没错，因为从理论上看，它简单极了："从你的定制数据中检索正确的上下文，然后让大语言模型基于此生成回答"。&lt;/p&gt; 
+&lt;p&gt;但在实践中，你不得不面对海量杂乱无章的数据 ------ 这些数据以你见过的最混乱随机的格式存储，接着就是数日绞尽脑汁的试错：&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt;调整文本块（tweaking chunks）&lt;/li&gt; 
+ &lt;li&gt;切换嵌入模型（switching embedding models）&lt;/li&gt; 
+ &lt;li&gt;替换检索器（swapping out retrievers）&lt;/li&gt; 
+ &lt;li&gt;微调排序器（fine-tuning rankers）&lt;/li&gt; 
+ &lt;li&gt;重写提示词（rewriting prompts）&lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;p&gt;而模型依然回复："我找不到足够的信息来回答你的问题"。&lt;/p&gt; 
+&lt;p&gt;更糟糕的是，它还会一本正经地输出完全错误的答案（产生幻觉）。&lt;/p&gt; 
+&lt;p&gt;毋庸置疑，RAG 系统中存在许多复杂的组件，但真正默默决定整个系统是否能正常运行的关键因素其实是分块（chunking）。&lt;/p&gt; 
+&lt;p&gt;不同的数据类型、文件格式、内容结构、文档长度和使用场景，都需要匹配不同的分块策略。&lt;/p&gt; 
+&lt;p&gt;一旦出错，你的模型要么抓不住重点，要么... 好吧，还是抓不住重点。&lt;/p&gt; 
+&lt;p&gt;本文将解析 21 种分块策略（从基础到进阶），并说明何时该用何种策略，让你的 RAG 系统不再...掉链子。&lt;/p&gt; 
+&lt;p&gt;&lt;strong&gt;1）基础分块法（按换行符分割）Naive chunking (split by newline)&lt;/strong&gt;&lt;/p&gt; 
+&lt;p&gt;遇到换行符就分割文本。仅此而已。&lt;/p&gt; 
+&lt;p&gt;&lt;img src="https://oscimg.oschina.net/oscnet/up-aac59a23bc7029033fcf8a11d14813466fe.png" alt="" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p&gt;基础分块法示例 | 此图片由原文作者制作&lt;/p&gt; 
+&lt;p&gt;适用场景：&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt;处理由换行符统一分隔的文本：笔记、项目列表、FAQ、聊天记录或每一行都包含完整语义的文字转录稿。&lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;p&gt;注意：如果内容行过长，可能超出 LLM 的词元限制。如果内容行过短，模型可能遗漏上下文或产生幻觉。&lt;/p&gt; 
+&lt;p&gt;&lt;strong&gt;2）定长分块法 Fixed-size/ fixed window chunking&lt;/strong&gt;&lt;/p&gt; 
+&lt;p&gt;按固定字符数/单词数切割文本（即便这样会切断完整句子或语义单元）。&lt;/p&gt; 
+&lt;p&gt;&lt;img src="https://oscimg.oschina.net/oscnet/up-a45e305daade3d1a01c0e9203e2945c6887.png" alt="" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p&gt;定长分块法示例 | 此图片由原文作者制作&lt;/p&gt; 
+&lt;p&gt;适用场景：&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt;适用于原始的、杂乱的文本数据，如扫描文档、质量较差的转录文本，或无标点、无标题、无其他结构的大型文本文件。&lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;p&gt;&lt;strong&gt;3）滑动窗口分块法 Sliding window chunking&lt;/strong&gt;&lt;/p&gt; 
+&lt;p&gt;类似定长分块，但每个文本块会与前块内容重叠，以保持跨块上下文之间的关联。&lt;/p&gt; 
+&lt;p&gt;&lt;img src="https://oscimg.oschina.net/oscnet/up-7444ed4446a7b18972e69873268f49ce6b5.png" alt="" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p&gt;滑动窗口分块法示例 | 此图片由原文作者制作&lt;/p&gt; 
+&lt;p&gt;适用场景：&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt;处理需要保持长句间逻辑连贯性的文本类型：议论文、敍述性报告、自由形式的写作等。&lt;/li&gt; 
+ &lt;li&gt;与定长分块法类似，适用于无结构的文本（无标题、无标点、无框架等），但需注意词元消耗与上下文连贯性间的平衡。&lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;p&gt;&lt;strong&gt;4）按句分块法 Sentence-based chunking&lt;/strong&gt;&lt;/p&gt; 
+&lt;p&gt;在句子结尾处分割文本（通常以句号、问号或感叹号为标记）。&lt;/p&gt; 
+&lt;p&gt;&lt;img src="https://oscimg.oschina.net/oscnet/up-b367665f0d9c3ed62a9947f840b2a432e02.png" alt="" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p&gt;按句分块法示例 | 此图片由原文作者制作&lt;/p&gt; 
+&lt;p&gt;适用场景：&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt;适用于语义清晰的规整文本，每句话都承载着完整的语义，如技术博客、内容摘要或文档。&lt;/li&gt; 
+ &lt;li&gt;可作为初级的分块手段产出小而聚焦的文本块，便于后续通过更复杂的分块技术重新组合或重排序这些文本块。&lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;p&gt;&lt;strong&gt;5）按段分块法 Paragraph-based chunking&lt;/strong&gt;&lt;/p&gt; 
+&lt;p&gt;依据段落分割文本（通常以双换行符为界），使每块均包含完整的语义单元。&lt;/p&gt; 
+&lt;p&gt;&lt;img src="https://oscimg.oschina.net/oscnet/up-2c7a17ffc9900413bee4e4876e63a3d2313.png" alt="" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p&gt;按段分块法示例 | 此图片由原文作者制作&lt;/p&gt; 
+&lt;p&gt;适用场景：&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt;当按句分块所得内容过于零碎时&lt;/li&gt; 
+ &lt;li&gt;处理已具备段落结构的文档，如议论文、博客文章或研究报告&lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;p&gt;&lt;strong&gt;6）按页分块法 Page-based chunking&lt;/strong&gt;&lt;/p&gt; 
+&lt;p&gt;将每个物理页面视为一个独立文本块。&lt;/p&gt; 
+&lt;p&gt;&lt;img src="https://oscimg.oschina.net/oscnet/up-d3d5ed6036f56381e294776b0278b592f91.png" alt="" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p&gt;按页分块法示例 | 此图片由原文作者制作&lt;/p&gt; 
+&lt;p&gt;适用场景：&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt;处理含固定页面的文档，如扫描版 PDF、演示文稿或书籍。&lt;/li&gt; 
+ &lt;li&gt;需保留页面布局的检索场景（如在检索时需要引用页码）。&lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;p&gt;&lt;strong&gt;7）按预定结构分块法 Structured chunking&lt;/strong&gt;&lt;/p&gt; 
+&lt;p&gt;依据预定结构（如具有固定格式的系统日志记录、结构化数据中的预定义字段、HTML 标签或 Markdown 元素）分割文本。&lt;/p&gt; 
+&lt;p&gt;&lt;img src="https://oscimg.oschina.net/oscnet/up-026219009a535dc1fab3f2c997e8008d992.png" alt="" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p&gt;按预定结构分块法示例 | 此图片由原文作者制作&lt;/p&gt; 
+&lt;p&gt;适用场景：&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt;处理结构化/半结构化数据，如系统日志、JSON 记录、CSV 文件或 HTML 文档。&lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;p&gt;&lt;strong&gt;8）基于文档层级的分块法 Document-Based Chunking&lt;/strong&gt;&lt;/p&gt; 
+&lt;p&gt;基于文档固有结构分块（按标题/小标题/章节划分）。&lt;/p&gt; 
+&lt;p&gt;&lt;img src="https://oscimg.oschina.net/oscnet/up-b84c5944054dae03b472a53b5755357c6ec.png" alt="" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p&gt;基于文档层级的分块法示例 | 此图片由原文作者制作&lt;/p&gt; 
+&lt;p&gt;适用场景：&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt;当源文件具备清晰的章节结构时，如在技术文章、操作手册、教材或学术论文中。&lt;/li&gt; 
+ &lt;li&gt;可作为进阶分块技术（如按层级分块（hierarchical chunking））的预处理步骤。&lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;p&gt;&lt;strong&gt;9）基于关键词的分块法 Keyword-based chunking&lt;/strong&gt;&lt;/p&gt; 
+&lt;p&gt;在预设关键词出现处分割文本，将其视为逻辑断点。&lt;/p&gt; 
+&lt;p&gt;&lt;img src="https://oscimg.oschina.net/oscnet/up-52342e4376cd9af58f38aebe5ce5b67fe76.png" alt="" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p&gt;基于关键词的分块法示例（关键词为"Note"）| 此图片由原文作者制作&lt;/p&gt; 
+&lt;p&gt;适用场景：&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt;文档无标题结构但含标志性的关键词（且这些关键词可稳定标记新主题的起始）时使用&lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;p&gt;&lt;strong&gt;10）基于实体的分块法 Entity-based chunking&lt;/strong&gt;&lt;/p&gt; 
+&lt;p&gt;使用命名实体识别（NER）模型检测人物、地点、产品等实体，将相关文本围绕每个实体分组形成区块。&lt;/p&gt; 
+&lt;p&gt;&lt;img src="https://oscimg.oschina.net/oscnet/up-97102370a8e5e20777eb3c82de6f1cdd4c3.png" alt="" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p&gt;基于实体的分块法示例 | 此图片由原文作者制作&lt;/p&gt; 
+&lt;p&gt;适用场景：&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt;处理特定类型的实体（人物/地点/组织等）对文档理解起决定性作用的文件，如新闻报道、法律合同、案例研究或电影剧本。&lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;p&gt;&lt;strong&gt;11）基于词元数的分块法 Token-based chunking&lt;/strong&gt;&lt;/p&gt; 
+&lt;p&gt;通过 tokenizer（分词器）按词元数量分割文本。&lt;/p&gt; 
+&lt;p&gt;建议结合按句分块法（sentence chunking）等技术使用，避免破坏句子完整性导致上下文被破坏。&lt;/p&gt; 
+&lt;p&gt;适用场景：&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt;无标题/无段落结构的非结构化文档。&lt;/li&gt; 
+ &lt;li&gt;使用低词元限制的 LLM 时（避免响应被强制截断或长文本输入被丢弃）。&lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;p&gt;&lt;strong&gt;12）基于主题的分块法 Topic-based chunking&lt;/strong&gt;&lt;/p&gt; 
+&lt;p&gt;当文本主题发生变化时，可以通过以下方式对文本进行分块：&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt;首先，将文本拆分为小单元（句子/段落）&lt;/li&gt; 
+ &lt;li&gt;然后，使用主题建模或聚类算法将相关单元合并为区块&lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;p&gt;&lt;img src="https://oscimg.oschina.net/oscnet/up-4952968eff24cefc81394f3cc90f7f6ed29.png" alt="" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p&gt;基于主题的分块法示例（使用聚类算法） | 此图片由原文作者制作&lt;/p&gt; 
+&lt;p&gt;适用场景：&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt;当文档涵盖多个主题，且需保持语义焦点时。&lt;/li&gt; 
+ &lt;li&gt;适用于主题转变较为平缓但未通过明确的标题或关键词标注的文本。&lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;p&gt;&lt;strong&gt;13）表格感知分块法 Table-aware chunking&lt;/strong&gt;&lt;/p&gt; 
+&lt;p&gt;独立识别表格内容，并按 JSON 或 Markdown 格式分块（可逐行/逐列/整表处理）。&lt;/p&gt; 
+&lt;p&gt;&lt;img src="https://oscimg.oschina.net/oscnet/up-eb4793bfb1b79b9c3a4b4315e76de7c52be.png" alt="" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p&gt;表格感知分块法示例 | 此图片由原文作者制作&lt;/p&gt; 
+&lt;p&gt;适用场景：&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt;含表格元素的文档。&lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;p&gt;&lt;strong&gt;14）内容感知分块法 Content-aware chunking&lt;/strong&gt;&lt;/p&gt; 
+&lt;p&gt;根据内容类型动态调整分块策略（为段落/表格/列表等内容适配不同规则）。&lt;/p&gt; 
+&lt;p&gt;适用场景：&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt;混合格式的文档（含多种文本结构）。&lt;/li&gt; 
+ &lt;li&gt;需保持原生格式完整性的场景（表格不分割/段落不截断等）。&lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;p&gt;&lt;strong&gt;15）上下文增强分块法 Contextual chunking&lt;/strong&gt;&lt;/p&gt; 
+&lt;p&gt;通过 LLM 实现：&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt;分析知识库的部分或全部内容。&lt;/li&gt; 
+ &lt;li&gt;在嵌入前为每个文本块注入简短且相关的上下文&lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;p&gt;&lt;img src="https://oscimg.oschina.net/oscnet/up-1d6d9025312ebbe29eaf51b4b6b34cd9500.png" alt="" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p&gt;上下文增强分块法示例 | 此图片由原文作者制作&lt;/p&gt; 
+&lt;p&gt;适用场景：&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt;知识库的全部内容或部分内容在 LLM 的词元限额内。&lt;/li&gt; 
+ &lt;li&gt;处理复杂文档（如财报/合同等）。&lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;p&gt;&lt;strong&gt;16）语义分块法 Semantic chunking&lt;/strong&gt;&lt;/p&gt; 
+&lt;p&gt;基于嵌入相似度聚合主题相关的句子/段落，保持语义聚焦性。&lt;/p&gt; 
+&lt;p&gt;适用场景：&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt;当按段分块法或定长分块法失效时&lt;/li&gt; 
+ &lt;li&gt;处理含混杂主题的长文档。&lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;p&gt;&lt;strong&gt;17）递归分块法 Recursive chunking&lt;/strong&gt;&lt;/p&gt; 
+&lt;p&gt;首先使用大粒度的分隔符（如段落）分割文本。&lt;/p&gt; 
+&lt;p&gt;如果任何生成的分块超过预设的分块大小限制，对这些区块递归使用小粒度分隔符（如句子或单词）进行分割，直至所有分块都符合所需大小。&lt;/p&gt; 
+&lt;p&gt;适用场景：&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt;处理句子长度不规则或不可预测的文本，如访谈记录、演讲内容、自由形式的写作内容。&lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;p&gt;&lt;strong&gt;18）嵌入优先分块法 Embedding chunking&lt;/strong&gt;&lt;/p&gt; 
+&lt;p&gt;常规流程是先分块后嵌入，但此方法先将所有句子全部嵌入，再按顺序逐一处理，若相邻句的相似度高于设定阈值则合并为一组，低于阈值则进行拆分。&lt;/p&gt; 
+&lt;p&gt;适用场景：&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt;无结构（无句子分隔/标题/章节符/标记等）的文档&lt;/li&gt; 
+ &lt;li&gt;当基础技术（如滑动窗口分块法）效果不佳时&lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;p&gt;&lt;strong&gt;19）基于大模型/智能体的分块法 Agentic / LLM-based chunking&lt;/strong&gt;&lt;/p&gt; 
+&lt;p&gt;将分块的决策权完全交由 LLM，由其自主决定文本的分割方式。&lt;/p&gt; 
+&lt;p&gt;适用场景：&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt;当内容复杂或结构不明确，需要类似人类的判断力来确定分块边界时&lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;p&gt;注意：该方法计算成本较高。&lt;/p&gt; 
+&lt;p&gt;&lt;strong&gt;20）分层分块法 Hierarchical chunking&lt;/strong&gt;&lt;/p&gt; 
+&lt;p&gt;将文本按照多个层次（如章节、子章节、段落）进行分块，以便用户能够以不同详细程度检索信息。&lt;/p&gt; 
+&lt;p&gt;&lt;img src="https://oscimg.oschina.net/oscnet/up-df9847bbe55d72931ed01a97cd9733e3296.png" alt="" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p&gt;适用场景：&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt;具备清晰层次结构的文档，如技术文章、手册、教材、研究论文等&lt;/li&gt; 
+ &lt;li&gt;希望用户在不丢失上下文的情况下，同时探索整体概述和详细信息。&lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;p&gt;&lt;strong&gt;21）多模态分块法 Modality-Aware Chunking&lt;/strong&gt;&lt;/p&gt; 
+&lt;p&gt;针对不同内容类型（文本、图像、表格）实施差异化的分块策略。&lt;/p&gt; 
+&lt;p&gt;&lt;img src="https://oscimg.oschina.net/oscnet/up-5307d62e093d2da55f11a7312ab574d1830.png" alt="" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p&gt;多模态分块法示例 | 此图片由原文作者制作&lt;/p&gt; 
+&lt;p&gt;&lt;strong&gt;BONUS：混合分块法 Hybrid chunking&lt;/strong&gt;&lt;/p&gt; 
+&lt;p&gt;融合多种分块技术、启发式规则、嵌入模型以及 LLM 来提升分块过程的可靠性。&lt;/p&gt; 
+&lt;p&gt;适用场景：&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt;单一分块方法效果不足时，需组合方案应对复杂的数据结构。&lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;p&gt;&lt;strong&gt;END&lt;/strong&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;strong&gt;本期互动内容 🍻&lt;/strong&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;strong&gt;❓在处理特定类型文档（如法律合同或学术论文）时，您有哪些独特的分块技巧可以分享？&lt;/strong&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;strong&gt;原文链接：&lt;/strong&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fai.gopubby.com%2F21-chunking-strategies-for-rag-f28e4382d399" target="_blank"&gt;https://ai.gopubby.com/21-chunking-strategies-for-rag-f28e4382d399&lt;/a&gt;&lt;/p&gt;
+                                                                                    &lt;/div&gt;
+                                                                            </description>
+      <link>https://my.oschina.net/IDP/blog/18690430</link>
+      <guid isPermaLink="false">https://my.oschina.net/IDP/blog/18690430</guid>
+      <pubDate>Wed, 03 Sep 2025 02:33:03 GMT</pubDate>
+      <author>原创</author>
+    </item>
+    <item>
+      <title>开源 AI 客户端 Cherry Studio 1.5.9 发布：免费 GLM 4.5 flash、集成 Nano banana</title>
+      <description>&lt;div class="content"&gt;
+                                                                    
+                                                        &lt;p&gt;Cherry Studio 是一款跨平台的 AI 桌面应用，支持 Windows、macOS 和 Linux 系统。Cherry Studio 1.5.9 版本&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fmp.weixin.qq.com%2Fs%2FqDfrjOkXZPAy-wJos-lsAg" target="_blank"&gt;现已正式发布&lt;/a&gt;，本次更新带来了三大重要更新，更在细节和效率工具上进行了全面进化。&lt;/p&gt; 
+&lt;hr&gt; 
+&lt;h3&gt;✨ 亮点一：零门槛开箱，免费畅享国产顶尖模型！&lt;/h3&gt; 
+&lt;p&gt;为了让每一位用户都能零成本、无障碍地体验顶尖大模型的魅力，我们与两家国内领先的 AI 公司达成官方合作，为您带来真正「开箱即用」的免费模型体验！&lt;/p&gt; 
+&lt;p&gt;&lt;img height="1908" src="https://static.oschina.net/uploads/space/2025/0903/102732_TmfF_2720166.png" width="3140" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt;&lt;strong&gt;携手智谱 AI，首发免费 GLM-4.5-flash！&lt;/strong&gt; 
+  &lt;ul&gt; 
+   &lt;li&gt;Cherry Studio 与智谱 AI 达成官方合作，现在您&lt;strong&gt;无需登录、无需配置 API Key&lt;/strong&gt;，即可免费使用最新的&amp;nbsp;&lt;strong&gt;GLM-4.5-flash&lt;/strong&gt;&amp;nbsp;模型。&lt;/li&gt; 
+   &lt;li&gt;该模型以 106B 的总参数和 12B 的激活参数，实现了国产模型的重大突破。在权威的 Artificial Analysis 推理基准测试中，其性能&lt;strong&gt;超越了 Gemini 1.5 Flash、Claude 3 Opus&lt;/strong&gt; 等国际知名模型，稳居国产模型性能前三甲！&lt;/li&gt; 
+  &lt;/ul&gt; &lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;p&gt;&lt;img src="https://static.oschina.net/uploads/space/2025/0903/102809_YNAj_2720166.png" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt;&lt;strong&gt;联合硅基流动，免费使用 Qwen3 8B！&lt;/strong&gt; 
+  &lt;ul&gt; 
+   &lt;li&gt;我们同样与硅基流动深度合作，为您带来了广受欢迎的&amp;nbsp;&lt;strong&gt;Qwen3 8B&lt;/strong&gt;&amp;nbsp;模型的免费使用权。&lt;/li&gt; 
+   &lt;li&gt;这两款内置免费模型的加入，将&lt;strong&gt;彻底消除您首次使用 Cherry Studio 的所有障碍&lt;/strong&gt;，为您提供无与伦比的开箱体验。下载、安装、即刻对话！&lt;/li&gt; 
+  &lt;/ul&gt; &lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;p&gt;&lt;img src="https://static.oschina.net/uploads/space/2025/0903/102826_gOvP_2720166.png" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;h3&gt;✨ 亮点二：绝佳图像编辑，指令遵循与一致性的新标杆！&lt;/h3&gt; 
+&lt;p&gt;图像创作与编辑从未如此简单！新版本正式支持备受期待的&amp;nbsp;&lt;strong&gt;nano banana 图像生成模型（即 Gemini 1.5 Flash Image）&lt;/strong&gt;&amp;nbsp;，它将彻底改变您与图像交互的方式。&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt; &lt;p&gt;&lt;strong&gt;超强指令遵循&lt;/strong&gt;：您可以像与设计师对话一样，通过自然语言下达复杂的修改指令，例如「把这只猫的颜色换成蓝色，并让它戴上一顶牛仔帽」，模型都能精准理解并执行。&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;&lt;strong&gt;惊人的一致性保持&lt;/strong&gt;：在多次修改和迭代过程中，模型能出色地保持图像主体、风格和构图的一致性，让连续创作和精细调整变得轻而易举。&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;&lt;strong&gt;轻松改图体验&lt;/strong&gt;：无论是调整细节、变换风格，还是增删元素，nano banana 都将为您带来行云流水般的创作自由度。&lt;/p&gt; &lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;p&gt;&lt;img height="1344" src="https://static.oschina.net/uploads/space/2025/0903/102849_5C1d_2720166.jpg" width="768" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;h3&gt;✨ 亮点三：灵感随时记录，全新笔记功能上线！&lt;/h3&gt; 
+&lt;p&gt;好的想法和关键信息，值得被永久珍藏。Cherry Studio 1.5.9 带来了全新的&lt;strong&gt;笔记功能&lt;/strong&gt;&amp;nbsp;，让您的知识管理更上一层楼。&lt;/p&gt; 
+&lt;p&gt;&lt;img height="1908" src="https://static.oschina.net/uploads/space/2025/0903/102918_OdZ9_2720166.png" width="3140" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt;&lt;strong&gt;一键保存对话&lt;/strong&gt;：在任何对话中，您可以轻松选中重要内容，或将整段对话一键保存到笔记中。&lt;/li&gt; 
+ &lt;li&gt;&lt;strong&gt;告别信息丢失&lt;/strong&gt;：无论是模型的精彩回答、一段关键代码，还是一个突如其来的灵感，都能被安全地收纳和整理。&lt;/li&gt; 
+ &lt;li&gt;&lt;strong&gt;便捷回溯查阅&lt;/strong&gt;：通过独立的笔记侧边栏，您可以随时回顾、搜索和管理您的知识库，让回溯关键内容变得前所未有地便捷。&lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;p&gt;&lt;img height="1908" src="https://static.oschina.net/uploads/space/2025/0903/102930_MM0T_2720166.png" width="3140" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p&gt;更多内容查看&amp;nbsp;&lt;em&gt;https://github.com/CherryHQ/cherry-studio/releases/tag/v1.5.9&lt;/em&gt;&lt;/p&gt;
+                                                                                &lt;/div&gt;
+                                                                            </description>
+      <link>https://www.oschina.net/news/369987</link>
+      <guid isPermaLink="false">https://www.oschina.net/news/369987</guid>
+      <pubDate>Wed, 03 Sep 2025 02:31:17 GMT</pubDate>
+      <author>来源: OSCHINA</author>
+    </item>
+    <item>
+      <title>苹果 AI 团队持续「失血」：首席机器人研究员被 Meta 挖走</title>
+      <description>&lt;div class="content"&gt;
+                                                                    
+                                                        &lt;p&gt;苹果的首席 AI 机器人研究员 Jian Zhang 已跳槽至 Meta 的机器人工作室 Meta Robotics Studio。Meta 周二已确认 Zhang 加入。这是近期苹果 AI 团队又一重要人员流失的消息。&lt;/p&gt; 
+&lt;p&gt;同时媒体获悉，苹果还有三名大语言模型（LLM）的研究员——John Peebles、Nan Du 和 Zhao Meng 离职。&lt;/p&gt; 
+&lt;p&gt;媒体指出，最新一轮离职潮发生在过去一周内，上述三人均来自苹果基础模型团队，该团队是 Apple Intelligence 平台的核心开发团队，但近几周已流失约 10 名成员，包括团队负责人。将近两个月前传出过，Meta 以 2 亿美元高薪挖走苹果 AI 模型团队的负责人 Ruoming Pang。&lt;/p&gt; 
+&lt;p&gt;上述媒体还再次提到了此前的媒体消息，即苹果内部正在讨论是否更多依赖外部技术，而非仅使用自研模型。&lt;/p&gt; 
+&lt;p&gt;传出 AI 人员变动的消息后，苹果股价本周二盘中跌幅扩大，一度跌逾 2.2%，最终收跌约 1%。&lt;/p&gt; 
+&lt;p&gt;苹果在 AI 领域的追赶努力面临挫折，Apple Intelligence 产品反响不佳，加上公司可能转向第三方模型的策略调整，进一步影响了团队士气。知情人士透露，预计还会有更多员工离职，多名员工正在其他公司面试。&lt;/p&gt; 
+&lt;h2&gt;核心人才接连出走&lt;/h2&gt; 
+&lt;p&gt;Jian Zhang 离职是苹果机器人研发的重大损失。他此前领导一个专注于自动化技术和 AI 应用的小规模学术团队，该团队隶属于苹果人工智能和机器学习部门。Meta 周二确认，Zhang 已加入 Meta 的机器人工作室，隶属于 Reality Labs 部门。&lt;/p&gt; 
+&lt;p&gt;这并非苹果机器人团队的首次人员流失。Zhang 的下属 Mario Srouji 今年 4 月已离职，前往 Archer Aviation 担任 AI 产品负责人。苹果的机器人研究团队与产品开发团队相互独立，后者今年早些时候已转入硬件工程部门。&lt;/p&gt; 
+&lt;p&gt;在与 Zhang 同一批离职的三名基础模型团队研究员中，Peebles 和 Du 将前往 OpenAI，Zhao Meng 则加入 OpenAI 的劲敌 Anthropic。这些离职进一步削弱了苹果自研 AI 能力的核心团队。苹果和 OpenAI 的发言人拒绝就人事变动置评，Anthropic 暂未回应置评请求。&lt;/p&gt; 
+&lt;h2&gt;Meta 高薪挖角策略奏效&lt;/h2&gt; 
+&lt;p&gt;Meta 通过提供巨额薪酬成功吸引苹果 AI 人才。此前离职的苹果模型团队负责人 Ruoming Pang 获得了一份价值 2 亿美元的多年期薪酬方案。Meta 的这一策略已吸引多名苹果员工跳槽，许多基础模型团队成员此前已投靠 Meta。&lt;/p&gt; 
+&lt;p&gt;华尔街见闻曾提到，8 月 22 日的媒体报道称，Meta 挖走了负责苹果 AI 团队云基础设施、训练和搜索业务的 Frank Chu，他是至少第六位跳槽 Meta 的苹果 AI 员工，也是自大模型团队负责人 Ruoming Pang 离职后，苹果最重要的一次人才流失。&lt;/p&gt; 
+&lt;p&gt;不过上月一些的报道披露，Meta 的招聘策略并非一帆风顺，一些新近聘用的 AI 研究员已经离职。尽管如此，Meta 仍在大力投资机器人技术，除了智能眼镜和 AI 功能外，据此前报道，Meta 正大力投资人形机器人的操作系统和硬件组件。&lt;/p&gt; 
+&lt;p&gt;苹果在机器人领域的布局同样雄心勃勃。将近三周前媒体称，苹果计划推出一系列机器人设备，包括配备移动屏幕的桌面设备，以及用于零售店和制造业的机械臂。机器人技术已成为苹果未来产品线的关键组成部分。&lt;/p&gt; 
+&lt;h2&gt;AI 策略调整掀起的离职潮将持续&lt;/h2&gt; 
+&lt;p&gt;苹果 AI 团队的人才流失与公司战略调整密切相关。面对在生成式 AI 领域的落后局面，苹果正考虑是否更多依赖外部技术供应商，而非完全依靠自研能力。这一潜在转向引发了内部团队的不安。&lt;/p&gt; 
+&lt;p&gt;上月媒体称，苹果近期已与谷歌接洽，探讨为预计明年上线的新版 Siri 打造一款定制 AI 模型的可能性。谷歌已开始训练一款可在苹果服务器上运行的模型。这标志着苹果在外包 AI 技术方面迈出关键一步。&lt;/p&gt; 
+&lt;p&gt;媒体本周二援引知情人士预计，苹果 AI 领域员工的离职潮预计将持续，还有多名员工在积极面试其他公司的工作。Apple Intelligence 产品的市场反响不佳，以及苹果可能采用第三方模型的策略转变，都对团队士气造成负面影响。&lt;/p&gt; 
+&lt;p&gt;苹果在 AI 领域仍落后竞争对手数年，这迫使管理层考虑多种应对方案。公司必须在保持创新能力和快速追赶市场之间找到平衡，而核心人才的持续流失无疑增加了这一挑战的难度。&lt;/p&gt;
+                                                                                &lt;/div&gt;
+                                                                            </description>
+      <link>https://www.oschina.net/news/369983</link>
+      <guid isPermaLink="false">https://www.oschina.net/news/369983</guid>
+      <pubDate>Wed, 03 Sep 2025 02:21:03 GMT</pubDate>
+      <author>来源: OSCHINA</author>
+    </item>
+    <item>
+      <title>美国法院裁定谷歌无需出售 Chrome 浏览器</title>
+      <description/>
+      <link>https://www.oschina.net/news/369982</link>
+      <guid isPermaLink="false">https://www.oschina.net/news/369982</guid>
+      <pubDate>Wed, 03 Sep 2025 02:09:03 GMT</pubDate>
+    </item>
+    <item>
+      <title>AI 公司 Anthropic 完成 130 亿美元融资</title>
+      <description>&lt;div class="content"&gt;
+                                                                    
+                                                        &lt;p&gt;Anthropic&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fwww.anthropic.com%2Fnews%2Fanthropic-raises-series-f-at-usd183b-post-money-valuation"&gt;宣布&lt;/a&gt;完成 130 亿美元 F 轮融资，投后估值达 1830 亿美元，创下科技行业私募融资规模第二高纪录，仅次于 OpenAI 同年 3 月的 400 亿美元融资。&lt;/p&gt; 
+&lt;p&gt;本轮融资由 Iconiq Capital、富达管理研究公司和光速创投领投，贝莱德、黑石、高盛等数十家知名机构参与。&lt;/p&gt; 
+&lt;p&gt;&lt;img alt="" src="https://static.oschina.net/uploads/space/2025/0903/095936_gVgg_2720166.png" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p&gt;Anthropic 介绍称，其 2025 年初年化收入为 10 亿美元，8 个月后飙升至 50 亿美元，成为历史上增长最快的科技公司之一。&lt;/p&gt; 
+&lt;p&gt;此外，Anthropic 目前为超过 30 万家企业客户提供服务，对应营收超 10 万美元的大型客户数量在过去一年间增长了近 7 倍；Claude Code 编程助手在正式推出仅三个月后就创造了 5 亿美元收入，使用量增长了 10 倍以上。&lt;/p&gt; 
+&lt;p&gt;Anthropic 表示该公司的此轮融资将扩大其满足日益增长的企业需求的能力，深化安全研究，并在继续构建可靠、可解释、可控的 AI 系统的同时支持国际扩张。&lt;/p&gt;
+                                                                                &lt;/div&gt;
+                                                                            </description>
+      <link>https://www.oschina.net/news/369981/anthropic-raises-series-f-at-usd183b-post-money-valuation</link>
+      <guid isPermaLink="false">https://www.oschina.net/news/369981/anthropic-raises-series-f-at-usd183b-post-money-valuation</guid>
+      <pubDate>Wed, 03 Sep 2025 02:02:03 GMT</pubDate>
+      <author>来源: OSCHINA</author>
+    </item>
+    <item>
+      <title>RuleGo v0.33.0 发布：国产轻量级、全场景、新一代组件编排规则引擎</title>
+      <description>&lt;div class="content"&gt;
+                                                                    
+                                                        &lt;p&gt;&lt;code&gt;RuleGo&lt;/code&gt; 是一个基于 &lt;code&gt;Go&lt;/code&gt; 语言的轻量级、高性能、嵌入式、组件编排新一代规则引擎。它可以帮助你快速构建低耦合、灵活的系统，实现复杂的业务逻辑。RuleGo 还提供大量可复用的组件，支持对数据进行聚合、过滤、分发、转换、丰富和执行各种动作，也能和各种协议、系统进行联动和集成。让你快人一步实现自动化营销、物联网、应用集成等解决方案。&lt;/p&gt; 
+&lt;p&gt;该项目在低代码、业务代码编排、数据集成、工作流、大模型智能体、边缘计算、自动化、IoT 等多种场景具有广泛的应用潜力。&lt;/p&gt; 
+&lt;h4&gt;典型使用场景&lt;/h4&gt; 
+&lt;ul&gt; 
+ &lt;li&gt;&lt;strong&gt;边缘计算：&lt;/strong&gt; 可以在边缘服务器部署 &lt;code&gt;RuleGo&lt;/code&gt;，对数据进行预处理，筛选、聚合或者计算后再上报到云端。数据的处理规则和分发规则可以通过规则链动态配置和修改，而不需要重启系统。&lt;span style="background-color:#ffffff; color:#080808"&gt;国产替代&lt;/span&gt;&lt;code&gt;node-red&lt;/code&gt;&lt;span style="background-color:#ffffff; color:#080808"&gt;系统。&lt;/span&gt;&lt;/li&gt; 
+ &lt;li&gt;&lt;strong&gt;物联网：&lt;/strong&gt; 收集设备数据上报，经过规则链的规则判断，触发一个或者多个动作，例如：发邮件、发告警、和其他设备或者系统联动。&lt;/li&gt; 
+ &lt;li&gt;&lt;strong&gt;数据分发：&lt;/strong&gt; 可以根据不同的消息类型，调用 HTTP、MQTT 或者 gRPC 把数据分发到不同系统。&lt;/li&gt; 
+ &lt;li&gt;&lt;strong&gt;应用集成：&lt;/strong&gt; 把 &lt;code&gt;RuleGo&lt;/code&gt; 当做胶水连接各种系统或者协议，例如：gRPC、ssh、webhook、kafka、消息队列、数据库、chatGPT、第三方应用系统。&lt;/li&gt; 
+ &lt;li&gt;&lt;strong&gt;异构系统数据集中处理：&lt;/strong&gt; 从不同的数据源（如 MQTT、HTTP、WS、MQ、gRPC、TCP/UDP 等）接收数据，然后对数据进行过滤、格式转换、然后分发到数据库、业务系统或者仪表板。&lt;/li&gt; 
+ &lt;li&gt;&lt;strong&gt;高度定制化业务：&lt;/strong&gt; 把高度定制化或者经常变化的业务解耦出来，交给 &lt;code&gt;RuleGo&lt;/code&gt; 规则链进行管理。业务需求变化而不需要重启主程序。&lt;/li&gt; 
+ &lt;li&gt;&lt;strong&gt;复杂业务编排：&lt;/strong&gt; 把业务封装成自定义组件，通过 &lt;code&gt;RuleGo&lt;/code&gt; 编排和驱动这些自定义的组件，业务逻辑并支持动态调整和替换。&lt;/li&gt; 
+ &lt;li&gt;&lt;strong&gt;微服务编排：&lt;/strong&gt; 通过 &lt;code&gt;RuleGo&lt;/code&gt; 编排和驱动微服务，或者动态调用第三方服务处理业务，并返回结果。&lt;/li&gt; 
+ &lt;li&gt;&lt;strong&gt;业务代码和业务逻辑解耦：&lt;/strong&gt; 例如：用户积分计算系统、风控系统。&lt;/li&gt; 
+ &lt;li&gt;&lt;strong&gt;自动化：&lt;/strong&gt; 例如：CI/CD 系统、流程自动化系统、营销自动化系统、量化系统。&lt;/li&gt; 
+ &lt;li&gt;&lt;strong&gt;低代码：&lt;/strong&gt; 例如：低代码平台、iPaaS 系统、ETL、类 &lt;code&gt;Langflow&lt;/code&gt; 、dify 系统（对接&lt;code&gt;大模型&lt;/code&gt;提取用户意图，然后触发规则链与其他系统进行联动或者进行业务处理）。&lt;/li&gt; 
+ &lt;li&gt;&lt;strong&gt;MCP 服务：&lt;/strong&gt;自动把规则链（工作流）、组件、API 自动注册成 MCP 工具，提供给 AI 智能体调用。企业应用可以很容易通过 RuleGo 的桥接，实现和 AI 智能体的联动，打通 AI 与企业应用的 「最后一公里」。&lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;h3&gt;架构图&lt;/h3&gt; 
+&lt;p&gt;&lt;img alt="" height="1536" src="https://oscimg.oschina.net/oscnet/up-64da4b87a62dbe96e2cda29fe1e7ba01878.png" width="2149" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;h3&gt;&lt;strong&gt;可视化&lt;/strong&gt;&lt;/h3&gt; 
+&lt;p&gt;风格 1：&lt;/p&gt; 
+&lt;p&gt;&lt;img height="999" src="https://oscimg.oschina.net/oscnet/up-9997e9e4807b438912b9685ab3409eee505.png" width="1557" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p&gt;风格 2：&lt;/p&gt; 
+&lt;p&gt;&lt;img height="836" src="https://oscimg.oschina.net/oscnet/up-4f6b078c8d34ae752d5cae28e8b8c366850.png" width="1898" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;h3&gt;&lt;strong&gt;本次更新&lt;/strong&gt;&lt;/h3&gt; 
+&lt;h3&gt;rulego-core&lt;/h3&gt; 
+&lt;ul&gt; 
+ &lt;li&gt;feat: 完善组件配置表达式取值系统，支持跨节点取值，例如:${node1.msg.xx}&lt;/li&gt; 
+ &lt;li&gt;feat: 增加 end 节点组件&lt;/li&gt; 
+ &lt;li&gt;feat: 增加跨节点取值节点组件&lt;/li&gt; 
+ &lt;li&gt;feat: 节点组件配置表单生成，跳过不可导出和&lt;span&gt;&amp;nbsp;&lt;/span&gt;&lt;code&gt;json:-&lt;/code&gt;&lt;span&gt;&amp;nbsp;&lt;/span&gt;字段&lt;/li&gt; 
+ &lt;li&gt;perf: 完善 mqtt 客户端重连机制&lt;/li&gt; 
+ &lt;li&gt;perf: 优化 js 引擎超时处理&lt;/li&gt; 
+ &lt;li&gt;perf: 优化表达式引擎混合字符串场景性能&lt;/li&gt; 
+ &lt;li&gt;perf: 使用 el.NewTemplate 代替 str.NewTemplate&lt;/li&gt; 
+ &lt;li&gt;perf: 完善 net endpoint 组件数据竞争问题&lt;/li&gt; 
+ &lt;li&gt;fix: js 节点组件，dataType 字段类型转换错误&lt;/li&gt; 
+ &lt;li&gt;fix: Reload engine chainCtx lost&lt;/li&gt; 
+ &lt;li&gt;fix: 修复 js 脚本部分场景会读写错误&lt;/li&gt; 
+ &lt;li&gt;refactor: 重构 ctx.TellFlow 入参&lt;/li&gt; 
+ &lt;li&gt;refactor: 增加公共组件分类，重新调整部分组件分类&lt;/li&gt; 
+ &lt;li&gt;chore: expr 升级到 1.17.6&lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;h3&gt;rulego-components&lt;/h3&gt; 
+&lt;ul&gt; 
+ &lt;li&gt;feat: 增加 pulsar 发布和订阅节点组件&lt;/li&gt; 
+ &lt;li&gt;feat: 增加 nsq 发布和订阅节点组件&lt;/li&gt; 
+ &lt;li&gt;feat: 增加流式计算转换节点组件&lt;/li&gt; 
+ &lt;li&gt;feat: 增加流式聚合运算节点组件&lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;h3&gt;rulego-server&lt;/h3&gt; 
+&lt;ul&gt; 
+ &lt;li&gt;fix: 完善 mqtt 客户端重连机制&lt;/li&gt; 
+ &lt;li&gt;fix: add defer resp.Body.Close() for GetComponentsFromMarketplace&lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;h3&gt;rulego-editor&lt;/h3&gt; 
+&lt;ul&gt; 
+ &lt;li&gt;feat: 默认【输入】节点可以删除&lt;/li&gt; 
+ &lt;li&gt;feat: 增加最新节点组件支持&lt;/li&gt; 
+ &lt;li&gt;feat: 如果节点没配置，首次添加到画布，不弹出属性配置表单&lt;/li&gt; 
+ &lt;li&gt;feat: 增加新型画布节点，应用于 for、节点组等分组组件展示效果&lt;/li&gt; 
+ &lt;li&gt;feat: 增加 sql 编辑器表单组件&lt;/li&gt; 
+ &lt;li&gt;fix:左边栏高度适配&lt;/li&gt; 
+ &lt;li&gt;chore: 升级最新的依赖&lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;p&gt;&lt;strong&gt;本次重点&lt;/strong&gt;&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt;完善表达式取值系统，支持跨节点取值，如：${node1.msg.xx}&lt;/li&gt; 
+ &lt;li&gt;增加【结束节点组件】可以更加精准地控制流程的结束&lt;/li&gt; 
+ &lt;li&gt;优化表达式引擎和 js 引擎性能&lt;/li&gt; 
+ &lt;li&gt;增加 pulsar 和 nsq 这两个发布/订阅组件&lt;/li&gt; 
+ &lt;li&gt;增加流式聚合计算组件，&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Frulego.cc%2Fpages%2Fstreamsql-overview%2F" target="_blank"&gt;StreamSQL&lt;/a&gt;&lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;h3&gt;其他信息&lt;/h3&gt; 
+&lt;ul&gt; 
+ &lt;li&gt;欢迎在&lt;span&gt;&amp;nbsp;&lt;/span&gt;&lt;a href="https://gitee.com/rulego/rulego" target="_blank"&gt;Gitee&lt;/a&gt;&lt;span&gt;&amp;nbsp;&lt;/span&gt;或者&lt;span&gt;&amp;nbsp;&lt;/span&gt;&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fgithub.com%2Frulego%2Frulego" target="_blank"&gt;Github&lt;/a&gt;&lt;span&gt;&amp;nbsp;&lt;/span&gt;上提交反馈或建议&lt;/li&gt; 
+ &lt;li&gt;如果喜欢这个项目，请给我们点个 Star&lt;/li&gt; 
+ &lt;li&gt;文档官网：&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Frulego.cc%2F" target="_blank"&gt;rulego.cc&lt;/a&gt;&lt;/li&gt; 
+ &lt;li&gt;RuleGo-Editor：&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Feditor.rulego.cc" target="_blank"&gt;editor.rulego.cc&lt;/a&gt;&lt;/li&gt; 
+ &lt;li&gt;&lt;a href="https://www.oschina.net/action/GoToLink?url=http%3A%2F%2F8.134.32.225%3A9090%2Feditor%2F" target="_blank"&gt;体验地址 1&lt;/a&gt;&lt;/li&gt; 
+ &lt;li&gt;&lt;a href="https://www.oschina.net/action/GoToLink?url=http%3A%2F%2F8.134.32.225%3A9090%2Fui%2F" target="_blank"&gt;体验地址 2&lt;/a&gt;&lt;/li&gt; 
+&lt;/ul&gt;
+                                                                                &lt;/div&gt;
+                                                                            </description>
+      <link>https://www.oschina.net/news/369968/rulego-0-33-0-released</link>
+      <guid isPermaLink="false">https://www.oschina.net/news/369968/rulego-0-33-0-released</guid>
+      <pubDate>Mon, 01 Sep 2025 15:08:00 GMT</pubDate>
+      <author>来源: 资讯</author>
+    </item>
     <item>
       <title>AI 提升的是下限，而非上限</title>
       <description>&lt;div class="content"&gt;
@@ -773,450 +1205,6 @@ externalZookeeper:
       <link>https://www.oschina.net/news/369887</link>
       <guid isPermaLink="false">https://www.oschina.net/news/369887</guid>
       <pubDate>Mon, 01 Sep 2025 08:28:00 GMT</pubDate>
-      <author>来源: OSCHINA</author>
-    </item>
-    <item>
-      <title>Agent 架构综述：从 Prompt 到 Context</title>
-      <description>&lt;div class="content"&gt;
-                                                                                                                    
-                                                                                                                                                    &lt;div&gt; 
- &lt;div&gt;
-   资料来源： 
-  &lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fdeveloper.volcengine.com%2F" rel="nofollow" target="_blank"&gt;火山引擎-开发者社区&lt;/a&gt; 
- &lt;/div&gt; 
- &lt;div&gt;
-   &amp;nbsp; 
- &lt;/div&gt; 
- &lt;div&gt;
-   背景 
- &lt;/div&gt; 
- &lt;div&gt; 
-  &lt;p style="color:#191b1f; margin-left:0; margin-right:0; text-align:start"&gt;在观察去年以来对于「Prompt Engineering」的解构时，我们可以观察到一个微妙但重要的分歧。&lt;br&gt; 一方面，专注于构建可扩展系统的前沿实践者们（如 Andrej Karpathy 等），积极倡导用 「Context Engineering」 来描述工作，认为 「Prompt Engineering」 这个词不足以涵盖复杂性，认为它只是 「Coming up with a laughably pretentious name for typing in the chat box（给在聊天框里打字起的一个可笑的自命不凡的名字）」 。因为他们构建 Agent 系统的核心挑战并非仅仅是 Prompt，而是设计整个数据流以动态生成最终提示的架构。&lt;br&gt; 另一方面，近年来学术和正式文献倾向用 「Prompt Engineering」 作为一个广义的 umbrella term（伞形术语），其定义包括了 「Supporting content」 或 「Context」，把所有在不改变模型权重的前提下操纵模型输入的技术归为同一类型。&lt;br&gt; 术语上的分歧可以反映该领域的成熟过程：随着 AI 应用从简单的单次交互发展到复杂的、有状态的智能体系统，优化静态指令已经无法满足需求。因此，「Context Engineering」 的出现，是为了区分两种不同层次的活动：一是编写指令的 skill，二是构建自动化系统以为该指令提供成功所需信息的科学。&lt;br&gt; （本文明确，尽管在学术上 Prompt Engineering 可能涵盖上下文，但在工程实践中，Context Engineering 是专注于如何动态构建和管理上下文的专门学科）&lt;br&gt; 重新定义 Agent 数据流：Context is All Aou Need&lt;br&gt; 本部分旨在建立 Prompt Engineering 与 Context Engineering 的基础概念，清晰地界定二者之间的区别与联系。&lt;br&gt; 从前者到后者的转变，代表了人工智能应用开发领域一次关键的演进——从业界最初关注的战术性指令构建，转向由可扩展、高可靠性系统需求驱动的战略性架构设计。&lt;br&gt; Prompt Engineering - the Art of Instructions&lt;br&gt; Prompt Engineering 是与大型语言模型（LLM）交互的基础，其核心在于精心设计输入内容，以引导模型生成期望的输出。这一实践为理解 Context Engineering 的必要性提供了基准。&lt;br&gt; 定义&lt;br&gt; 一个提示（Prompt）远不止一个简单的问题，它是一个结构化的输入，可包含多个组成部分 。这些组件共同构成了与模型沟通的完整指令：&lt;/p&gt; 
-  &lt;ul&gt; 
-   &lt;li&gt;指令（Instructions）：对模型的核心任务指令，明确告知模型需要执行什么操作 。&lt;/li&gt; 
-   &lt;li&gt;主要内容/输入数据（Primary Content/Input Data）：模型需要处理的文本或数据，是分析、转换或生成任务的对象 。&lt;/li&gt; 
-   &lt;li&gt;示例（Examples/Shots）：演示期望的输入-输出行为，为模型提供「上下文学习」（In-Context Learning）的基础 。&lt;/li&gt; 
-   &lt;li&gt;线索/输出指示器（Cues/Output Indicators）：启动模型输出的引导性词语，或对输出格式（如 JSON、Markdown）的明确要求 。&lt;/li&gt; 
-   &lt;li&gt;支持性内容（Supporting Content/Context）：为模型提供的额外背景信息，帮助其更好地理解任务情境。正是这一组件，构成了 Context Engineering 发展的概念萌芽。&lt;/li&gt; 
-  &lt;/ul&gt; 
-  &lt;div&gt; 
-   &lt;img src="https://oscimg.oschina.net/oscnet//6b223aea32c1b5b372958001ce21ce5e.jpg" width="1080" referrerpolicy="no-referrer"&gt; 
-  &lt;/div&gt; 
-  &lt;p style="color:#191b1f; margin-left:0; margin-right:0; text-align:start"&gt;&lt;br&gt; Prompt Engineering 的核心技术&lt;br&gt; Prompt Engineer 使用一系列技术来优化模型输出，这些技术可按复杂性进行分类：&lt;/p&gt; 
-  &lt;ul&gt; 
-   &lt;li&gt;零样本提示（Zero-Shot Prompting）： 在不提供任何示例的情况下直接向模型下达任务，完全依赖其在预训练阶段获得的知识和推理能力。&lt;/li&gt; 
-   &lt;li&gt;少样本提示（Few-Shot Prompting）： 在提示中提供少量（通常为 1 到 5 个）高质量的示例，以引导模型的行为。对于复杂任务，这种「上下文学习」方法被证明极为有效。&lt;/li&gt; 
-   &lt;li&gt;思维链提示（Chain-of-Thought Prompting, CoT）： 引导模型将复杂问题分解为一系列中间推理步骤，显著增强了其在逻辑、数学和推理任务上的表现。&lt;/li&gt; 
-   &lt;li&gt;高级推理技术： 在 CoT 的基础上，研究人员还开发了更为复杂的变体，如思维树（Tree-of-Thought）、苏格拉底式提示（Maieutic Prompting）和由简到繁提示（Least-to-Most Prompting），以探索更多样化的解决方案路径。&lt;/li&gt; 
-  &lt;/ul&gt; 
-  &lt;p style="color:#191b1f; margin-left:0; margin-right:0; text-align:start"&gt;以提示为中心的方法的局限性&lt;br&gt; 尽管 Prompt Engineering 至关重要，但对于构建稳健、可用于生产环境的系统而言，它存在固有的局限性：&lt;/p&gt; 
-  &lt;ul&gt; 
-   &lt;li&gt;脆弱性&amp;amp;不可复现性： 提示中微小的措辞变化可能导致输出结果的巨大差异，使得这一过程更像是一种依赖反复试错的「艺术」，而非可复现的「科学」。&lt;/li&gt; 
-   &lt;li&gt;扩展性差： 手动、迭代地优化提示的过程，在面对大量用户、多样化用例和不断出现的边缘情况时，难以有效扩展。&lt;/li&gt; 
-   &lt;li&gt;用户负担： 这种方法将精心构建一套详尽指令的负担完全压在了用户身上，对于需要自主运行、或处理高并发请求的系统而言是不切实际的。&lt;/li&gt; 
-   &lt;li&gt;无状态性： Prompt Engineering 本质上是为单轮、「一次性」的交互而设计的，难以处理需要记忆和状态管理的长对话或多步骤任务。&lt;/li&gt; 
-  &lt;/ul&gt; 
-  &lt;p style="color:#191b1f; margin-left:0; margin-right:0; text-align:start"&gt;Context Engineering 兴起：范式的转移&lt;/p&gt; 
-  &lt;div&gt; 
-   &lt;img src="https://oscimg.oschina.net/oscnet//7f71fa2a848717aa220f2435fa704c03.jpg" width="1080" referrerpolicy="no-referrer"&gt; 
-  &lt;/div&gt; 
-  &lt;p style="color:#191b1f; margin-left:0; margin-right:0; text-align:start"&gt;&lt;br&gt; Context Engineering 并非要取代 Prompt Engineering，而是一个更高阶、更侧重于系统设计的必要学科。&lt;br&gt; 定义 Context Engineering&lt;br&gt; Context Engineering 是一门设计、构建并优化动态自动化系统的学科，旨在为大型语言模型在正确的时间、以正确的格式，提供正确的信息和工具，从而可靠、可扩展地完成复杂任务。&lt;br&gt; prompt 告诉模型如何思考，而 Context 则赋予模型完成工作所需的知识和工具。&lt;br&gt; 「Context」的范畴&lt;br&gt; 「Context」的定义已远超用户单次的即时提示，它涵盖了 LLM 在做出响应前所能看到的所有信息生态系统：&lt;/p&gt; 
-  &lt;ul&gt; 
-   &lt;li&gt;系统级指令和角色设定。&lt;/li&gt; 
-   &lt;li&gt;对话历史（短期记忆）。&lt;/li&gt; 
-   &lt;li&gt;持久化的用户偏好和事实（长期记忆）。&lt;/li&gt; 
-   &lt;li&gt;动态检索的外部数据（例如来自 RAG）。&lt;/li&gt; 
-   &lt;li&gt;可用的工具（API、函数）及其定义。&lt;/li&gt; 
-   &lt;li&gt;期望的输出格式（例如，JSON Schema）。&lt;/li&gt; 
-  &lt;/ul&gt; 
-  &lt;p style="color:#191b1f; margin-left:0; margin-right:0; text-align:start"&gt;对比分析&lt;br&gt; 关系：超集，而非对抗、竞争&lt;br&gt; Prompt Engineering 是 Context Engineering 的一个子集。&lt;/p&gt; 
-  &lt;ul&gt; 
-   &lt;li&gt;Context Engineering 决定用什么内容填充 Context Window，&lt;/li&gt; 
-   &lt;li&gt;Prompt Engineering 则负责优化窗口内的具体指令。&lt;/li&gt; 
-  &lt;/ul&gt; 
-  &lt;div&gt; 
-   &lt;img src="https://oscimg.oschina.net/oscnet//511d0ed709e085c5bef3f4862ddfb6fc.jpg" width="1080" referrerpolicy="no-referrer"&gt; 
-  &lt;/div&gt; 
-  &lt;p style="color:#191b1f; margin-left:0; margin-right:0; text-align:start"&gt;Prompt Engineering vs. Context Engineering&lt;br&gt; Context Engineering 的基石：RAG&lt;br&gt; 本部分将阐述检索增强生成（RAG）作为实现 Context Engineering 的主要架构模式。从「是什么」转向「如何做」，详细介绍 RAG 系统的组件和演进。&lt;br&gt; Retrieval-Augmented Generation&lt;br&gt; 为何 RAG 不仅是一种技术，更是现代 Context Engineering 系统的基础架构？&lt;br&gt; 解决 LLM 的核心弱点&lt;br&gt; RAG 直接解决了标准 LLM 在企业应用中存在的固有局限性：&lt;/p&gt; 
-  &lt;ul&gt; 
-   &lt;li&gt;知识冻结：LLM 的知识被冻结在其训练数据的时间点。RAG 通过在推理时注入实时的、最新的信息来解决这个问题。&lt;/li&gt; 
-   &lt;li&gt;缺乏领域专有知识：标准 LLM 无法访问组织的内部私有数据。RAG 则能够将 LLM 连接到这些内部知识库，如技术手册、政策文件等。&lt;/li&gt; 
-   &lt;li&gt;幻觉（Hallucination）：LLM 会不同程度上地编造事实。RAG 通过将模型的回答「锚定」在可验证的、检索到的证据上，提高事实的准确性和可信度。&lt;/li&gt; 
-  &lt;/ul&gt; 
-  &lt;p style="color:#191b1f; margin-left:0; margin-right:0; text-align:start"&gt;RAG 工作流&lt;br&gt; RAG 的实现通常分为两个主要阶段：&lt;/p&gt; 
-  &lt;ul&gt; 
-   &lt;li&gt;索引（离线阶段）：在这个阶段，系统会处理外部知识源。文档被加载、分割成更小的 chunks，然后通过 Embedding Model 转换为向量表示，并最终存储在专门的向量数据库中以备检索。&lt;/li&gt; 
-   &lt;li&gt;推理（在线阶段）：当用户提出请求时，系统执行以下步骤：&lt;/li&gt; 
-   &lt;li&gt;检索（Retrieve）：将用户的查询同样转换为向量，然后在向量数据库中进行相似性搜索，找出与查询最相关的文档块。&lt;/li&gt; 
-   &lt;li&gt;增强（Augment）：将检索到的这些文档块与原始的用户查询、系统指令等结合起来，构建一个内容丰富的、增强的最终提示。&lt;/li&gt; 
-   &lt;li&gt;生成（Generate）：将这个增强后的提示输入给 LLM，LLM 会基于提供的上下文生成一个有理有据的回答。&lt;/li&gt; 
-  &lt;/ul&gt; 
-  &lt;p style="color:#191b1f; margin-left:0; margin-right:0; text-align:start"&gt;RAG 架构分类&lt;/p&gt; 
-  &lt;ul&gt; 
-   &lt;li&gt;Naive RAG：即上文描述的基础实现。它适用于简单的问答场景，但在检索质量和上下文处理方面存在局限。&lt;/li&gt; 
-   &lt;li&gt;Advanced RAG：这种范式在检索前后引入了处理步骤以提升质量。许多第三部分将详述的技术都属于这一范畴。关键策略包括：&lt;/li&gt; 
-   &lt;li&gt;检索前处理：采用更复杂的文本分块策略、查询转换（如 StepBack-prompting）等优化检索输入。&lt;/li&gt; 
-   &lt;li&gt;检索后处理：对检索到的文档进行 Re-ranking 以提升相关性，并对上下文进行 Compression。&lt;/li&gt; 
-   &lt;li&gt;Modular RAG：一种更灵活、更面向系统的 RAG 视图，其中不同的组件（如搜索、检索、记忆、路由）被视为可互换的模块。这使得构建更复杂、更定制化的流程成为可能。具体模式包括：&lt;/li&gt; 
-   &lt;li&gt;带记忆的 RAG：融合对话历史，以处理多轮交互，使对话更具连续性。&lt;/li&gt; 
-   &lt;li&gt;分支/路由 RAG：引入一个路由模块，根据查询的意图决定使用哪个数据源或检索器。&lt;/li&gt; 
-   &lt;li&gt;Corrective RAG, CRAG：增加了一个自我反思步骤。一个轻量级的评估器会对检索到的文档质量进行打分。如果文档不相关，系统会触发替代的检索策略（如网络搜索）来增强或替换初始结果。&lt;/li&gt; 
-   &lt;li&gt;Self-RAG：让 LLM 自身学习判断何时需要检索以及检索什么内容，通过生成特殊的检索 Token 来自主触发检索。&lt;/li&gt; 
-   &lt;li&gt;Agentic RAG：这是 RAG 最先进的形式，将 RAG 集成到一个智能体循环（agentic loop）中。模型能够执行多步骤任务，主动与多个数据源和工具交互，并随时间推移综合信息。这是 Context Engineering 在实践中的顶峰。&lt;/li&gt; 
-  &lt;/ul&gt; 
-  &lt;p style="color:#191b1f; margin-left:0; margin-right:0; text-align:start"&gt;向量数据库的角色&lt;br&gt; 本节将分析支撑 RAG 中「检索」步骤的关键基础设施，并比较市场上的主流解决方案。&lt;br&gt; Context Stack：一个新兴的 abstract layer&lt;br&gt; 观察 RAG 系统的构成—— 数据摄入、分块、嵌入、用于索引和检索的向量数据库、重排序器、压缩器以及最终的 LLM ——可以发现，这些组件并非随意组合，而是形成了一个连贯的、多层次的架构。这可以被抽象地称为 Context Stack。&lt;br&gt; 这个堆栈的数据流非常清晰：在离线索引阶段，数据从原始文档流向分块、嵌入，最终存入向量数据库 。在在线推理阶段，数据流从用户查询开始，经过嵌入、向量搜索、重排序、压缩，最终形成送入 LLM 的提示。&lt;br&gt; 这个堆栈的出现，标志着 AI 应用开发正在走向成熟，不同的技术供应商开始专注于 Stack 中的特定层面：Pinecone、Weaviate 和 Milvus 等公司在做 Database layer；LangChain 和 LlamaIndex 等框架提供了将所有组件粘合在一起的 Application Orchestration Layer；而 Cohere 和 Jina AI 等提供了专业的 Re-ranking as a Service（RaaS）模块。&lt;br&gt; 因此，理解新的 AI Agent 架构，就意味着理解 Context Engineering，就意味着要理解这个新兴的 Context Stack，了解其各个层次以及在每个层次上不同组件之间的权衡。这种视角将讨论从一系列孤立的技术提升到系统设计和技术选型的高度，对工程师和架构师而言具有更高的价值。&lt;/p&gt; 
-  &lt;p style="color:#191b1f; margin-left:0; margin-right:0; text-align:start"&gt;选型关键考量因素&lt;br&gt; 组织在选择向量数据库时必须考虑以下主要因素：&lt;/p&gt; 
-  &lt;ul&gt; 
-   &lt;li&gt;模型：选择完全托管的云服务（如 Pinecone），还是可自托管的开源方案（如 Milvus、Weaviate）。&lt;/li&gt; 
-   &lt;li&gt;扩展性：是否能处理数十亿级别的向量数据和高查询负载（Milvus）。&lt;/li&gt; 
-   &lt;li&gt;功能集： 是否支持混合搜索（关键词+向量）、高级 meta 过滤以及多模态数据处理（Weaviate）。&lt;/li&gt; 
-   &lt;li&gt;易用性与灵活性：是倾向于 API 简单、设置最少的方案（Pinecone），还是需要多种索引算法和深度配置选项的方案（Milvus） 。&lt;/li&gt; 
-  &lt;/ul&gt; 
-  &lt;p style="color:#191b1f; margin-left:0; margin-right:0; text-align:start"&gt;为了给技术选型提供一个实用的决策框架，下表对几个主流的向量数据库进行了比较。&lt;/p&gt; 
-  &lt;div&gt; 
-   &lt;img src="https://oscimg.oschina.net/oscnet//a8380c8f2c53d3fe8f1844e71413da76.jpg" width="1080" referrerpolicy="no-referrer"&gt; 
-  &lt;/div&gt; 
-  &lt;p style="color:#191b1f; margin-left:0; margin-right:0; text-align:start"&gt;主流 RAG 向量数据库对比分析&lt;br&gt; Context 工程化的核心概念和目标&lt;br&gt; 从原始数据到相关分块&lt;br&gt; 本节聚焦于从知识库中识别和检索最有价值信息的初始阶段。&lt;br&gt; 高级分块策略&lt;br&gt; 文本分块（Chunking）是 RAG 流程中最关键也最容易被忽视的一步。其目标是创建在语义上自成一体的文本块。&lt;/p&gt; 
-  &lt;ul&gt; 
-   &lt;li&gt;朴素分块的问题：固定大小的分块方法虽然简单，但常常会粗暴地切断句子或段落，导致上下文支离破碎，语义不完整。&lt;/li&gt; 
-   &lt;li&gt;内容感知分块：&lt;/li&gt; 
-   &lt;li&gt;递归字符分割：一种更智能的方法，它会按照一个预设的分割符层次结构（如：先按段落，再按句子，最后按单词）进行分割，以尽可能保持文本的自然结构。&lt;/li&gt; 
-   &lt;li&gt;文档特定分块：利用文档自身的结构进行分割，例如，根据 Markdown 的标题、代码文件的函数或法律合同的条款来划分。&lt;/li&gt; 
-   &lt;li&gt;语言学分块：使用 NLTK、spaCy 等自然语言处理库，基于句子、名词短语或动词短语等语法边界进行分割。&lt;/li&gt; 
-   &lt;li&gt;语义分块： 这是最先进的方法之一。它使用嵌入模型来检测文本中语义的转变点。当文本的主题或意义发生变化时，就在该处进行分割，从而确保每个分块在主题上是高度内聚的。研究表明，这种策略的性能优于其他方法。&lt;/li&gt; 
-   &lt;li&gt;智能体分块：一个前沿概念，即利用一个 LLM 智能体来决定如何对文本进行分块，例如，通过将文本分解为一系列独立的 propositions 来实现。&lt;/li&gt; 
-  &lt;/ul&gt; 
-  &lt;p style="color:#191b1f; margin-left:0; margin-right:0; text-align:start"&gt;通过重排序提升精度&lt;br&gt; 为了平衡检索的速度和准确性，业界普遍采用两阶段检索流程。&lt;/p&gt; 
-  &lt;ul&gt; 
-   &lt;li&gt;两阶段流程：&lt;/li&gt; 
-   &lt;li&gt;第一阶段（召回）： 使用一个快速、高效的检索器（如基于 bi-encoder 的向量搜索或 BM25 等词法搜索）进行广泛撒网，召回一个较大的候选文档集（例如，前 100 个）。&lt;/li&gt; 
-   &lt;li&gt;第二阶段（精排/重排序）： 使用一个更强大但计算成本更高的模型，对这个较小的候选集进行重新评估，以识别出最相关的少数几个文档（例如，前 5 个）。&lt;/li&gt; 
-   &lt;li&gt;Cross-Encoder： 交叉编码器之所以在重排序阶段表现优越，是因为它与双编码器的工作方式不同。双编码器独立地为查询和文档生成嵌入向量，然后计算它们的相似度。而交叉编码器则是将查询和文档同时作为输入，让模型在内部通过 Attention Mechanism 对二者进行深度交互。这使得模型能够捕捉到更细微的语义关系，从而给出更准确的相关性评分。&lt;/li&gt; 
-   &lt;li&gt;实际影响： 重排序显著提高了最终送入 LLM 的上下文质量，从而产出更准确、幻觉更少的答案。在金融、法律等高风险领域，重排序被认为是必不可少而非可选的步骤。&lt;/li&gt; 
-  &lt;/ul&gt; 
-  &lt;div&gt; 
-   &lt;div&gt;
-     核心问题 - Lost in the Middle 
-   &lt;/div&gt; 
-   &lt;div&gt; 
-    &lt;span style="color:#245bdb"&gt;&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Farxiv.org%2Fabs%2F2307.03172" rel="nofollow" target="_blank"&gt;https://arxiv.org/abs/2307.03172&lt;/a&gt;&lt;/span&gt; 
-    &lt;span&gt;&amp;nbsp;&lt;/span&gt;Lost in the Middle: How Language Models Use Long Contexts 
-   &lt;/div&gt; 
-  &lt;/div&gt; 
-  &lt;p style="color:#191b1f; margin-left:0; margin-right:0; text-align:start"&gt;&lt;br&gt; 当前 LLM 存在一个根本性认知局限，这一局限使得简单的上下文堆砌变得无效，并催生了后续的优化技术。&lt;/p&gt; 
-  &lt;ul&gt; 
-   &lt;li&gt;定义：LLM 在处理长上下文时表现出一种独特的 U 型，性能曲线。当关键信息位于上下文窗口的开头（首因效应）或结尾（近因效应）时，模型能够高效地利用这些信息。然而，当关键信息被 「hidden」在长篇上下文的中间位置时，模型的性能会显著下降。&lt;/li&gt; 
-   &lt;li&gt;实验： 在多文档问答任务时，即使检索器召回了更多相关的文档，模型的性能提升也很快达到饱和。这意味着简单地增加上下文长度（即添加更多文档）不仅无益，甚至因为关键信息被淹没而损害性能 。&lt;/li&gt; 
-   &lt;li&gt;「知道但说不出来」： 并非模型「找不到」信息。通过探测模型的内部表征发现，模型通常能够准确地编码关键信息的位置，但在生成最终答案时却未能有效利用这些信息。这表明在模型内部，信息检索和信息利用（或沟通）之间存在脱节。&lt;/li&gt; 
-  &lt;/ul&gt; 
-  &lt;div&gt; 
-   &lt;img src="https://oscimg.oschina.net/oscnet//dc9e6245d2563332682a3c618cdd7a83.jpg" width="482" referrerpolicy="no-referrer"&gt; 
-  &lt;/div&gt; 
-  &lt;p style="color:#191b1f; margin-left:0; margin-right:0; text-align:start"&gt;上下文丰富性与窗口局限性之间的考量&lt;br&gt; Context Engineering 的核心存在一个根本性的矛盾。一方面，提供丰富、全面的上下文是获得高质量响应的关键。另一方面，LLM 的上下文窗口是有限的，并且由于 Lost in the Middle、contextual distraction 等问题，过长的上下文反而会导致性能下降。&lt;br&gt; 一个朴素的想法是尽可能多地将相关信息塞进上下文窗口。然而，研究和实践都证明这是适得其反的。LLM 会被无关信息淹没、分心，或者干脆忽略那些不在窗口两端的信息。&lt;br&gt; 这就产生了一个核心的优化问题：如何在固定的 Token 预算内，最大化「信号」（真正相关的信息），同时最小化「噪声」（不相关或分散注意力的信息），并充分考虑到模型存在的认知偏差？&lt;br&gt; 这个考量是 Context Engineering 领域创新的主要驱动力。所有的高级技术——无论是语义分块、重排序，还是后续将讨论的压缩、摘要和智能体隔离——都是为了有效管理这一权衡而设计的。因此，Context Engineering 不仅是关于提供上下文，更是关于如何策划和塑造上下文，使其对一个认知能力有限的处理单元（LLM）最为有效。&lt;br&gt; 优化上下文窗口：压缩与摘要&lt;br&gt; 本节详细介绍用于主动管理上下文的技术，确保最有价值的信息被优先呈现。&lt;br&gt; 上下文压缩的目标&lt;br&gt; 缩短检索到的文档列表和/或精简单个文档的内容，只将最相关的信息传递给 LLM。这能有效降低 API 调用成本、减少延迟，并缓解 Lost in the Middle 的问题 。&lt;br&gt; 压缩方法&lt;/p&gt; 
-  &lt;ul&gt; 
-   &lt;li&gt;过滤式压缩： 这类方法决定是保留还是丢弃整个检索到的文档。&lt;/li&gt; 
-   &lt;li&gt;LLMChainFilter：利用一个 LLM 对每个文档的相关性做出简单的「是/否」判断。&lt;/li&gt; 
-   &lt;li&gt;EmbeddingsFilter：更经济快速的方法，根据文档嵌入与查询嵌入的余弦相似度来过滤文档。&lt;/li&gt; 
-   &lt;li&gt;内容提取式压缩：这类方法会直接修改文档内容。&lt;/li&gt; 
-   &lt;li&gt;LLMChainExtractor：遍历每个文档，并使用 LLM 从中提取仅与查询相关的句子或陈述 。&lt;/li&gt; 
-   &lt;li&gt;用 top N 代替压缩：像 LLMListwiseRerank 这样的技术，使用 LLM 对检索到的文档进行重排序，并只返回排名最高的 N 个，从而起到高质量过滤器的作用。&lt;/li&gt; 
-  &lt;/ul&gt; 
-  &lt;p style="color:#191b1f; margin-left:0; margin-right:0; text-align:start"&gt;作为压缩策略的摘要&lt;br&gt; 对于非常长的文档或冗长的对话历史，可以利用 LLM 生成摘要。这些摘要随后被注入上下文，既保留了关键信息，又大幅减少了 Token 数量。这是在长时程运行的智能体中管理上下文的关键技术。&lt;br&gt; 智能体系统的上下文管理&lt;br&gt; 从 HITL 到 SITL&lt;br&gt; Prompt Engineering 本质上是一个手动的、Human-in-the-Loop 的试错过程。而 Context Engineering，尤其是在其智能体形式中，则是关于构建一个自动化的 System-in-the-Loop，这个系统在 LLM 看到提示之前就为其准备好上下文。&lt;br&gt; 一个人类提示工程师需要手动收集信息、组织语言并进行测试。而一个 Context Engineering 化的系统则将此过程自动化：RAG 流程本身就是一个自动收集信息的系统；路由器是一个自动决定收集哪些信息的系统；记忆模块是一个自动持久化和检索历史信息的系统。&lt;br&gt; 正是这种自动化，使得 AI 系统能够变得「智能体化」（Agentic）——即能够在没有人类为每一步微观管理上下文的情况下，进行自主的、多步骤的推理 。因此，Context Engineering 的目标是构建一个可靠、可重复的上下文组装机器。这台机器取代了提示工程师的临时性、手工劳动，从而使创建真正自主和可扩展的 AI 智能体成为可能。焦点从单个提示的「技艺」转向了生成该提示的「系统工程」。&lt;br&gt; 智能体上下文管理框架&lt;br&gt; LangChain 博客中提出的四个关键策略 ：&lt;/p&gt; 
-  &lt;ul&gt; 
-   &lt;li&gt;Write - 持久化上下文：&lt;/li&gt; 
-   &lt;li&gt;Scratchpads：供智能体在执行复杂任务时使用的临时、会话内记忆，用于记录中间步骤。&lt;/li&gt; 
-   &lt;li&gt;Memory：长期、持久化的存储，记录关键事实、用户偏好或对话摘要，可在不同会话间调用。&lt;/li&gt; 
-   &lt;li&gt;Select - 检索上下文：根据当前的子任务，使用 RAG 技术动态地从记忆、工具库或知识库中选择相关上下文。这甚至包括对工具描述本身应用 RAG，以避免向智能体提供过多无关的工具选项。&lt;/li&gt; 
-   &lt;li&gt;Compress - 优化上下文：利用摘要或修剪技术来管理智能体在长时程任务中不断增长的上下文，防止上下文窗口溢出和「 Lost in the Middle 」问题。&lt;/li&gt; 
-   &lt;li&gt;Isolate - 分割上下文：&lt;/li&gt; 
-   &lt;li&gt;多智能体系统： 将一个复杂问题分解，并将子任务分配给专门的子智能体，每个子智能体都拥有自己独立的、更聚焦的上下文窗口。&lt;/li&gt; 
-   &lt;li&gt;沙盒环境： 在一个隔离的环境中执行工具调用，只将必要的执行结果返回给 LLM，从而将包含大量 Token 的复杂对象隔离在主上下文窗口之外。&lt;/li&gt; 
-  &lt;/ul&gt; 
-  &lt;div&gt; 
-   &lt;img src="https://oscimg.oschina.net/oscnet//82e7bdc773a26d0eb5fc2244450bf8ae.jpg" width="1080" referrerpolicy="no-referrer"&gt; 
-  &lt;/div&gt; 
-  &lt;p style="color:#191b1f; margin-left:0; margin-right:0; text-align:start"&gt;多智能体架构中的 Context 数据流与工作流编排&lt;br&gt; LLM 正在从被动地响应用户查询的「响应者」，演变为能够自主规划、决策并执行多步骤复杂任务的「执行者」——即我们所说的「智能体」（AI Agent）。&lt;br&gt; 当一个智能体不再是简单地「输入-输出」，而是需要调用工具、访问数据库、与用户进行多轮交互时，其内部的数据是如何流动和管理的？如何进行技术选型？&lt;br&gt; 工作流（Workflow） vs. 智能体（Agent）&lt;br&gt; 在深入技术细节之前，建立一个清晰的概念框架至关重要。业界（如 Anthropic）倾向于对「智能体系统」进行两种架构上的区分。&lt;/p&gt; 
-  &lt;div&gt; 
-   &lt;img src="https://oscimg.oschina.net/oscnet//19c604cd74780dcfc6c552c74d304ff7.jpg" width="1080" referrerpolicy="no-referrer"&gt; 
-  &lt;/div&gt; 
-  &lt;p style="color:#191b1f; margin-left:0; margin-right:0; text-align:start"&gt;工作流（Workflows）&lt;br&gt; 指的是 LLM 和工具通过预定义的代码路径进行编排的系统。在这种模式下，数据流动的路径是固定的、由开发者明确设计的，类似于上世纪流行的「专家系统」。例如，「第一步：分析用户邮件；第二步：根据分析结果在日历中查找空闲时段；第三步：起草会议邀请邮件」。这种模式确定性高，易于调试和控制，非常适合有明确业务流程的场景（如风控需求高、数据敏感、安全等级要求）。&lt;br&gt; 智能体（Agents）&lt;br&gt; 指的是 LLM 动态地指导自己的流程和工具使用，自主控制如何完成任务的系统。在这种模式下，数据流动的路径不是预先固定的，而是由 LLM 在每一步根据当前情况和目标动态决定的。这种模式灵活性高，能处理开放式问题，但可控性和可预测性较低。&lt;br&gt; 复杂的智能体通常是这两种模式的混合体，在宏观层面遵循一个预定义的工作流，但在某些节点内部，又赋予 LLM 一定的自主决策权。管理这一切的核心，我们称之为编排层（Orchestration Layer）。&lt;br&gt; 多 Agent 编排的核心架构：预定义数据流的实现&lt;br&gt; 为了实现可靠、可控的数据流动，开发者们已经探索出几种成熟的架构模式。这些模式可以单独使用，也可以组合成更复杂的系统。&lt;br&gt; 链式工作流（Prompt Chaining）（GPT-3.5 时期的工作原理）&lt;/p&gt; 
-  &lt;ul&gt; 
-   &lt;li&gt;数据流： 输入 -&amp;gt; 模块 A -&amp;gt; 输出 A -&amp;gt; 模块 B -&amp;gt; 输出 B -&amp;gt;... -&amp;gt; 最终输出&lt;/li&gt; 
-   &lt;li&gt;工作原理： 每个模块（LLM 调用）只负责一个定义明确的子任务。&lt;/li&gt; 
-  &lt;/ul&gt; 
-  &lt;div&gt; 
-   &lt;img src="https://oscimg.oschina.net/oscnet//9d2163cbd51a51e8e54055f3273ba99f.jpg" width="1080" referrerpolicy="no-referrer"&gt; 
-  &lt;/div&gt; 
-  &lt;p style="color:#191b1f; margin-left:0; margin-right:0; text-align:start"&gt;&lt;br&gt; 路由工作流（Routing）（o3 的早期工作原理）&lt;/p&gt; 
-  &lt;ul&gt; 
-   &lt;li&gt;数据流： 输入 -&amp;gt; 路由器选择 =&amp;gt; -&amp;gt; 输出&lt;/li&gt; 
-   &lt;li&gt;工作原理： 一个充当「路由器」的 LLM 调用，其唯一任务就是决策。它会分析输入数据，然后输出一个指令，告诉编排系统接下来应该调用哪个具体的业务模块。&lt;/li&gt; 
-   &lt;li&gt;实现方式： LangGraph 使用 Conditional Edges 来实现这种逻辑，即一个节点的输出决定了图的下一跳走向何方。&lt;/li&gt; 
-  &lt;/ul&gt; 
-  &lt;div&gt; 
-   &lt;img src="https://oscimg.oschina.net/oscnet//71e8c6a23709d8c211d75f1985830384.jpg" width="1080" referrerpolicy="no-referrer"&gt; 
-  &lt;/div&gt; 
-  &lt;p style="color:#191b1f; margin-left:0; margin-right:0; text-align:start"&gt;&lt;br&gt; 编排器-工作者模式（Orchestrator-Workers）&lt;/p&gt; 
-  &lt;ul&gt; 
-   &lt;li&gt;对于极其复杂的任务，可以采用多智能体（Multi-agent）架构，也称为 Orchestrator-Workers 模式。一个中心 Orchestrator 智能体负责分解任务，并将子任务分配给多个专职的 Workers 智能体。&lt;/li&gt; 
-   &lt;li&gt;数据流：这是一个分层、协作的流动模式。 总任务 -&amp;gt; Orchestrator =&amp;gt; -&amp;gt; 结果汇总 -&amp;gt; 最终输出&lt;/li&gt; 
-   &lt;li&gt;工作原理：每个工作者智能体都有自己独立的上下文和专用工具，专注于解决特定领域的问题。&lt;/li&gt; 
-  &lt;/ul&gt; 
-  &lt;div&gt; 
-   &lt;img src="https://oscimg.oschina.net/oscnet//6566edba8fb0871ddefb19dbfaf4c2ac.jpg" width="1080" referrerpolicy="no-referrer"&gt; 
-  &lt;/div&gt; 
-  &lt;p style="color:#191b1f; margin-left:0; margin-right:0; text-align:start"&gt;决策与数据选择机制&lt;br&gt; 在上述架构中，智能体（或其模块）如何决定「需要什么数据」以及「下一步做什么」？这依赖于其内部的规划和推理能力。&lt;br&gt; ReAct 框架&lt;br&gt; ReAct（Reasoning and Acting）是一个基础且强大的框架，它通过模拟人类的「Reasoning-Acting」模式，使 LLM 能够动态地决定数据需求。&lt;/p&gt; 
-  &lt;div&gt; 
-   &lt;img src="https://oscimg.oschina.net/oscnet//57afee644faac0214fcb912c21c5426b.jpg" width="340" referrerpolicy="no-referrer"&gt; 
-  &lt;/div&gt; 
-  &lt;p style="color:#191b1f; margin-left:0; margin-right:0; text-align:start"&gt;&lt;br&gt; 其核心是一个循环：&lt;/p&gt; 
-  &lt;ul&gt; 
-   &lt;li&gt;思考（Thought）：LLM 首先进行内部推理。它分析当前任务和已有信息，判断是否缺少完成任务所需的知识，并制定下一步的行动计划。&lt;/li&gt; 
-  &lt;/ul&gt; 
-  &lt;p style="color:#191b1f; margin-left:0; margin-right:0; text-align:start"&gt;例如：「用户问我今天旧金山的天气，但我不知道。我需要调用天气查询工具。」&lt;/p&gt; 
-  &lt;ul&gt; 
-   &lt;li&gt;行动（Action）： LLM 决定调用一个具体的工具，并生成调用该工具所需的参数。&lt;/li&gt; 
-  &lt;/ul&gt; 
-  &lt;p style="color:#191b1f; margin-left:0; margin-right:0; text-align:start"&gt;例如：Action: search_weather(location="San Francisco")。&lt;/p&gt; 
-  &lt;ul&gt; 
-   &lt;li&gt;观察（Observation）：系统执行该行动（调用外部 API），并将返回的结果作为「观察」数据提供给 LLM。&lt;/li&gt; 
-  &lt;/ul&gt; 
-  &lt;p style="color:#191b1f; margin-left:0; margin-right:0; text-align:start"&gt;例如：Observation: "旧金山今天晴，22 摄氏度。"&lt;/p&gt; 
-  &lt;ul&gt; 
-   &lt;li&gt;再次思考： LLM 接收到新的观察数据，再次进入思考环节，判断任务是否完成，或是否需要进一步的行动。&lt;/li&gt; 
-  &lt;/ul&gt; 
-  &lt;p style="color:#191b1f; margin-left:0; margin-right:0; text-align:start"&gt;例如：「我已经获得了天气信息，现在可以回答用户的问题了。」&lt;br&gt; 在这个循环中，数据流是根据 LLM 的「思考」结果动态生成的。当 LLM 判断需要外部数据时，它会主动触发一个「行动」来获取数据，然后将获取到的「观察」数据整合进自己的上下文中，用于下一步的决策。&lt;br&gt; Planning 和任务分解&lt;br&gt; 对于更复杂的任务，智能体通常会先进行规划（Planning）。一个高阶的规划模块会将用户的宏大目标分解成一系列更小、更具体、可执行的子任务。&lt;br&gt; 数据流向： 规划模块的输出是一份「计划清单」（Planning List），这份清单定义了后续一系列模块的调用顺序和数据依赖关系。&lt;br&gt; （前一阵子流行的 Claude Code，刚更新的 Cursor v1.2，以及上个版本流行的 Gemini/GPT DeepResearch 就属于这个架构）&lt;/p&gt; 
-  &lt;div&gt; 
-   &lt;img src="https://oscimg.oschina.net/oscnet//18112cec76c43ea86ad8c87a23c89639.jpg" width="1080" referrerpolicy="no-referrer"&gt; 
-  &lt;/div&gt; 
-  &lt;p style="color:#191b1f; margin-left:0; margin-right:0; text-align:start"&gt;&lt;br&gt; 例如，对于「帮我策划一次巴黎三人五日游」的请求，规划模块可能会生成如下计划，并定义了每个步骤所需的数据输入和输出：&lt;br&gt; 1.[获取用户预算和偏好] -&amp;gt; [搜索往返机票]&lt;br&gt; 2.[机票信息] -&amp;gt; [根据旅行日期和预算搜索酒店]&lt;br&gt; 3.[酒店信息] -&amp;gt; [规划每日行程]&lt;br&gt; 4.[机票、酒店、行程信息] -&amp;gt; [生成最终行程单和预算报告]&lt;br&gt; Reflection 机制&lt;br&gt; 先进的智能体架构还包含反思（Reflection）机制 。智能体在执行完一个动作或完成一个子任务后，会评估其结果的质量和正确性。如果发现问题，它可以自我修正，重新规划路径。&lt;br&gt; （这是截止撰文时，各大主流 deep research 平台使用的核心技术方案） 数据流向： 这是一个反馈循环。模块的输出不仅流向下一个任务模块，还会流向一个「评估器」模块。评估器的输出（如「成功」、「失败」、「信息不足」）会反过来影响规划模块，从而调整后续的数据流向。&lt;/p&gt; 
-  &lt;div&gt; 
-   &lt;img src="https://oscimg.oschina.net/oscnet//43d3414957f84dcf5ff22836a10b9d5e.jpg" width="1080" referrerpolicy="no-referrer"&gt; 
-  &lt;/div&gt; 
-  &lt;p style="color:#191b1f; margin-left:0; margin-right:0; text-align:start"&gt;框架与工具&lt;br&gt; 上述的架构和机制并非凭空存在，而是通过具体的开发框架实现的。其中，LangGraph 作为 LangChain 的扩展，为构建具有显式数据流的智能体系统提供了强大的工具集。&lt;/p&gt; 
-  &lt;div&gt; 
-   &lt;img src="https://oscimg.oschina.net/oscnet//ae0cd62c436db7fc2bf98ce3f3972c15.jpg" width="326" referrerpolicy="no-referrer"&gt; 
-  &lt;/div&gt; 
-  &lt;p style="color:#191b1f; margin-left:0; margin-right:0; text-align:start"&gt;&lt;br&gt; LangGraph：用图（Graph）定义工作流（Workflow）&lt;br&gt; LangGraph 的核心思想是将智能体应用构建成一个状态图（State Graph）。这个图由节点和边组成，清晰地定义了数据如何在不同模块间流动&lt;/p&gt; 
-  &lt;ul&gt; 
-   &lt;li&gt;状态（State）：这是整个图的核心，一个所有节点共享的中央数据对象。你可以把它想象成一个「数据总线」或共享内存。开发者需要预先定义 State 的结构，每个节点在执行时都可以读取和更新这个 State 对象 。&lt;/li&gt; 
-   &lt;li&gt;节点（Nodes）：代表工作流中的一个计算单元或一个步骤。每个节点通常是一个 Python 函数，它接收当前的 State 作为输入，执行特定任务（如调用 LLM、执行工具、处理数据），然后返回对 State 的更新。&lt;/li&gt; 
-   &lt;li&gt;边（Edges）：连接节点，定义了工作流的路径，即数据在 State 更新后应该流向哪个节点。&lt;/li&gt; 
-   &lt;li&gt;简单边（Simple Edges）：定义了固定的、无条件的流向，用于实现链式工作流。&lt;/li&gt; 
-   &lt;li&gt;条件边（Conditional Edges）： 用于实现路由逻辑。它会根据一个函数的输出来决定接下来应该走向哪个节点，从而实现流程的分支 。&lt;/li&gt; 
-   &lt;li&gt;检查点（Checkpointer）： LangGraph 提供了持久化机制，可以在每一步执行后自动保存 State 的状态。这对于构建需要长期记忆、可中断和恢复、或需要 Human-in-the-Loop 的复杂业务流程至关重要。&lt;/li&gt; 
-  &lt;/ul&gt; 
-  &lt;p style="color:#191b1f; margin-left:0; margin-right:0; text-align:start"&gt;复杂业务流程的 AI 智能体，其核心挑战已从单纯优化信息检索（如 RAG）或提示词，转向了对内部工作流和数据流的精心设计与编排。&lt;br&gt; Context Engineering 的未来&lt;/p&gt; 
-  &lt;ul&gt; 
-   &lt;li&gt;Graph RAG 的兴起：标准的基于向量的 RAG 在处理高度互联的数据时存在局限。而利用知识图谱的图 RAG 不仅能检索离散的信息块，还能检索它们之间的显式关系。这使得模型能够进行更复杂的多跳推理，并提供上下文更准确的回答 。&lt;/li&gt; 
-   &lt;li&gt;智能体自主性的增强：像 Self-RAG 和 Agentic RAG 这样更自主的系统将成为趋势，LLM 将承担更多管理自身上下文的责任。这将模糊 Context Engineering 系统与 LLM 本身之间的界限。&lt;/li&gt; 
-   &lt;li&gt;超越固定上下文窗口：针对 Lost in the Middle 问题的研究正在进行中，包括探索新的模型架构（如改进的位置编码）和训练技术。这些研究的突破可能会从根本上改变当今 Context Engineering 师所面临的约束。&lt;/li&gt; 
-   &lt;li&gt;终极目标：Context Engineering 本质上是一座桥梁，它是一套复杂的补偿机制，用以弥补 LLM 「don't read minds—they read tokens」的现实。人工智能研究的长期目标是创造出具有更强大内部世界模型的 AI，从而减少对此类庞大外部上下文支架的依赖。 Context Engineering 的演进，将是衡量我们朝此目标迈进的关键指标。&lt;/li&gt; 
-  &lt;/ul&gt; 
- &lt;/div&gt; 
-&lt;/div&gt;
-                                                                                    &lt;/div&gt;
-                                                                            </description>
-      <link>https://my.oschina.net/u/6800876/blog/18689521</link>
-      <guid isPermaLink="false">https://my.oschina.net/u/6800876/blog/18689521</guid>
-      <pubDate>Mon, 01 Sep 2025 08:15:00 GMT</pubDate>
-      <author>原创</author>
-    </item>
-    <item>
-      <title>Wine 10.14 开发版发布，Windows 应用兼容层</title>
-      <description>&lt;div class="content"&gt;
-                                                                    
-                                                        &lt;p&gt;Wine 项目近日发布了&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fwww.winehq.org%2Fnews%2F2025082901" target="_blank"&gt; Wine 10.14 开发版&lt;/a&gt;。这是其双周更新的一部分，带来了多项重要改进：&lt;/p&gt; 
-&lt;p&gt;主要更新内容与改进&lt;/p&gt; 
-&lt;ol&gt; 
- &lt;li&gt; &lt;p&gt;&lt;strong&gt;VKD3D 升级至 1.17&lt;/strong&gt;&lt;/p&gt; 
-  &lt;ul&gt; 
-   &lt;li&gt;包含新版 VKD3D（Direct3D 12 over Vulkan API 层），显著提升 D3D12 应用和游戏在 Linux 上的兼容性和性能。&lt;/li&gt; 
-  &lt;/ul&gt; &lt;/li&gt; 
- &lt;li&gt; &lt;p&gt;&lt;strong&gt;Mono 引擎更新至 10.2.0&lt;/strong&gt;&lt;/p&gt; 
-  &lt;ul&gt; 
-   &lt;li&gt;Mono 引擎得到更新，用于增强 .NET 应用在 Wine 环境下的运行表现。&lt;/li&gt; 
-  &lt;/ul&gt; &lt;/li&gt; 
- &lt;li&gt; &lt;p&gt;&lt;strong&gt;支持 IPv6 Ping&lt;/strong&gt;&lt;/p&gt; 
-  &lt;ul&gt; 
-   &lt;li&gt;Wine 的内置 「ping」 工具现已支持 IPv6，这为网络诊断和兼容性带来便利。&lt;/li&gt; 
-  &lt;/ul&gt; &lt;/li&gt; 
- &lt;li&gt; &lt;p&gt;&lt;strong&gt;GitLab CI 跳转至 Debian 「Trixie」&lt;/strong&gt;&lt;/p&gt; 
-  &lt;ul&gt; 
-   &lt;li&gt;Wine 项目的持续集成系统（CI）现已迁移到使用 Debian 13 「Trixie」 作为构建环境，便于现代化管理与构建流程。&lt;/li&gt; 
-  &lt;/ul&gt; &lt;/li&gt; 
- &lt;li&gt; &lt;p&gt;&lt;strong&gt;19 项 Bug 修复&lt;/strong&gt;&lt;/p&gt; 
-  &lt;ul&gt; 
-   &lt;li&gt;包含针对多款游戏（如 Phantasy Star Online: Blue Burst、GreedFall、Mafia III: Definitive Edition、Death to Spies）和应用（如 Roblox Studio 安装程序、VemsTune 等）的修复，以及 API 补丁，包括对 gameinput.dll、ntdll.dll、api-ms-win-core-memory、winepath 等系统组件的改进。&lt;/li&gt; 
-  &lt;/ul&gt; &lt;/li&gt; 
-&lt;/ol&gt; 
-&lt;p&gt;下载地址：&lt;em&gt;https://gitlab.winehq.org/wine/wine/-/releases/wine-10.14&lt;/em&gt;&lt;/p&gt; 
-&lt;p&gt;Wine 作为开源兼容层，能让 Windows 应用和游戏在 Linux、macOS 等平台运行，此次更新进一步强化了跨平台兼容性与稳定性。&lt;/p&gt;
-                                                                                &lt;/div&gt;
-                                                                            </description>
-      <link>https://www.oschina.net/news/369877/wine-10-14</link>
-      <guid isPermaLink="false">https://www.oschina.net/news/369877/wine-10-14</guid>
-      <pubDate>Mon, 01 Sep 2025 08:08:00 GMT</pubDate>
-      <author>来源: OSCHINA</author>
-    </item>
-    <item>
-      <title>前 7 个月我国软件业利润总额 10890 亿元</title>
-      <description>&lt;div class="content"&gt;
-                                                                    
-                                                        &lt;p&gt;&lt;span style="color:#000000"&gt;工业和信息化部运行监测协调局公告&lt;/span&gt;&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fwww.miit.gov.cn%2Fjgsj%2Fyxj%2Fxxfb%2Fart%2F2025%2Fart_461e0981c2564044b9ad2d67cf0e97f3.html" target="_blank"&gt;指出&lt;/a&gt;&lt;span style="color:#000000"&gt;，&lt;/span&gt;2025 年前 7 个月，我国软件和信息技术服务业（以下简称「软件业」）运行态势良好，软件业务收入、利润总额稳健增长，软件业务出口保持正增长。&amp;nbsp;&amp;nbsp;&lt;/p&gt; 
-&lt;p style="margin-left:0px; margin-right:0px; text-align:justify"&gt;&lt;span style="color:#000000"&gt;&lt;strong&gt;一、总体运行情况&lt;/strong&gt;&lt;/span&gt;&lt;/p&gt; 
-&lt;p style="color:#070707; margin-left:0; margin-right:0; text-align:justify"&gt;&lt;span style="color:#000000"&gt;前 7 个月，我国软件业务收入 83246 亿元，同比增长 12.3%。软件业利润总额 10890 亿元，同比增长 12.4%。软件业务出口 339.8 亿美元，同比增长 5.2%。&lt;/span&gt;&lt;/p&gt; 
-&lt;p style="margin-left:0px; margin-right:0px; text-align:justify"&gt;&lt;span style="color:#000000"&gt;&lt;strong&gt;二、分领域运行情况&lt;/strong&gt;&lt;/span&gt;&lt;/p&gt; 
-&lt;p style="color:#070707; margin-left:0; margin-right:0; text-align:justify"&gt;&lt;span style="color:#000000"&gt;&lt;span style="color:#000000"&gt;软件产品收入稳定增长。&lt;/span&gt;&lt;span style="color:#000000"&gt;前&lt;/span&gt;&lt;/span&gt;&lt;span style="color:#000000"&gt;7 个月，软件产品收入 18011 亿元，同比增长 10.6%，占全行业收入比重为 21.6%。其中，基础软件产品收入 1052 亿元，同比增长 13&lt;/span&gt;&lt;span style="color:#000000"&gt;.0&lt;/span&gt;&lt;span style="color:#000000"&gt;%；工业软件产品收入 1677 亿元，同比增长 8.8%。&lt;/span&gt;&lt;/p&gt; 
-&lt;p style="color:#070707; margin-left:0; margin-right:0; text-align:justify"&gt;&lt;span style="color:#000000"&gt;&lt;span style="color:#000000"&gt;信息技术服务收入保持两位数增长。&lt;/span&gt;&lt;/span&gt;&lt;span style="color:#000000"&gt;&lt;span style="color:#000000"&gt;前&lt;/span&gt;&lt;/span&gt;&lt;span style="color:#000000"&gt;7 个月，信息技术服务收入 57246 亿元，同比增长 13.4%，占全行业收入的 68.8%。其中，云计算、大数据服务共实现收入 8663 亿元，同比增长 12.6%，占信息技术服务收入的 15.1%；集成电路设计收入 2511 亿元，同比增长 18.5%；电子商务平台技术服务收入 7156 亿元，同比增长 9.8%。&lt;/span&gt;&lt;/p&gt; 
-&lt;p style="color:#070707; margin-left:0; margin-right:0; text-align:justify"&gt;&lt;span style="color:#000000"&gt;&lt;span style="color:#000000"&gt;信息安全收入和嵌入式系统软件收入平稳增长。&lt;/span&gt;&lt;/span&gt;&lt;span style="color:#000000"&gt;&lt;span style="color:#000000"&gt;前&lt;/span&gt;&lt;/span&gt;&lt;span style="color:#000000"&gt;7 个月，信息安全产品和服务收入 1181 亿元，同比增长 6.2%。嵌入式系统软件收入 6809 亿元，同比增长 8.5%。&lt;/span&gt;&lt;/p&gt; 
-&lt;p style="margin-left:0px; margin-right:0px; text-align:justify"&gt;&lt;span style="color:#000000"&gt;&lt;strong&gt;三、分地区运行情况&lt;/strong&gt;&lt;/span&gt;&lt;/p&gt; 
-&lt;p style="color:#070707; margin-left:0; margin-right:0; text-align:justify"&gt;前 7 个月，东部地区、中部地区、西部地区和东北地区软件业务收入分别同比增长 12.6%、12.3%、10.4% 和 9.3%。东部地区占全国软件业务总收入的 84.3%。&lt;/p&gt; 
-&lt;p style="color:#070707; margin-left:0; margin-right:0; text-align:justify"&gt;京津冀地区软件业务收入同比增长 13.2%，长三角地区软件业务收入同比增长 14.7%。北京、广东、江苏、山东、上海软件业务收入居全国前 5，同比分别增长 13.4%、9.1%、14.4%、11.8% 和 20.1%。&lt;/p&gt;
-                                                                                &lt;/div&gt;
-                                                                            </description>
-      <link>https://www.oschina.net/news/369876</link>
-      <guid isPermaLink="false">https://www.oschina.net/news/369876</guid>
-      <pubDate>Mon, 01 Sep 2025 08:05:00 GMT</pubDate>
-      <author>来源: OSCHINA</author>
-    </item>
-    <item>
-      <title>Firefox 将原生支持 MKV 视频格式</title>
-      <description>&lt;div class="content"&gt;
-                                                                    
-                                                        &lt;p&gt;&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fwindowsreport.com%2Fmozilla-firefox-is-officially-getting-mkv-video-support%2F" target="_blank"&gt;据报道&lt;/a&gt;，Firefox 浏览器即将原生支持 &lt;code&gt;.mkv&lt;/code&gt;视频文件播放，用户无需再依赖插件或手动转换格式。&lt;/p&gt; 
-&lt;p&gt;&lt;img alt="" src="https://oscimg.oschina.net/oscnet/up-4ae5363247ae1619e30c87b03d4f17b9b25.png" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;p&gt;Mozilla&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fbugzilla.mozilla.org%2Fshow_bug.cgi%3Fid%3D1422891" target="_blank"&gt; 已指派工程师&lt;/a&gt;推动这一功能的开发，预计将按照以下阶段有序推进：&lt;/p&gt; 
-&lt;ol&gt; 
- &lt;li&gt; &lt;p&gt;Nightly 版本做初步测试，针对最常见的音视频组合，例如 H.264 编码的视频 + AAC 音频进行优先支持。&lt;/p&gt; &lt;/li&gt; 
- &lt;li&gt; &lt;p&gt;后期将扩大支持范围，加入 VP9、AV1 等视频编码，以及 Opus 或 FLAC 等音频格式。&lt;/p&gt; &lt;/li&gt; 
- &lt;li&gt; &lt;p&gt;在稳定性与兼容性通过全面检测后，会推广至正式版本的 Firefox 用户。&lt;/p&gt; &lt;/li&gt; 
-&lt;/ol&gt; 
-&lt;p&gt;&lt;img src="https://static.oschina.net/uploads/space/2025/0902/152017_iqZR_2720166.png" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;p&gt;此前，Firefox 打开 MKV 文件时常常失败或直接触发下载，这在 Windows 10 和 11 已原生支持 MKV 的情况下，显得尤为不便。新功能上线后，Firefox 的多媒体体验将与主流浏览器保持一致。&lt;/p&gt;
-                                                                                &lt;/div&gt;
-                                                                            </description>
-      <link>https://www.oschina.net/news/369866/mozilla-firefox-is-officially-getting-mkv-video-support</link>
-      <guid isPermaLink="false">https://www.oschina.net/news/369866/mozilla-firefox-is-officially-getting-mkv-video-support</guid>
-      <pubDate>Mon, 01 Sep 2025 07:23:00 GMT</pubDate>
-      <author>来源: OSCHINA</author>
-    </item>
-    <item>
-      <title>腾讯开源具备原生 3D 重建能力的超长程世界模型：HunyuanWorld-Voyager</title>
-      <description>&lt;div class="content"&gt;
-                                                                    
-                                                        &lt;p&gt;&lt;span style="color:#000000"&gt;腾讯近日正式发布了 HunyuanWorld-Voyager，这是一种创新的视频扩散框架，旨在通过单张输入图像生成具备世界一致性的 3D 点云，支持用户按自定义的相机路径进行沉浸式探索。&lt;/span&gt;&lt;/p&gt; 
-&lt;p&gt;&lt;img height="327" src="https://oscimg.oschina.net/oscnet/up-56c2135778b8058ed623697954e8a4f3027.png" width="500" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;p&gt;&lt;span style="color:#000000"&gt;官方表示，这全球首个具备原生 3D 重建功能的超远距离世界模型，重新定义 AI 驱动的 VR、游戏和仿真空间智能。此模型不仅能够生成精确对齐的深度信息和 RGB 视频，还能够在不进行后处理的情况下，直接用于高质量的三维重建。&lt;/span&gt;&lt;/p&gt; 
-&lt;ul&gt; 
- &lt;li&gt;&lt;span style="color:#000000"&gt;直接 3D 输出：无需 COLMAP 等工具即可将点云视频导出为 3D 格式，实现即时 3D 应用。&lt;/span&gt;&lt;/li&gt; 
- &lt;li&gt;&lt;span style="color:#000000"&gt;创新的 3D 内存：引入可扩展的世界缓存机制，确保任何摄像机轨迹的几何一致性。&lt;/span&gt;&lt;/li&gt; 
- &lt;li&gt;&lt;span style="color:#000000"&gt;顶级性能：在斯坦福 WorldScore 测试中排名第一，在视频生成和 3D 重建基准测试中表现出色&lt;/span&gt;&lt;/li&gt; 
-&lt;/ul&gt; 
-&lt;p&gt;&lt;span style="color:#000000"&gt;HunyuanWorld-Voyager 的架构包含两个关键组件。首先是 「世界一致的视频扩散」，该组件提出了一种统一的架构，可以基于已有的世界观测，同时生成准确对齐的 RGB 视频和深度视频序列，从而确保全局场景的一致性。其次是 「长距离世界探索」，它采用了一种高效的世界缓存机制，结合点云剔除和自回归推理能力，支持迭代场景扩展，并通过上下文感知的一致性技术实现平滑的视频采样。&lt;/span&gt;&lt;/p&gt; 
-&lt;p&gt;&lt;span style="color:#000000"&gt;为了训练 HunyuanWorld-Voyager 模型，研究团队构建了一套可扩展的数据构建引擎。这一自动化视频重建流水线能够对任意输入视频自动估计相机位姿和度量深度，因此无需依赖人工标注，从而实现大规模、多样化训练数据的构建。基于此流水线，HunyuanWorld-Voyager 整合了真实世界采集和虚幻引擎渲染的视频资源，构建了一个包含超过 10 万个视频片段的大规模数据集。&lt;/span&gt;&lt;/p&gt; 
-&lt;p&gt;&lt;span style="color:#000000"&gt;在实验评估中，HunyuanWorld-Voyager 在视频生成质量方面表现出色。与四种开源的相机可控视频生成方法进行了对比，结果显示该模型在 PSNR、SSIM 和 LPIPS 等指标上均优于其他模型，证明了其卓越的视频生成质量。同时，在场景重建方面，HunyuanWorld-Voyager 的生成视频在几何一致性上也显现出更好的效果。&lt;/span&gt;&lt;/p&gt; 
-&lt;p&gt;&lt;span style="color:#000000"&gt;此外，HunyuanWorld-Voyager 在 WorldScore 静态基准测试中获得了最高分，证明了其在相机运动控制和空间一致性方面的优越性。这一成果不仅展示了混元世界模型的潜力，还为未来的 3D 场景生成技术开辟了新路径。&lt;/span&gt;&lt;/p&gt;
-                                                                                &lt;/div&gt;
-                                                                            </description>
-      <link>https://www.oschina.net/news/369863</link>
-      <guid isPermaLink="false">https://www.oschina.net/news/369863</guid>
-      <pubDate>Mon, 01 Sep 2025 07:14:00 GMT</pubDate>
-      <author>来源: OSCHINA</author>
-    </item>
-    <item>
-      <title>腾讯优图实验室正式开源智能体框架 Youtu-Agent</title>
-      <description>&lt;div class="content"&gt;
-                                                                    
-                                                        &lt;p&gt;9 月 2 日，腾讯优图实验室&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fmp.weixin.qq.com%2Fs%2FW5LFBLCV3qZG0wxTA9Ob-w" target="_blank"&gt;宣布&lt;/a&gt;正式开源智能体框架 Youtu-Agent。该框架以极简设计和高性能表现为核心，旨在为研究人员和开发者提供高效、易用、可复现的智能体开发工具。&lt;/p&gt; 
-&lt;p&gt;据介绍，Youtu-Agent 面向实际场景的开源应用框架，能够覆盖文件管理、数据分析、学术研究与广域信息综述等多个方向应用。目前，Youtu-Agent 开源框架已为腾讯云多个产品业务提供支持。&lt;/p&gt; 
-&lt;p&gt;&lt;span&gt;Youtu-Agent 的核心亮点在于，它不需要额外训练模型，也不依赖海外闭源大模型 API，就能在真实场景中展现出优异的效果，比较好地兼顾了科研和应用双重需求。&lt;/span&gt;&lt;/p&gt; 
-&lt;ul&gt; 
- &lt;li&gt;&lt;strong&gt;验证性能&lt;/strong&gt;：在 WebWalkerQA 上达到 71.47% 的 pass@1，在 GAIA（纯文本子集）上达到 72.8% 的 pass@1，纯粹使用&lt;code&gt;DeepSeek-V3&lt;/code&gt;系列模型（不使用 Claude 或 GPT），建立了强大的开源起点。&lt;/li&gt; 
- &lt;li&gt;&lt;strong&gt;开源友好且成本敏感&lt;/strong&gt;：针对可访问、低成本部署进行了优化，不依赖封闭模型。&lt;/li&gt; 
- &lt;li&gt;&lt;strong&gt;实际用例&lt;/strong&gt;：开箱即用地支持 CSV 分析、文献综述、个人文件整理以及播客和视频生成等任务。（即将推出）&lt;/li&gt; 
- &lt;li&gt;&lt;strong&gt;灵活的架构&lt;/strong&gt;：基于 openai-agents 构建，可兼容各种模型 API（从&lt;code&gt;DeepSeek&lt;/code&gt;到&lt;code&gt;gpt-oss&lt;/code&gt;）、工具集成和框架实现。&lt;/li&gt; 
- &lt;li&gt;&lt;strong&gt;自动化与简洁性&lt;/strong&gt;：基于 YAML 的配置、自动智能体生成和简化的设置减少了手动开销。&lt;/li&gt; 
-&lt;/ul&gt; 
-&lt;p&gt;在性能表现上，Youtu-Agent 已在多个智能体挑战性基准测试中取得领先成绩。例如，&lt;strong&gt;在 WebWalkerQA 基准中，基于 DeepSeek-V3.1 的运行结果达到了 71.47% 的准确率，刷新了开源模型的最新纪录&lt;/strong&gt;；&lt;/p&gt; 
-&lt;p&gt;&lt;img height="603" src="https://static.oschina.net/uploads/space/2025/0902/151154_CKYV_2720166.png" width="1080" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;p&gt;框架设计方面，Youtu-Agent 完全拥抱开源生态，适配多种可访问的部署环境；其架构灵活，兼容包括 DeepSeek、gpt-oss 在内的多类模型 API 与工具。&lt;/p&gt; 
-&lt;p&gt;&lt;img height="738" src="https://static.oschina.net/uploads/space/2025/0902/151229_GBNE_2720166.png" width="1080" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;p&gt;开源地址：&lt;em&gt;https://github.com/TencentCloudADP/Youtu-agent&lt;/em&gt;&lt;/p&gt;
-                                                                                &lt;/div&gt;
-                                                                            </description>
-      <link>https://www.oschina.net/news/369860</link>
-      <guid isPermaLink="false">https://www.oschina.net/news/369860</guid>
-      <pubDate>Mon, 01 Sep 2025 07:13:00 GMT</pubDate>
-      <author>来源: OSCHINA</author>
-    </item>
-    <item>
-      <title>Cloudflare 推出实时语音 AI 平台：Realtime Agents</title>
-      <description>&lt;div class="content"&gt;
-                                                                    
-                                                        &lt;p&gt;Cloudflare 宣布推出&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fblog.cloudflare.com%2Fcloudflare-realtime-voice-ai%2F" target="_blank"&gt;实时语音 AI 平台&lt;/a&gt;（Cloudflare Realtime Agents），正式进军低延迟对话式 AI 领域。该平台依托 Cloudflare 全球 330 多个节点的边缘网络，为开发者提供构建语音交互应用的完整解决方案。&lt;/p&gt; 
-&lt;p&gt;&lt;img alt="" src="https://oscimg.oschina.net/oscnet/up-ae6ab80f3dac0b047d5a26124ce0a669d2d.png" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;p&gt;新平台的核心组件包括 Realtime Agents（语音 AI 管道编排运行时）、WebRTC 音频传输支持、Workers AI 的 WebSocket 实时推理，以及 Deepgram 的语音识别/合成模型。通过这些功能，开发者可快速搭建自然流畅的语音代理应用。&lt;/p&gt; 
-&lt;p&gt;下面的示例代码展示了如何创建一个继承自 &lt;code&gt;RealtimeAgent&lt;/code&gt; 的 JavaScript 类，以进行以下操作：&lt;/p&gt; 
-&lt;ul&gt; 
- &lt;li&gt; &lt;p&gt;创建 WebRTC 会话&lt;/p&gt; &lt;/li&gt; 
- &lt;li&gt; &lt;p&gt;管道编排（如：Deepgram STT → 自定义文本处理 Handler → ElevenLabs TTS）&lt;/p&gt; &lt;/li&gt; 
- &lt;li&gt; &lt;p&gt;支持会议参与者加入/离开的事件处理&lt;br&gt; 这让开发者几乎不需管理底层基础设施，就可快速构建个性化语音代理应用。&lt;/p&gt; &lt;/li&gt; 
-&lt;/ul&gt; 
-&lt;pre&gt;&lt;code class="language-javascript"&gt;export class MyAgent extends RealtimeAgent&amp;lt;Env&amp;gt; {
-constructor(ctx: DurableObjectState, env: Env) {
-super(ctx, env);
-}
-
-async init(agentId: string ,meetingId: string, authToken: string, workerUrl: string, accountId: string, apiToken: string) {
-// Construct your text processor for generating responses to text
-const textHandler = new MyTextHandler(this.env);
-// Construct a Meeting object to join the RTK meeting
-const transport = new RealtimeKitTransport(meetingId, authToken, [
-{
-media_kind: 'audio',
-stream_kind: 'microphone',
-},
-]);
-const { meeting } = transport;
-
-// Construct a pipeline to take in meeting audio, transcribe it using
-// Deepgram, and pass our generated responses through ElevenLabs to
-// be spoken in the meeting
-await this.initPipeline(
-[transport, new DeepgramSTT(this.env.DEEPGRAM_API_KEY), textHandler, new ElevenLabsTTS(this.env.ELEVENLABS_API_KEY), transport],
-agentId,
-workerUrl,
-accountId,
-apiToken,
-);
-
-// The RTK meeting object is accessible to us, so we can register handlers
-// on various events like participant joins/leaves, chat, etc.
-// This is optional
-meeting.participants.joined.on('participantJoined', (participant) =&amp;gt; {
-textHandler.speak(`Participant Joined ${participant.name}`);
-});
-meeting.participants.joined.on('participantLeft', (participant) =&amp;gt; {
-textHandler.speak(`Participant Left ${participant.name}`);
-});
-
-// Make sure to actually join the meeting after registering all handlers
-await meeting.rtkMeeting.join();
-}
-
-async deinit() {
-// Add any other cleanup logic required
-await this.deinitPipeline();
-}
-}&lt;/code&gt;&lt;/pre&gt; 
-&lt;p&gt;Cloudflare 指出，要让语音交互达到「自然对话」的体验，总延迟需低于 800 毫秒，而其分布式边缘架构正好能满足这一苛刻要求。平台同时兼容多种 AI 模型和第三方服务，支持高度可组合的语音处理管道。&lt;/p&gt; 
-&lt;p&gt;目前，Cloudflare Realtime Agents 已开放 Beta 公测，开发者可免费试用并基于该平台开发新一代实时语音 AI 应用。&lt;/p&gt;
-                                                                                &lt;/div&gt;
-                                                                            </description>
-      <link>https://www.oschina.net/news/369855/cloudflare-realtime-voice-ai</link>
-      <guid isPermaLink="false">https://www.oschina.net/news/369855/cloudflare-realtime-voice-ai</guid>
-      <pubDate>Mon, 01 Sep 2025 06:49:00 GMT</pubDate>
       <author>来源: OSCHINA</author>
     </item>
   </channel>
