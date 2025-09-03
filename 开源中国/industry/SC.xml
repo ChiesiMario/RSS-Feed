@@ -7,8 +7,282 @@
     <generator>RSSHub</generator>
     <webMaster>contact@rsshub.app (RSSHub)</webMaster>
     <language>zh-cn</language>
-    <lastBuildDate>Tue, 02 Sep 2025 21:40:48 GMT</lastBuildDate>
+    <lastBuildDate>Wed, 03 Sep 2025 02:43:06 GMT</lastBuildDate>
     <ttl>5</ttl>
+    <item>
+      <title>系统梳理 RAG 系统的 21 种分块策略</title>
+      <description>&lt;div class="content"&gt;
+                                                                                                                    
+                                                                                                                                                    &lt;blockquote&gt; 
+ &lt;p&gt;&lt;strong&gt;编者按：&lt;/strong&gt; 我们今天为大家带来的文章，作者的观点是：分块（chunking）才是决定 RAG 系统成败的真正关键因素，不同场景需要匹配相应的分块策略。&lt;/p&gt; 
+ &lt;p&gt;本文系统梳理了从基础到进阶的 21 种分块策略，涵盖了基础分块法、定长分块法、滑动窗口分块等传统方法，以及语义分块、上下文增强分块、多模态分块等前沿技术。&lt;/p&gt; 
+&lt;/blockquote&gt; 
+&lt;p&gt;&lt;strong&gt;作者 | Anjolaoluwa Ajayi&lt;/strong&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;strong&gt;编译 | 岳扬&lt;/strong&gt;&lt;/p&gt; 
+&lt;p&gt;检索增强生成（RAG）是许多 AI 工程师又爱又恨的技术（包括我）。&lt;/p&gt; 
+&lt;p&gt;没错，因为从理论上看，它简单极了："从你的定制数据中检索正确的上下文，然后让大语言模型基于此生成回答"。&lt;/p&gt; 
+&lt;p&gt;但在实践中，你不得不面对海量杂乱无章的数据 ------ 这些数据以你见过的最混乱随机的格式存储，接着就是数日绞尽脑汁的试错：&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt;调整文本块（tweaking chunks）&lt;/li&gt; 
+ &lt;li&gt;切换嵌入模型（switching embedding models）&lt;/li&gt; 
+ &lt;li&gt;替换检索器（swapping out retrievers）&lt;/li&gt; 
+ &lt;li&gt;微调排序器（fine-tuning rankers）&lt;/li&gt; 
+ &lt;li&gt;重写提示词（rewriting prompts）&lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;p&gt;而模型依然回复："我找不到足够的信息来回答你的问题"。&lt;/p&gt; 
+&lt;p&gt;更糟糕的是，它还会一本正经地输出完全错误的答案（产生幻觉）。&lt;/p&gt; 
+&lt;p&gt;毋庸置疑，RAG 系统中存在许多复杂的组件，但真正默默决定整个系统是否能正常运行的关键因素其实是分块（chunking）。&lt;/p&gt; 
+&lt;p&gt;不同的数据类型、文件格式、内容结构、文档长度和使用场景，都需要匹配不同的分块策略。&lt;/p&gt; 
+&lt;p&gt;一旦出错，你的模型要么抓不住重点，要么... 好吧，还是抓不住重点。&lt;/p&gt; 
+&lt;p&gt;本文将解析 21 种分块策略（从基础到进阶），并说明何时该用何种策略，让你的 RAG 系统不再...掉链子。&lt;/p&gt; 
+&lt;p&gt;&lt;strong&gt;1）基础分块法（按换行符分割）Naive chunking (split by newline)&lt;/strong&gt;&lt;/p&gt; 
+&lt;p&gt;遇到换行符就分割文本。仅此而已。&lt;/p&gt; 
+&lt;p&gt;&lt;img src="https://oscimg.oschina.net/oscnet/up-aac59a23bc7029033fcf8a11d14813466fe.png" alt="" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p&gt;基础分块法示例 | 此图片由原文作者制作&lt;/p&gt; 
+&lt;p&gt;适用场景：&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt;处理由换行符统一分隔的文本：笔记、项目列表、FAQ、聊天记录或每一行都包含完整语义的文字转录稿。&lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;p&gt;注意：如果内容行过长，可能超出 LLM 的词元限制。如果内容行过短，模型可能遗漏上下文或产生幻觉。&lt;/p&gt; 
+&lt;p&gt;&lt;strong&gt;2）定长分块法 Fixed-size/ fixed window chunking&lt;/strong&gt;&lt;/p&gt; 
+&lt;p&gt;按固定字符数/单词数切割文本（即便这样会切断完整句子或语义单元）。&lt;/p&gt; 
+&lt;p&gt;&lt;img src="https://oscimg.oschina.net/oscnet/up-a45e305daade3d1a01c0e9203e2945c6887.png" alt="" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p&gt;定长分块法示例 | 此图片由原文作者制作&lt;/p&gt; 
+&lt;p&gt;适用场景：&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt;适用于原始的、杂乱的文本数据，如扫描文档、质量较差的转录文本，或无标点、无标题、无其他结构的大型文本文件。&lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;p&gt;&lt;strong&gt;3）滑动窗口分块法 Sliding window chunking&lt;/strong&gt;&lt;/p&gt; 
+&lt;p&gt;类似定长分块，但每个文本块会与前块内容重叠，以保持跨块上下文之间的关联。&lt;/p&gt; 
+&lt;p&gt;&lt;img src="https://oscimg.oschina.net/oscnet/up-7444ed4446a7b18972e69873268f49ce6b5.png" alt="" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p&gt;滑动窗口分块法示例 | 此图片由原文作者制作&lt;/p&gt; 
+&lt;p&gt;适用场景：&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt;处理需要保持长句间逻辑连贯性的文本类型：议论文、敍述性报告、自由形式的写作等。&lt;/li&gt; 
+ &lt;li&gt;与定长分块法类似，适用于无结构的文本（无标题、无标点、无框架等），但需注意词元消耗与上下文连贯性间的平衡。&lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;p&gt;&lt;strong&gt;4）按句分块法 Sentence-based chunking&lt;/strong&gt;&lt;/p&gt; 
+&lt;p&gt;在句子结尾处分割文本（通常以句号、问号或感叹号为标记）。&lt;/p&gt; 
+&lt;p&gt;&lt;img src="https://oscimg.oschina.net/oscnet/up-b367665f0d9c3ed62a9947f840b2a432e02.png" alt="" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p&gt;按句分块法示例 | 此图片由原文作者制作&lt;/p&gt; 
+&lt;p&gt;适用场景：&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt;适用于语义清晰的规整文本，每句话都承载着完整的语义，如技术博客、内容摘要或文档。&lt;/li&gt; 
+ &lt;li&gt;可作为初级的分块手段产出小而聚焦的文本块，便于后续通过更复杂的分块技术重新组合或重排序这些文本块。&lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;p&gt;&lt;strong&gt;5）按段分块法 Paragraph-based chunking&lt;/strong&gt;&lt;/p&gt; 
+&lt;p&gt;依据段落分割文本（通常以双换行符为界），使每块均包含完整的语义单元。&lt;/p&gt; 
+&lt;p&gt;&lt;img src="https://oscimg.oschina.net/oscnet/up-2c7a17ffc9900413bee4e4876e63a3d2313.png" alt="" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p&gt;按段分块法示例 | 此图片由原文作者制作&lt;/p&gt; 
+&lt;p&gt;适用场景：&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt;当按句分块所得内容过于零碎时&lt;/li&gt; 
+ &lt;li&gt;处理已具备段落结构的文档，如议论文、博客文章或研究报告&lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;p&gt;&lt;strong&gt;6）按页分块法 Page-based chunking&lt;/strong&gt;&lt;/p&gt; 
+&lt;p&gt;将每个物理页面视为一个独立文本块。&lt;/p&gt; 
+&lt;p&gt;&lt;img src="https://oscimg.oschina.net/oscnet/up-d3d5ed6036f56381e294776b0278b592f91.png" alt="" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p&gt;按页分块法示例 | 此图片由原文作者制作&lt;/p&gt; 
+&lt;p&gt;适用场景：&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt;处理含固定页面的文档，如扫描版 PDF、演示文稿或书籍。&lt;/li&gt; 
+ &lt;li&gt;需保留页面布局的检索场景（如在检索时需要引用页码）。&lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;p&gt;&lt;strong&gt;7）按预定结构分块法 Structured chunking&lt;/strong&gt;&lt;/p&gt; 
+&lt;p&gt;依据预定结构（如具有固定格式的系统日志记录、结构化数据中的预定义字段、HTML 标签或 Markdown 元素）分割文本。&lt;/p&gt; 
+&lt;p&gt;&lt;img src="https://oscimg.oschina.net/oscnet/up-026219009a535dc1fab3f2c997e8008d992.png" alt="" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p&gt;按预定结构分块法示例 | 此图片由原文作者制作&lt;/p&gt; 
+&lt;p&gt;适用场景：&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt;处理结构化/半结构化数据，如系统日志、JSON 记录、CSV 文件或 HTML 文档。&lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;p&gt;&lt;strong&gt;8）基于文档层级的分块法 Document-Based Chunking&lt;/strong&gt;&lt;/p&gt; 
+&lt;p&gt;基于文档固有结构分块（按标题/小标题/章节划分）。&lt;/p&gt; 
+&lt;p&gt;&lt;img src="https://oscimg.oschina.net/oscnet/up-b84c5944054dae03b472a53b5755357c6ec.png" alt="" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p&gt;基于文档层级的分块法示例 | 此图片由原文作者制作&lt;/p&gt; 
+&lt;p&gt;适用场景：&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt;当源文件具备清晰的章节结构时，如在技术文章、操作手册、教材或学术论文中。&lt;/li&gt; 
+ &lt;li&gt;可作为进阶分块技术（如按层级分块（hierarchical chunking））的预处理步骤。&lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;p&gt;&lt;strong&gt;9）基于关键词的分块法 Keyword-based chunking&lt;/strong&gt;&lt;/p&gt; 
+&lt;p&gt;在预设关键词出现处分割文本，将其视为逻辑断点。&lt;/p&gt; 
+&lt;p&gt;&lt;img src="https://oscimg.oschina.net/oscnet/up-52342e4376cd9af58f38aebe5ce5b67fe76.png" alt="" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p&gt;基于关键词的分块法示例（关键词为"Note"）| 此图片由原文作者制作&lt;/p&gt; 
+&lt;p&gt;适用场景：&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt;文档无标题结构但含标志性的关键词（且这些关键词可稳定标记新主题的起始）时使用&lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;p&gt;&lt;strong&gt;10）基于实体的分块法 Entity-based chunking&lt;/strong&gt;&lt;/p&gt; 
+&lt;p&gt;使用命名实体识别（NER）模型检测人物、地点、产品等实体，将相关文本围绕每个实体分组形成区块。&lt;/p&gt; 
+&lt;p&gt;&lt;img src="https://oscimg.oschina.net/oscnet/up-97102370a8e5e20777eb3c82de6f1cdd4c3.png" alt="" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p&gt;基于实体的分块法示例 | 此图片由原文作者制作&lt;/p&gt; 
+&lt;p&gt;适用场景：&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt;处理特定类型的实体（人物/地点/组织等）对文档理解起决定性作用的文件，如新闻报道、法律合同、案例研究或电影剧本。&lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;p&gt;&lt;strong&gt;11）基于词元数的分块法 Token-based chunking&lt;/strong&gt;&lt;/p&gt; 
+&lt;p&gt;通过 tokenizer（分词器）按词元数量分割文本。&lt;/p&gt; 
+&lt;p&gt;建议结合按句分块法（sentence chunking）等技术使用，避免破坏句子完整性导致上下文被破坏。&lt;/p&gt; 
+&lt;p&gt;适用场景：&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt;无标题/无段落结构的非结构化文档。&lt;/li&gt; 
+ &lt;li&gt;使用低词元限制的 LLM 时（避免响应被强制截断或长文本输入被丢弃）。&lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;p&gt;&lt;strong&gt;12）基于主题的分块法 Topic-based chunking&lt;/strong&gt;&lt;/p&gt; 
+&lt;p&gt;当文本主题发生变化时，可以通过以下方式对文本进行分块：&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt;首先，将文本拆分为小单元（句子/段落）&lt;/li&gt; 
+ &lt;li&gt;然后，使用主题建模或聚类算法将相关单元合并为区块&lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;p&gt;&lt;img src="https://oscimg.oschina.net/oscnet/up-4952968eff24cefc81394f3cc90f7f6ed29.png" alt="" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p&gt;基于主题的分块法示例（使用聚类算法） | 此图片由原文作者制作&lt;/p&gt; 
+&lt;p&gt;适用场景：&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt;当文档涵盖多个主题，且需保持语义焦点时。&lt;/li&gt; 
+ &lt;li&gt;适用于主题转变较为平缓但未通过明确的标题或关键词标注的文本。&lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;p&gt;&lt;strong&gt;13）表格感知分块法 Table-aware chunking&lt;/strong&gt;&lt;/p&gt; 
+&lt;p&gt;独立识别表格内容，并按 JSON 或 Markdown 格式分块（可逐行/逐列/整表处理）。&lt;/p&gt; 
+&lt;p&gt;&lt;img src="https://oscimg.oschina.net/oscnet/up-eb4793bfb1b79b9c3a4b4315e76de7c52be.png" alt="" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p&gt;表格感知分块法示例 | 此图片由原文作者制作&lt;/p&gt; 
+&lt;p&gt;适用场景：&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt;含表格元素的文档。&lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;p&gt;&lt;strong&gt;14）内容感知分块法 Content-aware chunking&lt;/strong&gt;&lt;/p&gt; 
+&lt;p&gt;根据内容类型动态调整分块策略（为段落/表格/列表等内容适配不同规则）。&lt;/p&gt; 
+&lt;p&gt;适用场景：&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt;混合格式的文档（含多种文本结构）。&lt;/li&gt; 
+ &lt;li&gt;需保持原生格式完整性的场景（表格不分割/段落不截断等）。&lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;p&gt;&lt;strong&gt;15）上下文增强分块法 Contextual chunking&lt;/strong&gt;&lt;/p&gt; 
+&lt;p&gt;通过 LLM 实现：&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt;分析知识库的部分或全部内容。&lt;/li&gt; 
+ &lt;li&gt;在嵌入前为每个文本块注入简短且相关的上下文&lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;p&gt;&lt;img src="https://oscimg.oschina.net/oscnet/up-1d6d9025312ebbe29eaf51b4b6b34cd9500.png" alt="" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p&gt;上下文增强分块法示例 | 此图片由原文作者制作&lt;/p&gt; 
+&lt;p&gt;适用场景：&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt;知识库的全部内容或部分内容在 LLM 的词元限额内。&lt;/li&gt; 
+ &lt;li&gt;处理复杂文档（如财报/合同等）。&lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;p&gt;&lt;strong&gt;16）语义分块法 Semantic chunking&lt;/strong&gt;&lt;/p&gt; 
+&lt;p&gt;基于嵌入相似度聚合主题相关的句子/段落，保持语义聚焦性。&lt;/p&gt; 
+&lt;p&gt;适用场景：&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt;当按段分块法或定长分块法失效时&lt;/li&gt; 
+ &lt;li&gt;处理含混杂主题的长文档。&lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;p&gt;&lt;strong&gt;17）递归分块法 Recursive chunking&lt;/strong&gt;&lt;/p&gt; 
+&lt;p&gt;首先使用大粒度的分隔符（如段落）分割文本。&lt;/p&gt; 
+&lt;p&gt;如果任何生成的分块超过预设的分块大小限制，对这些区块递归使用小粒度分隔符（如句子或单词）进行分割，直至所有分块都符合所需大小。&lt;/p&gt; 
+&lt;p&gt;适用场景：&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt;处理句子长度不规则或不可预测的文本，如访谈记录、演讲内容、自由形式的写作内容。&lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;p&gt;&lt;strong&gt;18）嵌入优先分块法 Embedding chunking&lt;/strong&gt;&lt;/p&gt; 
+&lt;p&gt;常规流程是先分块后嵌入，但此方法先将所有句子全部嵌入，再按顺序逐一处理，若相邻句的相似度高于设定阈值则合并为一组，低于阈值则进行拆分。&lt;/p&gt; 
+&lt;p&gt;适用场景：&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt;无结构（无句子分隔/标题/章节符/标记等）的文档&lt;/li&gt; 
+ &lt;li&gt;当基础技术（如滑动窗口分块法）效果不佳时&lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;p&gt;&lt;strong&gt;19）基于大模型/智能体的分块法 Agentic / LLM-based chunking&lt;/strong&gt;&lt;/p&gt; 
+&lt;p&gt;将分块的决策权完全交由 LLM，由其自主决定文本的分割方式。&lt;/p&gt; 
+&lt;p&gt;适用场景：&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt;当内容复杂或结构不明确，需要类似人类的判断力来确定分块边界时&lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;p&gt;注意：该方法计算成本较高。&lt;/p&gt; 
+&lt;p&gt;&lt;strong&gt;20）分层分块法 Hierarchical chunking&lt;/strong&gt;&lt;/p&gt; 
+&lt;p&gt;将文本按照多个层次（如章节、子章节、段落）进行分块，以便用户能够以不同详细程度检索信息。&lt;/p&gt; 
+&lt;p&gt;&lt;img src="https://oscimg.oschina.net/oscnet/up-df9847bbe55d72931ed01a97cd9733e3296.png" alt="" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p&gt;适用场景：&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt;具备清晰层次结构的文档，如技术文章、手册、教材、研究论文等&lt;/li&gt; 
+ &lt;li&gt;希望用户在不丢失上下文的情况下，同时探索整体概述和详细信息。&lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;p&gt;&lt;strong&gt;21）多模态分块法 Modality-Aware Chunking&lt;/strong&gt;&lt;/p&gt; 
+&lt;p&gt;针对不同内容类型（文本、图像、表格）实施差异化的分块策略。&lt;/p&gt; 
+&lt;p&gt;&lt;img src="https://oscimg.oschina.net/oscnet/up-5307d62e093d2da55f11a7312ab574d1830.png" alt="" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p&gt;多模态分块法示例 | 此图片由原文作者制作&lt;/p&gt; 
+&lt;p&gt;&lt;strong&gt;BONUS：混合分块法 Hybrid chunking&lt;/strong&gt;&lt;/p&gt; 
+&lt;p&gt;融合多种分块技术、启发式规则、嵌入模型以及 LLM 来提升分块过程的可靠性。&lt;/p&gt; 
+&lt;p&gt;适用场景：&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt;单一分块方法效果不足时，需组合方案应对复杂的数据结构。&lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;p&gt;&lt;strong&gt;END&lt;/strong&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;strong&gt;本期互动内容 🍻&lt;/strong&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;strong&gt;❓在处理特定类型文档（如法律合同或学术论文）时，您有哪些独特的分块技巧可以分享？&lt;/strong&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;strong&gt;原文链接：&lt;/strong&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fai.gopubby.com%2F21-chunking-strategies-for-rag-f28e4382d399" target="_blank"&gt;https://ai.gopubby.com/21-chunking-strategies-for-rag-f28e4382d399&lt;/a&gt;&lt;/p&gt;
+                                                                                    &lt;/div&gt;
+                                                                            </description>
+      <link>https://my.oschina.net/IDP/blog/18690430</link>
+      <guid isPermaLink="false">https://my.oschina.net/IDP/blog/18690430</guid>
+      <pubDate>Wed, 03 Sep 2025 02:33:03 GMT</pubDate>
+      <author>原创</author>
+    </item>
+    <item>
+      <title>苹果 AI 团队持续「失血」：首席机器人研究员被 Meta 挖走</title>
+      <description>&lt;div class="content"&gt;
+                                                                    
+                                                        &lt;p&gt;苹果的首席 AI 机器人研究员 Jian Zhang 已跳槽至 Meta 的机器人工作室 Meta Robotics Studio。Meta 周二已确认 Zhang 加入。这是近期苹果 AI 团队又一重要人员流失的消息。&lt;/p&gt; 
+&lt;p&gt;同时媒体获悉，苹果还有三名大语言模型（LLM）的研究员——John Peebles、Nan Du 和 Zhao Meng 离职。&lt;/p&gt; 
+&lt;p&gt;媒体指出，最新一轮离职潮发生在过去一周内，上述三人均来自苹果基础模型团队，该团队是 Apple Intelligence 平台的核心开发团队，但近几周已流失约 10 名成员，包括团队负责人。将近两个月前传出过，Meta 以 2 亿美元高薪挖走苹果 AI 模型团队的负责人 Ruoming Pang。&lt;/p&gt; 
+&lt;p&gt;上述媒体还再次提到了此前的媒体消息，即苹果内部正在讨论是否更多依赖外部技术，而非仅使用自研模型。&lt;/p&gt; 
+&lt;p&gt;传出 AI 人员变动的消息后，苹果股价本周二盘中跌幅扩大，一度跌逾 2.2%，最终收跌约 1%。&lt;/p&gt; 
+&lt;p&gt;苹果在 AI 领域的追赶努力面临挫折，Apple Intelligence 产品反响不佳，加上公司可能转向第三方模型的策略调整，进一步影响了团队士气。知情人士透露，预计还会有更多员工离职，多名员工正在其他公司面试。&lt;/p&gt; 
+&lt;h2&gt;核心人才接连出走&lt;/h2&gt; 
+&lt;p&gt;Jian Zhang 离职是苹果机器人研发的重大损失。他此前领导一个专注于自动化技术和 AI 应用的小规模学术团队，该团队隶属于苹果人工智能和机器学习部门。Meta 周二确认，Zhang 已加入 Meta 的机器人工作室，隶属于 Reality Labs 部门。&lt;/p&gt; 
+&lt;p&gt;这并非苹果机器人团队的首次人员流失。Zhang 的下属 Mario Srouji 今年 4 月已离职，前往 Archer Aviation 担任 AI 产品负责人。苹果的机器人研究团队与产品开发团队相互独立，后者今年早些时候已转入硬件工程部门。&lt;/p&gt; 
+&lt;p&gt;在与 Zhang 同一批离职的三名基础模型团队研究员中，Peebles 和 Du 将前往 OpenAI，Zhao Meng 则加入 OpenAI 的劲敌 Anthropic。这些离职进一步削弱了苹果自研 AI 能力的核心团队。苹果和 OpenAI 的发言人拒绝就人事变动置评，Anthropic 暂未回应置评请求。&lt;/p&gt; 
+&lt;h2&gt;Meta 高薪挖角策略奏效&lt;/h2&gt; 
+&lt;p&gt;Meta 通过提供巨额薪酬成功吸引苹果 AI 人才。此前离职的苹果模型团队负责人 Ruoming Pang 获得了一份价值 2 亿美元的多年期薪酬方案。Meta 的这一策略已吸引多名苹果员工跳槽，许多基础模型团队成员此前已投靠 Meta。&lt;/p&gt; 
+&lt;p&gt;华尔街见闻曾提到，8 月 22 日的媒体报道称，Meta 挖走了负责苹果 AI 团队云基础设施、训练和搜索业务的 Frank Chu，他是至少第六位跳槽 Meta 的苹果 AI 员工，也是自大模型团队负责人 Ruoming Pang 离职后，苹果最重要的一次人才流失。&lt;/p&gt; 
+&lt;p&gt;不过上月一些的报道披露，Meta 的招聘策略并非一帆风顺，一些新近聘用的 AI 研究员已经离职。尽管如此，Meta 仍在大力投资机器人技术，除了智能眼镜和 AI 功能外，据此前报道，Meta 正大力投资人形机器人的操作系统和硬件组件。&lt;/p&gt; 
+&lt;p&gt;苹果在机器人领域的布局同样雄心勃勃。将近三周前媒体称，苹果计划推出一系列机器人设备，包括配备移动屏幕的桌面设备，以及用于零售店和制造业的机械臂。机器人技术已成为苹果未来产品线的关键组成部分。&lt;/p&gt; 
+&lt;h2&gt;AI 策略调整掀起的离职潮将持续&lt;/h2&gt; 
+&lt;p&gt;苹果 AI 团队的人才流失与公司战略调整密切相关。面对在生成式 AI 领域的落后局面，苹果正考虑是否更多依赖外部技术供应商，而非完全依靠自研能力。这一潜在转向引发了内部团队的不安。&lt;/p&gt; 
+&lt;p&gt;上月媒体称，苹果近期已与谷歌接洽，探讨为预计明年上线的新版 Siri 打造一款定制 AI 模型的可能性。谷歌已开始训练一款可在苹果服务器上运行的模型。这标志着苹果在外包 AI 技术方面迈出关键一步。&lt;/p&gt; 
+&lt;p&gt;媒体本周二援引知情人士预计，苹果 AI 领域员工的离职潮预计将持续，还有多名员工在积极面试其他公司的工作。Apple Intelligence 产品的市场反响不佳，以及苹果可能采用第三方模型的策略转变，都对团队士气造成负面影响。&lt;/p&gt; 
+&lt;p&gt;苹果在 AI 领域仍落后竞争对手数年，这迫使管理层考虑多种应对方案。公司必须在保持创新能力和快速追赶市场之间找到平衡，而核心人才的持续流失无疑增加了这一挑战的难度。&lt;/p&gt;
+                                                                                &lt;/div&gt;
+                                                                            </description>
+      <link>https://www.oschina.net/news/369983</link>
+      <guid isPermaLink="false">https://www.oschina.net/news/369983</guid>
+      <pubDate>Wed, 03 Sep 2025 02:21:03 GMT</pubDate>
+      <author>来源: OSCHINA</author>
+    </item>
+    <item>
+      <title>美国法院裁定谷歌无需出售 Chrome 浏览器</title>
+      <description/>
+      <link>https://www.oschina.net/news/369982</link>
+      <guid isPermaLink="false">https://www.oschina.net/news/369982</guid>
+      <pubDate>Wed, 03 Sep 2025 02:09:03 GMT</pubDate>
+    </item>
+    <item>
+      <title>AI 公司 Anthropic 完成 130 亿美元融资</title>
+      <description>&lt;div class="content"&gt;
+                                                                    
+                                                        &lt;p&gt;Anthropic&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fwww.anthropic.com%2Fnews%2Fanthropic-raises-series-f-at-usd183b-post-money-valuation"&gt;宣布&lt;/a&gt;完成 130 亿美元 F 轮融资，投后估值达 1830 亿美元，创下科技行业私募融资规模第二高纪录，仅次于 OpenAI 同年 3 月的 400 亿美元融资。&lt;/p&gt; 
+&lt;p&gt;本轮融资由 Iconiq Capital、富达管理研究公司和光速创投领投，贝莱德、黑石、高盛等数十家知名机构参与。&lt;/p&gt; 
+&lt;p&gt;&lt;img alt="" src="https://static.oschina.net/uploads/space/2025/0903/095936_gVgg_2720166.png" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p&gt;Anthropic 介绍称，其 2025 年初年化收入为 10 亿美元，8 个月后飙升至 50 亿美元，成为历史上增长最快的科技公司之一。&lt;/p&gt; 
+&lt;p&gt;此外，Anthropic 目前为超过 30 万家企业客户提供服务，对应营收超 10 万美元的大型客户数量在过去一年间增长了近 7 倍；Claude Code 编程助手在正式推出仅三个月后就创造了 5 亿美元收入，使用量增长了 10 倍以上。&lt;/p&gt; 
+&lt;p&gt;Anthropic 表示该公司的此轮融资将扩大其满足日益增长的企业需求的能力，深化安全研究，并在继续构建可靠、可解释、可控的 AI 系统的同时支持国际扩张。&lt;/p&gt;
+                                                                                &lt;/div&gt;
+                                                                            </description>
+      <link>https://www.oschina.net/news/369981/anthropic-raises-series-f-at-usd183b-post-money-valuation</link>
+      <guid isPermaLink="false">https://www.oschina.net/news/369981/anthropic-raises-series-f-at-usd183b-post-money-valuation</guid>
+      <pubDate>Wed, 03 Sep 2025 02:02:03 GMT</pubDate>
+      <author>来源: OSCHINA</author>
+    </item>
     <item>
       <title>AI 提升的是下限，而非上限</title>
       <description>&lt;div class="content"&gt;
@@ -1082,142 +1356,6 @@ externalZookeeper:
       <link>https://www.oschina.net/news/369866/mozilla-firefox-is-officially-getting-mkv-video-support</link>
       <guid isPermaLink="false">https://www.oschina.net/news/369866/mozilla-firefox-is-officially-getting-mkv-video-support</guid>
       <pubDate>Mon, 01 Sep 2025 07:23:00 GMT</pubDate>
-      <author>来源: OSCHINA</author>
-    </item>
-    <item>
-      <title>腾讯开源具备原生 3D 重建能力的超长程世界模型：HunyuanWorld-Voyager</title>
-      <description>&lt;div class="content"&gt;
-                                                                    
-                                                        &lt;p&gt;&lt;span style="color:#000000"&gt;腾讯近日正式发布了 HunyuanWorld-Voyager，这是一种创新的视频扩散框架，旨在通过单张输入图像生成具备世界一致性的 3D 点云，支持用户按自定义的相机路径进行沉浸式探索。&lt;/span&gt;&lt;/p&gt; 
-&lt;p&gt;&lt;img height="327" src="https://oscimg.oschina.net/oscnet/up-56c2135778b8058ed623697954e8a4f3027.png" width="500" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;p&gt;&lt;span style="color:#000000"&gt;官方表示，这全球首个具备原生 3D 重建功能的超远距离世界模型，重新定义 AI 驱动的 VR、游戏和仿真空间智能。此模型不仅能够生成精确对齐的深度信息和 RGB 视频，还能够在不进行后处理的情况下，直接用于高质量的三维重建。&lt;/span&gt;&lt;/p&gt; 
-&lt;ul&gt; 
- &lt;li&gt;&lt;span style="color:#000000"&gt;直接 3D 输出：无需 COLMAP 等工具即可将点云视频导出为 3D 格式，实现即时 3D 应用。&lt;/span&gt;&lt;/li&gt; 
- &lt;li&gt;&lt;span style="color:#000000"&gt;创新的 3D 内存：引入可扩展的世界缓存机制，确保任何摄像机轨迹的几何一致性。&lt;/span&gt;&lt;/li&gt; 
- &lt;li&gt;&lt;span style="color:#000000"&gt;顶级性能：在斯坦福 WorldScore 测试中排名第一，在视频生成和 3D 重建基准测试中表现出色&lt;/span&gt;&lt;/li&gt; 
-&lt;/ul&gt; 
-&lt;p&gt;&lt;span style="color:#000000"&gt;HunyuanWorld-Voyager 的架构包含两个关键组件。首先是 「世界一致的视频扩散」，该组件提出了一种统一的架构，可以基于已有的世界观测，同时生成准确对齐的 RGB 视频和深度视频序列，从而确保全局场景的一致性。其次是 「长距离世界探索」，它采用了一种高效的世界缓存机制，结合点云剔除和自回归推理能力，支持迭代场景扩展，并通过上下文感知的一致性技术实现平滑的视频采样。&lt;/span&gt;&lt;/p&gt; 
-&lt;p&gt;&lt;span style="color:#000000"&gt;为了训练 HunyuanWorld-Voyager 模型，研究团队构建了一套可扩展的数据构建引擎。这一自动化视频重建流水线能够对任意输入视频自动估计相机位姿和度量深度，因此无需依赖人工标注，从而实现大规模、多样化训练数据的构建。基于此流水线，HunyuanWorld-Voyager 整合了真实世界采集和虚幻引擎渲染的视频资源，构建了一个包含超过 10 万个视频片段的大规模数据集。&lt;/span&gt;&lt;/p&gt; 
-&lt;p&gt;&lt;span style="color:#000000"&gt;在实验评估中，HunyuanWorld-Voyager 在视频生成质量方面表现出色。与四种开源的相机可控视频生成方法进行了对比，结果显示该模型在 PSNR、SSIM 和 LPIPS 等指标上均优于其他模型，证明了其卓越的视频生成质量。同时，在场景重建方面，HunyuanWorld-Voyager 的生成视频在几何一致性上也显现出更好的效果。&lt;/span&gt;&lt;/p&gt; 
-&lt;p&gt;&lt;span style="color:#000000"&gt;此外，HunyuanWorld-Voyager 在 WorldScore 静态基准测试中获得了最高分，证明了其在相机运动控制和空间一致性方面的优越性。这一成果不仅展示了混元世界模型的潜力，还为未来的 3D 场景生成技术开辟了新路径。&lt;/span&gt;&lt;/p&gt;
-                                                                                &lt;/div&gt;
-                                                                            </description>
-      <link>https://www.oschina.net/news/369863</link>
-      <guid isPermaLink="false">https://www.oschina.net/news/369863</guid>
-      <pubDate>Mon, 01 Sep 2025 07:14:00 GMT</pubDate>
-      <author>来源: OSCHINA</author>
-    </item>
-    <item>
-      <title>腾讯优图实验室正式开源智能体框架 Youtu-Agent</title>
-      <description>&lt;div class="content"&gt;
-                                                                    
-                                                        &lt;p&gt;9 月 2 日，腾讯优图实验室&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fmp.weixin.qq.com%2Fs%2FW5LFBLCV3qZG0wxTA9Ob-w" target="_blank"&gt;宣布&lt;/a&gt;正式开源智能体框架 Youtu-Agent。该框架以极简设计和高性能表现为核心，旨在为研究人员和开发者提供高效、易用、可复现的智能体开发工具。&lt;/p&gt; 
-&lt;p&gt;据介绍，Youtu-Agent 面向实际场景的开源应用框架，能够覆盖文件管理、数据分析、学术研究与广域信息综述等多个方向应用。目前，Youtu-Agent 开源框架已为腾讯云多个产品业务提供支持。&lt;/p&gt; 
-&lt;p&gt;&lt;span&gt;Youtu-Agent 的核心亮点在于，它不需要额外训练模型，也不依赖海外闭源大模型 API，就能在真实场景中展现出优异的效果，比较好地兼顾了科研和应用双重需求。&lt;/span&gt;&lt;/p&gt; 
-&lt;ul&gt; 
- &lt;li&gt;&lt;strong&gt;验证性能&lt;/strong&gt;：在 WebWalkerQA 上达到 71.47% 的 pass@1，在 GAIA（纯文本子集）上达到 72.8% 的 pass@1，纯粹使用&lt;code&gt;DeepSeek-V3&lt;/code&gt;系列模型（不使用 Claude 或 GPT），建立了强大的开源起点。&lt;/li&gt; 
- &lt;li&gt;&lt;strong&gt;开源友好且成本敏感&lt;/strong&gt;：针对可访问、低成本部署进行了优化，不依赖封闭模型。&lt;/li&gt; 
- &lt;li&gt;&lt;strong&gt;实际用例&lt;/strong&gt;：开箱即用地支持 CSV 分析、文献综述、个人文件整理以及播客和视频生成等任务。（即将推出）&lt;/li&gt; 
- &lt;li&gt;&lt;strong&gt;灵活的架构&lt;/strong&gt;：基于 openai-agents 构建，可兼容各种模型 API（从&lt;code&gt;DeepSeek&lt;/code&gt;到&lt;code&gt;gpt-oss&lt;/code&gt;）、工具集成和框架实现。&lt;/li&gt; 
- &lt;li&gt;&lt;strong&gt;自动化与简洁性&lt;/strong&gt;：基于 YAML 的配置、自动智能体生成和简化的设置减少了手动开销。&lt;/li&gt; 
-&lt;/ul&gt; 
-&lt;p&gt;在性能表现上，Youtu-Agent 已在多个智能体挑战性基准测试中取得领先成绩。例如，&lt;strong&gt;在 WebWalkerQA 基准中，基于 DeepSeek-V3.1 的运行结果达到了 71.47% 的准确率，刷新了开源模型的最新纪录&lt;/strong&gt;；&lt;/p&gt; 
-&lt;p&gt;&lt;img height="603" src="https://static.oschina.net/uploads/space/2025/0902/151154_CKYV_2720166.png" width="1080" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;p&gt;框架设计方面，Youtu-Agent 完全拥抱开源生态，适配多种可访问的部署环境；其架构灵活，兼容包括 DeepSeek、gpt-oss 在内的多类模型 API 与工具。&lt;/p&gt; 
-&lt;p&gt;&lt;img height="738" src="https://static.oschina.net/uploads/space/2025/0902/151229_GBNE_2720166.png" width="1080" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;p&gt;开源地址：&lt;em&gt;https://github.com/TencentCloudADP/Youtu-agent&lt;/em&gt;&lt;/p&gt;
-                                                                                &lt;/div&gt;
-                                                                            </description>
-      <link>https://www.oschina.net/news/369860</link>
-      <guid isPermaLink="false">https://www.oschina.net/news/369860</guid>
-      <pubDate>Mon, 01 Sep 2025 07:13:00 GMT</pubDate>
-      <author>来源: OSCHINA</author>
-    </item>
-    <item>
-      <title>Cloudflare 推出实时语音 AI 平台：Realtime Agents</title>
-      <description>&lt;div class="content"&gt;
-                                                                    
-                                                        &lt;p&gt;Cloudflare 宣布推出&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fblog.cloudflare.com%2Fcloudflare-realtime-voice-ai%2F" target="_blank"&gt;实时语音 AI 平台&lt;/a&gt;（Cloudflare Realtime Agents），正式进军低延迟对话式 AI 领域。该平台依托 Cloudflare 全球 330 多个节点的边缘网络，为开发者提供构建语音交互应用的完整解决方案。&lt;/p&gt; 
-&lt;p&gt;&lt;img alt="" src="https://oscimg.oschina.net/oscnet/up-ae6ab80f3dac0b047d5a26124ce0a669d2d.png" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;p&gt;新平台的核心组件包括 Realtime Agents（语音 AI 管道编排运行时）、WebRTC 音频传输支持、Workers AI 的 WebSocket 实时推理，以及 Deepgram 的语音识别/合成模型。通过这些功能，开发者可快速搭建自然流畅的语音代理应用。&lt;/p&gt; 
-&lt;p&gt;下面的示例代码展示了如何创建一个继承自 &lt;code&gt;RealtimeAgent&lt;/code&gt; 的 JavaScript 类，以进行以下操作：&lt;/p&gt; 
-&lt;ul&gt; 
- &lt;li&gt; &lt;p&gt;创建 WebRTC 会话&lt;/p&gt; &lt;/li&gt; 
- &lt;li&gt; &lt;p&gt;管道编排（如：Deepgram STT → 自定义文本处理 Handler → ElevenLabs TTS）&lt;/p&gt; &lt;/li&gt; 
- &lt;li&gt; &lt;p&gt;支持会议参与者加入/离开的事件处理&lt;br&gt; 这让开发者几乎不需管理底层基础设施，就可快速构建个性化语音代理应用。&lt;/p&gt; &lt;/li&gt; 
-&lt;/ul&gt; 
-&lt;pre&gt;&lt;code class="language-javascript"&gt;export class MyAgent extends RealtimeAgent&amp;lt;Env&amp;gt; {
-constructor(ctx: DurableObjectState, env: Env) {
-super(ctx, env);
-}
-
-async init(agentId: string ,meetingId: string, authToken: string, workerUrl: string, accountId: string, apiToken: string) {
-// Construct your text processor for generating responses to text
-const textHandler = new MyTextHandler(this.env);
-// Construct a Meeting object to join the RTK meeting
-const transport = new RealtimeKitTransport(meetingId, authToken, [
-{
-media_kind: 'audio',
-stream_kind: 'microphone',
-},
-]);
-const { meeting } = transport;
-
-// Construct a pipeline to take in meeting audio, transcribe it using
-// Deepgram, and pass our generated responses through ElevenLabs to
-// be spoken in the meeting
-await this.initPipeline(
-[transport, new DeepgramSTT(this.env.DEEPGRAM_API_KEY), textHandler, new ElevenLabsTTS(this.env.ELEVENLABS_API_KEY), transport],
-agentId,
-workerUrl,
-accountId,
-apiToken,
-);
-
-// The RTK meeting object is accessible to us, so we can register handlers
-// on various events like participant joins/leaves, chat, etc.
-// This is optional
-meeting.participants.joined.on('participantJoined', (participant) =&amp;gt; {
-textHandler.speak(`Participant Joined ${participant.name}`);
-});
-meeting.participants.joined.on('participantLeft', (participant) =&amp;gt; {
-textHandler.speak(`Participant Left ${participant.name}`);
-});
-
-// Make sure to actually join the meeting after registering all handlers
-await meeting.rtkMeeting.join();
-}
-
-async deinit() {
-// Add any other cleanup logic required
-await this.deinitPipeline();
-}
-}&lt;/code&gt;&lt;/pre&gt; 
-&lt;p&gt;Cloudflare 指出，要让语音交互达到「自然对话」的体验，总延迟需低于 800 毫秒，而其分布式边缘架构正好能满足这一苛刻要求。平台同时兼容多种 AI 模型和第三方服务，支持高度可组合的语音处理管道。&lt;/p&gt; 
-&lt;p&gt;目前，Cloudflare Realtime Agents 已开放 Beta 公测，开发者可免费试用并基于该平台开发新一代实时语音 AI 应用。&lt;/p&gt;
-                                                                                &lt;/div&gt;
-                                                                            </description>
-      <link>https://www.oschina.net/news/369855/cloudflare-realtime-voice-ai</link>
-      <guid isPermaLink="false">https://www.oschina.net/news/369855/cloudflare-realtime-voice-ai</guid>
-      <pubDate>Mon, 01 Sep 2025 06:49:00 GMT</pubDate>
-      <author>来源: OSCHINA</author>
-    </item>
-    <item>
-      <title>Cloudflare 扛下了峰值达 11.5 Tbps 的超大流量 DDoS 攻击</title>
-      <description>&lt;div class="content"&gt;
-                                                                    
-                                                        &lt;p&gt;Cloudflare &lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fx.com%2FCloudflare%2Fstatus%2F1962559687368593552" target="_blank"&gt;宣布&lt;/a&gt;其自动化防御系统在过去几周里成功拦截了数百次超大规模 DDoS 攻击，其中最大一次攻击的峰值达到 11.5 Tbps（51 亿数据包/秒）。&lt;/p&gt; 
-&lt;p&gt;&lt;img height="1448" src="https://static.oschina.net/uploads/space/2025/0902/142809_8xYe_2720166.png" width="1280" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;p&gt;据介绍，此次攻击类型为 UDP Flood（UDP 泛洪）攻击，这一峰值刷新了 Cloudflare 自己在 2025 年 5 月创下的 7.3 Tbps 纪录。&lt;/p&gt; 
-&lt;blockquote&gt; 
- &lt;p&gt;&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fwww.cloudflare.com%2Fzh-cn%2Flearning%2Fddos%2Fudp-flood-ddos-attack%2F" target="_blank"&gt;UDP 洪水&lt;/a&gt;是一种拒绝服务攻击，攻击者将大量用户数据报协议 (UDP) 数据包发送到目标服务器，旨在让该设备的处理和响应能力无力承担。由于 UDP 洪水攻击，保护目标服务器的防火墙也可能不堪重负，导致对正常流量拒绝服务。&lt;/p&gt; 
-&lt;/blockquote&gt; 
-&lt;p&gt;Cloudflare 表示将在即将发布的技术报告中提供更详细的攻击与防御分析。&lt;/p&gt;
-                                                                                &lt;/div&gt;
-                                                                            </description>
-      <link>https://www.oschina.net/news/369850</link>
-      <guid isPermaLink="false">https://www.oschina.net/news/369850</guid>
-      <pubDate>Mon, 01 Sep 2025 06:30:00 GMT</pubDate>
       <author>来源: OSCHINA</author>
     </item>
   </channel>
