@@ -7,8 +7,1004 @@
     <generator>RSSHub</generator>
     <webMaster>contact@rsshub.app (RSSHub)</webMaster>
     <language>zh-tw</language>
-    <lastBuildDate>Wed, 10 Sep 2025 02:40:37 GMT</lastBuildDate>
+    <lastBuildDate>Wed, 10 Sep 2025 07:40:13 GMT</lastBuildDate>
     <ttl>5</ttl>
+    <item>
+      <title>Redis 雙向同步如何避免循環？</title>
+      <description>&lt;div class="content"&gt;
+                                                                                                                                                                                                                                        &lt;p&gt;在跨機房高可用、主備切換、混合雲架構中，Redis 雙向同步是一個常見需求。要實現數據庫的雙向同步，最大的挑戰就是&lt;strong&gt;如何避免數據在兩個實例之間無限循環&lt;/strong&gt;。&lt;/p&gt; 
+&lt;p&gt;本文將從問題入手，帶你瞭解雙向同步防循環方案，並介紹一種更加高效、輕量的解決方式：基於事務標記的防循環模式，最後通過一個簡單的實操演示，幫你快速上手。&lt;/p&gt; 
+&lt;h2&gt;為什麼雙向同步會陷入循環&lt;/h2&gt; 
+&lt;p&gt;我們以兩個 Redis 實例 A 和 B 為例，同時配置了 A→B 和 B→A 的同步任務：&lt;/p&gt; 
+&lt;p&gt;A 上的數據寫入，會同步到 B。B 收到後，又會被同步回 A。如果沒有循環檢測機制，事件就會在 A、B 之間"打乒乓球"，循環往復。&lt;/p&gt; 
+&lt;p&gt;在實現 MySQL、PostgreSQL 的雙向同步功能中，CloudCanal 分別採用增量事件標記和事務記錄實現循環事件過濾。任一方向的同步鏈路在收到新事件時都會判斷事務中是否存在相應的標記，以此來選擇是否&lt;strong&gt;過濾&lt;/strong&gt;這一事件，從而打破數據循環。&lt;/p&gt; 
+&lt;p&gt;&lt;img src="https://oscimg.oschina.net/oscnet/up-eea1ad7acd5b9e77a7084fb451f515b94af.png" alt="" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p&gt;相較於 PostgreSQL 等傳統數據庫，Redis 本身的特點讓其雙向同步的實現變得複雜：&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt;Redis 命令粒度小（如 &lt;code&gt;INCR key&lt;/code&gt;），並不總是事務&lt;/li&gt; 
+ &lt;li&gt;Redis 的事務（&lt;code&gt;MULTI/EXEC&lt;/code&gt;）和傳統關係型數據庫事務不同，不具備完整的原子性&lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;p&gt;那麼，該如何實現 Redis 的雙向同步呢？&lt;/p&gt; 
+&lt;h2&gt;方案一：輔助標記&lt;/h2&gt; 
+&lt;p&gt;基於傳統數據庫雙向同步的實現思路，在 Redis 雙向同步的實踐中，一種直觀的防循環方案是&lt;strong&gt;通過輔助指令來進行循環判定&lt;/strong&gt;。當收到正常指令，計算其 hash 值，構建輔助指令 key，反向查詢輔助指令是否存在，如果存在則為循環，過濾即可。&lt;/p&gt; 
+&lt;p&gt;&lt;img src="https://oscimg.oschina.net/oscnet/up-870837336549833abec1778e8070d9ad6ce.png" alt="" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p&gt;這種方式的優勢是：&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt;&lt;strong&gt;實現簡潔&lt;/strong&gt;：邏輯清楚，能快速落地&lt;/li&gt; 
+ &lt;li&gt;&lt;strong&gt;適應性強&lt;/strong&gt;：無論 Redis 是單點部署還是集羣部署，都能完成雙向同步&lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;p&gt;但也存在不足：&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt;&lt;strong&gt;性能開銷大&lt;/strong&gt;：對任意事件，理論上會將操作的命令數量放大為原來的 3 至 4 倍，增加了 Redis 的寫壓力&lt;/li&gt; 
+ &lt;li&gt;&lt;strong&gt;區分度有限&lt;/strong&gt;：在某些極端場景下，比如同時有應用在目標端執行了類似的寫操作，反向任務很難區分這兩條命令的來源，有可能導致誤判，甚至丟失一次更新。&lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;p&gt;&lt;img src="https://oscimg.oschina.net/oscnet/up-87f7f998c24429071b3de02706397529e05.png" alt="" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;h2&gt;方案二：事務標記&lt;/h2&gt; 
+&lt;p&gt;除了使用額外標記，另一種做法是&lt;strong&gt;藉助 Redis 的事務機制&lt;/strong&gt;。&lt;/p&gt; 
+&lt;p&gt;Redis 的事務（&lt;code&gt;MULTI ... EXEC&lt;/code&gt;）和關係型數據庫的事務不同，它沒有實現事務原子性中的回滾，但有一個關鍵特性：&lt;strong&gt;事務中的所有命令會按順序執行，並且在執行期間不會插入執行來自其他客戶端的命令&lt;/strong&gt;。&lt;/p&gt; 
+&lt;p&gt;基於這個特性，對於正向任務，在接收到源端命令時，可將其包裹為事務，並在事務內第一條插入一條標記操作。反向任務發現這是一個事務，説明&lt;strong&gt;可能&lt;/strong&gt; 是來自正向任務的循環事件，通過判斷事務內&lt;strong&gt;第一條事件&lt;/strong&gt;是否為標記即可。如果是，説明整個事務都是循環，直接過濾。&lt;/p&gt; 
+&lt;p&gt;&lt;img src="https://oscimg.oschina.net/oscnet/up-21df555eab161f8fc23b73ae314b5ed99cb.png" alt="" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p&gt;這種方式的優勢是：&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt;&lt;strong&gt;性能更優&lt;/strong&gt;：不需要為每條命令額外維護標記，系統開銷小&lt;/li&gt; 
+ &lt;li&gt;&lt;strong&gt;邏輯簡明&lt;/strong&gt;：通過檢查事務開頭即可快速判斷，不必逐條比對&lt;/li&gt; 
+ &lt;li&gt;&lt;strong&gt;Redis 壓力小&lt;/strong&gt;:大多數過濾動作都在程序內執行，減少對數據庫的壓力&lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;p&gt;&lt;img src="https://oscimg.oschina.net/oscnet/up-b72918a9658e03d1e6f1de4ccd5b44a23cc.png" alt="" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p&gt;不過，需要注意的一點是：Redis 的事務在分片集羣模式下有侷限，不能跨分片執行，因此目前事務標記模式&lt;strong&gt;主要適用於單點或主從場景&lt;/strong&gt;。&lt;/p&gt; 
+&lt;h2&gt;操作演示&lt;/h2&gt; 
+&lt;p&gt;目前，CloudCanal 支持上述兩種雙向同步方案，可在控制枱通過設置參數&lt;code&gt;deCycleMode&lt;/code&gt;調整雙向同步過濾事件模式。&lt;/p&gt; 
+&lt;p&gt;感興趣的話下面這個視頻展示了使用 CloudCanal SaaS 版實操演示如何基於事務標記模式快速實現 Redis 的雙向同步。&lt;/p&gt; 
+&lt;p&gt;&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fwww.bilibili.com%2Fvideo%2FBV1VRYwzFEuw%2F%3Fvd_source%3D6c75624006c6c17e56e54da8ddbf6beb" title="Redis 雙向同步實操：教你徹底解決數據循環問題" target="_blank"&gt;Redis 雙向同步實操：教你徹底解決數據循環問題&lt;/a&gt;&lt;/p&gt; 
+&lt;h2&gt;效果驗證&lt;/h2&gt; 
+&lt;p&gt;成功進行雙向同步後，可以進行防循環效果驗證。&lt;/p&gt; 
+&lt;p&gt;在源端數據庫做數據變更，查看監控圖表，可以看到，正向任務顯示有變更，反向任務沒有，即代表無數據循環。&lt;/p&gt; 
+&lt;p&gt;&lt;img src="https://oscimg.oschina.net/oscnet/up-0469326d32be6974251c96e4ee808952fa3.png" alt="" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;img src="https://oscimg.oschina.net/oscnet/up-e9db4e8e9db5c351957deaea62681b6a1ce.png" alt="" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p&gt;在目標端數據庫做數據變更，查看監控圖表，可以看到，反向任務顯示有變更，正向任務沒有，即代表無數據循環。&lt;/p&gt; 
+&lt;p&gt;&lt;img src="https://oscimg.oschina.net/oscnet/up-817333477dd07fa886d1c58939e162d4e57.png" alt="" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;img src="https://oscimg.oschina.net/oscnet/up-afdf83424d362a128beaad46a8e04c0376d.png" alt="" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p&gt;創建數據校驗任務，可以看到，兩端數據庫的數據保持一致。&lt;/p&gt; 
+&lt;p&gt;&lt;img src="https://oscimg.oschina.net/oscnet/up-66f2a6a4861d66c033616f559b2e8fa06fe.png" alt="" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;h2&gt;總結&lt;/h2&gt; 
+&lt;p&gt;Redis 雙向同步的最大難題，不在於能不能同步，而在於&lt;strong&gt;如何避免數據在兩個實例之間無限循環&lt;/strong&gt; 。本文分析了輔助標記方案與事務標記方案，兩種方案各有優劣勢。對於大多數 &lt;strong&gt;單點或主從場景&lt;/strong&gt;，事務標記模式是更值得推薦的選擇，既能保證正確性，也能兼顧系統開銷。而對於分片集羣場景，則可嘗試輔助標記方案。&lt;/p&gt; 
+&lt;p&gt;如果你正在規劃設計 Redis 雙向同步，歡迎使用 &lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fwww.clougence.com%2F%3Fsrc%3Dcc-doc" target="_blank"&gt;CloudCanal SaaS 版&lt;/a&gt;快速上手體驗。如果你對於數據雙向同步有更多疑問，也歡迎留言討論。&lt;/p&gt; 
+&lt;p&gt;更多內容，歡迎關注公號：ClouGence&lt;/p&gt;
+                                                                                    &lt;/div&gt;
+                                                                            </description>
+      <link>https://my.oschina.net/u/5170379/blog/18691175</link>
+      <guid isPermaLink="false">https://my.oschina.net/u/5170379/blog/18691175</guid>
+      <pubDate>Wed, 10 Sep 2025 07:35:11 GMT</pubDate>
+      <author>原創</author>
+    </item>
+    <item>
+      <title>微軟 Office 365 計劃採用 Anthropic AI 服務</title>
+      <description>&lt;div class="content"&gt;
+                                                                    
+                                                        &lt;p&gt;&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fwww.theinformation.com%2Farticles%2Fmicrosoft-buy-ai-anthropic-shift-openai" target="_blank"&gt;根據 The Information 的獨家報道&lt;/a&gt;，微軟將向 AI 初創 Anthropic 購買技術。&lt;/p&gt; 
+&lt;p&gt;&lt;img alt="" src="https://oscimg.oschina.net/oscnet/up-c44c4d3ec98f4093da7d304de222101ad4d.png" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p&gt;報道稱，微軟旗下 Office 365 Copilot 軟件將部分運行在 Anthropic 模型上，因為微軟發現電子表格任務和 PowerPoint 簡報在 Anthropic 模型上運行得比 OpenAI 模型更好。&lt;/p&gt; 
+&lt;p&gt;這將打破 OpenAI 自 2023 年 1 月微軟對其投資數十億美元以來在微軟內部的壟斷地位。此前，OpenAI 的技術一直被用於微軟生產力軟件套件 (包括 Word、Excel、Outlook 和 PowerPoint) 的新功能開發。&lt;/p&gt; 
+&lt;p&gt;AWS 是 Anthropic 模型的唯一提供商。報道稱，作為協議的一部分，微軟將向亞馬遜 AWS 支付費用，以使用 Anthropic 的模型。&lt;/p&gt; 
+&lt;p&gt;目前，微軟 Azure 和 AWS 是全球最大的兩家雲計算服務提供商，其次是谷歌的 Cloud Platform。在生成式 AI 聊天機器人領域，OpenAI 的 ChatGPT 與 Anthropic 的 Claude 形成競爭。&lt;/p&gt; 
+&lt;p&gt;微軟與 OpenAI 在 OpenAI 擬重組其盈利部門的計劃上，已經談判數月。目前尚不清楚微軟此次轉向是否是一種談判策略。&lt;/p&gt;
+                                                                                &lt;/div&gt;
+                                                                            </description>
+      <link>https://www.oschina.net/news/371330</link>
+      <guid isPermaLink="false">https://www.oschina.net/news/371330</guid>
+      <pubDate>Wed, 10 Sep 2025 07:34:11 GMT</pubDate>
+      <author>來源: OSCHINA</author>
+    </item>
+    <item>
+      <title>Anthropic 官方確認 Claude 模型回覆質量下降，現已修復</title>
+      <description>&lt;div class="content"&gt;
+                                                                    
+                                                        &lt;p&gt;Anthropic 官方&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fx.com%2Fclaudeai%2Fstatus%2F1965208249399177655" target="_blank"&gt;宣佈&lt;/a&gt;，已發現併成功解決了兩個導致 Claude 系列模型回覆質量下降的問題，並強調公司從未因需求或成本因素故意降低模型質量。&lt;/p&gt; 
+&lt;p&gt;&lt;img src="https://static.oschina.net/uploads/space/2025/0910/151146_CDWO_2720166.png" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p&gt;據介紹，第一個問題在 8 月 5 日至 9 月 4 日期間影響了少量 Claude Sonnet 4 的請求，並在 8 月 29 日後影響範圍有所擴大。第二個問題則從 8 月 26 日至 9 月 5 日波及了部分 Claude Haiku 3.5 與 Claude Sonnet 4 的請求。&lt;/p&gt; 
+&lt;p&gt;目前，針對這些問題的修復版本已全面部署。公司表示正持續監控包括 Claude Opus 4.1 在內的所有模型質量。&lt;/p&gt; 
+&lt;p&gt;官方公告中提到，社區用戶的詳細反饋幫助團隊迅速定位並隔離了缺陷。公告還直接回應了「降智省成本」的質疑，表示質量問題絕非有意為之。此次事件影響範圍包括 claude.ai、console.anthropic.com、api.anthropic.com 以及 Claude Code 服務。&lt;/p&gt;
+                                                                                &lt;/div&gt;
+                                                                            </description>
+      <link>https://www.oschina.net/news/371326</link>
+      <guid isPermaLink="false">https://www.oschina.net/news/371326</guid>
+      <pubDate>Wed, 10 Sep 2025 07:17:11 GMT</pubDate>
+      <author>來源: OSCHINA</author>
+    </item>
+    <item>
+      <title>上海交大發布 MobiAgent：人人都能擁有自己的 AI 助手</title>
+      <description>&lt;div class="content"&gt;
+                                                                    
+                                                        &lt;p style="color:#242424; margin-left:0; margin-right:0; text-align:left"&gt;&lt;span style="color:#000000"&gt;上海交通大學的 IPADS 實驗室團隊推出了一款名為 MobiAgent 的全新移動端智能體工具鏈，打破了個人化智能助手的開發壁壘，聲稱其真實場景表現優於 GPT-5 和其他頂級閉源模型。&lt;/span&gt;&lt;/p&gt; 
+&lt;p style="color:#242424; margin-left:0; margin-right:0; text-align:left"&gt;&lt;span style="color:#000000"&gt;&lt;em&gt;&lt;strong&gt;論文地址：&lt;/strong&gt;&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Farxiv.org%2Fpdf%2F2509.00531" target="_blank"&gt;https://arxiv.org/pdf/2509.00531&lt;/a&gt;&lt;/em&gt;&lt;/span&gt;&lt;/p&gt; 
+&lt;p style="color:#242424; margin-left:0; margin-right:0; text-align:left"&gt;&lt;span style="color:#000000"&gt;MobiAgent 的推出讓每個人都有機會培養屬於自己的 AI 助手。這個工具鏈支持用戶從零開始構建移動端智能體，包括從收集操作數據到訓練模型，再到將模型部署到手機上的完整流程。MobiAgent 的開源性質，意味着用戶可以自主獲取數據、訓練模型，並在個人設備上實現智能助手的應用。&lt;/span&gt;&lt;/p&gt; 
+&lt;p style="color:#242424; margin-left:0; margin-right:0; text-align:left"&gt;&lt;img height="266" src="https://oscimg.oschina.net/oscnet/up-7cbc19225bd2276ffc019f279139d3d74d4.png" width="500" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p style="color:#242424; margin-left:0; margin-right:0; text-align:left"&gt;&lt;span style="color:#000000"&gt;為了驗證 MobiAgent 的實際能力，研究團隊在國內 20 款熱門應用中進行了測試，結果顯示，7B 規模的 MobiAgent 模型在任務完成評分上，不僅超越了多款知名閉源大模型，甚至在同規模的開源 GUI 智能體中也處於領先地位。MobiAgent 獨特的 「潛記憶加速器」 能夠通過學習歷史操作，幫助智能體快速完成重複任務，性能提升達到 2-3 倍。&lt;/span&gt;&lt;/p&gt; 
+&lt;p style="color:#242424; margin-left:0; margin-right:0; text-align:left"&gt;&lt;span style="color:#000000"&gt;MobiAgent 的核心在於其高效的數據收集和智能訓練流程。它通過輕量級工具記錄用戶的手機操作，然後利用通用 VLM 模型生成高質量的訓練數據。這些數據經過精煉調整，確保訓練出的智能體具有出色的泛化能力。MobiAgent 的 「大腦」 被分為三部分:負責任務規劃的 「規劃師」、根據當前屏幕做出決策的 「決策者」 以及執行具體操作的 「執行者」。這樣的架構讓模型訓練更加高效，反應速度大幅提升。&lt;/span&gt;&lt;/p&gt; 
+&lt;p style="color:#242424; margin-left:0; margin-right:0; text-align:left"&gt;&lt;span style="color:#000000"&gt;通過創新的 AgentRR 加速框架，MobiAgent 能夠藉助以往的操作經驗，大幅提升重複任務的執行效率，最高可實現 60%-85% 的動作複用率。這使得智能助手在處理日常事務時更加迅速、準確。&lt;/span&gt;&lt;/p&gt;
+                                                                                &lt;/div&gt;
+                                                                            </description>
+      <link>https://www.oschina.net/news/371325</link>
+      <guid isPermaLink="false">https://www.oschina.net/news/371325</guid>
+      <pubDate>Wed, 10 Sep 2025 07:17:11 GMT</pubDate>
+      <author>來源: OSCHINA</author>
+    </item>
+    <item>
+      <title>大神手把手教學丨 Windows 應用秒變玲瓏包！完整攻略來了</title>
+      <description>&lt;div class="content"&gt;
+                                                                    
+                                                        &lt;div&gt; 
+ &lt;div&gt;
+  &lt;span&gt;今天，我們將為大家帶來該系列的第二篇實戰教程——&lt;/span&gt;
+  &lt;strong&gt;&lt;strong&gt;如何利用「統信 Windows 應用兼容引擎」將應用打包成 deb，再轉化成玲瓏包。&lt;/strong&gt;&lt;/strong&gt;
+ &lt;/div&gt; 
+&lt;/div&gt; 
+&lt;div&gt; 
+ &lt;div&gt; 
+  &lt;h2&gt;&lt;strong&gt;&lt;strong&gt;一、下載目標 Windows 應用&lt;/strong&gt;&lt;/strong&gt;&lt;/h2&gt; 
+  &lt;p style="text-align:left"&gt;&lt;span&gt;首先，選擇您的目標 Windows 應用，並前往其官網下載官方 exe 安裝包。本文我們以&lt;/span&gt;&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fmp.weixin.qq.com%2Fs%3F__biz%3DMzA5NzE0Mjg4Ng%3D%3D%26mid%3D2650457346%26idx%3D1%26sn%3Da305e17b663c13b5a1f6edfaf3b55594%26scene%3D21%23wechat_redirect" target="_blank"&gt;&lt;span&gt;「如意玲瓏應用遷移與開發徵募賽」&lt;/span&gt;&lt;/a&gt;&lt;span&gt;中定向編譯應用列表中的「南財金融終端」應用為例。&lt;/span&gt;&lt;/p&gt; 
+ &lt;/div&gt; 
+&lt;/div&gt; 
+&lt;div&gt; 
+ &lt;div&gt; 
+  &lt;p style="text-align:left"&gt;&lt;img align="left" src="https://oscimg.oschina.net/oscnet//dd8775200fa7174f66b6eeee94b3facf.jpg" width="115" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+ &lt;/div&gt; 
+&lt;/div&gt; 
+&lt;p&gt;&amp;nbsp;&lt;/p&gt; 
+&lt;p&gt;&amp;nbsp;&lt;/p&gt; 
+&lt;p&gt;&amp;nbsp;&lt;/p&gt; 
+&lt;p&gt;&amp;nbsp;&lt;/p&gt; 
+&lt;div&gt; 
+ &lt;div&gt; 
+  &lt;h2&gt;&lt;span&gt;二、運行並打包 Windows 應用&lt;/span&gt;&lt;/h2&gt; 
+  &lt;p style="text-align:left"&gt;&lt;span&gt;接下來需要在 deepin 上運行剛剛下載好的 exe 文件，此時我們可以藉助官方所提供的 Windows 應用調試級打包工具——「統信 Windows 應用兼容引擎」來完成。&lt;/span&gt;&lt;/p&gt; 
+  &lt;p style="text-align:left"&gt;&lt;strong&gt;&lt;strong&gt;Step1：安裝「統信 Windows」應用兼容引擎&lt;/strong&gt;&lt;/strong&gt;&lt;/p&gt; 
+  &lt;p style="text-align:left"&gt;&lt;span&gt;在 deepin 應用商店中搜索「統信 Windows 應用兼容引擎」並下載。&lt;/span&gt;&lt;/p&gt; 
+  &lt;p style="text-align:left"&gt;&lt;img align="left" src="https://oscimg.oschina.net/oscnet//d89ca0f067173309ede53c8b40e9ea57.jpg" width="1408" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+ &lt;/div&gt; 
+&lt;/div&gt; 
+&lt;p&gt;&amp;nbsp;&lt;/p&gt; 
+&lt;p&gt;&amp;nbsp;&lt;/p&gt; 
+&lt;p&gt;&amp;nbsp;&lt;/p&gt; 
+&lt;p&gt;&amp;nbsp;&lt;/p&gt; 
+&lt;p&gt;&amp;nbsp;&lt;/p&gt; 
+&lt;p&gt;&amp;nbsp;&lt;/p&gt; 
+&lt;p&gt;&amp;nbsp;&lt;/p&gt; 
+&lt;p&gt;&amp;nbsp;&lt;/p&gt; 
+&lt;p&gt;&amp;nbsp;&lt;/p&gt; 
+&lt;div&gt; 
+ &lt;div&gt; 
+  &lt;p style="text-align:left"&gt;&lt;strong&gt;&lt;strong&gt;Step 2：安裝目標 win 應用&lt;/strong&gt;&lt;/strong&gt;&lt;/p&gt; 
+  &lt;p style="text-align:left"&gt;&lt;span&gt;使用兼容引擎，有兩種方式安裝 exe 文件：&lt;/span&gt;&lt;/p&gt; 
+  &lt;ul&gt; 
+   &lt;li&gt;&lt;strong&gt;&lt;strong&gt;直接雙擊 exe 文件，&lt;/strong&gt;&lt;/strong&gt;&lt;span&gt;系統將自動啓動兼容引擎，根據提示完成安裝即可；&lt;/span&gt;&lt;/li&gt; 
+  &lt;/ul&gt; 
+  &lt;p style="text-align:left"&gt;&lt;img align="left" src="https://oscimg.oschina.net/oscnet//99af44e560a6bf9258829de7a3e04f6d.jpg" width="723" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+ &lt;/div&gt; 
+&lt;/div&gt; 
+&lt;p&gt;&amp;nbsp;&lt;/p&gt; 
+&lt;p&gt;&amp;nbsp;&lt;/p&gt; 
+&lt;p&gt;&amp;nbsp;&lt;/p&gt; 
+&lt;p&gt;&amp;nbsp;&lt;/p&gt; 
+&lt;p&gt;&amp;nbsp;&lt;/p&gt; 
+&lt;p&gt;&amp;nbsp;&lt;/p&gt; 
+&lt;p&gt;&amp;nbsp;&lt;/p&gt; 
+&lt;p&gt;&amp;nbsp;&lt;/p&gt; 
+&lt;p&gt;&amp;nbsp;&lt;/p&gt; 
+&lt;p&gt;&amp;nbsp;&lt;/p&gt; 
+&lt;div&gt; 
+ &lt;div&gt; 
+  &lt;ul&gt; 
+   &lt;li&gt;&lt;span&gt;或是打開兼容引擎&lt;/span&gt;&lt;strong&gt;&lt;strong&gt;，進入「我的應用」 → 「添加應用」&lt;/strong&gt;&lt;/strong&gt;&lt;span&gt;，導入 exe 文件後安裝並運行。&lt;/span&gt;&lt;/li&gt; 
+  &lt;/ul&gt; 
+  &lt;p style="text-align:left"&gt;&lt;img align="left" src="https://oscimg.oschina.net/oscnet//75e1c62443c014988271fdc9da6c772b.jpg" width="1187" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+ &lt;/div&gt; 
+&lt;/div&gt; 
+&lt;p&gt;&amp;nbsp;&lt;/p&gt; 
+&lt;p&gt;&amp;nbsp;&lt;/p&gt; 
+&lt;p&gt;&amp;nbsp;&lt;/p&gt; 
+&lt;p&gt;&amp;nbsp;&lt;/p&gt; 
+&lt;p&gt;&amp;nbsp;&lt;/p&gt; 
+&lt;p&gt;&amp;nbsp;&lt;/p&gt; 
+&lt;p&gt;&amp;nbsp;&lt;/p&gt; 
+&lt;p&gt;&amp;nbsp;&lt;/p&gt; 
+&lt;p&gt;&amp;nbsp;&lt;/p&gt; 
+&lt;p&gt;&amp;nbsp;&lt;/p&gt; 
+&lt;div&gt; 
+ &lt;div&gt; 
+  &lt;p style="text-align:left"&gt;&lt;img align="left" src="https://oscimg.oschina.net/oscnet//564ade950d7d2f2f6ebaa572f2c8171f.jpg" width="1187" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+ &lt;/div&gt; 
+&lt;/div&gt; 
+&lt;p&gt;&lt;img height="875" src="https://oscimg.oschina.net/oscnet/up-33c7a2954106e356ab77736b184866ed9ba.png" width="1187" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;div&gt; 
+ &lt;div&gt; 
+  &lt;p style="text-align:left"&gt;&lt;strong&gt;&lt;strong&gt;Step3：調試與 wine 版本設置&lt;/strong&gt;&lt;/strong&gt;&lt;/p&gt; 
+  &lt;p style="text-align:left"&gt;&lt;span&gt;目前玲瓏的 wine 版本僅支持 deepin-wine8-stable。若通過兼容引擎安裝時默認使用了 deepin-wine10-stable，請進入「高級調試」頁面，手動切換為 deepin-wine8-stable 並重新調試運行。&lt;/span&gt;&lt;/p&gt; 
+  &lt;p style="text-align:left"&gt;&lt;img align="left" src="https://oscimg.oschina.net/oscnet//b131b392af9323c2a6975978abc543e5.jpg" width="1205" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+ &lt;/div&gt; 
+&lt;/div&gt; 
+&lt;p&gt;&amp;nbsp;&lt;/p&gt; 
+&lt;p&gt;&amp;nbsp;&lt;/p&gt; 
+&lt;p&gt;&amp;nbsp;&lt;/p&gt; 
+&lt;p&gt;&amp;nbsp;&lt;/p&gt; 
+&lt;p&gt;&amp;nbsp;&lt;/p&gt; 
+&lt;p&gt;&amp;nbsp;&lt;/p&gt; 
+&lt;p&gt;&amp;nbsp;&lt;/p&gt; 
+&lt;p&gt;&amp;nbsp;&lt;/p&gt; 
+&lt;p&gt;&amp;nbsp;&lt;/p&gt; 
+&lt;p&gt;&amp;nbsp;&lt;/p&gt; 
+&lt;div&gt; 
+ &lt;div&gt; 
+  &lt;p style="text-align:left"&gt;&lt;strong&gt;&lt;strong&gt;Step4：打包為 deb 安裝包&lt;/strong&gt;&lt;/strong&gt;&lt;/p&gt; 
+  &lt;p style="text-align:left"&gt;&lt;span&gt;在「我的應用」中找到已安裝的應用，選擇「打包應用」，根據提示填寫軟件包信息。打包成功後，將在桌面生成對應的 deb 安裝包。&lt;/span&gt;&lt;/p&gt; 
+  &lt;p style="text-align:left"&gt;&lt;img align="left" src="https://oscimg.oschina.net/oscnet//d92410bed9cf667a9960af48138487e4.jpg" width="1187" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+ &lt;/div&gt; 
+&lt;/div&gt; 
+&lt;p&gt;&amp;nbsp;&lt;/p&gt; 
+&lt;p&gt;&amp;nbsp;&lt;/p&gt; 
+&lt;p&gt;&amp;nbsp;&lt;/p&gt; 
+&lt;p&gt;&amp;nbsp;&lt;/p&gt; 
+&lt;p&gt;&amp;nbsp;&lt;/p&gt; 
+&lt;p&gt;&amp;nbsp;&lt;/p&gt; 
+&lt;p&gt;&amp;nbsp;&lt;/p&gt; 
+&lt;p&gt;&amp;nbsp;&lt;/p&gt; 
+&lt;p&gt;&amp;nbsp;&lt;/p&gt; 
+&lt;p&gt;&amp;nbsp;&lt;/p&gt; 
+&lt;div&gt; 
+ &lt;div&gt; 
+  &lt;p style="text-align:left"&gt;&lt;img align="left" src="https://oscimg.oschina.net/oscnet//8d31e7864d99d6b021e5f6eb384a0d55.jpg" width="625" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+ &lt;/div&gt; 
+&lt;/div&gt; 
+&lt;p&gt;&amp;nbsp;&lt;/p&gt; 
+&lt;p&gt;&amp;nbsp;&lt;/p&gt; 
+&lt;p&gt;&amp;nbsp;&lt;/p&gt; 
+&lt;p&gt;&amp;nbsp;&lt;/p&gt; 
+&lt;p&gt;&amp;nbsp;&lt;/p&gt; 
+&lt;p&gt;&amp;nbsp;&lt;/p&gt; 
+&lt;p&gt;&amp;nbsp;&lt;/p&gt; 
+&lt;p&gt;&amp;nbsp;&lt;/p&gt; 
+&lt;p&gt;&amp;nbsp;&lt;/p&gt; 
+&lt;p&gt;&amp;nbsp;&lt;/p&gt; 
+&lt;p&gt;&amp;nbsp;&lt;/p&gt; 
+&lt;p&gt;&amp;nbsp;&lt;/p&gt; 
+&lt;p&gt;&amp;nbsp;&lt;/p&gt; 
+&lt;p&gt;&amp;nbsp;&lt;/p&gt; 
+&lt;p&gt;&amp;nbsp;&lt;/p&gt; 
+&lt;p&gt;&amp;nbsp;&lt;/p&gt; 
+&lt;p&gt;&amp;nbsp;&lt;/p&gt; 
+&lt;p&gt;&amp;nbsp;&lt;/p&gt; 
+&lt;p&gt;&amp;nbsp;&lt;/p&gt; 
+&lt;div&gt; 
+ &lt;div&gt; 
+  &lt;h2&gt;&lt;span&gt;三、轉換為玲瓏包&lt;/span&gt;&lt;/h2&gt; 
+  &lt;p style="text-align:left"&gt;&lt;span&gt;有了 deb 安裝包，接下來只需使用 linglong.yaml 模板進行簡單修改，即可完成構建與轉換。&lt;/span&gt;&lt;/p&gt; 
+  &lt;p style="text-align:left"&gt;&lt;strong&gt;&lt;strong&gt;Step1：配置 linglong.yaml&lt;/strong&gt;&lt;/strong&gt;&lt;/p&gt; 
+  &lt;p style="text-align:left"&gt;&lt;span&gt;根據上一期的教程，我們只需要對&lt;/span&gt;&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fmp.weixin.qq.com%2Fs%2FmBI1nm4eRNs7d-v61Pe6Gw" target="_blank"&gt;&lt;span&gt;linglong.yaml(wine 轉玲瓏) 模板&lt;/span&gt;&lt;/a&gt;&lt;span&gt;進行兩處修改。&lt;/span&gt;&lt;/p&gt; 
+  &lt;ul&gt; 
+   &lt;li&gt;&lt;span&gt;使用文本批量替換方式一次性更改 id 和 name。例如在本次示例中，只需將模板中的 &lt;/span&gt;&lt;code&gt;&lt;span&gt;com.163.music.deepin&lt;/span&gt;&lt;/code&gt;&lt;span&gt; 替換為 &lt;/span&gt;&lt;code&gt;&lt;span&gt;com.sfccn.sfconnect&lt;/span&gt;&lt;/code&gt;&lt;/li&gt; 
+  &lt;/ul&gt; 
+  &lt;p style="text-align:left"&gt;&lt;img align="left" src="https://oscimg.oschina.net/oscnet//dd2698cfda485a928e4febcf4cb47ed6.jpg" width="1758" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+ &lt;/div&gt; 
+&lt;/div&gt; 
+&lt;p&gt;&amp;nbsp;&lt;/p&gt; 
+&lt;p&gt;&amp;nbsp;&lt;/p&gt; 
+&lt;p&gt;&amp;nbsp;&lt;/p&gt; 
+&lt;p&gt;&amp;nbsp;&lt;/p&gt; 
+&lt;p&gt;&amp;nbsp;&lt;/p&gt; 
+&lt;p&gt;&amp;nbsp;&lt;/p&gt; 
+&lt;p&gt;&amp;nbsp;&lt;/p&gt; 
+&lt;div&gt; 
+ &lt;div&gt; 
+  &lt;ul&gt; 
+   &lt;li&gt;&lt;span&gt;注意模板中的啓動腳本名稱，模板默認是 run.sh，我們需要根據 deb 包/opt/apps/com.sfccn.sfconnect/目錄下的腳本名稱保持一致。例如在本次示例中，腳本名稱需使用&lt;/span&gt;&lt;span&gt;&lt;span&gt;run.com&lt;/span&gt;&lt;/span&gt;&lt;span&gt;.sfccn.sfconnect.sh。&lt;/span&gt;&lt;/li&gt; 
+  &lt;/ul&gt; 
+  &lt;p style="text-align:left"&gt;&lt;img align="left" src="https://oscimg.oschina.net/oscnet//e29322bb99d7dd1974e8494a2bf91216.jpg" width="1762" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+ &lt;/div&gt; 
+&lt;/div&gt; 
+&lt;p&gt;&amp;nbsp;&lt;/p&gt; 
+&lt;p&gt;&amp;nbsp;&lt;/p&gt; 
+&lt;p&gt;&amp;nbsp;&lt;/p&gt; 
+&lt;p&gt;&amp;nbsp;&lt;/p&gt; 
+&lt;p&gt;&amp;nbsp;&lt;/p&gt; 
+&lt;p&gt;&amp;nbsp;&lt;/p&gt; 
+&lt;p&gt;&amp;nbsp;&lt;/p&gt; 
+&lt;div&gt; 
+ &lt;div&gt; 
+  &lt;p style="text-align:left"&gt;&lt;img align="left" src="https://oscimg.oschina.net/oscnet//bf9756ddb82f0b7d78ee8727cb462f58.jpg" width="594" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+ &lt;/div&gt; 
+&lt;/div&gt; 
+&lt;p&gt;&amp;nbsp;&lt;/p&gt; 
+&lt;p&gt;&amp;nbsp;&lt;/p&gt; 
+&lt;p&gt;&amp;nbsp;&lt;/p&gt; 
+&lt;p&gt;&amp;nbsp;&lt;/p&gt; 
+&lt;p&gt;&amp;nbsp;&lt;/p&gt; 
+&lt;div&gt; 
+ &lt;div&gt; 
+  &lt;p style="text-align:left"&gt;&lt;strong&gt;&lt;strong&gt;&lt;strong&gt;Step2：組織文件目錄&lt;/strong&gt;&lt;/strong&gt;&lt;/strong&gt;&lt;/p&gt; 
+  &lt;p style="text-align:left"&gt;&lt;span&gt;隨後將 deb 包和 linlong.yaml 文件放入同一文件夾下，並在當前目錄下打開終端輸入以下命令&lt;/span&gt;&lt;/p&gt; 
+  &lt;pre&gt;&lt;code&gt;&lt;span&gt;mkdir -p linglong/sources 
+mv *.deb ./linglong/sources&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt; 
+  &lt;p style="text-align:left"&gt;&lt;span&gt;這裏我用通配符移動當前目錄的 deb 安裝包到 linglong/sources 目錄下&lt;/span&gt;&lt;/p&gt; 
+  &lt;p style="text-align:left"&gt;&lt;img align="left" src="https://oscimg.oschina.net/oscnet//5f08cf3f6649c2dd163521e0e5414c9f.jpg" width="501" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+ &lt;/div&gt; 
+&lt;/div&gt; 
+&lt;p&gt;&amp;nbsp;&lt;/p&gt; 
+&lt;p&gt;&amp;nbsp;&lt;/p&gt; 
+&lt;p&gt;&amp;nbsp;&lt;/p&gt; 
+&lt;p&gt;&amp;nbsp;&lt;/p&gt; 
+&lt;p&gt;&amp;nbsp;&lt;/p&gt; 
+&lt;div&gt; 
+ &lt;div&gt; 
+  &lt;p style="text-align:left"&gt;&lt;strong&gt;&lt;strong&gt;Step3：構建與導出&lt;/strong&gt;&lt;/strong&gt;&lt;/p&gt; 
+  &lt;p style="text-align:left"&gt;&lt;span&gt;隨後進行構建與導出，在當前終端輸入以下命令：&lt;/span&gt;&lt;/p&gt; 
+  &lt;pre&gt;&lt;code&gt;&lt;span&gt;ll-builder build&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt; 
+  &lt;p style="text-align:left"&gt;&lt;img align="left" src="https://oscimg.oschina.net/oscnet//0c3ecdae44ea7b822db2c1f8f6dfb5ae.jpg" width="1045" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+  &lt;p style="text-align:left"&gt;&lt;img align="left" src="https://oscimg.oschina.net/oscnet//c8cd21c3b6c492bce5ca55488d07604c.jpg" width="1045" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+ &lt;/div&gt; 
+&lt;/div&gt; 
+&lt;p&gt;&amp;nbsp;&lt;/p&gt; 
+&lt;p&gt;&amp;nbsp;&lt;/p&gt; 
+&lt;p&gt;&amp;nbsp;&lt;/p&gt; 
+&lt;p&gt;&amp;nbsp;&lt;/p&gt; 
+&lt;p&gt;&amp;nbsp;&lt;/p&gt; 
+&lt;p&gt;&amp;nbsp;&lt;/p&gt; 
+&lt;p&gt;&amp;nbsp;&lt;/p&gt; 
+&lt;p&gt;&amp;nbsp;&lt;/p&gt; 
+&lt;p&gt;&amp;nbsp;&lt;/p&gt; 
+&lt;p&gt;&amp;nbsp;&lt;/p&gt; 
+&lt;p&gt;&amp;nbsp;&lt;/p&gt; 
+&lt;p&gt;&amp;nbsp;&lt;/p&gt; 
+&lt;p&gt;&amp;nbsp;&lt;/p&gt; 
+&lt;p&gt;&amp;nbsp;&lt;/p&gt; 
+&lt;p&gt;&amp;nbsp;&lt;/p&gt; 
+&lt;p&gt;&amp;nbsp;&lt;/p&gt; 
+&lt;p&gt;&amp;nbsp;&lt;/p&gt; 
+&lt;div&gt; 
+ &lt;div&gt; 
+  &lt;p style="text-align:left"&gt;&lt;span&gt;如果終端顯示「Build completed successfully！」則説明構建成功！接下來執行以下命令導出所構建的玲瓏包。&lt;/span&gt;&lt;/p&gt; 
+  &lt;pre&gt;&lt;code&gt;&lt;span&gt;ll-builder export --layer&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt; 
+  &lt;p style="text-align:left"&gt;&lt;img align="left" src="https://oscimg.oschina.net/oscnet//d9cc6c2e8870ca473b9ace8a32911164.jpg" width="973" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+  &lt;p style="text-align:left"&gt;&amp;nbsp;&lt;/p&gt; 
+  &lt;p style="text-align:left"&gt;&amp;nbsp;&lt;/p&gt; 
+  &lt;p style="text-align:left"&gt;&amp;nbsp;&lt;/p&gt; 
+  &lt;p style="text-align:left"&gt;&amp;nbsp;&lt;/p&gt; 
+  &lt;p style="text-align:left"&gt;&amp;nbsp;&lt;/p&gt; 
+  &lt;p style="text-align:left"&gt;&lt;span&gt;命令執行完成後，所生成對應的 &lt;/span&gt;&lt;code&gt;&lt;strong&gt;&lt;strong&gt;.layer&lt;/strong&gt;&lt;/strong&gt;&lt;/code&gt;&lt;span&gt; 文件就是我們需要的玲瓏包。&lt;/span&gt;&lt;/p&gt; 
+ &lt;/div&gt; 
+&lt;/div&gt;
+                                                                                &lt;/div&gt;
+                                                                            </description>
+      <link>https://www.oschina.net/news/371323</link>
+      <guid isPermaLink="false">https://www.oschina.net/news/371323</guid>
+      <pubDate>Wed, 10 Sep 2025 07:14:11 GMT</pubDate>
+      <author>來源: 資訊</author>
+    </item>
+    <item>
+      <title>Claude 支持「創建與編輯」真正文件</title>
+      <description>&lt;div class="content"&gt;
+                                                                    
+                                                        &lt;p&gt;Anthropic &lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fwww.anthropic.com%2Fnews%2Fcreate-files" target="_blank"&gt;宣佈&lt;/a&gt; Claude AI（通過 Claude.ai 平台及其桌面應用）現已具備直接創建和編輯 Excel 表格、Word 文檔、PowerPoint 演示文稿以及 PDF 文件的能力，不再僅限於聊天回覆或圖片生成，而是生成可以下載和使用的真實文件。&lt;/p&gt; 
+&lt;p&gt;目前，這項「文件創建」功能處於功能預覽階段，對 &lt;strong&gt;Max、Team 以及 Enterprise&lt;/strong&gt; 用戶開放，&lt;strong&gt;Pro&lt;/strong&gt; 用戶將在未來幾周內獲得訪問權限。&lt;/p&gt; 
+&lt;p&gt;&lt;img alt="" src="https://oscimg.oschina.net/oscnet/up-08281a63169ef2eb8318b2682a22becda9c.png" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p&gt;Claude 可以處理多種任務場景，例如：從原始數據生成圖表與分析結果；構建帶有公式的電子表格（如預算模板、項目追蹤器、財務模型等）；實現文件之間的跨格式轉換（如：PDF → PPT，會議記錄 → 格式化文檔，發票 → 有計算功能的表格）等。&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt; &lt;p&gt;&lt;strong&gt;啓用方式&lt;/strong&gt;：用戶需在界面中開啓「Upgraded file creation and analysis」，然後可以上傳文件或用自然語言描述需求，即可讓 Claude 生成所需輸出。&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;&lt;strong&gt;安全提示&lt;/strong&gt;：由於 Claude 會訪問互聯網並執行代碼，存在潛在的數據風險。建議用戶開啓該功能後密切監控 Claude 的操作流程，並對其行為保持審查。&lt;/p&gt; &lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;p&gt;Claude 的文件功能背後運行於一個私有沙盒式計算環境，具備編程執行能力，可自動執行代碼以生產文件。這使得它不再是「顧問」，而更像是「動手的協作者」。&lt;/p&gt;
+                                                                                &lt;/div&gt;
+                                                                            </description>
+      <link>https://www.oschina.net/news/371321</link>
+      <guid isPermaLink="false">https://www.oschina.net/news/371321</guid>
+      <pubDate>Wed, 10 Sep 2025 07:00:11 GMT</pubDate>
+      <author>來源: OSCHINA</author>
+    </item>
+    <item>
+      <title>阿聯酋推出低成本 AI 推理模型，宣稱「性價比」超同行 20 倍</title>
+      <description>&lt;div class="content"&gt;
+                                                                    
+                                                        &lt;p&gt;&lt;span style="color:#000000"&gt;阿聯酋穆罕默德·本·扎耶德人工智能大學（MBZUAI）在官網&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fmbzuai.ac.ae%2Fnews%2Fmbzuai-and-g42-launch-k2-think-a-leading-open-source-system-for-advanced-ai-reasoning%2F" target="_blank"&gt;宣佈&lt;/a&gt;，其與 G42 共同推出了一款低成本的推理模型「K2 Think」。&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;span style="color:#000000"&gt;新聞稿聲稱，K2 Think 僅需 320 億個參數，卻能超越其他公司的、規模大 20 倍的推理模型。該模型基於阿里巴巴開源 Qwen 2.5 模型構建，並在 Cerebras 提供的硬件上運行和測試。&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;img height="278" src="https://oscimg.oschina.net/oscnet/up-9d10147988ff989c22d01948ef175f5af80.png" width="500" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;span style="color:#000000"&gt;MBZUAI 基礎模型研究所所長 Hector Liu 告訴媒體，團隊通過多種方法實現了高性能表現，包括：長鏈式思維監督微調（CoT） —— 一種逐步推理的方法；推理階段擴展（test-time scaling） —— 在推理階段分配更多計算資源來提升表現。&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;span style="color:#000000"&gt;Liu 表示：「特別之處在於，我們把它當作一個系統來對待，而不僅僅是一個模型。和普通的開源模型僅僅‘發佈’不同，我們會實際部署該模型，並觀察如何隨着時間的推移改進模型。」「如果問哪一步最關鍵，很難單獨指出。這更像是一整套方法的組合，才得出了最終結果。」&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;span style="color:#000000"&gt;新聞稿寫道，&lt;strong&gt;「K2 Think 不僅僅是一項技術成就，更是阿聯酋人工智能領域的一個決定性時刻。」&lt;/strong&gt;&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;span style="color:#000000"&gt;近年來，阿聯酋也試圖將自己定位為 AI 全球領導者，以提升地緣政治影響力，並減少對原油的依賴。阿聯酋的 AI 企業 G42 就是其突圍的例子。但其競爭對手包括鄰國沙特，後者今年 5 月通過主權基金成立 Humain，致力於打造全棧 AI 能力。&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;span style="color:#000000"&gt;更宏觀來看，阿聯酋 AI 產業要追趕中美仍有很長路要走。美國的 OpenAI 和科技巨頭已佔據先機，中國也早已把 AI 列為戰略重點。&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;span style="color:#000000"&gt;儘管 K2 Think 的表現可與 OpenAI 相媲美，開發者強調，他們的目標並不是打造另一個 ChatGPT。MBZUAI 基礎模型研究所總經理 Richard Morton 解釋説，這個模型是為數學、科學等特定應用領域而設計。&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;span style="color:#000000"&gt;他説：「人類大腦的基本推理能力是所有思維過程的基石。這個應用能把原本需要 1000 到 2000 人耗費五年時間才能完成的問題思考或臨牀實驗，大大縮短週期。」&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;span style="color:#000000"&gt;此外，它還能讓缺乏美國那樣資本與基礎設施的地區，也能使用先進 AI 技術。Morton 總結道：「我們正在發現，用更少的資源，其實可以做到更多。」&lt;/span&gt;&lt;/p&gt;
+                                                                                &lt;/div&gt;
+                                                                            </description>
+      <link>https://www.oschina.net/news/371311</link>
+      <guid isPermaLink="false">https://www.oschina.net/news/371311</guid>
+      <pubDate>Sun, 07 Sep 2025 06:30:00 GMT</pubDate>
+      <author>來源: OSCHINA</author>
+    </item>
+    <item>
+      <title>Arm 發佈 Lumex CSS 移動端計算子系統</title>
+      <description>&lt;div class="content"&gt;
+                                                                    
+                                                        &lt;p&gt;Arm 正式發佈 Lumex CSS (Compute Subsystem, CSS) 移動端計算子系統，這是專為旗艦級智能手機及下一代個人電腦設計的先進計算平台，旨在加速端側 AI 體驗並提升整體性能。&lt;/p&gt; 
+&lt;p&gt;&lt;img alt="" src="https://static.oschina.net/uploads/space/2025/0910/142857_6HGj_2720166.png" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p&gt;Lumex CSS 平台集成了搭載第二代可伸縮矩陣擴展 (SME2) 技術的最高性能 Arm CPU、GPU 及系統 IP，支持桌面級移動遊戲、實時翻譯、智能助手及個性化應用等多樣的豐富體驗。&lt;/p&gt; 
+&lt;p&gt;&lt;img alt="" src="https://static.oschina.net/uploads/space/2025/0910/142924_kfT6_2720166.png" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p&gt;全新 Arm Lumex 平台包含以下核心組件：&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt;新一代搭載 SME2 技術的 Armv9.3 CPU 集羣：包括 Arm C1-Ultra 和 Arm C1-Pro，為旗艦設備提供支持；&lt;/li&gt; 
+ &lt;li&gt;Arm C1-Premium：專為次旗艦市場打造，可提供一流的面積效率；&lt;/li&gt; 
+ &lt;li&gt;Arm Mali G1-Ultra GPU：配備新一代光線追蹤技術，在實現先進的圖形和遊戲體驗同時，還可提升整體 AI 性能；&lt;/li&gt; 
+ &lt;li&gt;Arm C1-DSU：Arm 迄今為止最靈活、高能效且具多種電源模式的 DynamIQ Shared Unit (DSU)；&lt;/li&gt; 
+ &lt;li&gt;針對 3 納米工藝節點優化的物理實現；跨軟件棧的深度集成，為使用 Arm KleidiAI 軟件庫的開發者提供無縫的 AI 加速體驗。&lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;p&gt;Arm 表示，Arm Lumex 不僅是 Arm 面向消費計算市場的最先進 CSS 平台，更是開啓新時代智能 AI 體驗的基石。無論是 OEM 廠商還是開發者，Lumex 均可提供所需工具，助力其在關鍵端側場景實現兼具個性化、隱私保障與高性能的 AI 體驗。作為專為 AI 時代打造平台， Arm Lumex 將成為未來移動創新的全新起點。&lt;/p&gt;
+                                                                                &lt;/div&gt;
+                                                                            </description>
+      <link>https://www.oschina.net/news/371310</link>
+      <guid isPermaLink="false">https://www.oschina.net/news/371310</guid>
+      <pubDate>Sun, 07 Sep 2025 06:30:00 GMT</pubDate>
+      <author>來源: OSCHINA</author>
+    </item>
+    <item>
+      <title>谷歌雲披露儲備訂單達到 1060 億美元</title>
+      <description>&lt;div class="content"&gt;
+                                                                    
+                                                        &lt;p&gt;&lt;span style="color:#000000"&gt;「目前谷歌雲已簽訂但尚未履行的現有客戶合同中，承諾金額累計高達 1060 億美元。」&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;span style="color:#000000"&gt;當地時間 9 月 9 日，谷歌雲 CEO Thomas Kurian 在一場高盛會議上透露，在 1060 億美元的儲備訂單中，預計超過一半在未來兩年內轉化為收入，「它的增長速度超過了我們的收入」。&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;img height="306" src="https://oscimg.oschina.net/oscnet/up-1decfc361f571dca2f976d227d621dacff1.png" width="500" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;span style="color:#000000"&gt;根據谷歌母公司 Alphabet 發佈的 2025 年第二季度財報，分業務來看，谷歌的兩大核心業務是廣告業務和雲業務，第二季度增長提速，營收從去年同期的 103.47 億美元增長至 136.24 億美元，同比增長 32%。&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;span style="color:#000000"&gt;雲業務的強勁增長主要得益於人工智能處理需求的激增。Alphabet 首席執行官桑達爾·皮查伊（Sundar Pichai）還提到，AI 正在積極推動所有業務發展，帶來強勁動能。鑑於公司雲產品及服務面對強勁且持續增長的市場需求，公司計劃在 2025 年將資本支出增加至約 850 億美元，並對未來的發展機遇感到振奮。&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;span style="color:#000000"&gt;按照 Kurian 的説法，未來兩年內，谷歌雲將獲得約 580 億美元的新收入，將成為這家科技巨頭更加核心的組成部分。&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;span style="color:#000000"&gt;Kurian 稱，上述數字只考慮了現有的承諾，而不是新的合同或預期的客戶。該部門的新客戶環比增長了 28%。排名前十的人工智能實驗室中有 9 個目前均為谷歌雲客戶，這包括谷歌的人工競爭對手，如 ChatGPT 開發商 OpenAI，以及估值 1830 億美元的 Anthropic。&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;span style="color:#000000"&gt;Kurian 在本次大會上介紹了谷歌雲在快速擴張的雲計算和人工智能市場中的戰略。他強調，該部門的專有芯片開發和軟件專業知識是谷歌雲在人工智能基礎設施、生成人工智能模型和數據處理能力方面的優勢。&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;span style="color:#000000"&gt;有媒體評價認為，儘管谷歌雲落後於亞馬遜股份有限公司和微軟公司提供的雲服務，排名第三，但隨着這家科技巨頭的主要搜索業務的成熟，谷歌雲仍然被視為 Alphabet 最強勁的增長來源之一。該部門受益於谷歌在人工智能方面的鉅額支出，其在新興技術方面的專業知識幫助谷歌雲贏得了客戶，尤其是在人工智能初創公司中。（澎湃新聞）&lt;/span&gt;&lt;/p&gt;
+                                                                                &lt;/div&gt;
+                                                                            </description>
+      <link>https://www.oschina.net/news/371308</link>
+      <guid isPermaLink="false">https://www.oschina.net/news/371308</guid>
+      <pubDate>Sun, 07 Sep 2025 06:15:00 GMT</pubDate>
+      <author>來源: OSCHINA</author>
+    </item>
+    <item>
+      <title>美團 C 端 AI 智能體服務將於一週內發佈</title>
+      <description>&lt;div class="content"&gt;
+                                                                    
+                                                        &lt;p&gt;美團&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fmp.weixin.qq.com%2Fs%2F9109ITAZ4GS-UoYjGkdPrA" target="_blank"&gt;宣佈&lt;/a&gt;，大眾點評將正式「重啓」品質外賣服務，將通過 B 端自研大模型，結合海量真實評價數據分析用戶需求，進一步剔除非真實點評數據，以「AI+真實高分」為用戶提供可靠決策。&lt;/p&gt; 
+&lt;p&gt;&lt;strong&gt;此外，美團 C 端 AI 智能體服務也將於一週內發佈，目前正在「封樓測試」階段&lt;/strong&gt;。&lt;/p&gt; 
+&lt;p&gt;就在 9 月 1 日，&lt;a href="https://www.oschina.net/news/369581" target="_blank"&gt;美團正式發佈 LongCat-Flash-Chat（中文名：龍貓）&lt;/a&gt;，在 GitHub、Hugging Face 開源，並同步上線官網。&lt;/p&gt; 
+&lt;p&gt;&lt;img src="https://static.oschina.net/uploads/space/2025/0910/140959_bZBu_2720166.png" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p&gt;今年美團 AI 進展頻傳，先後發佈了 AI Coding Agent 工具 NoCode、AI 經營決策助手「袋鼠參謀」、酒店經營的垂類 AI Agent「美團既白」等多款應用。&lt;/p&gt;
+                                                                                &lt;/div&gt;
+                                                                            </description>
+      <link>https://www.oschina.net/news/371307</link>
+      <guid isPermaLink="false">https://www.oschina.net/news/371307</guid>
+      <pubDate>Sun, 07 Sep 2025 06:07:00 GMT</pubDate>
+      <author>來源: OSCHINA</author>
+    </item>
+    <item>
+      <title>大眾汽車豪擲 10 億歐元佈局人工智能</title>
+      <description>&lt;div class="content"&gt;
+                                                                    
+                                                        &lt;p&gt;&lt;span style="color:#000000"&gt;華爾街日報報道稱，在德國慕尼黑國際車展首日，大眾汽車宣佈至 2030 年，將累計投入高達 10 億歐元用於人工智能（AI）技術的全鏈條應用開發，覆蓋從研發到生產的核心環節。這一舉措被視為大眾應對全球汽車產業電動化、智能化轉型的關鍵落子。&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;span style="color:#000000"&gt;大眾汽車預計，到 2035 年，AI 技術將為公司創造高達 40 億歐元的效率提升與成本優化效益。&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;img height="374" src="https://oscimg.oschina.net/oscnet/up-f6df16ad1343ec3fbfc097c0d33b2277838.png" width="500" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;span style="color:#000000"&gt;根據大眾汽車官方聲明，10 億歐元投資將集中於三大戰略方向：AI 輔助車輛研發、工業場景應用以及高性能 IT 基礎設施擴建。&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;span style="color:#000000"&gt;大眾集團首席信息官 Hauke Stars 強調：「AI 將貫穿從概念車到量產的全流程，成為提升研發速度與質量的‘數字引擎’。」&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;span style="color:#000000"&gt;大眾首席執行官 Oliver Blume 透露，AI 賦能的下一代車型將搭載自研 Unified Cell 電池技術與 L4 級自動駕駛系統，而入門級純電 SUV ID. CROSS（起售價約 2.5 萬歐元）更將直擊中歐市場「紅海區間」，挑戰特斯拉 Model 3 等競品。&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;span style="color:#000000"&gt;大眾的激進佈局折射出全球汽車產業的深層變革。當前，歐洲車企正面臨多重壓力：美國對歐汽車關稅雖從 27.5% 降至 15%，但仍高於歷史水平；中國電動車品牌憑藉成本與智能化優勢快速崛起，2025 年歐洲市場份額已突破 18%。Blume 在車展上直言：「競爭如同體育比賽，對手越強，我們越需突破自我。」&lt;/span&gt;&lt;/p&gt;
+                                                                                &lt;/div&gt;
+                                                                            </description>
+      <link>https://www.oschina.net/news/371303</link>
+      <guid isPermaLink="false">https://www.oschina.net/news/371303</guid>
+      <pubDate>Sun, 07 Sep 2025 06:02:00 GMT</pubDate>
+      <author>來源: OSCHINA</author>
+    </item>
+    <item>
+      <title>AI 視頻生成公司「愛詩科技」完成 B 輪融資</title>
+      <description>&lt;div class="content"&gt;
+                                                                    
+                                                        &lt;p&gt;&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fmp.weixin.qq.com%2Fs%2FXT3NSiqh3Z8mivmQECKncQ" target="_blank"&gt;根據《智能湧現》的獨家報道&lt;/a&gt;，AI 視頻生成公司 「愛詩科技」 近日完成 B 輪融資，總金額超過 6000 萬美元。 該輪融資由阿里巴巴領投，達晨財智、深創投、北京市 AI 基金、湖南電廣、巨人網絡和 Antler 跟投。據瞭解，這也是國內視頻生成領域單次最大融資額。&lt;/p&gt; 
+&lt;p&gt;上月底，愛詩科技&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fmp.weixin.qq.com%2Fs%2FHmT0FiG9IcTfCzzrKK3VSw" target="_blank"&gt;宣佈&lt;/a&gt;PixVerse V5 模型全球同步上線，並且拍我 AI（PixVerse）用戶規模突破 1 億。就在 4 個月前，這個數字還是 6000 萬。&lt;/p&gt; 
+&lt;p&gt;&lt;img src="https://static.oschina.net/uploads/space/2025/0910/120029_Myi5_2720166.jpg" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;span style="background-color:#ffffff; color:#333333"&gt;據介紹，基於 V5 動態效果、視覺質量、一致性保持、指令遵循等方面的綜合提升，根據權威獨立測評平台 Artificial Analysis 最新測試結果，PixVerse V5 在圖生視頻（Image to Video）項目中排名全球 Top2，在文生視頻（Text to Video）項目中位列 Top3，保持在全球第一梯隊。&lt;/span&gt;&lt;/p&gt;
+                                                                                &lt;/div&gt;
+                                                                            </description>
+      <link>https://www.oschina.net/news/371286</link>
+      <guid isPermaLink="false">https://www.oschina.net/news/371286</guid>
+      <pubDate>Sun, 07 Sep 2025 04:01:00 GMT</pubDate>
+      <author>來源: OSCHINA</author>
+    </item>
+    <item>
+      <title>馬斯克腦機公司 Neuralink：已為全球 12 人植入芯片</title>
+      <description>&lt;div class="content"&gt;
+                                                                    
+                                                        &lt;p style="color:#2a3840; margin-left:.2rem; margin-right:0; text-align:justify"&gt;&lt;span style="color:#000000"&gt;據路透社報道，埃隆·馬斯克 (Elon Musk) 旗下腦機接口公司 Neuralink 週二表示，該公司已經在全球範圍內為 12 人植入其芯片。&lt;/span&gt;&lt;/p&gt; 
+&lt;p style="color:#2a3840; margin-left:.2rem; margin-right:0; text-align:justify"&gt;&lt;img height="366" src="https://oscimg.oschina.net/oscnet/up-92dd64d9e9d887301a303ccc531b27af99b.png" width="500" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p style="color:#2a3840; margin-left:.2rem; margin-right:0; text-align:justify"&gt;&lt;span style="color:#000000"&gt;這較 6 月份時宣佈的數字有所增長。今年 6 月，Neuralink 合作伙伴巴羅神經學研究所稱，已有 7 名嚴重癱瘓的患者接受了 Neuralink 的植入物，並正在使用它們通過意念控制數字設備和物理設備。&lt;/span&gt;&lt;/p&gt; 
+&lt;p style="color:#2a3840; margin-left:.2rem; margin-right:0; text-align:justify"&gt;&lt;span style="color:#000000"&gt;Neuralink 公司週二在社交平台 X 上表示，這些患者累計使用其設備達 2000 天，總使用時長超過 1.5 萬小時。今年 7 月，Neuralink 宣佈將在英國啓動芯片臨牀試驗，並與倫敦大學學院醫院和紐卡斯爾醫院合作開展研究。&lt;/span&gt;&lt;/p&gt; 
+&lt;p style="color:#2a3840; margin-left:.2rem; margin-right:0; text-align:justify"&gt;&lt;span style="color:#000000"&gt;今年 6 月，Neuralink 在一輪融資中獲得了 6.5 億美元的資金支持。&lt;/span&gt;&lt;/p&gt;
+                                                                                &lt;/div&gt;
+                                                                            </description>
+      <link>https://www.oschina.net/news/371279</link>
+      <guid isPermaLink="false">https://www.oschina.net/news/371279</guid>
+      <pubDate>Sun, 07 Sep 2025 03:27:00 GMT</pubDate>
+      <author>來源: OSCHINA</author>
+    </item>
+    <item>
+      <title>AI 訓練初創公司 Mercor 欲爭取超 100 億美元估值</title>
+      <description>&lt;div class="content"&gt;
+                                                                    
+                                                        &lt;p style="color:#242424; margin-left:0; margin-right:0; text-align:left"&gt;Mercor 是一家成立僅兩年的初創公司，專注於為像 OpenAI 和 Meta 這樣的企業提供所需的領域專家，以幫助訓練和優化其基礎 AI 模型。根據 &lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Ftechcrunch.com%2F2025%2F09%2F09%2Fsources-ai-training-startup-mercor-eyes-10b-valuation-on-450-million-run-rate%2F" target="_blank"&gt;TechCrunch&lt;/a&gt; 獲取的一份市場文件和知情人士的説法，Mercor 目前正在與投資者討論進行第三輪融資（Series C）。&lt;/p&gt; 
+&lt;p style="color:#242424; margin-left:0; margin-right:0; text-align:left"&gt;該公司目前的目標是將估值提升至 100 億美元或以上，較幾個月前討論的 80 億美元估值有所上升。儘管最終交易條款仍可能變化，但 Mercor 向潛在投資者透露，他們已經收到多份出價，其中一些的估值甚至高達 100 億美元。此外，Mercor 還通過特殊目的工具（SPVs）引入了至少兩位新投資者以為潛在交易籌集資金。&lt;/p&gt; 
+&lt;p style="color:#242424; margin-left:0; margin-right:0; text-align:left"&gt;&lt;img height="235" src="https://oscimg.oschina.net/oscnet/up-92ca9e29d9459031238d3de4cc4e1550f83.png" width="500" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p style="color:#242424; margin-left:0; margin-right:0; text-align:left"&gt;Mercor 在 2 月份宣佈的上一輪融資為一輪 1 億美元的 B 輪融資，估值為 20 億美元。根據知情人士的消息，Mercor 的年化收入（ARR）接近 4.5 億美元。早在 2 月，Mercor 就曾對外宣佈其年收入達到 7500 萬美元，而其首席執行官 Brendan Foody 在 3 月時通過社交媒體表示 ARR 已達 1 億美元。&lt;/p&gt; 
+&lt;p style="color:#242424; margin-left:0; margin-right:0; text-align:left"&gt;該公司表示，預計將比另一家初創公司 Anysphere 更快地達到 5 億美元的年收入里程碑。Anysphere 以其 AI 編碼助手 Cursor 而知名，並在推出產品後約一年才實現 5 億美元的年收入。與仍在燒錢的 Anysphere 不同，Mercor 在上半年的利潤達到了 600 萬美元。&lt;/p&gt; 
+&lt;p style="color:#242424; margin-left:0; margin-right:0; text-align:left"&gt;Mercor 的收入來源於為企業提供專業領域專家以執行 AI 模型訓練，比如科學家、醫生和律師等，按小時收費。這家公司聲稱為包括亞馬遜、谷歌、Meta、微軟、OpenAI 等在內的五大 AI 實驗室提供數據標註承包商。根據消息人士的透露，Mercor 的部分收入來自於這些品牌中的 OpenAI。&lt;/p&gt; 
+&lt;p style="color:#242424; margin-left:0; margin-right:0; text-align:left"&gt;為了進一步多樣化業務模式，Mercor 正在向投資者表示，他們計劃增加更多用於強化學習的軟件基礎設施。這種訓練方法能夠讓模型的決策經過驗證或反駁，從而融入反饋並持續改善。公司還打算最終建立一個 AI 驅動的招聘市場。&lt;/p&gt; 
+&lt;p style="color:#242424; margin-left:0; margin-right:0; text-align:left"&gt;儘管 Mercor 面臨來自 Surge AI 等公司的競爭，後者也在談判以 250 億美元的估值籌集資金，Mercor 仍然保持樂觀。Co-founder Foody 表示:「我們並沒有努力進行融資」，並且每月都會拒絕投資者的多項出價。&lt;/p&gt; 
+&lt;p style="color:#242424; margin-left:0; margin-right:0; text-align:left"&gt;Mercor 的三位聯合創始人均為哈佛大學輟學生，都是二十出頭，近期還聘請了前 Uber 首席產品官 Sundeep Jain 擔任首任總裁，以助力公司發展。&lt;/p&gt; 
+&lt;p style="color:#242424; margin-left:0; margin-right:0; text-align:left"&gt;不過，Mercor 也正面臨來自競爭對手 Scale AI 的訴訟，後者指控其侵犯商業祕密，稱一名前員工在加入 Mercor 前 「竊取了超過 100 份關於 Scale 客戶策略和其他專有信息的機密文件」。&lt;/p&gt;
+                                                                                &lt;/div&gt;
+                                                                            </description>
+      <link>https://www.oschina.net/news/371277</link>
+      <guid isPermaLink="false">https://www.oschina.net/news/371277</guid>
+      <pubDate>Sun, 07 Sep 2025 03:18:00 GMT</pubDate>
+      <author>來源: OSCHINA</author>
+    </item>
+    <item>
+      <title>前端日誌回撈系統的性能優化實踐</title>
+      <description>&lt;div class="content"&gt;
+                                                                                                                                                                                                                                        &lt;span id="OSC_h1_1"&gt;&lt;/span&gt; 
+&lt;h1&gt;一、前言&lt;/h1&gt; 
+&lt;p&gt;&lt;span&gt;&lt;span style="color:#3e3e3e"&gt;在現代前端應用中，日誌回撈系統是排查線上問題的重要工具。然而，傳統的日誌系統往往面臨着包體積過大、存儲無限膨脹、性能影響用戶體驗等問題。本文將深入分析我們在&lt;/span&gt;&lt;span style="color:#3e3e3e"&gt;&lt;span style="background-color:#d6d6d6"&gt;@dw/log&lt;/span&gt;&lt;/span&gt;&lt;span style="color:#3e3e3e"&gt;和&lt;/span&gt;&lt;span style="color:#3e3e3e"&gt;&lt;span style="background-color:#d6d6d6"&gt;@dw/log-upload&lt;/span&gt;&lt;/span&gt;&lt;span style="color:#3e3e3e"&gt;兩個庫中實施的關鍵性能優化，以及改造過程中遇到的技術難點和解決方案。&lt;/span&gt;&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;span&gt;&lt;strong&gt;&lt;span style="color:#3e3e3e"&gt;核心優化策略概覽：&lt;/span&gt;&lt;/strong&gt;&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;span&gt;&lt;span style="color:#3e3e3e"&gt;我們的優化策略主要圍繞三個核心問題：&lt;/span&gt;&lt;/span&gt;&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt;&lt;span&gt;&lt;strong&gt;&lt;span style="color:#3e3e3e"&gt;存儲膨脹問題&lt;/span&gt;&lt;/strong&gt;&lt;span style="color:#3e3e3e"&gt; - 通過智能清理策略控制本地存儲大小&lt;/span&gt;&lt;/span&gt;&lt;/li&gt; 
+ &lt;li&gt;&lt;span&gt;&lt;strong&gt;&lt;span style="color:#3e3e3e"&gt;包體積問題&lt;/span&gt;&lt;/strong&gt;&lt;span style="color:#3e3e3e"&gt; - 通過異步模塊加載實現按需引入&lt;/span&gt;&lt;/span&gt;&lt;/li&gt; 
+ &lt;li&gt;&lt;span&gt;&lt;strong&gt;&lt;span style="color:#3e3e3e"&gt;性能影響問題&lt;/span&gt;&lt;/strong&gt;&lt;span style="color:#3e3e3e"&gt; - 通過隊列機制和節流策略提升用戶體驗&lt;/span&gt;&lt;/span&gt;&lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;p&gt;&amp;nbsp;&lt;/p&gt; 
+&lt;span id="OSC_h1_2"&gt;&lt;/span&gt; 
+&lt;h1&gt;二、核心性能優化&lt;/h1&gt; 
+&lt;p style="text-align:center"&gt;&lt;span&gt;&lt;strong&gt;&lt;span style="color:#000000"&gt;優化一：智能化數據庫清理機制&lt;/span&gt;&lt;/strong&gt;&lt;/span&gt;&lt;/p&gt; 
+&lt;p style="text-align:left"&gt;&lt;span&gt;&lt;strong&gt;&lt;span style="color:#000000"&gt;問題背景&lt;/span&gt;&lt;/strong&gt;&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;span&gt;&lt;span style="color:#3e3e3e"&gt;傳統日誌系統的一個重大痛點是本地存儲無限膨脹。用戶長期使用後，IndexedDB 可能積累數萬條日誌記錄，不僅佔用大量存儲空間，更拖慢了所有數據庫查詢和寫入操作。&lt;/span&gt;&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&amp;nbsp;&lt;/p&gt; 
+&lt;p style="text-align:left"&gt;&lt;span&gt;&lt;strong&gt;&lt;span style="color:#000000"&gt;解決方案：雙重清理策略&lt;/span&gt;&lt;/strong&gt;&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;span&gt;&lt;span style="color:#3e3e3e"&gt;我們實現了一個智能清理機制，它結合了兩種策略，並只在瀏覽器空閒時執行，避免影響正常業務。&lt;/span&gt;&lt;/span&gt;&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt;&lt;span&gt;&lt;strong&gt;&lt;span style="color:#3e3e3e"&gt;雙重清理&lt;/span&gt;&lt;/strong&gt;&lt;span style="color:#3e3e3e"&gt;：&lt;/span&gt;&lt;/span&gt; 
+  &lt;ul&gt; 
+   &lt;li&gt;&lt;span&gt;&lt;strong&gt;&lt;span style="color:#3e3e3e"&gt;按時間清理&lt;/span&gt;&lt;/strong&gt;&lt;span style="color:#3e3e3e"&gt;： 刪除&lt;/span&gt;&lt;span style="color:#3e3e3e"&gt;&lt;span style="background-color:#d6d6d6"&gt;N&lt;/span&gt;&lt;/span&gt;&lt;span style="color:#3e3e3e"&gt;天前的所有日誌。&lt;/span&gt;&lt;/span&gt;&lt;/li&gt; 
+   &lt;li&gt;&lt;span&gt;&lt;strong&gt;&lt;span style="color:#3e3e3e"&gt;按數量清理&lt;/span&gt;&lt;/strong&gt;&lt;span style="color:#3e3e3e"&gt;： 當日誌總數超過閾值時，刪除最舊的日誌，直到數量達標。&lt;/span&gt;&lt;/span&gt;&lt;/li&gt; 
+  &lt;/ul&gt; &lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;pre&gt;&lt;code&gt;/**
+ * 綜合清理日誌（同時處理過期和數量限制）
+ * @param retentionDays 保留天數
+ * @param maxLogCount 最大日誌條數
+ */
+async cleanupLogs(retentionDays?: number, maxLogCount?: number): Promise&amp;lt;void&amp;gt; {
+  if (!this.db) {
+    throw new Error('Database not initialized')
+  }
+  
+  try {
+    // 先清理過期日誌
+    if (retentionDays &amp;amp;&amp;amp; retentionDays &amp;gt; 0) {
+      await this.clearExpiredLogs(retentionDays)
+    }
+    
+    // 再清理超出數量限制的日誌
+    if (maxLogCount &amp;amp;&amp;amp; maxLogCount &amp;gt; 0) {
+      await this.clearExcessLogs(maxLogCount)
+    }
+  } catch (error) {
+    // 日誌清理失敗不應該影響主流程
+    console.warn('日誌清理失敗:', error)
+  }
+}&lt;/code&gt;&lt;/pre&gt; 
+&lt;p&gt;&amp;nbsp;&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt;&lt;span&gt;&lt;strong&gt;&lt;span style="color:#3e3e3e"&gt;智能調度&lt;/span&gt;&lt;/strong&gt;&lt;span style="color:#3e3e3e"&gt;：&lt;/span&gt;&lt;/span&gt; 
+  &lt;ul&gt; 
+   &lt;li&gt;&lt;span&gt;&lt;strong&gt;&lt;span style="color:#3e3e3e"&gt;節流&lt;/span&gt;&lt;/strong&gt;&lt;span style="color:#3e3e3e"&gt;： 保證清理操作在短時間內（如 5 分鐘）最多執行一次。&lt;/span&gt;&lt;/span&gt;&lt;/li&gt; 
+   &lt;li&gt;&lt;span&gt;&lt;strong&gt;&lt;span style="color:#3e3e3e"&gt;空閒執行&lt;/span&gt;&lt;/strong&gt;&lt;span style="color:#3e3e3e"&gt;： 將清理任務調度到瀏覽器主線程空閒時執行，確保不與用戶交互或頁面渲染爭搶資源。&lt;/span&gt;&lt;/span&gt;&lt;/li&gt; 
+  &lt;/ul&gt; &lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;pre&gt;&lt;code&gt;/**
+ * 檢查並執行清理（節流版本，避免頻繁清理）
+ */
+private checkAndCleanup = (() =&amp;gt; {
+  let lastCleanup = 0
+  const CLEANUP_INTERVAL = 5 * 60 * 1000 // 5 分鐘最多清理一次
+  
+  return () =&amp;gt; {
+    const now = Date.now()
+    if (now - lastCleanup &amp;gt; CLEANUP_INTERVAL) {
+      lastCleanup = now
+      executeWhenIdle(() =&amp;gt; {
+        this.performCleanup()
+      }, 1000)
+    }
+  }
+})()&lt;/code&gt;&lt;/pre&gt; 
+&lt;p&gt;&amp;nbsp;&lt;/p&gt; 
+&lt;p style="text-align:center"&gt;&lt;span&gt;&lt;strong&gt;&lt;span style="color:#000000"&gt;優化二：上傳模塊的異步加載架構&lt;/span&gt;&lt;/strong&gt;&lt;/span&gt;&lt;/p&gt; 
+&lt;div&gt; 
+ &lt;img src="https://mp.toutiao.com/mp/agw/article_material/open_image/get?code=NWRiNTYyZGZkOGM4ODczZWUxYjAxZTc0YTgxNzNlODcsMTc1NzM5NjY0MzgxMw==" referrerpolicy="no-referrer"&gt; 
+&lt;/div&gt; 
+&lt;p&gt;&amp;nbsp;&lt;/p&gt; 
+&lt;p style="text-align:left"&gt;&lt;span&gt;&lt;strong&gt;&lt;span style="color:#000000"&gt;問題背景&lt;/span&gt;&lt;/strong&gt;&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;span&gt;&lt;span style="color:#3e3e3e"&gt;日誌上傳功能涉及 OSS 上傳、文件壓縮等重型依賴，如果全部打包到主庫中，會顯著增加包體積。更重要的是，大部分用戶可能永遠不會觸發日誌上傳功能。&lt;/span&gt;&lt;/span&gt;&lt;/p&gt; 
+&lt;p style="text-align:left"&gt;&lt;span&gt;&lt;strong&gt;&lt;span style="color:#000000"&gt;解決方案：動態模塊加載&lt;/span&gt;&lt;/strong&gt;&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;span&gt;&lt;span style="color:#3e3e3e"&gt;189KB 的包體積是不可接受的。分析發現，包含文件壓縮（JSZip）和 OSS 上傳的 &lt;/span&gt;&lt;span style="color:#3e3e3e"&gt;&lt;span style="background-color:#d6d6d6"&gt;@dw/log-upload&lt;/span&gt;&lt;/span&gt;&lt;span style="color:#3e3e3e"&gt;模塊是體積元兇，但 99% 的用戶在正常瀏覽時根本用不到它。&lt;/span&gt;&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&amp;nbsp;&lt;/p&gt; 
+&lt;p&gt;&lt;span&gt;&lt;span style="color:#3e3e3e"&gt;我們採取了「核心功能+插件化」的設計思路，將非核心的上傳功能徹底分離。&lt;/span&gt;&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&amp;nbsp;&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt;&lt;span&gt;&lt;strong&gt;&lt;span style="color:#3e3e3e"&gt;上傳模塊分離&lt;/span&gt;&lt;/strong&gt;&lt;span style="color:#3e3e3e"&gt;： 將上傳邏輯拆分為獨立的&lt;/span&gt;&lt;span style="color:#3e3e3e"&gt;&lt;span style="background-color:#d6d6d6"&gt;@dw/log-upload&lt;/span&gt;&lt;/span&gt;&lt;span style="color:#3e3e3e"&gt;庫，並通過 CDN 託管。&lt;/span&gt;&lt;/span&gt;&lt;/li&gt; 
+ &lt;li&gt;&lt;span&gt;&lt;strong&gt;&lt;span style="color:#3e3e3e"&gt;動態加載實現&lt;/span&gt;&lt;/strong&gt;&lt;span style="color:#3e3e3e"&gt;： 僅在用戶手動觸發「上傳日誌」時，才通過動態創建&lt;/span&gt;&lt;span style="color:#3e3e3e"&gt;&lt;span style="background-color:#d6d6d6"&gt;script&lt;/span&gt;&lt;/span&gt;&lt;span style="color:#3e3e3e"&gt;標籤的方式，從 CDN 異步加載上傳模塊。我們設計了一個單例加載器確保模塊只被請求一次。&lt;/span&gt;&lt;/span&gt;&lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;pre&gt;&lt;code&gt;/**
+ * OSS 上傳模塊的遠程 URL
+ */
+const OSS_UPLOADER_URL = 'https://cdn-jumper.dewu.com/sdk-linker/dw-log-upload.js'
+
+
+/**
+ * 動態加載遠程模塊
+ * 使用單例模式確保模塊只加載一次
+ */
+const loadRemoteModule = async (): Promise&amp;lt;LogUploadModule&amp;gt; =&amp;gt; {
+  if (!moduleLoadPromise) {
+    moduleLoadPromise = (async () =&amp;gt; {
+      try {
+        await loadScript(OSS_UPLOADER_URL)
+        return window.DWLogUpload
+      } catch (error) {
+        moduleLoadPromise = null
+        throw error
+      }
+    })()
+  }
+  return moduleLoadPromise
+}
+
+
+/**
+ * 上傳文件到 OSS
+ */
+export const uploadToOss = async (file: File, curEnv?: string, appId?: string): Promise&amp;lt;string&amp;gt; =&amp;gt; {
+  try {
+    // 懶加載上傳函數
+    if (!ossUploader) {
+      const module = await loadRemoteModule()
+      ossUploader = module.uploadToOss
+    }
+    
+    const result = await ossUploader(file, curEnv, appId)
+    return result
+  } catch (error) {
+    console.info('Failed to upload file to OSS:', error)
+    return ''
+  }
+}&lt;/code&gt;&lt;/pre&gt; 
+&lt;p&gt;&amp;nbsp;&lt;/p&gt; 
+&lt;p style="text-align:center"&gt;&lt;span&gt;&lt;strong&gt;&lt;span style="color:#000000"&gt;優化三：JSZip 庫的動態引入&lt;/span&gt;&lt;/strong&gt;&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;span&gt;&lt;span style="color:#3e3e3e"&gt;我們避免將 JSZip 打包到主庫中，從主包中移除，改為在上傳模塊內部動態引入，優先使用業務側可能已加載的全局&lt;/span&gt;&lt;span style="color:#3e3e3e"&gt;&lt;span style="background-color:#d6d6d6"&gt;window.JSZip&lt;/span&gt;&lt;/span&gt;&lt;span style="color:#3e3e3e"&gt;。&lt;/span&gt;&lt;/span&gt;&lt;/p&gt; 
+&lt;pre&gt;&lt;code&gt;/**
+ * 獲取 JSZip 實例
+ */
+export const getJSZip = async (): Promise&amp;lt;JSZip | null&amp;gt; =&amp;gt; {
+  try {
+    if (!JSZipCreator) {
+      const module = await loadRemoteModule()
+      JSZipCreator = module.JSZipCreator
+    }
+    
+    zipInstance = new window.JSZip()
+    return zipInstance
+  } catch (error) {
+    console.info('Failed to create JSZip instance:', error)
+    return null
+  }
+}
+
+
+// 在上傳模塊中實現靈活的 JSZip 加載
+export const JSZipCreator = async () =&amp;gt; {
+  // 優先使用全局 JSZip（如果頁面已經加載了）
+  if (window.JSZip) {
+    return window.JSZip
+  }
+  return JSZip
+}&lt;/code&gt;&lt;/pre&gt; 
+&lt;p&gt;&amp;nbsp;&lt;/p&gt; 
+&lt;p style="text-align:center"&gt;&lt;span&gt;&lt;strong&gt;&lt;span style="color:#000000"&gt;優化四：日誌隊列與性能優化&lt;/span&gt;&lt;/strong&gt;&lt;/span&gt;&lt;/p&gt; 
+&lt;div&gt; 
+ &lt;img src="https://mp.toutiao.com/mp/agw/article_material/open_image/get?code=ZjcxZDc1N2ExYjgzZTJhNDE3N2YzZjJlMzY3MTllN2MsMTc1NzM5NjY0MzgxMw==" referrerpolicy="no-referrer"&gt; 
+&lt;/div&gt; 
+&lt;p&gt;&lt;span&gt;&lt;span style="color:#3e3e3e"&gt;在某些異常場景下，日誌會短時間內高頻觸發（如循環錯誤），密集的&lt;/span&gt;&lt;span style="color:#3e3e3e"&gt;&lt;span style="background-color:#d6d6d6"&gt;IndexedDB.put()&lt;/span&gt;&lt;/span&gt;&lt;span style="color:#3e3e3e"&gt;操作會阻塞主線程，導致頁面卡頓。&lt;/span&gt;&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&amp;nbsp;&lt;/p&gt; 
+&lt;p&gt;&lt;span&gt;&lt;span style="color:#3e3e3e"&gt;我們引入了一個日誌隊列，將所有日誌寫入請求「緩衝」起來，再由隊列控制器進行優化處理。&lt;/span&gt;&lt;/span&gt;&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt;&lt;span&gt;&lt;strong&gt;&lt;span style="color:#3e3e3e"&gt;限流&lt;/span&gt;&lt;/strong&gt;&lt;span style="color:#3e3e3e"&gt;： 設置每秒最多處理的日誌條數（如 50 條），超出部分直接丟棄。&lt;/span&gt;&lt;strong&gt;&lt;span style="color:#3e3e3e"&gt;錯誤（Error）級別的日誌擁有最高優先級，不受此限制&lt;/span&gt;&lt;/strong&gt;&lt;span style="color:#3e3e3e"&gt;，確保關鍵信息不丟失。&lt;/span&gt;&lt;/span&gt;&lt;/li&gt; 
+ &lt;li&gt;&lt;span&gt;&lt;strong&gt;&lt;span style="color:#3e3e3e"&gt;批處理與空閒執行&lt;/span&gt;&lt;/strong&gt;&lt;span style="color:#3e3e3e"&gt;： 將隊列中的日誌打包成批次，利用&lt;/span&gt;&lt;span style="color:#3e3e3e"&gt;&lt;span style="background-color:#d6d6d6"&gt;requestIdleCallback&lt;/span&gt;&lt;/span&gt;&lt;span style="color:#3e3e3e"&gt;在瀏覽器空閒時一次性寫入數據庫，極大減少了 I/O 次數和對主線程的佔用。&lt;/span&gt;&lt;/span&gt;&lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;pre&gt;&lt;code&gt;export class LogQueue {
+  private readonly MAX_LOGS_PER_SECOND = 50
+  
+  /**
+   * 檢查限流邏輯
+   */
+  private checkRateLimit(entry: LogEntry): boolean {
+    // 錯誤日誌總是被接受
+    if (entry.level === 'error') {
+      return true
+    }
+    
+    const now = Date.now()
+    if (now - this.lastResetTime &amp;gt; 1000) {
+      this.logCount = 0
+      this.lastResetTime = now
+    }
+    
+    if (this.logCount &amp;gt;= this.MAX_LOGS_PER_SECOND) {
+      return false
+    }
+    
+    this.logCount++
+    return true
+  }
+}&lt;/code&gt;&lt;/pre&gt; 
+&lt;p&gt;&lt;span&gt;&lt;span style="color:#3e3e3e"&gt;空閒時間處理機制：&lt;/span&gt;&lt;/span&gt;&lt;/p&gt; 
+&lt;pre&gt;&lt;code&gt;export function executeWhenIdle(callback: () =&amp;gt; void, timeout: number = 2000): void {
+  if (typeof window !== 'undefined' &amp;amp;&amp;amp; 'requestIdleCallback' in window) {
+    window.requestIdleCallback(() =&amp;gt; {
+      callback()
+    }, { timeout })
+  } else {
+    setTimeout(callback, 50)
+  }
+}&lt;/code&gt;&lt;/pre&gt; 
+&lt;p&gt;&amp;nbsp;&lt;/p&gt; 
+&lt;span id="OSC_h1_3"&gt;&lt;/span&gt; 
+&lt;h1&gt;三、打包構建中的技術難點與解決方案&lt;/h1&gt; 
+&lt;p&gt;&lt;span&gt;&lt;span style="color:#3e3e3e"&gt;在改造過程中，我們遇到了許多與打包構建相關的技術難題。這些問題往往隱藏較深，但一旦出現就會阻塞整個開發流程。以下是我們遇到的主要問題和解決方案：&lt;/span&gt;&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&amp;nbsp;&lt;/p&gt; 
+&lt;p style="text-align:center"&gt;&lt;span&gt;&lt;strong&gt;&lt;span style="color:#000000"&gt;難點一：異步加載 import()&lt;/span&gt;&lt;/strong&gt;&lt;/span&gt;&lt;/p&gt; 
+&lt;p style="text-align:center"&gt;&lt;span&gt;&lt;strong&gt;&lt;span style="color:#000000"&gt;打包失敗問題&lt;/span&gt;&lt;/strong&gt;&lt;/span&gt;&lt;/p&gt; 
+&lt;p style="text-align:left"&gt;&lt;span&gt;&lt;strong&gt;&lt;span style="color:#000000"&gt;問題描述&lt;/span&gt;&lt;/strong&gt;&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;span&gt;&lt;span style="color:#3e3e3e"&gt;&lt;span style="background-color:#d6d6d6"&gt;await import('./module')&lt;/span&gt;&lt;/span&gt;&lt;span style="color:#3e3e3e"&gt;語法在 Rollup 打包為 UMD 格式時會直接報錯，因為 UMD 規範本身不支持代碼分割。&lt;/span&gt;&lt;/span&gt;&lt;/p&gt; 
+&lt;pre&gt;&lt;code&gt;// 這樣的代碼會導致 UMD 打包失敗
+const loadModule = async () =&amp;gt; {
+  const module = await import('./upload-module')
+  return module
+}&lt;/code&gt;&lt;/pre&gt; 
+&lt;p&gt;&lt;span&gt;&lt;span style="color:#3e3e3e"&gt;錯誤信息：&lt;/span&gt;&lt;/span&gt;&lt;/p&gt; 
+&lt;pre&gt;&lt;code&gt;Error: Dynamic imports are not supported in UMD builds
+[!] (plugin commonjs) RollupError: "import" is not exported by "empty.js"&lt;/code&gt;&lt;/pre&gt; 
+&lt;p&gt;&amp;nbsp;&lt;/p&gt; 
+&lt;p style="text-align:left"&gt;&lt;span&gt;&lt;strong&gt;&lt;span style="color:#000000"&gt;解決方案：inlineDynamicImports 配置&lt;/span&gt;&lt;/strong&gt;&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;span&gt;&lt;span style="color:#3e3e3e"&gt;通過在 Rollup 配置中設置&lt;/span&gt;&lt;span style="color:#3e3e3e"&gt;&lt;span style="background-color:#d6d6d6"&gt;inlineDynamicImports: true&lt;/span&gt;&lt;/span&gt;&lt;span style="color:#3e3e3e"&gt;來解決這個問題：&lt;/span&gt;&lt;/span&gt;&lt;/p&gt; 
+&lt;pre&gt;&lt;code&gt;// rollup.config.js
+export default {
+  input: 'src/index.ts',
+  output: [
+    {
+      file: 'dist/umd/dw-log.js',
+      format: 'umd',
+      name: 'DwLog',
+      // 關鍵配置：內聯動態導入
+      inlineDynamicImports: true,
+    },
+    {
+      file: 'dist/cjs/index.js',
+      format: 'cjs',
+      // CJS 格式也需要這個配置
+      inlineDynamicImports: true,
+    }
+  ],
+  plugins: [
+    typescript(),
+    resolve({ browser: true }),
+    commonjs(),
+  ]
+}&lt;/code&gt;&lt;/pre&gt; 
+&lt;p&gt;&amp;nbsp;&lt;/p&gt; 
+&lt;p style="text-align:left"&gt;&lt;span&gt;&lt;strong&gt;&lt;span style="color:#000000"&gt;配置説明&lt;/span&gt;&lt;/strong&gt;&lt;/span&gt;&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt;&lt;span&gt;&lt;span style="color:#3e3e3e"&gt;&lt;span style="background-color:#d6d6d6"&gt;inlineDynamicImports: true&lt;/span&gt;&lt;/span&gt;&lt;span style="color:#3e3e3e"&gt;會將所有動態導入的模塊內聯到主包中&lt;/span&gt;&lt;/span&gt;&lt;/li&gt; 
+ &lt;li&gt;&lt;span&gt;&lt;span style="color:#3e3e3e"&gt;這解決了 UMD 格式不支持動態導入的問題&lt;/span&gt;&lt;/span&gt;&lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;p&gt;&amp;nbsp;&lt;/p&gt; 
+&lt;p style="text-align:center"&gt;&lt;span&gt;&lt;strong&gt;&lt;span style="color:#000000"&gt;難點二：process 對象未定義問題&lt;/span&gt;&lt;/strong&gt;&lt;/span&gt;&lt;/p&gt; 
+&lt;p style="text-align:left"&gt;&lt;span&gt;&lt;strong&gt;&lt;span style="color:#000000"&gt;問題描述&lt;/span&gt;&lt;/strong&gt;&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;span&gt;&lt;span style="color:#3e3e3e"&gt;打包後的代碼在瀏覽器環境中運行時出現&lt;/span&gt;&lt;span style="color:#3e3e3e"&gt;&lt;span style="background-color:#d6d6d6"&gt;process is not defined&lt;/span&gt;&lt;/span&gt;&lt;span style="color:#3e3e3e"&gt;錯誤：&lt;/span&gt;&lt;/span&gt;&lt;/p&gt; 
+&lt;pre&gt;&lt;code&gt;ReferenceError: process is not defined
+    at Object.&amp;lt;anonymous&amp;gt; (dw-log.umd.js:1234:56)&lt;/code&gt;&lt;/pre&gt; 
+&lt;p&gt;&lt;span&gt;&lt;span style="color:#3e3e3e"&gt;這通常是因為某些 Node.js 模塊或工具庫在代碼中引用了 process 對象，而瀏覽器環境中並不存在。&lt;/span&gt;&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&amp;nbsp;&lt;/p&gt; 
+&lt;p style="text-align:left"&gt;&lt;span&gt;&lt;strong&gt;&lt;span style="color:#000000"&gt;解決方案：插件注入 process 對象&lt;/span&gt;&lt;/strong&gt;&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;span&gt;&lt;span style="color:#3e3e3e"&gt;我們使用&lt;/span&gt;&lt;span style="color:#3e3e3e"&gt;&lt;span style="background-color:#d6d6d6"&gt;@rollup/plugin-inject&lt;/span&gt;&lt;/span&gt;&lt;span style="color:#3e3e3e"&gt;插件，在打包時向代碼中注入一個模擬的&lt;/span&gt;&lt;span style="color:#3e3e3e"&gt;&lt;span style="background-color:#d6d6d6"&gt;process&lt;/span&gt;&lt;/span&gt;&lt;span style="color:#3e3e3e"&gt; 對象，以滿足這些庫的運行時需求。&lt;/span&gt;&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&amp;nbsp;&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt;&lt;span&gt;&lt;span style="color:#3e3e3e"&gt;創建&lt;/span&gt;&lt;span style="color:#3e3e3e"&gt;&lt;span style="background-color:#d6d6d6"&gt;process-shim.js&lt;/span&gt;&lt;/span&gt;&lt;span style="color:#3e3e3e"&gt;文件提供瀏覽器端的&lt;/span&gt;&lt;span style="color:#3e3e3e"&gt;&lt;span style="background-color:#d6d6d6"&gt;process&lt;/span&gt;&lt;/span&gt;&lt;span style="color:#3e3e3e"&gt;實現。&lt;/span&gt;&lt;/span&gt;&lt;/li&gt; 
+ &lt;li&gt;&lt;span&gt;&lt;span style="color:#3e3e3e"&gt;在&lt;/span&gt;&lt;span style="color:#3e3e3e"&gt;&lt;span style="background-color:#d6d6d6"&gt;rollup.config.js&lt;/span&gt;&lt;/span&gt;&lt;span style="color:#3e3e3e"&gt;中配置插件：&lt;/span&gt;&lt;/span&gt;&lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;pre&gt;&lt;code&gt;// rollup.config.js
+import inject from '@rollup/plugin-inject'
+import path from 'path'
+
+
+export default {
+  // ... 其他配置
+  plugins: [
+    // 注入 process 對象
+    inject({
+      // 使用文件導入方式注入 process 對象
+      process: path.join(__dirname, 'process-shim.js'),
+    }),
+    typescript(),
+    resolve({ browser: true }),
+    commonjs(),
+  ]
+}&lt;/code&gt;&lt;/pre&gt; 
+&lt;p&gt;&amp;nbsp;&lt;/p&gt; 
+&lt;p&gt;&lt;span&gt;&lt;span style="color:#3e3e3e"&gt;創建 &lt;/span&gt;&lt;span style="color:#3e3e3e"&gt;&lt;span style="background-color:#d6d6d6"&gt;process-shim.js&lt;/span&gt;&lt;/span&gt;&lt;span style="color:#3e3e3e"&gt; 文件：&lt;/span&gt;&lt;/span&gt;&lt;/p&gt; 
+&lt;pre&gt;&lt;code&gt;// process-shim.js
+// 為瀏覽器環境提供 process 對象的基本實現
+export default {
+  env: {
+    NODE_ENV: 'production'
+  },
+  browser: true,
+  version: '',
+  versions: {},
+  platform: 'browser',
+  argv: [],
+  cwd: function() { return '/' },
+  nextTick: function(fn) {
+    setTimeout(fn, 0)
+  }
+}&lt;/code&gt;&lt;/pre&gt; 
+&lt;p&gt;&amp;nbsp;&lt;/p&gt; 
+&lt;p style="text-align:left"&gt;&lt;span&gt;&lt;strong&gt;&lt;span style="color:#000000"&gt;高級解決方案：條件注入&lt;/span&gt;&lt;/strong&gt;&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;span&gt;&lt;span style="color:#3e3e3e"&gt;為了更精確地控制注入，我們還可以使用條件注入：&lt;/span&gt;&lt;/span&gt;&lt;/p&gt; 
+&lt;pre&gt;&lt;code&gt;inject({
+  // 只在需要的地方注入 process
+  process: {
+    id: path.join(__dirname, 'process-shim.js'),
+    // 可以添加條件，只在特定模塊中注入
+    include: ['**/node_modules/**', '**/src/utils/**']
+  },
+  // 同時處理 global 對象
+  global: 'globalThis',
+  // 處理 Buffer 對象
+  Buffer: ['buffer', 'Buffer'],
+})&lt;/code&gt;&lt;/pre&gt; 
+&lt;p&gt;&amp;nbsp;&lt;/p&gt; 
+&lt;p style="text-align:center"&gt;&lt;span&gt;&lt;strong&gt;&lt;span style="color:#000000"&gt;難點三：第三方依賴的&lt;/span&gt;&lt;/strong&gt;&lt;/span&gt;&lt;/p&gt; 
+&lt;p style="text-align:center"&gt;&lt;span&gt;&lt;strong&gt;&lt;span style="color:#000000"&gt;ESM/CJS 兼容性問題&lt;/span&gt;&lt;/strong&gt;&lt;/span&gt;&lt;/p&gt; 
+&lt;p style="text-align:left"&gt;&lt;span&gt;&lt;strong&gt;&lt;span style="color:#000000"&gt;問題描述&lt;/span&gt;&lt;/strong&gt;&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;span&gt;&lt;span style="color:#3e3e3e"&gt;某些第三方庫（如 JSZip、@poizon/upload）在不同模塊系統下的導入方式不同，導致打包後出現導入錯誤：&lt;/span&gt;&lt;/span&gt;&lt;/p&gt; 
+&lt;pre&gt;&lt;code&gt;TypeError: Cannot read property 'default' of undefined&lt;/code&gt;&lt;/pre&gt; 
+&lt;p&gt;&amp;nbsp;&lt;/p&gt; 
+&lt;p style="text-align:left"&gt;&lt;span&gt;&lt;strong&gt;&lt;span style="color:#000000"&gt;解決方案：混合導入處理&lt;/span&gt;&lt;/strong&gt;&lt;/span&gt;&lt;/p&gt; 
+&lt;pre&gt;&lt;code&gt;// 處理 JSZip 的兼容性導入
+let JSZipModule: any
+try {
+  // 嘗試 ESM 導入
+  JSZipModule = await import('jszip')
+  // 檢查是否有 default 導出
+  JSZipModule = JSZipModule.default || JSZipModule
+} catch {
+  // 降級到全局變量
+  JSZipModule = (window as any).JSZip || require('jszip')
+}
+
+
+// 處理 @poizon/upload 的導入
+import PoizonUploadClass from '@poizon/upload'
+
+
+// 兼容不同的導出格式
+const PoizonUpload = PoizonUploadClass.default || PoizonUploadClass&lt;/code&gt;&lt;/pre&gt; 
+&lt;p&gt;&amp;nbsp;&lt;/p&gt; 
+&lt;p&gt;&lt;span&gt;&lt;span style="color:#3e3e3e"&gt;在 Rollup 配置中加強兼容性處理：&lt;/span&gt;&lt;/span&gt;&lt;/p&gt; 
+&lt;pre&gt;&lt;code&gt;export default {
+  plugins: [
+    resolve({
+      browser: true,
+      preferBuiltins: false,
+      // 解決模塊導入問題
+      exportConditions: ['browser', 'import', 'module', 'default']
+    }),
+    commonjs({
+      // 處理混合模塊
+      dynamicRequireTargets: [
+        'node_modules/jszip/**/*.js',
+        'node_modules/@poizon/upload/**/*.js'
+      ],
+      // 轉換默認導出
+      defaultIsModuleExports: 'auto'
+    }),
+  ]
+}&lt;/code&gt;&lt;/pre&gt; 
+&lt;p&gt;&amp;nbsp;&lt;/p&gt; 
+&lt;span id="OSC_h1_4"&gt;&lt;/span&gt; 
+&lt;h1&gt;四、性能測試與效果對比&lt;/h1&gt; 
+&lt;p&gt;&lt;span&gt;&lt;strong&gt;&lt;span style="color:#3e3e3e"&gt;打包優化效果對比：&lt;/span&gt;&lt;/strong&gt;&lt;/span&gt;&lt;/p&gt; 
+&lt;div&gt; 
+ &lt;img src="https://mp.toutiao.com/mp/agw/article_material/open_image/get?code=M2FhYzI1ODFiNTk1YWUwZTdmMmE4OTAzMGQ2ZTdmNmMsMTc1NzM5NjY0MzgxMw==" referrerpolicy="no-referrer"&gt; 
+&lt;/div&gt; 
+&lt;p style="text-align:center"&gt;&amp;nbsp;&lt;/p&gt; 
+&lt;span id="OSC_h1_5"&gt;&lt;/span&gt; 
+&lt;h1&gt;五、總結&lt;/h1&gt; 
+&lt;p&gt;&lt;span&gt;&lt;span style="color:#3e3e3e"&gt;通過解決這些打包構建中的技術難點，我們不僅成功完成了日誌系統的性能優化，還積累了工程化經驗。這些實踐不僅帶來了日誌系統本身的輕量化與高效化，其經驗對於任何追求高性能和穩定性的前端項目都有部分參考價值。&lt;/span&gt;&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&amp;nbsp;&lt;/p&gt; 
+&lt;p style="text-align:center"&gt;&lt;span&gt;&lt;strong&gt;&lt;span style="color:#ffffff"&gt;&lt;span style="background-color:#5caae9"&gt;往期回顧&lt;/span&gt;&lt;/span&gt;&lt;/strong&gt;&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&amp;nbsp;&lt;/p&gt; 
+&lt;p&gt;&lt;span&gt;&lt;span style="color:#6a6a6a"&gt;&lt;span style="background-color:#e9faff"&gt;1. 得物靈犀搜索推薦詞分發平台演進 3.0&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;span&gt;&lt;span style="color:#6a6a6a"&gt;&lt;span style="background-color:#e9faff"&gt;2. R8 疑難雜症分析實戰：外聯優化設計缺陷引起的崩潰｜得物技術&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;span&gt;&lt;span style="color:#6a6a6a"&gt;&lt;span style="background-color:#e9faff"&gt;3. 可擴展系統設計的黃金法則與 Go 語言實踐｜得物技術&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;span&gt;&lt;span style="color:#6a6a6a"&gt;&lt;span style="background-color:#e9faff"&gt;4. 營銷會場預覽直通車實踐｜得物技術&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;span&gt;&lt;span style="color:#6a6a6a"&gt;&lt;span style="background-color:#e9faff"&gt;5. 基於 TinyMce 富文本編輯器的客服自研知識庫的技術探索和實踐｜得物技術&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&amp;nbsp;&lt;/p&gt; 
+&lt;p style="text-align:center"&gt;&lt;span&gt;&lt;span style="color:#3e3e3e"&gt;文 / 沸騰&lt;/span&gt;&lt;/span&gt;&lt;/p&gt; 
+&lt;p style="text-align:center"&gt;&amp;nbsp;&lt;/p&gt; 
+&lt;p style="text-align:center"&gt;&lt;span&gt;&lt;span style="color:#3e3e3e"&gt;關注得物技術，每週更新技術乾貨&lt;/span&gt;&lt;/span&gt;&lt;/p&gt; 
+&lt;p style="text-align:center"&gt;&lt;span&gt;&lt;span style="color:#3e3e3e"&gt;要是覺得文章對你有幫助的話，歡迎評論轉發點贊～&lt;/span&gt;&lt;/span&gt;&lt;/p&gt; 
+&lt;p style="text-align:center"&gt;&lt;span&gt;&lt;span style="color:#3e3e3e"&gt;未經得物技術許可嚴禁轉載，否則依法追究法律責任。&lt;/span&gt;&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&amp;nbsp;&lt;/p&gt;
+                                                                                    &lt;/div&gt;
+                                                                            </description>
+      <link>https://my.oschina.net/u/5783135/blog/18691140</link>
+      <guid isPermaLink="false">https://my.oschina.net/u/5783135/blog/18691140</guid>
+      <pubDate>Sun, 07 Sep 2025 03:13:00 GMT</pubDate>
+      <author>原創</author>
+    </item>
+    <item>
+      <title>騰訊混元圖像模型 2.1 上新並開源</title>
+      <description>&lt;div class="content"&gt;
+                                                                    
+                                                        &lt;p&gt;騰訊&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fmp.weixin.qq.com%2Fs%2FXAs9XzcbhF6HDDjK1iPg4w" target="_blank"&gt;宣佈&lt;/a&gt;&lt;strong&gt;混元圖像模型 2.1（HunyuanImage-2.1）&lt;/strong&gt;上新並開源。該模型支持原生 2K 生圖，能輸出更清晰、細節更豐富的圖像，滿足專業設計與創作需求。同時，其支持中英文原生輸入，解決語言限制問題，拓寬全球用戶使用範圍。&lt;/p&gt; 
+&lt;p&gt;&lt;img height="1736" src="https://static.oschina.net/uploads/space/2025/0910/104600_eFCx_2720166.png" width="2754" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;em&gt;https://hunyuan.tencent.com/image/zh&lt;/em&gt;&lt;/p&gt; 
+&lt;p&gt;混元圖像模型 2.1 還支持長達 1k tokens 的複雜語義超長 prompt，對圖像中文字渲染和場景細節把控更穩定。&lt;/p&gt; 
+&lt;p&gt;&lt;img src="https://static.oschina.net/uploads/space/2025/0910/104649_SwuS_2720166.png" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p&gt;據介紹，混元文生圖大模型 HunyuanImage-2.1 的參數規模達到 17B，該模型採用了雙流 DiT 架構，配備了 MLLM+ByT5 雙文本編碼器和 32×32 的高壓縮 VAE。官方提供了 base、refine 以及 meanflow 蒸餾版，推理步數可從 100 步壓縮至 8 步，同時保持高質量畫質。&lt;/p&gt; 
+&lt;p&gt;&lt;img alt="" src="https://oscimg.oschina.net/oscnet/up-3a41674af41bb75394bc59dcacf3f4f85f6.png" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p&gt;HunyuanImage-2.1 在複雜語義理解、多主體分別控制、中英文字體生成、連環畫與海報等場景下表現出色。它支持最長 1000 tokens 的提示詞，能夠精準還原人物的表情、動作以及圖文混排的細節。同時，官方還開源了配套的 PromptEnhancer 文本改寫模型，用於結構化地優化用戶輸入的指令。&lt;/p&gt; 
+&lt;p&gt;&lt;em&gt;https://huggingface.co/tencent/HunyuanImage-2.1&lt;/em&gt;&lt;/p&gt;
+                                                                                &lt;/div&gt;
+                                                                            </description>
+      <link>https://www.oschina.net/news/371265</link>
+      <guid isPermaLink="false">https://www.oschina.net/news/371265</guid>
+      <pubDate>Sun, 07 Sep 2025 02:47:00 GMT</pubDate>
+      <author>來源: OSCHINA</author>
+    </item>
+    <item>
+      <title>首款 AI Agent 瀏覽器 Fellou CE 發佈</title>
+      <description>&lt;div class="content"&gt;
+                                                                    
+                                                        &lt;p style="color:#242424; margin-left:0; margin-right:0; text-align:left"&gt;&lt;span&gt;硅谷公司 Fellou 近日推出了一款名為 Fellou CE（概念版）的 AI 瀏覽器。該瀏覽器並不僅僅是一個信息獲取工具，而是一個可以執行復雜任務的智能助手，旨在提升用戶的工作效率和創造力。&lt;/span&gt;&lt;/p&gt; 
+&lt;p style="color:#242424; margin-left:0; margin-right:0; text-align:left"&gt;&lt;span&gt;Fellou 的創始人兼 CEO Dominic Xie 指出，現今科技界普遍關注 AI 節省時間的能力，但他認為這種思維是有誤的。他表示，AI 的真正價值在於它能作為 「認知槓桿」，幫助人們更好地思考、創造和解決複雜問題。&lt;/span&gt;&lt;/p&gt; 
+&lt;p style="color:#242424; margin-left:0; margin-right:0; text-align:left"&gt;&lt;img height="293" src="https://oscimg.oschina.net/oscnet/up-10703979e17b41a08a1f20297519d4e33e0.png" width="500" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p style="color:#242424; margin-left:0; margin-right:0; text-align:left"&gt;Fellou 的設計理念是希望用戶從繁重的手動操作中解放出來，將工作流程自動化，轉而專注於更高層次的創造性思維。比如，用戶只需告訴 Fellou：「請分析我的 LinkedIn 個人資料，並找出 10 個適合我的產品負責人職位，然後用我桌面上的定製簡歷申請。」Fellou 會自動完成這一過程，包括瀏覽多個網站、分析職位要求，並將用戶的簡歷發送出去。用戶在此過程中仍可保持對每一步操作的實時控制。&lt;/p&gt; 
+&lt;p style="color:#242424; margin-left:0; margin-right:0; text-align:left"&gt;Fellou 的創新在於其 「無縫體驗連續體」 的構建，涵蓋三個主要方面:交互連續體、任務連續體和記憶連續體。通過自然對話的方式，Fellou 能夠理解用戶的意圖並主動提供幫助，而不是單純等待用戶的指令。此外，Fellou 通過整合不同應用的記憶，幫助用戶建立一個完整的數字思維導圖，以便更好地進行決策。&lt;/p&gt; 
+&lt;p style="color:#242424; margin-left:0; margin-right:0; text-align:left"&gt;&lt;img height="330" src="https://oscimg.oschina.net/oscnet/up-85129da5335441e4e19fc7ed4d3ca167894.png" width="500" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p style="color:#242424; margin-left:0; margin-right:0; text-align:left"&gt;在與 Fellou CE 的交互中，用戶會發現任務處理變得更加連貫。Fellou CE 打破了傳統瀏覽器的割裂體驗，讓人機交互更加自然。用戶只需用自然語言下達指令，Fellou CE 便會理解並執行，無需繁瑣的手動操作。同時，它還具備記憶功能，能夠根據用戶的歷史操作和偏好，智能優化信息推薦，讓每次使用都更為高效。&lt;/p&gt; 
+&lt;p style="color:#242424; margin-left:0; margin-right:0; text-align:left"&gt;Fellou CE 的 Deep Search 和 Visual Report 功能現已免費開放，用戶可以精準獲取所需信息，並將零散的數據轉化為可視化的報告。此外，Fellou CE 在信息安全方面也表現優異，用戶的隱私和數據得到了有效保護。&lt;/p&gt;
+                                                                                &lt;/div&gt;
+                                                                            </description>
+      <link>https://www.oschina.net/news/371264</link>
+      <guid isPermaLink="false">https://www.oschina.net/news/371264</guid>
+      <pubDate>Sun, 07 Sep 2025 02:47:00 GMT</pubDate>
+      <author>來源: OSCHINA</author>
+    </item>
     <item>
       <title>DCloud 發佈並開源 uni-ai x，全平台支持的原生 AI 聊天套件</title>
       <description>&lt;div class="content"&gt;
@@ -30,7 +1026,7 @@
                                                                             </description>
       <link>https://www.oschina.net/news/371259</link>
       <guid isPermaLink="false">https://www.oschina.net/news/371259</guid>
-      <pubDate>Invalid Date</pubDate>
+      <pubDate>Sun, 07 Sep 2025 02:39:00 GMT</pubDate>
       <author>來源: OSCHINA</author>
     </item>
     <item>
@@ -61,7 +1057,7 @@
                                                                             </description>
       <link>https://www.oschina.net/news/371255/tiobe-index-202509</link>
       <guid isPermaLink="false">https://www.oschina.net/news/371255/tiobe-index-202509</guid>
-      <pubDate>Wed, 10 Sep 2025 02:19:35 GMT</pubDate>
+      <pubDate>Sun, 07 Sep 2025 02:19:00 GMT</pubDate>
       <author>來源: OSCHINA</author>
     </item>
     <item>
@@ -69,325 +1065,7 @@
       <description/>
       <link>https://www.oschina.net/ai-creation/details/2193</link>
       <guid isPermaLink="false">https://www.oschina.net/ai-creation/details/2193</guid>
-      <pubDate>Wed, 10 Sep 2025 02:08:35 GMT</pubDate>
-    </item>
-    <item>
-      <title>Google Veo 3 支持生成豎屏 AI 視頻，提升分辨率並降低價格</title>
-      <description>&lt;div class="content"&gt;
-                                                                    
-                                                        &lt;p&gt;Google 為其 AI 視頻生成器 Veo 3 帶來了 1080p 高清分辨率和豎屏格式（9:16）支持。這項升級不僅適用於標準版 Veo 3，也適用於 Veo 3 Fast——後者是一款速度更快、價格更低、但生成質量略遜的 AI 視頻模型。&lt;/p&gt; 
-&lt;p&gt;開發者現可通過在 API 請求中設置 aspectRatio 參數為 9:16，從而生成更適用於移動設備和社交媒體平台的豎屏短視頻。同時，16:9 寬屏視頻的分辨率上限也從之前的 720p 提升至 1080p（豎屏 1080p 目前暫不支持）。&lt;/p&gt; 
-&lt;p&gt;&lt;img alt="" src="https://oscimg.oschina.net/oscnet/up-9392997097cc917a068fb86e0e3b20fb076.png" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;p&gt;Google 還宣佈 Veo 3 和 Veo 3 Fast 已在 Gemini API 中達到「穩定且可規模化生產」的水平，並大幅下調了視頻生成費用：Veo 3 價格從每秒 0.75 美元降至 0.40 美元，Veo 3 Fast 則由每秒 0.40 美元降低到 0.15 美元。&lt;/p&gt; 
-&lt;p&gt;值得一提的是，早在今年 6 月，Google 就宣佈 Veo 3 將很快支持 YouTube Shorts 平台。此次開放豎屏 API 意味着，未來在 TikTok、Instagram Reels 等主流豎屏視頻平台上，將會湧現更多由 Veo 3 驅動生成的 AI 內容。&lt;/p&gt;
-                                                                                &lt;/div&gt;
-                                                                            </description>
-      <link>https://www.oschina.net/news/371249</link>
-      <guid isPermaLink="false">https://www.oschina.net/news/371249</guid>
-      <pubDate>Wed, 10 Sep 2025 02:05:35 GMT</pubDate>
-      <author>來源: OSCHINA</author>
-    </item>
-    <item>
-      <title>清華團隊開源 GUAVA：0.1 秒由照片生成 3D 數字人</title>
-      <description>&lt;div class="content"&gt;
-                                                                    
-                                                        &lt;p style="color:#242424; margin-left:0; margin-right:0; text-align:left"&gt;清華深研院與國際數字經濟研究院的中國團隊近日推出了名為 GUAVA 的新技術。通過僅一張照片，GUAVA 能夠在 0.1 秒內生成一個高質量的 3D 高斯化身，並實時驅動，畫面流暢度超過 50 幀每秒。&lt;/p&gt; 
-&lt;p style="color:#242424; margin-left:0; margin-right:0; text-align:left"&gt;&lt;img height="190" src="https://oscimg.oschina.net/oscnet/up-d7ea65df5b4e950b8856332f724ce1dc41a.png" width="500" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;p style="color:#242424; margin-left:0; margin-right:0; text-align:left"&gt;傳統上，創建高質量的 3D 數字人需要複雜的多視角拍攝，或者耗時耗力的視頻數據訓練，往往需要幾個小時才能完成。與其他方法相比，GUAVA 的重建速度可謂驚人，所需時間僅為 0.1 秒，而其他算法如 ExAvatar 需要 2.4 小時，GaussianAvatar 需 1.3 小時，甚至 GART 也需 7 分鐘。&lt;/p&gt; 
-&lt;p style="color:#242424; margin-left:0; margin-right:0; text-align:left"&gt;GUAVA 的優越表現得益於其創新的技術架構，主要包含兩個關鍵組件:EHM 模型和 3D 高斯潑濺。EHM 模型通過結合 SMPLX 和 FLAME 技術，確保了人臉表情的高保真度和精準控制，而 3D 高斯潑濺則通過將場景拆分為數百萬個 3D 高斯球體，從而實現快速渲染。這種方法使得 GUAVA 在身份一致性上也表現出色，相關指標超過了競爭對手的水平。&lt;/p&gt; 
-&lt;p style="color:#242424; margin-left:0; margin-right:0; text-align:left"&gt;&lt;img height="195" src="https://oscimg.oschina.net/oscnet/up-daea58ca2db7ec3b1fce503996641617c58.png" width="500" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;p style="color:#242424; margin-left:0; margin-right:0; text-align:left"&gt;在實際應用方面，GUAVA 能夠為自媒體、直播、電子商務和教育等多個領域提供強大的支持。自媒體用戶可以通過一張圖片迅速創建可定製的角色，極大縮短了製作週期；直播主播可以輕鬆上傳自拍，快速轉換為虛擬形象；電商平台則可以實現千人千面的虛擬模特；教育行業也可利用虛擬教師進行沉浸式教學。&lt;/p&gt;
-                                                                                &lt;/div&gt;
-                                                                            </description>
-      <link>https://www.oschina.net/news/371248</link>
-      <guid isPermaLink="false">https://www.oschina.net/news/371248</guid>
-      <pubDate>Wed, 10 Sep 2025 01:58:35 GMT</pubDate>
-      <author>來源: OSCHINA</author>
-    </item>
-    <item>
-      <title>Audivis Relay —— 麥克風遠程串流工具</title>
-      <description>&lt;div class="content"&gt;
-                                                                                                                                                                                                                            &lt;p&gt;Audivis Relay 是一款輕量級的麥克風串流軟件，能夠將物理麥克風的音頻實時傳輸到虛擬麥克風設備，適用於遠程會議、直播、語音聊天等場景。&lt;/p&gt;
-
-&lt;p&gt;&lt;img alt="" src="https://oscimg.oschina.net/oscnet/up-29bd7e3240c6736cd882316131e0c2f8c19.png" referrerpolicy="no-referrer"&gt;&lt;/p&gt;
-
-&lt;p&gt;核心特性&lt;/p&gt;
-
-&lt;ul&gt;
-&lt;li&gt;超低延遲音頻傳輸&lt;/li&gt;
-&lt;li&gt;端到端加密保護隱私&lt;/li&gt;
-&lt;li&gt;即插即用，無需複雜配置&lt;/li&gt;
-&lt;li&gt;跨平台麥克風傳輸，支持 Android/Linux/Mac 到 Windows&lt;/li&gt;
-&lt;li&gt;即插即用設計，生成連接地址即可快速配置&lt;/li&gt;
-&lt;li&gt;創建虛擬麥克風設備，兼容所有 Windows 音頻應用&lt;/li&gt;
-&lt;li&gt;基於網頁連接，無需在發送端安裝額外軟件&lt;/li&gt;
-&lt;/ul&gt;
-
-                                                                    &lt;/div&gt;
-                                                                </description>
-      <link>https://www.oschina.net/p/audivis-relay</link>
-      <guid isPermaLink="false">https://www.oschina.net/p/audivis-relay</guid>
-      <pubDate>Sat, 06 Sep 2025 11:42:00 GMT</pubDate>
-    </item>
-    <item>
-      <title>Firefox 瀏覽器在 iPhone 上線 AI 新功能：「搖晃總結」</title>
-      <description>&lt;div class="content"&gt;
-                                                                    
-                                                        &lt;p&gt;&lt;u&gt;&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fwww.theverge.com%2Fnews%2F774129%2Ffirefox-shake-to-summarize-ios-ai-launch" target="_blank"&gt;據報道&lt;/a&gt;&lt;/u&gt;，Firefox 瀏覽器即將在 iPhone 設備上推出全新的「搖晃總結」功能。用戶只需搖晃手機即可獲得由 AI 生成的當前網頁內容摘要。&lt;/p&gt; 
-&lt;p&gt;該功能將於本週正式上線，並將在 iPhone 15 Pro 及更新機型、搭載 iOS 26 系統時，依託蘋果的本地 AI 模型進行摘要生成。&lt;/p&gt; 
-&lt;p&gt;&lt;img alt="" src="https://oscimg.oschina.net/oscnet/up-07c07db77d9c569a8a5799c209c5c469112.png" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;p&gt;對於較老 iOS 版本的設備，Firefox 則會採用自家基於雲端的 AI 技術，為網頁生成摘要，並將其插入當前瀏覽頁面頂部。除了搖晃手機外，用戶還可以通過點擊地址欄的「閃電」圖標，或通過底部菜單的「三點」選擇頁面摘要功能。&lt;/p&gt; 
-&lt;p&gt;Mozilla 表示，用戶可隨時在設置中關閉該功能，防止無意間觸發。值得注意的是，「搖動以總結」目前僅適用於文字少於 5000 詞的網頁。&lt;/p&gt; 
-&lt;p&gt;隨着這項功能的發佈，Firefox 成為首批與蘋果新一代智能系統深度集成的主流第三方應用之一。&lt;/p&gt;
-                                                                                &lt;/div&gt;
-                                                                            </description>
-      <link>https://www.oschina.net/news/371176/firefox-shake-to-summarize-ios-ai-launch</link>
-      <guid isPermaLink="false">https://www.oschina.net/news/371176/firefox-shake-to-summarize-ios-ai-launch</guid>
-      <pubDate>Sat, 06 Sep 2025 11:26:00 GMT</pubDate>
-      <author>來源: OSCHINA</author>
-    </item>
-    <item>
-      <title>Claude Code 自動化安全審查功能將「漏洞」誤報為「安全」</title>
-      <description>&lt;div class="content"&gt;
-                                                                    
-                                                        &lt;p&gt;Anthropic 最近在其 AI 編程助手 Claude Code 中推出了自動化安全審查功能，允許開發者使用 &lt;code&gt;/security‑review&lt;/code&gt; 命令檢測代碼中的安全漏洞，包括 XSS（跨站腳本）、授權繞過、SQL 注入以及依賴性漏洞等。&lt;/p&gt; 
-&lt;p&gt;&lt;img alt="" src="https://oscimg.oschina.net/oscnet/up-ebf40fce377191a5985b4599d42252c0801.png" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;p&gt;&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fcheckmarx.com%2Fzero-post%2Fbypassing-claude-code-how-easy-is-it-to-trick-an-ai-security-reviewer%2F" target="_blank"&gt;根據 Checkmarx 的評估&lt;/a&gt;，這一 AI 驅動的安全審查能夠發現一些傳統靜態分析工具容易忽略的問題，提高了代碼安全檢測的效率。然而，研究者也指出，這類工具並非完美。Claude Code 在處理使用 Python 數據分析庫 pandas 的遠程代碼執行漏洞時未能準確識別，甚至將其誤報為「安全」。&lt;/p&gt; 
-&lt;p&gt;&lt;img alt="" src="https://oscimg.oschina.net/oscnet/up-87fcc1ffdee8f2242cc9b38f7658661bae6.png" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;p&gt;&lt;img alt="" src="https://oscimg.oschina.net/oscnet/up-564793e0f7a9a6802ee30d51bba62c93984.png" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;p&gt;此外，自動化安全審查可能帶來新的風險，包括在執行代碼檢測過程中可能觸發系統漏洞或導致不穩定。研究者提醒，雖然 AI 安全審查能夠節省時間和人力，但仍需要與嚴格的人類審查和綜合防護機制結合，才能真正保障軟件安全。&lt;/p&gt;
-                                                                                &lt;/div&gt;
-                                                                            </description>
-      <link>https://www.oschina.net/news/371171</link>
-      <guid isPermaLink="false">https://www.oschina.net/news/371171</guid>
-      <pubDate>Sat, 06 Sep 2025 11:02:00 GMT</pubDate>
-      <author>來源: OSCHINA</author>
-    </item>
-    <item>
-      <title>這個開源項目能讓 Macbook 的開蓋角度變得可視化</title>
-      <description>&lt;div class="content"&gt;
-                                                                    
-                                                        &lt;p&gt;你知道 MacBook 內置了一個上蓋角度傳感器嗎？&lt;/p&gt; 
-&lt;p&gt;&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fx.com%2Fsamhenrigold%2Fstatus%2F1964428927159382261" target="_blank"&gt;據@samhenrigold 分享&lt;/a&gt;，蘋果在 Macbook 筆記本的轉軸中內置了傳感器，能夠感應筆記本上蓋的開啓角度。&lt;/p&gt; 
-&lt;p&gt;&lt;img src="https://static.oschina.net/uploads/space/2025/0909/184545_ZrO1_2720166.png" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;p&gt;不過系統默認不會向用戶顯示這一信息，但經過該網友的努力，他找到了讀取這些數據的方法，並開發了一個能夠顯示角度的 App，使得 Macbook 的開蓋角度變得可視化。&lt;/p&gt; 
-&lt;p&gt;&lt;img height="1212" src="https://static.oschina.net/uploads/space/2025/0909/184357_ioTF_2720166.png" width="2416" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;p&gt;&lt;em&gt;https://github.com/samhenrigold/LidAngleSensor&lt;/em&gt;&lt;/p&gt; 
-&lt;p&gt;這位網友將程序上傳到 GitHub 上供其他用戶自由使用，還為其加入了音效，提供了兩種聲音選項：老舊門軸的轉動聲和特雷門琴的聲音，為用戶在打開筆記本時增添了幾分趣味。&lt;/p&gt;
-                                                                                &lt;/div&gt;
-                                                                            </description>
-      <link>https://www.oschina.net/news/371163</link>
-      <guid isPermaLink="false">https://www.oschina.net/news/371163</guid>
-      <pubDate>Sat, 06 Sep 2025 10:46:00 GMT</pubDate>
-      <author>來源: OSCHINA</author>
-    </item>
-    <item>
-      <title>麻省理工發佈無聲溝通 AI 設備 AlterEgo</title>
-      <description>&lt;div class="content"&gt;
-                                                                    
-                                                        &lt;p&gt;&lt;span style="color:#000000"&gt;&lt;span style="background-color:#ffffff"&gt;麻省理工學院（MIT）近日推出了一項令人矚目的新技術 ——AlterEgo。這是一款非侵入式的可穿戴 AI 設備，能夠讓用戶在無需説話的情況下，通過捕捉神經肌肉信號與設備進行交流。&lt;/span&gt;&lt;/span&gt;&lt;/p&gt; 
-&lt;p&gt;&lt;span style="color:#000000"&gt;&lt;img height="350" src="https://oscimg.oschina.net/oscnet/up-85a7413c1d5ffff77fd9bec725ce6d59434.png" width="500" referrerpolicy="no-referrer"&gt;&lt;/span&gt;&lt;/p&gt; 
-&lt;p&gt;&amp;nbsp;&lt;/p&gt; 
-&lt;p style="color:#242424; margin-left:0; margin-right:0; text-align:left"&gt;&lt;span style="color:#000000"&gt;AlterEgo 的工作原理非常獨特。當用戶在心中發聲時，大腦會向喉部等相關肌肉發送神經信號，進而產生微弱的肌電信號。AlterEgo 通過多個精密的電極傳感器捕捉這些信號，並將其轉換為可識別的語言輸出。&lt;/span&gt;&lt;/p&gt; 
-&lt;p style="color:#242424; margin-left:0; margin-right:0; text-align:left"&gt;&lt;span style="color:#000000"&gt;設備的設計與傳統耳機相似，佩戴於頭部和麪部，電極傳感器佈置在面部和頸部的關鍵位置，以確保高質量信號採集。為了提升信號的穩定性和清晰度，AlterEgo 採用了金鍍銀電極和導電膏。&lt;/span&gt;&lt;/p&gt; 
-&lt;p style="color:#242424; margin-left:0; margin-right:0; text-align:left"&gt;&lt;span style="color:#000000"&gt;捕捉到的神經肌肉信號經過一系列複雜的信號處理流程，以消除噪聲和幹擾。具體來説，系統採用了偏置信號抵消技術來消除交流電幹擾，並使用巴特沃斯濾波器去除高頻噪聲。經過這些處理，信號最終被轉化為梅爾頻率倒譜系數特徵。&lt;/span&gt;&lt;/p&gt; 
-&lt;p style="color:#242424; margin-left:0; margin-right:0; text-align:left"&gt;&lt;span style="color:#000000"&gt;接下來，經過卷積神經網絡（CNN）的處理，AlterEgo 可以將無聲的言語信號分類為特定的詞彙，準確率高達 92%。處理結果通過骨傳導耳機反饋給用戶，實現雙向無聲交互。&lt;/span&gt;&lt;/p&gt; 
-&lt;p style="color:#242424; margin-left:0; margin-right:0; text-align:left"&gt;&lt;span style="color:#000000"&gt;這項技術的應用場景非常廣泛。例如，用戶可以無聲地進行數字識別、數學計算或智能家居控制。對於一些有言語障礙的人來説，AlterEgo 尤其有用，他們只需在心中默唸，設備就能幫助他們表達所需，極大地方便了溝通。&lt;/span&gt;&lt;/p&gt;
-                                                                                &lt;/div&gt;
-                                                                            </description>
-      <link>https://www.oschina.net/news/371162</link>
-      <guid isPermaLink="false">https://www.oschina.net/news/371162</guid>
-      <pubDate>Sat, 06 Sep 2025 10:35:00 GMT</pubDate>
-      <author>來源: OSCHINA</author>
-    </item>
-    <item>
-      <title>AI 編程獨角獸 Cognition 融資 4 億美元，估值 102 億</title>
-      <description>&lt;div class="content"&gt;
-                                                                    
-                                                        &lt;p&gt;Devin 開發商 Cognition（此前收購了 Windsurf）&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fx.com%2Fcognition%2Fstatus%2F1965086655821525280" target="_blank"&gt;宣佈&lt;/a&gt;完成由 Founders Fund 領投的超 4 億美元融資，公司估值達到 102 億美元。&lt;/p&gt; 
-&lt;p&gt;&lt;img alt="" src="https://static.oschina.net/uploads/space/2025/0909/181218_CziY_2720166.png" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;p&gt;本輪融資由 Founders Fund 領投。公司表示，這筆資金將用於推進 AI Coding Agents 的前沿研發工作。&lt;/p&gt; 
-&lt;p&gt;在收購 Windsurf 近兩個月後，Cognition 表示其企業年度經常性收入（ARR）增長了 30% 以上，這得益於原先獨立客戶羣體之間的交叉銷售。部分 Windsurf 客戶已開始採用 Devin，而一些 Cognition 客戶也已簽約使用 Windsurf。&lt;/p&gt; 
-&lt;p&gt;Cognition 計劃利用新注入的資金擴大工程團隊並加速產品開發，押注 AI Agent 智能體將成為企業技術棧的核心組成部分。&lt;/p&gt;
-                                                                                &lt;/div&gt;
-                                                                            </description>
-      <link>https://www.oschina.net/news/371157</link>
-      <guid isPermaLink="false">https://www.oschina.net/news/371157</guid>
-      <pubDate>Sat, 06 Sep 2025 10:16:00 GMT</pubDate>
-      <author>來源: OSCHINA</author>
-    </item>
-    <item>
-      <title>Termix - 基於 Web 的服務器管理</title>
-      <description>&lt;div class="content"&gt;
-                                                                                                                                                                                                                            &lt;p style="text-align:start"&gt;&lt;span&gt;&lt;span&gt;&lt;span style="color:#1f2328"&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span style="background-color:#ffffff"&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;Termix 是一個開源、永久免費、自託管的一體化服務器管理平台。它提供基於 Web 的解決方案，通過單一直觀的界面管理你的服務器和基礎架構。Termix 提供 SSH 終端訪問、SSH 隧道功能和遠程文件編輯功能，未來還將推出更多工具。&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/p&gt;
-
-&lt;p style="text-align:start"&gt;&lt;img height="282" src="https://static.oschina.net/uploads/space/2025/0903/145546_K2xi_4252687.png" width="500" referrerpolicy="no-referrer"&gt;&lt;/p&gt;
-
-&lt;div style="text-align:start"&gt;
-&lt;h4 style="margin-left:0px; margin-right:0px"&gt;&lt;strong&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span style="color:#1f2328"&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span style="background-color:#ffffff"&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;特性&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/strong&gt;&lt;/h4&gt;
-&lt;/div&gt;
-
-&lt;ul&gt;
-&lt;li&gt;&lt;strong&gt;SSH 終端訪問&lt;/strong&gt;- 功能齊全的終端，支持分屏（最多 4 個面板）和標籤系統&lt;/li&gt;
-&lt;li&gt;&lt;strong&gt;SSH 隧道管理&lt;/strong&gt;- 創建和管理 SSH 隧道，並具有自動重新連接和健康監控功能&lt;/li&gt;
-&lt;li&gt;&lt;strong&gt;遠程文件編輯器&lt;/strong&gt;- 使用語法高亮顯示、文件管理功能（上傳、移除、重命名、刪除文件）直接在遠程服務器上編輯文件&lt;/li&gt;
-&lt;li&gt;&lt;strong&gt;SSH 主機管理器&lt;/strong&gt;- 使用標籤和文件夾保存、組織和管理您的 SSH 連接&lt;/li&gt;
-&lt;li&gt;&lt;strong&gt;服務器統計&lt;/strong&gt;- 查看任何 SSH 服務器上的 CPU、內存和 HDD 使用情況&lt;/li&gt;
-&lt;li&gt;&lt;strong&gt;用戶身份驗證&lt;/strong&gt;-通過管理控制以及 OIDC 和 2FA（TOTP）支持實現安全的用戶管理&lt;/li&gt;
-&lt;li&gt;&lt;strong&gt;現代 UI&lt;/strong&gt;&amp;nbsp;- 使用 React、Tailwind CSS 和 Shadcn 構建的簡潔界面&lt;/li&gt;
-&lt;li&gt;&lt;strong&gt;語言&lt;/strong&gt;- 內置英語和中文支持&lt;/li&gt;
-&lt;/ul&gt;
-
-&lt;div style="text-align:start"&gt;
-&lt;h4 style="margin-left:0px; margin-right:0px"&gt;&lt;strong&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span style="color:#1f2328"&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span style="background-color:#ffffff"&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;計劃功能&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/strong&gt;&lt;/h4&gt;
-&lt;/div&gt;
-
-&lt;ul&gt;
-&lt;li&gt;&lt;strong&gt;改進的管理控制&lt;/strong&gt;- 對用戶和管理員權限、共享主機等進行更細粒度的控制&lt;/li&gt;
-&lt;li&gt;&lt;strong&gt;主題&lt;/strong&gt;- 修改所有工具的主題&lt;/li&gt;
-&lt;li&gt;&lt;strong&gt;改進的終端支持&lt;/strong&gt;- 添加更多終端協議，例如 VNC 和 RDP&lt;/li&gt;
-&lt;li&gt;&lt;strong&gt;移動支持&lt;/strong&gt;- 支持移動應用程序或 Termix 網站版本，以便通過手機管理服務器&lt;/li&gt;
-&lt;/ul&gt;
-
-                                                                    &lt;/div&gt;
-                                                                </description>
-      <link>https://www.oschina.net/p/termix</link>
-      <guid isPermaLink="false">https://www.oschina.net/p/termix</guid>
-      <pubDate>Sat, 06 Sep 2025 10:14:00 GMT</pubDate>
-    </item>
-    <item>
-      <title>Vercel 推出「OSS Vibe Coding Platform」</title>
-      <description>&lt;div class="content"&gt;
-                                                                    
-                                                        &lt;p&gt;Next.js 開發商 Vercel 宣佈上線「OSS Vibe Coding Platform」：&lt;/p&gt; 
-&lt;blockquote&gt; 
- &lt;p&gt;這是一個端到端的 AI 編程平台 Demo，用戶可輸入文本提示，Agent 將自動生成全棧應用程序。&lt;/p&gt; 
- &lt;p&gt;該平台採用 Vercel 的 AI 雲服務，並基於 Next.js 與 AI SDK 構建。&lt;/p&gt; 
- &lt;ul&gt; 
-  &lt;li&gt;Sandbox 保障安全代碼執行&lt;/li&gt; 
-  &lt;li&gt;AI Gateway 提供對 GPT-5 等模型的支持&lt;/li&gt; 
-  &lt;li&gt;Fluid Compute 實現高效渲染與流媒體傳輸&lt;/li&gt; 
- &lt;/ul&gt; 
-&lt;/blockquote&gt; 
-&lt;p&gt;&lt;img height="1856" src="https://static.oschina.net/uploads/space/2025/0909/175318_xsmR_2720166.png" width="3360" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;p&gt;體驗：&lt;em&gt;https://oss-vibe-coding-platform.vercel.app/&lt;/em&gt;&lt;/p&gt; 
-&lt;p style="color:#333333; margin-left:0; margin-right:0; text-align:left"&gt;Vercel 以開源&amp;nbsp;Next.js 框架的商業化與雲服務聞名，能讓企業快速構建與上線應用。隨着 AI 熱潮興起，公司正大力佈局 AI 相關能力，包括：&lt;/p&gt; 
-&lt;ul style="list-style-type:disc; margin-left:0; margin-right:0"&gt; 
- &lt;li&gt;&lt;strong&gt;v0 AI 編程助手&lt;/strong&gt;：可從界面設計自動生成代碼，並掃描現有項目中的潛在問題；&lt;/li&gt; 
- &lt;li&gt;&lt;strong&gt;AI Gateway&lt;/strong&gt;：支持在 AI 模型不可用時無縫切換，保障穩定性；&lt;/li&gt; 
- &lt;li&gt;&lt;strong&gt;低價 GPU 雲服務&lt;/strong&gt;：提供高性能 GPU 按需調度，成本可比傳統市場低 90%。&lt;/li&gt; 
-&lt;/ul&gt; 
-&lt;p&gt;Vercel 近期剛剛&lt;a href="https://www.oschina.net/news/367885" target="_blank"&gt;完成新一輪融資&lt;/a&gt;，估值已躍升至 90 億美元（約合人民幣 648 億元），較去年約 30 億美元的估值翻了三倍。&lt;/p&gt;
-                                                                                &lt;/div&gt;
-                                                                            </description>
-      <link>https://www.oschina.net/news/371153</link>
-      <guid isPermaLink="false">https://www.oschina.net/news/371153</guid>
-      <pubDate>Sat, 06 Sep 2025 09:58:00 GMT</pubDate>
-      <author>來源: OSCHINA</author>
-    </item>
-    <item>
-      <title>美國政企界加碼 AI 應用佈局和落地</title>
-      <description/>
-      <link>https://www.oschina.net/news/371152</link>
-      <guid isPermaLink="false">https://www.oschina.net/news/371152</guid>
-      <pubDate>Sat, 06 Sep 2025 09:51:00 GMT</pubDate>
-    </item>
-    <item>
-      <title>Ubuntu 25.10 進入 UI 凍結階段</title>
-      <description>&lt;div class="content"&gt;
-                                                                    
-                                                        &lt;p&gt;Canonical 工程師 Utkarsh Gupta &lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Flists.ubuntu.com%2Farchives%2Fubuntu-devel-announce%2F2025-September%2F001379.html" target="_blank"&gt;宣佈&lt;/a&gt;&amp;nbsp;Ubuntu 25.10&amp;nbsp;已正式進入 UI 凍結階段。&lt;/p&gt; 
-&lt;p&gt;&lt;img height="760" src="https://static.oschina.net/uploads/space/2025/0909/172939_8dYB_2720166.png" width="1240" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;p&gt;這意味着此後不再有重大界面設計更改，以確保隨發行有關的文檔和截圖在穩定版本發佈時仍保持一致。雖允許例外修改（如修復關鍵問題），但總體界面已趨於穩定。&lt;/p&gt; 
-&lt;p&gt;Ubuntu 25.10（代號 「Questing Quokka」）目前已確認的重要更新：&lt;/p&gt; 
-&lt;ul&gt; 
- &lt;li&gt;桌面環境：採用 GNOME 49。&lt;/li&gt; 
- &lt;li&gt;工具鏈升級：默認使用 GCC 15 編譯器。&lt;/li&gt; 
- &lt;li&gt;內核及圖形支持：更新了 Linux 內核和 Mesa 圖形庫。&lt;/li&gt; 
- &lt;li&gt;系統組件重寫：&lt;a href="https://www.oschina.net/news/370028/ubuntu-now-default-sudo-rs" target="_blank"&gt;引入 Rust 版本的 sudo（sudo-rs）&lt;/a&gt;和 Coreutils。&lt;/li&gt; 
-&lt;/ul&gt; 
-&lt;p&gt;&lt;img alt="" src="https://oscimg.oschina.net/oscnet/up-056056a0bcb668769821347ff3733dcc9f0.png" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;p&gt;按照計劃，Ubuntu 25.10 Beta 測試版將於 2025 年 9 月 18 日發佈，最終正式版將於 10 月 9 日發佈。&lt;/p&gt;
-                                                                                &lt;/div&gt;
-                                                                            </description>
-      <link>https://www.oschina.net/news/371149/ubuntu-25-10-ui-freeze</link>
-      <guid isPermaLink="false">https://www.oschina.net/news/371149/ubuntu-25-10-ui-freeze</guid>
-      <pubDate>Sat, 06 Sep 2025 09:33:00 GMT</pubDate>
-      <author>來源: OSCHINA</author>
-    </item>
-    <item>
-      <title>網絡安全法修正草案強化網絡安全法律責任</title>
-      <description>&lt;div class="content"&gt;
-                                                                    
-                                                        &lt;p&gt;&lt;span style="color:#000000"&gt;網絡安全法修正草案 8 日首次提請全國人大常委會會議審議。此次修改重點強化網絡安全法律責任，加大對違法行為處罰力度，加強與數據安全法、個人信息保護法、行政處罰法等相關法律有機銜接，科學設置網絡運行安全、網絡信息安全等不同類型違法行為的法律責任。&lt;/span&gt;&lt;/p&gt; 
-&lt;p&gt;&lt;img height="360" src="https://oscimg.oschina.net/oscnet/up-7183efc43d5fd1e661ced3536b3897406f8.png" width="500" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;p&gt;&lt;span style="color:#000000"&gt;網絡安全法是網絡安全領域的基礎性法律，自 2017 年 6 月 1 日施行以來，對於維護國家網絡空間主權、安全和發展利益，保護各方主體在網絡空間的合法權益，促進經濟社會信息化健康發展發揮了重要作用。&lt;/span&gt;&lt;/p&gt; 
-&lt;p&gt;&lt;span style="color:#000000"&gt;全國人大常委會法制工作委員會副主任王瑞賀在向常委會會議作説明時表示，近年來，信息技術日新月異，網絡應用更加普及，日益融入社會生產生活，與此同時，網絡安全風險進一步凸顯，利用網絡從事網絡入侵、網絡攻擊、傳播違法信息等違法行為屢有發生。為適應網絡安全新形勢新要求，加強與網絡領域相關立法的銜接協調，對網絡安全法法律責任制度作出修改完善，加大對部分違法行為的處罰力度，推動形成良好網絡生態是必要的。&lt;/span&gt;&lt;/p&gt; 
-&lt;p&gt;&lt;span style="color:#000000"&gt;在完善不依法履行網絡運行安全保護義務行為的法律責任方面，修正草案區分造成大量數據泄露、關鍵信息基礎設施喪失局部功能等嚴重情形，以及造成關鍵信息基礎設施喪失主要功能等特別嚴重情形，參照數據安全法有關規定，提高罰款幅度。&lt;/span&gt;&lt;/p&gt; 
-&lt;p&gt;&lt;span style="color:#000000"&gt;在完善不依法履行違法信息處置義務行為的法律責任方面，修正草案結合近年來網絡信息內容違法行為執法實踐，對網絡運營者發現網絡違法信息未依法採取相應處置措施，或者不按照有關部門的要求採取相應處置措施的行為，完善處置處罰措施；對造成特別嚴重影響、特別嚴重後果的違法情形，加大處罰力度。&lt;/span&gt;&lt;/p&gt;
-                                                                                &lt;/div&gt;
-                                                                            </description>
-      <link>https://www.oschina.net/news/371144</link>
-      <guid isPermaLink="false">https://www.oschina.net/news/371144</guid>
-      <pubDate>Sat, 06 Sep 2025 09:05:00 GMT</pubDate>
-      <author>來源: OSCHINA</author>
-    </item>
-    <item>
-      <title>預計 2030 年全球 AI 資本支出將達 8000 億美元</title>
-      <description>&lt;div class="content"&gt;
-                                                                    
-                                                        &lt;p&gt;&lt;span style="color:#000000"&gt;9 月 9 日，美銀全球研究部中國研究部聯席主管、亞太區基礎材料及能源主管趙彥琳在研討會中表示，人工智能資本支出將帶動上游資源、電力、冷卻、智能製造等領域發展。並預計中國今年人工智能資本開支將達 7000 億元人民幣。而至 2030 年，全球人工智能資本支出將達 8000 億美元。&lt;/span&gt;&lt;/p&gt; 
-&lt;p&gt;&lt;span style="color:#000000"&gt;美銀全球研究部美國半導體及半導體資本設備分析師 Vivek Arya 則指出，今年全球人工智能基礎設施支出將超 4000 億美元，頂級超大型科技公司日均支出逾 10 億美元，此類投資回報需兼顧「進攻性」新收入來源與「防禦性」競爭壁壘保護，且在 OpenAI 等企業引發潛在顛覆的背景下，超大型科技公司將持續加大投入。&lt;/span&gt;&lt;/p&gt; 
-&lt;p&gt;&lt;span style="color:#000000"&gt;美銀全球研究部中國研究部聯席主管、首席中國策略師、亞太區首席金融分析師吳旖認為，亞太地區在受益和貢獻於全球人工智能經濟方面處於非常有利的位置。且人工智能具有變革性，將改變人們對國家長期經濟競爭力的看法&lt;/span&gt;&lt;/p&gt; 
-&lt;p&gt;&lt;span style="color:#000000"&gt;吳旖表示，傳統經濟理論中勞動力數量對 GDP 增長的核心驅動作用或被削弱，中國、韓國等人工智能準備度高的國家，其長期 GDP 增長可能高於預期，並推動股票市場估值重評。&lt;/span&gt;&lt;/p&gt; 
-&lt;p&gt;&lt;span style="color:#000000"&gt;她續指，依賴廉價勞動力吸引外資的亞洲新興經濟體，需重新思考人工智能時代的價值主張以避免被淘汰。&lt;/span&gt;&lt;/p&gt; 
-&lt;p&gt;&lt;span style="color:#000000"&gt;行業機遇方面，吳旖預計，未來 5 年亞太地區中國人工智能芯片、生成式人工智能軟件，中國台灣人工智能晶圓代工，韓國高帶寬內存 (HBM) 等行業年複合增長率達 20% 至 50%。而印度資訊技術服務、中國半導體設備等行業增長則可能趨緩。&lt;/span&gt;&lt;/p&gt;
-                                                                                &lt;/div&gt;
-                                                                            </description>
-      <link>https://www.oschina.net/news/371140</link>
-      <guid isPermaLink="false">https://www.oschina.net/news/371140</guid>
-      <pubDate>Sat, 06 Sep 2025 08:34:00 GMT</pubDate>
-      <author>來源: OSCHINA</author>
-    </item>
-    <item>
-      <title>百度開源最新思考模型 ERNIE-4.5-21B-A3B-Thinking</title>
-      <description>&lt;div class="content"&gt;
-                                                                    
-                                                        &lt;p&gt;9 月 9 日，由深度學習技術及應用國家工程研究中心主辦，百度飛槳、文心大模型聯合承辦的 WAVE SUMMIT 深度學習開發者大會 2025 在京舉行。&lt;/p&gt; 
-&lt;p&gt;大會現場，百度開源了最新思考模型 ERNIE-4.5-21B-A3B-Thinking，該模型是在 ERNIE-4.5-21B-A3B 基礎上訓練的深度思考模型，在內容創作、邏輯推理、數學計算、代碼生成與工具調用等多個任務中表現優異。&lt;/p&gt; 
-&lt;p&gt;&lt;img height="652" src="https://static.oschina.net/uploads/space/2025/0909/163319_fUtH_2720166.png" width="1404" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;p&gt;&lt;img alt="" src="https://oscimg.oschina.net/oscnet/up-9263b715ec3a28d2453272ec37354e31b53.png" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;p&gt;&lt;em&gt;https://huggingface.co/baidu/ERNIE-4.5-21B-A3B-Thinking&lt;/em&gt;&lt;/p&gt; 
-&lt;p&gt;&lt;img height="474" src="https://static.oschina.net/uploads/space/2025/0909/163033_xD0d_2720166.jpg" width="1080" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;p&gt;此外，ERNIEKit 文心大模型開發套件提供了更加便捷的模型後訓練方案，僅需 4 張 GPU 即可對 ERNIE-4.5-300B-A47B 模型進行高效調優，進一步降低開發者將模型落地到實際應用的門檻；開源了大規模計算圖數據集 GraphNet，提供了超 2700 個模型計算圖及標準化評測體系，填補了 AI 編譯器測試基準的空白，助力優化設計與性能提升。&lt;/p&gt;
-                                                                                &lt;/div&gt;
-                                                                            </description>
-      <link>https://www.oschina.net/news/371138/baidu-ernie-4-5-21b-a3b-thinking</link>
-      <guid isPermaLink="false">https://www.oschina.net/news/371138/baidu-ernie-4-5-21b-a3b-thinking</guid>
-      <pubDate>Sat, 06 Sep 2025 08:30:00 GMT</pubDate>
-      <author>來源: OSCHINA</author>
-    </item>
-    <item>
-      <title>Rust 十週年大會來了，杭州見！</title>
-      <description>會議概覽，時間：2025 年 9 月 13-14 日，格式：主會場 Keynote + 三大並行分會場，規模：匯聚國內外 Rust 生態核心開發者與創新實踐者</description>
-      <link>https://rustcc.cn/2025conf/</link>
-      <guid isPermaLink="false">https://rustcc.cn/2025conf/</guid>
-      <pubDate>Sat, 06 Sep 2025 07:53:00 GMT</pubDate>
-    </item>
-    <item>
-      <title>我國已發佈人工智能國家標準 30 項，15 項人形機器人國標正在研製</title>
-      <description>&lt;div class="content"&gt;
-                                                                    
-                                                        &lt;p&gt;&lt;span style="color:#000000"&gt;9 月 9 日，市場監管總局例行發佈會上介紹，目前，我國人工智能國家標準已經發布 30 項，正在制定的有 84 項，基本覆蓋了基礎軟硬件、關鍵技術、行業應用和安全治理。&lt;/span&gt;&lt;/p&gt; 
-&lt;p&gt;&lt;span style="color:#000000"&gt;今年，國家標準委在多模態大模型、智能體、具身智能等前沿方向，以及鋼鐵、電力等傳統行業應用方面，新發布了 10 項國家標準，立項了 48 項技術文件，加速牽引創新走向落地。「AI 服務器性能測試方法」「異構加速器統一接口」等標準，把算力測評和軟硬件接口統一起來，夯實了國產 AI 生態的根基。 中國牽頭立項的《生成式人工智能風險處理指南》國際標準，正在把「中國方案」變成「世界語言」，為全球 AI 治理貢獻中國智慧。&lt;/span&gt;&lt;/p&gt; 
-&lt;p&gt;&lt;span style="color:#000000"&gt;同時，自 2021 年全國機器人標委會成立以來，已經發布國家標準 126 項，還有 41 項正在研製。覆蓋工業、服務、人形、教育等多個領域，構建起「基礎通用、零部件、整機、系統集成、行業應用」五位一體的標準框架，有力支撐了整個產業規範發展。&lt;/span&gt;&lt;/p&gt; 
-&lt;p&gt;&lt;span style="color:#000000"&gt;國家標準委正全力推動 15 項人形機器人國標研製，下一步將重點攻關人形機器人安全、驅動技術、數據利用等標準。（央視新聞）&lt;/span&gt;&lt;/p&gt;
-                                                                                &lt;/div&gt;
-                                                                            </description>
-      <link>https://www.oschina.net/news/371123</link>
-      <guid isPermaLink="false">https://www.oschina.net/news/371123</guid>
-      <pubDate>Sat, 06 Sep 2025 07:46:00 GMT</pubDate>
-      <author>來源: OSCHINA</author>
+      <pubDate>Sun, 07 Sep 2025 02:07:00 GMT</pubDate>
     </item>
   </channel>
 </rss>
