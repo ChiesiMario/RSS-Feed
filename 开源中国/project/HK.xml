@@ -7,8 +7,947 @@
     <generator>RSSHub</generator>
     <webMaster>contact@rsshub.app (RSSHub)</webMaster>
     <language>zh-hk</language>
-    <lastBuildDate>Wed, 10 Sep 2025 02:41:43 GMT</lastBuildDate>
+    <lastBuildDate>Wed, 10 Sep 2025 07:41:13 GMT</lastBuildDate>
     <ttl>5</ttl>
+    <item>
+      <title>Apache Doris 3.1 正式發佈：半結構化分析全面升級，湖倉一體能力再躍新高</title>
+      <description>&lt;div class="content"&gt;
+                                                                    
+                                                        &lt;p&gt;親愛的社區小夥伴們，我們很高興地向大家宣佈，近期我們迎來了 Apache Doris 3.1 版本的正式發佈，歡迎大家下載使用體驗。&lt;/p&gt; 
+&lt;p&gt;3.1 版本是 Apache Doris 在&lt;strong&gt;半結構化分析&lt;/strong&gt;上的一個里程碑版本。在 VARIANT 類型上，3.1 版本新增了稀疏列能力，使得 VARIANT 可以輕鬆應對數萬子列的場景。同時，在 VARIANT 類型上引入了模板化 schema 能力，讓 VARIANT 類型在關鍵路徑上，查詢更快、索引更穩、成本可控，同時不丟失靈活性。在倒排索引能力上，3.1 版本引入了 index v3 版本的索引格式，相比較於 v2 版本存儲空間節省可達 20%。同時，支持了更為豐富的分詞手段，提供了三種全新的分詞器：ICU Tokenizer、IK Tokenizer 和 Basic Tokenizer。還進一步支持了自定義分詞器，可以突破內置分詞器的侷限性，根據業務場景定製，顯著提升搜索召回率。&lt;/p&gt; 
+&lt;p&gt;3.1 版本同樣在&lt;strong&gt;湖倉一體&lt;/strong&gt;上有了顯著的增強。在 3.1 版本中，Apache Doris 將異步物化視圖中的分區構建和透明改寫分區補償，這兩項重要能力引入數據湖中，在湖和倉中間架起一座重要的橋樑。3.1 版本還擴充了對 iceberg 和 paimon 特性的支持範圍。另外，通過引入動態分區裁剪和批量分片執行在特定場景下提升了數據湖查詢的性能多達 40%，並顯著降低了 FE 的內存佔用。同時 3.1 版本還重構了各個數據源的連接屬性，不僅能夠以更加清晰的方式對接各類元數據服務和數據存儲系統，同時還支持了更加豐富的連接能力。&lt;/p&gt; 
+&lt;p&gt;3.1 版本 Apache Doris 持續打磨&lt;strong&gt;存儲引擎&lt;/strong&gt;。提供了全新的數據更新方式 —— 靈活列更新。在部分列更新的基礎上，進一步放開限制。在一次導入中對於每一行可以更新不同的列。另外，在存算分離場景下，優化了 MOW 表部分鏈路的鎖獲取邏輯和使用範圍，提升高併發導入場景的使用體驗。&lt;/p&gt; 
+&lt;p&gt;在性能方面，3.1 着重優化了&lt;strong&gt;分區裁剪的能力和規劃性能&lt;/strong&gt;。在數萬分區和複雜分區過濾表達式的場景下，能夠顯著提升查詢性能並降低資源消耗。同時，3.1 還在優化器中全面引入了基於數據特徵的優化手段，在特定場景下可以獲得超過 10 倍的性能提升。&lt;/p&gt; 
+&lt;p&gt;&lt;strong&gt;在 3.1 版本的研發過程中，有超過 90 名貢獻者為 Apache Doris 提交了 1000+ 個優化與修復。&lt;/strong&gt; 在此向所有參與版本研發、測試和需求反饋的貢獻者們表示最衷心的感謝。&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt; &lt;p&gt;&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fgithub.com%2Fapache%2Fdoris%2Freleases" target="_blank"&gt;GitHub 下載&lt;/a&gt;&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fdoris.apache.org%2Fdownload" target="_blank"&gt;官網下載&lt;/a&gt;&lt;/p&gt; &lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;h2&gt;一、VARIANT 半結構化查詢華麗變身&lt;/h2&gt; 
+&lt;h3&gt;存儲能力質變：稀疏列與子列 Vertical Compaction，輕鬆支持數萬子列&lt;/h3&gt; 
+&lt;p&gt;傳統 OLAP 面對「超寬表/超多列」（上千到上萬）常遇到元數據膨脹、合併放大與查詢退化；Doris 3.1 通過 VARIANT 的稀疏子列與子列級 Vertical Compaction，將可維護的列數上限抬升到數萬級。&lt;/p&gt; 
+&lt;p&gt;通過對存儲層的深入優化，Variant 給用户帶來以下收益：&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt;穩定支撐「上千 - 數萬」子列（列式存儲），查詢/合併延遲更平滑。&lt;/li&gt; 
+ &lt;li&gt;元數據與索引可控，避免指數級膨脹。&lt;/li&gt; 
+ &lt;li&gt;實測可進行 10,000+ 子列提取（列式存儲），Compaction 效率順暢。&lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;p&gt;&lt;strong&gt;超多列的適用場景：&lt;/strong&gt;&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt;車聯網/IoT 遙測：設備型號多、傳感器維度動態增減。&lt;/li&gt; 
+ &lt;li&gt;營銷自動化/CRM：事件/用户屬性持續擴展（如自定義 event/property）。&lt;/li&gt; 
+ &lt;li&gt;廣告/埋點事件：海量可選 properties，字段稀疏且不斷演進。&lt;/li&gt; 
+ &lt;li&gt;安全審計/日誌：不同源日誌字段各異，需按模式聚合檢索。&lt;/li&gt; 
+ &lt;li&gt;電商商品屬性：類目跨度大，商品屬性高度可變。&lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;p&gt;&lt;strong&gt;實現原理&lt;/strong&gt;&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt;稀疏子列（Sparse Subcolumns）：按 JSON Key 頻次排序，只提取 Top-N 高頻子列入「真列式」；長尾保持在稀疏列存儲，避免無序擴張。&lt;/li&gt; 
+ &lt;li&gt;子列級 Vertical Compaction：對 VARIANT 子列應用 Vertical Compaction，分組合並、內存佔用更小；合併時動態識別並固化熱點路徑，進一步降低合併開銷。&lt;/li&gt; 
+ &lt;li&gt;優化值填充默認值效率，按 batch 的方式進行批量填充（減少虛函數開銷）。&lt;/li&gt; 
+ &lt;li&gt;通過 LRU 機制減少內存中列存儲相關元數據緩存內存開銷。&lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;p&gt;&lt;strong&gt;如何開啓與使用&lt;/strong&gt;&lt;/p&gt; 
+&lt;p&gt;新增列級別控制 Variant 參數，列屬性（Properties）：&lt;/p&gt; 
+&lt;p&gt;&lt;code&gt;variant_max_subcolumns_count&lt;/code&gt;：默認是&lt;code&gt;0&lt;/code&gt;，表明不開啓稀疏列能力，設置成特定值後將會提取 Top-N 高頻的 JSON key 作為列式存儲，餘下的列進入稀疏列存儲。&lt;/p&gt; 
+&lt;pre&gt;&lt;code class="language-SQL"&gt;-- Enable sparse subcolumns and cap hot subcolumn count
+CREATE TABLE IF NOT EXISTS tbl (
+  k BIGINT,
+  v VARIANT&amp;lt;
+      properties("variant_max_subcolumns_count" = "2048") -- pick top-2048 hot keys
+  &amp;gt;
+) DUPLICATE KEY(k);
+&lt;/code&gt;&lt;/pre&gt; 
+&lt;h3&gt;模板化 Schema（Schema Template） - 變化中的不變量&lt;/h3&gt; 
+&lt;p&gt;一句話總結：模板化 Schema 讓「常變」的 JSON 在關鍵路徑上「變得可預期」：查詢更快、索引更穩、成本可控，同時不丟失靈活性。&lt;/p&gt; 
+&lt;p&gt;使用模板化的 Schema，將會給使用 Variant 數據類型帶來以下收益：&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt;類型穩定：關鍵子路徑類型可在 DDL 中固定，避免類型漂移引發的查詢報錯、索引失效與隱式轉換開銷。&lt;/li&gt; 
+ &lt;li&gt;檢索更快更準：為不同子路徑定製倒排策略（分詞/非分詞、解析器、短語搜索等），常用查詢延遲更低、命中更穩定。&lt;/li&gt; 
+ &lt;li&gt;索引與成本可控：不再「整列統一繼承索引」（2.1 的做法易膨脹），而是「按子路徑精細化配置」，顯著降低索引數量、寫放大與存儲成本。&lt;/li&gt; 
+ &lt;li&gt;可維護/可協作：等同給 JSON 加「數據契約」，跨團隊語義一致；類型與索引狀態更可觀測，問題更易定位。&lt;/li&gt; 
+ &lt;li&gt;演進友好：核心高頻路徑模板化並可選建索引，長尾字段繼續保持靈活擴展，不犧牲可擴展性。&lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;p&gt;&lt;strong&gt;如何開啓與使用&lt;/strong&gt;&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt;顯式聲明結構，指定類型：在&lt;code&gt;VARIANT&amp;lt;...&amp;gt;&lt;/code&gt;中預定義常用子路徑與類型（含通配），例如&lt;code&gt;'a' : int, 'c.d' : text, 'array_int_*' : array&amp;lt;int&amp;gt;&lt;/code&gt;。&lt;/li&gt; 
+ &lt;li&gt;配置索引，針對同一 VARIANT 列的不同子路徑配置不同索引策略（field_pattern、解析器、分詞、短語搜索等），差異化提升檢索效率，可用通配符批量匹配。&lt;/li&gt; 
+ &lt;li&gt;新增列級別控制 Variant 參數，列屬性（Properties）:&lt;code&gt;variant_enable_typed_paths_to_sparse&lt;/code&gt;：默認是&lt;code&gt;false&lt;/code&gt;，表明預定義的列不會進入稀疏列， &lt;code&gt;true&lt;/code&gt; 開啓後預定義類型路徑也會進入稀疏存儲（用於避免匹配過多列後導致的列數膨脹）&lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;p&gt;示例 1：schema 定義 + 單列多索引&lt;/p&gt; 
+&lt;pre&gt;&lt;code class="language-SQL"&gt;-- Common properties: field_pattern (target subpath), analyzer, parser, support_phrase, etc.
+CREATE TABLE IF NOT EXISTS tbl (
+    k BIGINT,
+    v VARIANT&amp;lt;'content' : STRING&amp;gt;, -- specify concrete type for subcolumn 'content'
+    INDEX idx_tokenized(v) USING INVERTED PROPERTIES("parser" = "english", "field_pattern" = "content"), -- tokenized inverted index for 'content' with english parser
+    INDEX idx_v(v) USING INVERTED PROPERTIES("field_pattern" = "content") -- non-tokenized inverted index for 'content'
+);
+
+-- v.content will have both a tokenized (english) inverted index and a non-tokenized inverted index
+
+-- Use tokenized index
+SELECT * FROM tbl WHERE v['content'] MATCH 'Doris';
+
+-- Use non-tokenized index
+SELECT * FROM tbl WHERE v['content'] = 'Doris';
+&lt;/code&gt;&lt;/pre&gt; 
+&lt;p&gt;示例 2：通配符批量處理符合模式的列&lt;/p&gt; 
+&lt;pre&gt;&lt;code class="language-SQL"&gt;-- Use wildcard-typed subpaths with per-pattern indexes
+CREATE TABLE IF NOT EXISTS tbl2 (
+  k BIGINT,
+  v VARIANT&amp;lt;
+      'pattern1_*' : STRING, -- batch-typing: all subpaths matching pattern1_* are STRING
+      'pattern2_*' : BIGINT, -- batch-typing: all subpaths matching pattern2_* are BIGINT
+      properties("variant_max_subcolumns_count" = "2048") -- enable sparse subcolumns; keep top-2048 hot keys
+  &amp;gt;,
+  INDEX idx_p1 (v) USING INVERTED
+    PROPERTIES("field_pattern"="pattern1_*", "parser" = "english"), -- tokenized inverted index for pattern1_* with english parser
+  INDEX idx_p2 (v) USING INVERTED
+    PROPERTIES("field_pattern"="pattern2_*") -- non-tokenized inverted index for pattern2_*
+) DUPLICATE KEY(k);
+&lt;/code&gt;&lt;/pre&gt; 
+&lt;p&gt;示例 3：允許預定義類型的列進入稀疏列&lt;/p&gt; 
+&lt;pre&gt;&lt;code class="language-SQL"&gt;-- Allow predefined typed paths to participate in sparse extraction
+CREATE TABLE IF NOT EXISTS tbl3 (
+  k BIGINT,
+  v VARIANT&amp;lt;
+    'message*' : STRING, -- batch-typing: all subpaths matching prefix 'message*' are STRING
+    properties(
+      "variant_max_subcolumns_count" = "2048",              -- enable sparse subcolumns; keep top-2048 hot keys
+      "variant_enable_typed_paths_to_sparse" = "true"       -- include typed (predefined) paths as sparse candidates (default: false)
+    )
+  &amp;gt;
+) DUPLICATE KEY(k);
+&lt;/code&gt;&lt;/pre&gt; 
+&lt;h2&gt;二、索引架構全面進化&lt;/h2&gt; 
+&lt;h3&gt;倒排索引存儲格式 V3 - 性能和功能的雙重提升&lt;/h3&gt; 
+&lt;p&gt;&lt;strong&gt;相比 V2 進一步優化存儲&lt;/strong&gt;&lt;/p&gt; 
+&lt;p&gt;索引文件更小，減少磁盤佔用和 I/O 開銷，以 httplogs 與 logsbench 兩個測試集測試結果來看，存儲空間最大可以通過 V3 節省 20%，適合大規模文本數據、日誌分析場景。&lt;/p&gt; 
+&lt;p&gt;&lt;img alt="index-optimization-1.PNG" src="https://oscimg.oschina.net/oscnet//52bd3f73925297fad698a51fb6c828cf.png" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;strong&gt;核心改進&lt;/strong&gt;&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt;&lt;strong&gt;引入倒排索引 ZSTD 詞典壓縮&lt;/strong&gt;：採用 ZSTD 壓縮算法對倒排索引內的詞典文件進行壓縮，通過 index properties 中的 &lt;code&gt;dict_compression&lt;/code&gt; 開啓。&lt;/li&gt; 
+ &lt;li&gt;&lt;strong&gt;新增倒排索引位置信息壓縮&lt;/strong&gt;：支持對倒排索引中為每個 term 即詞元記錄的位置信息進行編碼壓縮，進一步減少倒排索引空間佔用。&lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;p&gt;&lt;strong&gt;使用方式&lt;/strong&gt;&lt;/p&gt; 
+&lt;pre&gt;&lt;code class="language-SQL"&gt;-- 建表時啓用 V3 格式
+CREATE TABLE example_table (
+    content TEXT,
+    INDEX content_idx (content) USING INVERTED
+    PROPERTIES("parser" = "english", "dict_compression" = "true")
+) ENGINE=OLAP
+PROPERTIES ("inverted_index_storage_format" = "V3");
+&lt;/code&gt;&lt;/pre&gt; 
+&lt;h3&gt;倒排索引 - 分詞器靈活多樣好用易用&lt;/h3&gt; 
+&lt;h4&gt;新增三種常用分詞器&lt;/h4&gt; 
+&lt;p&gt;進一步提升用户在不同場景下的分詞需求：&lt;/p&gt; 
+&lt;p&gt;&lt;strong&gt;ICU Tokenizer&lt;/strong&gt;&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt; &lt;p&gt;&lt;strong&gt;實現&lt;/strong&gt;：ICU（International Components for Unicode）&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;&lt;strong&gt;適用場景&lt;/strong&gt;：包含複雜文字系統的國際化文本，特別適合多語言混合文檔。&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;&lt;strong&gt;示例&lt;/strong&gt;：&lt;/p&gt; &lt;pre&gt;&lt;code class="language-SQL"&gt;SELECT TOKENIZE('مرحبا بالعالم Hello 世界', '"parser"="icu"');
+-- 結果：["مرحبا", "بالعالم", "Hello", "世界"]
+
+SELECT TOKENIZE('มนไมเปนไปตามความตองการ', '"parser"="icu"');
+-- 結果：["มน", "ไมเปน", "ไป", "ตาม", "ความ", "ตองการ"]
+&lt;/code&gt;&lt;/pre&gt; &lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;p&gt;&lt;strong&gt;IK Tokenizer&lt;/strong&gt;&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt; &lt;p&gt;&lt;strong&gt;實現&lt;/strong&gt;：IK Analyzer（中文分詞器），基於算法的高級中文分詞，結合詞典和統計模型&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;&lt;strong&gt;適用場景&lt;/strong&gt;：對分詞質量要求較高的中文文本處理&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;&lt;strong&gt;模式&lt;/strong&gt;：&lt;/p&gt; 
+  &lt;ul&gt; 
+   &lt;li&gt;&lt;strong&gt;ik_smart&lt;/strong&gt;：智能模式，詞少且更長，語義集中，適合精確搜索&lt;/li&gt; 
+   &lt;li&gt;&lt;strong&gt;ik_max_word&lt;/strong&gt;：最細粒度模式，更多短詞，覆蓋更全面，適合召回搜索&lt;/li&gt; 
+  &lt;/ul&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;&lt;strong&gt;示例&lt;/strong&gt;：&lt;/p&gt; &lt;pre&gt;&lt;code class="language-SQL"&gt;-- 智能模式
+SELECT TOKENIZE('中華人民共和國國歌', '"parser"="ik","parser_mode"="ik_smart"');
+-- 結果：["中華人民共和國", "國歌"]
+
+-- 最細粒度模式
+SELECT TOKENIZE('中華人民共和國國歌', '"parser"="ik","parser_mode"="ik_max_word"');
+-- 結果：["中華人民共和國", "中華人民", "中華", "華人", "人民共和國", "人民", "共和國", "共和", "國歌"]
+&lt;/code&gt;&lt;/pre&gt; &lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;p&gt;&lt;strong&gt;Basic Tokenizer&lt;/strong&gt;&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt; &lt;p&gt;&lt;strong&gt;實現&lt;/strong&gt;：簡單規則的自定義分詞器，基礎分詞，採用字符類型識別進行分詞&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;&lt;strong&gt;適用場景&lt;/strong&gt;：簡單場景、對性能要求極高的場景&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;&lt;strong&gt;分詞規則&lt;/strong&gt;：&lt;/p&gt; 
+  &lt;ul&gt; 
+   &lt;li&gt;連續的字母數字字符作為一個詞（word tokens）&lt;/li&gt; 
+   &lt;li&gt;中文字符單獨分詞（每個漢字一個 token）&lt;/li&gt; 
+   &lt;li&gt;忽略標點符號、空格和特殊符號&lt;/li&gt; 
+  &lt;/ul&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;&lt;strong&gt;示例&lt;/strong&gt;：&lt;/p&gt; &lt;pre&gt;&lt;code class="language-SQL"&gt;-- 英文文本分詞
+SELECT TOKENIZE('Hello World! This is a test.', '"parser"="basic"');
+-- 結果：["hello", "world", "this", "is", "a", "test"]
+
+-- 中文文本分詞
+SELECT TOKENIZE('你好世界', '"parser"="basic"');
+-- 結果：["你", "好", "世", "界"]
+
+-- 混合語言分詞
+SELECT TOKENIZE('Hello 你好 World 世界', '"parser"="basic"');
+-- 結果：["hello", "你", "好", "world", "世", "界"]
+
+-- 包含數字和特殊字符
+SELECT TOKENIZE('GET /images/hm_bg.jpg HTTP/1.0', '"parser"="basic"');
+-- 結果：["get", "images", "hm", "bg", "jpg", "http", "1", "0"]
+
+-- 處理長數字序列
+SELECT TOKENIZE('12345678901234567890', '"parser"="basic"');
+-- 結果：["12345678901234567890"]
+&lt;/code&gt;&lt;/pre&gt; &lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;h4&gt;自定義分詞&lt;/h4&gt; 
+&lt;p&gt;推出自定義分詞功能，方便用户根據自身分詞需求，進行 DIY 組合，進一步提高文本檢索召回率。自定義分詞可以突破內置分詞的侷限，根據特定需求組合字符過濾器、分詞器和詞元過濾器，精細定義文本如何被切分成可搜索的詞項，這直接決定了搜索結果的相關性與數據分析的準確性。&lt;/p&gt; 
+&lt;p&gt;&lt;img alt="index-optimization-2.PNG" src="https://oscimg.oschina.net/oscnet//dc0f51266ee161f7031d39e645c8b225.png" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;strong&gt;使用場景舉例&lt;/strong&gt;&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt;&lt;strong&gt;問題&lt;/strong&gt;&lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;p&gt;使用默認 unicode 分詞器時，電話號碼"13891972631"被當作完整 token，無法支持前綴搜索如"138"。&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt; &lt;p&gt;&lt;strong&gt;解決方案&lt;/strong&gt;&lt;/p&gt; 
+  &lt;ul&gt; 
+   &lt;li&gt;&lt;strong&gt;創建分詞器（tokenizer）&lt;/strong&gt;&lt;/li&gt; 
+   &lt;li&gt;使用 Edge N-gram 自定義分詞器：&lt;/li&gt; 
+  &lt;/ul&gt; &lt;pre&gt;&lt;code class="language-SQL"&gt;   CREATE INVERTED INDEX TOKENIZER IF NOT EXISTS edge_ngram_phone_tokenizer
+    PROPERTIES
+    (
+        "type" = "edge_ngram",
+        "min_gram" = "3",
+        "max_gram" = "10",
+        "token_chars" = "digit"
+    );
+&lt;/code&gt;&lt;/pre&gt; 
+  &lt;ul&gt; 
+   &lt;li&gt;&lt;strong&gt;創建分析器（analyzer）&lt;/strong&gt;&lt;/li&gt; 
+  &lt;/ul&gt; &lt;pre&gt;&lt;code class="language-SQL"&gt;  CREATE INVERTED INDEX ANALYZER IF NOT EXISTS phone_prefix_analyzer
+    PROPERTIES
+    (
+        "tokenizer" = "edge_ngram_phone_tokenizer"
+    );
+&lt;/code&gt;&lt;/pre&gt; 
+  &lt;ul&gt; 
+   &lt;li&gt;&lt;strong&gt;創建表指定 analyzer&lt;/strong&gt;&lt;/li&gt; 
+  &lt;/ul&gt; &lt;pre&gt;&lt;code class="language-SQL"&gt;CREATE TABLE customer_contacts (
+    id bigint NOT NULL AUTO_INCREMENT(1),
+    phone text NULL,
+    INDEX idx_phone (phone) USING INVERTED PROPERTIES(
+        "analyzer" = "phone_prefix_analyzer"
+    )
+) ENGINE=OLAP
+DUPLICATE KEY(id)
+DISTRIBUTED BY RANDOM BUCKETS 1
+PROPERTIES ("replication_allocation" = "tag.location.default: 1");
+&lt;/code&gt;&lt;/pre&gt; 
+  &lt;ul&gt; 
+   &lt;li&gt;&lt;strong&gt;查看分詞效果&lt;/strong&gt;&lt;/li&gt; 
+  &lt;/ul&gt; &lt;pre&gt;&lt;code class="language-SQL"&gt;  SELECT tokenize('13891972631', '"analyzer"="phone_prefix_analyzer"');
+  +----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+  | tokenize('13891972631', '"analyzer"="phone_prefix_analyzer"')                                                                                                                                                                                                                                |
+  +----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+  | [{
+          "token": "138"
+      }, {
+          "token": "1389"
+      }, {
+          "token": "13891"
+      }, {
+          "token": "138919"
+      }, {
+          "token": "1389197"
+      }, {
+          "token": "13891972"
+      }, {
+          "token": "138919726"
+      }, {
+          "token": "1389197263"
+      }] |
+  +----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+&lt;/code&gt;&lt;/pre&gt; 
+  &lt;ul&gt; 
+   &lt;li&gt;&lt;strong&gt;文本搜索效果&lt;/strong&gt;&lt;/li&gt; 
+  &lt;/ul&gt; &lt;pre&gt;&lt;code class="language-SQL"&gt;  SELECT * FROM customer_contacts_optimized WHERE phone MATCH '138';
+  +------+-------------+
+  | id   | phone       |
+  +------+-------------+
+  |    1 | 13891972631 |
+  |    2 | 13812345678 |
+  +------+-------------+
+  SELECT * FROM customer_contacts_optimized WHERE phone MATCH '1389';
+  +------+-------------+
+  | id   | phone       |
+  +------+-------------+
+  |    1 | 13891972631 |
+  |    2 | 13812345678 |
+  +------+-------------+
+  2 rows in set (0.043 sec)
+&lt;/code&gt;&lt;/pre&gt; &lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;p&gt;通過 Edge N-gram 分詞器，一個電話號碼被拆分成多個前綴 token，實現了靈活的前綴匹配搜索。&lt;/p&gt; 
+&lt;h2&gt;三、湖倉一體能力再躍新高&lt;/h2&gt; 
+&lt;h3&gt;異步物化視圖全面支持數據湖&lt;/h3&gt; 
+&lt;p&gt;在 3.1 版本中，異步物化視圖再次進化，現在可以完整支持 Paimon / Iceberg / Hudi 的分區增量構建和分區透明改寫。Doris 自 2.1 版本支持異步物化視圖功能開始。經過多個版本的迭代。已經支持了非常多有價值的特性。包括：&lt;/p&gt; 
+&lt;p&gt;&lt;img alt="lakehouse.PNG" src="https://oscimg.oschina.net/oscnet//8b9ea94aa4532f2abd02eb830a14ebf4.png" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p&gt;3.1 版本則重點打磨湖倉一體方向上的功能，全面支持主流的數據湖表格式 Paimon / Iceberg / Hudi 的分區刷新，和透明改寫時的外部數據源分區補償。使其成為聯通湖和倉之間的高速公路。具體支持範圍詳見下表：&lt;/p&gt; 
+&lt;p&gt;&lt;img alt="lakehouse-2.PNG" src="https://oscimg.oschina.net/oscnet//f186dc9cba936323728be249dd42bdc3.png" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;h3&gt;Iceberg / Paimon 能力全面擴充&lt;/h3&gt; 
+&lt;h4&gt;Iceberg&lt;/h4&gt; 
+&lt;p&gt;3.1.0 版本針對 Iceberg 表格式上做出多項優化和能力增強，緊密推進與 Iceberg 最新特性的融合。&lt;/p&gt; 
+&lt;p&gt;&lt;strong&gt;支持 Branch / Tag 完整生命週期管理&lt;/strong&gt;&lt;/p&gt; 
+&lt;p&gt;從 3.1.0 開始，Doris 原生支持 Iceberg Branch &amp;amp; Tag 的創建、刪除、讀取與寫入操作。該功能能夠讓用户像 Git 一樣操作和管理 Iceberg 表數據。這一能力為 Iceberg 表格式的多版本並行管理、灰度測試、環境隔離等業務場景提供了原生的支持，無需額外引擎或自定義邏輯。&lt;/p&gt; 
+&lt;pre&gt;&lt;code class="language-SQL"&gt;-- 創建分支
+ALTER TABLE iceberg_tbl CREATE BRANCH b1;
+-- 寫入數據到指定分支
+INSERT INTO iceberg_tbl@branch(b1) values(1, 2);
+-- 查詢指定分支
+SELECT * FROM iceberg_tbl@branch(b1);
+&lt;/code&gt;&lt;/pre&gt; 
+&lt;p&gt;&lt;strong&gt;豐富的 Iceberg 系統表支持&lt;/strong&gt;&lt;/p&gt; 
+&lt;p&gt;3.1.0 新增對 Iceberg &lt;code&gt;$entries&lt;/code&gt;， &lt;code&gt;$files&lt;/code&gt;， &lt;code&gt;$history&lt;/code&gt;， &lt;code&gt;$manifests&lt;/code&gt;， &lt;code&gt;$refs&lt;/code&gt;， &lt;code&gt;$snapshots&lt;/code&gt; 等系統表的支持，可用 &lt;code&gt;SELECT * FROM iceberg_table$history&lt;/code&gt;、&lt;code&gt;…$refs&lt;/code&gt; 等語句直接查詢 Iceberg 的底層 metadata、snapshot 列表、分支/標籤信息等，從而深入瞭解數據文件的組織結構、快照的變更歷史以及分支的映射情況。這種能力大大提升了 Iceberg 元數據的可觀測性，使得問題定位、調優分析和治理決策更加直觀、透明。&lt;/p&gt; 
+&lt;p&gt;如通過系統表查看 delete file 數量：&lt;/p&gt; 
+&lt;pre&gt;&lt;code class="language-SQL"&gt;SELECT
+  CASE
+    WHEN content = 0 THEN 'DataFile'
+    WHEN content = 1 THEN 'PositionDeleteFile'
+    WHEN content = 2 THEN 'EqualityDeleteFile'
+    ELSE 'Unknown'
+  END AS ContentType,
+  COUNT(*) AS FileNum,
+  SUM(file_size_in_bytes) AS SizeInBytes,
+  SUM(record_count) AS Records
+FROM
+  iceberg_table$files
+GROUP BY
+  ContentType;
+
++--------------------+---------+-------------+---------+
+| ContentType        | FileNum | SizeInBytes | Records |
++--------------------+---------+-------------+---------+
+| EqualityDeleteFile |    2787 |     1432518 |   27870 |
+| DataFile           |    2787 |     4062416 |   38760 |
+| PositionDeleteFile |      11 |       36608 |   10890 |
++--------------------+---------+-------------+---------+
+&lt;/code&gt;&lt;/pre&gt; 
+&lt;p&gt;&lt;strong&gt;Iceberg 視圖查詢&lt;/strong&gt;&lt;/p&gt; 
+&lt;p&gt;3.1.0 版本新增對 Iceberg 邏輯視圖的訪問和查詢。該功能進一步提升了 Doris 對 Iceberg 功能的完善程度。在後續 3 位版本迭代中，我們將進一步支持 Iceberg View 的 SQL 方言轉換能力。&lt;/p&gt; 
+&lt;p&gt;&lt;strong&gt;通過 ALTER 語句修改 Iceberg 表結構&lt;/strong&gt;&lt;/p&gt; 
+&lt;p&gt;3.1.0 支持通過 &lt;code&gt;ALTER TABLE&lt;/code&gt; 語句對 Iceberg 表進行字段的新增、刪除、重命名和重排序操作。該功能進一步完善了 Doris 對 Iceberg 表的管理能力，無需再借助 Spark 等第三方引擎進行 Iceberg 表管理。&lt;/p&gt; 
+&lt;pre&gt;&lt;code class="language-SQL"&gt;ALTER TABLE iceberg_table
+ADD COLUMN new_col int;
+&lt;/code&gt;&lt;/pre&gt; 
+&lt;p&gt;同時，在 3.1.0 版本中，Iceberg 的依賴版本升級到 1.9.2，以便更好的支持 Iceberg 的新的功能。在後續 3.1 的迭代版本中，我們將進一步增強 Iceberg 的表管理能力，包括數據合併、分支演進等能力。&lt;/p&gt; 
+&lt;p&gt;詳情參考&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fdoris.apache.org%2Fdocs%2Flakehouse%2Fcatalogs%2Ficeberg-catalog" target="_blank"&gt;文檔&lt;/a&gt;&lt;/p&gt; 
+&lt;h4&gt;Paimon&lt;/h4&gt; 
+&lt;p&gt;3.1.0 版本針對 Paimon 表格式，結合用户實際場景，進行了多項功能更新和能力增強。&lt;/p&gt; 
+&lt;p&gt;&lt;strong&gt;支持 Paimon Batch Incremental Query&lt;/strong&gt;&lt;/p&gt; 
+&lt;p&gt;3.1.0 版本支持讀取 Paimon 表指定的兩個快照之間的增量數據。該功能增強了用户對 Paimon 表增量數據的訪問能力。尤其是在增量物化視圖構建方面，基於此功能實現了 Paimon 表的增量聚合物化視圖能力。詳見物化視圖方面的説明。&lt;/p&gt; 
+&lt;pre&gt;&lt;code class="language-SQL"&gt;SELECT * FROM paimon_tbl@incr('startSnapshotId'='2', 'endSnapshotId'='5');
+&lt;/code&gt;&lt;/pre&gt; 
+&lt;p&gt;&lt;strong&gt;支持 Branch / Tag 讀取&lt;/strong&gt;&lt;/p&gt; 
+&lt;p&gt;從 3.1.0 開始，Doris 支持對 Paimon 表的 Branch / Tag 進行讀取，幫助用户更靈活的訪問多版本的 Paimon 數據。&lt;/p&gt; 
+&lt;pre&gt;&lt;code class="language-SQL"&gt;SELECT * FROM paimon_tbl@branch(branch1);
+SELECT * FROM paimon_tbl@tag(tag1);
+&lt;/code&gt;&lt;/pre&gt; 
+&lt;p&gt;&lt;strong&gt;豐富的 Paimon 系統表支持&lt;/strong&gt;&lt;/p&gt; 
+&lt;p&gt;同 Iceberg 一樣，3.1.0 新增對 Paimon &lt;code&gt;$files&lt;/code&gt;， &lt;code&gt;$partitions&lt;/code&gt;， &lt;code&gt;$manifests&lt;/code&gt;， &lt;code&gt;$tags&lt;/code&gt;， &lt;code&gt;$snapshots&lt;/code&gt; 等系統表的支持，可用 &lt;code&gt;SELECT * FROM partition_table$files&lt;/code&gt; 等語句直接查詢 Paimon 的底層元數據信息。更方便用户對 Paimon 表進行探測、調試和優化。&lt;/p&gt; 
+&lt;p&gt;如我們可以通過系統表統計分區新增數據文件：&lt;/p&gt; 
+&lt;pre&gt;&lt;code class="language-SQL"&gt;SELECT
+  partition,
+  COUNT(*) AS new_file_count,
+  SUM(file_size_in_bytes)/1024/1024 AS new_total_size_mb
+FROM my_table$files
+WHERE creation_time &amp;gt;= DATE_SUB(NOW(), INTERVAL 3 DAY)
+GROUP BY partition
+ORDER BY new_total_size_mb DESC;
+&lt;/code&gt;&lt;/pre&gt; 
+&lt;p&gt;在 3.1.0 版本中，Paimon 的依賴版本升級到 1.1.1，以便更好的支持 Paimon 的新的功能。&lt;/p&gt; 
+&lt;p&gt;詳情參考&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fdoris.apache.org%2Fdocs%2Flakehouse%2Fcatalogs%2Fpaimon-catalog" target="_blank"&gt;文檔&lt;/a&gt;&lt;/p&gt; 
+&lt;h3&gt;數據湖查詢性能更上一層樓&lt;/h3&gt; 
+&lt;p&gt;3.1.0 版本，針對數據湖表格式的查詢性能進行了多項深度優化，旨在實際生產環境下，為用户提供更加穩定、高效的數據湖分析能力。&lt;/p&gt; 
+&lt;p&gt;&lt;strong&gt;動態分區裁剪&lt;/strong&gt;&lt;/p&gt; 
+&lt;p&gt;動態分區裁剪功能，能夠在多表關聯查詢場景下，根據右表數據生成分區列謂詞，並對左表數據進行運行時的分區剪枝，從而減少數據 IO，提升查詢性能。在 3.0 版本中，Doris 已經支持了 Hive 表的動態分區裁剪功能。在 3.1.0 版本中，這個功能進一步擴充到了 Iceberg、Paimon 和 Hudi 表上。在測試場景下，針對選擇率較高的查詢，&lt;strong&gt;可以提升 30%-40% 的性能。&lt;/strong&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;strong&gt;批量分片執行&lt;/strong&gt;&lt;/p&gt; 
+&lt;p&gt;當湖表的數據分片較多時，如果 FE 進行規劃並將所有分片信息一次性組裝完成發送給 BE，那麼可能造成 FE 內存消耗過大以及處理實際過長的問題。尤其是在查詢大數據量表時，會導致規劃部分的資源開銷大耗時長。批量分片執行功能，通過分批次生產數據分片信息，並且邊生產變執行，能夠有效緩解 FE 的內存開銷，同時能夠讓分片信息的生產和執行並行執行，提升整體的執行效率。在 3.0 版本中，Doris 已經支持了 Hive 表上的該功能。在 3.1.0 版本中，進一步增加了對 Iceberg 表的批量分片執行支持。在大數據量測試場景下，可以顯著降低 FE 的內存開銷和查詢規劃時間。&lt;/p&gt; 
+&lt;h3&gt;聯邦分析 - 連接器更好用更多樣&lt;/h3&gt; 
+&lt;p&gt;3.1 版本重構了各個數據源的連接屬性，不僅能夠以更加清晰的方式對接各類元數據服務和數據存儲系統，同時還支持了更加豐富的連接能力。&lt;/p&gt; 
+&lt;p&gt;&lt;strong&gt;Iceberg Rest Catalog&lt;/strong&gt;&lt;/p&gt; 
+&lt;p&gt;3.1 版本進一步增強了對 Iceberg Rest Catalog 的支持。不僅支持了包括 Unity、Polaris、Gravitino、Glue 等多種 Iceberg Rest Catalog 後端實現，同時支持了 vended credentials 功能，能夠更加安全、靈活的管理訪問憑證。目前支持 AWS 平台，後續小版本迭代中將陸續支持 GCP、Azure 等雲平台的憑證管理。&lt;/p&gt; 
+&lt;p&gt;詳情參考&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fdoris.apache.org%2Fdocs%2Flakehouse%2Fmetastores%2Ficeberg-rest" target="_blank"&gt;文檔&lt;/a&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;strong&gt;支持 Paimon Rest Catalog&lt;/strong&gt;&lt;/p&gt; 
+&lt;p&gt;3.1.0 版本中支持基於阿里雲 DLF 的 Paimon Rest Catalog，可以直接訪問新版本 DLF 管理的 Paimon 表數據。&lt;/p&gt; 
+&lt;p&gt;詳情參考&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fdoris.apache.org%2Fdocs%2Flakehouse%2Fbest-practices%2Fdoris-dlf-paimon" target="_blank"&gt;文檔&lt;/a&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;strong&gt;多 Kerberos 環境支持&lt;/strong&gt;&lt;/p&gt; 
+&lt;p&gt;3.1 版本允許用户在同一個 Doris 集羣內訪問不同的 Kerberos 認證環境。不同的 Kerberos 環境可能採用不同的 KDC 服務、Principal 以及對應的 Keytab。新版本允許針對不同的 Catalog，配置不同的 Kerberos 認證信息，並且相互之間不受幹擾。該功能極大的方便了擁有多套 Kerberos 認證環境的用户，可以使用 Doris 進行統一的訪問管理。&lt;/p&gt; 
+&lt;p&gt;詳情參考&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fdoris.apache.org%2Fdocs%2Flakehouse%2Fstorages%2Fhdfs%23kerberos-authentication" target="_blank"&gt;文檔&lt;/a&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;strong&gt;多 Hadoop 環境支持&lt;/strong&gt;&lt;/p&gt; 
+&lt;p&gt;在之前的版本中，Doris 只允許用户在 conf 目錄下放置一套 hadoop 集羣的配置文件（hive-site.xml，hdfs-site.xml 等）。如果用户有多套不同的 Hadoop 環境和配置，則無法支持。新版本運行用户為不同的 Catalog 指定不同的 Hadoop 配置文件，幫助用户更靈活的管理外部數據源。&lt;/p&gt; 
+&lt;p&gt;詳情參考&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fdoris.apache.org%2Fdocs%2Flakehouse%2Fstorages%2Fhdfs%23kerberos-authentication" target="_blank"&gt;文檔&lt;/a&gt;&lt;/p&gt; 
+&lt;h2&gt;四、存儲層構持續打磨&lt;/h2&gt; 
+&lt;p&gt;在 3.1 版本中，我們對存儲層也進行了持續的打磨，性能和穩定性都有了顯著的提升。&lt;/p&gt; 
+&lt;h3&gt;靈活列更新 - 數據更新全新體驗&lt;/h3&gt; 
+&lt;p&gt;此前 Doris 的部分列更新功能要求一次導入中每一行必須更新相同的列。在一些場景下，源端系統輸出的記錄往往只包含主鍵和被更新的列，不同行更新的列可能不同。為瞭解決這種需求，Doris 引入了 &lt;strong&gt;靈活列更新&lt;/strong&gt; 功能，使用靈活列更新可以大幅簡化用户側按列攢數據的工作以及提升寫入性能。&lt;/p&gt; 
+&lt;p&gt;&lt;strong&gt;使用方式&lt;/strong&gt;&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt;創建 &lt;strong&gt;Merge-on-Write Unique 表&lt;/strong&gt; 時，在表屬性中開啓：&lt;/li&gt; 
+ &lt;li&gt;&lt;code&gt;"enable_unique_key_skip_bitmap_column" = "true"&lt;/code&gt;&lt;/li&gt; 
+ &lt;li&gt;在導入時指定導入模式：&lt;/li&gt; 
+ &lt;li&gt;&lt;code&gt;unique_key_update_mode: UPDATE_FLEXIBLE_COLUMNS&lt;/code&gt;&lt;/li&gt; 
+ &lt;li&gt;Doris 會自動完成靈活列更新與數據補齊。&lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;p&gt;&lt;strong&gt;示例&lt;/strong&gt; 支持在一次導入中對不同記錄更新不同的列，例如：&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt;刪除某行（&lt;code&gt;DORIS_DELETE_SIGN&lt;/code&gt;）&lt;/li&gt; 
+ &lt;li&gt;更新部分列（如 &lt;code&gt;v1&lt;/code&gt;、&lt;code&gt;v2&lt;/code&gt;、&lt;code&gt;v5&lt;/code&gt; 等）&lt;/li&gt; 
+ &lt;li&gt;插入新行（僅提供主鍵和被更新列，其他列使用默認值或補齊歷史值）&lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;p&gt;&lt;strong&gt;效果&lt;/strong&gt;&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt;在測試環境下（1 FE + 4 BE，16C 64GB，3 億行 101 列數據，3 副本行存表）： 
+  &lt;ul&gt; 
+   &lt;li&gt;每次導入 20,000 行，僅更新 1 列（需補齊 99 列）&lt;/li&gt; 
+   &lt;li&gt;單併發導入性能可達 &lt;strong&gt;10.4k 行/s&lt;/strong&gt;&lt;/li&gt; 
+   &lt;li&gt;單機資源佔用：CPU ～60%，內存 ～30GB，讀 IOPS ～7.5k/s，寫 IOPS ～5k/s&lt;/li&gt; 
+  &lt;/ul&gt; &lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;h3&gt;存算分離 mow 鎖優化&lt;/h3&gt; 
+&lt;p&gt;在存算分離場景下，MOW 表更新 Delete Bitmap 需要獲取分佈式鎖 &lt;code&gt;delete_bitmap_update_lock&lt;/code&gt;。原有實現中，導入、Compaction 和 Schema Change 會競爭該鎖，容易在高併發導入場景下導致長時間等待甚至失敗。&lt;/p&gt; 
+&lt;p&gt;本次優化包括兩方面：&lt;/p&gt; 
+&lt;p&gt;&lt;strong&gt;減少 Compaction 持鎖時間&lt;/strong&gt;&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt;通過引入新的 &lt;code&gt;mow_tablet_compaction_key&lt;/code&gt;，避免多個 Compaction/Schema Change 任務在更新 &lt;code&gt;initiators&lt;/code&gt; 列表時產生不必要的事務衝突。&lt;/li&gt; 
+ &lt;li&gt;在多 Tablet 高併發導入測試中，導入提交事務的 &lt;strong&gt;p99 平均耗時從 1.68 分鐘降低到 49.4 秒&lt;/strong&gt;，大幅降低了事務提交延遲。&lt;/li&gt; 
+ &lt;li&gt;新增配置項 &lt;code&gt;delete_bitmap_lock_v2_white_list&lt;/code&gt;，支持為指定倉庫開啓該優化。&lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;p&gt;&lt;strong&gt;降低導入事務長尾延遲&lt;/strong&gt;&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt;增加 FE 配置 &lt;code&gt;mow_load_force_take_ms_lock_threshold_ms&lt;/code&gt;，當導入事務等待鎖超過閾值時，將強制獲取分佈式鎖，避免長時間飢餓。&lt;/li&gt; 
+ &lt;li&gt;在高併發導入測試下，該優化顯著減少了導入事務的長尾延遲。&lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;h2&gt;五、查詢性能提升&lt;/h2&gt; 
+&lt;h3&gt;分區裁剪性能和適用範圍提升&lt;/h3&gt; 
+&lt;p&gt;Doris 支持數據按照分區組織，這些分區可以獨立存儲、獨立查詢、獨立管理。通過分區，可以提升查詢性能、優化數據管理，並降低資源消耗。在查詢過程中，通過使用過濾條件，提前過濾無需查詢的分區，可以顯著提升查詢性能，降低系統資源消耗。在日誌數據分析系統，風控系統等使用場景中，單表可能存在萬級別甚至十萬級別的分區數量，而通常單詞查詢，只會命中百級別以下的分區數據。對於在這類數據上的查詢，能否分區裁剪，對於查詢性能的影響十分顯著。&lt;/p&gt; 
+&lt;p&gt;在 3.1 版本中，Doris 通過引入一系列的優化，顯著提升了分區裁剪的性能和適用範圍，包括&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt;分區裁剪二分查找。對於在時間列上的分區，通過將分區按照列值排序，將分區裁剪的計算從線性遍歷，改為二分查找。在使用 DATETIME 類型作為分區字段，13.6 萬分區數的場景下。實測分區裁剪的耗時，從 724ms 提升到 43ms。提升超過 16 倍。&lt;/li&gt; 
+ &lt;li&gt;增加大量單調函數參與分區裁剪。在實際的使用場景中，在時間分區列上的過濾條件，通常不是簡單的邏輯比較，而是在分區列上包含時間函數計算的複雜表達式。如：&lt;code&gt;to_date(time_stamp) &amp;gt; '2022-12-22&lt;/code&gt;'，&lt;code&gt;date_format(timestamp,'%Y-%m-%d %H:%i:%s') &amp;gt; '2022-12-22 11:00:00'&lt;/code&gt;等。Doris 在 3.1 版本中引入了函數單調特性描述，當函數為單調函數時，可以通過計算分區邊界值是否可以被裁剪得知整個分區是否可以被裁剪。在 3.1 版本中，已經支持了 CAST 和 25 個常見的時間相關的函數。可以覆蓋絕大多數常見的時間類型分區列上的過濾條件。&lt;/li&gt; 
+ &lt;li&gt;此外，3.1 版本中，還對分區裁剪的全路徑代碼做了許多代碼級別的詳細優化，減少了不必要開銷。&lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;h3&gt;洞察數據特徵 - 獲得性能 10 倍的潛力&lt;/h3&gt; 
+&lt;p&gt;在 3.1 中，優化器可以更聰明的使用數據特徵對查詢進行優化。優化器會執行計劃樹種各個節點的收集唯一性（Unique）、均一性（Uniform），等值集（Equal Set）等數據特徵，並推導列之間的函數依賴關係。當在特定的節點，數據符合特定特徵時，可以移除不必要的連接、聚合或排序計算，顯著提升查詢性能。&lt;/p&gt; 
+&lt;p&gt;在針對特定優化構建的測試用例下，利用數據特徵可以獲得超過 10 倍的性能提升，詳見下表：&lt;/p&gt; 
+&lt;p&gt;&lt;img alt="query-performance.PNG" src="https://oscimg.oschina.net/oscnet//3bf8bd362c3e994af570eda7aa49c09b.png" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;h2&gt;六、功能改進&lt;/h2&gt; 
+&lt;h3&gt;半結構化&lt;/h3&gt; 
+&lt;p&gt;&lt;strong&gt;VARIANT&lt;/strong&gt;&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt;新增 &lt;code&gt;variant_type(x)&lt;/code&gt;函數：返回 Variant 子 field 對應的「當前實際類型」。&lt;/li&gt; 
+ &lt;li&gt;新增 ComputeSignature/Helper，增強函數參數/返回類型推斷能力。&lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;p&gt;&lt;strong&gt;STRUCT&lt;/strong&gt;&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt;支持使用 Schema Change 為 STRUCT 類型增加子列&lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;h3&gt;湖倉一體&lt;/h3&gt; 
+&lt;ul&gt; 
+ &lt;li&gt;支持在 Catalog 級別設置元數據緩存策略，如緩存過期時間等。幫助用户根據需求靈活調整數據時效性和元數據訪問性能。詳情參考&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fdoris.apache.org%2Fdocs%2Flakehouse%2Fmeta-cache" target="_blank"&gt;文檔&lt;/a&gt;&lt;/li&gt; 
+ &lt;li&gt;支持 &lt;code&gt;FILE()&lt;/code&gt; 表函數（Table Valued Function），該表函數是原有的 &lt;code&gt;S3()&lt;/code&gt;，&lt;code&gt;HDFS()&lt;/code&gt;，&lt;code&gt;LOCAL()&lt;/code&gt;表函數的集合，方便用户使用和理解。&lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;h3&gt;聚合算子能力增強&lt;/h3&gt; 
+&lt;p&gt;在 3.1 版本中，優化器重點增強了聚合算子。支持了兩個使用較為廣泛的能力。&lt;/p&gt; 
+&lt;p&gt;&lt;strong&gt;非標 GROUP BY 支持&lt;/strong&gt;&lt;/p&gt; 
+&lt;p&gt;對於標準的聚合查詢，要求聚合輸出的標量表達式，其本身或其子樹必須是聚合鍵。但在 MySQL 中，當設置了 SQL_MODE 不包含 "ONLY_FULL_GROUP_BY" 時，則沒有次限制。詳見 &lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fdev.mysql.com%2Fdoc%2Frefman%2F8.4%2Fen%2Fsql-mode.html%23sqlmode_only_full_group_by" target="_blank"&gt;MySQL 文檔&lt;/a&gt;&lt;/p&gt; 
+&lt;p&gt;此時，此列輸出的值為聚合鍵對應多行中的任意一行計算的值。舉例如下：&lt;/p&gt; 
+&lt;pre&gt;&lt;code class="language-SQL"&gt;-- 非標 GROUP BY
+SELECT c1, c2 FROM t GROUP BY c1
+-- 等價於
+SELECT c1, any_value(c2) FROM t GROUP BY c1
+&lt;/code&gt;&lt;/pre&gt; 
+&lt;p&gt;在 3.1 版本中。Doris 在 SQL_MODE 中默認開啓 "ONLY_FULL_GROUP_BY" ，即和之前的行為保持一致。如果需要使用非標 GROUP BY 功能。則可以通過如下設置開啓：&lt;/p&gt; 
+&lt;pre&gt;&lt;code class="language-SQL"&gt;set sql_mode = replace(@@sql_mode, 'ONLY_FULL_GROUP_BY', '');
+&lt;/code&gt;&lt;/pre&gt; 
+&lt;p&gt;&lt;strong&gt;多 distinct 聚合支持&lt;/strong&gt;&lt;/p&gt; 
+&lt;p&gt;在之前的版本中，如果聚合查詢中，包含多個 distinct 聚合函數，且他們的參數不一致。同時聚合函數的 distinct 語義和非 distinct 語義不一致，且不是以下之一，則 Doris 無法執行查詢：&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt;單參數的 COUNT&lt;/li&gt; 
+ &lt;li&gt;SUM&lt;/li&gt; 
+ &lt;li&gt;AVG&lt;/li&gt; 
+ &lt;li&gt;GROUP_CONCAT&lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;p&gt;在 3.1 版本中，Doris 對此方面進行了加強。現在這些查詢可以正常執行並獲取結果。例如：&lt;/p&gt; 
+&lt;pre&gt;&lt;code class="language-SQL"&gt;SELECT count(DISTINCT c1,c2), count(DISTINCT c2,c3), count(DISTINCT c3) FROM t;
+&lt;/code&gt;&lt;/pre&gt; 
+&lt;h3&gt;連接協議增強&lt;/h3&gt; 
+&lt;ul&gt; 
+ &lt;li&gt;開啓 Proxy Protocol 協議後，依然可以通過非該協議的客户端連接。該改進在負載均衡 IP 透傳場景下，方便用户更靈活的連接 Doris。&lt;/li&gt; 
+ &lt;li&gt;查詢 VIEW 時，JDBC 的元數據接口 ResultSetMetaData#getColumnName 可以正確的返回 VIEW 中的列名&lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;h2&gt;七、行為變更&lt;/h2&gt; 
+&lt;h3&gt;VARIANT&lt;/h3&gt; 
+&lt;ul&gt; 
+ &lt;li&gt;&lt;code&gt;variant_max_subcolumns_count&lt;/code&gt; 約束 
+  &lt;ul&gt; 
+   &lt;li&gt;同一張表中，所有 Variant 列的 &lt;code&gt;variant_max_subcolumns_count&lt;/code&gt; 必須「要麼全為 0，要麼全為 &amp;gt; 0」。混用會在建表 / Schema Change 時報錯。&lt;/li&gt; 
+  &lt;/ul&gt; &lt;/li&gt; 
+ &lt;li&gt;新的 Variant 讀寫/serde 與 Compaction 路徑對舊數據兼容。老版本 Variant 升級上來查詢格式會產生差異（比如多一些空格、或是&lt;code&gt;。&lt;/code&gt;分隔符導致層級構建，產生額外的層級）&lt;/li&gt; 
+ &lt;li&gt;創建 Variant 倒排索引，如果數據中所有字段不符合索引條件也會生成空索引文件，屬預期行為&lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;h3&gt;權限&lt;/h3&gt; 
+&lt;ul&gt; 
+ &lt;li&gt;show transcation 的權限需求從擁有 ADMIN_PRIV 權限，變更為擁有導入對應數據庫的 LOAD_PRIV 權限&lt;/li&gt; 
+ &lt;li&gt;統一了 SHOW FRONTENDS / BACKENDS 和 NODE Restful API 的權限。現在這些接口的權限需求為擁有 information_schema 庫的 SELECT_PRIV 權限。&lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;h2&gt;立刻開啓 3.1&lt;/h2&gt; 
+&lt;p&gt;在 3.1 版本正式發佈之前，半結構化和數據湖的多個能力已經經過真實線上場景的驗證，並獲得了符合預期的性能提升。推薦有相應能力需求的用户下載嚐鮮。&lt;/p&gt; 
+&lt;h2&gt;致謝&lt;/h2&gt; 
+&lt;p&gt;在此，再次向所有參與版本研發、測試和需求反饋的貢獻者們表示最衷心的感謝：&lt;/p&gt; 
+&lt;p&gt;@924060929 @airborne12 @amorynan @BePPPower @BiteTheDDDDt @bobhan1 @CalvinKirs @cambyzju @cjj2010 @csun5285 @DarvenDuan @dataroaring @deardeng @dtkavin @dwdwqfwe @eldenmoon @englefly @feifeifeimoon @feiniaofeiafei @felixwluo @freemandealer @Gabriel39 @gavinchou @ghkang98 @gnehil @gohalo @HappenLee @heguanhui @hello-stephen @HonestManXin @htyoung @hubgeter @hust-hhb @jacktengg @jeffreys-cat @Jibing-Li @JNSimba @kaijchen @kaka11chen @KeeProMise @koarz @liaoxin01 @liujiwen-up @liutang123 @luwei16 @MoanasDaddyXu @morningman @morrySnow @mrhhsg @Mryange @mymeiyi @nsivarajan @qidaye @qzsee @Ryan19929 @seawinde @shuke987 @sollhui @starocean999 @suxiaogang223 @SWJTU-ZhangLei @TangSiyang2001 @Vallishp @vinlee19 @w41ter @wangbo @wenzhenghu @wumeibanfa @wuwenchi @wyxxxcat @xiedeyantu @xinyiZzz @XLPE @XnY-wei @XueYuhai @xy720 @yagagagaga @Yao-MR @yiguolei @yoock @yujun777 @Yukang-Lian @Yulei-Yang @yx-keith @Z-SWEI @zclllyybb @zddr @zfr9527 @zgxme @zhangm365 @zhangstar333 @zhaorongsheng @zhiqiang-hhhh @zy-kkk @zzzxl1993&lt;/p&gt;
+                                                                                &lt;/div&gt;
+                                                                            </description>
+      <link>https://www.oschina.net/news/371320</link>
+      <guid isPermaLink="false">https://www.oschina.net/news/371320</guid>
+      <pubDate>Wed, 10 Sep 2025 06:58:10 GMT</pubDate>
+      <author>來源: 資訊</author>
+    </item>
+    <item>
+      <title>Countly 25.03.19 發佈，實時移動和 Web 分析報告平台</title>
+      <description>&lt;div class="content"&gt;
+                                                                    
+                                                        &lt;p&gt;&lt;span style="color:#000000"&gt;實時移動和 Web 分析報告平台 Countly&amp;nbsp;25.03.19 現已發佈。具體更新內容包括：&lt;/span&gt;&lt;/p&gt; 
+&lt;p style="text-align:start"&gt;&lt;span style="color:#000000"&gt;&lt;strong&gt;Enterprise Fixes&lt;/strong&gt;&lt;/span&gt;&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt;&lt;span style="color:#000000"&gt;[home] 修復主頁下載渲染問題&lt;/span&gt;&lt;/li&gt; 
+ &lt;li&gt;&lt;span style="color:#000000"&gt;[&lt;/span&gt;&lt;span style="background-color:#ffffff; color:#1f2328"&gt;journeys&lt;/span&gt;&lt;span style="color:#000000"&gt;] 修復保存 &lt;/span&gt;&lt;span style="background-color:#ffffff; color:#1f2328"&gt;journeys&amp;nbsp;&lt;/span&gt;&lt;span style="color:#000000"&gt;時處理跳過閾值的問題&lt;/span&gt;&lt;/li&gt; 
+ &lt;li&gt;&lt;span style="color:#000000"&gt;[&lt;/span&gt;&lt;span style="background-color:#ffffff; color:#1f2328"&gt;journeys&lt;/span&gt;&lt;span style="color:#000000"&gt;] 優化&amp;nbsp;&lt;/span&gt;&lt;span style="background-color:#ffffff; color:#1f2328"&gt;journeys&amp;nbsp;&lt;/span&gt;&lt;span style="color:#000000"&gt;stat user list&amp;nbsp;和 UI 錯誤修復&lt;/span&gt;&lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;p style="text-align:start"&gt;&lt;span style="color:#000000"&gt;&lt;strong&gt;Dependencies：&lt;/strong&gt;&lt;/span&gt;&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt;&lt;span style="color:#000000"&gt;將 express-rate-limit 從 8.0.1 升級至 8.1.0&lt;/span&gt;&lt;/li&gt; 
+ &lt;li&gt;&lt;span style="color:#000000"&gt;將 mongodb 從 6.18.0 升級到 6.19.0&lt;/span&gt;&lt;/li&gt; 
+ &lt;li&gt;&lt;span style="color:#000000"&gt;將 nodemailer 從 7.0.5 升級到 7.0.6&lt;/span&gt;&lt;/li&gt; 
+ &lt;li&gt;&lt;span style="color:#000000"&gt;將 puppeteer 從 24.17.0 升級到 24.19.0&lt;/span&gt;&lt;/li&gt; 
+ &lt;li&gt;&lt;span style="color:#000000"&gt;將 sass 從 1.90.0 升級到 1.92.1&lt;/span&gt;&lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;p&gt;更新説明：&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fgithub.com%2FCountly%2Fcountly-server%2Freleases%2Ftag%2F25.03.19" target="_blank"&gt;https://github.com/Countly/countly-server/releases/tag/25.03.19&lt;/a&gt;&lt;/p&gt;
+                                                                                &lt;/div&gt;
+                                                                            </description>
+      <link>https://www.oschina.net/news/371315/countly-25-03-19-released</link>
+      <guid isPermaLink="false">https://www.oschina.net/news/371315/countly-25-03-19-released</guid>
+      <pubDate>Wed, 10 Sep 2025 06:51:10 GMT</pubDate>
+      <author>來源: OSCHINA</author>
+    </item>
+    <item>
+      <title>NativeScript 8.9.9 發佈，跨平台原生應用框架</title>
+      <description>&lt;div class="content"&gt;
+                                                                    
+                                                        &lt;p&gt;&lt;span style="background-color:#ffffff; color:#333333"&gt;NativeScript 8.9.9 現已發佈。NativeScript 使用户能夠直接從 JavaScript 訪問&amp;nbsp;native API。目前，該框架為豐富的移動開發提供了 iOS 和 Android 運行時，並可用於多種不同的用例。&lt;/span&gt;&lt;/p&gt; 
+&lt;h3 style="text-align:start"&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span style="color:#1f2328"&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span style="background-color:#ffffff"&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;功能&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/h3&gt; 
+&lt;ul&gt; 
+ &lt;li&gt;&lt;strong&gt;TextField：&lt;/strong&gt;十進制鍵盤類型（&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fgithub.com%2FNativeScript%2FNativeScript%2Fpull%2F10789" target="_blank"&gt;#10789&lt;/a&gt;）&lt;/li&gt; 
+ &lt;li&gt;iOS 26 類型改進（ActionBar、Switch）+ .ns-{platform}-{sdkVersion} css root scoping（&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fgithub.com%2FNativeScript%2FNativeScript%2Fpull%2F10775" target="_blank"&gt;#10775&lt;/a&gt;）&lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;h3 style="text-align:start"&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span style="color:#1f2328"&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;&lt;span style="background-color:#ffffff"&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;修復&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/h3&gt; 
+&lt;ul&gt; 
+ &lt;li&gt;&lt;strong&gt;android：&lt;/strong&gt;帶有 target name 的 shared element 已添加到事務中（&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fgithub.com%2FNativeScript%2FNativeScript%2Fpull%2F10793" target="_blank"&gt;#10793&lt;/a&gt;）&lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;p&gt;更新説明：&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fgithub.com%2FNativeScript%2FNativeScript%2Freleases%2Ftag%2F8.9.9-core" target="_blank"&gt;https://github.com/NativeScript/NativeScript/releases/tag/8.9.9-core&lt;/a&gt;&lt;/p&gt;
+                                                                                &lt;/div&gt;
+                                                                            </description>
+      <link>https://www.oschina.net/news/371285/nativescript-8-9-9-released</link>
+      <guid isPermaLink="false">https://www.oschina.net/news/371285/nativescript-8-9-9-released</guid>
+      <pubDate>Sun, 07 Sep 2025 03:53:00 GMT</pubDate>
+      <author>來源: OSCHINA</author>
+    </item>
+    <item>
+      <title>Vue 低代碼可視化表單設計器 FcDesigner v3.3.1 版本發佈！</title>
+      <description>&lt;div class="content"&gt;
+                                                                    
+                                                        &lt;p style="color:#333333; margin-left:0; margin-right:0; text-align:left"&gt;&lt;strong&gt;FcDesigner 版是一款基於 Vue 的低代碼可視化表單設計器工具，通過數據驅動表單渲染。可以通過拖拽的方式快速創建表單，提高開發者對錶單的開發效率，節省開發者的時間。並廣泛應用於在政務系統、OA 系統、ERP 系統、電商系統、流程管理等領域。&lt;/strong&gt;&lt;/p&gt; 
+&lt;p style="color:#333333; margin-left:0; margin-right:0; text-align:left"&gt;源碼地址:&lt;span&gt;&amp;nbsp;&lt;/span&gt;&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fgithub.com%2Fxaboy%2Fform-create-designer" target="_blank"&gt;Github&lt;/a&gt;&lt;span&gt;&amp;nbsp;&lt;/span&gt;|&lt;span&gt;&amp;nbsp;&lt;/span&gt;&lt;a href="https://gitee.com/xaboy/form-create-designer"&gt;Gitee&lt;/a&gt;&lt;span&gt;&amp;nbsp;&lt;/span&gt;|&lt;span&gt;&amp;nbsp;&lt;/span&gt;&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fview.form-create.com%2F" target="_blank"&gt;文檔&lt;/a&gt;&lt;span&gt;&amp;nbsp;&lt;/span&gt;|&lt;span&gt;&amp;nbsp;&lt;/span&gt;&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fform-create.com%2Fv3%2Fdesigner%2F" target="_blank"&gt;在線演示&lt;/a&gt;&lt;/p&gt; 
+&lt;h2&gt;核心功能🔥&lt;/h2&gt; 
+&lt;ul&gt; 
+ &lt;li&gt;內置表單多語言體系，輕鬆打破語言隔閡。&lt;/li&gt; 
+ &lt;li&gt;提供 30+ 常用組件，涵蓋表單組件、佈局組件、輔助類組件等各類實用模塊。&lt;/li&gt; 
+ &lt;li&gt;支持靈活擴展自定義組件，個性化開發輕鬆拿捏。支持二次擴展開發，深度定製不在話下。&lt;/li&gt; 
+ &lt;li&gt;支持組件樣式配置，動態調整組件尺寸、顏色、間距等樣式屬性。&lt;/li&gt; 
+ &lt;li&gt;支持事件交互配置，靈活配置組件事件響應邏輯，實現複雜交互場景。&lt;/li&gt; 
+ &lt;li&gt;表單大綱、操作記錄、數據錄入、組件生成、事件配置、表單驗證、柵格佈局、表格佈局等。&lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;h3&gt;✨ 新增功能:&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fview.form-create.com%2Fupdate%2Fvue3%2F3.3.1%23%25E2%259C%25A8-%25E6%2596%25B0%25E5%25A2%259E%25E5%258A%259F%25E8%2583%25BD" target="_blank"&gt;&lt;/a&gt;&lt;/h3&gt; 
+&lt;ul&gt; 
+ &lt;li&gt; &lt;p style="margin-left:0; margin-right:0"&gt;樣式配置中增加字體和位置&lt;/p&gt; &lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;p&gt;&lt;img height="668" src="https://oscimg.oschina.net/oscnet/up-921f53b5d4ebae1a45bb81128bea5e12e2d.png" width="2130" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt; &lt;p style="margin-left:0; margin-right:0"&gt;config 增加&lt;span&gt;&amp;nbsp;&lt;/span&gt;&lt;code&gt;hiddenFormConfig&lt;/code&gt;,&lt;span&gt;&amp;nbsp;&lt;/span&gt;&lt;code&gt;disabledFormConfig&lt;/code&gt;&lt;span&gt;&amp;nbsp;&lt;/span&gt;配置項控制表單配置項的顯示和禁用狀態&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p style="margin-left:0; margin-right:0"&gt;config 增加&lt;span&gt;&amp;nbsp;&lt;/span&gt;&lt;code&gt;validateOnlyRequired&lt;/code&gt;&lt;span&gt;&amp;nbsp;&lt;/span&gt;配置項, 組件的驗證模塊是否只顯示必填&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p style="margin-left:0; margin-right:0"&gt;增加全局的菜單和拖拽規則導入方法,&lt;span&gt;&amp;nbsp;&lt;/span&gt;&lt;code&gt;FcDesigner.addMenu&lt;/code&gt;&lt;span&gt;&amp;nbsp;&lt;/span&gt;和&lt;span&gt;&amp;nbsp;&lt;/span&gt;&lt;code&gt;FcDesigner.addDragRule&lt;/code&gt;&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p style="margin-left:0; margin-right:0"&gt;&lt;code&gt;config&lt;/code&gt;&lt;span&gt;&amp;nbsp;&lt;/span&gt;增加&lt;span&gt;&amp;nbsp;&lt;/span&gt;&lt;code&gt;nameReadonly&lt;/code&gt;&lt;span&gt;&amp;nbsp;&lt;/span&gt;配置項, 控制編號是否可以編輯&lt;/p&gt; &lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;h3&gt;🔧 功能優化:&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fview.form-create.com%2Fupdate%2Fvue3%2F3.3.1%23%25F0%259F%2594%25A7-%25E5%258A%259F%25E8%2583%25BD%25E4%25BC%2598%25E5%258C%2596" target="_blank"&gt;&lt;/a&gt;&lt;/h3&gt; 
+&lt;ul&gt; 
+ &lt;li&gt; &lt;p style="margin-left:0; margin-right:0"&gt;select 組件增加&lt;span&gt;&amp;nbsp;&lt;/span&gt;&lt;code&gt;placeholder&lt;/code&gt;&lt;span&gt;&amp;nbsp;&lt;/span&gt;配置項 (vant)&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p style="margin-left:0; margin-right:0"&gt;&lt;code&gt;tableOptions&lt;/code&gt;&lt;span&gt;&amp;nbsp;&lt;/span&gt;和&lt;span&gt;&amp;nbsp;&lt;/span&gt;&lt;code&gt;treeOptions&lt;/code&gt;&lt;span&gt;&amp;nbsp;&lt;/span&gt;組件支持禁用&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p style="margin-left:0; margin-right:0"&gt;優化內置菜單加載邏輯&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p style="margin-left:0; margin-right:0"&gt;粘貼組件時默認重置 field 和 name(不兼容的更新)&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p style="margin-left:0; margin-right:0"&gt;隔離組件的&lt;span&gt;&amp;nbsp;&lt;/span&gt;&lt;code&gt;hook&lt;/code&gt;&lt;span&gt;&amp;nbsp;&lt;/span&gt;配置執行&lt;/p&gt; &lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;h3&gt;🐞 問題修復：&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fview.form-create.com%2Fupdate%2Fvue3%2F3.3.1%23%25F0%259F%2590%259E-%25E9%2597%25AE%25E9%25A2%2598%25E4%25BF%25AE%25E5%25A4%258D" target="_blank"&gt;&lt;/a&gt;&lt;/h3&gt; 
+&lt;ul&gt; 
+ &lt;li&gt; &lt;p style="margin-left:0; margin-right:0"&gt;✅ 修復組件事件刪除後,不能重新添加的問題&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p style="margin-left:0; margin-right:0"&gt;✅ 修復 html 內容保存時可能報錯問題&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p style="margin-left:0; margin-right:0"&gt;✅ 修復 showControl 配置項失效問題&lt;/p&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p style="margin-left:0; margin-right:0"&gt;✅ 修復柵格中組件移動時可能報錯問題 (Vue2)&lt;/p&gt; &lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;h1&gt;Element UI 版本表單設計器&lt;/h1&gt; 
+&lt;p style="color:#333333; margin-left:0; margin-right:0; text-align:left"&gt;&lt;img height="930" src="https://oscimg.oschina.net/oscnet/up-6810fa75de9133a0d935e8d2b4bdde2ba79.png" width="1800" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p style="color:#3e3e3e; margin-left:0; margin-right:0; text-align:start"&gt;本項目採用 Vue2.7 和 Element UI 進行頁面構建，內置多語言解決方案，支持二次擴展開發，支持自定義組件擴展。&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fwww.form-create.com%2Fdesigner%2F" target="_blank"&gt;演示站&lt;/a&gt;&lt;/p&gt; 
+&lt;h2&gt;安裝&lt;/h2&gt; 
+&lt;p style="color:#3e3e3e; margin-left:0; margin-right:0; text-align:start"&gt;要開始使用&lt;span&gt;&amp;nbsp;&lt;/span&gt;&lt;strong&gt;@form-create/designer&lt;/strong&gt;，首先需要將其安裝到您的項目中。可以通過 npm 安裝：&lt;/p&gt; 
+&lt;pre&gt;&lt;code class="language-bash"&gt;npm &lt;span style="color:#d73a49"&gt;install&lt;/span&gt; @&lt;span style="color:#d73a49"&gt;form&lt;/span&gt;-&lt;span style="color:#d73a49"&gt;create&lt;/span&gt;/designer@^&lt;span&gt;1&lt;/span&gt;
+npm &lt;span style="color:#d73a49"&gt;install&lt;/span&gt; @&lt;span style="color:#d73a49"&gt;form&lt;/span&gt;-&lt;span style="color:#d73a49"&gt;create&lt;/span&gt;/&lt;span style="color:#d73a49"&gt;element&lt;/span&gt;-ui@^&lt;span&gt;2.7&lt;/span&gt;
+npm &lt;span style="color:#d73a49"&gt;install&lt;/span&gt; &lt;span style="color:#d73a49"&gt;element&lt;/span&gt;-ui&lt;/code&gt;&lt;/pre&gt; 
+&lt;p style="color:#3e3e3e; margin-left:0; margin-right:0; text-align:start"&gt;如已安裝舊版本渲染器，請執行以下命令更新至最新版：&lt;/p&gt; 
+&lt;pre&gt;&lt;code class="language-shell"&gt;&lt;span style="background-color:inherit"&gt;&lt;span style="color:#d73a49"&gt;npm&lt;/span&gt; &lt;span style="color:#d73a49"&gt;update&lt;/span&gt; @&lt;span style="color:#d73a49"&gt;form&lt;/span&gt;-&lt;span style="color:#d73a49"&gt;create&lt;/span&gt;/&lt;span style="color:#d73a49"&gt;element&lt;/span&gt;-&lt;span style="color:#d73a49"&gt;ui&lt;/span&gt;@^&lt;span style="color:#d73a49"&gt;2&lt;/span&gt;.&lt;span style="color:#d73a49"&gt;7&lt;/span&gt;&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt; 
+&lt;p style="color:#3e3e3e; margin-left:0; margin-right:0; text-align:start"&gt;&lt;strong&gt;請檢查當前 Vue 版本，若版本低於 2.7，請執行以下升級命令：&lt;/strong&gt;&lt;/p&gt; 
+&lt;pre&gt;&lt;code class="language-shell"&gt;&lt;span style="background-color:inherit"&gt;&lt;span style="color:#d73a49"&gt;npm&lt;/span&gt; &lt;span style="color:#d73a49"&gt;update&lt;/span&gt; &lt;span style="color:#d73a49"&gt;vue&lt;/span&gt;@^&lt;span style="color:#d73a49"&gt;2&lt;/span&gt;.&lt;span style="color:#d73a49"&gt;7&lt;/span&gt;&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt; 
+&lt;h2&gt;引入&lt;/h2&gt; 
+&lt;p style="color:#3e3e3e; margin-left:0; margin-right:0; text-align:start"&gt;&lt;strong&gt;Node.js 引入&lt;/strong&gt;&lt;/p&gt; 
+&lt;p style="color:#3e3e3e; margin-left:0; margin-right:0; text-align:start"&gt;對於 Node.js 項目，您需要通過 npm 安裝相關依賴，並在您的項目中引入並配置它們。&lt;/p&gt; 
+&lt;pre&gt;&lt;code class="language-javascript"&gt;&lt;span style="color:#d73a49"&gt;import&lt;/span&gt; Vue &lt;span style="color:#d73a49"&gt;from&lt;/span&gt; &lt;span style="color:#032f62"&gt;'vue'&lt;/span&gt;;
+&lt;span style="color:#d73a49"&gt;import&lt;/span&gt; FcDesigner &lt;span style="color:#d73a49"&gt;from&lt;/span&gt; &lt;span style="color:#032f62"&gt;'@form-create/designer'&lt;/span&gt;;
+&lt;span style="color:#d73a49"&gt;import&lt;/span&gt; ELEMENT &lt;span style="color:#d73a49"&gt;from&lt;/span&gt; &lt;span style="color:#032f62"&gt;'element-ui'&lt;/span&gt;;
+&lt;span style="color:#d73a49"&gt;import&lt;/span&gt; &lt;span style="color:#032f62"&gt;'element-ui/lib/theme-chalk/index.css'&lt;/span&gt;;
+&lt;span style="color:#6a737d"&gt;// 使用 Element UI&lt;/span&gt;
+Vue.use(ELEMENT);
+&lt;span style="color:#6a737d"&gt;// 使用 form-create 和 designer&lt;/span&gt;
+Vue.use(FcDesigner);
+Vue.use(FcDesigner.formCreate);&lt;/code&gt;&lt;/pre&gt; 
+&lt;p style="color:#3e3e3e; margin-left:0; margin-right:0; text-align:start"&gt;&lt;strong&gt;CDN 引入&lt;/strong&gt;&lt;/p&gt; 
+&lt;p style="color:#3e3e3e; margin-left:0; margin-right:0; text-align:start"&gt;如果您希望通過 CDN 方式引入&lt;span&gt;&amp;nbsp;&lt;/span&gt;&lt;strong&gt;FcDesigner&lt;/strong&gt;，請確保先引入 Vue.js 和 Element UI。然後引入&lt;span&gt;&amp;nbsp;&lt;/span&gt;&lt;strong&gt;@form-create/element-ui&lt;/strong&gt;&lt;span&gt;&amp;nbsp;&lt;/span&gt;和&lt;span&gt;&amp;nbsp;&lt;/span&gt;&lt;strong&gt;@form-create/designer&lt;/strong&gt;，並在 Vue 實例中進行配置&lt;/p&gt; 
+&lt;pre&gt;&lt;code class="language-html"&gt;&lt;span style="color:#6a737d"&gt;&amp;lt;!-- 引入 Vue.js --&amp;gt;&lt;/span&gt;
+&lt;span style="color:#333333"&gt;&amp;lt;&lt;span style="color:#22863a"&gt;script&lt;/span&gt; &lt;span style="color:#6f42c1"&gt;src&lt;/span&gt;=&lt;span style="color:#032f62"&gt;"https://unpkg.com/vue@2.7.16/dist/vue.js"&lt;/span&gt;&amp;gt;&lt;/span&gt;&lt;span style="color:#333333"&gt;&amp;lt;/&lt;span style="color:#22863a"&gt;script&lt;/span&gt;&amp;gt;&lt;/span&gt;
+&lt;span style="color:#6a737d"&gt;&amp;lt;!-- 引入 Element UI 樣式 --&amp;gt;&lt;/span&gt;
+&lt;span style="color:#333333"&gt;&amp;lt;&lt;span style="color:#22863a"&gt;link&lt;/span&gt; &lt;span style="color:#6f42c1"&gt;rel&lt;/span&gt;=&lt;span style="color:#032f62"&gt;"stylesheet"&lt;/span&gt; &lt;span style="color:#6f42c1"&gt;href&lt;/span&gt;=&lt;span style="color:#032f62"&gt;"https://unpkg.com/element-ui/lib/theme-chalk/index.css"&lt;/span&gt;&amp;gt;&lt;/span&gt;
+&lt;span style="color:#6a737d"&gt;&amp;lt;!-- 引入 Element UI --&amp;gt;&lt;/span&gt;
+&lt;span style="color:#333333"&gt;&amp;lt;&lt;span style="color:#22863a"&gt;script&lt;/span&gt; &lt;span style="color:#6f42c1"&gt;src&lt;/span&gt;=&lt;span style="color:#032f62"&gt;"https://unpkg.com/element-ui/lib/index.js"&lt;/span&gt;&amp;gt;&lt;/span&gt;&lt;span style="color:#333333"&gt;&amp;lt;/&lt;span style="color:#22863a"&gt;script&lt;/span&gt;&amp;gt;&lt;/span&gt;
+&lt;span style="color:#6a737d"&gt;&amp;lt;!-- 引入 form-create 和 designer --&amp;gt;&lt;/span&gt;
+&lt;span style="color:#333333"&gt;&amp;lt;&lt;span style="color:#22863a"&gt;script&lt;/span&gt; &lt;span style="color:#6f42c1"&gt;src&lt;/span&gt;=&lt;span style="color:#032f62"&gt;"https://unpkg.com/@form-create/element-ui/dist/form-create.min.js"&lt;/span&gt;&amp;gt;&lt;/span&gt;&lt;span style="color:#333333"&gt;&amp;lt;/&lt;span style="color:#22863a"&gt;script&lt;/span&gt;&amp;gt;&lt;/span&gt;
+&lt;span style="color:#333333"&gt;&amp;lt;&lt;span style="color:#22863a"&gt;script&lt;/span&gt; &lt;span style="color:#6f42c1"&gt;src&lt;/span&gt;=&lt;span style="color:#032f62"&gt;"https://unpkg.com/@form-create/designer/dist/index.min.js"&lt;/span&gt;&amp;gt;&lt;/span&gt;&lt;span style="color:#333333"&gt;&amp;lt;/&lt;span style="color:#22863a"&gt;script&lt;/span&gt;&amp;gt;&lt;/span&gt;
+&lt;span style="color:#333333"&gt;&amp;lt;&lt;span style="color:#22863a"&gt;div&lt;/span&gt; &lt;span style="color:#6f42c1"&gt;id&lt;/span&gt;=&lt;span style="color:#032f62"&gt;"app"&lt;/span&gt;&amp;gt;&lt;/span&gt;
+    &lt;span style="color:#333333"&gt;&amp;lt;&lt;span style="color:#22863a"&gt;fc-designer&lt;/span&gt; &lt;span style="color:#6f42c1"&gt;height&lt;/span&gt;=&lt;span style="color:#032f62"&gt;"100vh"&lt;/span&gt;&amp;gt;&lt;/span&gt;&lt;span style="color:#333333"&gt;&amp;lt;/&lt;span style="color:#22863a"&gt;fc-designer&lt;/span&gt;&amp;gt;&lt;/span&gt;
+&lt;span style="color:#333333"&gt;&amp;lt;/&lt;span style="color:#22863a"&gt;div&lt;/span&gt;&amp;gt;&lt;/span&gt;
+&lt;span style="color:#333333"&gt;&amp;lt;&lt;span style="color:#22863a"&gt;script&lt;/span&gt;&amp;gt;&lt;/span&gt;&lt;span&gt;
+    Vue.use(FcDesigner);
+    Vue.use(FcDesigner.formCreate);
+    &lt;span style="color:#d73a49"&gt;new&lt;/span&gt; Vue().$mount(&lt;span style="color:#032f62"&gt;'#app'&lt;/span&gt;);
+&lt;/span&gt;&lt;span style="color:#333333"&gt;&amp;lt;/&lt;span style="color:#22863a"&gt;script&lt;/span&gt;&amp;gt;&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt; 
+&lt;p style="color:#3e3e3e; margin-left:0; margin-right:0; text-align:start"&gt;&lt;strong&gt;使用&lt;/strong&gt;&lt;/p&gt; 
+&lt;p style="color:#3e3e3e; margin-left:0; margin-right:0; text-align:start"&gt;在 Vue 組件中，您可以像下面這樣使用 fc-designer 組件：&lt;/p&gt; 
+&lt;pre&gt;&lt;code class="language-html"&gt;&lt;span style="background-color:inherit"&gt;&lt;span style="color:navy"&gt;&lt;span style="color:#333333"&gt;&amp;lt;&lt;/span&gt;&lt;span style="color:navy"&gt;&lt;span style="color:#333333"&gt;&lt;span style="color:#22863a"&gt;template&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;span style="color:#333333"&gt;&amp;gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;
+&lt;span style="background-color:inherit"&gt;&lt;span style="color:navy"&gt;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&lt;span style="color:#333333"&gt;&amp;lt;&lt;/span&gt;&lt;span style="color:navy"&gt;&lt;span style="color:#333333"&gt;&lt;span style="color:#22863a"&gt;fc-designer&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;span style="color:#333333"&gt; &lt;/span&gt;&lt;span style="color:teal"&gt;&lt;span style="color:#333333"&gt;&lt;span style="color:#6f42c1"&gt;ref&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;span style="color:#333333"&gt;=&lt;/span&gt;&lt;span style="color:#dd1144"&gt;&lt;span style="color:#333333"&gt;&lt;span style="color:#032f62"&gt;"designer"&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;span style="color:#333333"&gt; &lt;/span&gt;&lt;span style="color:teal"&gt;&lt;span style="color:#333333"&gt;&lt;span style="color:#6f42c1"&gt;height&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;span style="color:#333333"&gt;=&lt;/span&gt;&lt;span style="color:#dd1144"&gt;&lt;span style="color:#333333"&gt;&lt;span style="color:#032f62"&gt;"100vh"&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;span style="color:#333333"&gt; /&amp;gt;&lt;/span&gt;
+&lt;span style="color:#333333"&gt;&amp;lt;/&lt;/span&gt;&lt;span style="color:navy"&gt;&lt;span style="color:#333333"&gt;&lt;span style="color:#22863a"&gt;template&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;span style="color:#333333"&gt;&amp;gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt; 
+&lt;p style="color:#333333; margin-left:0; margin-right:0; text-align:left"&gt;&amp;nbsp;&lt;/p&gt; 
+&lt;h1&gt;Element Plus 版本表單設計器&lt;/h1&gt; 
+&lt;p style="color:#3e3e3e; margin-left:0; margin-right:0; text-align:start"&gt;@form-create/designer 支持 Vue 3 環境，以下是如何在 Vue 3 項目中安裝和使用該庫的指南。&lt;/p&gt; 
+&lt;p style="color:#3e3e3e; margin-left:0; margin-right:0; text-align:start"&gt;&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fwww.form-create.com%2Fvue3%2Fdesigner%2F" target="_blank"&gt;演示站&lt;/a&gt;&lt;/p&gt; 
+&lt;h2&gt;安裝&lt;/h2&gt; 
+&lt;p style="color:#3e3e3e; margin-left:0; margin-right:0; text-align:start"&gt;首先，安裝&lt;span&gt;&amp;nbsp;&lt;/span&gt;&lt;strong&gt;@form-create/designer&lt;/strong&gt;&lt;span&gt;&amp;nbsp;&lt;/span&gt;的 Vue 3 版本&lt;/p&gt; 
+&lt;pre&gt;&lt;code class="language-bash"&gt;npm &lt;span style="color:#d73a49"&gt;install&lt;/span&gt; @&lt;span style="color:#d73a49"&gt;form&lt;/span&gt;-&lt;span style="color:#d73a49"&gt;create&lt;/span&gt;/designer@^&lt;span&gt;3&lt;/span&gt;
+npm &lt;span style="color:#d73a49"&gt;install&lt;/span&gt; @&lt;span style="color:#d73a49"&gt;form&lt;/span&gt;-&lt;span style="color:#d73a49"&gt;create&lt;/span&gt;/&lt;span style="color:#d73a49"&gt;element&lt;/span&gt;-ui@^&lt;span&gt;3&lt;/span&gt;
+npm &lt;span style="color:#d73a49"&gt;install&lt;/span&gt; &lt;span style="color:#d73a49"&gt;element&lt;/span&gt;-plus&lt;/code&gt;&lt;/pre&gt; 
+&lt;p style="color:#3e3e3e; margin-left:0; margin-right:0; text-align:start"&gt;如已安裝舊版本渲染器，請執行以下命令更新至最新版：&lt;/p&gt; 
+&lt;pre&gt;&lt;code class="language-shell"&gt;&lt;span style="background-color:inherit"&gt;&lt;span style="color:#d73a49"&gt;npm&lt;/span&gt; &lt;span style="color:#d73a49"&gt;update&lt;/span&gt; @&lt;span style="color:#d73a49"&gt;form&lt;/span&gt;-&lt;span style="color:#d73a49"&gt;create&lt;/span&gt;/&lt;span style="color:#d73a49"&gt;element&lt;/span&gt;-&lt;span style="color:#d73a49"&gt;ui&lt;/span&gt;@^&lt;span style="color:#d73a49"&gt;3&lt;/span&gt;&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt; 
+&lt;h2&gt;引入&lt;/h2&gt; 
+&lt;p style="color:#3e3e3e; margin-left:0; margin-right:0; text-align:start"&gt;&lt;strong&gt;Node.js 引入&lt;/strong&gt;&lt;/p&gt; 
+&lt;p style="color:#3e3e3e; margin-left:0; margin-right:0; text-align:start"&gt;對於使用 Node.js 的項目，按照以下步驟在您的 Vue 3 項目中引入並配置：&lt;/p&gt; 
+&lt;pre&gt;&lt;code class="language-javascript"&gt;&lt;span style="color:#d73a49"&gt;import&lt;/span&gt; { createApp } &lt;span style="color:#d73a49"&gt;from&lt;/span&gt; &lt;span style="color:#032f62"&gt;'vue'&lt;/span&gt;;
+&lt;span style="color:#d73a49"&gt;import&lt;/span&gt; FcDesigner &lt;span style="color:#d73a49"&gt;from&lt;/span&gt; &lt;span style="color:#032f62"&gt;'@form-create/designer'&lt;/span&gt;;
+&lt;span style="color:#d73a49"&gt;import&lt;/span&gt; ElementPlus &lt;span style="color:#d73a49"&gt;from&lt;/span&gt; &lt;span style="color:#032f62"&gt;'element-plus'&lt;/span&gt;;
+&lt;span style="color:#d73a49"&gt;import&lt;/span&gt; &lt;span style="color:#032f62"&gt;'element-plus/dist/index.css'&lt;/span&gt;;
+&lt;span style="color:#6a737d"&gt;// 創建 Vue 應用&lt;/span&gt;
+&lt;span style="color:#d73a49"&gt;const&lt;/span&gt; app = createApp(App);
+&lt;span style="color:#6a737d"&gt;// 使用 Element Plus 和 FcDesigner&lt;/span&gt;
+app.use(ElementPlus);
+app.use(FcDesigner);
+app.use(FcDesigner.formCreate);
+&lt;span style="color:#6a737d"&gt;// 掛載應用&lt;/span&gt;
+app.mount(&lt;span style="color:#032f62"&gt;'#app'&lt;/span&gt;);&lt;/code&gt;&lt;/pre&gt; 
+&lt;p style="color:#3e3e3e; margin-left:0; margin-right:0; text-align:start"&gt;&lt;strong&gt;CDN 引入&lt;/strong&gt;&lt;/p&gt; 
+&lt;p style="color:#3e3e3e; margin-left:0; margin-right:0; text-align:start"&gt;如果您選擇使用 CDN，可以按照以下步驟在 HTML 文件中引入相關依賴：&lt;/p&gt; 
+&lt;pre&gt;&lt;code class="language-html"&gt;&lt;span style="color:#6a737d"&gt;&amp;lt;!-- 引入 Element Plus 樣式 --&amp;gt;&lt;/span&gt;
+&lt;span style="color:#333333"&gt;&amp;lt;&lt;span style="color:#22863a"&gt;link&lt;/span&gt; &lt;span style="color:#6f42c1"&gt;href&lt;/span&gt;=&lt;span style="color:#032f62"&gt;"https://unpkg.com/element-plus/dist/index.css"&lt;/span&gt; &lt;span style="color:#6f42c1"&gt;rel&lt;/span&gt;=&lt;span style="color:#032f62"&gt;"stylesheet"&lt;/span&gt; /&amp;gt;&lt;/span&gt;
+&lt;span style="color:#6a737d"&gt;&amp;lt;!-- 引入 Vue 3 --&amp;gt;&lt;/span&gt;
+&lt;span style="color:#333333"&gt;&amp;lt;&lt;span style="color:#22863a"&gt;script&lt;/span&gt; &lt;span style="color:#6f42c1"&gt;src&lt;/span&gt;=&lt;span style="color:#032f62"&gt;"https://unpkg.com/vue"&lt;/span&gt;&amp;gt;&lt;/span&gt;&lt;span style="color:#333333"&gt;&amp;lt;/&lt;span style="color:#22863a"&gt;script&lt;/span&gt;&amp;gt;&lt;/span&gt;
+&lt;span style="color:#6a737d"&gt;&amp;lt;!-- 引入 Element Plus --&amp;gt;&lt;/span&gt;
+&lt;span style="color:#333333"&gt;&amp;lt;&lt;span style="color:#22863a"&gt;script&lt;/span&gt; &lt;span style="color:#6f42c1"&gt;src&lt;/span&gt;=&lt;span style="color:#032f62"&gt;"https://unpkg.com/element-plus/dist/index.full.js"&lt;/span&gt;&amp;gt;&lt;/span&gt;&lt;span style="color:#333333"&gt;&amp;lt;/&lt;span style="color:#22863a"&gt;script&lt;/span&gt;&amp;gt;&lt;/span&gt;
+&lt;span style="color:#6a737d"&gt;&amp;lt;!-- 引入 form-create 和 designer --&amp;gt;&lt;/span&gt;
+&lt;span style="color:#333333"&gt;&amp;lt;&lt;span style="color:#22863a"&gt;script&lt;/span&gt; &lt;span style="color:#6f42c1"&gt;src&lt;/span&gt;=&lt;span style="color:#032f62"&gt;"https://unpkg.com/@form-create/element-ui@next/dist/form-create.min.js"&lt;/span&gt;&amp;gt;&lt;/span&gt;&lt;span style="color:#333333"&gt;&amp;lt;/&lt;span style="color:#22863a"&gt;script&lt;/span&gt;&amp;gt;&lt;/span&gt;
+&lt;span style="color:#333333"&gt;&amp;lt;&lt;span style="color:#22863a"&gt;script&lt;/span&gt; &lt;span style="color:#6f42c1"&gt;src&lt;/span&gt;=&lt;span style="color:#032f62"&gt;"https://unpkg.com/@form-create/designer@next/dist/index.umd.js"&lt;/span&gt;&amp;gt;&lt;/span&gt;&lt;span style="color:#333333"&gt;&amp;lt;/&lt;span style="color:#22863a"&gt;script&lt;/span&gt;&amp;gt;&lt;/span&gt;
+&lt;span style="color:#333333"&gt;&amp;lt;&lt;span style="color:#22863a"&gt;div&lt;/span&gt; &lt;span style="color:#6f42c1"&gt;id&lt;/span&gt;=&lt;span style="color:#032f62"&gt;"app"&lt;/span&gt;&amp;gt;&lt;/span&gt;
+    &lt;span style="color:#333333"&gt;&amp;lt;&lt;span style="color:#22863a"&gt;fc-designer&lt;/span&gt; &lt;span style="color:#6f42c1"&gt;height&lt;/span&gt;=&lt;span style="color:#032f62"&gt;"100vh"&lt;/span&gt;&amp;gt;&lt;/span&gt;&lt;span style="color:#333333"&gt;&amp;lt;/&lt;span style="color:#22863a"&gt;fc-designer&lt;/span&gt;&amp;gt;&lt;/span&gt;
+&lt;span style="color:#333333"&gt;&amp;lt;/&lt;span style="color:#22863a"&gt;div&lt;/span&gt;&amp;gt;&lt;/span&gt;
+&lt;span style="color:#333333"&gt;&amp;lt;&lt;span style="color:#22863a"&gt;script&lt;/span&gt;&amp;gt;&lt;/span&gt;&lt;span&gt;
+    &lt;span style="color:#d73a49"&gt;const&lt;/span&gt; { createApp } = Vue;
+    &lt;span style="color:#d73a49"&gt;const&lt;/span&gt; app = createApp({});
+    app.use(ElementPlus);
+    app.use(FcDesigner);
+    app.use(FcDesigner.formCreate);
+    app.mount(&lt;span style="color:#032f62"&gt;'#app'&lt;/span&gt;);
+&lt;/span&gt;&lt;span style="color:#333333"&gt;&amp;lt;/&lt;span style="color:#22863a"&gt;script&lt;/span&gt;&amp;gt;&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt; 
+&lt;h2&gt;使用&lt;/h2&gt; 
+&lt;p style="color:#3e3e3e; margin-left:0; margin-right:0; text-align:start"&gt;在 Vue 3 組件中，您可以通過以下方式使用 fc-designer 組件：&lt;/p&gt; 
+&lt;pre&gt;&lt;code class="language-html"&gt;&lt;span style="color:#333333"&gt;&amp;lt;&lt;span style="color:#22863a"&gt;template&lt;/span&gt;&amp;gt;&lt;/span&gt;
+    &lt;span style="color:#333333"&gt;&amp;lt;&lt;span style="color:#22863a"&gt;fc-designer&lt;/span&gt; &lt;span style="color:#6f42c1"&gt;ref&lt;/span&gt;=&lt;span style="color:#032f62"&gt;"designer"&lt;/span&gt; &lt;span style="color:#6f42c1"&gt;height&lt;/span&gt;=&lt;span style="color:#032f62"&gt;"100vh"&lt;/span&gt; /&amp;gt;&lt;/span&gt;
+&lt;span style="color:#333333"&gt;&amp;lt;/&lt;span style="color:#22863a"&gt;template&lt;/span&gt;&amp;gt;&lt;/span&gt;
+&lt;span style="color:#333333"&gt;&amp;lt;&lt;span style="color:#22863a"&gt;script&lt;/span&gt; &lt;span style="color:#6f42c1"&gt;setup&lt;/span&gt;&amp;gt;&lt;/span&gt;&lt;span&gt;
+    &lt;span style="color:#d73a49"&gt;import&lt;/span&gt; { ref } &lt;span style="color:#d73a49"&gt;from&lt;/span&gt; &lt;span style="color:#032f62"&gt;'vue'&lt;/span&gt;;
+    &lt;span style="color:#6a737d"&gt;// 可以在此處獲取設計器實例或進行其他操作&lt;/span&gt;
+    &lt;span style="color:#d73a49"&gt;const&lt;/span&gt; designer = ref(&lt;span style="color:#005cc5"&gt;null&lt;/span&gt;);
+&lt;/span&gt;&lt;span style="color:#333333"&gt;&amp;lt;/&lt;span style="color:#22863a"&gt;script&lt;/span&gt;&amp;gt;&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt; 
+&lt;h1&gt;AntDesignVue 版本 PC 端表單設計器&lt;/h1&gt; 
+&lt;p style="color:#333333; margin-left:0; margin-right:0; text-align:start"&gt;&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fform-create.com%2Fv3%2Fantd%2Fdesigner%2F" target="_blank"&gt;演示站&lt;/a&gt;&lt;/p&gt; 
+&lt;p style="color:#3e3e3e; margin-left:0; margin-right:0; text-align:start"&gt;本項目採用 Vue3.0 和 Ant Design Vue 進行頁面構建，內置多語言解決方案，支持二次擴展開發，支持自定義組件擴展。&lt;/p&gt; 
+&lt;p style="color:#3e3e3e; margin-left:0; margin-right:0; text-align:start"&gt;&lt;img src="https://oscimg.oschina.net/oscnet//ebbe75a61ba6e5f09589e76dec7c91ec.gif" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;h2&gt;安裝&lt;/h2&gt; 
+&lt;p style="color:#3e3e3e; margin-left:0; margin-right:0; text-align:start"&gt;首先，安裝&lt;span&gt;&amp;nbsp;&lt;/span&gt;&lt;strong&gt;@form-create/antd-designer&lt;/strong&gt;&lt;/p&gt; 
+&lt;pre&gt;&lt;code class="language-bash"&gt;npm &lt;span style="color:#d73a49"&gt;install&lt;/span&gt; @&lt;span style="color:#d73a49"&gt;form&lt;/span&gt;-&lt;span style="color:#d73a49"&gt;create&lt;/span&gt;/antd-designer@^&lt;span&gt;3&lt;/span&gt;
+npm &lt;span style="color:#d73a49"&gt;install&lt;/span&gt; @&lt;span style="color:#d73a49"&gt;form&lt;/span&gt;-&lt;span style="color:#d73a49"&gt;create&lt;/span&gt;/ant-design-vue@^&lt;span&gt;3&lt;/span&gt;
+npm &lt;span style="color:#d73a49"&gt;install&lt;/span&gt; ant-design-vue&lt;/code&gt;&lt;/pre&gt; 
+&lt;p style="color:#3e3e3e; margin-left:0; margin-right:0; text-align:start"&gt;如已安裝舊版本渲染器，請執行以下命令更新至最新版：&lt;/p&gt; 
+&lt;pre&gt;&lt;code class="language-shell"&gt;&lt;span style="background-color:inherit"&gt;&lt;span style="color:#d73a49"&gt;npm&lt;/span&gt; &lt;span style="color:#d73a49"&gt;update&lt;/span&gt; @&lt;span style="color:#d73a49"&gt;form&lt;/span&gt;-&lt;span style="color:#d73a49"&gt;create&lt;/span&gt;/&lt;span style="color:#d73a49"&gt;ant&lt;/span&gt;-&lt;span style="color:#d73a49"&gt;design&lt;/span&gt;-&lt;span style="color:#d73a49"&gt;vue&lt;/span&gt;@^&lt;span style="color:#d73a49"&gt;3&lt;/span&gt;&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt; 
+&lt;h2&gt;引入&lt;/h2&gt; 
+&lt;p style="color:#3e3e3e; margin-left:0; margin-right:0; text-align:start"&gt;&lt;strong&gt;Node.js 引入&lt;/strong&gt;&lt;/p&gt; 
+&lt;p style="color:#3e3e3e; margin-left:0; margin-right:0; text-align:start"&gt;對於使用 Node.js 的項目，按照以下步驟在您的 Vue 3 項目中引入並配置：&lt;/p&gt; 
+&lt;pre&gt;&lt;code class="language-javascript"&gt;&lt;span style="color:#d73a49"&gt;import&lt;/span&gt; FcDesigner &lt;span style="color:#d73a49"&gt;from&lt;/span&gt; &lt;span style="color:#032f62"&gt;'@form-create/antd-designer'&lt;/span&gt;
+&lt;span style="color:#d73a49"&gt;import&lt;/span&gt; antd &lt;span style="color:#d73a49"&gt;from&lt;/span&gt; &lt;span style="color:#032f62"&gt;'ant-design-vue'&lt;/span&gt;;
+&lt;span style="color:#d73a49"&gt;import&lt;/span&gt; &lt;span style="color:#032f62"&gt;'ant-design-vue/dist/reset.css'&lt;/span&gt;;
+&lt;span style="color:#6a737d"&gt;// 創建 Vue 應用&lt;/span&gt;
+&lt;span style="color:#d73a49"&gt;const&lt;/span&gt; app = createApp(App);
+app.use(antd)
+app.use(FcDesigner)
+app.use(FcDesigner.formCreate)
+&lt;span style="color:#6a737d"&gt;// 掛載應用&lt;/span&gt;
+app.mount(&lt;span style="color:#032f62"&gt;'#app'&lt;/span&gt;);&lt;/code&gt;&lt;/pre&gt; 
+&lt;p style="color:#3e3e3e; margin-left:0; margin-right:0; text-align:start"&gt;&lt;strong&gt;CDN 引入&lt;/strong&gt;&lt;/p&gt; 
+&lt;p style="color:#3e3e3e; margin-left:0; margin-right:0; text-align:start"&gt;如果您選擇使用 CDN，可以按照以下步驟在 HTML 文件中引入相關依賴：&lt;/p&gt; 
+&lt;pre&gt;&lt;code class="language-html"&gt;&lt;span style="color:#333333"&gt;&amp;lt;&lt;span style="color:#22863a"&gt;link&lt;/span&gt; &lt;span style="color:#6f42c1"&gt;rel&lt;/span&gt;=&lt;span style="color:#032f62"&gt;"stylesheet"&lt;/span&gt; &lt;span style="color:#6f42c1"&gt;href&lt;/span&gt;=&lt;span style="color:#032f62"&gt;"https://unpkg.com/ant-design-vue@4/dist/reset.css"&lt;/span&gt;&amp;gt;&lt;/span&gt;&lt;span style="color:#333333"&gt;&amp;lt;/&lt;span style="color:#22863a"&gt;link&lt;/span&gt;&amp;gt;&lt;/span&gt;
+&lt;span style="color:#333333"&gt;&amp;lt;&lt;span style="color:#22863a"&gt;link&lt;/span&gt; &lt;span style="color:#6f42c1"&gt;rel&lt;/span&gt;=&lt;span style="color:#032f62"&gt;"stylesheet"&lt;/span&gt; &lt;span style="color:#6f42c1"&gt;href&lt;/span&gt;=&lt;span style="color:#032f62"&gt;"https://fastly.jsdelivr.net/npm/vant@4/lib/index.css"&lt;/span&gt;&amp;gt;&lt;/span&gt;&lt;span style="color:#333333"&gt;&amp;lt;/&lt;span style="color:#22863a"&gt;link&lt;/span&gt;&amp;gt;&lt;/span&gt;
+&lt;span style="color:#6a737d"&gt;&amp;lt;!-- 引入 Vue 及所需組件 --&amp;gt;&lt;/span&gt;
+&lt;span style="color:#333333"&gt;&amp;lt;&lt;span style="color:#22863a"&gt;script&lt;/span&gt; &lt;span style="color:#6f42c1"&gt;src&lt;/span&gt;=&lt;span style="color:#032f62"&gt;"https://unpkg.com/dayjs/dayjs.min.js"&lt;/span&gt;&amp;gt;&lt;/span&gt;&lt;span style="color:#333333"&gt;&amp;lt;/&lt;span style="color:#22863a"&gt;script&lt;/span&gt;&amp;gt;&lt;/span&gt;
+&lt;span style="color:#333333"&gt;&amp;lt;&lt;span style="color:#22863a"&gt;script&lt;/span&gt; &lt;span style="color:#6f42c1"&gt;src&lt;/span&gt;=&lt;span style="color:#032f62"&gt;"https://unpkg.com/dayjs/plugin/customParseFormat.js"&lt;/span&gt;&amp;gt;&lt;/span&gt;&lt;span style="color:#333333"&gt;&amp;lt;/&lt;span style="color:#22863a"&gt;script&lt;/span&gt;&amp;gt;&lt;/span&gt;
+&lt;span style="color:#333333"&gt;&amp;lt;&lt;span style="color:#22863a"&gt;script&lt;/span&gt; &lt;span style="color:#6f42c1"&gt;src&lt;/span&gt;=&lt;span style="color:#032f62"&gt;"https://unpkg.com/dayjs/plugin/weekday.js"&lt;/span&gt;&amp;gt;&lt;/span&gt;&lt;span style="color:#333333"&gt;&amp;lt;/&lt;span style="color:#22863a"&gt;script&lt;/span&gt;&amp;gt;&lt;/span&gt;
+&lt;span style="color:#333333"&gt;&amp;lt;&lt;span style="color:#22863a"&gt;script&lt;/span&gt; &lt;span style="color:#6f42c1"&gt;src&lt;/span&gt;=&lt;span style="color:#032f62"&gt;"https://unpkg.com/dayjs/plugin/localeData.js"&lt;/span&gt;&amp;gt;&lt;/span&gt;&lt;span style="color:#333333"&gt;&amp;lt;/&lt;span style="color:#22863a"&gt;script&lt;/span&gt;&amp;gt;&lt;/span&gt;
+&lt;span style="color:#333333"&gt;&amp;lt;&lt;span style="color:#22863a"&gt;script&lt;/span&gt; &lt;span style="color:#6f42c1"&gt;src&lt;/span&gt;=&lt;span style="color:#032f62"&gt;"https://unpkg.com/dayjs/plugin/weekOfYear.js"&lt;/span&gt;&amp;gt;&lt;/span&gt;&lt;span style="color:#333333"&gt;&amp;lt;/&lt;span style="color:#22863a"&gt;script&lt;/span&gt;&amp;gt;&lt;/span&gt;
+&lt;span style="color:#333333"&gt;&amp;lt;&lt;span style="color:#22863a"&gt;script&lt;/span&gt; &lt;span style="color:#6f42c1"&gt;src&lt;/span&gt;=&lt;span style="color:#032f62"&gt;"https://unpkg.com/dayjs/plugin/weekYear.js"&lt;/span&gt;&amp;gt;&lt;/span&gt;&lt;span style="color:#333333"&gt;&amp;lt;/&lt;span style="color:#22863a"&gt;script&lt;/span&gt;&amp;gt;&lt;/span&gt;
+&lt;span style="color:#333333"&gt;&amp;lt;&lt;span style="color:#22863a"&gt;script&lt;/span&gt; &lt;span style="color:#6f42c1"&gt;src&lt;/span&gt;=&lt;span style="color:#032f62"&gt;"https://unpkg.com/dayjs/plugin/advancedFormat.js"&lt;/span&gt;&amp;gt;&lt;/span&gt;&lt;span style="color:#333333"&gt;&amp;lt;/&lt;span style="color:#22863a"&gt;script&lt;/span&gt;&amp;gt;&lt;/span&gt;
+&lt;span style="color:#333333"&gt;&amp;lt;&lt;span style="color:#22863a"&gt;script&lt;/span&gt; &lt;span style="color:#6f42c1"&gt;src&lt;/span&gt;=&lt;span style="color:#032f62"&gt;"https://unpkg.com/dayjs/plugin/quarterOfYear.js"&lt;/span&gt;&amp;gt;&lt;/span&gt;&lt;span style="color:#333333"&gt;&amp;lt;/&lt;span style="color:#22863a"&gt;script&lt;/span&gt;&amp;gt;&lt;/span&gt;
+&lt;span style="color:#333333"&gt;&amp;lt;&lt;span style="color:#22863a"&gt;script&lt;/span&gt; &lt;span style="color:#6f42c1"&gt;src&lt;/span&gt;=&lt;span style="color:#032f62"&gt;"https://unpkg.com/vue"&lt;/span&gt;&amp;gt;&lt;/span&gt;&lt;span style="color:#333333"&gt;&amp;lt;/&lt;span style="color:#22863a"&gt;script&lt;/span&gt;&amp;gt;&lt;/span&gt;
+&lt;span style="color:#333333"&gt;&amp;lt;&lt;span style="color:#22863a"&gt;script&lt;/span&gt; &lt;span style="color:#6f42c1"&gt;src&lt;/span&gt;=&lt;span style="color:#032f62"&gt;"https://unpkg.com/ant-design-vue@4/dist/antd.min.js"&lt;/span&gt;&amp;gt;&lt;/span&gt;&lt;span style="color:#333333"&gt;&amp;lt;/&lt;span style="color:#22863a"&gt;script&lt;/span&gt;&amp;gt;&lt;/span&gt;
+&lt;span style="color:#333333"&gt;&amp;lt;&lt;span style="color:#22863a"&gt;script&lt;/span&gt; &lt;span style="color:#6f42c1"&gt;src&lt;/span&gt;=&lt;span style="color:#032f62"&gt;"https://fastly.jsdelivr.net/npm/vant@4/lib/vant.min.js"&lt;/span&gt;&amp;gt;&lt;/span&gt;&lt;span style="color:#333333"&gt;&amp;lt;/&lt;span style="color:#22863a"&gt;script&lt;/span&gt;&amp;gt;&lt;/span&gt;
+
+
+&lt;span style="color:#6a737d"&gt;&amp;lt;!-- 引入 form-create 及 fcDesigner --&amp;gt;&lt;/span&gt;
+&lt;span style="color:#333333"&gt;&amp;lt;&lt;span style="color:#22863a"&gt;script&lt;/span&gt; &lt;span style="color:#6f42c1"&gt;src&lt;/span&gt;=&lt;span style="color:#032f62"&gt;"https://unpkg.com/@form-create/ant-design-vue@^3/dist/form-create.min.js"&lt;/span&gt;&amp;gt;&lt;/span&gt;&lt;span style="color:#333333"&gt;&amp;lt;/&lt;span style="color:#22863a"&gt;script&lt;/span&gt;&amp;gt;&lt;/span&gt;
+&lt;span style="color:#333333"&gt;&amp;lt;&lt;span style="color:#22863a"&gt;script&lt;/span&gt; &lt;span style="color:#6f42c1"&gt;src&lt;/span&gt;=&lt;span style="color:#032f62"&gt;"https://unpkg.com/@form-create/vant@^3/dist/form-create.min.js"&lt;/span&gt;&amp;gt;&lt;/span&gt;&lt;span style="color:#333333"&gt;&amp;lt;/&lt;span style="color:#22863a"&gt;script&lt;/span&gt;&amp;gt;&lt;/span&gt;
+&lt;span style="color:#333333"&gt;&amp;lt;&lt;span style="color:#22863a"&gt;script&lt;/span&gt; &lt;span style="color:#6f42c1"&gt;src&lt;/span&gt;=&lt;span style="color:#032f62"&gt;"https://unpkg.com/@form-create/antd-designer@^3/dist/index.umd.js"&lt;/span&gt;&amp;gt;&lt;/span&gt;&lt;span style="color:#333333"&gt;&amp;lt;/&lt;span style="color:#22863a"&gt;script&lt;/span&gt;&amp;gt;&lt;/span&gt;
+
+
+&lt;span style="color:#333333"&gt;&amp;lt;&lt;span style="color:#22863a"&gt;div&lt;/span&gt; &lt;span style="color:#6f42c1"&gt;id&lt;/span&gt;=&lt;span style="color:#032f62"&gt;"app"&lt;/span&gt;&amp;gt;&lt;/span&gt;
+    &lt;span style="color:#333333"&gt;&amp;lt;&lt;span style="color:#22863a"&gt;fc-designer&lt;/span&gt; &lt;span style="color:#6f42c1"&gt;height&lt;/span&gt;=&lt;span style="color:#032f62"&gt;"100vh"&lt;/span&gt;&amp;gt;&lt;/span&gt;&lt;span style="color:#333333"&gt;&amp;lt;/&lt;span style="color:#22863a"&gt;fc-designer&lt;/span&gt;&amp;gt;&lt;/span&gt;
+&lt;span style="color:#333333"&gt;&amp;lt;/&lt;span style="color:#22863a"&gt;div&lt;/span&gt;&amp;gt;&lt;/span&gt;
+&lt;span style="color:#6a737d"&gt;&amp;lt;!-- 掛載組件 --&amp;gt;&lt;/span&gt;
+&lt;span style="color:#333333"&gt;&amp;lt;&lt;span style="color:#22863a"&gt;script&lt;/span&gt;&amp;gt;&lt;/span&gt;&lt;span&gt;
+    &lt;span style="color:#6a737d"&gt;// 創建 Vue 應用實例&lt;/span&gt;
+    &lt;span style="color:#d73a49"&gt;const&lt;/span&gt; app = Vue.createApp({});
+    &lt;span style="color:#6a737d"&gt;// 掛載 AntDesignVue&lt;/span&gt;
+    app.use(antd);
+    &lt;span style="color:#6a737d"&gt;// 掛載 fcDesignerPro 組件&lt;/span&gt;
+    app.use(FcDesigner);
+    &lt;span style="color:#6a737d"&gt;// 掛載 formCreate&lt;/span&gt;
+    app.use(FcDesigner.formCreate);
+    &lt;span style="color:#6a737d"&gt;// 掛載 Vue 應用&lt;/span&gt;
+    app.mount(&lt;span style="color:#032f62"&gt;'#app'&lt;/span&gt;);
+&lt;/span&gt;&lt;span style="color:#333333"&gt;&amp;lt;/&lt;span style="color:#22863a"&gt;script&lt;/span&gt;&amp;gt;&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt; 
+&lt;h2&gt;使用&lt;/h2&gt; 
+&lt;p style="color:#3e3e3e; margin-left:0; margin-right:0; text-align:start"&gt;在 Vue 3 組件中，您可以通過以下方式使用 fc-designer 組件：&lt;/p&gt; 
+&lt;pre&gt;&lt;code class="language-html"&gt;&lt;span style="color:#333333"&gt;&amp;lt;&lt;span style="color:#22863a"&gt;template&lt;/span&gt;&amp;gt;&lt;/span&gt;
+    &lt;span style="color:#333333"&gt;&amp;lt;&lt;span style="color:#22863a"&gt;fc-designer&lt;/span&gt; &lt;span style="color:#6f42c1"&gt;ref&lt;/span&gt;=&lt;span style="color:#032f62"&gt;"designer"&lt;/span&gt; &lt;span style="color:#6f42c1"&gt;height&lt;/span&gt;=&lt;span style="color:#032f62"&gt;"100vh"&lt;/span&gt; /&amp;gt;&lt;/span&gt;
+&lt;span style="color:#333333"&gt;&amp;lt;/&lt;span style="color:#22863a"&gt;template&lt;/span&gt;&amp;gt;&lt;/span&gt;
+&lt;span style="color:#333333"&gt;&amp;lt;&lt;span style="color:#22863a"&gt;script&lt;/span&gt; &lt;span style="color:#6f42c1"&gt;setup&lt;/span&gt;&amp;gt;&lt;/span&gt;&lt;span&gt;
+    &lt;span style="color:#d73a49"&gt;import&lt;/span&gt; { ref } &lt;span style="color:#d73a49"&gt;from&lt;/span&gt; &lt;span style="color:#032f62"&gt;'vue'&lt;/span&gt;;
+    &lt;span style="color:#6a737d"&gt;// 可以在此處獲取設計器實例或進行其他操作&lt;/span&gt;
+    &lt;span style="color:#d73a49"&gt;const&lt;/span&gt; designer = ref(&lt;span style="color:#005cc5"&gt;null&lt;/span&gt;);
+&lt;/span&gt;&lt;span style="color:#333333"&gt;&amp;lt;/&lt;span style="color:#22863a"&gt;script&lt;/span&gt;&amp;gt;&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt; 
+&lt;ul&gt; 
+&lt;/ul&gt; 
+&lt;ul&gt; 
+&lt;/ul&gt; 
+&lt;h1&gt;移動端表單設計器&lt;/h1&gt; 
+&lt;p style="color:#3e3e3e; margin-left:0; margin-right:0; text-align:start"&gt;&lt;img alt="demo1" src="https://oscimg.oschina.net/oscnet//553df6fe6b76e08367d09a395ede86f6.jpg" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p style="color:#333333; margin-left:0; margin-right:0; text-align:start"&gt;&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fform-create.com%2Fv3%2Fmobile%2F" target="_blank"&gt;演示站&lt;/a&gt;&lt;/p&gt; 
+&lt;p style="color:#3e3e3e; margin-left:0; margin-right:0; text-align:start"&gt;本項目採用 Vue3.0 和 ElementPlus 進行移動端頁面構建，移動端使用的是 vant4.0 版本，內置多語言解決方案，支持二次擴展開發，支持自定義組件擴展。&lt;/p&gt; 
+&lt;h2&gt;安裝&lt;/h2&gt; 
+&lt;p style="color:#3e3e3e; margin-left:0; margin-right:0; text-align:start"&gt;首先，安裝&lt;span&gt;&amp;nbsp;&lt;/span&gt;&lt;strong&gt;@form-create/vant-designer&lt;/strong&gt;&lt;/p&gt; 
+&lt;pre&gt;&lt;code class="language-bash"&gt;npm &lt;span style="color:#d73a49"&gt;install&lt;/span&gt; @&lt;span style="color:#d73a49"&gt;form&lt;/span&gt;-&lt;span style="color:#d73a49"&gt;create&lt;/span&gt;/vant-designer@^&lt;span&gt;3&lt;/span&gt;
+npm &lt;span style="color:#d73a49"&gt;install&lt;/span&gt; @&lt;span style="color:#d73a49"&gt;form&lt;/span&gt;-&lt;span style="color:#d73a49"&gt;create&lt;/span&gt;/&lt;span style="color:#d73a49"&gt;element&lt;/span&gt;-ui@^&lt;span&gt;3&lt;/span&gt;
+npm &lt;span style="color:#d73a49"&gt;install&lt;/span&gt; @&lt;span style="color:#d73a49"&gt;form&lt;/span&gt;-&lt;span style="color:#d73a49"&gt;create&lt;/span&gt;/vant@^&lt;span&gt;3&lt;/span&gt;
+npm &lt;span style="color:#d73a49"&gt;install&lt;/span&gt; &lt;span style="color:#d73a49"&gt;element&lt;/span&gt;-plus
+npm &lt;span style="color:#d73a49"&gt;install&lt;/span&gt; vant&lt;/code&gt;&lt;/pre&gt; 
+&lt;p style="color:#3e3e3e; margin-left:0; margin-right:0; text-align:start"&gt;如已安裝舊版本渲染器，請執行以下命令更新至最新版：&lt;/p&gt; 
+&lt;pre&gt;&lt;code class="language-bash"&gt;npm &lt;span style="color:#d73a49"&gt;update&lt;/span&gt; @&lt;span style="color:#d73a49"&gt;form&lt;/span&gt;-&lt;span style="color:#d73a49"&gt;create&lt;/span&gt;/&lt;span style="color:#d73a49"&gt;element&lt;/span&gt;-ui@^&lt;span&gt;3&lt;/span&gt;
+npm &lt;span style="color:#d73a49"&gt;update&lt;/span&gt; @&lt;span style="color:#d73a49"&gt;form&lt;/span&gt;-&lt;span style="color:#d73a49"&gt;create&lt;/span&gt;/vant@^&lt;span&gt;3&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt; 
+&lt;h2&gt;引入&lt;/h2&gt; 
+&lt;p style="color:#3e3e3e; margin-left:0; margin-right:0; text-align:start"&gt;&lt;strong&gt;Node.js 引入&lt;/strong&gt;&lt;/p&gt; 
+&lt;p style="color:#3e3e3e; margin-left:0; margin-right:0; text-align:start"&gt;對於使用 Node.js 的項目，按照以下步驟在您的 Vue 3 項目中引入並配置：&lt;/p&gt; 
+&lt;pre&gt;&lt;code class="language-javascript"&gt;&lt;span style="color:#d73a49"&gt;import&lt;/span&gt; FcDesignerMobile &lt;span style="color:#d73a49"&gt;from&lt;/span&gt; &lt;span style="color:#032f62"&gt;'@form-create/vant-designer'&lt;/span&gt;
+&lt;span style="color:#d73a49"&gt;import&lt;/span&gt; ELEMENT &lt;span style="color:#d73a49"&gt;from&lt;/span&gt; &lt;span style="color:#032f62"&gt;'element-plus'&lt;/span&gt;;
+&lt;span style="color:#d73a49"&gt;import&lt;/span&gt; vant &lt;span style="color:#d73a49"&gt;from&lt;/span&gt; &lt;span style="color:#032f62"&gt;'vant'&lt;/span&gt;;
+&lt;span style="color:#d73a49"&gt;import&lt;/span&gt; &lt;span style="color:#032f62"&gt;'vant/lib/index.css'&lt;/span&gt;;
+&lt;span style="color:#d73a49"&gt;import&lt;/span&gt; &lt;span style="color:#032f62"&gt;'element-plus/dist/index.css'&lt;/span&gt;;
+&lt;span style="color:#6a737d"&gt;// 創建 Vue 應用&lt;/span&gt;
+&lt;span style="color:#d73a49"&gt;const&lt;/span&gt; app = createApp(App);
+app.use(ELEMENT)
+app.use(vant)
+app.use(FcDesignerMobile)
+app.use(FcDesignerMobile.formCreate)
+&lt;span style="color:#6a737d"&gt;// 掛載應用&lt;/span&gt;
+app.mount(&lt;span style="color:#032f62"&gt;'#app'&lt;/span&gt;);&lt;/code&gt;&lt;/pre&gt; 
+&lt;p style="color:#3e3e3e; margin-left:0; margin-right:0; text-align:start"&gt;&lt;strong&gt;CDN 引入&lt;/strong&gt;&lt;/p&gt; 
+&lt;p style="color:#3e3e3e; margin-left:0; margin-right:0; text-align:start"&gt;如果您選擇使用 CDN，可以按照以下步驟在 HTML 文件中引入相關依賴：&lt;/p&gt; 
+&lt;pre&gt;&lt;code class="language-html"&gt;&lt;span style="color:#333333"&gt;&amp;lt;&lt;span style="color:#22863a"&gt;link&lt;/span&gt; &lt;span style="color:#6f42c1"&gt;rel&lt;/span&gt;=&lt;span style="color:#032f62"&gt;"stylesheet"&lt;/span&gt; &lt;span style="color:#6f42c1"&gt;href&lt;/span&gt;=&lt;span style="color:#032f62"&gt;"https://unpkg.com/element-plus/dist/index.css"&lt;/span&gt;&amp;gt;&lt;/span&gt;&lt;span style="color:#333333"&gt;&amp;lt;/&lt;span style="color:#22863a"&gt;link&lt;/span&gt;&amp;gt;&lt;/span&gt;
+&lt;span style="color:#333333"&gt;&amp;lt;&lt;span style="color:#22863a"&gt;link&lt;/span&gt; &lt;span style="color:#6f42c1"&gt;rel&lt;/span&gt;=&lt;span style="color:#032f62"&gt;"stylesheet"&lt;/span&gt; &lt;span style="color:#6f42c1"&gt;href&lt;/span&gt;=&lt;span style="color:#032f62"&gt;"https://unpkg.com/vant@4/lib/index.css"&lt;/span&gt;/&amp;gt;&lt;/span&gt;
+&lt;span style="color:#333333"&gt;&amp;lt;&lt;span style="color:#22863a"&gt;script&lt;/span&gt; &lt;span style="color:#6f42c1"&gt;src&lt;/span&gt;=&lt;span style="color:#032f62"&gt;"https://unpkg.com/vue"&lt;/span&gt;&amp;gt;&lt;/span&gt;&lt;span style="color:#333333"&gt;&amp;lt;/&lt;span style="color:#22863a"&gt;script&lt;/span&gt;&amp;gt;&lt;/span&gt;
+&lt;span style="color:#333333"&gt;&amp;lt;&lt;span style="color:#22863a"&gt;script&lt;/span&gt; &lt;span style="color:#6f42c1"&gt;src&lt;/span&gt;=&lt;span style="color:#032f62"&gt;"https://unpkg.com/element-plus/dist/index.full.js"&lt;/span&gt;&amp;gt;&lt;/span&gt;&lt;span style="color:#333333"&gt;&amp;lt;/&lt;span style="color:#22863a"&gt;script&lt;/span&gt;&amp;gt;&lt;/span&gt;
+&lt;span style="color:#333333"&gt;&amp;lt;&lt;span style="color:#22863a"&gt;script&lt;/span&gt; &lt;span style="color:#6f42c1"&gt;src&lt;/span&gt;=&lt;span style="color:#032f62"&gt;"https://unpkg.com/vant@4/lib/vant.min.js"&lt;/span&gt;&amp;gt;&lt;/span&gt;&lt;span style="color:#333333"&gt;&amp;lt;/&lt;span style="color:#22863a"&gt;script&lt;/span&gt;&amp;gt;&lt;/span&gt;
+&lt;span style="color:#333333"&gt;&amp;lt;&lt;span style="color:#22863a"&gt;script&lt;/span&gt; &lt;span style="color:#6f42c1"&gt;src&lt;/span&gt;=&lt;span style="color:#032f62"&gt;"https://unpkg.com/@form-create/element-ui@next/dist/form-create.min.js"&lt;/span&gt;&amp;gt;&lt;/span&gt;&lt;span style="color:#333333"&gt;&amp;lt;/&lt;span style="color:#22863a"&gt;script&lt;/span&gt;&amp;gt;&lt;/span&gt;
+&lt;span style="color:#333333"&gt;&amp;lt;&lt;span style="color:#22863a"&gt;script&lt;/span&gt; &lt;span style="color:#6f42c1"&gt;src&lt;/span&gt;=&lt;span style="color:#032f62"&gt;"https://unpkg.com/@form-create/vant@next/dist/form-create.min.js"&lt;/span&gt;&amp;gt;&lt;/span&gt;&lt;span style="color:#333333"&gt;&amp;lt;/&lt;span style="color:#22863a"&gt;script&lt;/span&gt;&amp;gt;&lt;/span&gt;
+&lt;span style="color:#333333"&gt;&amp;lt;&lt;span style="color:#22863a"&gt;script&lt;/span&gt; &lt;span style="color:#6f42c1"&gt;src&lt;/span&gt;=&lt;span style="color:#032f62"&gt;"https://unpkg.com/@form-create/vant-designer@next/dist/index.umd.js"&lt;/span&gt;&amp;gt;&lt;/span&gt;&lt;span style="color:#333333"&gt;&amp;lt;/&lt;span style="color:#22863a"&gt;script&lt;/span&gt;&amp;gt;&lt;/span&gt;
+&lt;span style="color:#333333"&gt;&amp;lt;&lt;span style="color:#22863a"&gt;div&lt;/span&gt; &lt;span style="color:#6f42c1"&gt;id&lt;/span&gt;=&lt;span style="color:#032f62"&gt;"app"&lt;/span&gt;&amp;gt;&lt;/span&gt;
+    &lt;span style="color:#333333"&gt;&amp;lt;&lt;span style="color:#22863a"&gt;fc-designer-mobile&lt;/span&gt; &lt;span style="color:#6f42c1"&gt;height&lt;/span&gt;=&lt;span style="color:#032f62"&gt;"100vh"&lt;/span&gt;&amp;gt;&lt;/span&gt;&lt;span style="color:#333333"&gt;&amp;lt;/&lt;span style="color:#22863a"&gt;fc-designer-mobile&lt;/span&gt;&amp;gt;&lt;/span&gt;
+&lt;span style="color:#333333"&gt;&amp;lt;/&lt;span style="color:#22863a"&gt;div&lt;/span&gt;&amp;gt;&lt;/span&gt;
+&lt;span style="color:#333333"&gt;&amp;lt;&lt;span style="color:#22863a"&gt;script&lt;/span&gt;&amp;gt;&lt;/span&gt;&lt;span&gt;
+    &lt;span style="color:#d73a49"&gt;const&lt;/span&gt; { createApp } = Vue;
+    &lt;span style="color:#d73a49"&gt;const&lt;/span&gt; app = createApp({});
+    app.use(ElementPlus);
+    app.use(vant);
+    app.use(FcDesignerMobile);
+    app.use(FcDesignerMobile.formCreate);
+    app.mount(&lt;span style="color:#032f62"&gt;'#app'&lt;/span&gt;);
+&lt;/span&gt;&lt;span style="color:#333333"&gt;&amp;lt;/&lt;span style="color:#22863a"&gt;script&lt;/span&gt;&amp;gt;&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt; 
+&lt;h2&gt;使用&lt;/h2&gt; 
+&lt;p style="color:#3e3e3e; margin-left:0; margin-right:0; text-align:start"&gt;在 Vue 3 組件中，您可以通過以下方式使用 fc-designer 組件：&lt;/p&gt; 
+&lt;pre&gt;&lt;code class="language-html"&gt;&lt;span style="color:#333333"&gt;&amp;lt;&lt;span style="color:#22863a"&gt;template&lt;/span&gt;&amp;gt;&lt;/span&gt;
+    &lt;span style="color:#333333"&gt;&amp;lt;&lt;span style="color:#22863a"&gt;fc-designer-mobile&lt;/span&gt; &lt;span style="color:#6f42c1"&gt;ref&lt;/span&gt;=&lt;span style="color:#032f62"&gt;"designer"&lt;/span&gt; &lt;span style="color:#6f42c1"&gt;height&lt;/span&gt;=&lt;span style="color:#032f62"&gt;"100vh"&lt;/span&gt; /&amp;gt;&lt;/span&gt;
+&lt;span style="color:#333333"&gt;&amp;lt;/&lt;span style="color:#22863a"&gt;template&lt;/span&gt;&amp;gt;&lt;/span&gt;
+&lt;span style="color:#333333"&gt;&amp;lt;&lt;span style="color:#22863a"&gt;script&lt;/span&gt; &lt;span style="color:#6f42c1"&gt;setup&lt;/span&gt;&amp;gt;&lt;/span&gt;&lt;span&gt;
+    &lt;span style="color:#d73a49"&gt;import&lt;/span&gt; { ref } &lt;span style="color:#d73a49"&gt;from&lt;/span&gt; &lt;span style="color:#032f62"&gt;'vue'&lt;/span&gt;;
+    &lt;span style="color:#6a737d"&gt;// 可以在此處獲取設計器實例或進行其他操作&lt;/span&gt;
+    &lt;span style="color:#d73a49"&gt;const&lt;/span&gt; designer = ref(&lt;span style="color:#005cc5"&gt;null&lt;/span&gt;);
+&lt;/span&gt;&lt;span style="color:#333333"&gt;&amp;lt;/&lt;span style="color:#22863a"&gt;script&lt;/span&gt;&amp;gt;&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt; 
+&lt;p style="color:#3e3e3e; margin-left:0; margin-right:0; text-align:start"&gt;&amp;nbsp;&lt;/p&gt; 
+&lt;div&gt; 
+ &lt;h2&gt;獲取設計表單的數據&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fview.form-create.com%2Frender%23%25E8%258E%25B7%25E5%258F%2596%25E8%25AE%25BE%25E8%25AE%25A1%25E8%25A1%25A8%25E5%258D%2595%25E7%259A%2584%25E6%2595%25B0%25E6%258D%25AE" target="_blank"&gt;&lt;/a&gt;&lt;/h2&gt; 
+ &lt;p style="color:#3c3c43; margin-left:0; margin-right:0; text-align:start"&gt;在表單設計器中，可以通過以下方法獲取表單的生成規則和配置，這些數據通常會被保存到數據庫中，以便後續加載和回顯。&lt;/p&gt; 
+ &lt;div&gt; 
+  &lt;pre&gt;&lt;code class="language-javascript"&gt;&lt;span style="color:#6a737d"&gt;&lt;span style="color:#6a737d"&gt;//獲取表單的生成規則&lt;/span&gt;&lt;/span&gt;
+&lt;span style="color:#d73a49"&gt;&lt;span style="color:#d73a49"&gt;const&lt;/span&gt;&lt;/span&gt; ruleJson = &lt;span style="color:#d73a49"&gt;&lt;span style="color:#d73a49"&gt;this&lt;/span&gt;&lt;/span&gt;.$refs.designer.getJson();
+&lt;span style="color:#6a737d"&gt;&lt;span style="color:#6a737d"&gt;//獲取表單的配置&lt;/span&gt;&lt;/span&gt;
+&lt;span style="color:#d73a49"&gt;&lt;span style="color:#d73a49"&gt;const&lt;/span&gt;&lt;/span&gt; optionsJson = &lt;span style="color:#d73a49"&gt;&lt;span style="color:#d73a49"&gt;this&lt;/span&gt;&lt;/span&gt;.$refs.designer.getOptionsJson();
+
+
+&lt;span style="color:#6a737d"&gt;&lt;span style="color:#6a737d"&gt;//todo 保存 JSON 數據到數據庫中&lt;/span&gt;&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt; 
+  &lt;p style="margin-left:0; margin-right:0"&gt;這些數據可以用來保存到數據庫中，確保表單的狀態和配置可以在頁面刷新或重新加載時恢復。&lt;/p&gt; 
+ &lt;/div&gt; 
+ &lt;h2&gt;回顯設計表單&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fview.form-create.com%2Frender%23%25E5%259B%259E%25E6%2598%25BE%25E8%25AE%25BE%25E8%25AE%25A1%25E8%25A1%25A8%25E5%258D%2595" target="_blank"&gt;&lt;/a&gt;&lt;/h2&gt; 
+ &lt;p style="color:#3c3c43; margin-left:0; margin-right:0; text-align:start"&gt;當需要回顯設計好的表單時，您需要加載之前保存的 JSON 規則和配置，並將其應用到設計器中。&lt;/p&gt; 
+ &lt;div&gt; 
+  &lt;pre&gt;&lt;code class="language-javascript"&gt;&lt;span style="color:#6a737d"&gt;&lt;span style="color:#6a737d"&gt;//todo 加載表單 JSON 規則&lt;/span&gt;&lt;/span&gt;
+
+
+&lt;span style="color:#6a737d"&gt;&lt;span style="color:#6a737d"&gt;//回顯表單&lt;/span&gt;&lt;/span&gt;
+&lt;span style="color:#d73a49"&gt;&lt;span style="color:#d73a49"&gt;this&lt;/span&gt;&lt;/span&gt;.$refs.designer.setOptions(optionsJson);
+&lt;span style="color:#d73a49"&gt;&lt;span style="color:#d73a49"&gt;this&lt;/span&gt;&lt;/span&gt;.$refs.designer.setRule(ruleJson);&lt;/code&gt;&lt;/pre&gt; 
+ &lt;/div&gt; 
+ &lt;p style="color:#3c3c43; margin-left:0; margin-right:0; text-align:start"&gt;通過這些方法，可以將之前保存的表單規則和配置應用到設計器中，從而恢復表單的狀態。&lt;/p&gt; 
+ &lt;h2&gt;表單渲染&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fview.form-create.com%2Frender%23%25E8%25A1%25A8%25E5%258D%2595%25E6%25B8%25B2%25E6%259F%2593-1" target="_blank"&gt;&lt;/a&gt;&lt;/h2&gt; 
+ &lt;p style="color:#3c3c43; margin-left:0; margin-right:0; text-align:start"&gt;要渲染表單，您需要掛載 form-create 到 Vue 應用中，並加載表單規則和配置。&lt;/p&gt; 
+ &lt;div&gt; 
+  &lt;pre&gt;&lt;code class="language-javascript"&gt;&lt;span style="color:#6a737d"&gt;&lt;span style="color:#6a737d"&gt;//從設計器中導入 formCreate&lt;/span&gt;&lt;/span&gt;
+&lt;span style="color:#d73a49"&gt;&lt;span style="color:#d73a49"&gt;import&lt;/span&gt;&lt;/span&gt; {formCreate} &lt;span style="color:#d73a49"&gt;&lt;span style="color:#d73a49"&gt;from&lt;/span&gt;&lt;/span&gt; &lt;span style="color:#032f62"&gt;&lt;span style="color:#032f62"&gt;'@form-create/designer'&lt;/span&gt;&lt;/span&gt;;
+&lt;span style="color:#6a737d"&gt;&lt;span style="color:#6a737d"&gt;//掛載 formCreate&lt;/span&gt;&lt;/span&gt;
+app.use(formCreate);&lt;/code&gt;&lt;/pre&gt; 
+ &lt;/div&gt; 
+ &lt;p style="color:#3c3c43; margin-left:0; margin-right:0; text-align:start"&gt;&lt;strong&gt;表單渲染示例&lt;/strong&gt;&lt;/p&gt; 
+ &lt;div&gt; 
+  &lt;pre&gt;&lt;code class="language-html"&gt;&lt;span style="color:#333333"&gt;&lt;span style="color:#333333"&gt;&amp;lt;&lt;/span&gt;&lt;span style="color:#22863a"&gt;&lt;span style="color:#333333"&gt;&lt;span style="color:#22863a"&gt;template&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;span style="color:#333333"&gt;&amp;gt;&lt;/span&gt;&lt;/span&gt;
+    &lt;span style="color:#333333"&gt;&lt;span style="color:#333333"&gt;&amp;lt;&lt;/span&gt;&lt;span style="color:#22863a"&gt;&lt;span style="color:#333333"&gt;&lt;span style="color:#22863a"&gt;div&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;span style="color:#333333"&gt; &lt;/span&gt;&lt;span style="color:#6f42c1"&gt;&lt;span style="color:#333333"&gt;&lt;span style="color:#6f42c1"&gt;id&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;span style="color:#333333"&gt;=&lt;/span&gt;&lt;span style="color:#032f62"&gt;&lt;span style="color:#333333"&gt;&lt;span style="color:#032f62"&gt;"app"&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;span style="color:#333333"&gt;&amp;gt;&lt;/span&gt;&lt;/span&gt;
+        &lt;span style="color:#333333"&gt;&lt;span style="color:#333333"&gt;&amp;lt;&lt;/span&gt;&lt;span style="color:#22863a"&gt;&lt;span style="color:#333333"&gt;&lt;span style="color:#22863a"&gt;form-create&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;span style="color:#333333"&gt; &lt;/span&gt;&lt;span style="color:#6f42c1"&gt;&lt;span style="color:#333333"&gt;&lt;span style="color:#6f42c1"&gt;v-model&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;span style="color:#333333"&gt;=&lt;/span&gt;&lt;span style="color:#032f62"&gt;&lt;span style="color:#333333"&gt;&lt;span style="color:#032f62"&gt;"formData"&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;span style="color:#333333"&gt; &lt;/span&gt;&lt;span style="color:#6f42c1"&gt;&lt;span style="color:#333333"&gt;&lt;span style="color:#6f42c1"&gt;v-model:api&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;span style="color:#333333"&gt;=&lt;/span&gt;&lt;span style="color:#032f62"&gt;&lt;span style="color:#333333"&gt;&lt;span style="color:#032f62"&gt;"fApi"&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;span style="color:#333333"&gt; &lt;/span&gt;&lt;span style="color:#6f42c1"&gt;&lt;span style="color:#333333"&gt;&lt;span style="color:#6f42c1"&gt;:rule&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;span style="color:#333333"&gt;=&lt;/span&gt;&lt;span style="color:#032f62"&gt;&lt;span style="color:#333333"&gt;&lt;span style="color:#032f62"&gt;"rule"&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;span style="color:#333333"&gt; &lt;/span&gt;&lt;span style="color:#6f42c1"&gt;&lt;span style="color:#333333"&gt;&lt;span style="color:#6f42c1"&gt;:option&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;span style="color:#333333"&gt;=&lt;/span&gt;&lt;span style="color:#032f62"&gt;&lt;span style="color:#333333"&gt;&lt;span style="color:#032f62"&gt;"option"&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;span style="color:#333333"&gt;&amp;gt;&lt;/span&gt;&lt;/span&gt;&lt;span style="color:#333333"&gt;&lt;span style="color:#333333"&gt;&amp;lt;/&lt;/span&gt;&lt;span style="color:#22863a"&gt;&lt;span style="color:#333333"&gt;&lt;span style="color:#22863a"&gt;form-create&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;span style="color:#333333"&gt;&amp;gt;&lt;/span&gt;&lt;/span&gt;
+    &lt;span style="color:#333333"&gt;&lt;span style="color:#333333"&gt;&amp;lt;/&lt;/span&gt;&lt;span style="color:#22863a"&gt;&lt;span style="color:#333333"&gt;&lt;span style="color:#22863a"&gt;div&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;span style="color:#333333"&gt;&amp;gt;&lt;/span&gt;&lt;/span&gt;
+&lt;span style="color:#333333"&gt;&lt;span style="color:#333333"&gt;&amp;lt;/&lt;/span&gt;&lt;span style="color:#22863a"&gt;&lt;span style="color:#333333"&gt;&lt;span style="color:#22863a"&gt;template&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;span style="color:#333333"&gt;&amp;gt;&lt;/span&gt;&lt;/span&gt;
+&lt;span style="color:#333333"&gt;&lt;span style="color:#333333"&gt;&amp;lt;&lt;/span&gt;&lt;span style="color:#22863a"&gt;&lt;span style="color:#333333"&gt;&lt;span style="color:#22863a"&gt;script&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;span style="color:#333333"&gt;&amp;gt;&lt;/span&gt;&lt;/span&gt;&lt;span&gt;&lt;span&gt;
+    &lt;/span&gt;&lt;span style="color:#d73a49"&gt;&lt;span&gt;&lt;span style="color:#d73a49"&gt;import&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;span&gt; {formCreate} &lt;/span&gt;&lt;span style="color:#d73a49"&gt;&lt;span&gt;&lt;span style="color:#d73a49"&gt;from&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;span&gt; &lt;/span&gt;&lt;span style="color:#032f62"&gt;&lt;span&gt;&lt;span style="color:#032f62"&gt;'@form-create/designer'&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;span&gt;;
+    &lt;/span&gt;&lt;span style="color:#d73a49"&gt;&lt;span&gt;&lt;span style="color:#d73a49"&gt;export&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;span&gt; &lt;/span&gt;&lt;span style="color:#d73a49"&gt;&lt;span&gt;&lt;span style="color:#d73a49"&gt;default&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;span&gt; {
+        data() {
+            &lt;/span&gt;&lt;span style="color:#d73a49"&gt;&lt;span&gt;&lt;span style="color:#d73a49"&gt;return&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;span&gt; {
+                &lt;/span&gt;&lt;span style="color:#6a737d"&gt;&lt;span&gt;&lt;span style="color:#6a737d"&gt;//實例對象&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;span&gt;
+                &lt;/span&gt;&lt;span style="color:#6f42c1"&gt;&lt;span&gt;&lt;span style="color:#6f42c1"&gt;fApi&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;span&gt;: {},
+                &lt;/span&gt;&lt;span style="color:#6a737d"&gt;&lt;span&gt;&lt;span style="color:#6a737d"&gt;//表單數據&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;span&gt;
+                &lt;/span&gt;&lt;span style="color:#6f42c1"&gt;&lt;span&gt;&lt;span style="color:#6f42c1"&gt;formData&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;span&gt;: {},
+                &lt;/span&gt;&lt;span style="color:#6a737d"&gt;&lt;span&gt;&lt;span style="color:#6a737d"&gt;//表單生成規則&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;span&gt;
+                &lt;/span&gt;&lt;span style="color:#6f42c1"&gt;&lt;span&gt;&lt;span style="color:#6f42c1"&gt;rule&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;span&gt;: [],
+                &lt;/span&gt;&lt;span style="color:#6a737d"&gt;&lt;span&gt;&lt;span style="color:#6a737d"&gt;//組件參數配置&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;span&gt;
+                &lt;/span&gt;&lt;span style="color:#6f42c1"&gt;&lt;span&gt;&lt;span style="color:#6f42c1"&gt;option&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;span&gt;: {}
+            }
+        },
+        beforeCreate(){
+            &lt;/span&gt;&lt;span style="color:#d73a49"&gt;&lt;span&gt;&lt;span style="color:#d73a49"&gt;const&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;span&gt; rule,option;
+            &lt;/span&gt;&lt;span style="color:#6a737d"&gt;&lt;span&gt;&lt;span style="color:#6a737d"&gt;// todo 加載表單 JSON 規則&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;span&gt;
+            &lt;/span&gt;&lt;span style="color:#d73a49"&gt;&lt;span&gt;&lt;span style="color:#d73a49"&gt;this&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;span&gt;.rule = formCreate.parseJson(rule);
+            &lt;/span&gt;&lt;span style="color:#d73a49"&gt;&lt;span&gt;&lt;span style="color:#d73a49"&gt;this&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;span&gt;.option = formCreate.parseJson(option);
+        }
+    }
+&lt;/span&gt;&lt;/span&gt;&lt;span style="color:#333333"&gt;&lt;span style="color:#333333"&gt;&amp;lt;/&lt;/span&gt;&lt;span style="color:#22863a"&gt;&lt;span style="color:#333333"&gt;&lt;span style="color:#22863a"&gt;script&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;span style="color:#333333"&gt;&amp;gt;&lt;/span&gt;&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt; 
+ &lt;/div&gt; 
+ &lt;h2&gt;動態加載和保存表單配置&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fview.form-create.com%2Frender%23%25E5%258A%25A8%25E6%2580%2581%25E5%258A%25A0%25E8%25BD%25BD%25E5%2592%258C%25E4%25BF%259D%25E5%25AD%2598%25E8%25A1%25A8%25E5%258D%2595%25E9%2585%258D%25E7%25BD%25AE" target="_blank"&gt;&lt;/a&gt;&lt;/h2&gt; 
+ &lt;p style="color:#3c3c43; margin-left:0; margin-right:0; text-align:start"&gt;可以通過 API 請求動態加載表單規則和配置，並將表單數據保存到服務器。&lt;/p&gt; 
+ &lt;div&gt; 
+  &lt;pre&gt;&lt;code class="language-javascript"&gt;&lt;span style="color:#d73a49"&gt;&lt;span style="color:#d73a49"&gt;import&lt;/span&gt;&lt;/span&gt; axios &lt;span style="color:#d73a49"&gt;&lt;span style="color:#d73a49"&gt;from&lt;/span&gt;&lt;/span&gt; &lt;span style="color:#032f62"&gt;&lt;span style="color:#032f62"&gt;'axios'&lt;/span&gt;&lt;/span&gt;;
+
+
+&lt;span style="color:#6a737d"&gt;&lt;span style="color:#6a737d"&gt;// 加載表單配置&lt;/span&gt;&lt;/span&gt;
+&lt;span style="color:#d73a49"&gt;&lt;span style="color:#d73a49"&gt;async&lt;/span&gt;&lt;/span&gt; &lt;span&gt;&lt;span style="color:#d73a49"&gt;&lt;span&gt;&lt;span style="color:#d73a49"&gt;function&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;span&gt; &lt;/span&gt;&lt;span style="color:#6f42c1"&gt;&lt;span&gt;&lt;span style="color:#6f42c1"&gt;loadFormConfig&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;span&gt;() &lt;/span&gt;&lt;/span&gt;{
+    &lt;span style="color:#d73a49"&gt;&lt;span style="color:#d73a49"&gt;try&lt;/span&gt;&lt;/span&gt; {
+        &lt;span style="color:#d73a49"&gt;&lt;span style="color:#d73a49"&gt;const&lt;/span&gt;&lt;/span&gt; response = &lt;span style="color:#d73a49"&gt;&lt;span style="color:#d73a49"&gt;await&lt;/span&gt;&lt;/span&gt; axios.get(&lt;span style="color:#032f62"&gt;&lt;span style="color:#032f62"&gt;'/api/form-config'&lt;/span&gt;&lt;/span&gt;);
+        &lt;span style="color:#d73a49"&gt;&lt;span style="color:#d73a49"&gt;return&lt;/span&gt;&lt;/span&gt; response.data;
+    } &lt;span style="color:#d73a49"&gt;&lt;span style="color:#d73a49"&gt;catch&lt;/span&gt;&lt;/span&gt; (error) {
+        &lt;span&gt;&lt;span&gt;console&lt;/span&gt;&lt;/span&gt;.error(&lt;span style="color:#032f62"&gt;&lt;span style="color:#032f62"&gt;'加載表單配置失敗'&lt;/span&gt;&lt;/span&gt;, error);
+        &lt;span style="color:#d73a49"&gt;&lt;span style="color:#d73a49"&gt;return&lt;/span&gt;&lt;/span&gt; { &lt;span style="color:#6f42c1"&gt;&lt;span style="color:#6f42c1"&gt;rule&lt;/span&gt;&lt;/span&gt;: [], &lt;span style="color:#6f42c1"&gt;&lt;span style="color:#6f42c1"&gt;option&lt;/span&gt;&lt;/span&gt;: {} };
+    }
+}
+
+
+&lt;span style="color:#6a737d"&gt;&lt;span style="color:#6a737d"&gt;// 保存表單配置&lt;/span&gt;&lt;/span&gt;
+&lt;span style="color:#d73a49"&gt;&lt;span style="color:#d73a49"&gt;async&lt;/span&gt;&lt;/span&gt; &lt;span&gt;&lt;span style="color:#d73a49"&gt;&lt;span&gt;&lt;span style="color:#d73a49"&gt;function&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;span&gt; &lt;/span&gt;&lt;span style="color:#6f42c1"&gt;&lt;span&gt;&lt;span style="color:#6f42c1"&gt;saveFormConfig&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;span&gt;(&lt;/span&gt;&lt;span&gt;&lt;span&gt;&lt;span&gt;ruleJson, optionsJson&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;span&gt;) &lt;/span&gt;&lt;/span&gt;{
+    &lt;span style="color:#d73a49"&gt;&lt;span style="color:#d73a49"&gt;try&lt;/span&gt;&lt;/span&gt; {
+        &lt;span style="color:#d73a49"&gt;&lt;span style="color:#d73a49"&gt;await&lt;/span&gt;&lt;/span&gt; axios.post(&lt;span style="color:#032f62"&gt;&lt;span style="color:#032f62"&gt;'/api/form-config'&lt;/span&gt;&lt;/span&gt;, { &lt;span style="color:#6f42c1"&gt;&lt;span style="color:#6f42c1"&gt;rule&lt;/span&gt;&lt;/span&gt;: ruleJson, &lt;span style="color:#6f42c1"&gt;&lt;span style="color:#6f42c1"&gt;options&lt;/span&gt;&lt;/span&gt;: optionsJson });
+    } &lt;span style="color:#d73a49"&gt;&lt;span style="color:#d73a49"&gt;catch&lt;/span&gt;&lt;/span&gt; (error) {
+        &lt;span&gt;&lt;span&gt;console&lt;/span&gt;&lt;/span&gt;.error(&lt;span style="color:#032f62"&gt;&lt;span style="color:#032f62"&gt;'保存表單配置失敗'&lt;/span&gt;&lt;/span&gt;, error);
+    }
+}&lt;/code&gt;&lt;/pre&gt; 
+ &lt;/div&gt; 
+&lt;/div&gt;
+                                                                                &lt;/div&gt;
+                                                                            </description>
+      <link>https://www.oschina.net/news/371270/fcdesigner-3-3-1-released</link>
+      <guid isPermaLink="false">https://www.oschina.net/news/371270/fcdesigner-3-3-1-released</guid>
+      <pubDate>Sun, 07 Sep 2025 02:57:00 GMT</pubDate>
+      <author>來源: 資訊</author>
+    </item>
     <item>
       <title>React Native 0.81.2 發佈</title>
       <description>&lt;div class="content"&gt;
@@ -25,7 +964,7 @@
                                                                             </description>
       <link>https://www.oschina.net/news/371257/react-native-0-81-2-released</link>
       <guid isPermaLink="false">https://www.oschina.net/news/371257/react-native-0-81-2-released</guid>
-      <pubDate>Wed, 10 Sep 2025 02:35:39 GMT</pubDate>
+      <pubDate>Sun, 07 Sep 2025 02:34:00 GMT</pubDate>
       <author>來源: OSCHINA</author>
     </item>
     <item>
@@ -1050,353 +1989,6 @@
       <link>https://www.oschina.net/news/371053</link>
       <guid isPermaLink="false">https://www.oschina.net/news/371053</guid>
       <pubDate>Sat, 06 Sep 2025 02:15:00 GMT</pubDate>
-      <author>來源: 資訊</author>
-    </item>
-    <item>
-      <title>🚀「AI+低代碼」助你開發效率飆升 300%</title>
-      <description>&lt;div class="content"&gt;
-                                                                    
-                                                        &lt;blockquote&gt; 
- &lt;p style="margin-left:0; margin-right:0"&gt;無需熬夜加班，Vue 開發者終於能早點下班了&lt;/p&gt; 
-&lt;/blockquote&gt; 
-&lt;p style="color:#3c3c43; margin-left:0; margin-right:0; text-align:start"&gt;「我只是個前端開發，為什麼要天天加班寫後端管理界面？」這是許多前端開發者的心聲。重複性的後台頁面開發消耗了大量時間和創造力，直到我遇到了&lt;strong&gt;VTJ.PRO&lt;/strong&gt;。&lt;/p&gt; 
-&lt;p style="color:#3c3c43; margin-left:0; margin-right:0; text-align:start"&gt;作為一名 Vue 開發者，當我發現這個基於 Vue3+TypeScript 的低代碼開發工具後，&lt;strong&gt;我的開發效率提升了 300%&lt;/strong&gt;——從每天寫 3 個頁面到現在每天能完成 10 個以上完整頁面。&lt;/p&gt; 
-&lt;h2&gt;&lt;code&gt;01&lt;/code&gt;&lt;span&gt;&amp;nbsp;&lt;/span&gt;什麼是 VTJ.PRO？低代碼開發新紀元&lt;/h2&gt; 
-&lt;p style="color:#3c3c43; margin-left:0; margin-right:0; text-align:start"&gt;VTJ.PRO 是一款基於 Vue3 + TypeScript 的低代碼開發工具，它內置了&lt;strong&gt;設計器引擎、渲染器和代碼生成器&lt;/strong&gt;。與傳統開發方式不同，它允許前端開發者通過可視化方式構建應用，同時不影響現有的開發流程和編碼習慣。&lt;/p&gt; 
-&lt;p style="color:#3c3c43; margin-left:0; margin-right:0; text-align:start"&gt;這個工具最吸引人的特點是：它會 Vue 就會用，幾乎&lt;strong&gt;沒有學習成本&lt;/strong&gt;。對於已經熟悉 Vue 技術棧的開發者來説，只需幾個小時就能上手開始實際項目開發。&lt;/p&gt; 
-&lt;p style="color:#3c3c43; margin-left:0; margin-right:0; text-align:start"&gt;&lt;img alt="" src="https://oscimg.oschina.net/oscnet//f25feb7700e7272bba10a10ebdd7cae6.png" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;h2&gt;&lt;code&gt;02&lt;/code&gt;&lt;span&gt;&amp;nbsp;&lt;/span&gt;為何選擇 VTJ？四大優勢征服前端開發者&lt;/h2&gt; 
-&lt;p style="color:#3c3c43; margin-left:0; margin-right:0; text-align:start"&gt;&lt;strong&gt;① 面向前端，零學習成本&lt;/strong&gt;&lt;/p&gt; 
-&lt;p style="color:#3c3c43; margin-left:0; margin-right:0; text-align:start"&gt;VTJ 完全不改變前端開發流程和編碼習慣。如果你會 Vue，你就會使用 VTJ，不需要額外學習新技術。&lt;/p&gt; 
-&lt;p style="color:#3c3c43; margin-left:0; margin-right:0; text-align:start"&gt;&lt;strong&gt;② 引擎化架構，無限擴展&lt;/strong&gt;&lt;/p&gt; 
-&lt;p style="color:#3c3c43; margin-left:0; margin-right:0; text-align:start"&gt;VTJ 採用配置化構建，所有部件都支持自定義。你可以單獨使用引擎實現屬於你自己的低代碼平台，真正實現了靈活性和可控性的平衡。&lt;/p&gt; 
-&lt;p style="color:#3c3c43; margin-left:0; margin-right:0; text-align:start"&gt;&lt;strong&gt;③ 設計器與渲染器分離，代碼零污染&lt;/strong&gt;&lt;/p&gt; 
-&lt;p style="color:#3c3c43; margin-left:0; margin-right:0; text-align:start"&gt;VTJ 的 IDE 提供本地離線服務，安全易接入。設計器和渲染器分離架構確保&lt;strong&gt;不污染項目代碼&lt;/strong&gt;，產生的代碼乾淨整潔。&lt;/p&gt; 
-&lt;p style="color:#3c3c43; margin-left:0; margin-right:0; text-align:start"&gt;&lt;strong&gt;④ 源碼雙向轉換，突破低代碼侷限&lt;/strong&gt;&lt;/p&gt; 
-&lt;p style="color:#3c3c43; margin-left:0; margin-right:0; text-align:start"&gt;VTJ 實現了 Vue 源碼與低代碼 DSL 的雙向智能轉換。這意味着你可以在低代碼開發和傳統編碼之間自由切換，不再受低代碼平台的限制。&lt;/p&gt; 
-&lt;p style="color:#3c3c43; margin-left:0; margin-right:0; text-align:start"&gt;&lt;img alt="" src="https://oscimg.oschina.net/oscnet//6cf9629596179509665f0b1f59546e7c.gif" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;h2&gt;&lt;code&gt;03&lt;/code&gt;&lt;span&gt;&amp;nbsp;&lt;/span&gt;三步上手，快速入門 VTJ 開發&lt;/h2&gt; 
-&lt;p style="color:#3c3c43; margin-left:0; margin-right:0; text-align:start"&gt;&lt;strong&gt;環境準備&lt;/strong&gt;&lt;/p&gt; 
-&lt;p style="color:#3c3c43; margin-left:0; margin-right:0; text-align:start"&gt;VTJ 要求 Node 版本必須是 v20+，建議使用 nvm 切換 Node 版本。這是唯一的硬性要求，非常簡單。&lt;/p&gt; 
-&lt;p style="color:#3c3c43; margin-left:0; margin-right:0; text-align:start"&gt;&lt;strong&gt;快速創建項目&lt;/strong&gt;&lt;/p&gt; 
-&lt;p style="color:#3c3c43; margin-left:0; margin-right:0; text-align:start"&gt;VTJ 提供了項目腳手架，可快速創建新項目。只需執行一條命令：&lt;/p&gt; 
-&lt;div&gt; 
- &lt;pre&gt;&lt;code&gt;&lt;span style="color:#67676c"&gt;&lt;span style="color:#6f42c1"&gt;npm&lt;/span&gt;&lt;span style="color:#032f62"&gt; create&lt;/span&gt;&lt;span style="color:#032f62"&gt; vtj@latest&lt;/span&gt;&lt;span style="color:#005cc5"&gt; --&lt;/span&gt;&lt;span style="color:#005cc5"&gt; -t&lt;/span&gt;&lt;span style="color:#032f62"&gt; web&lt;/span&gt;&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt; 
-&lt;/div&gt; 
-&lt;p style="color:#3c3c43; margin-left:0; margin-right:0; text-align:start"&gt;根據你的目標平台，可以選擇創建 Web 應用（PC 端）、H5 應用（移動端）或 uni-app（跨端應用）&lt;/p&gt; 
-&lt;p style="color:#3c3c43; margin-left:0; margin-right:0; text-align:start"&gt;&lt;img alt="" src="https://oscimg.oschina.net/oscnet//87dbe063e18a8f6baba3ee194d117003.png" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;h2&gt;&lt;code&gt;04&lt;/code&gt;&lt;span&gt;&amp;nbsp;&lt;/span&gt;實戰演示：如何用 VTJ 構建用户管理系統&lt;/h2&gt; 
-&lt;p style="color:#3c3c43; margin-left:0; margin-right:0; text-align:start"&gt;讓我們來看一個實際案例——構建一個用户管理系統後台界面。&lt;/p&gt; 
-&lt;p style="color:#3c3c43; margin-left:0; margin-right:0; text-align:start"&gt;在 VTJ 設計器中，你可以通過拖拽方式佈局頁面結構。VTJ 內置了豐富的企業級組件庫和頁面模板，包括表格、表單、彈窗等常用組件。&lt;/p&gt; 
-&lt;p style="color:#3c3c43; margin-left:0; margin-right:0; text-align:start"&gt;通過簡單的屬性配置，你可以設置表格的列和數據源，而無需編寫大量模板代碼。VTJ 支持直接編寫 Vue 組件代碼，讓你在享受低代碼便利的同時不失去編碼的靈活性。&lt;/p&gt; 
-&lt;p style="color:#3c3c43; margin-left:0; margin-right:0; text-align:start"&gt;完成設計後，一鍵點擊"出碼"按鈕，VTJ 就會生成純淨的 Vue 代碼，你可以直接將這些代碼嵌入到現有項目中，也可以進一步手動調整。&lt;/p&gt; 
-&lt;p style="color:#3c3c43; margin-left:0; margin-right:0; text-align:start"&gt;&lt;img alt="" src="https://oscimg.oschina.net/oscnet//2a3d7758ba49bdcb7ad24055ff3fe2b6.png" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;h2&gt;&lt;code&gt;05&lt;/code&gt;&lt;span&gt;&amp;nbsp;&lt;/span&gt;AI 加持，智能生成 Vue 組件&lt;/h2&gt; 
-&lt;p style="color:#3c3c43; margin-left:0; margin-right:0; text-align:start"&gt;&lt;strong&gt;VTJ.PRO&lt;/strong&gt;還擁有一項殺手級功能——&lt;strong&gt;AI 智能提效&lt;/strong&gt;。它支持通過自然語言、設計稿或網頁截圖智能生成 Vue 組件，快速實現需求可視化。&lt;/p&gt; 
-&lt;p style="color:#3c3c43; margin-left:0; margin-right:0; text-align:start"&gt;想象一下，只需要描述你想要的組件功能，AI 就能為你生成可用的代碼，這大大降低了前端開發的門檻和工作量。&lt;/p&gt; 
-&lt;p style="color:#3c3c43; margin-left:0; margin-right:0; text-align:start"&gt;&lt;img alt="" src="https://oscimg.oschina.net/oscnet//8b8151d8ff82d99b9534fce853153d69.gif" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;h2&gt;&lt;code&gt;06&lt;/code&gt;&lt;span&gt;&amp;nbsp;&lt;/span&gt;不止於開發，VTJ 生態與企業級應用&lt;/h2&gt; 
-&lt;p style="color:#3c3c43; margin-left:0; margin-right:0; text-align:start"&gt;VTJ 已經在實際生產環境中得到了廣泛應用。許多企業已經基於 VT 構建了自己的低代碼平台。&lt;/p&gt; 
-&lt;p style="color:#3c3c43; margin-left:0; margin-right:0; text-align:start"&gt;例如，&lt;strong&gt;悦碼低代碼平台&lt;/strong&gt;（詩悦網絡採用 VTJ 搭建）已經上線投產，它通過無界渲染器可跨技術棧引入低代碼頁面，實現低代碼頁面在 React、Next.js、Vue、Svelte 等多種技術棧中的複用。&lt;/p&gt; 
-&lt;p style="color:#3c3c43; margin-left:0; margin-right:0; text-align:start"&gt;&lt;strong&gt;寄雲科技&lt;/strong&gt;也接入 VTJ 作為雲畫面的交互畫面設計器之一，實現與平台深度融合，快速響應業務需求，已成功服務於多家世界 500 強工業企業。&lt;/p&gt; 
-&lt;p style="color:#3c3c43; margin-left:0; margin-right:0; text-align:start"&gt;&lt;img alt="" src="https://oscimg.oschina.net/oscnet//952e03e57a5858a02b572eb7dcd5037f.png" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;h2&gt;&lt;code&gt;07&lt;/code&gt;&lt;span&gt;&amp;nbsp;&lt;/span&gt;開發者評價：為什麼會選擇 VTJ？&lt;/h2&gt; 
-&lt;blockquote&gt; 
- &lt;p style="margin-left:0; margin-right:0"&gt;「VTJ 最讓我滿意的是它不綁架我的代碼。生成的代碼清晰易懂，我可以隨時手動修改和優化。這與其它低代碼平台完全不同。」——某知名互聯網公司前端負責人&lt;/p&gt; 
-&lt;/blockquote&gt; 
-&lt;blockquote&gt; 
- &lt;p style="margin-left:0; margin-right:0"&gt;「我們團隊在 3 天內就掌握了 VTJ 的基本使用，現在新項目的開發速度比之前快了 2 倍以上。」——某創業公司技術總監&lt;/p&gt; 
-&lt;/blockquote&gt; 
-&lt;h2&gt;&lt;code&gt;08&lt;/code&gt;&lt;span&gt;&amp;nbsp;&lt;/span&gt;總結：低代碼時代，VTJ 帶給開發者的真正價值&lt;/h2&gt; 
-&lt;p style="color:#3c3c43; margin-left:0; margin-right:0; text-align:start"&gt;VTJ 不是要取代開發者，而是通過&lt;strong&gt;工具化提升開發效率&lt;/strong&gt;，讓開發者從重複勞動中解放出來，專注於更有創造性的工作。&lt;/p&gt; 
-&lt;p style="color:#3c3c43; margin-left:0; margin-right:0; text-align:start"&gt;它保留了傳統開發的靈活性，同時提供了低代碼的便捷性，真正實現了&lt;strong&gt;兩種模式的無縫切換&lt;/strong&gt;。對於 Vue 開發者來説，VTJ 可能是目前最適合入門的低代碼開發工具。&lt;/p&gt; 
-&lt;p style="color:#3c3c43; margin-left:0; margin-right:0; text-align:start"&gt;&lt;img alt="" src="https://oscimg.oschina.net/oscnet//f8f07e98fe170093b9c8d4c8bf19968c.png" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;p style="color:#3c3c43; margin-left:0; margin-right:0; text-align:start"&gt;不要再把時間浪費在重複性的頁面編碼上。VTJ.PRO 已經為你打開了一扇新的大門：只需 3 天，你就能掌握這個利器，讓開發效率飆升 300%。&lt;/p&gt; 
-&lt;p style="color:#3c3c43; margin-left:0; margin-right:0; text-align:start"&gt;現在就開始你的低代碼之旅吧：訪問&lt;span&gt;&amp;nbsp;&lt;/span&gt;&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Flcdp.vtj.pro%2F" target="_blank"&gt;https://lcdp.vtj.pro&lt;/a&gt;&lt;span&gt;&amp;nbsp;&lt;/span&gt;在線體驗，或者用 npm create vtj@latest 命令創建你的第一個低代碼項目。&lt;/p&gt; 
-&lt;p style="color:#3c3c43; margin-left:0; margin-right:0; text-align:start"&gt;未來已來，只是尚未均勻分佈。而&lt;strong&gt;VTJ.PRO&lt;/strong&gt;正在讓高效開發的未來更快地到來。&lt;/p&gt;
-                                                                                &lt;/div&gt;
-                                                                            </description>
-      <link>https://www.oschina.net/news/371041</link>
-      <guid isPermaLink="false">https://www.oschina.net/news/371041</guid>
-      <pubDate>Sat, 06 Sep 2025 01:44:00 GMT</pubDate>
-      <author>來源: 資訊</author>
-    </item>
-    <item>
-      <title>藍鯨雲 LanJing-Nacos-AntdVue 微服務框架 v1.0.0 發佈</title>
-      <description>&lt;div class="content"&gt;
-                                                                    
-                                                        &lt;p&gt;&lt;span style="background-color:#ffffff; color:#333333"&gt;v1.0.0 更新內容：&lt;/span&gt;&lt;br&gt; &lt;span style="background-color:#ffffff; color:#333333"&gt;1、全新升級 JDK17；&lt;/span&gt;&lt;br&gt; &lt;span style="background-color:#ffffff; color:#333333"&gt;2、全新設計軟件架構；&lt;/span&gt;&lt;/p&gt; 
-&lt;h4&gt;項目介紹&lt;/h4&gt; 
-&lt;p style="color:#40485b; margin-left:0; margin-right:0; text-align:left"&gt;基於 SpringCloud、SpringSecurity、OAuth2、Nacos、Seata、MybatisPlus、Vue3、TypeScript、AntDesign、MySQL 等技術棧實現的單體前後端分離後台管理系統；後端基於 Java 語言採用 SpringCloud、SpringBoot3、SpringSecurity、OAuth2、Nacos、Seata、MybatisPlus、MySQL 等主流技術棧，前端基於 Vue3、TypeScript、Vite 等技術棧實現，採用 AntDesign 前端 UI 框架，基於目前 Vue 前後端分離主流設計思想，為了實現精細化分工，模塊化、組件化開發模式，目前採用完全前後端分離架構實現，前端應用通過 API 調用後端服務的方式實現數據交互；整套系統擁有完善的 RBAC 權限架構體系，權限顆粒度精細至按鈕級別，支持多主題切換模式，多端兼容手機客户端、PAD 平板、PC 電腦等終端設備，提升了用户使用體驗；同時為了簡化開發，本身集成了基礎模塊，如用户模塊、角色模塊、菜單模塊、部門模塊、崗位模塊、職級模塊、日誌模塊、租户模塊、字典模塊、配置模塊、行政區劃、任務調度等基礎功能模塊； 為了支持個別企業和開發者多租户功能需求，在設計之初已重點設計並支持多租户功能；為了實現項目快速開發，官方自定義研發了整套代碼生成器功能，可以根據單個規範的數據表結構一鍵生成模塊的後端文件代碼和前端模塊代碼；為了高度適配企業、政府和開發者定製化項目的需求，目前單體前後端分離架構發行了多個版本，根據實際需求按需選擇即可，軟件框架本身已集成了權限架構體系和基礎功能模塊，極大的提高了開發效率，降低了項目研發成本以及節省了人力。&lt;/p&gt; 
-&lt;h4&gt;軟件架構&lt;/h4&gt; 
-&lt;ul&gt; 
- &lt;li&gt;採用&lt;span&gt;&amp;nbsp;&lt;/span&gt;&lt;code&gt;JDK17&lt;/code&gt;&lt;span&gt;&amp;nbsp;&lt;/span&gt;基礎開發環境，採用&lt;span&gt;&amp;nbsp;&lt;/span&gt;&lt;code&gt;Maven&lt;/code&gt;&lt;span&gt;&amp;nbsp;&lt;/span&gt;構建工具；&lt;/li&gt; 
- &lt;li&gt;採用&lt;span&gt;&amp;nbsp;&lt;/span&gt;&lt;code&gt;模塊化&lt;/code&gt;、&lt;code&gt;插件化&lt;/code&gt;&lt;span&gt;&amp;nbsp;&lt;/span&gt;設計，實現核心類庫按需引入；&lt;/li&gt; 
- &lt;li&gt;採用&lt;span&gt;&amp;nbsp;&lt;/span&gt;&lt;code&gt;Spring Cloud&lt;/code&gt;、&lt;code&gt;Spring Cloud Alibaba&lt;/code&gt;、&lt;code&gt;SpringBoot&lt;/code&gt;&lt;span&gt;&amp;nbsp;&lt;/span&gt;等微服務組件框架；&lt;/li&gt; 
- &lt;li&gt;採用&lt;span&gt;&amp;nbsp;&lt;/span&gt;&lt;code&gt;Spring Authorization Server&lt;/code&gt;、&lt;code&gt;SpringSecurity&lt;/code&gt;等微服務統一認證框架；&lt;/li&gt; 
- &lt;li&gt;採用&lt;span&gt;&amp;nbsp;&lt;/span&gt;&lt;code&gt;Nacos&lt;/code&gt;、&lt;code&gt;Seata&lt;/code&gt;、 等微服務統一認證框架；&lt;/li&gt; 
- &lt;li&gt;採用&lt;span&gt;&amp;nbsp;&lt;/span&gt;&lt;code&gt;Vue3&lt;/code&gt;、&lt;code&gt;TypeScript&lt;/code&gt;、&lt;code&gt;AntDesign&lt;/code&gt;、&lt;code&gt;Vite&lt;/code&gt;&lt;span&gt;&amp;nbsp;&lt;/span&gt;等技術實現完全前後端分離；&lt;/li&gt; 
- &lt;li&gt;採用&lt;span&gt;&amp;nbsp;&lt;/span&gt;&lt;code&gt;MybatisPlus&lt;/code&gt;、&lt;code&gt;hutool&lt;/code&gt;、&lt;code&gt;fastjson2&lt;/code&gt;&lt;span&gt;&amp;nbsp;&lt;/span&gt;等主流開源框架；&lt;/li&gt; 
- &lt;li&gt;採用&lt;span&gt;&amp;nbsp;&lt;/span&gt;&lt;code&gt;Json Web Token&lt;/code&gt;&lt;span&gt;&amp;nbsp;&lt;/span&gt;、&lt;code&gt;redis&lt;/code&gt;&lt;span&gt;&amp;nbsp;&lt;/span&gt;緩存技術等令牌生成機制；&lt;/li&gt; 
- &lt;li&gt;採用&lt;span&gt;&amp;nbsp;&lt;/span&gt;&lt;code&gt;AOP&lt;/code&gt;&lt;span&gt;&amp;nbsp;&lt;/span&gt;切面技術實現日誌及權限訪問控制，顆粒度至按鈕節點級別；&lt;/li&gt; 
- &lt;li&gt;採用&lt;span&gt;&amp;nbsp;&lt;/span&gt;&lt;code&gt;Validator&lt;/code&gt;&lt;span&gt;&amp;nbsp;&lt;/span&gt;驗證器，實現&lt;span&gt;&amp;nbsp;&lt;/span&gt;&lt;code&gt;DTO&lt;/code&gt;&lt;span&gt;&amp;nbsp;&lt;/span&gt;參數嚴格校驗；&lt;/li&gt; 
- &lt;li&gt;採用&lt;span&gt;&amp;nbsp;&lt;/span&gt;&lt;code&gt;SpringDoc&lt;/code&gt;、&lt;code&gt;knife4j&lt;/code&gt;&lt;span&gt;&amp;nbsp;&lt;/span&gt;實現在線文檔查看；&lt;/li&gt; 
- &lt;li&gt;採用&lt;span&gt;&amp;nbsp;&lt;/span&gt;&lt;code&gt;redis&lt;/code&gt;&lt;span&gt;&amp;nbsp;&lt;/span&gt;緩存技術記錄登錄信息，實現在線強制退出機制；&lt;/li&gt; 
- &lt;li&gt;採用&lt;span&gt;&amp;nbsp;&lt;/span&gt;&lt;code&gt;mybatis-plus-generator&lt;/code&gt;&lt;span&gt;&amp;nbsp;&lt;/span&gt;實現代碼生成器，一鍵生成模塊文件；&lt;/li&gt; 
- &lt;li&gt;採用&lt;span&gt;&amp;nbsp;&lt;/span&gt;&lt;code&gt;MybatisPlus&lt;/code&gt;&lt;span&gt;&amp;nbsp;&lt;/span&gt;實現多租户數據隔離策略；&lt;/li&gt; 
- &lt;li&gt;集成&lt;span&gt;&amp;nbsp;&lt;/span&gt;&lt;code&gt;阿里短信&lt;/code&gt;、&lt;code&gt;郵件&lt;/code&gt;&lt;span&gt;&amp;nbsp;&lt;/span&gt;等核心功能，實現業務解耦；&lt;/li&gt; 
- &lt;li&gt;集成&lt;span&gt;&amp;nbsp;&lt;/span&gt;&lt;code&gt;在線監控&lt;/code&gt;&lt;span&gt;&amp;nbsp;&lt;/span&gt;技術，實現應用健康度、性能在線監控；&lt;/li&gt; 
- &lt;li&gt;集成&lt;span&gt;&amp;nbsp;&lt;/span&gt;&lt;code&gt;Druid&lt;/code&gt;&lt;span&gt;&amp;nbsp;&lt;/span&gt;數據庫連接池，用於管理數據庫連接；&lt;/li&gt; 
-&lt;/ul&gt; 
-&lt;h4&gt;軟件信息&lt;/h4&gt; 
-&lt;ul&gt; 
- &lt;li&gt;軟件名稱：藍鯨雲微服務 Nacos+AntDesign 版&lt;/li&gt; 
- &lt;li&gt;軟件作者：@藍鯨雲團隊&lt;/li&gt; 
- &lt;li&gt;軟件協議：Apache-2.0&lt;/li&gt; 
- &lt;li&gt;官網網址：&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fwww.lanjingcloud.vip" target="_blank"&gt;https://www.lanjingcloud.vip&lt;/a&gt;&lt;/li&gt; 
- &lt;li&gt;文檔網址：&lt;a href="https://www.oschina.net/action/GoToLink?url=http%3A%2F%2Fdocs.cloud.nacos.antdvue.lanjingcloud.vip" target="_blank"&gt;http://docs.cloud.nacos.antdvue.lanjingcloud.vip&lt;/a&gt;&lt;/li&gt; 
- &lt;li&gt;演示地址：&lt;a href="https://www.oschina.net/action/GoToLink?url=http%3A%2F%2Fmanage.cloud.nacos.antdvue.lanjingcloud.vip" target="_blank"&gt;http://manage.cloud.nacos.antdvue.lanjingcloud.vip&lt;/a&gt;&lt;/li&gt; 
-&lt;/ul&gt; 
-&lt;h4&gt;功能模塊&lt;/h4&gt; 
-&lt;ul&gt; 
- &lt;li&gt;主控制枱：純靜態頁面，提供給有需要的企業、開發者做定製化使用；&lt;/li&gt; 
- &lt;li&gt;用户管理：實現用户數據錄入於管理，增強了賬户安全；&lt;/li&gt; 
- &lt;li&gt;角色管理：基於 RBAC 權限架構體系，實現角色權限的管理；&lt;/li&gt; 
- &lt;li&gt;菜單管理：用於權限菜單數據管理以及菜單節點權限數據管理；&lt;/li&gt; 
- &lt;li&gt;部門管理：用於管理系統架構體系中的部門數據；&lt;/li&gt; 
- &lt;li&gt;崗位管理：針對用户崗位屬性的數據進行統一維護管理；&lt;/li&gt; 
- &lt;li&gt;租户管理：主要對租户入住數據進行管理和租户賬號開通管理；&lt;/li&gt; 
- &lt;li&gt;日誌管理：用於登錄日誌、操作日誌管理和維護；&lt;/li&gt; 
- &lt;li&gt;參數管理：用於對系統核心參數的定義和管理；&lt;/li&gt; 
- &lt;li&gt;配置管理：用於對動態配置參數的統一管理和設置；&lt;/li&gt; 
- &lt;li&gt;字典管理：用於對字典數據、字典項數據的管理為維護；&lt;/li&gt; 
- &lt;li&gt;通知公告：主要對通知、公告等站外、站內數據進行管理；&lt;/li&gt; 
- &lt;li&gt;行政區劃：針對全國行政區劃分數據進行管理和維護；&lt;/li&gt; 
- &lt;li&gt;消息管理：對系統消息模塊進行查閲和管理；&lt;/li&gt; 
- &lt;li&gt;短信日誌：主要用於記錄發送短信的日誌信息進行管理；&lt;/li&gt; 
- &lt;li&gt;郵件日誌：主要用於記錄郵件發送記錄和數據維護管理；&lt;/li&gt; 
- &lt;li&gt;文件日誌：主要用於上傳圖片、文件等資源附件日誌記錄進行管理；&lt;/li&gt; 
- &lt;li&gt;文件模板：主要對系統中使用的文件模板進行上傳和管理；&lt;/li&gt; 
- &lt;li&gt;郵件模板：主要對系統使用的郵件模板文件進行管理；&lt;/li&gt; 
- &lt;li&gt;短信模板：主要對系統短信模板信息進行錄入、維護和管理；&lt;/li&gt; 
- &lt;li&gt;消息模板：主要針對系統業務發送的消息內容進行統一管理；&lt;/li&gt; 
- &lt;li&gt;系統設置：針對系統的常規配置數據進行可視化管理維護；&lt;/li&gt; 
- &lt;li&gt;CMS 管理：主要用於網站相關的數據進行管理的模塊；&lt;/li&gt; 
- &lt;li&gt;任務調度：主要用於對定時任務進行定義和統一調度管理；&lt;/li&gt; 
- &lt;li&gt;SQL 監控：主要結合 Druid 數據庫連接池技術實現數據庫 SQL 監控管理；&lt;/li&gt; 
- &lt;li&gt;性能監控：用於監控應用 CPU、內存、服務器、磁盤、虛擬機等信息；&lt;/li&gt; 
- &lt;li&gt;健康監控：主要用於對系統健康度和運行狀態、性能進行監控；&lt;/li&gt; 
- &lt;li&gt;代碼生成：官方定製化模板生成器，用於簡化單模塊開發，提高效率；&lt;/li&gt; 
- &lt;li&gt;接口文檔：用於查閲系統接口在線文檔，查閲 API 地址、入參、出參等；&lt;/li&gt; 
-&lt;/ul&gt; 
-&lt;h4&gt;其他版本&lt;/h4&gt; 
-&lt;table cellspacing="0" style="-webkit-text-stroke-width:0px; background-color:#ffffff; border-collapse:collapse; border-spacing:0px; box-sizing:border-box; color:#40485b; display:block; font-family:-apple-system,BlinkMacSystemFont,&amp;quot;Segoe UI&amp;quot;,Helvetica,Arial,&amp;quot;Apple Color Emoji&amp;quot;,&amp;quot;Segoe UI Emoji&amp;quot;,&amp;quot;Segoe UI Symbol&amp;quot;,&amp;quot;Liberation Sans&amp;quot;,&amp;quot;PingFang SC&amp;quot;,&amp;quot;Microsoft YaHei&amp;quot;,&amp;quot;Hiragino Sans GB&amp;quot;,&amp;quot;Wenquanyi Micro Hei&amp;quot;,&amp;quot;WenQuanYi Zen Hei&amp;quot;,&amp;quot;ST Heiti&amp;quot;,SimHei,SimSun,&amp;quot;WenQuanYi Zen Hei Sharp&amp;quot;,sans-serif; font-size:16px; font-style:normal; font-variant-caps:normal; font-variant-ligatures:normal; font-weight:400; letter-spacing:normal; margin-bottom:16px; margin-top:0px; orphans:2; overflow:auto; text-align:left; text-decoration-color:initial; text-decoration-style:initial; text-decoration-thickness:initial; text-transform:none; white-space:normal; widows:2; width:857.286px; word-break:initial; word-spacing:0px"&gt; 
- &lt;tbody&gt; 
-  &lt;tr&gt; 
-   &lt;th&gt;版本名稱&lt;/th&gt; 
-   &lt;th&gt;説明&lt;/th&gt; 
-   &lt;th&gt;地址&lt;/th&gt; 
-  &lt;/tr&gt; 
- &lt;/tbody&gt; 
- &lt;tbody&gt; 
-  &lt;tr&gt; 
-   &lt;td style="border-color:#dfe2e5; border-style:solid; border-width:1px"&gt;藍鯨雲單體 Thymeleaf+Layui 版&lt;/td&gt; 
-   &lt;td style="border-color:#dfe2e5; border-style:solid; border-width:1px"&gt;基於 SpringBoot3、SpringSecurity、MybatisPlus、Thymeleaf、Layui、MySQL 等技術棧&lt;/td&gt; 
-   &lt;td style="border-color:#dfe2e5; border-style:solid; border-width:1px"&gt;&lt;a href="https://gitee.com/lanjingcloud/LanJing-Layui"&gt;https://gitee.com/lanjingcloud/LanJing-Layui&lt;/a&gt;&lt;/td&gt; 
-  &lt;/tr&gt; 
-  &lt;tr&gt; 
-   &lt;td style="border-color:#dfe2e5; border-style:solid; border-width:1px"&gt;藍鯨雲單體 Vue3+ElementPlus 版&lt;/td&gt; 
-   &lt;td style="border-color:#dfe2e5; border-style:solid; border-width:1px"&gt;基於 SpringBoot3、SpringSecurity、MybatisPlus、Vue3、ElementPlus、TypeScript、Vite、MySQL 等技術棧&lt;/td&gt; 
-   &lt;td style="border-color:#dfe2e5; border-style:solid; border-width:1px"&gt;&lt;a href="https://gitee.com/lanjingcloud2/LanJing-EleVue"&gt;https://gitee.com/lanjingcloud2/LanJing-EleVue&lt;/a&gt;&lt;/td&gt; 
-  &lt;/tr&gt; 
-  &lt;tr&gt; 
-   &lt;td style="border-color:#dfe2e5; border-style:solid; border-width:1px"&gt;藍鯨雲單體 Vue3+AntDesign 版&lt;/td&gt; 
-   &lt;td style="border-color:#dfe2e5; border-style:solid; border-width:1px"&gt;基於 SpringBoot3、SpringSecurity、MybatisPlus、Vue3、AntDesign、TypeScript、Vite、MySQL 等技術棧&lt;/td&gt; 
-   &lt;td style="border-color:#dfe2e5; border-style:solid; border-width:1px"&gt;&lt;a href="https://gitee.com/lanjingcloud2/LanJing-AntdVue"&gt;https://gitee.com/lanjingcloud2/LanJing-AntdVue&lt;/a&gt;&lt;/td&gt; 
-  &lt;/tr&gt; 
-  &lt;tr&gt; 
-   &lt;td style="border-color:#dfe2e5; border-style:solid; border-width:1px"&gt;藍鯨雲單體 Vue3+NaiveUI 版&lt;/td&gt; 
-   &lt;td style="border-color:#dfe2e5; border-style:solid; border-width:1px"&gt;基於 SpringBoot3、SpringSecurity、MybatisPlus、Vue3、NaiveUI、TypeScript、Vite、MySQL 等技術棧&lt;/td&gt; 
-   &lt;td style="border-color:#dfe2e5; border-style:solid; border-width:1px"&gt;&lt;a href="https://gitee.com/lanjingcloud2/LanJing-NaiveVue"&gt;https://gitee.com/lanjingcloud2/LanJing-NaiveVue&lt;/a&gt;&lt;/td&gt; 
-  &lt;/tr&gt; 
-  &lt;tr&gt; 
-   &lt;td style="border-color:#dfe2e5; border-style:solid; border-width:1px"&gt;藍鯨雲單體 Vue3+ArcoDesign 版&lt;/td&gt; 
-   &lt;td style="border-color:#dfe2e5; border-style:solid; border-width:1px"&gt;基於 SpringBoot3、SpringSecurity、MybatisPlus、Vue3、ArcoDesign、TypeScript、Vite、MySQL 等技術棧&lt;/td&gt; 
-   &lt;td style="border-color:#dfe2e5; border-style:solid; border-width:1px"&gt;&lt;a href="https://gitee.com/lanjingcloud2/LanJing-ArcoVue"&gt;https://gitee.com/lanjingcloud2/LanJing-ArcoVue&lt;/a&gt;&lt;/td&gt; 
-  &lt;/tr&gt; 
-  &lt;tr&gt; 
-   &lt;td style="border-color:#dfe2e5; border-style:solid; border-width:1px"&gt;藍鯨雲微服務 Nacos+ElementPlus 版&lt;/td&gt; 
-   &lt;td style="border-color:#dfe2e5; border-style:solid; border-width:1px"&gt;基於 SpringCloud、SpringSecurity、OAuth2、Nacos、Seata、MybatisPlus、Vue3、ElementPlus、TypeScript、Vite、MySQL 等技術棧&lt;/td&gt; 
-   &lt;td style="border-color:#dfe2e5; border-style:solid; border-width:1px"&gt;&lt;a href="https://gitee.com/lanjingcloud2/LanJing-Nacos-EleVue"&gt;https://gitee.com/lanjingcloud2/LanJing-Nacos-EleVue&lt;/a&gt;&lt;/td&gt; 
-  &lt;/tr&gt; 
-  &lt;tr&gt; 
-   &lt;td style="border-color:#dfe2e5; border-style:solid; border-width:1px"&gt;藍鯨雲微服務 Nacos+AntDesign 版&lt;/td&gt; 
-   &lt;td style="border-color:#dfe2e5; border-style:solid; border-width:1px"&gt;基於 SpringCloud、SpringSecurity、OAuth2、Nacos、Seata、MybatisPlus、Vue3、AntDesign、TypeScript、Vite、MySQL 等技術棧&lt;/td&gt; 
-   &lt;td style="border-color:#dfe2e5; border-style:solid; border-width:1px"&gt;&lt;a href="https://gitee.com/lanjingcloud2/LanJing-Nacos-AntdVue"&gt;https://gitee.com/lanjingcloud2/LanJing-Nacos-AntdVue&lt;/a&gt;&lt;/td&gt; 
-  &lt;/tr&gt; 
-  &lt;tr&gt; 
-   &lt;td style="border-color:#dfe2e5; border-style:solid; border-width:1px"&gt;藍鯨雲微服務 Nacos+NaiveUI 版&lt;/td&gt; 
-   &lt;td style="border-color:#dfe2e5; border-style:solid; border-width:1px"&gt;基於 SpringCloud、SpringSecurity、OAuth2、Nacos、Seata、MybatisPlus、Vue3、NaiveUI、TypeScript、Vite、MySQL 等技術棧&lt;/td&gt; 
-   &lt;td style="border-color:#dfe2e5; border-style:solid; border-width:1px"&gt;&lt;a href="https://gitee.com/lanjingcloud2/LanJing-Nacos-NaiveVue"&gt;https://gitee.com/lanjingcloud2/LanJing-Nacos-NaiveVue&lt;/a&gt;&lt;/td&gt; 
-  &lt;/tr&gt; 
-  &lt;tr&gt; 
-   &lt;td style="border-color:#dfe2e5; border-style:solid; border-width:1px"&gt;藍鯨雲微服務 Nacos+ArcoDesign 版&lt;/td&gt; 
-   &lt;td style="border-color:#dfe2e5; border-style:solid; border-width:1px"&gt;基於 SpringCloud、SpringSecurity、OAuth2、Nacos、Seata、MybatisPlus、Vue3、ArcoDesign、TypeScript、Vite、MySQL 等技術棧&lt;/td&gt; 
-   &lt;td style="border-color:#dfe2e5; border-style:solid; border-width:1px"&gt;&lt;a href="https://gitee.com/lanjingcloud2/LanJing-Nacos-ArcoVue"&gt;https://gitee.com/lanjingcloud2/LanJing-Nacos-ArcoVue&lt;/a&gt;&lt;/td&gt; 
-  &lt;/tr&gt; 
- &lt;/tbody&gt; 
-&lt;/table&gt; 
-&lt;h4&gt;模塊預覽&lt;/h4&gt; 
-&lt;p&gt;&lt;img alt="" src="https://oscimg.oschina.net/oscnet/up-a25c7d93c8466dd9b599c5f9f861715eae6.png" referrerpolicy="no-referrer"&gt;&lt;/p&gt;
-                                                                                &lt;/div&gt;
-                                                                            </description>
-      <link>https://www.oschina.net/news/371032</link>
-      <guid isPermaLink="false">https://www.oschina.net/news/371032</guid>
-      <pubDate>Fri, 05 Sep 2025 22:56:00 GMT</pubDate>
-      <author>來源: 資訊</author>
-    </item>
-    <item>
-      <title>DjangoAdmin 敏捷開發框架 FastAPI+AntdVue 版本 v2.6.0 發佈</title>
-      <description>&lt;div class="content"&gt;
-                                                                    
-                                                        &lt;p&gt;&lt;span style="background-color:#ffffff; color:#333333"&gt;v2.6.0 更新內容：&lt;/span&gt;&lt;br&gt; &lt;span style="background-color:#ffffff; color:#333333"&gt;1、新增全局參數配置；&lt;/span&gt;&lt;br&gt; &lt;span style="background-color:#ffffff; color:#333333"&gt;2、新增到出 Excel 功能；&lt;/span&gt;&lt;br&gt; &lt;span style="background-color:#ffffff; color:#333333"&gt;3、新增導入 Excel 功能；&lt;/span&gt;&lt;br&gt; &lt;span style="background-color:#ffffff; color:#333333"&gt;4、新增上傳導入功能組件；&lt;/span&gt;&lt;br&gt; &lt;span style="background-color:#ffffff; color:#333333"&gt;5、新增導出下載功能組件；&lt;/span&gt;&lt;br&gt; &lt;span style="background-color:#ffffff; color:#333333"&gt;6、新增上傳文件功能；&lt;/span&gt;&lt;br&gt; &lt;span style="background-color:#ffffff; color:#333333"&gt;7、新增讀取 env 配置文件擴展；&lt;/span&gt;&lt;br&gt; &lt;span style="background-color:#ffffff; color:#333333"&gt;8、優化角色權限節點參數設置；&lt;/span&gt;&lt;br&gt; &lt;span style="background-color:#ffffff; color:#333333"&gt;9、優化非超管用户權限設置問題；&lt;/span&gt;&lt;br&gt; &lt;span style="background-color:#ffffff; color:#333333"&gt;10、修復近期用户反饋的問題；&lt;/span&gt;&lt;/p&gt; 
-&lt;div&gt; 
- &lt;div&gt; 
-  &lt;div&gt; 
-   &lt;div&gt; 
-    &lt;div&gt; 
-     &lt;div&gt; 
-      &lt;div&gt; 
-       &lt;div&gt; 
-        &lt;div&gt; 
-         &lt;div&gt; 
-          &lt;div&gt; 
-           &lt;div&gt; 
-            &lt;div&gt; 
-             &lt;div&gt; 
-              &lt;div&gt; 
-               &lt;p style="color:#333333; margin-left:0; margin-right:0; text-align:left"&gt;一款基於 Fastapi、Vue3、AntDesign、MySQL 等技術棧研發的前後端分離開發框架，設計之初就定位為一款高端產品，採用全新的架構設計，後端服務和前端都是採用全新的設計方案，兼容手機、PAD 和 PC 電腦端，具備良好的用户使用體驗；框架擁有完善的 (RBAC) 權限架構和基礎核心管理模塊，權限控制精細化到按鈕節點級別顆粒度控制，根據不同的角色分配不同的權限即可實現；為了避免重複造輪子，系統本身已經集成了基礎模塊，包括常規的權限管理、字典、配置、行政區劃等等常規模塊；開發者可以基於框架做二次開發，可以用户個人項目、公司項目以及客户定製化項目，本框架為一站式系統框架開發平台，可以幫助開發者提升開發效率、降低研發成本，同時便於後期的系統維護升級。&lt;/p&gt; 
-               &lt;h2&gt;軟件信息&lt;/h2&gt; 
-               &lt;ul&gt; 
-                &lt;li&gt;軟件名稱：DjangoAdmin 敏捷開發框架 FastAPI+AntdVue 版本&lt;/li&gt; 
-                &lt;li&gt;官網網址：&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fwww.djangoadmin.cn" target="_blank"&gt;https://www.djangoadmin.cn&lt;/a&gt;&lt;/li&gt; 
-                &lt;li&gt;文檔網址：&lt;a href="https://www.oschina.net/action/GoToLink?url=http%3A%2F%2Fdocs.fastapi.antdvue.djangoadmin.cn" target="_blank"&gt;http://docs.fastapi.antdvue.djangoadmin.cn&lt;/a&gt;&lt;/li&gt; 
-                &lt;li&gt;演示地址：&lt;a href="https://www.oschina.net/action/GoToLink?url=http%3A%2F%2Fmanage.fastapi.antdvue.djangoadmin.cn" target="_blank"&gt;http://manage.fastapi.antdvue.djangoadmin.cn&lt;/a&gt;&lt;/li&gt; 
-               &lt;/ul&gt; 
-               &lt;h2&gt;版本説明&lt;/h2&gt; 
-               &lt;table cellspacing="0" style="-webkit-text-stroke-width:0px; background-color:#ffffff; border-collapse:collapse; border-spacing:0px; border:none; box-sizing:border-box; color:#40485b; display:block; font-family:-apple-system,BlinkMacSystemFont,&amp;quot;Segoe UI&amp;quot;,Helvetica,Arial,&amp;quot;Apple Color Emoji&amp;quot;,&amp;quot;Segoe UI Emoji&amp;quot;,&amp;quot;Segoe UI Symbol&amp;quot;,&amp;quot;Liberation Sans&amp;quot;,&amp;quot;PingFang SC&amp;quot;,&amp;quot;Microsoft YaHei&amp;quot;,&amp;quot;Hiragino Sans GB&amp;quot;,&amp;quot;Wenquanyi Micro Hei&amp;quot;,&amp;quot;WenQuanYi Zen Hei&amp;quot;,&amp;quot;ST Heiti&amp;quot;,SimHei,SimSun,&amp;quot;WenQuanYi Zen Hei Sharp&amp;quot;,sans-serif; font-size:16px; font-style:normal; font-variant-caps:normal; font-variant-ligatures:normal; font-weight:400; letter-spacing:normal; line-height:inherit; margin:0px 0px 16px; max-width:100%; orphans:2; overflow:auto; text-align:left; text-decoration-color:initial; text-decoration-style:initial; text-decoration-thickness:initial; text-transform:none; white-space:normal; widows:2; width:635px; word-break:initial; word-spacing:0px"&gt; 
-                &lt;tbody&gt; 
-                 &lt;tr&gt; 
-                  &lt;th&gt;版本名稱&lt;/th&gt; 
-                  &lt;th&gt;版本説明&lt;/th&gt; 
-                  &lt;th&gt;版本地址&lt;/th&gt; 
-                 &lt;/tr&gt; 
-                &lt;/tbody&gt; 
-                &lt;tbody&gt; 
-                 &lt;tr&gt; 
-                  &lt;td style="border-color:#dfe2e5; border-style:solid; border-width:1px"&gt;Django+Layui 混編版&lt;/td&gt; 
-                  &lt;td style="border-color:#dfe2e5; border-style:solid; border-width:1px"&gt;採用 Django、Layui 等框架研發&lt;/td&gt; 
-                  &lt;td style="border-color:#dfe2e5; border-style:solid; border-width:1px"&gt;&lt;a href="https://gitee.com/djangoadmin/DjangoAdmin_Django_Layui"&gt;https://gitee.com/djangoadmin/DjangoAdmin_Django_Layui&lt;/a&gt;&lt;/td&gt; 
-                 &lt;/tr&gt; 
-                 &lt;tr&gt; 
-                  &lt;td style="border-color:#dfe2e5; border-style:solid; border-width:1px"&gt;Flask+Layui 混編版&lt;/td&gt; 
-                  &lt;td style="border-color:#dfe2e5; border-style:solid; border-width:1px"&gt;採用 Flask、Layui 等框架研發&lt;/td&gt; 
-                  &lt;td style="border-color:#dfe2e5; border-style:solid; border-width:1px"&gt;&lt;a href="https://gitee.com/djangoadmin/DjangoAdmin_Flask_Layui"&gt;https://gitee.com/djangoadmin/DjangoAdmin_Flask_Layui&lt;/a&gt;&lt;/td&gt; 
-                 &lt;/tr&gt; 
-                 &lt;tr&gt; 
-                  &lt;td style="border-color:#dfe2e5; border-style:solid; border-width:1px"&gt;FastAPI+Layui 混編版&lt;/td&gt; 
-                  &lt;td style="border-color:#dfe2e5; border-style:solid; border-width:1px"&gt;採用 FastAPI、Layui 等框架研發&lt;/td&gt; 
-                  &lt;td style="border-color:#dfe2e5; border-style:solid; border-width:1px"&gt;&lt;a href="https://gitee.com/djangoadmin/DjangoAdmin_Fastapi_Layui"&gt;https://gitee.com/djangoadmin/DjangoAdmin_Fastapi_Layui&lt;/a&gt;&lt;/td&gt; 
-                 &lt;/tr&gt; 
-                 &lt;tr&gt; 
-                  &lt;td style="border-color:#dfe2e5; border-style:solid; border-width:1px"&gt;Tornado+Layui 混編版&lt;/td&gt; 
-                  &lt;td style="border-color:#dfe2e5; border-style:solid; border-width:1px"&gt;採用 Tornado、Layui 等框架研發&lt;/td&gt; 
-                  &lt;td style="border-color:#dfe2e5; border-style:solid; border-width:1px"&gt;&lt;a href="https://gitee.com/djangoadmin/DjangoAdmin_Tornado_Layui"&gt;https://gitee.com/djangoadmin/DjangoAdmin_Tornado_Layui&lt;/a&gt;&lt;/td&gt; 
-                 &lt;/tr&gt; 
-                 &lt;tr&gt; 
-                  &lt;td style="border-color:#dfe2e5; border-style:solid; border-width:1px"&gt;Django+EleVue 前後端分離版&lt;/td&gt; 
-                  &lt;td style="border-color:#dfe2e5; border-style:solid; border-width:1px"&gt;採用 Django、Vue2.x、ElementUI 等框架研發前後端分離版本&lt;/td&gt; 
-                  &lt;td style="border-color:#dfe2e5; border-style:solid; border-width:1px"&gt;&lt;a href="https://gitee.com/djangoadmin/DjangoAdmin_Django_EleVue"&gt;https://gitee.com/djangoadmin/DjangoAdmin_Django_EleVue&lt;/a&gt;&lt;/td&gt; 
-                 &lt;/tr&gt; 
-                 &lt;tr&gt; 
-                  &lt;td style="border-color:#dfe2e5; border-style:solid; border-width:1px"&gt;Flask+EleVue 前後端分離版&lt;/td&gt; 
-                  &lt;td style="border-color:#dfe2e5; border-style:solid; border-width:1px"&gt;採用 Flask、Vue2.x、ElementUI 等框架研發前後端分離版本&lt;/td&gt; 
-                  &lt;td style="border-color:#dfe2e5; border-style:solid; border-width:1px"&gt;&lt;a href="https://gitee.com/djangoadmin/DjangoAdmin_Flask_EleVue"&gt;https://gitee.com/djangoadmin/DjangoAdmin_Flask_EleVue&lt;/a&gt;&lt;/td&gt; 
-                 &lt;/tr&gt; 
-                 &lt;tr&gt; 
-                  &lt;td style="border-color:#dfe2e5; border-style:solid; border-width:1px"&gt;FastAPI+EleVue 前後端分離版&lt;/td&gt; 
-                  &lt;td style="border-color:#dfe2e5; border-style:solid; border-width:1px"&gt;採用 FastAPI、Vue2.x、ElementUI 等框架研發前後端分離版本&lt;/td&gt; 
-                  &lt;td style="border-color:#dfe2e5; border-style:solid; border-width:1px"&gt;&lt;a href="https://gitee.com/djangoadmin/DjangoAdmin_Fastapi_EleVue"&gt;https://gitee.com/djangoadmin/DjangoAdmin_Fastapi_EleVue&lt;/a&gt;&lt;/td&gt; 
-                 &lt;/tr&gt; 
-                 &lt;tr&gt; 
-                  &lt;td style="border-color:#dfe2e5; border-style:solid; border-width:1px"&gt;Tornado+EleVue 前後端分離版&lt;/td&gt; 
-                  &lt;td style="border-color:#dfe2e5; border-style:solid; border-width:1px"&gt;採用 Tornado、Vue2.x、ElementUI 等框架研發前後端分離版本&lt;/td&gt; 
-                  &lt;td style="border-color:#dfe2e5; border-style:solid; border-width:1px"&gt;&lt;a href="https://gitee.com/djangoadmin/DjangoAdmin_Tornado_EleVue"&gt;https://gitee.com/djangoadmin/DjangoAdmin_Tornado_EleVue&lt;/a&gt;&lt;/td&gt; 
-                 &lt;/tr&gt; 
-                 &lt;tr&gt; 
-                  &lt;td style="border-color:#dfe2e5; border-style:solid; border-width:1px"&gt;Django+AntdVue 前後端分離版&lt;/td&gt; 
-                  &lt;td style="border-color:#dfe2e5; border-style:solid; border-width:1px"&gt;採用 Django、Vue3.x、AntDesign 等框架研發前後端分離版本&lt;/td&gt; 
-                  &lt;td style="border-color:#dfe2e5; border-style:solid; border-width:1px"&gt;&lt;a href="https://gitee.com/djangoadmin/DjangoAdmin_Django_AntdVue"&gt;https://gitee.com/djangoadmin/DjangoAdmin_Django_AntdVue&lt;/a&gt;&lt;/td&gt; 
-                 &lt;/tr&gt; 
-                 &lt;tr&gt; 
-                  &lt;td style="border-color:#dfe2e5; border-style:solid; border-width:1px"&gt;Flask+AntdVue 前後端分離版&lt;/td&gt; 
-                  &lt;td style="border-color:#dfe2e5; border-style:solid; border-width:1px"&gt;採用 Flask、Vue3.x、AntDesign 等框架研發前後端分離版本&lt;/td&gt; 
-                  &lt;td style="border-color:#dfe2e5; border-style:solid; border-width:1px"&gt;&lt;a href="https://gitee.com/djangoadmin/DjangoAdmin_Flask_AntdVue"&gt;https://gitee.com/djangoadmin/DjangoAdmin_Flask_AntdVue&lt;/a&gt;&lt;/td&gt; 
-                 &lt;/tr&gt; 
-                 &lt;tr&gt; 
-                  &lt;td style="border-color:#dfe2e5; border-style:solid; border-width:1px"&gt;FastAPI+AntdVue 前後端分離版&lt;/td&gt; 
-                  &lt;td style="border-color:#dfe2e5; border-style:solid; border-width:1px"&gt;採用 FastAPI、Vue3.x、AntDesign 等框架研發前後端分離版本&lt;/td&gt; 
-                  &lt;td style="border-color:#dfe2e5; border-style:solid; border-width:1px"&gt;&lt;a href="https://gitee.com/djangoadmin/DjangoAdmin_Fastapi_AntdVue"&gt;https://gitee.com/djangoadmin/DjangoAdmin_Fastapi_AntdVue&lt;/a&gt;&lt;/td&gt; 
-                 &lt;/tr&gt; 
-                 &lt;tr&gt; 
-                  &lt;td style="border-color:#dfe2e5; border-style:solid; border-width:1px"&gt;Tornado+AntdVue 前後端分離版&lt;/td&gt; 
-                  &lt;td style="border-color:#dfe2e5; border-style:solid; border-width:1px"&gt;採用 Tornado、Vue、AntDesign 等框架研發前後端分離版本&lt;/td&gt; 
-                  &lt;td style="border-color:#dfe2e5; border-style:solid; border-width:1px"&gt;&lt;a href="https://gitee.com/djangoadmin/DjangoAdmin_Tornado_AntdVue"&gt;https://gitee.com/djangoadmin/DjangoAdmin_Tornado_AntdVue&lt;/a&gt;&lt;/td&gt; 
-                 &lt;/tr&gt; 
-                &lt;/tbody&gt; 
-               &lt;/table&gt; 
-               &lt;h2&gt;模塊展示&lt;/h2&gt; 
-               &lt;p style="margin-left:0; margin-right:0"&gt;&lt;img alt="" height="1080" src="https://oscimg.oschina.net/oscnet/up-7dd1d0abdb572e300160c22888d34f366a0.png" width="1920" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-              &lt;/div&gt; 
-             &lt;/div&gt; 
-            &lt;/div&gt; 
-           &lt;/div&gt; 
-          &lt;/div&gt; 
-         &lt;/div&gt; 
-        &lt;/div&gt; 
-       &lt;/div&gt; 
-      &lt;/div&gt; 
-     &lt;/div&gt; 
-    &lt;/div&gt; 
-   &lt;/div&gt; 
-  &lt;/div&gt; 
- &lt;/div&gt; 
-&lt;/div&gt;
-                                                                                &lt;/div&gt;
-                                                                            </description>
-      <link>https://www.oschina.net/news/371030</link>
-      <guid isPermaLink="false">https://www.oschina.net/news/371030</guid>
-      <pubDate>Fri, 05 Sep 2025 22:52:00 GMT</pubDate>
-      <author>來源: 資訊</author>
-    </item>
-    <item>
-      <title>cronin v0.8.6 已經發布，服務器定時任務平台</title>
-      <description>&lt;div class="content"&gt;
-                                                                    
-                                                        &lt;p&gt;cronin v0.8.6 已經發布，服務器定時任務平台&lt;/p&gt; 
-&lt;p&gt;此版本更新內容包括：&lt;/p&gt; 
-&lt;ul&gt; 
- &lt;li&gt;鏈接設置調整：入庫從頭部菜單遷移到更多設置二級菜單；單個鏈接設置支持多環境應用。&lt;/li&gt; 
- &lt;li&gt;新增 jenkins 參數組功能，jenkins 構建相關問題優化；優化任務列表備註與名稱合併列顯示。&lt;/li&gt; 
- &lt;li&gt;日誌查詢增加默認時間為 7 天內。&lt;/li&gt; 
- &lt;li&gt;日誌消費者優化防止死鎖、sql git 提交錯誤修正。&lt;/li&gt; 
-&lt;/ul&gt; 
-&lt;p&gt;詳情查看：&lt;a href="https://gitee.com/mnyuan/cronin/releases/v0.8.6"&gt;https://gitee.com/mnyuan/cronin/releases/v0.8.6&lt;/a&gt;&lt;/p&gt;
-                                                                                &lt;/div&gt;
-                                                                            </description>
-      <link>https://www.oschina.net/news/371013/cronin-0-8-6-released</link>
-      <guid isPermaLink="false">https://www.oschina.net/news/371013/cronin-0-8-6-released</guid>
-      <pubDate>Fri, 05 Sep 2025 15:15:00 GMT</pubDate>
       <author>來源: 資訊</author>
     </item>
   </channel>
