@@ -7,8 +7,167 @@
     <generator>RSSHub</generator>
     <webMaster>contact@rsshub.app (RSSHub)</webMaster>
     <language>zh-cn</language>
-    <lastBuildDate>Fri, 12 Sep 2025 07:41:30 GMT</lastBuildDate>
+    <lastBuildDate>Fri, 12 Sep 2025 16:44:15 GMT</lastBuildDate>
     <ttl>5</ttl>
+    <item>
+      <title>鸿蒙 NEXT 应用国际化：时区与夏令时处理</title>
+      <description>&lt;div class="content"&gt;
+                                                                    
+                                                        &lt;p style="color:#222222; margin-left:0px; margin-right:0px; text-align:left"&gt;&lt;span style="color:#333333"&gt;踏入鸿蒙世界的敲门砖，标志着您在技术征途上的全新起点，提升就业竞争力，获得行业认可，点亮职业成长先机，快人一步抢占未来应用开发赛道！https://developer.huawei.com/consumer/cn/training/dev-cert-detail/101666948302721398?ha_source=hmosclass-infoq&amp;amp;ha_sourceId=89000233&lt;/span&gt;&lt;/p&gt; 
+&lt;p style="color:#222222; margin-left:0; margin-right:0; text-align:left"&gt;&lt;span style="color:#333333"&gt;本文旨在深入探讨华为鸿蒙 HarmonyOS NEXT 系统（截至目前 API12）在应用国际化中时区与夏令时处理方面的技术细节，基于实际开发实践进行总结。主要作为技术分享与交流载体，难免错漏，欢迎各位同仁提出宝贵意见和问题，以便共同进步。本文为原创内容，任何形式的转载必须注明出处及原作者。&lt;/span&gt;&lt;/p&gt; 
+&lt;p style="color:#222222; margin-left:0; margin-right:0; text-align:left"&gt;&lt;span style="color:#333333"&gt;在全球化的应用环境中，正确处理时区与夏令时是确保应用在不同地区准确显示和处理时间的关键。鸿蒙 Next 系统提供了一系列功能来支持多时区应用的开发，本文将详细介绍时区相关功能、夏令时跳变处理、时区与夏令时相关的最佳实践，以及常见问题及解决方案，抛砖引玉。&lt;/span&gt;&lt;/p&gt; 
+&lt;p style="color:#222222; margin-left:0; margin-right:0; text-align:left"&gt;&lt;strong&gt;&lt;span style="color:#333333"&gt;一、时区相关功能&lt;/span&gt;&lt;/strong&gt;&lt;/p&gt; 
+&lt;p style="color:#222222; margin-left:0; margin-right:0; text-align:left"&gt;&lt;strong&gt;&lt;span style="color:#333333"&gt;（一）获取特定时区&lt;/span&gt;&lt;/strong&gt;&lt;/p&gt; 
+&lt;p style="color:#222222; margin-left:0; margin-right:0; text-align:left"&gt;&lt;strong&gt;&lt;span style="color:#333333"&gt;1. 使用&lt;span&gt;&amp;nbsp;&lt;/span&gt;&lt;/span&gt;&lt;span style="color:#128b4e"&gt;&lt;span style="background-color:#e7f3ed"&gt;i18n.getTimeZone()&lt;/span&gt;&lt;/span&gt;&lt;span style="color:#333333"&gt;&lt;span&gt;&amp;nbsp;&lt;/span&gt;方法&lt;/span&gt;&lt;/strong&gt;&lt;/p&gt; 
+&lt;p style="color:#222222; margin-left:0; margin-right:0; text-align:left"&gt;·&lt;span style="color:#333333"&gt;开发者可以通过传入特定时区的标识符（如「America/New_York」「Asia/Shanghai」等）来获取对应的时区对象。例如：&lt;/span&gt;&lt;/p&gt; 
+&lt;div&gt;
+ &lt;img src="https://oscimg.oschina.net/oscnet//81037e896f817ff55583f15b4f90bbd6.jpeg" referrerpolicy="no-referrer"&gt; 
+ &lt;p style="margin-left:0px; margin-right:0px"&gt;&amp;nbsp;&lt;/p&gt; 
+&lt;/div&gt; 
+&lt;p style="color:#222222; margin-left:0; margin-right:0; text-align:left"&gt;&lt;strong&gt;&lt;span style="color:#333333"&gt;2. 时区对象的用途&lt;/span&gt;&lt;/strong&gt;&lt;/p&gt; 
+&lt;p style="color:#222222; margin-left:0; margin-right:0; text-align:left"&gt;·&lt;span style="color:#333333"&gt;时区对象可以用于获取该时区的各种信息，如时区的 ID（&lt;/span&gt;&lt;span style="color:#128b4e"&gt;&lt;span style="background-color:#e7f3ed"&gt;getTimeZone().getID()&lt;/span&gt;&lt;/span&gt;&lt;span style="color:#333333"&gt;）、本地化名称（&lt;/span&gt;&lt;span style="color:#128b4e"&gt;&lt;span style="background-color:#e7f3ed"&gt;getTimeZone().getDisplayName()&lt;/span&gt;&lt;/span&gt;&lt;span style="color:#333333"&gt;）、固定偏移量（&lt;/span&gt;&lt;span style="color:#128b4e"&gt;&lt;span style="background-color:#e7f3ed"&gt;getTimeZone().getRawOffset()&lt;/span&gt;&lt;/span&gt;&lt;span style="color:#333333"&gt;）和实际偏移量（&lt;/span&gt;&lt;span style="color:#128b4e"&gt;&lt;span style="background-color:#e7f3ed"&gt;getTimeZone().getOffset()&lt;/span&gt;&lt;/span&gt;&lt;span style="color:#333333"&gt;）等。这些信息对于在应用中正确处理时间显示和计算非常重要。例如，在显示用户所在时区的时间时，可以根据时区对象的信息进行格式转换和调整。&lt;/span&gt;&lt;/p&gt; 
+&lt;p style="color:#222222; margin-left:0; margin-right:0; text-align:left"&gt;&lt;strong&gt;&lt;span style="color:#333333"&gt;（二）计算固定和实际时区偏移量&lt;/span&gt;&lt;/strong&gt;&lt;/p&gt; 
+&lt;p style="color:#222222; margin-left:0; margin-right:0; text-align:left"&gt;&lt;strong&gt;&lt;span style="color:#333333"&gt;1. 固定偏移量（&lt;/span&gt;&lt;span style="color:#128b4e"&gt;&lt;span style="background-color:#e7f3ed"&gt;getRawOffset()&lt;/span&gt;&lt;/span&gt;&lt;span style="color:#333333"&gt;）&lt;/span&gt;&lt;/strong&gt;&lt;/p&gt; 
+&lt;p style="color:#222222; margin-left:0; margin-right:0; text-align:left"&gt;·&lt;span style="color:#333333"&gt;固定偏移量表示该时区相对于 0 时区（UTC 或 GMT）的基本时间差，以毫秒为单位。例如，对于「Asia/Shanghai」时区，其固定偏移量可能是 28800000 毫秒（即东八区相对于 0 时区的偏移量）。获取固定偏移量可以帮助应用在不考虑夏令时的情况下，计算该时区的基本时间差异。&lt;/span&gt;&lt;/p&gt; 
+&lt;p style="color:#222222; margin-left:0; margin-right:0; text-align:left"&gt;&lt;strong&gt;&lt;span style="color:#333333"&gt;2. 实际偏移量（&lt;/span&gt;&lt;span style="color:#128b4e"&gt;&lt;span style="background-color:#e7f3ed"&gt;getOffset()&lt;/span&gt;&lt;/span&gt;&lt;span style="color:#333333"&gt;）&lt;/span&gt;&lt;/strong&gt;&lt;/p&gt; 
+&lt;p style="color:#222222; margin-left:0; margin-right:0; text-align:left"&gt;·&lt;span style="color:#333333"&gt;实际偏移量考虑了夏令时的影响，它返回在特定时间点（通常是当前时间或指定时间）该时区相对于 0 时区的实际时间差。例如，在夏令时期间，某些时区的实际偏移量可能会发生变化。通过&lt;span&gt;&amp;nbsp;&lt;/span&gt;&lt;/span&gt;&lt;span style="color:#128b4e"&gt;&lt;span style="background-color:#e7f3ed"&gt;getOffset()&lt;/span&gt;&lt;/span&gt;&lt;span style="color:#333333"&gt;&lt;span&gt;&amp;nbsp;&lt;/span&gt;方法传入一个时间戳（如&lt;span&gt;&amp;nbsp;&lt;/span&gt;&lt;/span&gt;&lt;span style="color:#128b4e"&gt;&lt;span style="background-color:#e7f3ed"&gt;getTimeInMillis()&lt;/span&gt;&lt;/span&gt;&lt;span style="color:#333333"&gt;&lt;span&gt;&amp;nbsp;&lt;/span&gt;返回的当前时间戳），可以获取该时区在该时间点的准确偏移量。这对于在应用中显示准确的当前时间，以及处理涉及不同时区的时间计算和比较非常关键。&lt;/span&gt;&lt;/p&gt; 
+&lt;p style="color:#222222; margin-left:0; margin-right:0; text-align:left"&gt;&lt;strong&gt;&lt;span style="color:#333333"&gt;（三）获取和遍历时区列表&lt;/span&gt;&lt;/strong&gt;&lt;/p&gt; 
+&lt;p style="color:#222222; margin-left:0; margin-right:0; text-align:left"&gt;&lt;strong&gt;&lt;span style="color:#333333"&gt;1. 获取系统支持的时区 ID 列表（&lt;/span&gt;&lt;span style="color:#128b4e"&gt;&lt;span style="background-color:#e7f3ed"&gt;i18n.TimeZone.getAvailableIDs()&lt;/span&gt;&lt;/span&gt;&lt;span style="color:#333333"&gt;）&lt;/span&gt;&lt;/strong&gt;&lt;/p&gt; 
+&lt;p style="color:#222222; margin-left:0; margin-right:0; text-align:left"&gt;·&lt;span style="color:#333333"&gt;该方法返回一个包含系统支持的所有时区 ID 的数组。开发者可以利用这个列表来提供给用户选择时区的功能，或者在应用中进行时区相关的遍历和处理。例如：&lt;/span&gt;&lt;/p&gt; 
+&lt;div&gt;
+ &lt;img src="https://oscimg.oschina.net/oscnet//e4572a1a4facad5c7a03392a944f1fab.jpeg" referrerpolicy="no-referrer"&gt; 
+ &lt;p style="margin-left:0px; margin-right:0px"&gt;&amp;nbsp;&lt;/p&gt; 
+&lt;/div&gt; 
+&lt;p style="color:#222222; margin-left:0; margin-right:0; text-align:left"&gt;&lt;strong&gt;&lt;span style="color:#333333"&gt;2. 获取时区城市 ID 列表（i18n.TimeZone.getAvailableZoneCityIDs()）和遍历&lt;/span&gt;&lt;/strong&gt;&lt;/p&gt; 
+&lt;p style="color:#222222; margin-left:0; margin-right:0; text-align:left"&gt;·&lt;span style="color:#333333"&gt;获取时区城市 ID 列表可以为用户提供更直观的时区选择方式，以城市名称来表示时区。例如：&lt;/span&gt;&lt;/p&gt; 
+&lt;div&gt;
+ &lt;img src="https://oscimg.oschina.net/oscnet//de5f1f2b8c224413b34234ddc64ac554.jpeg" referrerpolicy="no-referrer"&gt; 
+ &lt;p style="margin-left:0px; margin-right:0px"&gt;&amp;nbsp;&lt;/p&gt; 
+&lt;/div&gt; 
+&lt;p style="color:#222222; margin-left:0; margin-right:0; text-align:left"&gt;·&lt;span style="color:#333333"&gt;在遍历过程中，可以获取每个城市 ID 对应的时区对象和本地化的城市名称，方便在应用中构建时区选择界面或进行其他时区相关的操作。&lt;/span&gt;&lt;/p&gt; 
+&lt;p style="color:#222222; margin-left:0; margin-right:0; text-align:justify"&gt;&lt;span&gt;（四）根据地理座标获取时区对象（&lt;br&gt; i18n.TimeZone.getTimezonesByLocation()）&lt;/span&gt;&lt;/p&gt; 
+&lt;p style="color:#222222; margin-left:0; margin-right:0; text-align:left"&gt;&lt;strong&gt;&lt;span style="color:#333333"&gt;1. 功能介绍&lt;/span&gt;&lt;/strong&gt;&lt;/p&gt; 
+&lt;p style="color:#222222; margin-left:0; margin-right:0; text-align:left"&gt;·&lt;span style="color:#333333"&gt;对于一些具有定位功能的应用，可以根据用户的地理座标获取所在的时区对象。这在需要根据用户当前位置自动设置时区的场景中非常有用，例如，地图应用、旅行应用等。&lt;/span&gt;&lt;/p&gt; 
+&lt;p style="color:#222222; margin-left:0; margin-right:0; text-align:left"&gt;&lt;strong&gt;&lt;span style="color:#333333"&gt;2. 示例代码&lt;/span&gt;&lt;/strong&gt;&lt;/p&gt; 
+&lt;div&gt;
+ &lt;img src="https://oscimg.oschina.net/oscnet//cd300701484f7a1185a670799af21266.jpeg" referrerpolicy="no-referrer"&gt; 
+ &lt;p style="margin-left:0px; margin-right:0px"&gt;&amp;nbsp;&lt;/p&gt; 
+&lt;/div&gt; 
+&lt;p style="color:#222222; margin-left:0; margin-right:0; text-align:left"&gt;&lt;strong&gt;&lt;span style="color:#333333"&gt;二、夏令时跳变处理&lt;/span&gt;&lt;/strong&gt;&lt;/p&gt; 
+&lt;p style="color:#222222; margin-left:0; margin-right:0; text-align:left"&gt;&lt;strong&gt;&lt;span style="color:#333333"&gt;（一）夏令时的原理和规则&lt;/span&gt;&lt;/strong&gt;&lt;/p&gt; 
+&lt;p style="color:#222222; margin-left:0; margin-right:0; text-align:left"&gt;&lt;strong&gt;&lt;span style="color:#333333"&gt;1. 节约能源的目的&lt;/span&gt;&lt;/strong&gt;&lt;/p&gt; 
+&lt;p style="color:#222222; margin-left:0; margin-right:0; text-align:left"&gt;·&lt;span style="color:#333333"&gt;夏令时是一种为了节约能源而人为调整时间的制度。在夏季，将时间调快一小时，使得人们早起早睡，从而减少照明等能源消耗。例如，在实行夏令时的地区，原本早上 7 点天亮，调整后早上 6 点天亮，人们起床时间提前，晚上睡觉时间也相应提前，减少了夜间照明的使用时间。&lt;/span&gt;&lt;/p&gt; 
+&lt;p style="color:#222222; margin-left:0; margin-right:0; text-align:left"&gt;&lt;strong&gt;&lt;span style="color:#333333"&gt;2. 跳变规则&lt;/span&gt;&lt;/strong&gt;&lt;/p&gt; 
+&lt;p style="color:#222222; margin-left:0; margin-right:0; text-align:left"&gt;·&lt;span style="color:#333333"&gt;夏令时开始时，当天的时间会跳过一小时，例如从凌晨 1 点直接变为凌晨 3 点，这一天的时间长度变为 23 小时；夏令时结束时，时间会回拨一小时，如从凌晨 2 点变为凌晨 1 点，当天时间长度变为 25 小时。不同地区的夏令时开始和结束日期不同，通常由当地政府规定。例如，在欧洲一些国家，夏令时开始于每年 3 月的最后一个周日凌晨 1 点，结束于 10 月的最后一个周日凌晨 1 点。&lt;/span&gt;&lt;/p&gt; 
+&lt;p style="color:#222222; margin-left:0; margin-right:0; text-align:left"&gt;&lt;strong&gt;&lt;span style="color:#333333"&gt;（二）系统对夏令时跳变的处理&lt;/span&gt;&lt;/strong&gt;&lt;/p&gt; 
+&lt;p style="color:#222222; margin-left:0; margin-right:0; text-align:left"&gt;&lt;strong&gt;&lt;span style="color:#333333"&gt;1. 自动调整时间显示&lt;/span&gt;&lt;/strong&gt;&lt;/p&gt; 
+&lt;p style="color:#222222; margin-left:0; margin-right:0; text-align:left"&gt;·&lt;span style="color:#333333"&gt;鸿蒙系统会根据系统所在地区的夏令时设置，自动调整时间的显示。当进入夏令时期间，系统时钟会自动向前调整一小时，应用获取到的系统时间也会相应改变；当夏令时结束时，系统时钟会自动回拨一小时。这确保了应用在使用系统时间时，能够正确反映夏令时的变化。例如，在一个时钟应用中，用户无需手动调整时间，系统会自动在夏令时开始和结束时更新时间显示。&lt;/span&gt;&lt;/p&gt; 
+&lt;p style="color:#222222; margin-left:0; margin-right:0; text-align:left"&gt;&lt;strong&gt;&lt;span style="color:#333333"&gt;2. 时间计算和存储的影响&lt;/span&gt;&lt;/strong&gt;&lt;/p&gt; 
+&lt;p style="color:#222222; margin-left:0; margin-right:0; text-align:left"&gt;·&lt;span style="color:#333333"&gt;在进行时间计算时，开发者需要注意夏令时跳变对时间差计算的影响。由于夏令时期间时间的不连续性，计算两个时间点之间的时间差时，可能需要特殊处理。例如，在计算从夏令时开始前到夏令时开始后的时间差时，要考虑到时间跳过了一小时。对于时间的存储，建议使用 0 时区标准时间（UTC 或 GMT），以避免夏令时跳变带来的影响。在存储时间数据时，将本地时间转换为 UTC 时间进行存储，在显示给用户时，再根据用户所在时区和夏令时设置转换为本地时间，确保时间数据的准确性和一致性。&lt;/span&gt;&lt;/p&gt; 
+&lt;p style="color:#222222; margin-left:0; margin-right:0; text-align:left"&gt;&lt;strong&gt;&lt;span style="color:#333333"&gt;（三）应用中的夏令时适配&lt;/span&gt;&lt;/strong&gt;&lt;/p&gt; 
+&lt;p style="color:#222222; margin-left:0; margin-right:0; text-align:left"&gt;&lt;strong&gt;&lt;span style="color:#333333"&gt;1. 日程安排和提醒功能&lt;/span&gt;&lt;/strong&gt;&lt;/p&gt; 
+&lt;p style="color:#222222; margin-left:0; margin-right:0; text-align:left"&gt;·&lt;span style="color:#333333"&gt;在应用的日程安排和提醒功能中，需要正确处理夏令时跳变对日程时间的影响。例如，如果用户设置了一个在夏令时开始当天凌晨 2 点的提醒，当夏令时开始时，这个提醒时间实际上应该变为凌晨 3 点（按照新的时间规则）。应用需要根据夏令时规则自动调整日程和提醒时间，确保用户不会因为夏令时跳变而错过重要事件。可以在日程和提醒的时间存储和计算中，考虑夏令时因素，当检测到夏令时跳变时，对相关时间进行调整。&lt;/span&gt;&lt;/p&gt; 
+&lt;p style="color:#222222; margin-left:0; margin-right:0; text-align:left"&gt;&lt;strong&gt;&lt;span style="color:#333333"&gt;2. 时间相关的业务逻辑处理&lt;/span&gt;&lt;/strong&gt;&lt;/p&gt; 
+&lt;p style="color:#222222; margin-left:0; margin-right:0; text-align:left"&gt;·&lt;span style="color:#333333"&gt;对于其他与时间相关的业务逻辑，如时间限制的活动（如限时促销、在线考试等），也要进行夏令时适配。在活动开始和结束时间的判断中，考虑夏令时跳变的情况，确保活动时间的准确性。例如，一个限时促销活动原计划在夏令时结束当天晚上 10 点结束，如果不考虑夏令时，可能会因为时间回拨而导致活动提前结束。因此，在活动时间判断逻辑中，要根据夏令时规则进行调整，保证活动按照预期时间进行。&lt;/span&gt;&lt;/p&gt; 
+&lt;p style="color:#222222; margin-left:0; margin-right:0; text-align:left"&gt;&lt;strong&gt;&lt;span style="color:#333333"&gt;三、时区与夏令时相关的最佳实践&lt;/span&gt;&lt;/strong&gt;&lt;/p&gt; 
+&lt;p style="color:#222222; margin-left:0; margin-right:0; text-align:left"&gt;&lt;strong&gt;&lt;span style="color:#333333"&gt;（一）始终使用 0 时区标准时间（UTC 或 GMT）进行时间存储和传输&lt;/span&gt;&lt;/strong&gt;&lt;/p&gt; 
+&lt;p style="color:#222222; margin-left:0; margin-right:0; text-align:left"&gt;&lt;strong&gt;&lt;span style="color:#333333"&gt;1. 避免时间混淆&lt;/span&gt;&lt;/strong&gt;&lt;/p&gt; 
+&lt;p style="color:#222222; margin-left:0; margin-right:0; text-align:left"&gt;·&lt;span style="color:#333333"&gt;使用 0 时区标准时间可以消除不同时区和夏令时带来的时间差异问题。无论用户所在时区如何，将时间转换为 UTC 时间进行存储和传输，确保了时间数据在后端和不同前端设备之间的一致性。例如，在一个跨国的在线协作应用中，用户在不同时区创建和编辑文档，将文档的创建时间、修改时间等以 UTC 时间存储，避免了因为时区不同导致的时间显示混乱问题。&lt;/span&gt;&lt;/p&gt; 
+&lt;p style="color:#222222; margin-left:0; margin-right:0; text-align:left"&gt;&lt;strong&gt;&lt;span style="color:#333333"&gt;2. 方便数据处理和转换&lt;/span&gt;&lt;/strong&gt;&lt;/p&gt; 
+&lt;p style="color:#222222; margin-left:0; margin-right:0; text-align:left"&gt;·&lt;span style="color:#333333"&gt;在后端处理时间数据时，使用 UTC 时间可以简化时间计算和比较逻辑。同时，在前端显示时间时，根据用户所在时区和夏令时设置，将 UTC 时间转换为本地时间进行显示，这一过程相对简单且不易出错。例如，在一个全球的社交应用中，用户发布的动态时间以 UTC 时间存储在服务器上，当其他用户查看动态时，根据自己所在时区将 UTC 时间转换为本地时间显示，确保每个用户看到的时间都是符合自己所在时区习惯的。&lt;/span&gt;&lt;/p&gt; 
+&lt;p style="color:#222222; margin-left:0; margin-right:0; text-align:left"&gt;&lt;strong&gt;&lt;span style="color:#333333"&gt;（二）在应用中提供明确的时区设置选项&lt;/span&gt;&lt;/strong&gt;&lt;/p&gt; 
+&lt;p style="color:#222222; margin-left:0; margin-right:0; text-align:left"&gt;&lt;strong&gt;&lt;span style="color:#333333"&gt;1. 满足用户个性化需求&lt;/span&gt;&lt;/strong&gt;&lt;/p&gt; 
+&lt;p style="color:#222222; margin-left:0; margin-right:0; text-align:left"&gt;·&lt;span style="color:#333333"&gt;尽管系统可以自动获取用户所在时区，但提供时区设置选项可以让用户根据自己的需求进行调整。例如，用户可能经常在不同时区旅行或工作，需要手动设置应用使用的时区。在应用的设置界面中，提供一个时区选择列表，用户可以从系统支持的时区列表中选择自己所在的时区或期望使用的时区。&lt;/span&gt;&lt;/p&gt; 
+&lt;p style="color:#222222; margin-left:0; margin-right:0; text-align:left"&gt;&lt;strong&gt;&lt;span style="color:#333333"&gt;2. 提高应用的灵活性和适应性&lt;/span&gt;&lt;/strong&gt;&lt;/p&gt; 
+&lt;p style="color:#222222; margin-left:0; margin-right:0; text-align:left"&gt;·&lt;span style="color:#333333"&gt;对于一些特殊场景，如用户需要查看其他时区的时间信息（如查看国际航班起飞时间、与不同时区的团队成员协作等），明确的时区设置选项可以让用户方便地切换时区，查看相应的时间。同时，在应用中记录用户选择的时区，以便在后续的时间显示和计算中使用，提高应用对不同用户场景的适应性。&lt;/span&gt;&lt;/p&gt; 
+&lt;p style="color:#222222; margin-left:0; margin-right:0; text-align:left"&gt;&lt;strong&gt;&lt;span style="color:#333333"&gt;（三）处理时区和夏令时变化的实时更新&lt;/span&gt;&lt;/strong&gt;&lt;/p&gt; 
+&lt;p style="color:#222222; margin-left:0; margin-right:0; text-align:left"&gt;&lt;strong&gt;&lt;span style="color:#333333"&gt;1. 监听系统时区和夏令时变化事件&lt;/span&gt;&lt;/strong&gt;&lt;/p&gt; 
+&lt;p style="color:#222222; margin-left:0; margin-right:0; text-align:left"&gt;·&lt;span style="color:#333333"&gt;鸿蒙系统可能提供了监听时区和夏令时变化的事件机制，开发者可以注册相关监听器，在系统时区或夏令时发生变化时及时收到通知。例如：&lt;/span&gt;&lt;/p&gt; 
+&lt;div&gt;
+ &lt;img src="https://oscimg.oschina.net/oscnet//036a0d6fe8a8d49e0cd043cdd8271f40.jpeg" referrerpolicy="no-referrer"&gt; 
+ &lt;p style="margin-left:0px; margin-right:0px"&gt;&amp;nbsp;&lt;/p&gt; 
+&lt;/div&gt; 
+&lt;p style="color:#222222; margin-left:0; margin-right:0; text-align:left"&gt;&lt;strong&gt;&lt;span style="color:#333333"&gt;2. 及时更新应用界面和数据&lt;/span&gt;&lt;/strong&gt;&lt;/p&gt; 
+&lt;p style="color:#222222; margin-left:0; margin-right:0; text-align:left"&gt;·&lt;span style="color:#333333"&gt;当收到时区或夏令时变化通知后，立即更新应用中的时间显示、日程安排、提醒等相关内容。确保用户在系统时区或夏令时变化后，能够在应用中看到正确的时间信息，并且日程和提醒功能不受影响。例如，在一个日历应用中，当系统时区或夏令时变化时，重新计算并显示日程事件的时间，更新提醒设置，保证用户不会因为系统时间变化而错过重要日程。&lt;/span&gt;&lt;/p&gt; 
+&lt;p style="color:#222222; margin-left:0; margin-right:0; text-align:left"&gt;&lt;strong&gt;&lt;span style="color:#333333"&gt;（四）在用户界面中清晰显示时区和夏令时信息&lt;/span&gt;&lt;/strong&gt;&lt;/p&gt; 
+&lt;p style="color:#222222; margin-left:0; margin-right:0; text-align:left"&gt;&lt;strong&gt;&lt;span style="color:#333333"&gt;1. 提高用户对时间的理解&lt;/span&gt;&lt;/strong&gt;&lt;/p&gt; 
+&lt;p style="color:#222222; margin-left:0; margin-right:0; text-align:left"&gt;·&lt;span style="color:#333333"&gt;在应用中显示时间时，同时显示时区和夏令时信息（如果适用），可以帮助用户更好地理解时间的含义。例如，在一个跨时区的会议应用中，显示会议时间时，同时标注会议所在时区（如「会议时间：2023-10-15 10:00 AM (GMT+8, 夏令时)」），让用户清楚知道会议时间是相对于哪个时区的，以及是否处于夏令时期间。&lt;/span&gt;&lt;/p&gt; 
+&lt;p style="color:#222222; margin-left:0; margin-right:0; text-align:left"&gt;&lt;strong&gt;&lt;span style="color:#333333"&gt;2. 避免用户误解和混淆&lt;/span&gt;&lt;/strong&gt;&lt;/p&gt; 
+&lt;p style="color:#222222; margin-left:0; margin-right:0; text-align:left"&gt;·&lt;span style="color:#333333"&gt;特别是在涉及多个时区的交互场景中，清晰的时区和夏令时信息可以避免用户对时间产生误解。例如，在一个全球的即时通讯应用中，当用户查看其他地区用户发送的消息时间时，显示时区和夏令时信息可以帮助用户准确判断消息的发送时间顺序，避免因时区差异导致的混淆。&lt;/span&gt;&lt;/p&gt; 
+&lt;p style="color:#222222; margin-left:0; margin-right:0; text-align:left"&gt;&lt;strong&gt;&lt;span style="color:#333333"&gt;四、常见时区与夏令时处理问题及解决方案&lt;/span&gt;&lt;/strong&gt;&lt;/p&gt; 
+&lt;p style="color:#222222; margin-left:0; margin-right:0; text-align:left"&gt;&lt;strong&gt;&lt;span style="color:#333333"&gt;（一）时区转换错误&lt;/span&gt;&lt;/strong&gt;&lt;/p&gt; 
+&lt;p style="color:#222222; margin-left:0; margin-right:0; text-align:left"&gt;&lt;strong&gt;&lt;span style="color:#333333"&gt;1. 问题描述&lt;/span&gt;&lt;/strong&gt;&lt;/p&gt; 
+&lt;p style="color:#222222; margin-left:0; margin-right:0; text-align:left"&gt;·&lt;span style="color:#333333"&gt;在进行时区转换时，可能出现时间计算错误，导致转换后的时间不准确。例如，将一个时区的时间转换为另一个时区的时间时，没有正确考虑时区偏移量和夏令时的影响，使得转换后的时间与实际期望的时间不符。&lt;/span&gt;&lt;/p&gt; 
+&lt;p style="color:#222222; margin-left:0; margin-right:0; text-align:left"&gt;&lt;strong&gt;&lt;span style="color:#333333"&gt;2. 解决方案&lt;/span&gt;&lt;/strong&gt;&lt;/p&gt; 
+&lt;p style="color:#222222; margin-left:0; margin-right:0; text-align:left"&gt;·&lt;span style="color:#333333"&gt;使用系统提供的准确的时区转换方法。确保在获取时区对象和进行时间转换时，正确处理时区的固定偏移量和实际偏移量（考虑夏令时）。例如，在将一个本地时间转换为另一个时区的时间时：&lt;/span&gt;&lt;/p&gt; 
+&lt;div&gt;
+ &lt;img src="https://oscimg.oschina.net/oscnet//5b0ddbf2a196c30d86d0e0ff73f57059.jpeg" referrerpolicy="no-referrer"&gt; 
+ &lt;p style="margin-left:0px; margin-right:0px"&gt;&amp;nbsp;&lt;/p&gt; 
+&lt;/div&gt; 
+&lt;p style="color:#222222; margin-left:0; margin-right:0; text-align:left"&gt;·&lt;span style="color:#333333"&gt;在处理过程中，要注意夏令时期间时区偏移量的变化，确保转换的准确性。同时，对转换后的时间进行验证和测试，特别是在涉及跨夏令时期间的时区转换时，要仔细检查转换结果是否符合预期。&lt;/span&gt;&lt;/p&gt; 
+&lt;p style="color:#222222; margin-left:0; margin-right:0; text-align:left"&gt;&lt;strong&gt;&lt;span style="color:#333333"&gt;（二）夏令时跳变导致的时间计算问题&lt;/span&gt;&lt;/strong&gt;&lt;/p&gt; 
+&lt;p style="color:#222222; margin-left:0; margin-right:0; text-align:left"&gt;&lt;strong&gt;&lt;span style="color:#333333"&gt;1. 问题描述&lt;/span&gt;&lt;/strong&gt;&lt;/p&gt; 
+&lt;p style="color:#222222; margin-left:0; margin-right:0; text-align:left"&gt;·&lt;span style="color:#333333"&gt;在夏令时跳变期间，计算时间差或进行时间相关的逻辑处理时可能出现错误。例如，计算从夏令时开始前到夏令时开始后的时间差，如果没有正确处理时间跳过的一小时，会得到错误的结果；或者在夏令时结束时，由于时间回拨，可能导致时间顺序的混乱。&lt;/span&gt;&lt;/p&gt; 
+&lt;p style="color:#222222; margin-left:0; margin-right:0; text-align:left"&gt;&lt;strong&gt;&lt;span style="color:#333333"&gt;2. 解决方案&lt;/span&gt;&lt;/strong&gt;&lt;/p&gt; 
+&lt;p style="color:#222222; margin-left:0; margin-right:0; text-align:left"&gt;·&lt;span style="color:#333333"&gt;在进行时间计算时，明确判断是否处于夏令时跳变期间。如果是，根据夏令时规则进行特殊处理。例如，在计算两个时间点之间的时间差时：&lt;/span&gt;&lt;/p&gt; 
+&lt;div&gt;
+ &lt;img src="https://oscimg.oschina.net/oscnet//238cf34e081a6e81a3aece435695c129.jpeg" referrerpolicy="no-referrer"&gt; 
+ &lt;p style="margin-left:0px; margin-right:0px"&gt;&amp;nbsp;&lt;/p&gt; 
+&lt;/div&gt; 
+&lt;p style="color:#222222; margin-left:0; margin-right:0; text-align:left"&gt;·&lt;span style="color:#333333"&gt;对于涉及时间顺序的逻辑处理，同样要考虑夏令时跳变的影响，确保时间顺序的正确性。在开发过程中，针对夏令时跳变的各种情况进行充分测试，包括跨越夏令时开始和结束的时间范围，以及在不同时区的夏令时跳变情况。&lt;/span&gt;&lt;/p&gt; 
+&lt;p style="color:#222222; margin-left:0; margin-right:0; text-align:left"&gt;&lt;strong&gt;&lt;span style="color:#333333"&gt;（三）不同设备和系统版本的时区兼容性问题&lt;/span&gt;&lt;/strong&gt;&lt;/p&gt; 
+&lt;p style="color:#222222; margin-left:0; margin-right:0; text-align:left"&gt;&lt;strong&gt;&lt;span style="color:#333333"&gt;1. 问题描述&lt;/span&gt;&lt;/strong&gt;&lt;/p&gt; 
+&lt;p style="color:#222222; margin-left:0; margin-right:0; text-align:left"&gt;·&lt;span style="color:#333333"&gt;不同设备可能由于系统设置、系统版本或硬件差异，对时区和夏令时的处理方式略有不同。例如，某些旧设备可能不支持最新的夏令时规则，或者在时区设置上存在一些限制；不同版本的鸿蒙系统可能对时区相关接口的行为有细微变化，导致应用在某些设备上出现时区显示异常或时间计算错误等问题。&lt;/span&gt;&lt;/p&gt; 
+&lt;p style="color:#222222; margin-left:0; margin-right:0; text-align:left"&gt;&lt;strong&gt;&lt;span style="color:#333333"&gt;2. 解决方案&lt;/span&gt;&lt;/strong&gt;&lt;/p&gt; 
+&lt;p style="color:#222222; margin-left:0; margin-right:0; text-align:left"&gt;·&lt;span style="color:#333333"&gt;在应用开发过程中，进行广泛的设备兼容性测试。包括在不同型号、不同系统版本的设备上测试时区和夏令时相关功能，确保应用在各种设备环境下都能正常工作。可以使用鸿蒙系统提供的设备模拟器，模拟不同设备配置和系统版本进行测试。对于发现的兼容性问题，进行针对性的适配。例如，如果发现某个旧设备不支持特定的夏令时规则，可以在应用中提供一种备用的时间计算方法或提示用户手动调整时间设置。同时，关注鸿蒙系统的官方文档和版本更新说明，及时了解时区相关功能的变化，以便在应用更新时进行相应的适配工作。如果可能的话，在应用中采用一种灵活的时区处理架构，能够根据不同设备和系统版本的特点进行动态调整，提高应用的兼容性和稳定性。&lt;/span&gt;&lt;/p&gt; 
+&lt;p style="color:#222222; margin-left:0; margin-right:0; text-align:left"&gt;&lt;strong&gt;&lt;span style="color:#333333"&gt;（四）用户手动调整时区导致的问题&lt;/span&gt;&lt;/strong&gt;&lt;/p&gt; 
+&lt;p style="color:#222222; margin-left:0; margin-right:0; text-align:left"&gt;&lt;strong&gt;&lt;span style="color:#333333"&gt;1. 问题描述&lt;/span&gt;&lt;/strong&gt;&lt;/p&gt; 
+&lt;p style="color:#222222; margin-left:0; margin-right:0; text-align:left"&gt;·&lt;span style="color:#333333"&gt;当用户手动在系统设置中调整时区后，应用可能无法及时响应并更新时间显示和相关功能。例如，用户在旅行过程中更改了设备时区，但应用仍然按照旧的时区显示时间，导致时间信息不准确；或者在涉及时间敏感操作（如定时任务、实时数据更新等）的应用中，时区更改可能引发功能异常，如错过定时任务执行时间或数据更新错误。&lt;/span&gt;&lt;/p&gt; 
+&lt;p style="color:#222222; margin-left:0; margin-right:0; text-align:left"&gt;&lt;strong&gt;&lt;span style="color:#333333"&gt;2. 解决方案&lt;/span&gt;&lt;/strong&gt;&lt;/p&gt; 
+&lt;p style="color:#222222; margin-left:0; margin-right:0; text-align:left"&gt;·&lt;span style="color:#333333"&gt;如前文所述，监听系统时区变化事件（i18n.System.on('timeZoneChange',...)）。当收到时区变化通知后，立即更新应用中的所有与时间相关的显示和逻辑。这包括重新计算和显示当前时间、调整日程安排和提醒时间、更新与时间相关的数据请求和处理逻辑等。例如，在一个投 zi 交易应用中，用户手动调整时区后，应用应立即重新获取并显示正确时区的投 zi 交易时间，同时调整定时刷新行情数据的时间间隔，确保用户能够获取到准确的实时数据。在更新过程中，要注意保持数据的一致性，避免因时区更改导致数据丢失或错乱。可以在更新前备份相关数据，更新后进行数据验证和恢复操作（如果需要）。&lt;/span&gt;&lt;/p&gt; 
+&lt;p style="color:#222222; margin-left:0; margin-right:0; text-align:left"&gt;&lt;strong&gt;&lt;span style="color:#333333"&gt;（五）夏令时信息显示不清晰或不准确&lt;/span&gt;&lt;/strong&gt;&lt;/p&gt; 
+&lt;p style="color:#222222; margin-left:0; margin-right:0; text-align:left"&gt;&lt;strong&gt;&lt;span style="color:#333333"&gt;1. 问题描述&lt;/span&gt;&lt;/strong&gt;&lt;/p&gt; 
+&lt;p style="color:#222222; margin-left:0; margin-right:0; text-align:left"&gt;·&lt;span style="color:#333333"&gt;在应用中显示时间时，如果涉及夏令时，可能没有清晰地告知用户当前时间是否处于夏令时期间，或者显示的夏令时相关信息（如夏令时开始和结束日期、时区偏移量变化等）不准确。这可能导致用户对时间的理解产生混淆，特别是在跨时区协作或涉及国际业务的应用中。例如，在一个跨国会议安排应用中，如果只显示会议时间而不明确说明是否为夏令时时间，参会者可能因不清楚时区和夏令时情况而错过会议。&lt;/span&gt;&lt;/p&gt; 
+&lt;p style="color:#222222; margin-left:0; margin-right:0; text-align:left"&gt;&lt;strong&gt;&lt;span style="color:#333333"&gt;2. 解决方案&lt;/span&gt;&lt;/strong&gt;&lt;/p&gt; 
+&lt;p style="color:#222222; margin-left:0; margin-right:0; text-align:left"&gt;·&lt;span style="color:#333333"&gt;在时间显示区域明确标注夏令时信息。可以在显示时间的旁边或下方，以文字说明的方式显示当前是否处于夏令时期间，以及夏令时的相关详细信息（如夏令时开始和结束日期、时区偏移量变化等），如果适用的话。例如，「当前时间：10:00 AM（夏令时，时区偏移量 +1 小时，夏令时开始于 2023-03-12，结束于 2023-11-05）」。确保这些信息的准确性，可以通过系统提供的接口获取当前时区的夏令时状态和相关规则信息，并及时更新显示。同时，提供一个帮助文档或提示信息，解释夏令时的概念和对时间的影响，方便用户在需要时查询和理解。在应用的设置界面中，也可以提供一个关于时区和夏令时的详细说明页面，让用户能够深入了解相关信息，特别是对于那些对时间准确性要求较高的用户或在跨时区使用场景较多的应用。&lt;/span&gt;&lt;/p&gt; 
+&lt;p style="color:#222222; margin-left:0; margin-right:0; text-align:left"&gt;&lt;strong&gt;&lt;span style="color:#333333"&gt;（六）时区和夏令时设置的权限问题&lt;/span&gt;&lt;/strong&gt;&lt;/p&gt; 
+&lt;p style="color:#222222; margin-left:0; margin-right:0; text-align:left"&gt;&lt;strong&gt;&lt;span style="color:#333333"&gt;1. 问题描述&lt;/span&gt;&lt;/strong&gt;&lt;/p&gt; 
+&lt;p style="color:#222222; margin-left:0; margin-right:0; text-align:left"&gt;·&lt;span style="color:#333333"&gt;在某些情况下，应用可能需要特定的权限才能获取或设置时区和夏令时相关信息。如果应用没有获取到相应权限，可能无法正常进行时区切换、获取当前时区信息或处理夏令时相关操作，导致功能受限。例如，在一些安全要求较高的设备或系统环境中，应用可能需要用户明确授权才能获取设备的时区设置，否则调用&lt;span&gt;&amp;nbsp;&lt;/span&gt;&lt;/span&gt;&lt;span style="color:#128b4e"&gt;&lt;span style="background-color:#e7f3ed"&gt;i18n.System.getSystemTimeZone()&lt;/span&gt;&lt;/span&gt;&lt;span style="color:#333333"&gt;&lt;span&gt;&amp;nbsp;&lt;/span&gt;等方法时可能会失败。&lt;/span&gt;&lt;/p&gt; 
+&lt;p style="color:#222222; margin-left:0; margin-right:0; text-align:left"&gt;&lt;strong&gt;&lt;span style="color:#333333"&gt;2. 解决方案&lt;/span&gt;&lt;/strong&gt;&lt;/p&gt; 
+&lt;p style="color:#222222; margin-left:0; margin-right:0; text-align:left"&gt;·&lt;span style="color:#333333"&gt;在应用的权限声明中，明确申请所需的时区和夏令时相关权限。例如，在应用的 config.json 文件中添加权限声明：&lt;/span&gt;&lt;/p&gt; 
+&lt;div&gt;
+ &lt;img src="https://oscimg.oschina.net/oscnet//022aebf0324437fb36176960224611aa.jpeg" referrerpolicy="no-referrer"&gt; 
+ &lt;p style="margin-left:0px; margin-right:0px"&gt;&amp;nbsp;&lt;/p&gt; 
+&lt;/div&gt; 
+&lt;p style="color:#222222; margin-left:0; margin-right:0; text-align:left"&gt;·&lt;span style="color:#333333"&gt;在应用运行时，检查是否获取到了相应权限。如果没有获取到权限，可以引导用户手动授予权限。例如：&lt;/span&gt;&lt;/p&gt; 
+&lt;div&gt;
+ &lt;img src="https://oscimg.oschina.net/oscnet//ea5dafdbf18353de72283c9a8b31023c.jpeg" referrerpolicy="no-referrer"&gt; 
+ &lt;p style="margin-left:0px; margin-right:0px"&gt;&amp;nbsp;&lt;/p&gt; 
+&lt;/div&gt; 
+&lt;p style="color:#222222; margin-left:0; margin-right:0; text-align:left"&gt;·&lt;span style="color:#333333"&gt;通过这种方式，确保应用在具备相应权限的情况下进行时区和夏令时相关操作，避免因权限问题导致功能异常。同时，合理向用户解释申请权限的原因，提高用户授予权限的意愿。&lt;/span&gt;&lt;/p&gt; 
+&lt;p style="color:#222222; margin-left:0; margin-right:0; text-align:left"&gt;&lt;strong&gt;&lt;span style="color:#333333"&gt;（七）在低功耗模式下时区和夏令时处理的问题&lt;/span&gt;&lt;/strong&gt;&lt;/p&gt; 
+&lt;p style="color:#222222; margin-left:0; margin-right:0; text-align:left"&gt;&lt;strong&gt;&lt;span style="color:#333333"&gt;1. 问题描述&lt;/span&gt;&lt;/strong&gt;&lt;/p&gt; 
+&lt;p style="color:#222222; margin-left:0; margin-right:0; text-align:left"&gt;·&lt;span style="color:#333333"&gt;在设备处于低功耗模式时，系统可能会对一些时间相关的功能进行限制或优化，这可能会影响应用对时区和夏令时的处理。例如，系统可能会减少对时区变化的实时监测频率，导致应用在低功耗模式下不能及时响应时区变化；或者在低功耗模式下，应用获取当前时间的精度可能降低，影响时间相关功能的准确性，如定时任务的执行时间可能出现偏差。&lt;/span&gt;&lt;/p&gt; 
+&lt;p style="color:#222222; margin-left:0; margin-right:0; text-align:left"&gt;&lt;strong&gt;&lt;span style="color:#333333"&gt;2. 解决方案&lt;/span&gt;&lt;/strong&gt;&lt;/p&gt; 
+&lt;p style="color:#222222; margin-left:0; margin-right:0; text-align:left"&gt;·&lt;span style="color:#333333"&gt;检测设备的低功耗模式状态。鸿蒙系统可能提供了相关的接口或事件来获取设备的电源状态信息，开发者可以利用这些来判断设备是否处于低功耗模式。例如：&lt;/span&gt;&lt;/p&gt; 
+&lt;div&gt;
+ &lt;img src="https://oscimg.oschina.net/oscnet//6d62a427ff564b8e0e07775644ae22a5.jpeg" referrerpolicy="no-referrer"&gt; 
+ &lt;p style="margin-left:0px; margin-right:0px"&gt;&amp;nbsp;&lt;/p&gt; 
+&lt;/div&gt; 
+&lt;p style="color:#222222; margin-left:0; margin-right:0; text-align:left"&gt;·&lt;span style="color:#333333"&gt;在低功耗模式下，优化应用的时间处理策略。可以减少不必要的时区查询和夏令时检查操作，降低应用的能耗。对于定时任务等功能，可以根据低功耗模式的特点进行调整，例如，延长定时任务的执行间隔（在不影响关键功能的前提下），或者在设备从低功耗模式恢复后，重新校准定时任务的执行时间。同时，与系统的低功耗模式机制进行良好的协作，遵循系统的电源管理策略，确保应用在低功耗模式下既能保持基本的时间处理功能，又能尽量减少对设备电池的消耗。&lt;/span&gt;&lt;/p&gt; 
+&lt;p style="color:#222222; margin-left:0; margin-right:0; text-align:left"&gt;&lt;span style="color:#333333"&gt;通过对这些常见时区与夏令时处理问题的有效解决，开发者能够更好地实现鸿蒙 Next 应用在全球范围内的准确时间处理。在开发过程中，充分考虑各种复杂情况，遵循最佳实践，不断优化和测试，将有助于打造出稳定、可靠、用户友好的国际化应用。希望本文能够为鸿蒙系统同僚在处理时区与夏令时方面提供全面、实用的参考和指导，助力应用在全球化进程中取得成功。&lt;/span&gt;&lt;/p&gt; 
+&lt;p style="color:#222222; margin-left:0; margin-right:0; text-align:justify"&gt;（转载自 51CTO，作者：SameX）&lt;/p&gt; 
+&lt;div&gt;
+ &lt;img src="https://oscimg.oschina.net/oscnet//de94b5482d1073d45f9a724546acd62a.jpeg" referrerpolicy="no-referrer"&gt;
+&lt;/div&gt; 
+&lt;p&gt;&amp;nbsp;&lt;/p&gt;
+                                                                                &lt;/div&gt;
+                                                                            </description>
+      <link>https://www.oschina.net/news/371812</link>
+      <guid isPermaLink="false">https://www.oschina.net/news/371812</guid>
+      <pubDate>Thu, 11 Sep 2025 07:58:00 GMT</pubDate>
+      <author>作者: 开源科技</author>
+    </item>
     <item>
       <title>蚂蚁集团发布 AI 眼镜可信连接技术框架 gPass</title>
       <description>&lt;div class="content"&gt;
@@ -23,7 +182,7 @@
                                                                             </description>
       <link>https://www.oschina.net/news/371794</link>
       <guid isPermaLink="false">https://www.oschina.net/news/371794</guid>
-      <pubDate>Fri, 12 Sep 2025 07:25:27 GMT</pubDate>
+      <pubDate>Thu, 11 Sep 2025 07:24:00 GMT</pubDate>
       <author>来源: OSCHINA</author>
     </item>
     <item>
@@ -1059,44 +1218,6 @@ f(&lt;strong style="color:#333333"&gt;using&lt;/strong&gt; x = &lt;strong style=
       <link>https://www.oschina.net/news/371538/spring-tools-4-32-0-released</link>
       <guid isPermaLink="false">https://www.oschina.net/news/371538/spring-tools-4-32-0-released</guid>
       <pubDate>Wed, 10 Sep 2025 06:35:00 GMT</pubDate>
-      <author>来源: OSCHINA</author>
-    </item>
-    <item>
-      <title>Rufus 4.10 Beta 发布，引入深色模式、支持 Windows 11 25H2 ISO</title>
-      <description>&lt;div class="content"&gt;
-                                                                    
-                                                        &lt;p&gt;Rufus&amp;nbsp;在 Windows 生态中被认为是最优秀的 U 盘启动工具之一，与官方的 Media Creation Tool 相比，Rufus 不仅能更快地完成 Windows 系统 U 盘的制作，还集成了 Windows 镜像下载以及自定义 Windows 安装设置，如：移除 Windows 11 TPM 2.0 检测，预设本地账号等。&lt;/p&gt; 
-&lt;p&gt;今天，Rufus&amp;nbsp;4.10 beta 正式推出，Rufus&amp;nbsp;4.10 Beta 最大的的亮点是支持&amp;nbsp;Windows 11 25H2 ISO&amp;nbsp;以及深色模式支持。&lt;/p&gt; 
-&lt;p&gt;&lt;img alt="" src="https://oscimg.oschina.net/oscnet/up-a39722aefe1dbdbe041c84847d9941d6227.png" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;p&gt;以下是 Rufus 4.10 Beta 的更新日志：&lt;/p&gt; 
-&lt;ul&gt; 
- &lt;li&gt;支持 Windows 11 25H2 ISO&lt;/li&gt; 
-&lt;/ul&gt; 
-&lt;p&gt;Rufus&amp;nbsp;4.10 Beta 正式加入了对&amp;nbsp;Windows 11 25H2 ISO&amp;nbsp;的支持，用户能够创建满足企业合规需求的安装介质（这一改进对准备部署&amp;nbsp;Windows CA 2023&amp;nbsp;的企业或组织尤为重要）。&lt;/p&gt; 
-&lt;ul&gt; 
- &lt;li&gt;引入深色模式&lt;/li&gt; 
-&lt;/ul&gt; 
-&lt;p&gt;为了迎合现代 UI 偏好，Rufus 4.10 beta 提供了深色模式支持。在深色主题下，界面显示更加一致，能有效提升长时间操作时的视觉舒适度。&lt;/p&gt; 
-&lt;ul&gt; 
- &lt;li&gt;驱动器直接保存为 ISO&lt;/li&gt; 
-&lt;/ul&gt; 
-&lt;p&gt;新增了将现有驱动器直接保存为 ISO 文件的功能，目前支持通用磁盘格式（UDF）。这一能力对需要完整保留启动盘或数据盘结构的用户来说极具价值，尤其适用于存档或后续复制。&lt;/p&gt; 
-&lt;ul&gt; 
- &lt;li&gt;其他修复与优化&lt;/li&gt; 
-&lt;/ul&gt; 
-&lt;p&gt;除了新功能，Rufus 4.10 beta 还修复了多个问题，显著提升了稳定性：&lt;/p&gt; 
-&lt;ul&gt; 
- &lt;li&gt;改进了保存为 VHD/VHDX 时的错误报告。&lt;/li&gt; 
- &lt;li&gt;修正了部分时区下错误提示 UEFI DBX 更新的情况。&lt;/li&gt; 
- &lt;li&gt;解决了 ISO 模式下无法选择文件系统的问题。&lt;/li&gt; 
- &lt;li&gt;修复了处理超长路径的 Windows ISO 文件时可能导致的崩溃。&lt;/li&gt; 
-&lt;/ul&gt; 
-&lt;p&gt;下载地址：&lt;em&gt;https://github.com/pbatard/rufus/releases/tag/v4.10_BETA&lt;/em&gt;&lt;/p&gt;
-                                                                                &lt;/div&gt;
-                                                                            </description>
-      <link>https://www.oschina.net/news/371532</link>
-      <guid isPermaLink="false">https://www.oschina.net/news/371532</guid>
-      <pubDate>Wed, 10 Sep 2025 06:23:00 GMT</pubDate>
       <author>来源: OSCHINA</author>
     </item>
   </channel>
