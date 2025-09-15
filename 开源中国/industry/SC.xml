@@ -7,8 +7,547 @@
     <generator>RSSHub</generator>
     <webMaster>contact@rsshub.app (RSSHub)</webMaster>
     <language>zh-cn</language>
-    <lastBuildDate>Mon, 15 Sep 2025 07:40:30 GMT</lastBuildDate>
+    <lastBuildDate>Mon, 15 Sep 2025 12:40:50 GMT</lastBuildDate>
     <ttl>5</ttl>
+    <item>
+      <title>BentoML 发布 llm-optimizer，LLM 推理和性能优化开源工具</title>
+      <description>&lt;div class="content"&gt;
+                                                                    
+                                                        &lt;p&gt;BentoML 近日发布了&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fwww.bentoml.com%2Fblog%2Fannouncing-llm-optimizer" target="_blank"&gt;llm-optimizer&lt;/a&gt;，这是一个用于基准测试和优化 LLM 推理的开源工具。它支持多个推理框架，并兼容任何开源 LLM。&lt;/p&gt; 
+&lt;p&gt;&lt;img alt="" src="https://oscimg.oschina.net/oscnet/up-4e424ad07868e5d205d0e99984f6e8bf1b4.png" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p&gt;llm-optimizer 旨在将 LLM 性能优化的繁琐手动工作自动化。您可以在一个地方运行结构化实验、应用约束并可视化结果，只需几个命令即可。&lt;/p&gt; 
+&lt;p&gt;使用示例&lt;/p&gt; 
+&lt;pre&gt;&lt;code&gt;llm-optimizer estimate \
+  --model meta-llama/Llama-3.1-8B-Instruct \
+  --input-len 1024 \
+  --output-len 512 \
+  --gpu A100 \
+  --num-gpus 2&lt;/code&gt;&lt;/pre&gt; 
+&lt;p&gt;预期输出&lt;/p&gt; 
+&lt;pre&gt;&lt;code&gt;=== Configuration ===
+Model: meta-llama/Llama-3.1-8B-Instruct
+GPU: 2x A100
+Precision: fp16
+Input/Output: 1024/512 tokens
+Target: throughput
+
+Fetching model configuration...
+Model: 8029995008.0B parameters, 32 layers
+
+=== Performance Analysis ===
+Best Latency (concurrency=1):
+  TTFT: 43.1 ms
+  ITL: 2.6 ms
+  E2E: 1.39 s
+
+Best Throughput (concurrency=512):
+  Output: 18873.3 tokens/s
+  Input: 23767.8 tokens/s
+  Requests: 14.24 req/s
+  Bottleneck: Memory
+
+=== Roofline Analysis ===
+Hardware Ops/Byte Ratio: 142.5 ops/byte
+Prefill Arithmetic Intensity: 52205.5 ops/byte
+Decode Arithmetic Intensity: 50.9 ops/byte
+Prefill Phase: Compute Bound
+Decode Phase: Memory Bound
+
+=== Concurrency Analysis ===
+KV Cache Memory Limit: 688 concurrent requests
+Prefill Compute Limit: 8 concurrent requests
+Decode Capacity Limit: 13 concurrent requests
+Theoretical Overall Limit: 8 concurrent requests
+Empirical Optimal Concurrency: 16 concurrent requests
+
+=== Tuning Commands ===
+
+--- SGLANG ---
+Simple (concurrency + TP/DP):
+  llm-optimizer --framework sglang --model meta-llama/Llama-3.1-8B-Instruct --gpus 2 --host 127.0.0.1 --server-args "tp_size*dp_size=[(1, 2), (2, 1)]" --client-args "num_prompts=1000;dataset_name=sharegpt;random_input=1024;random_output=512;num_prompts=1000;max_concurrency=[256, 512, 768]" --output-dir tuning_results --output-json tuning_results/config_1_sglang.json
+Advanced (additional parameters):
+  llm-optimizer --framework sglang --model meta-llama/Llama-3.1-8B-Instruct --gpus 2 --host 127.0.0.1 --server-args "tp_size*dp_size=[(1, 2), (2, 1)];chunked_prefill_size=[1434, 2048, 2662];schedule_conservativeness=[0.3, 0.6, 1.0];schedule_policy=fcfs" --client-args "num_prompts=1000;dataset_name=sharegpt;random_input=1024;random_output=512;num_prompts=1000;max_concurrency=[256, 512, 768]" --output-dir tuning_results --output-json tuning_results/config_1_sglang.json
+
+--- VLLM ---
+Simple (concurrency + TP/DP):
+  llm-optimizer --framework vllm --model meta-llama/Llama-3.1-8B-Instruct --gpus 2 --host 127.0.0.1 --server-args "tensor_parallel_size*data_parallel_size=[(1, 2), (2, 1)]" --client-args "num_prompts=1000;dataset_name=sharegpt;random_input=1024;random_output=512;num_prompts=1000;max_concurrency=[256, 512, 768]" --output-dir tuning_results --output-json tuning_results/config_1_vllm.json
+Advanced (additional parameters):
+  llm-optimizer --framework vllm --model meta-llama/Llama-3.1-8B-Instruct --gpus 2 --host 127.0.0.1 --server-args "tensor_parallel_size*data_parallel_size=[(1, 2), (2, 1)];max_num_batched_tokens=[1024, 1177, 1331]" --client-args "num_prompts=1000;dataset_name=sharegpt;random_input=1024;random_output=512;num_prompts=1000;max_concurrency=[256, 512, 768]" --output-dir tuning_results --output-json tuning_results/config_1_vllm.json&lt;/code&gt;&lt;/pre&gt; 
+&lt;p&gt;该工具解决了 LLM 部署中的一个常见挑战：在不依赖手动试错的情况下，为延迟、吞吐量和成本找到最佳配置。llm-optimizer 为探索 LLM 性能景观提供了一种结构化的方式。它通过实现系统基准和跨可能配置的自动搜索，消除了重复的猜测。&lt;/p&gt; 
+&lt;p&gt;开源地址：&lt;em&gt;https://github.com/bentoml/llm-optimizer&lt;/em&gt;&lt;/p&gt;
+                                                                                &lt;/div&gt;
+                                                                            </description>
+      <link>https://www.oschina.net/news/372359/bentoml-llm-optimizer</link>
+      <guid isPermaLink="false">https://www.oschina.net/news/372359/bentoml-llm-optimizer</guid>
+      <pubDate>Sun, 14 Sep 2025 11:26:00 GMT</pubDate>
+      <author>来源: OSCHINA</author>
+    </item>
+    <item>
+      <title>北京中小学全面开设人工智能通识课</title>
+      <description>&lt;div class="content"&gt;
+                                                                    
+                                                        &lt;p&gt;&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fmp.weixin.qq.com%2Fs%2FecvZHwNwJg6PafacKW5iEg" target="_blank"&gt;据报道&lt;/a&gt;，自 2025 年秋季学期起，北京市 1400 余所中小学全面开设人工智能通识教育课程，覆盖 183 万余名中小学生，成为全国首个省级全域推进人工智能通识教育的地区。&lt;/p&gt; 
+&lt;p&gt;报道称，课程资源方面，首批覆盖全学段的 160 套市级课程资源已上线，每套资源包含 15 分钟左右的核心教学视频、教学指南及活动任务单；&lt;/p&gt; 
+&lt;p&gt;通过「视频 + 工具 + 任务单」模式满足教师授课、备课及学生自主学习 3 类场景需求，搭建 AI「课程超市」和「应用超市」，为课堂教学提供基础支撑。&lt;/p&gt; 
+&lt;p&gt;市教委相关负责人表示，北京市将持续优化人工智能教育课程资源，结合教学反馈迭代更新；开展应用示范校评选和优秀案例推广，形成可复制经验。&lt;/p&gt; 
+&lt;p&gt;同时，负责人还表示，要深化「京娃」系列智能体研发，拓展「AI + 教育」应用场景等，以首批课程资源为起点，力争将北京中小学人工智能教育打造成全国标杆，真正让数字技术赋能每一位师生，为培养担当民族复兴大任的时代新人奠定坚实基础。&lt;/p&gt;
+                                                                                &lt;/div&gt;
+                                                                            </description>
+      <link>https://www.oschina.net/news/372356</link>
+      <guid isPermaLink="false">https://www.oschina.net/news/372356</guid>
+      <pubDate>Sun, 14 Sep 2025 11:09:00 GMT</pubDate>
+      <author>来源: OSCHINA</author>
+    </item>
+    <item>
+      <title>OpenAI Evals 新增原生音频输入和评估功能</title>
+      <description>&lt;div class="content"&gt;
+                                                                    
+                                                        &lt;p&gt;OpenAI 的 Evals 工具现已支持原生音频输入和音频评分，无需文本转录即可直接评估模型的音频响应。这项新功能极大简化了语音识别和生成模型的评估过程，使得开发者能够更高效地测试和优化其音频应用。&lt;/p&gt; 
+&lt;p&gt;&lt;img alt="" src="https://oscimg.oschina.net/oscnet/up-9522f36b3f1e768600ee99a85f02e860156.png" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p&gt;通过使用 Evals 的原生音频支持，用户可以上传音频文件，并直接在平台上进行性能评估。这一改进不仅减少了数据处理的复杂性，还提高了评估结果的准确性和可靠性。对于需要频繁测试和调整音频模型的开发者来说，这是一个重要的进步。&lt;/p&gt; 
+&lt;p&gt;应用场景包括但不限于：智能语音助手的开发与优化、语音识别系统的性能评估，以及音频内容生成的质量控制。&lt;/p&gt; 
+&lt;p&gt;如需了解更多关于如何使用 Evals 的新功能，参考官方 Cookbook 指南：&lt;em&gt;https://cookbook.openai.com/examples/evaluation/use-cases/evalsapi_audio_inputs&lt;/em&gt;&lt;/p&gt;
+                                                                                &lt;/div&gt;
+                                                                            </description>
+      <link>https://www.oschina.net/news/372353</link>
+      <guid isPermaLink="false">https://www.oschina.net/news/372353</guid>
+      <pubDate>Sun, 14 Sep 2025 11:01:00 GMT</pubDate>
+      <author>来源: OSCHINA</author>
+    </item>
+    <item>
+      <title>微软研究院发布 RenderFormer，基于 Transformer 的神经渲染模型</title>
+      <description>&lt;div class="content"&gt;
+                                                                    
+                                                        &lt;p&gt;微软研究院近日发布了&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fwww.microsoft.com%2Fen-us%2Fresearch%2Fblog%2Frenderformer-how-neural-networks-are-reshaping-3d-rendering%2F" target="_blank"&gt;RenderFormer&lt;/a&gt;，这是一个纯机器学习的神经架构，旨在通过机器学习完全替代传统图形计算，实现全功能 3D 渲染，无需传统图形计算。&lt;/p&gt; 
+&lt;p&gt;&lt;img alt="" src="https://oscimg.oschina.net/oscnet/up-973c5649e34320d01d3888bfd65c9a319d3.png" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;img alt="" src="https://oscimg.oschina.net/oscnet/up-2008d874aeabcfe09955bf61fd0b256737b.png" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p&gt;RenderFormer 整体架构如下：&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt;双分支 Transformer 架构：分为视角无关（View-Independent）和视角相关（View-Dependent）两个阶段。视角无关阶段通过自注意力机制捕捉阴影、漫反射等全局光照效果；视角相关阶段通过交叉注意力机制建模可见性、反射等视角依赖效果。&lt;/li&gt; 
+ &lt;li&gt;相对空间位置编码：创新性地采用改进的旋转位置编码（RoPE），基于三角形的 3D 空间位置而非序列索引，保持场景平移不变性。&lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;p&gt;&lt;img alt="" src="https://oscimg.oschina.net/oscnet/up-79adce0f291f87580ef10043c6928fce017.png" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p&gt;据介绍，RenderFormer 是首个证明神经网络能学习完整图形渲染流水线的模型，支持任意 3D 场景和全局光照效果，无需依赖光线追踪或光栅化技术。它通过三角形令牌（triangle tokens）表示 3D 场景，编码空间位置、表面法线及材质属性，结合光线束令牌（ray bundle tokens）处理视角信息，实现端到端渲染。该成果已获 SIGGRAPH 2025 接收并开源。&lt;/p&gt; 
+&lt;p&gt;&lt;em&gt;https://microsoft.github.io/renderformer&lt;/em&gt;&lt;/p&gt;
+                                                                                &lt;/div&gt;
+                                                                            </description>
+      <link>https://www.oschina.net/news/372349</link>
+      <guid isPermaLink="false">https://www.oschina.net/news/372349</guid>
+      <pubDate>Sun, 14 Sep 2025 10:38:00 GMT</pubDate>
+      <author>来源: OSCHINA</author>
+    </item>
+    <item>
+      <title>亚马逊云科技否认大中华区裁员</title>
+      <description>&lt;div class="content"&gt;
+                                                                    
+                                                        &lt;p&gt;&lt;span style="color:#000000"&gt;9 月 15 日，有消息称亚马逊云科技（AWS）大中华区计划裁员，预计将发生在 9 月底至 10 月之间，或涉及超 20% 的员工，目前 AWS 大中华区人员规模不到 1700 人。&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;span style="color:#000000"&gt;对此，亚马逊云科技发言人表示：「相关报道严重失实，亚马逊云科技持续在中国积极招聘人才，为中国企业提供全球领先、安全可靠的云技术。」&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;span style="color:#000000"&gt;今年 7 月，亚马逊发布了 2025 年第二季度财报，二季度营收同比增长 13% 至 1677 亿美元；净利润 181.64 亿美元，与上年同期的 134.85 亿美元相比大幅增长 35%；稀释后每股收益为 1.68 美元。亚马逊已承诺今年在 AI 领域的投资将高达 1000 亿美元。亚马逊 AWS 云业务在二季度营收 308.73 亿美元，略高于市场预期的 308 亿美元，同比增长 17%，增速与上一季度持平。&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;span style="color:#000000"&gt;AWS 的增速仍低于其主要竞争对手微软云和谷歌云。在电话会上，亚马逊 CEO 安迪·贾西试图向分析师保证，和其云计算竞争对手相比，AWS 一直保持着「相当重要」的领导地位，他对公司 AI 产品的发展感到乐观：「我们 AWS 领域的业务规模比其他公司的云业务大得多，我认为第二位的规模约为 AWS 的 65%。」&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;span style="color:#000000"&gt;官网资料显示，亚马逊云科技于 2013 年进入中国，通过本地合作伙伴北京光环新网科技股份有限公司（光环新网）和宁夏西云数据科技有限公司（西云数据），提供与全球一致的云服务体验和安全级别，API（应用程序接口）、SDK（软件开发工具包）、CLI（命令行工具）与全球其他地区相同，开发者无需额外适配，即可实现全球化应用部署。&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;span style="color:#000000"&gt;目前，亚马逊云科技在中国云计算市场面临激烈的竞争。根据研究机构 Canalys 的报告显示，2025 年第一季度中国大陆的云计算支出达到 116 亿美元，前三名阿里云、华为云和腾讯云的市场份额分别为 33%、 18% 和 10%，三家巨头合计占领了整个中国云计算市场的 61%。（澎湃新闻）&lt;/span&gt;&lt;/p&gt;
+                                                                                &lt;/div&gt;
+                                                                            </description>
+      <link>https://www.oschina.net/news/372348</link>
+      <guid isPermaLink="false">https://www.oschina.net/news/372348</guid>
+      <pubDate>Sun, 14 Sep 2025 10:31:00 GMT</pubDate>
+      <author>来源: OSCHINA</author>
+    </item>
+    <item>
+      <title>Roo Code 上线远程连接功能 Roomote Control</title>
+      <description>&lt;div class="content"&gt;
+                                                                    
+                                                        &lt;p&gt;AI 编程工具 Roo Code 近期推出了名为 &lt;strong&gt;Roomote Control&lt;/strong&gt; 的新功能，旨在提升用户在 VS Code 中的编码体验。&lt;/p&gt; 
+&lt;p&gt;&lt;img src="https://static.oschina.net/uploads/space/2025/0915/181541_VqYx_2720166.png" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fx.com%2Froo_code%2Fstatus%2F1966280158031335625" target="_blank"&gt;据介绍&lt;/a&gt;，Roomote Control 允许用户通过手机或浏览器远程连接和控制本地 VS Code 环境中的 Roo Code。该工具直接在用户的系统上运行，确保代码库保持私有和完全安全。&lt;/p&gt; 
+&lt;p&gt;用户可以在远程设备上启动新任务、选择模式和模型，所有更新会实时同步回本地 IDE。即使暂时离开，用户也可以让任务在后台继续运行，提高工作效率。&lt;/p&gt; 
+&lt;p&gt;Roomote Control 作为 Roo Code Pro 订阅的一部分，提供 14 天的免费试用期，之后每月收费 20 美元。&lt;/p&gt; 
+&lt;p&gt;使用方法如下&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt; &lt;p&gt;&lt;strong&gt;连接步骤&lt;/strong&gt;：&lt;/p&gt; 
+  &lt;ol&gt; 
+   &lt;li&gt; &lt;p&gt;在 Roo Code 中导航到 Cloud 菜单并点击「Connect」。&lt;/p&gt; &lt;/li&gt; 
+   &lt;li&gt; &lt;p&gt;登录 Roo Code 网站并在 IDE 中启用远程控制。&lt;/p&gt; &lt;/li&gt; 
+   &lt;li&gt; &lt;p&gt;在浏览器中访问 Roo Code Cloud，确保远程切换已启用。&lt;/p&gt; &lt;/li&gt; 
+  &lt;/ol&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;&lt;strong&gt;功能体验&lt;/strong&gt;：用户可以在远程部分查看 IDE 的开放目录，点击加号图标启动新任务，输入提示并观察任务的执行。&lt;/p&gt; &lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;p&gt;通过 Roomote Control，Roo Code 进一步扩展了其作为 AI 驱动的自主编码代理的功能，使用户能够随时随地高效地管理编码任务。&lt;/p&gt;
+                                                                                &lt;/div&gt;
+                                                                            </description>
+      <link>https://www.oschina.net/news/372344</link>
+      <guid isPermaLink="false">https://www.oschina.net/news/372344</guid>
+      <pubDate>Sun, 14 Sep 2025 10:17:00 GMT</pubDate>
+      <author>来源: OSCHINA</author>
+    </item>
+    <item>
+      <title>全球首个 AI 政府部长来了</title>
+      <description>&lt;div class="content"&gt;
+                                                                    
+                                                        &lt;p&gt;&lt;span style="color:#000000"&gt;综合环球网等媒体报道，阿尔巴尼亚总理埃迪·拉马当地时间 11 日宣布新内阁名单，&lt;strong&gt;&lt;strong&gt;其中包括任命一个名为「迪埃拉」（在阿尔巴尼亚语中意为「太阳」）的人工智能担任公共采购部长&lt;/strong&gt;&lt;/strong&gt;。&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;span style="color:#000000"&gt;&lt;strong&gt;&lt;strong&gt;这也使得阿尔巴尼亚成为世界上第一个任命非实体的人工智能担任政府部长的国家。&lt;/strong&gt;&lt;/strong&gt;&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;img height="254" src="https://oscimg.oschina.net/oscnet/up-01dfab898dc0952c33998cbf206a06145f0.png" width="500" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;span style="color:#000000"&gt;2025 年 5 月，拉马历史性地第四次当选阿尔巴尼亚总理。今年夏天，拉马曾畅想有朝一日该国能有一位数字部长，甚至是一位人工智能总理，不过当时几乎没人想到这一天会这么快到来。&lt;/span&gt;&lt;/p&gt; 
+&lt;blockquote&gt; 
+ &lt;p&gt;&lt;span style="color:#000000"&gt;拉马在周四宣布新内阁的讲话中表示：「迪埃拉是第一位并非以实体形式存在，而是由人工智能虚拟生成的内阁成员。」&lt;/span&gt;&lt;/p&gt; 
+&lt;/blockquote&gt; 
+&lt;p&gt;&lt;span style="color:#000000"&gt;拉马还表示，招标决定权将从各部手中逐步移交给「迪埃拉」，「迪埃拉」将审查政府与私营公司签订的每一份招标合同，并客观评估每一份招标合同的优点。&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;span style="color:#000000"&gt;拉马强调，「迪埃拉」将帮助阿尔巴尼亚「成为一个公共招标 100% 没有腐败的国家」。长期以来，授予此类合同一直是这个巴尔干国家腐败丑闻的根源。&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;span style="color:#000000"&gt;这种形象对阿尔巴尼亚加入欧盟的梦想造成了打击。阿尔巴尼亚目前是欧盟的候选国，拉马希望在 2030 年之前成为欧盟正式成员国，但政治分析人士称，这一目标过于雄心勃勃。&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;span style="color:#000000"&gt;拉马还称，将有一个专用部门为「迪埃拉」提供支持，并推动人工智能在政府各部门的应用。&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;span style="color:#000000"&gt;不过，阿尔巴尼亚政府并未提供有关「迪埃拉」可能会受到何种人类监督的详细信息，也没有就有人可能操纵这个人工智能机器人的风险作出说明。&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;span style="color:#000000"&gt;「迪埃拉」此前已经为阿尔巴尼亚公民所知，她的虚拟形象是一个身穿阿尔巴尼亚传统服饰的女子，于今年年初在电子平台作为一款人工智能虚拟助手上线，该平台允许公民以数字方式访问几乎所有政府服务。「迪埃拉」负责帮助公民和企业获取政府文件，通过语音指令提供帮助，以及签发带有电子印章的文件。&lt;/span&gt;&lt;/p&gt;
+                                                                                &lt;/div&gt;
+                                                                            </description>
+      <link>https://www.oschina.net/news/372341</link>
+      <guid isPermaLink="false">https://www.oschina.net/news/372341</guid>
+      <pubDate>Sun, 14 Sep 2025 10:11:00 GMT</pubDate>
+      <author>来源: OSCHINA</author>
+    </item>
+    <item>
+      <title>腾讯 AI 编程工具 CodeBuddy 推出个人订阅方案</title>
+      <description>&lt;div class="content"&gt;
+                                                                    
+                                                        &lt;p&gt;腾讯旗下 AI 编程工具 CodeBuddy 正式公布了其个人订阅方案。用户每月支付 9.95 美元即可获得 1000 credits，并且每日还会额外赠送 100 credits（于零点重置）。&lt;/p&gt; 
+&lt;p&gt;付费版功能&lt;br&gt; ✅1000 credits/month&lt;br&gt; ✅100 credits/day, reset daily&lt;br&gt; ✅All premium models&lt;br&gt; ✅Unlimited BuddyTab&lt;br&gt; ✅Unlimited Next Edit Prediction&lt;br&gt; ✅Previews&lt;/p&gt; 
+&lt;p&gt;免费版功能&lt;br&gt; ✅2 week pro trial with 500 credits&lt;br&gt; ✅50 credits/day, reset daily&lt;br&gt; ✅All premium models&lt;br&gt; ✅Unlimited BuddyTab&lt;br&gt; ✅Unlimited Next Edit Prediction&lt;/p&gt; 
+&lt;p&gt;&lt;img height="733" src="https://static.oschina.net/uploads/space/2025/0915/175958_W3lT_2720166.png" width="1080" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;em&gt;https://www.codebuddy.ai/profile/plan&lt;/em&gt;&lt;/p&gt; 
+&lt;p&gt;订阅用户可以调用全部高级模型，并无限使用 BuddyTab 与 Next Edit Prediction 功能。对于新用户，CodeBuddy 提供一次性的为期 2 周，的 Pro 试用，其中包含 500 credits 以及每日 50 credits 的赠送。&lt;/p&gt;
+                                                                                &lt;/div&gt;
+                                                                            </description>
+      <link>https://www.oschina.net/news/372340</link>
+      <guid isPermaLink="false">https://www.oschina.net/news/372340</guid>
+      <pubDate>Sun, 14 Sep 2025 10:01:00 GMT</pubDate>
+      <author>来源: OSCHINA</author>
+    </item>
+    <item>
+      <title>xAI 正在测试 Grok 4 Fast，宣称是「地球上最快思考模型」</title>
+      <description>&lt;div class="content"&gt;
+                                                                    
+                                                        &lt;p&gt;xAI 已开始对 Grok 4 Fast &lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fwww.testingcatalog.com%2Fxai-launches-grok-4-fast-in-early-access-beta-with-up-to-10x-speed%2F" target="_blank"&gt;进行灰度测试&lt;/a&gt;，并宣称这是「目前地球上最快的思考模型」。&lt;/p&gt; 
+&lt;p&gt;&lt;img alt="" src="https://oscimg.oschina.net/oscnet/up-820d3dda386ef2105d157daacaa4058bcfd.png" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;img alt="" src="https://oscimg.oschina.net/oscnet/up-3fbbb5515d6180fa2258e4d055d8fdc166e.png" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p&gt;该模型据称是 Grok 4 的加速版，已在 Grok 网页端、iOS 应用以及 X 平台上向部分用户推送。&lt;/p&gt; 
+&lt;p&gt;&lt;img src="https://static.oschina.net/uploads/space/2025/0915/174413_VUST_2720166.jpg" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p&gt;新版本主打极速响应，同时力求保持高水平的智能密度。为了方便用户体验，网页端为订阅用户新增了「Enable early access models」开关，允许他们提前试用尚在实验阶段的新模型。&lt;/p&gt;
+                                                                                &lt;/div&gt;
+                                                                            </description>
+      <link>https://www.oschina.net/news/372333</link>
+      <guid isPermaLink="false">https://www.oschina.net/news/372333</guid>
+      <pubDate>Sun, 14 Sep 2025 09:47:00 GMT</pubDate>
+      <author>来源: OSCHINA</author>
+    </item>
+    <item>
+      <title>Pantheon CLI - 科学 「聊天式分析」 类人框架</title>
+      <description>&lt;div class="content"&gt;
+                                                                                                                                                                        
+                                                                                    &lt;p style="color:#1f2328; text-align:start"&gt;Pantheon-CLI 是专为科学研究打造的&lt;strong&gt;首个完全开源的「聊天式分析」类人框架&lt;/strong&gt;。定义 AI 时代研究者与数据交互的新方式。&lt;/p&gt;
+
+&lt;div style="text-align:start"&gt;
+&lt;h3&gt;&lt;strong&gt;博士水平的科学助手&lt;/strong&gt;&lt;/h3&gt;
+&lt;/div&gt;
+
+&lt;ul&gt;
+&lt;li&gt;Pantheon-CLI 是首个用于复杂真实世界分析的命令行智能（CLI）Agent 助手，能够像人类一样处理博士级别的单细胞与空间组学任务。这不仅是一个工具——&lt;strong&gt;它是一位加入你科研团队的 AI 科学家&lt;/strong&gt;。&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;div style="text-align:start"&gt;
+&lt;h3&gt;&lt;strong&gt;混合式编程&lt;/strong&gt;&lt;/h3&gt;
+&lt;/div&gt;
+
+&lt;ul&gt;
+&lt;li&gt;在同一个环境中，你可以：
+&lt;ul&gt;
+&lt;li&gt;第一行写 Python 代码&lt;/li&gt;
+&lt;li&gt;下一行使用自然语言描述&lt;/li&gt;
+&lt;li&gt;甚至混合使用 R/Julia 语言&lt;/li&gt;
+&lt;/ul&gt;
+&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;p style="color:#1f2328; text-align:start"&gt;科学家只需专注于&lt;strong&gt;探索&lt;/strong&gt;，无需在不同工具与环境之间来回切换。&lt;/p&gt;
+
+&lt;div style="text-align:start"&gt;
+&lt;h2&gt;功能特性&lt;/h2&gt;
+&lt;/div&gt;
+
+&lt;p style="color:#1f2328; text-align:start"&gt;用 Pantheon-CLI 的开源力量重塑你的数据分析工作流——它为多语言无缝集成、轻松数据分析与下一代科研发现而生。&lt;/p&gt;
+
+&lt;div style="text-align:start"&gt;
+&lt;h3&gt;3.1 与数据对话&lt;/h3&gt;
+&lt;/div&gt;
+
+&lt;ul&gt;
+&lt;li&gt;使用 Pantheon-CLI，你可以处理任何本地数据，不局限于文本、CSV、Excel，还包括 anndata、pkl、torch，以及任何 Python/R/Julia 支持的数据格式。&lt;/li&gt;
+&lt;li&gt;你无需将任何数据上传至服务器——分析能力完全依赖于你的计算机。也可以将 Pantheon-CLI 安装在服务器上，解锁无限分析可能。&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;div style="text-align:start"&gt;
+&lt;h3&gt;3.2 混合式编程&lt;/h3&gt;
+&lt;/div&gt;
+
+&lt;ul&gt;
+&lt;li&gt;在 Pantheon-CLI 中，所有变量都保存在环境中，突破了传统编程的限制。你可以随时用自然语言「编程」，CLI 会自动生成 Python/R/Julia 代码并运行。&lt;/li&gt;
+&lt;li&gt;这是全球首个具备变量持久化支持的 Agent。在编码过程中，你可以随时输入自然语言，Pantheon-CLI 将自动执行你想要的分析。&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;div style="text-align:start"&gt;
+&lt;h3&gt;3.3 MCP 集成&lt;a href="https://github.com/aristoteleo/pantheon-cli/blob/main/assets/feature_3.jpg" target="_blank"&gt;&lt;/a&gt;&lt;/h3&gt;
+&lt;/div&gt;
+
+&lt;ul&gt;
+&lt;li&gt;通过 Pantheon-CLI，构建了一个具备人机交互全栈能力的助手：读写文件、创建文件、运行命令、生成代码、读取网页。&lt;/li&gt;
+&lt;li&gt;不同于传统 Agent，该项目几乎实现了 Claude Code 的所有能力，并进一步优化——致力于让 Pantheon-CLI 更适合数据分析，而非纯粹的代码编程。&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;div style="text-align:start"&gt;
+&lt;h3&gt;3.4 类人行为&lt;/h3&gt;
+&lt;/div&gt;
+
+&lt;ul&gt;
+&lt;li&gt;像人类科学家一样，Pantheon-CLI 可读取网页教程与 PDF 论文，然后开始规划分析。&lt;/li&gt;
+&lt;li&gt;给 LLM 输入教程常能得到更好的输出，但并非所有网页都易于访问。项目重构了更强大的网页抓取能力，尽可能复现人类在分析前会做的一切准备工作。&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;div style="text-align:start"&gt;
+&lt;h3&gt;3.5 任务规划&lt;/h3&gt;
+&lt;/div&gt;
+
+&lt;ul&gt;
+&lt;li&gt;在 Pantheon-CLI 中，可从论文中学习并自动规划、构建科学 Agent。学习论文的 Method 部分，像人类专家一样搭建逐步执行的 Agent。&lt;/li&gt;
+&lt;li&gt;对于数据科学任务，现有 Agent 的通用做法是「计划并逐步执行」，但这依赖于人类预先定义的步骤。Pantheon-CLI 则能从论文或教程中自动学习并规划工作流。这与人类专家的做法有何不同？&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;div style="text-align:start"&gt;
+&lt;h3&gt;3.6 多模型提供商支持&lt;/h3&gt;
+&lt;/div&gt;
+
+&lt;ul&gt;
+&lt;li&gt;Pantheon-CLI 支持主流大模型提供商，包括 OpenAI、Anthropic、Gemini、Deepseek、Qwen 等，因此你不受制于任一模型。&lt;/li&gt;
+&lt;li&gt;这看似简单，却非常实用：支持任何大模型，且无需「Claude Code 风格」的专用 API——通用 LLM API 即可。&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;div style="text-align:start"&gt;
+&lt;h3&gt;3.7 本地 LLM 支持&lt;/h3&gt;
+&lt;/div&gt;
+
+&lt;ul&gt;
+&lt;li&gt;出于某些数据隐私合规需求，Pantheon-CLI 可基于 ollama 使用本地大模型离线完成数据分析。&lt;/li&gt;
+&lt;li&gt;在本地运行数据与本地运行模型，是 Pantheon-CLI 的另一个有趣优势。&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;div style="text-align:start"&gt;
+&lt;h3&gt;3.8 多 RAG 支持&lt;/h3&gt;
+&lt;/div&gt;
+
+&lt;ul&gt;
+&lt;li&gt;提供完整的预学习 RAG 方案。通过强大的网页爬虫汇集文档信息，构建一个「外置大脑」，随后将用户意图与之匹配，生成更可靠的输出。&lt;/li&gt;
+&lt;li&gt;虽然 RAG 仍在争论中，但很多时候用户找不到「合适教程」作为精确输入。在这种情况下，RAG 就很有价值——毕竟极长上下文也会消耗大量 tokens。后续会释放更大的 RAG 数据库供下载。&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;div style="text-align:start"&gt;
+&lt;h3&gt;3.9 生物学支持&lt;/h3&gt;
+&lt;/div&gt;
+
+&lt;ul&gt;
+&lt;li&gt;借助在生物组学分析方面的经验，预置了系统级组学工具集，帮助你完成上游测序比对、下游注释与差异分析，甚至完整复现一篇生物学论文中的全部分析。&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;div style="text-align:start"&gt;
+&lt;h3&gt;3.10 Notebook Support&lt;/h3&gt;
+&lt;/div&gt;
+
+&lt;ul&gt;
+&lt;li&gt;想象一下：从现在起，当你在笔记本中分析数据时，如果你有特定的需求，却不想翻阅复杂的文档，你只需要进行一次对话，分析工作就能瞬间完成。&lt;/li&gt;
+&lt;li&gt;它不仅用于编写代码，还能自动运行和修改代码以生成正确结果，甚至能够处理文件并从网站学习——这些功能是其他任何工具都无法比拟的。&lt;/li&gt;
+&lt;/ul&gt;
+
+                                                                    &lt;/div&gt;
+                                                                </description>
+      <link>https://www.oschina.net/p/pantheon-cli</link>
+      <guid isPermaLink="false">https://www.oschina.net/p/pantheon-cli</guid>
+      <pubDate>Sun, 14 Sep 2025 09:45:00 GMT</pubDate>
+    </item>
+    <item>
+      <title>《人工智能安全治理框架》2.0 版发布</title>
+      <description>&lt;div class="content"&gt;
+                                                                    
+                                                        &lt;p&gt;&lt;span style="background-color:#ffffff; color:rgba(0, 0, 0, 0.9)"&gt;在国家互联网信息办公室的指导下，国家计算机网络应急技术处理协调中心组织专业机构、科研院所、行业企业等持续跟踪人工智能风险变化演进，梳理调整风险分类，研究形成风险分级方法，动态调整更新防范治理措施，制定&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fmp.weixin.qq.com%2Fs%2FaFGCdWSxHxGdxC9e76wuXw" target="_blank"&gt;《人工智能安全治理框架》2.0 版&lt;/a&gt;，&lt;/span&gt;&lt;span style="background-color:#ffffff; color:rgba(0, 0, 0, 0.9)"&gt;作为网安标委技术文件发布。&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;span style="background-color:#ffffff; color:rgba(0, 0, 0, 0.9)"&gt;旨在&lt;/span&gt;&lt;span style="background-color:#ffffff; color:rgba(0, 0, 0, 0.9)"&gt;推动增进人工智能安全治理共识，促进协同共治、普惠共享，为应对人工智能快速发展的新⻛险新挑战，安全有效地释放应用需求，促进人工智能技术和产业发展提供参考指引。&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;span style="background-color:#ffffff; color:#222222"&gt;《人工智能安全治理框架》1.0 版（以下简称《框架》）于 2024 年 9 月发布。国家互联网应急中心负责同志表示，《框架》2.0 版的发布，顺应全球人工智能发展潮流，统筹技术创新与治理实践，在人工智能安全、伦理、治理等方面不断深化共识，促进形成安全、可信、可控的人工智能发展生态，构建跨国界、跨领域、跨行业的协同治理格局。同时，有助于推进多边机制下人工智能安全治理合作，推动世界范围内技术成果的普惠共享，确保人类社会共享人工智能发展的红利。&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;img height="401" src="https://oscimg.oschina.net/oscnet/up-3e656b6a8b8754221ca5273024e8dfad42e.png" width="300" referrerpolicy="no-referrer"&gt;&lt;/p&gt;
+                                                                                &lt;/div&gt;
+                                                                            </description>
+      <link>https://www.oschina.net/news/372324</link>
+      <guid isPermaLink="false">https://www.oschina.net/news/372324</guid>
+      <pubDate>Sun, 14 Sep 2025 09:37:00 GMT</pubDate>
+      <author>来源: OSCHINA</author>
+    </item>
+    <item>
+      <title>​Cursor 升级 Tab 模型，实时强化学习提升开发者建议精准度</title>
+      <description>&lt;div class="content"&gt;
+                                                                    
+                                                        &lt;p style="color:#242424; margin-left:0; margin-right:0; text-align:left"&gt;Cursor 是一款基于人工智能的编程平台，最近宣布对其 Tab 模型进行了升级。Tab 模型是为开发者提供自动补全建议的系统。此次升级显著减少了低质量建议的数量，提高了建议的准确性。具体来说，新的 Tab 模型相比于之前的版本，建议数量减少了 21%，而接受率提高了 28%。&lt;/p&gt; 
+&lt;p style="color:#242424; margin-left:0; margin-right:0; text-align:left"&gt;&lt;img height="303" src="https://oscimg.oschina.net/oscnet/up-5f8f2f76b53766cb4cfaec598400aa74c36.png" width="500" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p style="color:#242424; margin-left:0; margin-right:0; text-align:left"&gt;Cursor 在其博客中表示，实现高接受率不仅仅是让模型变得更智能，还需要懂得何时提供建议、何时不提供。为了应对这一挑战，Cursor 考虑了训练一个单独的模型，用于预测某个建议是否会被接受。该公司引用了一项 2022 年的研究，指出这种方法在 GitHub Copilot 中取得了成功。研究中采用了逻辑回归过滤器，分析编程语言、最近的接受历史和训练字符等特征，将那些得分较低的建议隐藏起来。&lt;/p&gt; 
+&lt;p style="color:#242424; margin-left:0; margin-right:0; text-align:left"&gt;然而，Cursor 认为这种解决方案虽然可以预测用户接受建议的概率，但希望有一个更通用的机制，能够重用 Tab 模型学到的强大代码表示。Cursor 希望通过改变 Tab 模型的结构，避免在最初就产生低质量建议，而不是后续再进行过滤。&lt;/p&gt; 
+&lt;p style="color:#242424; margin-left:0; margin-right:0; text-align:left"&gt;因此，Cursor 采用了策略梯度方法，这是一种强化学习的方法。当用户接受建议时，模型会得到奖励;当建议被拒绝时，模型会受到惩罚;而在选择保持沉默时则不会得到任何反馈。此方法需要 「在线」 数据，即从当前使用的模型收集的反馈。Cursor 通过每天多次向用户部署新的检查点，并迅速基于新交互对模型进行再训练，来解决这一问题。&lt;/p&gt; 
+&lt;p style="color:#242424; margin-left:0; margin-right:0; text-align:left"&gt;Cursor 表示，当前从部署检查点到收集数据的过程仅需 1.5 到 2 小时，这在 AI 行业中已经算是较快，但仍有进一步加速的空间。该公司的 Tab 模型每天处理超过 4 亿个请求，Cursor 希望这一改进能够提升开发者的编码体验，并计划在未来进一步开发这些方法。&lt;/p&gt; 
+&lt;p style="color:#242424; margin-left:0; margin-right:0; text-align:left"&gt;在线强化学习是该领域最令人兴奋的方向之一，一位在 OpenAI 从事后训练的工程师在社交媒体上对此表示赞赏，称 Cursor 似乎是&lt;span&gt;第一&lt;/span&gt;个成功在大规模上实施该技术的公司。&amp;nbsp;&lt;/p&gt; 
+&lt;p style="color:#242424; margin-left:0; margin-right:0; text-align:left"&gt;不久前，Cursor 的母公司 Anysphere 宣布融资 9 亿美元，估值达 99 亿美元，并推出了一项月费 200 美元的 「超值」 计划，承诺提供 20 倍于 20 美元月费 「专业版」 的使用量。此外，Cursor 还在同月进行了平台更新，新增了自动代码审查、记忆功能和一键设置模型上下文协议服务器的功能。&lt;/p&gt;
+                                                                                &lt;/div&gt;
+                                                                            </description>
+      <link>https://www.oschina.net/news/372315</link>
+      <guid isPermaLink="false">https://www.oschina.net/news/372315</guid>
+      <pubDate>Sun, 14 Sep 2025 08:57:00 GMT</pubDate>
+      <author>来源: OSCHINA</author>
+    </item>
+    <item>
+      <title>Genspark AI 浏览器正式发布，支持本地运行开源模型</title>
+      <description>&lt;div class="content"&gt;
+                                                                    
+                                                        &lt;p&gt;Genspark AI 浏览器正式发布，官方称其&lt;strong&gt;为世界首个支持本地运行开源模型的 AI 浏览器&lt;/strong&gt;。使用大模型无需联网，可在本地设备离线运行 169 款开源模型，包括 GPT-OSS、Gemma3 等，响应速度极快且完全免费，并集成了全能智能体、广告拦截等功能。&lt;/p&gt; 
+&lt;p&gt;&lt;img alt="" src="https://oscimg.oschina.net/oscnet/up-205a66f89555bba425f98420cd70b1a0e86.png" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;img height="1636" src="https://static.oschina.net/uploads/space/2025/0915/164241_hahS_2720166.png" width="2988" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;blockquote&gt; 
+ &lt;p&gt;下载地址：&lt;em&gt;https://www.genspark.ai/browser&lt;/em&gt;&lt;/p&gt; 
+&lt;/blockquote&gt; 
+&lt;p&gt;除端侧 AI 大模型外，Genspark AI 浏览器集成全能智能体，可在任意网页实时比价、分析评论、寻找最优交易；购物站点一键「Find best deal」即可锁定最低价格。Autopilot 模式允许 AI 自主浏览并收集信息；内置 MCP 商店供用户扩展功能；系统级广告拦截提供无广告纯净体验。目前提供 Windows 版本下载，官网已开放获取。&lt;/p&gt;
+                                                                                &lt;/div&gt;
+                                                                            </description>
+      <link>https://www.oschina.net/news/372311</link>
+      <guid isPermaLink="false">https://www.oschina.net/news/372311</guid>
+      <pubDate>Sun, 14 Sep 2025 08:43:00 GMT</pubDate>
+      <author>来源: OSCHINA</author>
+    </item>
+    <item>
+      <title>英伟达违反反垄断法，市场监管总局依法决定实施进一步调查</title>
+      <description>&lt;div class="content"&gt;
+                                                                    
+                                                        &lt;p&gt;国家市场监管总局发布公告称，&lt;span style="background-color:#ffffff; color:#222222"&gt;近日，经初步调查，英伟达公司违反《中华人民共和国反垄断法》和《市场监管总局关于附加限制性条件批准英伟达公司收购迈络思科技有限公司股权案反垄断审查决定的公告》，市场监管总局依法决定对其实施进一步调查。&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;img height="291" src="https://oscimg.oschina.net/oscnet/up-05819d861c5fa6b672979b892bc20198c1c.png" width="500" referrerpolicy="no-referrer"&gt;&lt;/p&gt;
+                                                                                &lt;/div&gt;
+                                                                            </description>
+      <link>https://www.oschina.net/news/372305</link>
+      <guid isPermaLink="false">https://www.oschina.net/news/372305</guid>
+      <pubDate>Sun, 14 Sep 2025 08:28:00 GMT</pubDate>
+      <author>来源: OSCHINA</author>
+    </item>
+    <item>
+      <title>AI 编程工具 Cursor 升级 Tab 模型</title>
+      <description>&lt;div class="content"&gt;
+                                                                    
+                                                        &lt;p&gt;AI 编程工具 Cursor&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fcursor.com%2Fblog%2Ftab-rl" target="_blank"&gt;宣布&lt;/a&gt;对其代码自动补全系统 Tab 模型进行重大升级。此次升级聚焦于减少低质量建议，显著提升准确性。据 Cursor 称，新模型提供的建议数量比旧版减少 21%，但接受率提高了 28%。&lt;/p&gt; 
+&lt;p&gt;&lt;img alt="" src="https://oscimg.oschina.net/oscnet/up-7d38fa82207b8f8398156bf34ea4383041e.png" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p&gt;为解决此前模型存在的问题，Cursor 最初考虑训练单独模型预测建议接受度，参考 2022 年 GitHub Copilot 相关研究，采用逻辑回归过滤技术。但 Cursor 期望更通用机制，最终利用强化学习中的策略梯度方法，使模型因建议被接受获奖励，被拒则受惩罚。该方法需「在线策略」数据，Cursor 通过每日多次向用户部署新检查点，并依据最新交互快速重新训练模型来实现。&lt;/p&gt; 
+&lt;p&gt;Cursor 希望实现不只是事后过滤失败建议，而是让主模型本身在建议生成阶段就尽量避免「坏建议」。他们用 policy gradient 方法来训练 Tab 模型，让模型在做出建议 vs 不建议的决策上，最大化一个定义好的 reward 函数。这个 reward 重在：&lt;/p&gt; 
+&lt;ol&gt; 
+ &lt;li&gt;鼓励建议被接受（accept suggestions）&lt;/li&gt; 
+ &lt;li&gt;惩罚建议被拒绝&lt;/li&gt; 
+ &lt;li&gt;不建议（show nothing）在模型判断不确定或建议被低接收率预计的情况下也给予中性或某种 reward。&lt;/li&gt; 
+&lt;/ol&gt; 
+&lt;p&gt;举例来说，如果模型估计建议被接受的机会至少 25%，显示建议会有正 reward；如果低于，则建议不被显示以避免 negative reward。&lt;/p&gt; 
+&lt;p&gt;目前，Tab 模型在平台上响应用户每一次操作，每日处理超 4 亿次请求。业内对此次升级反响积极，有 OpenAI 工程师称赞 Cursor 在前沿技术规模化应用方面的领先尝试。&lt;/p&gt; 
+&lt;p&gt;今年 6 月，Cursor 母公司 Anysphere 融资 9 亿美元，估值达 99 亿美元，并推出高端订阅计划，同时平台更新了自动代码审查等功能。&lt;/p&gt;
+                                                                                &lt;/div&gt;
+                                                                            </description>
+      <link>https://www.oschina.net/news/372303</link>
+      <guid isPermaLink="false">https://www.oschina.net/news/372303</guid>
+      <pubDate>Sun, 14 Sep 2025 08:27:00 GMT</pubDate>
+      <author>来源: OSCHINA</author>
+    </item>
+    <item>
+      <title>OpenAI 董事会主席承认 AI 泡沫：有人会血赚也有人会血亏</title>
+      <description>&lt;div class="content"&gt;
+                                                                    
+                                                        &lt;div style="text-align:justify"&gt; 
+ &lt;p style="color:#222222; margin-left:0; margin-right:0; text-align:left"&gt;AI 领域的狂热情绪正引发一场关于「泡沫」的激烈辩论，而 OpenAI 董事会主席 Bret Taylor 对此给出了一个明确但复杂的答案：我们确实身处泡沫之中，但这并不妨碍 AI 最终创造巨大的经济价值。&lt;/p&gt; 
+&lt;/div&gt; 
+&lt;div style="text-align:justify"&gt;
+ 近日，在接受媒体 The Verge 采访时，Bret Taylor 赞同了
+ &lt;span&gt;OpenAI 首席执行官 Sam Altman 先前的观点&lt;/span&gt;，承认「我们正处于 AI 泡沫中，有人将损失一大笔钱」。
+&lt;/div&gt; 
+&lt;div style="text-align:justify"&gt; 
+ &lt;p style="color:#222222; margin-left:0; margin-right:0; text-align:left"&gt;Taylor 警告称，&lt;strong&gt;与任何颠覆性技术浪潮一样，这一过程将不可避免地产生巨大的赢家，同时也会让许多人损失惨重。&lt;/strong&gt;他同时认为，AI 将改变经济格局并创造巨大价值，这与市场存在泡沫，是两个可以同时成立的事实。&lt;/p&gt; 
+&lt;/div&gt; 
+&lt;div style="text-align:justify"&gt; 
+ &lt;p style="color:#222222; margin-left:0; margin-right:0; text-align:left"&gt;Taylor 将当前的 AI 热潮与上世纪 90 年代末的互联网泡沫进行了直接比较。他指出，&lt;strong&gt;尽管当时无数公司在泡沫破裂中倒下，但从长远来看，「1999 年的那些人（对互联网未来的判断）在某种程度上是正确的」。&lt;/strong&gt;&lt;/p&gt; 
+&lt;/div&gt; 
+&lt;div style="text-align:justify"&gt; 
+ &lt;p style="color:#222222; margin-left:0; margin-right:0; text-align:left"&gt;如今，亚马逊和谷歌等诞生于那个时代的公司已成为全球市值最高的企业之一，证明了泡沫下的远见最终能够兑现：&lt;/p&gt; 
+&lt;/div&gt; 
+&lt;div style="text-align:justify"&gt; 
+ &lt;blockquote&gt; 
+  &lt;p style="color:#222222; margin-left:0; margin-right:0; text-align:left"&gt;「实际上，如果你看看世界的 GDP，互联网的存在实际上创造了多少或影响了互联网？有人可能会说，1999 年的所有人都是对的。它对几乎所有指标都有同样的影响。」&lt;/p&gt; 
+ &lt;/blockquote&gt; 
+&lt;/div&gt; 
+&lt;div style="text-align:justify"&gt; 
+ &lt;h2 style="margin-left:0; margin-right:0"&gt;&lt;strong&gt;关键在于区分泡沫的「方向性」&lt;/strong&gt;&lt;/h2&gt; 
+&lt;/div&gt; 
+&lt;div style="text-align:justify"&gt; 
+ &lt;p style="color:#222222; margin-left:0; margin-right:0; text-align:left"&gt;Taylor 详细阐述了他对 AI 泡沫与互联网泡沫的类比。他认为，&lt;strong&gt;关键在于区分方向的正确性与具体投资标的的成功率。&lt;/strong&gt;&lt;/p&gt; 
+&lt;/div&gt; 
+&lt;div style="text-align:justify"&gt; 
+ &lt;p style="color:#222222; margin-left:0; margin-right:0; text-align:left"&gt;互联网泡沫时期，许多商业模式如 Webvan（网上生鲜配送）最终失败，但其核心理念在互联网基础设施成熟后，由 Instacart 和 DoorDash 等公司成功实现。这表明，即便最初的尝试失败，其背后的趋势和需求是真实存在的。&lt;/p&gt; 
+&lt;/div&gt; 
+&lt;div style="text-align:justify"&gt; 
+ &lt;p style="color:#222222; margin-left:0; margin-right:0; text-align:left"&gt;同样，在互联网早期，大量投资光纤网络的公司破产，但这些基础设施最终被后来者利用，支撑了整个数字经济的繁荣。&lt;/p&gt; 
+&lt;/div&gt; 
+&lt;div style="text-align:justify"&gt; 
+ &lt;p style="color:#222222; margin-left:0; margin-right:0; text-align:left"&gt;Taylor 表示，「AI 将改变经济」和「很多人会亏钱」这两个论断可以同时为真：&lt;/p&gt; 
+&lt;/div&gt; 
+&lt;div style="text-align:justify"&gt; 
+ &lt;blockquote&gt; 
+  &lt;p style="color:#222222; margin-left:0; margin-right:0; text-align:left"&gt;「我认为 AI 将改变经济是事实，我认为它将像互联网一样，在未来创造巨大的经济价值。同时我认为我们也处于泡沫之中，很多人会损失很多钱。&lt;strong&gt;我认为两者同时是绝对正确的，而且这两件事同时发生的历史先例很多。」&lt;/strong&gt;&lt;/p&gt; 
+ &lt;/blockquote&gt; 
+&lt;/div&gt; 
+&lt;div style="text-align:justify"&gt; 
+ &lt;p style="color:#222222; margin-left:0; margin-right:0; text-align:left"&gt;这意味着当前的巨额投资，无论最终流向哪家公司，都在为下一代 AI 应用铺平道路，但并非所有参与者都能分享到最后的果实。&lt;/p&gt; 
+&lt;/div&gt; 
+&lt;div style="text-align:justify"&gt; 
+ &lt;h2 style="margin-left:0; margin-right:0"&gt;&lt;strong&gt;AI 如此「烧钱」的原因：市场尚不成熟&lt;/strong&gt;&lt;/h2&gt; 
+&lt;/div&gt; 
+&lt;div style="text-align:justify"&gt; 
+ &lt;p style="color:#222222; margin-left:0; margin-right:0; text-align:left"&gt;Taylor 并不同意「模型迭代已显著放缓」的观点，他以编码任务为例，指出新模型在特定领域的性能仍有「阶跃式」提升。但他同时认为，随着模型能力的成熟和普及，对于许多任务而言，模型已达到「足够好」的水平。&lt;/p&gt; 
+&lt;/div&gt; 
+&lt;div style="text-align:justify"&gt; 
+ &lt;p style="color:#222222; margin-left:0; margin-right:0; text-align:left"&gt;他预测，未来构建 AI 应用将更像是「如何使用数据库」，而非「如何编写数据库」。&lt;/p&gt; 
+&lt;/div&gt; 
+&lt;div style="text-align:justify"&gt; 
+ &lt;p style="color:#222222; margin-left:0; margin-right:0; text-align:left"&gt;对于市场上关于 AI 投入产出比的质疑，例如一份 MIT 报告指出许多企业 AI 支出未见成效，Taylor 认为，&lt;strong&gt;这主要是因为市场尚不成熟。&lt;/strong&gt;许多公司正在进行「AI 观光」（AI tourism），试图自己构建解决方案，其过程复杂且容易失败。&lt;/p&gt; 
+&lt;/div&gt; 
+&lt;div style="text-align:justify"&gt; 
+ &lt;p style="color:#222222; margin-left:0; margin-right:0; text-align:left"&gt;他相信，正确的路径是购买像 Sierra（用于客服）或 Harvey（用于法律）这样专注于特定领域的成熟 AI 解决方案。随着更多「应用型 AI 公司」的出现，企业将能更直接地购买到解决其痛点 AI 代理，从而真正实现 AI 的价值。&lt;/p&gt; 
+&lt;/div&gt; 
+&lt;div style="text-align:justify"&gt; 
+ &lt;blockquote&gt; 
+  &lt;p style="color:#222222; margin-left:0; margin-right:0; text-align:left"&gt;「我认为我们正处于 AI 的早期阶段，还没有一个出色的供应商来解决您业务中遇到的每个问题。因此，您要么必须等待，要么必须自己构建它。」&lt;/p&gt; 
+ &lt;/blockquote&gt; 
+&lt;/div&gt;
+                                                                                &lt;/div&gt;
+                                                                            </description>
+      <link>https://www.oschina.net/news/372298</link>
+      <guid isPermaLink="false">https://www.oschina.net/news/372298</guid>
+      <pubDate>Sun, 14 Sep 2025 07:52:00 GMT</pubDate>
+      <author>来源: OSCHINA</author>
+    </item>
+    <item>
+      <title>Anthropic 发布 LLM Agent 工具编写指南</title>
+      <description>&lt;div class="content"&gt;
+                                                                    
+                                                        &lt;p&gt;Anthropic 官方博客近日发布了一份详细指南&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fwww.anthropic.com%2Fengineering%2Fwriting-tools-for-agents" target="_blank"&gt;&lt;em&gt;《Writing effective tools for LLM agents—using LLM agents》&lt;/em&gt;&lt;/a&gt;，阐述如何利用 Model Context Protocol（MCP）为 LLM Agent 设计高效工具，并提出了「原型-评估-协作」三步迭代流程，归纳了五大设计原则。&lt;/p&gt; 
+&lt;p&gt;1. 谨慎选择工具&lt;br&gt; 2. 清晰的命名空间&lt;br&gt; 3. 让工具返回更具意义的上下文&lt;br&gt; 4. 优化返回信息的 Token 效率&lt;br&gt; 5. 通过提示工程提升工具说明的质量&lt;/p&gt; 
+&lt;p&gt;&lt;img alt="" src="https://oscimg.oschina.net/oscnet/up-54ceebb7c490a4f1d803e1a0d17a5f1bf5f.png" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p&gt;文章指出，工具是「确定性系统与非确定性 Agent 之间的合约」，开发者需跳出传统 API 思维，面向 Agent 的上下文限制与策略多样性重新设计接口。&lt;/p&gt; 
+&lt;p&gt;作者透露，文中多数结论由 Claude Code 反复分析评估脚本、重构工具描述与模式后自动得出，且仍在通过保留测试集防止过拟合。Anthropic 已同步开源工具评估 Cookbook，并预告未来 MCP 协议与底层 LLM 升级时，同样方法可让工具能力随 Agent 同步演进。&lt;/p&gt;
+                                                                                &lt;/div&gt;
+                                                                            </description>
+      <link>https://www.oschina.net/news/372294/anthropic-writing-tools-for-agents</link>
+      <guid isPermaLink="false">https://www.oschina.net/news/372294/anthropic-writing-tools-for-agents</guid>
+      <pubDate>Sun, 14 Sep 2025 07:41:00 GMT</pubDate>
+      <author>来源: OSCHINA</author>
+    </item>
     <item>
       <title>阿里 Qoder 新升级，Repo Wiki 支持共享、编辑和导出</title>
       <description>&lt;div class="content"&gt;
@@ -24,7 +563,7 @@
                                                                             </description>
       <link>https://my.oschina.net/u/3874284/blog/18691841</link>
       <guid isPermaLink="false">https://my.oschina.net/u/3874284/blog/18691841</guid>
-      <pubDate>Mon, 15 Sep 2025 07:22:26 GMT</pubDate>
+      <pubDate>Sun, 14 Sep 2025 07:22:00 GMT</pubDate>
       <author>原创</author>
     </item>
     <item>
@@ -44,7 +583,7 @@
                                                                             </description>
       <link>https://www.oschina.net/news/372284</link>
       <guid isPermaLink="false">https://www.oschina.net/news/372284</guid>
-      <pubDate>Mon, 15 Sep 2025 07:17:26 GMT</pubDate>
+      <pubDate>Sun, 14 Sep 2025 07:16:00 GMT</pubDate>
       <author>来源: OSCHINA</author>
     </item>
     <item>
@@ -60,695 +599,8 @@
                                                                             </description>
       <link>https://www.oschina.net/news/372278</link>
       <guid isPermaLink="false">https://www.oschina.net/news/372278</guid>
-      <pubDate>Mon, 15 Sep 2025 07:01:26 GMT</pubDate>
+      <pubDate>Sun, 14 Sep 2025 07:01:00 GMT</pubDate>
       <author>来源: OSCHINA</author>
-    </item>
-    <item>
-      <title>🔥真宠物小精灵？还能智能操控家具？</title>
-      <description/>
-      <link>https://www.oschina.net/ai-creation/details/2208</link>
-      <guid isPermaLink="false">https://www.oschina.net/ai-creation/details/2208</guid>
-      <pubDate>Mon, 15 Sep 2025 07:00:26 GMT</pubDate>
-    </item>
-    <item>
-      <title>钉钉首款 AI 硬件 DingTalk A1 开售</title>
-      <description>&lt;div class="content"&gt;
-                                                                    
-                                                        &lt;p&gt;9 月 15 日，钉钉首款 AI 硬件 DingTalk A1 旗舰版正式在天猫钉钉官方旗舰店开售。&lt;/p&gt; 
-&lt;p&gt;DingTalk A1 旗舰版售价 799 元。购买产品的个人用户，将免费获得每月 1000 分钟语音转文字时长和 10GB 个人云存储空间。也可以选择开通 599 元/年的专业版和 1499 元/年尊享版会员，享受更长语音转文字时长和更多 AI 权益。消费者下单后，产品 48 小时内即可发货。&lt;/p&gt; 
-&lt;p&gt;&lt;img height="300" src="https://oscimg.oschina.net/oscnet/up-63a507278e97aa6453ed75aa78203221ab0.jpg" width="300" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;p&gt;DingTalk A1 厚度仅 3.8 毫米，只相当于几张信用卡厚度。通过磁吸在手机背面，能够记录电话及日常沟通语音。依靠钉钉 AI 听记能力，它能够把语音转换成文字，通过 AI 大模型总结分析。它还能实时翻译和多语种互译，特别是针对学习、跨国会议等场景。&lt;/p&gt; 
-&lt;p&gt;DingTalk A1 还内置了 30 多种 AI 场景化分析模板，在开会、采访、心理咨询、法律咨询、客户拜访、面试问答等工作场合，都能用它对语音沟通进行总结分析划重点。&lt;/p&gt; 
-&lt;p&gt;这款产品主要面向销售、人事、客服、律师、医生、教师等岗位和职业，能够帮助用户把沟通语音转化为经过整理提炼的线上知识，在钉钉上分享、协作，同时这些工作过程数据会沉淀为高质量资产，助力企业经营和个人积累。&lt;/p&gt;
-                                                                                &lt;/div&gt;
-                                                                            </description>
-      <link>https://www.oschina.net/news/372276</link>
-      <guid isPermaLink="false">https://www.oschina.net/news/372276</guid>
-      <pubDate>Mon, 15 Sep 2025 07:00:26 GMT</pubDate>
-      <author>来源: OSCHINA</author>
-    </item>
-    <item>
-      <title>经济日报：谷歌反垄断案折射搜索行业变革</title>
-      <description>&lt;div class="content"&gt;
-                                                                    
-                                                        &lt;p&gt;近日，谷歌在一场持续 5 年的反垄断案中取得阶段性胜利，成功避免被强制拆分。令人关注的是，在这场危机中「救局」的，恰恰是被视为谷歌竞争对手的 OpenAI 等生成式人工智能（AI）公司。谷歌一案的判决让业界更清晰地看到，AI 正在重塑全球搜索引擎市场的竞争格局。&lt;/p&gt; 
-&lt;p&gt;多年来，美国政府持续加强对硅谷巨头的反垄断审查，谷歌正是其中的代表性企业。2020 年，美国司法部及多个州对谷歌提起反垄断诉讼，指控其搜索引擎年利润达数十亿美元、处理近 90% 的网络搜索请求，要求拆分谷歌相关业务。&lt;/p&gt; 
-&lt;p&gt;经过长达 5 年的拉锯，美国联邦地区法院法官阿米特·梅塔近日裁定，谷歌无需剥离 Chrome 浏览器及安卓操作系统，只需向竞争对手开放更多搜索结果数据，并设立反垄断技术委员会以监督公司运营。这一相对宽松的判决提振了市场信心，消息公布后，谷歌盘后股价一度大涨超 8%。&lt;/p&gt; 
-&lt;p&gt;谷歌能够避免被拆分，生成式 AI 意外成了「救命稻草」。梅塔在判决书中多次强调生成式 AI 的影响。判决书指出，越来越多的用户正通过 ChatGPT 等 AI 聊天机器人获取信息，而非传统搜索引擎。尽管生成式 AI 尚未完全取代谷歌搜索，但它显著加剧了搜索市场的竞争，削弱了对谷歌进行彻底拆分的必要性。&lt;/p&gt; 
-&lt;p&gt;如判决书所言，当前已有一批 AI 浏览器新品发布，让沉寂多时的浏览器市场再次硝烟弥漫。例如，AI 搜索引擎的独角兽 Perplexity 已正式发布了自己的浏览器 Comet。几乎同一时间，OpenAI 也宣布在未来几周发布新款 AI 浏览器。这些 AI 搜索并非传统搜索引擎的简单升级，而是借助深度学习与自然语言处理技术，重新定义了信息获取的方式。Perplexity 联合创始人阿拉温德·斯里尼瓦斯将其称为「答案引擎」——当用户提出问题，它会给出一个简洁明确的答案，且所有的答案都标明了来源，给出系列联想问题，可以让用户连续追问，进一步拓展和延伸相关话题。&lt;/p&gt; 
-&lt;p&gt;但当前 AI 搜索完全取代传统搜索引擎仍不现实。多年来，传统搜索巨头已构建起坚实的「护城河」。以谷歌为例，Chrome 浏览器背后有 YouTube、Gmail、地图等生态服务支持。当用户使用 Chrome 登录谷歌账号，就能同步这些应用中的书签、密码、浏览记录等，换个电脑也能无缝衔接。这种生态黏性是新兴 AI 浏览器一时难以突破的。&lt;/p&gt; 
-&lt;p&gt;传统搜索引擎还掌握着生成式 AI 发展的关键资源——算力与数据。例如，OpenAI 训练 ChatGPT 需依赖庞大算力，而谷歌云位居全球前三；模型优化需要海量数据，其中大量仍存储于谷歌服务器中。而这些 AI 公司若想跳过这一枷锁，自建数据索引库，不仅技术门槛高，也意味着巨额成本。&lt;/p&gt; 
-&lt;p&gt;无论如何，随着 AI 技术不断发展，全球搜索业务已站在转型的十字路口。新兴 AI 搜索能否突破成本与技术壁垒，开辟新格局？传统搜索巨头又能否摆脱固有商业模式的束缚，成功实现 AI 化转型？答案尚未揭晓。可以确定的是，AI 不再只是技术革命的推动者，也正在成为塑造市场竞争与监管走向的关键力量。谷歌一案的判决，被业内称为「本世纪科技行业最具深远影响的法院裁决之一」，将为同样面临反垄断诉讼的 Meta、亚马逊和苹果提供重要参考和借鉴。（经济日报，杨啸林）&lt;/p&gt;
-                                                                                &lt;/div&gt;
-                                                                            </description>
-      <link>https://www.oschina.net/news/372272</link>
-      <guid isPermaLink="false">https://www.oschina.net/news/372272</guid>
-      <pubDate>Mon, 15 Sep 2025 06:51:26 GMT</pubDate>
-      <author>来源: OSCHINA</author>
-    </item>
-    <item>
-      <title>筑牢安全屏障，守护数字中国｜绿盟科技与您相约 2025 年国家网络安全宣传周</title>
-      <description>&lt;div class="content"&gt;
-                                                                    
-                                                        &lt;p style="text-align:center"&gt;&lt;img alt="" height="306" src="https://oscimg.oschina.net/oscnet//8cb988302e6cb3e8d8f73eea85da3fc5.jpg" width="600" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;p style="margin-left:0; margin-right:0; text-align:left"&gt;「网络安全为人民，网络安全靠人民——以高水平安全守护高质量发展。」&lt;strong&gt;2025 年国家网络安全宣传周将于 9 月 15 日至 21 日在全国范围内隆重开展&lt;/strong&gt;，开幕式及高峰论坛等重要活动将在云南昆明滇池国际会展中心盛大举行。&lt;/p&gt; 
-&lt;p style="margin-left:0; margin-right:0; text-align:left"&gt;在数字化、网络化、智能化深度融合的时代，安全不只是技术，更是推动经济社会稳健前行的基石。没有网络安全，就没有国家安全；没有安全保障，就无「数字未来」可言。&lt;/p&gt; 
-&lt;p style="margin-left:0; margin-right:0; text-align:left"&gt;作为深耕行业二十余年的网安企业，绿盟科技将重磅亮相 2025 年国家网络安全宣传周，参与开幕式、高峰论坛、专题分论坛及多场特色活动等，全面展示前沿研究与实践成果。同时，积极投身全民网络安全宣传普及，携手各界共筑安全屏障，共创健康、清朗的网络空间。&lt;/p&gt; 
-&lt;p style="margin-left:0; margin-right:0; text-align:left"&gt;&amp;nbsp;&lt;/p&gt; 
-&lt;p style="margin-left:0; margin-right:0; text-align:left"&gt;&amp;nbsp;&lt;/p&gt; 
-&lt;p style="margin-left:0; margin-right:0; text-align:center"&gt;&lt;span&gt;&lt;strong&gt;绿盟科技精彩亮点抢先看&lt;/strong&gt;&lt;/span&gt;&lt;/p&gt; 
-&lt;p style="margin-left:0; margin-right:0; text-align:left"&gt;&lt;strong&gt;2025 年国家网络安全宣传周主场信息&lt;/strong&gt;&lt;/p&gt; 
-&lt;p style="text-align:center"&gt;&lt;img alt="" height="256" src="https://oscimg.oschina.net/oscnet//d30ecb7c0a5ac26d14a7630d4cc267c6.jpg" width="600" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;p style="margin-left:0; margin-right:0; text-align:left"&gt;2025 年 9 月 15 日至 21 日&amp;nbsp;&lt;/p&gt; 
-&lt;p style="margin-left:0; margin-right:0; text-align:left"&gt;云南省昆明市滇池国际会展中心&lt;/p&gt; 
-&lt;p style="margin-left:0; margin-right:0; text-align:left"&gt;绿盟科技将受邀参加 2025 年国家网络安全宣传周开幕式、网络安全技术高峰论坛等活动，探讨人工智能与网络安全产业发展的新方向。&lt;/p&gt; 
-&lt;p style="margin-left:0; margin-right:0; text-align:left"&gt;&lt;strong&gt;网络安全企业家座谈会&lt;/strong&gt;&lt;/p&gt; 
-&lt;p style="margin-left:0; margin-right:0; text-align:left"&gt;绿盟科技集团党委书记、董事长兼总裁胡忠华受邀发言&lt;/p&gt; 
-&lt;p style="margin-left:0; margin-right:0; text-align:left"&gt;&lt;strong&gt;网络安全标准与产业促进座谈会&lt;/strong&gt;&lt;/p&gt; 
-&lt;p style="margin-left:0; margin-right:0; text-align:left"&gt;9 月 16 日，下午&lt;/p&gt; 
-&lt;p style="margin-left:0; margin-right:0; text-align:left"&gt;绿盟科技集团董事、首席技术官、高级副总裁，叶晓虎&lt;/p&gt; 
-&lt;p style="margin-left:0; margin-right:0; text-align:left"&gt;主题演讲：《智能体安全与标准化实践探索》&lt;/p&gt; 
-&lt;p style="margin-left:0; margin-right:0; text-align:left"&gt;&lt;strong&gt;AI 赋能关键信息基础设施安全保护会&lt;/strong&gt;&lt;/p&gt; 
-&lt;p style="margin-left:0; margin-right:0; text-align:left"&gt;9 月 16 日，下午&lt;/p&gt; 
-&lt;p style="margin-left:0; margin-right:0; text-align:left"&gt;绿盟科技集团方案与架构研究部总监，陈景妹&lt;/p&gt; 
-&lt;p style="margin-left:0; margin-right:0; text-align:left"&gt;主题演讲：《智铸安全——智能体协同大小模型的网络安全应用测试与实践》&lt;/p&gt; 
-&lt;p style="margin-left:0; margin-right:0; text-align:left"&gt;&lt;strong&gt;电信日｜云南省信息通信网络安全实网演练暨技能竞赛总结&lt;/strong&gt;&lt;/p&gt; 
-&lt;p style="margin-left:0; margin-right:0; text-align:left"&gt;9 月 17 日，上午&lt;/p&gt; 
-&lt;p style="margin-left:0; margin-right:0; text-align:left"&gt;绿盟科技集团运营商事业部总经理，汤旭&lt;/p&gt; 
-&lt;p style="margin-left:0; margin-right:0; text-align:left"&gt;主题演讲：《AI 智御攻防实战：智能化安全防御体系构建与实践》&lt;/p&gt; 
-&lt;p style="margin-left:0; margin-right:0; text-align:left"&gt;&amp;nbsp;&lt;/p&gt; 
-&lt;p style="margin-left:0; margin-right:0; text-align:center"&gt;&lt;span&gt;&lt;strong&gt;全民网安·绿盟科技在行动&lt;/strong&gt;&lt;/span&gt;&lt;/p&gt; 
-&lt;p style="margin-left:0; margin-right:0; text-align:left"&gt;绿盟科技积极参与全国各地的安全周相关活动。除主会场外，还将参与大篷车巡回之旅、「网络安全守护计划」系列直播、宣传周驿站展、「云岭网安号」中老铁路专列等行动，把网络安全理念带到群众身边。&lt;/p&gt; 
-&lt;p style="margin-left:0; margin-right:0; text-align:left"&gt;同时，围绕网络安全意识教育开展宣传，如「2025 网安周｜牢记‘十个凡是’，守好你的‘钱袋子’」，帮助提升公众的安全防护意识。&lt;/p&gt; 
-&lt;p style="text-align:center"&gt;&lt;img alt="" height="505" src="https://oscimg.oschina.net/oscnet//d708b11673b504979de2ab43cfcb359d.jpg" width="600" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;p style="margin-left:0; margin-right:0; text-align:center"&gt;&lt;span&gt;「没有网络安全，就没有国家安全」&lt;/span&gt;&lt;/p&gt; 
-&lt;p style="margin-left:0; margin-right:0; text-align:center"&gt;&lt;span&gt;绿盟科技将持续筑牢国家网络安全屏障&lt;/span&gt;&lt;/p&gt; 
-&lt;p style="margin-left:0; margin-right:0; text-align:center"&gt;&lt;span&gt;树立正确的网络安全观&lt;/span&gt;&lt;/p&gt; 
-&lt;p style="margin-left:0; margin-right:0; text-align:center"&gt;&lt;span&gt;全面提升安全保障体系和能力建设&lt;/span&gt;&lt;/p&gt; 
-&lt;p style="margin-left:0; margin-right:0; text-align:center"&gt;&lt;span&gt;9 月 15 日—21 日&lt;/span&gt;&lt;/p&gt; 
-&lt;p style="margin-left:0; margin-right:0; text-align:center"&gt;&lt;span&gt;2025 年国家网络安全宣传周&lt;/span&gt;&lt;/p&gt; 
-&lt;p style="margin-left:0; margin-right:0; text-align:center"&gt;&lt;span&gt;绿盟科技与您相约，共话安全，共谋未来&lt;/span&gt;&lt;/p&gt; 
-&lt;p&gt;&amp;nbsp;&lt;/p&gt; 
-&lt;p&gt;&amp;nbsp;&lt;/p&gt;
-                                                                                &lt;/div&gt;
-                                                                            </description>
-      <link>https://www.oschina.net/news/372268</link>
-      <guid isPermaLink="false">https://www.oschina.net/news/372268</guid>
-      <pubDate>Sun, 14 Sep 2025 06:37:00 GMT</pubDate>
-      <author>作者: 开源科技</author>
-    </item>
-    <item>
-      <title>双向赋能，生态共融——东软 OneCoreGo®6.0 助力全球车企共赢未来</title>
-      <description>&lt;div class="content"&gt;
-                                                                    
-                                                        &lt;p style="text-align:left"&gt;&lt;span&gt;IAA MOBILITY 2025 期间，欧亚汽车创新论坛在慕尼黑成功举办。此次论坛由盖世汽车与全球汽车行业数据洞察公司 A2MAC1 联合主办，汇聚欧洲与亚洲汽车行业领袖、高管与专家，聚焦「欧亚汽车产业协同升级路径」、「跨区域市场共赢模式探索」等热点议题，通过深度对话与案例分享，推动欧亚汽车产业迈向技术共研、生态共享、市场共拓的新发展格局。&lt;/span&gt;&lt;/p&gt; 
-&lt;p style="text-align:left"&gt;&lt;span&gt;东软&lt;/span&gt;&lt;span&gt;NTS&lt;/span&gt;&lt;span&gt;首席技术官 Jochen Weihgold 受邀出席，并发表《东软 OneCoreGo&lt;/span&gt;&lt;span&gt;®&lt;/span&gt;&lt;span&gt;：驱动全球智慧出行新篇章》主题演讲&lt;/span&gt;&lt;span&gt;，全面展示了东软 OneCoreGo&lt;/span&gt;&lt;span&gt;®&lt;/span&gt;&lt;span&gt;全球车载智能出行解决方案 6.0 的创新理念与强大产品力。他表示，在全球汽车产业加速向电动化、智能化转型的浪潮中，中国汽车品牌正以前所未有的速度走向世界舞台。然而，不同国家和地区在市场需求、法规标准、消费习惯以及生态适配等方面存在差异，出海面临诸多挑战。在此背景下，东软推出的 OneCoreGo&lt;/span&gt;&lt;span&gt;®&lt;/span&gt;&lt;span&gt;全球车载智能出行解决方案 6.0，能够以高度集成化、智能化和定制化服务，助力汽车品牌在全球市场实现差异化竞争。聚焦导航族群、AR For Car、生态、支付、智能交互等领域，东软 OneCoreGo&lt;/span&gt;&lt;span&gt;®&lt;/span&gt;&lt;span&gt;全球车载智能出行解决方案 6.0 升级构建「One Map（全球导航产品族群）、One Sight（AR For Car）、One Store（全球车载生态）、One Pay（车载支付中心）、One Mate（AI 交互中心）」五大核心能力体系。以 AI 技术创新进一步完善东软车载生态，实现「导航+支付+交互」全链路升级，为全球汽车用户全方位打造智能出行体验，引领出行方式新变革 。&lt;/span&gt;&lt;/p&gt; 
-&lt;p style="text-align:left"&gt;&lt;span&gt;在全球汽车工业的宏大敍事中，欧洲可以称为「创新源头」，凭借百年品牌积淀、严苛技术标准与前沿探索，持续引领产业变革。而亚洲则依托庞大的消费市场、快速的技术迭代与完整的产业链，以「规模与速度」的双重优势，成为全球汽车产业格局中不可忽视的「增长极」。&lt;/span&gt;&lt;span&gt;在欧洲的精工基因与亚洲的创新势能双向奔赴的浪潮中，东软正作为「智慧枢纽」，成为欧亚汽车产业深度融合的关键推动者。&lt;/span&gt;&lt;/p&gt; 
-&lt;p style="text-align:left"&gt;&lt;span&gt;Jochen Weihgold 表示，以东软 OneCoreGo&lt;/span&gt;&lt;span&gt;®&lt;/span&gt;&lt;span&gt;全球车载智能出行解决方案 6.0 为载体，东软将欧洲车企对品质与安全的极致追求，与亚洲市场对智能化、场景化的创新需求紧密衔接，通过 AI 驱动的交互革命、全场景生态覆盖与标准化技术部署，助力欧洲品牌快速落地亚洲市场。同时，也帮助亚洲车企以「中国方案」叩开欧洲高端市场的大门。这种双向赋能，不仅推动着汽车产业向电动化、智能化、网联化加速演进，更让欧亚大陆成为全球汽车工业「共生共荣」的典范。&lt;/span&gt;&lt;/p&gt; 
-&lt;p style="text-align:left"&gt;&lt;span&gt;全球化是深植于东软汽车电子基因的长期战略，未来，东软将持续整合全球研发、市场与交付资源，构建敏捷高效的全球响应网络，为客户提供标准统一、快速响应的优质服务，助力全球汽车产业实现智能化转型与价值链升级。&lt;/span&gt;&lt;/p&gt;
-                                                                                &lt;/div&gt;
-                                                                            </description>
-      <link>https://www.oschina.net/news/372267</link>
-      <guid isPermaLink="false">https://www.oschina.net/news/372267</guid>
-      <pubDate>Sun, 14 Sep 2025 06:36:00 GMT</pubDate>
-      <author>作者: 开源科技</author>
-    </item>
-    <item>
-      <title>「Google Gemini」登顶 App Store 免费榜榜首</title>
-      <description>&lt;div class="content"&gt;
-                                                                    
-                                                        &lt;p&gt;谷歌旗下 AI 应用「Google Gemini」在美国 App Store 免费榜单上跃居第一，成为 iPhone 上最受欢迎的免费应用。这一成绩部分得益于广受欢迎的 Nano Banana 图像编辑模型。&lt;/p&gt; 
-&lt;p&gt;&lt;img alt="" src="https://oscimg.oschina.net/oscnet/up-f32d258f67a978346ec2dba1fa5857c6603.png" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;p&gt;截至周五晚，Gemini 位列美国 App Store 免费榜第一位，OpenAI 的 ChatGPT 排名第二，社交应用 Threads 位居第三。Google 搜索 App 排在第六，Google 地图第八，Chrome 第十三，Gmail 则排在第二十一。&lt;/p&gt; 
-&lt;p&gt;在加拿大与英国市场，Gemini 的表现同样强劲，均居榜单第二位。&lt;/p&gt; 
-&lt;p&gt;自 8 月 26 日发布至 9 月 9 日短短两周，Gemini 应用已新增 2300 万用户，Nano Banana 图像编辑工具在此期间被使用超 5 亿次。该编辑模型因能精准保持人物特征一致性而走红，支持多张照片混合生成、风格迁移及对话化编辑等功能。&lt;/p&gt; 
-&lt;p&gt;所有免费用户每天可生成或编辑最多 100 张图片，付费订阅用户（每月 19.99 美元起）每日额度则提升至 1000 张。&lt;/p&gt; 
-&lt;p&gt;据了解，Gemini 的火爆也带动了谷歌在 iOS 生态中的各类应用整体排名上升，显示出生成式 AI 工具在移动端继续受到强烈关注。&lt;/p&gt;
-                                                                                &lt;/div&gt;
-                                                                            </description>
-      <link>https://www.oschina.net/news/372266</link>
-      <guid isPermaLink="false">https://www.oschina.net/news/372266</guid>
-      <pubDate>Sun, 14 Sep 2025 06:36:00 GMT</pubDate>
-      <author>来源: OSCHINA</author>
-    </item>
-    <item>
-      <title>苹果 AI 领域人事调整：前 Siri 高管 Robby Walker 将于 10 月底离职</title>
-      <description>&lt;div class="content"&gt;
-                                                                    
-                                                        &lt;p&gt;据路透社报道，苹果公司在人工智能（AI）领域再迎人事变动。消息披露，前 Siri 高管、曾负责「Apple Intelligence」版本 Siri 研发的 Robby Walker，计划于 2025 年 10 月底正式离开苹果。&lt;/p&gt; 
-&lt;p&gt;&lt;img height="248" src="https://oscimg.oschina.net/oscnet/up-48a88ba0ad3262605a5f5cbf1737efcb81c.png" width="500" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;p&gt;公开信息显示，Walker 在苹果 AI 业务推进中曾承担重要角色。此前，在「Apple Intelligence」版 Siri 项目出现延期后，他曾在内部会议中以「挑战游泳纪录的失败尝试」作比，客观评价团队工作——既坦诚项目未达预期目标，也肯定了团队在研发过程中取得的阶段性成果。同时，Walker 还提及，尽管部分竞争对手已推出质量相对较低的类似功能，但苹果始终坚持更高的质量标准，不急于推出未达标的产品。&lt;/p&gt; 
-&lt;p&gt;项目调整后，Walker 转岗至苹果「Answers」团队，牵头研发基于人工智能技术的搜索工具。目前，彭博社等多方信息显示，「Answers」项目仍在正常推进中，预计将于 2026 年正式上线，此次 Walker 离职暂未对该项目整体进展造成公开披露的影响。&lt;/p&gt; 
-&lt;p&gt;值得关注的是，此次人事变动并非苹果近期在 Siri 相关业务上的唯一调整。此前，苹果已对 Siri 项目管理权进行调整，将其从 AI 主管 John Giannandrea 手中移交至曾主导打造 Vision Pro 及 visionOS 的 Mike Rockwell。按照当前规划，新版 Siri 最早有望在 2026 年春季与用户见面。&lt;/p&gt;
-                                                                                &lt;/div&gt;
-                                                                            </description>
-      <link>https://www.oschina.net/news/372246</link>
-      <guid isPermaLink="false">https://www.oschina.net/news/372246</guid>
-      <pubDate>Sun, 14 Sep 2025 03:41:00 GMT</pubDate>
-      <author>来源: OSCHINA</author>
-    </item>
-    <item>
-      <title>共筑智慧出行新生态，东软于 IAA MOBILITY 诠释开放共赢之道</title>
-      <description>&lt;div class="content"&gt;
-                                                                    
-                                                        &lt;p style="text-align:left"&gt;&lt;span&gt;随着 IAA MOBILITY 2025 盛会正酣，慕尼黑再次成为全球汽车与出行产业的焦点。大会期间，&lt;/span&gt;&lt;span&gt;东软集团高级副总裁兼董事会秘书王楠博士与论坛嘉宾就「世界经济论坛：私家车智能化的下一个十年」展开专题讨论&lt;/span&gt;&lt;span&gt;，深入分析智能出行时代的汽车产业趋势，分享东软在汽车电子领域的成果探索与创新实践。&lt;/span&gt;&lt;/p&gt; 
-&lt;p style="text-align:left"&gt;&lt;span&gt;世界经济论坛最近的一项研究预测，到 2035 年以后，L2 和 L2+系统将在主要市场的新一代私家车中占据主导地位。在应对不同地区不同法规的同时，行业和监管机构应如何充分发挥 L2/L2+的潜力，确保安全性、明确性和进步性？对此，王楠博士指出：&lt;/span&gt;&lt;span&gt;「智能出行不仅是技术演进的结果，更是对用户需求、监管机制、产业生态的深度回应。」&lt;/span&gt;&lt;/p&gt; 
-&lt;p style="text-align:left"&gt;&lt;strong&gt;&lt;span&gt;中国 ADAS 市场：全球增速最快，渗透率领先&lt;/span&gt;&lt;/strong&gt;&lt;/p&gt; 
-&lt;p style="text-align:left"&gt;&lt;span&gt;近年来，在「新四化」产业理念持续推动、本土供应链日趋成熟、市场需求不断增长的共同作用下，中国 ADAS 系统装配率实现快速提升。&lt;/span&gt;&lt;span&gt;不仅增速和渗透率持续领先，更在应用场景丰富度、功能迭代速度和用户接受度方面显著优于全球其他地区&lt;/span&gt;&lt;span&gt;，为后续 L2/L2+的渐进式落地奠定了全球最大、最活跃的市场基盘，也为智能驾驶技术的大规模实践与优化提供了宝贵土壤。&lt;/span&gt;&lt;/p&gt; 
-&lt;p style="text-align:left"&gt;&lt;strong&gt;&lt;span&gt;监管敏捷务实，寻求安全与创新间的最优解&lt;/span&gt;&lt;/strong&gt;&lt;/p&gt; 
-&lt;p style="text-align:left"&gt;&lt;span&gt;而随着 L2 级辅助驾驶逐渐成为主流技术路径，为了避免消费者对技术「过度信任」带来的潜在风险，中国监管机构及时响应，出台了一系列务实的应对策略。如对通用技术采取强制性标准、规范宣传推广、数据监管、安全评估、责任界定等。这些措施既有效防范了技术安全隐患，又明确了权责边界，切实保障了消费者的知情权与选择权。&lt;/span&gt;&lt;span&gt;监督管理不但并未抑制市场活力，反而通过建立清晰、可信的技术应用框架，增强了消费者对智能化产品的使用信心&lt;/span&gt;&lt;span&gt;，促进行业在安全规范的前提下有序发展，也为全球产业升级提供了实践范本。&lt;/span&gt;&lt;/p&gt; 
-&lt;p style="text-align:left"&gt;&lt;strong&gt;&lt;span&gt;需求牵引与技术响应，中国市场的正向循环&lt;/span&gt;&lt;/strong&gt;&lt;/p&gt; 
-&lt;p style="text-align:left"&gt;&lt;span&gt;王楠博士表示，在过去移动互联网蓬勃发展的十年中，中国市场逐步构建起技术供给与消费需求之间高效互动的创新生态。中国消费者展现出对新技术强烈的好奇心和极高的接受度，成为全球最具活力和探索精神的用户群体之一。这种开放和渴望创新的市场环境，同样为中国的汽车产业提供了丰富的应用场景和快速迭代的机会。以东软为代表的全球化信息技术、产品和解决方案公司，凭借对市场趋势的敏锐洞察与高效反馈，持续攻坚技术实现功能创新，助力车企不断满足消费者对智能体验的前沿需求，从而&lt;/span&gt;&lt;span&gt;形成了「需求牵引新技术、技术激活新需求」&lt;/span&gt;&lt;span&gt;的正向循环。这一互动效应成为中国汽车市场在电动化、智能化浪潮中持续领先的核心动力。&lt;/span&gt;&lt;/p&gt; 
-&lt;p style="text-align:left"&gt;&lt;strong&gt;&lt;span&gt;面向未来：全球协作与标准共建是关键&lt;/span&gt;&lt;/strong&gt;&lt;/p&gt; 
-&lt;p style="text-align:left"&gt;&lt;span&gt;全球化竞争正在重构产业逻辑，单一市场的内生模式已难以应对多元化需求的挑战。「我们愈发清晰地认识到，技术的进步不仅源于硬件升级与软件迭代，更取决于全球协作的深度与广度。」王楠博士呼吁，&lt;/span&gt;&lt;span&gt;真正的突破来自于跨地域、跨行业的协同合作与标准共建。&lt;/span&gt;&lt;span&gt;唯有打破壁垒、共享认知、整合资源、协同创新，才能在保障安全的前提下，让智能驾驶真正服务于人、赋能于社会。&lt;/span&gt;&lt;/p&gt; 
-&lt;p style="text-align:left"&gt;&lt;span&gt;未来，东软愿将领先的产品、解决方案和服务能力开放给全球合作伙伴，共同推动智能出行从功能实现跃升至体验优化，从技术领先迈向信任共识，从区域成功走向全球普惠。&lt;/span&gt;&lt;/p&gt;
-                                                                                &lt;/div&gt;
-                                                                            </description>
-      <link>https://www.oschina.net/news/372245</link>
-      <guid isPermaLink="false">https://www.oschina.net/news/372245</guid>
-      <pubDate>Sun, 14 Sep 2025 03:31:00 GMT</pubDate>
-      <author>作者: 开源科技</author>
-    </item>
-    <item>
-      <title>主流 AI 聊天机器人传播虚假信息概率翻倍，高达 35%</title>
-      <description>&lt;div class="content"&gt;
-                                                                    
-                                                        &lt;p style="color:#242424; margin-left:0; margin-right:0; text-align:left"&gt;Newsguard 最近发布了一项研究，显示截至 2023 年 8 月，十大生成式 AI 工具在处理实时新闻时，有高达 35% 的概率传播虚假信息。相比去年 8 月的 18%，这一数字几乎翻了一番。&lt;/p&gt; 
-&lt;p style="color:#242424; margin-left:0; margin-right:0; text-align:left"&gt;研究指出，这一虚假信息传播率的显著上升与 AI 聊天机器人引入实时网络搜索功能密切相关。随着拒绝回答用户问题的比例从 31% 降至 0%，AI 开始接入一个充满不实信息的网络生态系统，导致虚假信息的传播现象愈加严重。&lt;/p&gt; 
-&lt;p style="color:#242424; margin-left:0; margin-right:0; text-align:left"&gt;该研究发现，许多不良行为者利用 AI 的特性故意散布虚假信息。去年，Newsguard 就曾标记出 966 个以 16 种语言运营的 AI 生成新闻网站，这些网站通过模仿正规媒体的名称，如 「iBusiness Day」，向公众传播假消息。&lt;/p&gt; 
-&lt;p style="color:#242424; margin-left:0; margin-right:0; text-align:left"&gt;具体来看，Inflection 公司的 AI 模型传播虚假信息的概率最高，达到了 56.67%;而 Perplexity 模型也不容乐观，出错率为 46.67%。ChatGPT 和 Meta 的 AI 模型则各自为 40%，而 Copilot（微软必应聊天）和 Mistral 的虚假信息传播率为 36.67%。表现最好的两款模型是 Claude 和 Gemini，错误率分别为 10% 和 16.67%。&lt;/p&gt; 
-&lt;p style="color:#242424; margin-left:0; margin-right:0; text-align:left"&gt;值得注意的是，Perplexity 的表现大幅下滑，去年 8 月时该模型对虚假信息的揭穿率达到 100%，然而到今年 8 月，这一概率接近 50%。引入网络搜索功能的初衷是解决 AI 回答内容过时的问题，但却引发了新的挑战。这些聊天机器人开始从不可靠的来源获取信息，使得用户在判断事实与假消息时愈发困难。&lt;/p&gt; 
-&lt;p style="color:#242424; margin-left:0; margin-right:0; text-align:left"&gt;Newsguard 指出，早期的 AI 通过拒绝回答问题来避免传播虚假信息的风险，但如今网络生态中虚假信息泛滥，辨别真伪愈发复杂。OpenAI 也承认，当前的语言模型总是可能产生 「幻觉内容」，即虚假或无根据的信息。该公司表示正在研发新技术，力图让未来的模型能够更好地提示不确定性，而不是笃定地生成虚假信息。&lt;/p&gt;
-                                                                                &lt;/div&gt;
-                                                                            </description>
-      <link>https://www.oschina.net/news/372244</link>
-      <guid isPermaLink="false">https://www.oschina.net/news/372244</guid>
-      <pubDate>Sun, 14 Sep 2025 03:27:00 GMT</pubDate>
-      <author>来源: OSCHINA</author>
-    </item>
-    <item>
-      <title>VS 2026 最佳配置提升为 64GB 内存 16 核 CPU，微软工程师给出原因：方便程序员申请高配机</title>
-      <description>&lt;div class="content"&gt;
-                                                                    
-                                                        &lt;p&gt;&lt;a href="https://www.oschina.net/news/371552/visual-studio-2026-insiders" target="_blank"&gt;微软最近推出了 Visual Studio 2026 的预览版&lt;/a&gt;，在硬件建议上推荐使用 64GB 内存和 16 核 CPU。在此前版本如 Visual Studio 2019 和 2022 中，硬件要求均为至少 4 核处理器和 4GB 内存，而到了 2026 版本，微软则专门建议 64GB 内存和 16 核处理器。&lt;/p&gt; 
-&lt;p&gt;&lt;img src="https://static.oschina.net/uploads/space/2025/0915/111252_72AB_2720166.jpg" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;p&gt;对此 Visual Studio 团队的性能架构师 David Kean 解释了这一变化背后的原因，简单来说就是一些公司看到最低内存要求 8G，就只肯给员工配 8G 的机器，干脆写个 64G 让工程师更方便申请高配机。&lt;/p&gt; 
-&lt;p&gt;&lt;img alt="" src="https://oscimg.oschina.net/oscnet/up-9b11c480f0cc1c4434d99db8eb9508f39cf.png" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;p&gt;他指出，Visual Studio 2026 的最低和推荐配置与 2022 和 2019 版本相同，但新版本在相同硬件上的性能将显著提升，新版本使用更少的资源，并在需要时更好地利用可用资源。&lt;/p&gt; 
-&lt;p&gt;David Kean 表示「我经常和开发者交流，他们的 IT 部门通常会严格按照最低/推荐配置来配备硬件。」因此他的目标之一就是为开发者提供依据，让他们能够与 IT 部门、经理或决策者交涉，争取到更好更快的硬件。&lt;/p&gt; 
-&lt;p&gt;他提到，虽然 Visual Studio 可以在低配置上运行，但根据工作负载、项目大小或已安装的扩展，少于 8GB 内存可能会导致体验不佳。他还表示，64GB 内存和 16 核 CPU 的配置在硬件成本与性能之间达到了最佳平衡，如果使用更高配置，如 128GB 内存和 32 核 CPU，效果会更好。&lt;/p&gt;
-                                                                                &lt;/div&gt;
-                                                                            </description>
-      <link>https://www.oschina.net/news/372242</link>
-      <guid isPermaLink="false">https://www.oschina.net/news/372242</guid>
-      <pubDate>Sun, 14 Sep 2025 03:17:00 GMT</pubDate>
-      <author>来源: OSCHINA</author>
-    </item>
-    <item>
-      <title>0 基础带你精通 Java 对象序列化 -- 以 Hessian 为例</title>
-      <description>&lt;div class="content"&gt;
-                                                                                                                    
-                                                                                                                                                    &lt;span id="OSC_h1_1"&gt;&lt;/span&gt; 
-&lt;h1&gt;一、概述&lt;/h1&gt; 
-&lt;p&gt;在高级编程语言的世界中，开发者始终与**【object/struct】**这类高度抽象的数据结构打交道。然而在分布式架构下，任何服务进程都不是数据孤岛——跨进程数据交换是必然需求。&lt;/p&gt; 
-&lt;p&gt;以 Java 为例，业务逻辑的输入输出都是**【object】&lt;strong&gt;。但在 RPC 场景中，这些对象必须经由网络传输。这里出现了一个根本性矛盾：网络介质 (网线/光纤) 对面向对象编程 (OOP) 一无所知，它们只会用光和电忠实地传输&lt;/strong&gt;扁平化**的字节流 (&lt;strong&gt;byte[]&lt;/strong&gt;)。&lt;/p&gt; 
-&lt;p&gt;&lt;img src="https://oscimg.oschina.net/oscnet//a0cedde6f9c31265f57bce8e896481f6.jpg" alt="" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;p&gt;软件工程经典的分层理论驱使我们去添加一个&lt;strong&gt;转换层&lt;/strong&gt;。&lt;/p&gt; 
-&lt;p&gt;&lt;img src="https://oscimg.oschina.net/oscnet//93923be5e7dee6b3519f0fbab774a8b5.jpg" alt="" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;p&gt;&lt;img src="https://oscimg.oschina.net/oscnet//8a35581e9f80f33e26df7eed4c78df53.jpg" alt="" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;p&gt;我们需要有个工具或者组件来协助进行**【object】&lt;strong&gt;和&lt;/strong&gt;【byte[]】&lt;strong&gt;之间的&lt;/strong&gt;双向转换**。这个过程包含两个对称的流程：&lt;/p&gt; 
-&lt;ol&gt; 
- &lt;li&gt;【&lt;strong&gt;object&lt;/strong&gt;】-&amp;gt;【&lt;strong&gt;byte[]&lt;/strong&gt;】：业界一般称为&lt;strong&gt;序列化/serialize&lt;/strong&gt;，但是那个单词念起来很拗口，本文我们都叫它【编码/&lt;strong&gt;encode&lt;/strong&gt;】好了。&lt;/li&gt; 
- &lt;li&gt;【&lt;strong&gt;byte[]&lt;/strong&gt;】-&amp;gt;【&lt;strong&gt;object&lt;/strong&gt;】：业界一般称为&lt;strong&gt;反序列化/deserialize&lt;/strong&gt;，但是那个单词念起来很拗口，本文我们都叫它【解码/&lt;strong&gt;decode&lt;/strong&gt;】好了。&lt;/li&gt; 
-&lt;/ol&gt; 
-&lt;p&gt;Hessian 作为 Java 生态中久经考验的对象编解码器，相较于同类产品具有以下两大核心优势：&lt;/p&gt; 
-&lt;ol&gt; 
- &lt;li&gt;&lt;strong&gt;深度 Java 生态适配&lt;/strong&gt;：与 JSON、Protobuf 等语言中立的通用协议不同，Hessian 专为 Java 深度优化，对泛型、多态等&lt;strong&gt;Java 特有语言特性提供原生支持&lt;/strong&gt;。&lt;/li&gt; 
- &lt;li&gt;&lt;strong&gt;高效二进制协议&lt;/strong&gt;：相较 JSON 等文本协议，Hessian 采用精心设计的二进制编码方案，在编解码效率和数据压缩率方面表现更优。&lt;/li&gt; 
-&lt;/ol&gt; 
-&lt;p&gt;需要强调的是，软件工程没有银弹——业务场景的差异决定了编解码器的选择必然需要权衡取舍。但就 Java RPC 而言，Hessian 应该是经过广泛实践验证的稳健选择。&lt;/p&gt; 
-&lt;p&gt;本文将系统解析 Hessian 的编码流程，重点揭示其实现【&lt;strong&gt;object&lt;/strong&gt;】-&amp;gt;【&lt;strong&gt;byte[]&lt;/strong&gt;】转换的核心机制。&lt;/p&gt; 
-&lt;span id="OSC_h1_2"&gt;&lt;/span&gt; 
-&lt;h1&gt;二、基础编码原理&lt;/h1&gt; 
-&lt;p&gt;对象编码过程主要包含如下两大核心：&lt;/p&gt; 
-&lt;ul&gt; 
- &lt;li&gt; &lt;p&gt;&lt;strong&gt;对象图遍历&lt;/strong&gt;：遍历高级数据结构&lt;/p&gt; 
-  &lt;ul&gt; 
-   &lt;li&gt;通过反射或元编程技术遍历对象图（Object Graph）。&lt;/li&gt; 
-   &lt;li&gt;是同类产品的通用逻辑，不管 jackson、fastjson、hessian 都需要用&lt;strong&gt;不同的方式做类似的事情。&lt;/strong&gt;&lt;/li&gt; 
-  &lt;/ul&gt; &lt;/li&gt; 
- &lt;li&gt; &lt;p&gt;&lt;strong&gt;编码格式&lt;/strong&gt;：将高级数据结构按协议拍平放到&lt;strong&gt;byte[]&lt;/strong&gt;&lt;/p&gt; 
-  &lt;ul&gt; 
-   &lt;li&gt;同类产品百家争鸣，各有各的思路。&lt;/li&gt; 
-   &lt;li&gt;是同类产品的竞技场，&lt;strong&gt;各个产品在这里体现差异化的竞争力&lt;/strong&gt;。&lt;/li&gt; 
-   &lt;li&gt;设计权衡包括： 
-    &lt;ul&gt; 
-     &lt;li&gt;二进制效率 vs 可读性（如 Hessian 二进制 vs JSON 文本）&lt;/li&gt; 
-     &lt;li&gt;编码紧凑性 vs 扩展灵活性&lt;/li&gt; 
-     &lt;li&gt;跨语言支持 vs 语言特性深度优化&lt;/li&gt; 
-    &lt;/ul&gt; &lt;/li&gt; 
-  &lt;/ul&gt; &lt;/li&gt; 
-&lt;/ul&gt; 
-&lt;p&gt;&lt;strong&gt;对象图遍历&lt;/strong&gt;决定了编码能力的下限 (能否正确处理对象结构)，而&lt;strong&gt;编码格式&lt;/strong&gt;决定了编码能力的上限 (传输效率、兼容性等)。&lt;/p&gt; 
-&lt;p&gt;&lt;strong&gt;对象图遍历&lt;/strong&gt;&lt;/p&gt; 
-&lt;p&gt;&lt;img src="https://oscimg.oschina.net/oscnet//be559029d05ec34091e74cb6e6141e9a.jpg" alt="" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;p&gt;对象图遍历的本质是&lt;strong&gt;按深度优先&lt;/strong&gt;进行&lt;strong&gt;对象属性导航&lt;/strong&gt;。&lt;/p&gt; 
-&lt;p&gt;举个例子：&lt;/p&gt; 
-&lt;p&gt;&lt;img src="https://oscimg.oschina.net/oscnet//b10fb4203811541f2408894498531740.jpg" alt="" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;p&gt;宏观来看，A 类型的对象其实是&lt;strong&gt;一棵树 (或图)&lt;/strong&gt;，如果脑补不出来的话，我给你画个图：&lt;/p&gt; 
-&lt;p&gt;&lt;img src="https://oscimg.oschina.net/oscnet//3c6628413a7422c5be5773cef2612c75.jpg" alt="" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;p&gt;可以看到这棵树的叶子结点都一定是 Java 内置的基本数据类型。换句话说，Java 的&lt;strong&gt;8 种基础数据类型&lt;/strong&gt;和他们的&lt;strong&gt;数组变体&lt;/strong&gt;，支撑了 Java 丰富的预定义/自定义数据结构。&lt;/p&gt; 
-&lt;p&gt;&lt;em&gt;八股文：Java 的 8 种基础数据类型是哪些？String 算不算基础数据类型？&lt;/em&gt;&lt;/p&gt; 
-&lt;p&gt;编码的本质就是深度优先的遍历这棵树，拍平它，然后放到**byte[]**里。&lt;/p&gt; 
-&lt;p&gt;我举个例子吧。&lt;/p&gt; 
-&lt;p&gt;&lt;strong&gt;伪代码&lt;/strong&gt;&lt;/p&gt; 
-&lt;p&gt;为降低伪代码复杂度，我们假设 Java 只有 1 种基础数据类型 int，也就是说 Java 里只有 int 和只包含 int 字段的自定义 POJO。&lt;/p&gt; 
-&lt;p&gt;&lt;em&gt;我们定义 POJO 指的是用于传输、存储使用的简单 Java Bean 或者常说的 DTO。&lt;/em&gt;&lt;/p&gt; 
-&lt;p&gt;&lt;em&gt;从某种意义上来说，Integer 也是基于 int 封装的自定义 POJO。&lt;/em&gt;&lt;/p&gt; 
-&lt;p&gt;&lt;strong&gt;字节流抽象&lt;/strong&gt;&lt;/p&gt; 
-&lt;p&gt;我们使用标准库里的 java.io.DataOutput 来进行伪代码说理，这个类提供了一些语义化的编码 function。&lt;/p&gt; 
-&lt;p&gt;&lt;img src="https://oscimg.oschina.net/oscnet//239f91dfc543c0ff88fb90cf15e8fff5.jpg" alt="" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;p&gt;&lt;em&gt;java.io.DataOutput&lt;/em&gt;&lt;/p&gt; 
-&lt;p&gt;&lt;strong&gt;对象图遍历&lt;/strong&gt;&lt;/p&gt; 
-&lt;p&gt;&lt;img src="https://oscimg.oschina.net/oscnet//c9f64aaf28e83e372ea67c932db0937c.jpg" alt="" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;p&gt;&lt;strong&gt;字节流布局&lt;/strong&gt;&lt;/p&gt; 
-&lt;p&gt;最终呈现出来的字节流层面的数据布局会是这样：&lt;/p&gt; 
-&lt;p&gt;&lt;img src="https://oscimg.oschina.net/oscnet//77ecb08f4d5f27695f0f76d7c10cbee6.jpg" alt="" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;p&gt;看起来没毛病，唯一的问题就是不好解码。&lt;/p&gt; 
-&lt;p&gt;当解码端收到一个 16 字节的字节流以后，它分不清哪块数据是 A 对象的，哪块数据是 B 对象的。甚至都分不清这到底是 4 个 int32 还是 2 个 int64。&lt;/p&gt; 
-&lt;p&gt;这个问题需要&lt;strong&gt;编码格式&lt;/strong&gt;来解决。&lt;/p&gt; 
-&lt;p&gt;&lt;strong&gt;编码格式&lt;/strong&gt;&lt;/p&gt; 
-&lt;p&gt;上面遗留的问题，聪明的你肯定想到了答案。&lt;/p&gt; 
-&lt;p&gt;就是因为编码产物太太太简陋了，整个过程中只是一股脑的把树拍平，把叶子节点的值写入字节流，缺少&lt;strong&gt;结构元数据&lt;/strong&gt;。&lt;/p&gt; 
-&lt;p&gt;最最最重要的&lt;strong&gt;结构元数据&lt;/strong&gt;就是数据块的边界，上述 4 个数据块，最起码应该添加 3 个边界标识。&lt;/p&gt; 
-&lt;p&gt;&lt;img src="https://oscimg.oschina.net/oscnet//01cadc75fb4261e8778896a92e5beca7.jpg" alt="" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;p&gt;我们先用我们耳熟能详的 JSON 格式来理解下编码格式这个事情。&lt;/p&gt; 
-&lt;p&gt;&lt;strong&gt;伪代码&lt;/strong&gt;&lt;/p&gt; 
-&lt;p&gt;JSON 是这样解决这个问题的：&lt;/p&gt; 
-&lt;p&gt;&lt;img src="https://oscimg.oschina.net/oscnet//457465c678f29743ca41d351dd932ab2.jpg" alt="" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;p&gt;JSON 协议在嵌套的 POJO 上用**{}&lt;strong&gt;来作为边界，POJO 内部的字段键值用 &lt;strong&gt;,&lt;/strong&gt; 来做边界，&lt;/strong&gt;:**拆分字段键值。&lt;/p&gt; 
-&lt;p&gt;&lt;strong&gt;字节流布局&lt;/strong&gt;&lt;/p&gt; 
-&lt;p&gt;结果就变成这样：&lt;/p&gt; 
-&lt;p&gt;&lt;img src="https://oscimg.oschina.net/oscnet//718a030c1291d7f86e7c4c886c3d01cd.jpg" alt="" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;p&gt;这样在解码的时候，可以通过**{&lt;strong&gt;、&lt;/strong&gt;}&lt;strong&gt;、&lt;/strong&gt;,&lt;strong&gt;、&lt;/strong&gt;:** 等&lt;strong&gt;token&lt;/strong&gt;来切割 JSON 字符串，判定&lt;strong&gt;数据块边界&lt;/strong&gt;并恢复出&lt;strong&gt;对象图&lt;/strong&gt;。&lt;/p&gt; 
-&lt;span id="OSC_h1_3"&gt;&lt;/span&gt; 
-&lt;h1&gt;三、Hessian 编码格式&lt;/h1&gt; 
-&lt;p&gt;接下来我们可以开始介绍 Hessian 的编码魔法了。&lt;/p&gt; 
-&lt;p&gt;需要强调的是：Hessian 跟 JSON 不同，Hessian 是二进制格式。如果一个字节流直接按字符集解码不能得到一个完整的、有意义的字符串，那它就是二进制编码数据。&lt;/p&gt; 
-&lt;p&gt;Hessian 在编码时，按&lt;strong&gt;数据块类型&lt;/strong&gt;为每一个数据块添加一个&lt;strong&gt;前缀字节 (byte)&lt;strong&gt;作为结构元数据，这些&lt;/strong&gt;元数据&lt;/strong&gt;和&lt;strong&gt;数据块&lt;/strong&gt;一起，交给解码端使用。&lt;/p&gt; 
-&lt;p&gt;&lt;strong&gt;数据块&lt;/strong&gt;&lt;/p&gt; 
-&lt;p&gt;对象图里的每一个节点，都是一个数据块。&lt;/p&gt; 
-&lt;p&gt;&lt;img src="https://oscimg.oschina.net/oscnet//3115085d696f405a881e61692a063b92.jpg" alt="" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;p&gt;如上图所示，以 A 对象为根的对象图，一共有 6 个&lt;strong&gt;数据块&lt;/strong&gt;。&lt;/p&gt; 
-&lt;p&gt;&lt;strong&gt;数据块标签（tag）&lt;/strong&gt;&lt;/p&gt; 
-&lt;p&gt;Hessain 在编码每一个数据块时，都会根据数据块的类型在字节流中写入一个&lt;strong&gt;前缀字节&lt;/strong&gt;(&lt;strong&gt;0-255&lt;/strong&gt;)，这个字节说明了数据块的&lt;strong&gt;语义和结构&lt;/strong&gt;。&lt;/p&gt; 
-&lt;p&gt;以&lt;strong&gt;int32&lt;/strong&gt;为例，其最基础的编码格式如下：&lt;/p&gt; 
-&lt;p&gt;&lt;img src="https://oscimg.oschina.net/oscnet//fb9f5e4ffbe04e67cc8526e86038ce87.jpg" alt="" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;p&gt;&lt;em&gt;除该基础编码格式外，int32 的编码还有其他变体。&lt;/em&gt;&lt;/p&gt; 
-&lt;p&gt;上述 &lt;strong&gt;I&lt;/strong&gt; 就是整数类型的 tag。解码端读取 tag 后，按 tag 值来解码数据。&lt;/p&gt; 
-&lt;p&gt;&lt;img src="https://oscimg.oschina.net/oscnet//6db73099018e0bb91d7b0eb8d7a998d7.jpg" alt="" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;p&gt;&lt;em&gt;com.alibaba.com.caucho.hessian.io.Hessian2Input#readObject(java.util.List&amp;lt;java.lang.Class&amp;lt;?&amp;gt;&amp;gt;)&lt;/em&gt;&lt;/p&gt; 
-&lt;p&gt;由此延伸、拓展，其他的数据类型都是类似的模式。常见数据类型及其对应的 tag 值如下：&lt;/p&gt; 
-&lt;p&gt;&lt;img src="https://oscimg.oschina.net/oscnet//bdc6fc4ca7b3d70f391b9ea328b36a26.jpg" alt="" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;p&gt;值得注意的是，&lt;strong&gt;N&lt;/strong&gt;、&lt;strong&gt;F&lt;/strong&gt;、&lt;strong&gt;T&lt;/strong&gt;三个 tag 是自解释的，和固定值映射、绑定。&lt;/p&gt; 
-&lt;p&gt;&lt;strong&gt;POJO 编码&lt;/strong&gt;&lt;/p&gt; 
-&lt;p&gt;POJO 是一种特殊的&lt;strong&gt;数据块&lt;/strong&gt;，Hessian 将 POJO 的&lt;strong&gt;结构&lt;/strong&gt;和&lt;strong&gt;值&lt;/strong&gt;拆开，分别编码。&lt;/p&gt; 
-&lt;p&gt;&lt;strong&gt;POJO 结构编码&lt;/strong&gt;&lt;/p&gt; 
-&lt;p&gt;&lt;strong&gt;POJO 结构&lt;/strong&gt;的 tag 为&lt;strong&gt;C&lt;/strong&gt;，对照 int32 的编码格式，POJO 结构的编码格式如下：&lt;/p&gt; 
-&lt;p&gt;&lt;img src="https://oscimg.oschina.net/oscnet//f82feb9cef8ee37be26fa5e236e1cafc.jpg" alt="" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;p&gt;举个例子：&lt;/p&gt; 
-&lt;p&gt;&lt;img src="https://oscimg.oschina.net/oscnet//57fce9ec2ed617db45fc440313c0c184.jpg" alt="" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;p&gt;编码 POJO 时，Hessain 会将 POJO 的类名、字段名列表写入字节流，供解码端使用。后续编码 POJO 字段值时，需要&lt;strong&gt;按照字段名列表&lt;/strong&gt;(如上述&lt;strong&gt;bb&lt;/strong&gt;、&lt;strong&gt;cc&lt;/strong&gt;)&lt;strong&gt;的顺序&lt;/strong&gt;来编码字段值。&lt;/p&gt; 
-&lt;p&gt;&lt;img src="https://oscimg.oschina.net/oscnet//e0478bcef5e562ad49afa590a79185ab.jpg" alt="" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;p&gt;&lt;strong&gt;POJO 字段值编码&lt;/strong&gt;&lt;/p&gt; 
-&lt;p&gt;&lt;strong&gt;POJO 字段值&lt;/strong&gt;的 tag 为&lt;strong&gt;O&lt;/strong&gt;，对照 int32 的编码格式，POJO 字段值的编码格式如下：&lt;/p&gt; 
-&lt;p&gt;&lt;img src="https://oscimg.oschina.net/oscnet//147cb7b396ba5fcad0c15a00a5c6f6d6.jpg" alt="" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;p&gt;举个例子：&lt;/p&gt; 
-&lt;p&gt;&lt;img src="https://oscimg.oschina.net/oscnet//1ec3dd805e8ba21d9cc0c7e64fca7824.jpg" alt="" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;p&gt;可以看到，编码 POJO 字段值的时候，在 tag 后面有一个&lt;strong&gt;POJO 结构序号&lt;/strong&gt;。&lt;/p&gt; 
-&lt;p&gt;这是 Hessian 的一个&lt;strong&gt;数据复用&lt;/strong&gt;的小技巧。&lt;/p&gt; 
-&lt;p&gt;&lt;strong&gt;POJO 结构复用&lt;/strong&gt;&lt;/p&gt; 
-&lt;p&gt;JSON 协议有一个缺点，那就是重复数据带来的存储/传输开销。举个例子：&lt;/p&gt; 
-&lt;p&gt;&lt;img src="https://oscimg.oschina.net/oscnet//c0f290170c6fbe02c4a22668f81e31f0.jpg" alt="" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;p&gt;如上图，B 类型的字段名 (&lt;strong&gt;dd&lt;/strong&gt;、&lt;strong&gt;ee&lt;/strong&gt;) 在编码产物中&lt;strong&gt;重复出现&lt;/strong&gt;！&lt;/p&gt; 
-&lt;p&gt;Hessian 希望解决这个问题，同一类型的多个 POJO 对象在序列化时，只需要在第一次的时候编码&lt;strong&gt;类名、字段名&lt;/strong&gt;等元数据，后续可以被重复的引用、使用，无需重复编码。&lt;/p&gt; 
-&lt;p&gt;如果用 Hessian 来编码，结果会是这样：&lt;/p&gt; 
-&lt;p&gt;&lt;strong&gt;数据布局&lt;/strong&gt;&lt;/p&gt; 
-&lt;p&gt;&lt;img src="https://oscimg.oschina.net/oscnet//ae454fbec4eae9f73efea262750e29f0.jpg" alt="" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;p&gt;&lt;strong&gt;数据布局详解&lt;/strong&gt;&lt;/p&gt; 
-&lt;p&gt;&lt;img src="https://oscimg.oschina.net/oscnet//d0f362d8687736273afdf6c9e45b04a6.jpg" alt="" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;p&gt;如上图，APojo、BPojo 的字段名只会编码一次。多个 BPojo 对象在编码时会通过**结构引用序号 (1)**来引用它。相对 JSON，Hessian 避免了多次编码 BPojo 字段名的开销。&lt;/p&gt; 
-&lt;p&gt;为什么 APojo 的序号是 1、BPojo 的序号是 2？&lt;/p&gt; 
-&lt;p&gt;Hessain 在编码过程中，每次遇到一个新的、没有处理过的新 POJO 类型时，会给它分配一个&lt;strong&gt;从 0 开始、单调递增&lt;/strong&gt;的序号。&lt;/p&gt; 
-&lt;p&gt;遥相呼应的，&lt;strong&gt;解码侧&lt;/strong&gt;每次解码一个 tag 为&lt;strong&gt;C&lt;/strong&gt;的 POJO 结构数据块时，也会按&lt;strong&gt;解码顺序&lt;/strong&gt;维护好其索引序号。&lt;/p&gt; 
-&lt;span id="OSC_h1_4"&gt;&lt;/span&gt; 
-&lt;h1&gt;四、Hessian 编码细节&lt;/h1&gt; 
-&lt;p&gt;到现在，我们已经对 Hessian 编码有了一个的概括性的认识，接下来我们来看看一些值得注意的细节。&lt;/p&gt; 
-&lt;p&gt;&lt;strong&gt;重复对象复用&lt;/strong&gt;&lt;/p&gt; 
-&lt;p&gt;&lt;img src="https://oscimg.oschina.net/oscnet//77f9679e85811f93d0fcdb046ad714f3.jpg" alt="" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;p&gt;A 对象里有两个字段 (d、e) 指向同一个对象 B。如果不做处理，会因为重复编码而带来不必要的开销。&lt;/p&gt; 
-&lt;p&gt;&lt;img src="https://oscimg.oschina.net/oscnet//7f723ff30877e885b2f4a5bbef0265a2.jpg" alt="" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;p&gt;相同的一个 B 对象，因为被两个字段重复引用，导致&lt;strong&gt;2 次编码&lt;/strong&gt;、产生&lt;strong&gt;2 份数据空间占用！&lt;/strong&gt;&lt;/p&gt; 
-&lt;p&gt;如果只是有额外的开销，没有可用性问题那都还好。关键是在&lt;strong&gt;循环引用&lt;/strong&gt;场景下，会因为&lt;strong&gt;引用成环&lt;/strong&gt;导致&lt;strong&gt;递归&lt;/strong&gt;进行对象图遍历时触发方法栈溢出！&lt;/p&gt; 
-&lt;p&gt;&lt;img src="https://oscimg.oschina.net/oscnet//4f959593079f42c81c5f5901540dd995.jpg" alt="" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;p&gt;&lt;strong&gt;循环引用是重复引用的特例&lt;/strong&gt;，只要将重复引用处理掉，循环引用也就没问题了。&lt;/p&gt; 
-&lt;p&gt;Hessian 通过&lt;strong&gt;对象引用&lt;/strong&gt;来解决这个问题。在对象图遍历过程中，遇到一个之前没有遇到过、处理过的 POJO 对象时，会给它分配一个&lt;strong&gt;从 0 开始、单调递增&lt;/strong&gt;的序号。&lt;/p&gt; 
-&lt;p&gt;后续再次需要序列化相同的对象时，直接&lt;strong&gt;跳过&lt;/strong&gt;编码流程，将这个对象的&lt;strong&gt;序号&lt;/strong&gt;写入字节流。&lt;/p&gt; 
-&lt;p&gt;&lt;img src="https://oscimg.oschina.net/oscnet//7c90939b732ed84f63bcb8ea21b63546.jpg" alt="" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;p&gt;解码时，解码侧按相同的顺序来恢复出&lt;strong&gt;引用序号表&lt;/strong&gt;，解码后续的对象引用。&lt;/p&gt; 
-&lt;p&gt;&lt;strong&gt;小整数内联 (direct)&lt;/strong&gt;&lt;/p&gt; 
-&lt;p&gt;很多编码类型，都需要在 tag 后再维护一个&lt;strong&gt;整数类型&lt;/strong&gt;的字段。比如：&lt;/p&gt; 
-&lt;ul&gt; 
- &lt;li&gt;POJO 的编码 tag &lt;strong&gt;O&lt;/strong&gt;需要一个整数来引用 POJO 结构引用&lt;strong&gt;序号&lt;/strong&gt;。&lt;/li&gt; 
-&lt;/ul&gt; 
-&lt;p&gt;&lt;img src="https://oscimg.oschina.net/oscnet//60853c7e321632c599984c66b22cb8aa.jpg" alt="" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;ul&gt; 
- &lt;li&gt;类似 String 的变长类型需要一个整数来标识变长数据的&lt;strong&gt;长度&lt;/strong&gt;。&lt;/li&gt; 
-&lt;/ul&gt; 
-&lt;p&gt;&lt;img src="https://oscimg.oschina.net/oscnet//10f03bd8e5e43dd19a3484e1f1fee510.jpg" alt="" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;p&gt;当字符串很短，就比如**"hi"&lt;strong&gt;吧，短字符串编码格式的&lt;/strong&gt;长度字段**可能比实际字符数据还大（用 4 字节存储长度 2），效率低下。&lt;/p&gt; 
-&lt;p&gt;&lt;strong&gt;tag 分段&lt;/strong&gt;&lt;/p&gt; 
-&lt;p&gt;&lt;strong&gt;Hessian 将一些 tag 值的语义富化，让它既体现数据类型，也体现小数值。&lt;/strong&gt;&lt;/p&gt; 
-&lt;p&gt;因为 tag 是一个&lt;strong&gt;byte(int8)&lt;/strong&gt;，取值范围是&lt;strong&gt;0-255&lt;/strong&gt;，每个 tag 标识一种特定的数据类型 (int、boolean 等)，但是这些数据类型最多&lt;strong&gt;几十种&lt;/strong&gt;，取值范围内还有很大的数值区间没有被使用，其实比较浪费。那我们就可以把这些空闲的 tag 值，挪作他用，提升 tag 数值空间利用率。&lt;/p&gt; 
-&lt;p&gt;我举个例子，注意这个是参考 Hessian 思路的一个简单示意，&lt;strong&gt;具体的 Tag 值和 Hessian 无关&lt;/strong&gt;。&lt;/p&gt; 
-&lt;p&gt;&lt;img src="https://oscimg.oschina.net/oscnet//3e4c45ee3365b0258eb67d931eff94c3.jpg" alt="" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;p&gt;&lt;strong&gt;长度内联&lt;/strong&gt;&lt;/p&gt; 
-&lt;p&gt;对于&lt;strong&gt;长度≤31&lt;/strong&gt;的字符串，Hessian 用&lt;strong&gt;tag 同时编码类型和长度&lt;/strong&gt;。&lt;/p&gt; 
-&lt;ol&gt; 
- &lt;li&gt;当 0 &amp;lt;= tag &amp;lt;= 31 时，标识后续的数据块为字符串。&lt;/li&gt; 
- &lt;li&gt;tag 的数值即为后续数据块的长度。&lt;/li&gt; 
-&lt;/ol&gt; 
-&lt;p&gt;示例如下：&lt;/p&gt; 
-&lt;p&gt;&lt;img src="https://oscimg.oschina.net/oscnet//6dd4c9e15c8208157f4a3e53320e3813.jpg" alt="" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;p&gt;&lt;strong&gt;序号内联&lt;/strong&gt;&lt;/p&gt; 
-&lt;p&gt;当结构引用&lt;strong&gt;序号&amp;lt;=16&lt;/strong&gt;时，Hessain 用&lt;strong&gt;tag 同时编码类型和序号&lt;/strong&gt;。&lt;/p&gt; 
-&lt;p&gt;1. 当 0x60 &amp;lt;= tag &amp;lt;= 0x70 时，标识后续的数据块为 POJO 字段值。&lt;/p&gt; 
-&lt;p&gt;2. tag - 0x60 的值，即为 POJO 结构 (类名+字段名) 引用序号。&lt;/p&gt; 
-&lt;p&gt;示例如下：&lt;/p&gt; 
-&lt;p&gt;&lt;img src="https://oscimg.oschina.net/oscnet//08031efdb62b1e14cb8c6ade63888486.jpg" alt="" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;p&gt;相关源码如下：&lt;/p&gt; 
-&lt;p&gt;&lt;img src="https://oscimg.oschina.net/oscnet//237bc12726766598c175abc821760060.jpg" alt="" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;p&gt;&lt;em&gt;com.alibaba.com.caucho.hessian.io.Hessian2Output#writeObjectBegin&lt;/em&gt;&lt;/p&gt; 
-&lt;p&gt;&lt;strong&gt;字符串编码&lt;/strong&gt;&lt;/p&gt; 
-&lt;p&gt;Hessian 编码字符串的关键流程是：&lt;strong&gt;字符串分段+不同长度的子串使用不同的 tag。&lt;/strong&gt;&lt;/p&gt; 
-&lt;ul&gt; 
- &lt;li&gt;&lt;strong&gt;分段原则&lt;/strong&gt;&lt;/li&gt; 
-&lt;/ul&gt; 
-&lt;p&gt;字符串会被分割为若干块，每块最大长度为 32768（0x8000）。前 N-1 块均为完整长度的子串（32768 字节），使用固定 tag &lt;strong&gt;R&lt;/strong&gt;标识；最后一块为剩余部分，长度范围为 0-32768 字节，根据实际长度选择动态 tag。&lt;/p&gt; 
-&lt;ul&gt; 
- &lt;li&gt; &lt;p&gt;&lt;strong&gt;尾段 tag 的选择基于尾块的长度决定&lt;/strong&gt;&lt;/p&gt; 
-  &lt;ul&gt; 
-   &lt;li&gt;长度≤31（0x1F）：使用单字节 tag 0x00-0x1F 直接内联长度值。&lt;/li&gt; 
-   &lt;li&gt;32≤长度≤1023（0x3FF）：使用 tag &lt;strong&gt;0&lt;/strong&gt;后跟 1 字节长度 (大端序)，&lt;strong&gt;10bit&lt;/strong&gt;的计数空间由 tag 字节和长度字节共同提供。这个地方有点绕，看下代码吧。&lt;/li&gt; 
-   &lt;li&gt;长度≥1024：使用 tag &lt;strong&gt;S&lt;/strong&gt;后跟 2 字节长度（大端序）。&lt;/li&gt; 
-  &lt;/ul&gt; &lt;/li&gt; 
- &lt;li&gt; &lt;p&gt;&lt;strong&gt;相关源码&lt;/strong&gt;&lt;/p&gt; &lt;/li&gt; 
-&lt;/ul&gt; 
-&lt;p&gt;&lt;img src="https://oscimg.oschina.net/oscnet//0d46a7cdf992687d78fc5d21f2bbccaa.jpg" alt="" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;p&gt;&lt;em&gt;com.alibaba.com.caucho.hessian.io.Hessian2Output#writeString(java.lang.String)&lt;/em&gt;&lt;/p&gt; 
-&lt;p&gt;这种设计通过减少长字符串的冗余长度标记，在保持兼容性的同时显著提升了编码效率。&lt;/p&gt; 
-&lt;p&gt;&lt;strong&gt;整数压缩&lt;/strong&gt;&lt;/p&gt; 
-&lt;p&gt;&lt;strong&gt;基础编码&lt;/strong&gt;&lt;/p&gt; 
-&lt;p&gt;整数 (int32) 的的取值范围很大 (-23^31 - 2^31)，保守的编码格式会用 4 个 byte 来编码整数。&lt;/p&gt; 
-&lt;p&gt;&lt;img src="https://oscimg.oschina.net/oscnet//50ee2c14cb9e43fdbd52a30c58e19a1d.jpg" alt="" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;p&gt;但是日常使用中，我们会大量使用&lt;strong&gt;小整数&lt;/strong&gt;，比如 1、31。这时候如果还用 4 字节编码就很不划算啦~&lt;/p&gt; 
-&lt;p&gt;&lt;strong&gt;变长编码&lt;/strong&gt;&lt;/p&gt; 
-&lt;p&gt;Hessian 根据整数的值范围，动态的选择不同的编码方式，且&lt;strong&gt;不同的编码方式有不同的 tag&lt;/strong&gt;：&lt;/p&gt; 
-&lt;ul&gt; 
- &lt;li&gt;&lt;strong&gt;单字节整数编码&lt;/strong&gt;：&lt;strong&gt;类似【长度压缩】，tag 中直接内联数值&lt;/strong&gt;&lt;/li&gt; 
-&lt;/ul&gt; 
-&lt;p&gt;适用范围：-16 到 47（共 64 个值）&lt;/p&gt; 
-&lt;p&gt;编码方式：使用单字节，值为 value + &lt;strong&gt;0x90&lt;/strong&gt;（144）&lt;/p&gt; 
-&lt;p&gt;例如：0 编码为 0x90，-1 编码为 0x8f，47 编码为 0xbf&lt;/p&gt; 
-&lt;ul&gt; 
- &lt;li&gt;&lt;strong&gt;双字节整数编码&lt;/strong&gt;&lt;/li&gt; 
-&lt;/ul&gt; 
-&lt;p&gt;适用范围：-2048 到 2047&lt;/p&gt; 
-&lt;p&gt;编码方式：首字节为 &lt;strong&gt;0xc8&lt;/strong&gt; + (value &amp;gt;&amp;gt; 8)，后跟一个字节存储 value 剩下的 bit。&lt;/p&gt; 
-&lt;p&gt;这种编码可以表示&lt;strong&gt;12bit&lt;/strong&gt;有符号整数&lt;/p&gt; 
-&lt;ul&gt; 
- &lt;li&gt;&lt;strong&gt;三字节整数编码&lt;/strong&gt;&lt;/li&gt; 
-&lt;/ul&gt; 
-&lt;p&gt;适用范围：-262144 到 262143&lt;/p&gt; 
-&lt;p&gt;编码方式：首字节为 &lt;strong&gt;0xd4&lt;/strong&gt; + (value &amp;gt;&amp;gt; 16)，后跟两个字节存储 value 的高 8 位和低 8 位。&lt;/p&gt; 
-&lt;p&gt;这种编码可以表示&lt;strong&gt;19bit&lt;/strong&gt;有符号整数。&lt;/p&gt; 
-&lt;ul&gt; 
- &lt;li&gt;&lt;strong&gt;五字节整数编码&lt;/strong&gt;&lt;/li&gt; 
-&lt;/ul&gt; 
-&lt;p&gt;适用范围：超出上述范围的所有 32 位整数&lt;/p&gt; 
-&lt;p&gt;编码方式：以 &lt;strong&gt;'I'&lt;/strong&gt;（0x49）开头，后跟 4 个字节表示完整的 32 位整数值。&lt;/p&gt; 
-&lt;ul&gt; 
- &lt;li&gt;&lt;strong&gt;相关源码&lt;/strong&gt;：&lt;/li&gt; 
-&lt;/ul&gt; 
-&lt;p&gt;&lt;img src="https://oscimg.oschina.net/oscnet//a6fdb7cd76b7cd2cb3bb2130f078a10c.jpg" alt="" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;p&gt;&lt;em&gt;com.alibaba.com.caucho.hessian.io.Hessian2Output#writeInt&lt;/em&gt;&lt;/p&gt; 
-&lt;p&gt;&lt;strong&gt;收益&lt;/strong&gt;&lt;/p&gt; 
-&lt;ul&gt; 
- &lt;li&gt; &lt;p&gt;小整数（如 0、-1）仅需 1 字节 ，而传统 int32 固定 4 字节。&lt;/p&gt; &lt;/li&gt; 
- &lt;li&gt; &lt;p&gt;大整数动态扩展，避免固定长度浪费（如 1000 仅需 2 字节）。&lt;/p&gt; &lt;/li&gt; 
-&lt;/ul&gt; 
-&lt;p&gt;其他的数值类型比如 int64 也有类似的机制。&lt;/p&gt; 
-&lt;span id="OSC_h1_5"&gt;&lt;/span&gt; 
-&lt;h1&gt;五、总结&lt;/h1&gt; 
-&lt;p&gt;Hessian 专为 Java 优化，采用高效二进制协议，通过对象图遍历和编码协议实现对象与字节流的转换，利用数据块标签、重复对象复用、数据压缩等机制，提升编解码效率和数据压缩率。&lt;/p&gt; 
-&lt;p&gt;本文没有去展开 Hessian 的代码细节，而是尽可能深入浅出的介绍了 Hessain 的核心编码原理，以帮助读者建立对 Hessian 的宏观认知，从而可以更好的去理解和使用它。&lt;/p&gt; 
-&lt;p&gt;尽管不同语言/生态的序列化框架选型让人眼花缭乱，但是各自需要解决的问题和解决问题的思路都大同小异；我们对 Hessain 原理的认识可以迁移到其他序列化框架，甚至自己写一个领域特定的序列化框架。&lt;/p&gt; 
-&lt;p&gt;相关内容均为笔者走读源码整理而来，如有疏漏，欢迎指正。&lt;/p&gt; 
-&lt;p&gt;&lt;strong&gt;参考：&lt;/strong&gt;&lt;/p&gt; 
-&lt;ul&gt; 
- &lt;li&gt;&lt;strong&gt;Hessian 2.0 Serialization Protocol&lt;/strong&gt;（&lt;em&gt;&lt;a href="https://www.oschina.net/action/GoToLink?url=http%3A%2F%2Fhessian.caucho.com%2Fdoc%2Fhessian-serialization.html" rel="nofollow" target="_blank"&gt;http://hessian.caucho.com/doc/hessian-serialization.html&lt;/a&gt;&lt;/em&gt;）&lt;/li&gt; 
- &lt;li&gt;&lt;strong&gt;Hessian 2.0 序列化协议（中文版）&lt;/strong&gt;&lt;em&gt;（&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fwww.diguage.com%2Fpost%2Fhessian-serialization-protocol%2F%25EF%25BC%2589" rel="nofollow" target="_blank"&gt;https://www.diguage.com/post/hessian-serialization-protocol/）&lt;/a&gt;&lt;/em&gt;&lt;/li&gt; 
- &lt;li&gt;&lt;strong&gt;Hessian 协议解释与实战（一）：布尔、日期、浮点数与整数&lt;/strong&gt;（&lt;em&gt;&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fwww.diguage.com%2Fpost%2Fhessian-protocol-interpretation-and-practice-1%2F" rel="nofollow" target="_blank"&gt;https://www.diguage.com/post/hessian-protocol-interpretation-and-practice-1/&lt;/a&gt;&lt;/em&gt;）&lt;/li&gt; 
- &lt;li&gt;&lt;strong&gt;Hessian 协议解释与实战（二）：长整型、二进制数据与 Null&lt;/strong&gt;（&lt;em&gt;&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fwww.diguage.com%2Fpost%2Fhessian-protocol-interpretation-and-practice-2%2F" rel="nofollow" target="_blank"&gt;https://www.diguage.com/post/hessian-protocol-interpretation-and-practice-2/&lt;/a&gt;&lt;/em&gt;）&lt;/li&gt; 
- &lt;li&gt;&lt;strong&gt;Hessian 协议解释与实战（三）：字符串&lt;/strong&gt;（&lt;em&gt;&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fwww.diguage.com%2Fpost%2Fhessian-protocol-interpretation-and-practice-3%2F" rel="nofollow" target="_blank"&gt;https://www.diguage.com/post/hessian-protocol-interpretation-and-practice-3/&lt;/a&gt;&lt;/em&gt;）&lt;/li&gt; 
- &lt;li&gt;&lt;strong&gt;Hessian 协议解释与实战（四）：数组与集合&lt;/strong&gt;（&lt;em&gt;&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fwww.diguage.com%2Fpost%2Fhessian-protocol-interpretation-and-practice-4%2F" rel="nofollow" target="_blank"&gt;https://www.diguage.com/post/hessian-protocol-interpretation-and-practice-4/&lt;/a&gt;&lt;/em&gt;）&lt;/li&gt; 
- &lt;li&gt;&lt;strong&gt;Hessian 协议解释与实战（五）：对象与映射&lt;/strong&gt;（&lt;em&gt;&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fwww.diguage.com%2Fpost%2Fhessian-protocol-interpretation-and-practice-5%2F" rel="nofollow" target="_blank"&gt;https://www.diguage.com/post/hessian-protocol-interpretation-and-practice-5/&lt;/a&gt;&lt;/em&gt;）&lt;/li&gt; 
- &lt;li&gt;&lt;strong&gt;Hessian 源码分析（Java）&lt;/strong&gt;（&lt;em&gt;&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fwww.diguage.com%2Fpost%2Fhessian-source-analysis-for-java%2F" rel="nofollow" target="_blank"&gt;https://www.diguage.com/post/hessian-source-analysis-for-java/&lt;/a&gt;&lt;/em&gt;）&lt;/li&gt; 
-&lt;/ul&gt; 
-&lt;p&gt;&lt;strong&gt;往期回顾&lt;/strong&gt;&lt;/p&gt; 
-&lt;p&gt;1. 前端日志回捞系统的性能优化实践｜得物技术&lt;/p&gt; 
-&lt;p&gt;2. 得物灵犀搜索推荐词分发平台演进 3.0&lt;/p&gt; 
-&lt;p&gt;3. R8 疑难杂症分析实战：外联优化设计缺陷引起的崩溃｜得物技术&lt;/p&gt; 
-&lt;p&gt;4. 可扩展系统设计的黄金法则与 Go 语言实践｜得物技术&lt;/p&gt; 
-&lt;p&gt;5. 营销会场预览直通车实践｜得物技术&lt;/p&gt; 
-&lt;p&gt;文 / 羊羽&lt;/p&gt; 
-&lt;p&gt;关注得物技术，每周更新技术干货&lt;/p&gt; 
-&lt;p&gt;要是觉得文章对你有帮助的话，欢迎评论转发点赞～&lt;/p&gt; 
-&lt;p&gt;未经得物技术许可严禁转载，否则依法追究法律责任。&lt;/p&gt;
-                                                                                    &lt;/div&gt;
-                                                                            </description>
-      <link>https://my.oschina.net/u/5783135/blog/18691458</link>
-      <guid isPermaLink="false">https://my.oschina.net/u/5783135/blog/18691458</guid>
-      <pubDate>Sun, 14 Sep 2025 03:06:00 GMT</pubDate>
-      <author>原创</author>
-    </item>
-    <item>
-      <title>彭斯克集团起诉 Google，指控 AI 摘要侵权并威胁数字媒体未来</title>
-      <description>&lt;div class="content"&gt;
-                                                                    
-                                                        &lt;p style="color:#242424; margin-left:0; margin-right:0; text-align:left"&gt;&lt;span&gt;彭斯克媒体集团（Penske Media）向美国华盛顿特区联邦法院提起诉讼，控告科技巨头 Google 在未经授权的情况下使用其新闻内容生成人工智能（AI）摘要。&lt;/span&gt;&lt;/p&gt; 
-&lt;p style="color:#242424; margin-left:0; margin-right:0; text-align:left"&gt;&lt;span&gt;这起诉讼标志着美国主流出版商&lt;/span&gt;&lt;span&gt;&lt;span&gt;首次&lt;/span&gt;&lt;/span&gt;&lt;span&gt;就 Google 搜索结果中现有的 AI 生成摘要提起法律行动。彭斯克集团旗下包括《滚石》（RollingStone）、Billboard 和 Variety 等知名媒体，每月吸引 1.2 亿的网络访问者。&lt;/span&gt;&lt;/p&gt; 
-&lt;p style="color:#242424; margin-left:0; margin-right:0; text-align:left"&gt;&lt;img height="274" src="https://oscimg.oschina.net/oscnet/up-6754ce01e89dc9798ddac2728e0f7784c02.png" width="700" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;p style="color:#242424; margin-left:0; margin-right:0; text-align:left"&gt;彭斯克集团在诉讼中指出，Google 在生成 AI 摘要时使用了出版商的文章，但并未支付任何费用。他们认为，如果没有 Google 对出版商内容的使用，Google 本应向这些出版商支付相应的费用，以合法使用其内容或将其内容用于训练自己的 AI 系统。&lt;/p&gt; 
-&lt;p style="color:#242424; margin-left:0; margin-right:0; text-align:left"&gt;彭斯克集团强调，Google 的行为不仅损害了出版商的广告收入和订阅收入，还使得其网站流量大幅下降，预计到 2024 年底，该集团的关联收入将比峰值下降超过三分之一。&lt;/p&gt; 
-&lt;p style="color:#242424; margin-left:0; margin-right:0; text-align:left"&gt;Google 对这一诉讼做出回应，表示其 AI 摘要提升了用户的搜索体验，实际上能够为更多类型的网站带来流量。Google 发言人何塞・卡斯塔涅达（Jose Castaneda）指出，AI 摘要使得搜索功能更实用，并创造了新的内容被发现的机会，Google 将会为这些 「毫无根据的指控」 进行辩护。&lt;/p&gt; 
-&lt;p style="color:#242424; margin-left:0; margin-right:0; text-align:left"&gt;在此之前，在线教育公司 Chegg 也曾起诉 Google，认为其 AI 生成摘要削弱了用户对原创内容的需求，损害了出版商的竞争力。彭斯克集团的诉讼反映了当前媒体行业对 Google 垄断地位的担忧，认为其在搜索市场接近 90% 的份额使得出版商处于弱势地位。&lt;/p&gt; 
-&lt;p style="color:#242424; margin-left:0; margin-right:0; text-align:left"&gt;新闻 / 媒体联盟（News/Media Alliance）也对此表示关注，认为这一情况导致出版商无法拒绝 Google 使用其内容进行 AI 摘要生成。&lt;/p&gt;
-                                                                                &lt;/div&gt;
-                                                                            </description>
-      <link>https://www.oschina.net/news/372231</link>
-      <guid isPermaLink="false">https://www.oschina.net/news/372231</guid>
-      <pubDate>Sun, 14 Sep 2025 02:49:00 GMT</pubDate>
-      <author>来源: OSCHINA</author>
-    </item>
-    <item>
-      <title>马斯克旗下 xAI 数据标注团队裁员 500 人</title>
-      <description>&lt;div class="content"&gt;
-                                                                    
-                                                        &lt;p&gt;&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fwww.businessinsider.com%2Felon-musk-xai-layoffs-data-annotators-2025-9" target="_blank"&gt;据报道&lt;/a&gt;，马斯克旗下 AI 初创公司 xAI 宣布，已从其数据标注团队裁员约 500 人，约占该团队三分之一。该团队曾在训练 xAI 聊天机器人 Grok 时，通过对数据进行分类和情境化处理发挥关键作用。&lt;/p&gt; 
-&lt;p&gt;在裁员前，xAI 数据标注团队是其规模最大的一个工作组，成员超过 1500 人，涵盖全职员工和合同工。 &amp;nbsp;&lt;/p&gt; 
-&lt;p&gt;xAI 在通知裁员之前，公司要求部分员工参加技能评估/测试，这些测试内容涉及 STEM（科学、技术、工程、数学）、编码、金融、医学、模型行为与安全性等多个领域。测试被用于判断哪些通用导师或其主管可能被保留或转为更「专才」的角色。 &amp;nbsp;&lt;/p&gt; 
-&lt;p&gt;&lt;img src="https://static.oschina.net/uploads/space/2025/0915/103652_R1Bm_2720166.jpg" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;p&gt;此次裁员是 xAI 战略转变的一部分，该公司现专注于招聘 STEM、金融、医学和安全领域的专业 AI 导师，同时减少普通岗位。xAI 表示，计划将专业导师团队扩大 10 倍。这一举措反映了更广泛的行业趋势，随着 AI 处理日常任务能力的提升，企业正优先考虑能提供专业领域知识的员工。&lt;/p&gt;
-                                                                                &lt;/div&gt;
-                                                                            </description>
-      <link>https://www.oschina.net/news/372229</link>
-      <guid isPermaLink="false">https://www.oschina.net/news/372229</guid>
-      <pubDate>Sun, 14 Sep 2025 02:39:00 GMT</pubDate>
-      <author>来源: OSCHINA</author>
-    </item>
-    <item>
-      <title>OpenAI 拟将与微软分成比例降至 8%，获 500 亿美元额外收入</title>
-      <description>&lt;div class="content"&gt;
-                                                                    
-                                                        &lt;p style="color:#242424; margin-left:0; margin-right:0; text-align:left"&gt;&lt;span style="color:#000000"&gt;据美国科技媒体《The Information》报道，人工智能公司 OpenAI 正寻求调整其与主要投资方微软的财务协议，以期保留更多收入，用于支付其庞大的计算开销。&lt;/span&gt;&lt;/p&gt; 
-&lt;p style="color:#242424; margin-left:0; margin-right:0; text-align:left"&gt;&lt;span style="color:#000000"&gt;报道援引知情人士透露，OpenAI 已向部分投资者表示，计划将微软获得的收入分成比例从目前略低于 20% 的水平，到 2030 年逐步降至 8% 左右。根据最初的协议，到 2030 年，微软将获得 20% 的分成。&lt;/span&gt;&lt;/p&gt; 
-&lt;p style="color:#242424; margin-left:0; margin-right:0; text-align:left"&gt;&lt;img height="251" src="https://oscimg.oschina.net/oscnet/up-879eb71753d9c8a6f9579fa9d00e263ca1e.png" width="500" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;p style="color:#242424; margin-left:0; margin-right:0; text-align:left"&gt;&lt;span style="color:#000000"&gt;这一调整意义重大，预计将为 OpenAI 带来超过 500 亿美元的额外收入。这笔资金将成为其维持和扩展 AI 模型训练所需的宝贵「弹药」。&lt;/span&gt;&lt;/p&gt; 
-&lt;p style="color:#242424; margin-left:0; margin-right:0; text-align:left"&gt;&lt;span style="color:#000000"&gt;作为回报，微软将获得重组后 OpenAI 实体的三分之一股份，而剩余部分将归其非营利组织所有。不过，报道称，微软仍将不会在 OpenAI 董事会中拥有席位。&lt;/span&gt;&lt;/p&gt; 
-&lt;p style="color:#242424; margin-left:0; margin-right:0; text-align:left"&gt;&lt;span style="color:#000000"&gt;此外，两家公司还在就通用人工智能（AGI）的潜在应用、服务器费用及合同条款进行深入谈判。目前，尚不清楚这是否已体现在两家公司近期宣布的非约束性协议中。&lt;/span&gt;&lt;/p&gt; 
-&lt;p style="color:#242424; margin-left:0; margin-right:0; text-align:left"&gt;&lt;strong&gt;&lt;span style="color:#000000"&gt;相关阅读：&lt;/span&gt;&lt;/strong&gt;&lt;/p&gt; 
-&lt;ul&gt; 
- &lt;li style="text-align:left"&gt;&lt;a href="https://www.oschina.net/news/371712" target="_blank"&gt;OpenAI 与微软达成非约束性协议：允许将营利部门转型公益股份公司&lt;/a&gt;&lt;/li&gt; 
-&lt;/ul&gt;
-                                                                                &lt;/div&gt;
-                                                                            </description>
-      <link>https://www.oschina.net/news/372214</link>
-      <guid isPermaLink="false">https://www.oschina.net/news/372214</guid>
-      <pubDate>Sun, 14 Sep 2025 02:04:00 GMT</pubDate>
-      <author>来源: OSCHINA</author>
-    </item>
-    <item>
-      <title>重塑研发组织形态：从「中心软件工厂」到「移动软件工厂」</title>
-      <description>&lt;div class="content"&gt;
-                                                                    
-                                                        &lt;p&gt;数字化转型的加速，让软件研发从幕后走到前台，成为组织创新和产业升级的关键引擎。无论是科研攻关、产业制造，还是信息基础设施建设，软件都已经渗透到最核心的环节。 然而，在现实环境中，研发并非总是发生在高速网络与开放环境下。&lt;/p&gt; 
-&lt;ul&gt; 
- &lt;li&gt; &lt;p&gt;有时，它需要在&lt;strong&gt;严格隔离的网络&lt;/strong&gt;中完成；&lt;/p&gt; &lt;/li&gt; 
- &lt;li&gt; &lt;p&gt;有时，它需要跨越地域，在&lt;strong&gt;多团队协作&lt;/strong&gt;中推进；&lt;/p&gt; &lt;/li&gt; 
- &lt;li&gt; &lt;p&gt;有时，它要面对&lt;strong&gt;安全与合规&lt;/strong&gt;的高压要求，容不得半点松懈。&lt;/p&gt; &lt;/li&gt; 
-&lt;/ul&gt; 
-&lt;p&gt;这就是今天的研发新常态：复杂、分布、受限，却又必须高效、统一、可控。&lt;/p&gt; 
-&lt;p&gt;&amp;nbsp;&lt;/p&gt; 
-&lt;h2&gt;行业挑战：研发必须跨越的三重门槛&lt;/h2&gt; 
-&lt;p&gt;面对这样的新常态，研发组织普遍遭遇三道门槛：&lt;/p&gt; 
-&lt;ul&gt; 
- &lt;li&gt; &lt;p&gt;&lt;strong&gt;协同门槛&lt;/strong&gt;：不同地域、不同团队之间，工具链与流程标准不一致，导致研发成果常常无法顺畅对接。&lt;/p&gt; &lt;/li&gt; 
- &lt;li&gt; &lt;p&gt;&lt;strong&gt;网络门槛&lt;/strong&gt;：在断网或弱网的条件下，环境一致、基线相同、依赖拉取、制品共享、版本同步都成了奢望。&lt;/p&gt; &lt;/li&gt; 
- &lt;li&gt; &lt;p&gt;&lt;strong&gt;合规门槛&lt;/strong&gt;：即使是短期的现场研发，也必须满足严格的标准与安全要求，否则创新成果难以落地。&lt;/p&gt; &lt;/li&gt; 
-&lt;/ul&gt; 
-&lt;p&gt;这三道门槛，几乎成了所有组织共同面对的困境。&lt;/p&gt; 
-&lt;p&gt;&amp;nbsp;&lt;/p&gt; 
-&lt;h2&gt;新形态的亮相：中心与移动软件工厂&lt;/h2&gt; 
-&lt;p&gt;&lt;img src="https://static.oschina.net/uploads/space/2025/0912/185857_1Zh5_2720166.png" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;p&gt;在这样的背景下，软件工厂的形态正在发生演进。&lt;/p&gt; 
-&lt;p&gt;Gitee 带来了一个新的答案：&lt;strong&gt;中心软件工厂与移动软件工厂的双重驱动模式&lt;/strong&gt;。&lt;/p&gt; 
-&lt;p&gt;它不是简单的功能叠加，而是研发组织能力的一次重塑：&lt;/p&gt; 
-&lt;ul&gt; 
- &lt;li&gt; &lt;p&gt;&lt;strong&gt;中心软件工厂&lt;/strong&gt;：承载统一的研发基线与标准，形成高效、安全、合规的研发中心；&lt;/p&gt; &lt;/li&gt; 
- &lt;li&gt; &lt;p&gt;&lt;strong&gt;移动软件工厂&lt;/strong&gt;：作为灵活的延伸，将研发能力带到任何需要的地方，让创新不再受限。&lt;/p&gt; &lt;/li&gt; 
-&lt;/ul&gt; 
-&lt;p&gt;&amp;nbsp;&lt;/p&gt; 
-&lt;h2&gt;中心软件工厂：标准的承载者&lt;/h2&gt; 
-&lt;p&gt;在中心软件工厂里，研发流程被整体化、规范化：&lt;/p&gt; 
-&lt;ul&gt; 
- &lt;li&gt; &lt;p&gt;统一的代码管理与版本基线；&lt;/p&gt; &lt;/li&gt; 
- &lt;li&gt; &lt;p&gt;标准化的流水线与构建环境；&lt;/p&gt; &lt;/li&gt; 
- &lt;li&gt; &lt;p&gt;安全可控的制品仓库与扫描规则；&lt;/p&gt; &lt;/li&gt; 
- &lt;li&gt; &lt;p&gt;全局适配的权限与合规策略。&lt;/p&gt; &lt;/li&gt; 
-&lt;/ul&gt; 
-&lt;p&gt;&lt;img src="https://static.oschina.net/uploads/space/2025/0912/185923_8uvl_2720166.png" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;p&gt;它是研发的「大本营」，确保所有成果都有迹可循、有规可依。&lt;/p&gt; 
-&lt;p&gt;&amp;nbsp;&lt;/p&gt; 
-&lt;h2&gt;移动软件工厂：灵活的延伸者&lt;/h2&gt; 
-&lt;p&gt;移动软件工厂的使命，是让研发能力突破环境的限制。&lt;/p&gt; 
-&lt;p&gt;它并不是「缩减版」，而是&lt;strong&gt;完整工厂能力的便携延伸&lt;/strong&gt;：&lt;/p&gt; 
-&lt;ul&gt; 
- &lt;li&gt; &lt;p&gt;&lt;strong&gt;携带基线&lt;/strong&gt;：将中心工厂中经过验证的基线，带到断网或弱网的现场；&lt;/p&gt; &lt;/li&gt; 
- &lt;li&gt; &lt;p&gt;&lt;strong&gt;独立运行&lt;/strong&gt;：在隔离条件下完成开发、构建与测试；&lt;/p&gt; &lt;/li&gt; 
- &lt;li&gt; &lt;p&gt;&lt;strong&gt;成果回传&lt;/strong&gt;：生成资产包，回传中心工厂，完成入库、复用与追踪；&lt;/p&gt; &lt;/li&gt; 
- &lt;li&gt; &lt;p&gt;&lt;strong&gt;快速部署&lt;/strong&gt;：无需长期建设，即插即用，满足现场研发需求。&lt;/p&gt; &lt;/li&gt; 
-&lt;/ul&gt; 
-&lt;p&gt;一句话概括：移动软件工厂让研发随时随地发生，同时与中心保持标准一致。&lt;/p&gt; 
-&lt;p&gt;&lt;img src="https://static.oschina.net/uploads/space/2025/0912/185946_9FIg_2720166.png" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;p&gt;&amp;nbsp;&lt;/p&gt; 
-&lt;h2&gt;场景化小故事&lt;/h2&gt; 
-&lt;ul&gt; 
- &lt;li&gt;&lt;strong&gt;隔离环境中的创新&lt;/strong&gt;&lt;/li&gt; 
-&lt;/ul&gt; 
-&lt;p&gt;在一处无法连接外部网络的现场，团队依然能够基于移动工厂的基线顺利开发，研发成果在返回中心后快速入库，形成统一管理。&lt;/p&gt; 
-&lt;ul&gt; 
- &lt;li&gt;&lt;strong&gt;弱网条件下的交付&lt;/strong&gt;&lt;/li&gt; 
-&lt;/ul&gt; 
-&lt;p&gt;在网络条件不足的地区，移动工厂携带所需的依赖和制品，避免频繁的远程请求。研发节奏不再因网络波动而停滞。&lt;/p&gt; 
-&lt;ul&gt; 
- &lt;li&gt;&lt;strong&gt;跨组织的协作&lt;/strong&gt;&lt;/li&gt; 
-&lt;/ul&gt; 
-&lt;p&gt;在大型项目中，不同组织以中心工厂为标准，各自研发成果通过移动工厂快速接入与同步，协作效率显著提升。&lt;/p&gt; 
-&lt;p&gt;这些故事有一个共同点：&lt;strong&gt;研发不再因环境受限而止步&lt;/strong&gt;。&lt;/p&gt; 
-&lt;p&gt;&lt;img src="https://static.oschina.net/uploads/space/2025/0912/190005_a74I_2720166.png" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;p&gt;&amp;nbsp;&lt;/p&gt; 
-&lt;h2&gt;双工厂模式的价值&lt;/h2&gt; 
-&lt;ol&gt; 
- &lt;li&gt; &lt;p&gt;&lt;strong&gt;效率不受限&lt;/strong&gt;：研发团队可以在任何环境中持续迭代，项目进度更有保障。&lt;/p&gt; &lt;/li&gt; 
- &lt;li&gt; &lt;p&gt;&lt;strong&gt;标准不走样&lt;/strong&gt;：中心工厂统一的基线与规则，让所有研发成果始终符合合规与质量要求。&lt;/p&gt; &lt;/li&gt; 
- &lt;li&gt; &lt;p&gt;&lt;strong&gt;扩展不昂贵&lt;/strong&gt;：移动工厂以低成本实现灵活部署，避免重复建设与资源浪费。&lt;/p&gt; &lt;/li&gt; 
- &lt;li&gt; &lt;p&gt;&lt;strong&gt;成果可复用&lt;/strong&gt;：通过资产回传机制，现场研发的成果也能纳入中心，成为可追溯、可检索、可复用的知识资产。&lt;/p&gt; &lt;/li&gt; 
-&lt;/ol&gt; 
-&lt;p&gt;这不仅仅是一种工具组合，而是一种新的研发组织能力。&lt;/p&gt; 
-&lt;p&gt;&amp;nbsp;&lt;/p&gt; 
-&lt;h2&gt;展望：研发的新未来&lt;/h2&gt; 
-&lt;p&gt;中心与移动双工厂模式，正在成为下一代软件研发体系的关键基石。 让研发在复杂环境中依然顺畅，让创新在任何场景下都能发生。 未来，无论研发场景如何变化，这一模式都将持续释放价值：&lt;/p&gt; 
-&lt;ul&gt; 
- &lt;li&gt; &lt;p&gt;让效率与合规不再对立，而是并行；&lt;/p&gt; &lt;/li&gt; 
- &lt;li&gt; &lt;p&gt;让组织在变化的环境中，依然保持稳健与敏捷；&lt;/p&gt; &lt;/li&gt; 
- &lt;li&gt; &lt;p&gt;让创新真正随时随地、无处不在。&lt;/p&gt; &lt;/li&gt; 
-&lt;/ul&gt; 
-&lt;p&gt;&amp;nbsp;&lt;/p&gt; 
-&lt;h2 style="margin-left:0; margin-right:0; text-align:left"&gt;Gitee DevSecOps 的现代化研发生态&lt;/h2&gt; 
-&lt;p style="color:#333333; margin-left:0; margin-right:0; text-align:left"&gt;Gitee DevSecOps 是一站式国产化研发与交付平台，集成了代码托管（Code）、项目协作（Team）、持续集成（CI）、持续部署（CD）、代码安全（Scan）、数据洞察（Insight）等多项能力，致力于打造具备全生命周期管控能力的现代软件工厂。&lt;/p&gt; 
-&lt;p style="color:#333333; margin-left:0; margin-right:0; text-align:left"&gt;&lt;img src="https://static.oschina.net/uploads/space/2025/0523/174619_MpFL_2720166.png" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;p style="color:#333333; margin-left:0; margin-right:0; text-align:left"&gt;平台设计充分考虑关键领域行业对安全性、可控性、合规性的极高要求，具备以下核心特征：&lt;/p&gt; 
-&lt;ul style="list-style-type:disc; margin-left:0; margin-right:0"&gt; 
- &lt;li&gt; &lt;p style="margin-left:0; margin-right:0"&gt;国产化适配与私有化部署能力：全面兼容国产操作系统与基础设施，支持灵活部署于内网环境，保障数据主权；&lt;/p&gt; &lt;/li&gt; 
- &lt;li&gt; &lt;p style="margin-left:0; margin-right:0"&gt;全流程 DevSecOps 管控体系：代码从提交、审核、构建、扫描、部署到发布全流程可视、可追溯、安全可控；&lt;/p&gt; &lt;/li&gt; 
- &lt;li&gt; &lt;p style="margin-left:0; margin-right:0"&gt;模块化产品结构：各能力模块（如 Code、Team、Repo、Pipe、Scan、Insight 等）可灵活组合、渐进集成，适配多样化团队与流程要求；&lt;/p&gt; &lt;/li&gt; 
- &lt;li&gt; &lt;p style="margin-left:0; margin-right:0"&gt;深度可观测与度量体系：内置研发效能度量与数据洞察引擎，支撑管理者宏观掌控项目态势与交付健康度。&lt;/p&gt; &lt;/li&gt; 
-&lt;/ul&gt; 
-&lt;p style="color:#333333; margin-left:0; margin-right:0; text-align:left"&gt;&lt;img alt="162046_MD15_2720166.png" src="https://static.oschina.net/uploads/space/2025/0516/162046_MD15_2720166.png" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;p style="color:#333333; margin-left:0; margin-right:0; text-align:left"&gt;在多个国家级重大项目与关键领域单位落地实践中，Gitee DevSecOps 已成为构建「自主、可控、高效、安全」的软件工程体系的重要基石。&lt;/p&gt; 
-&lt;p style="color:#333333; margin-left:0; margin-right:0; text-align:left"&gt;&lt;img src="https://oscimg.oschina.net/oscnet/up-825957ffbed1798ea7b6a37079fd6c99d18.gif" referrerpolicy="no-referrer"&gt;&lt;/p&gt;
-                                                                                &lt;/div&gt;
-                                                                            </description>
-      <link>https://www.oschina.net/news/371860</link>
-      <guid isPermaLink="false">https://www.oschina.net/news/371860</guid>
-      <pubDate>Fri, 12 Sep 2025 11:00:00 GMT</pubDate>
-      <author>来源: OSCHINA</author>
-    </item>
-    <item>
-      <title>微软正加大投资训练自己的人工智能模型</title>
-      <description>&lt;div class="content"&gt;
-                                                                    
-                                                        &lt;p style="color:#242424; margin-left:0; margin-right:0; text-align:left"&gt;&lt;span&gt;微软正在进行重大的投资，以增强其用于训练自主 AI 模型的服务器能力。&lt;/span&gt;&lt;/p&gt; 
-&lt;p style="color:#242424; margin-left:0; margin-right:0; text-align:left"&gt;&lt;img height="334" src="https://oscimg.oschina.net/oscnet/up-85c73e1b3777c036f3526be295fc3e499f7.png" width="500" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;p style="color:#242424; margin-left:0; margin-right:0; text-align:left"&gt;微软 AI 负责人穆斯塔法・苏莱曼在公司内部会议上表示，微软正在为未来的前沿模型进行 「显著的投资」。他指出：「我们应该具备内部构建&lt;span&gt;世界级&lt;/span&gt;前沿模型的能力，涵盖各种规模的模型，但在必要时也应理性地使用其他模型。」 这一战略显示出微软的决心，希望在 AI 领域与 Meta、谷歌及 xAI 等公司并肩竞争。&lt;/p&gt; 
-&lt;p style="color:#242424; margin-left:0; margin-right:0; text-align:left"&gt;据悉，微软目前正在建设自己的计算集群。目前，MAI-1-preview 模型仅在 15000 个 H100GPU 上进行训练，这在整体看来仍然是一个相对较小的集群。苏莱曼提到，微软计划训练的模型集群规模将是目前的 「六到十倍」，以增强其在 AI 研发中的实力。他表示:「还有很多工作要做，但迈出了&lt;span&gt;第一&lt;/span&gt;步，这很好。」&lt;/p&gt; 
-&lt;p style="color:#242424; margin-left:0; margin-right:0; text-align:left"&gt;在同一场会议上，微软首席执行官萨提亚・纳德拉也表达了他对未来模型能力建设的期待。他强调，微软将 「&lt;span&gt;绝对&lt;/span&gt;支持多种模型」 的应用，并以 GitHub Copilot 为例，说明该战略的成功。&lt;/p&gt; 
-&lt;p style="color:#242424; margin-left:0; margin-right:0; text-align:left"&gt;此外，微软还计划在即将推出的 Microsoft365 中引入 Anthropic 的 AI 模型。据《信息时报》报道，Microsoft365Copilot 将 「部分由 Anthropic 模型驱动」，因为这些模型在 Excel 和 PowerPoint 的性能上超过了 OpenAI。这表明微软正在积极探索各种合作，以提升其产品的智能化水平。&lt;/p&gt;
-                                                                                &lt;/div&gt;
-                                                                            </description>
-      <link>https://www.oschina.net/news/371856</link>
-      <guid isPermaLink="false">https://www.oschina.net/news/371856</guid>
-      <pubDate>Fri, 12 Sep 2025 10:30:00 GMT</pubDate>
-      <author>来源: OSCHINA</author>
-    </item>
-    <item>
-      <title>开源鸿蒙技术大会 2025 即将启幕，共绘数字底座新蓝图</title>
-      <description>&lt;div class="content"&gt;
-                                                                    
-                                                        &lt;p style="color:#000000; text-align:justify"&gt;当前，数字经济已成为驱动全球经济增长的重要力量，在这一进程中，操作系统作为数字基础设施的关键组成部分，其发展水平与生态建设直接关系到众多行业数字化转型的进程。作为智能终端操作系统的开源根社区，开源鸿蒙依托其先进的技术架构与持续的智能化升级，正在为培育新质生产力提供重要支撑，并积极助力数字中国建设向纵深推进。&lt;/p&gt; 
-&lt;p style="color:#000000; text-align:justify"&gt;在万物智联从概念走向实践的关键阶段，开源操作系统如何突破技术瓶颈、构建成熟生态、赋能千行百业转型？&lt;/p&gt; 
-&lt;p style="color:#000000; text-align:justify"&gt;答案，即将于 9 月 27 日在长沙国际会议中心揭开——由开源鸿蒙项目群技术指导委员会（TSC,Technial Steering Committe）主办，华为承办，深开鸿、开鸿智谷、鸿湖万联、润开鸿、九联开鸿、中软国际、诚迈科技、北理工、中科鸿略、中国南方电网、中国科学院软件研究所、证通、国开鸿等合作单位支持举办的开源鸿蒙技术大会 2025 年度盛会，将面向全球开源操作系统领域，以更大规模、更高规格，迎接开源领袖、前沿实践专家、高校学者及生态伙伴，为全球开源从业者呈现一场兼具战略高度与实践深度的技术盛宴。&lt;/p&gt; 
-&lt;p style="color:#000000; text-align:center"&gt;&lt;img alt="e73a250ea248c531e395ced0ae1954cd.jpg" height="338" src="https://oscimg.oschina.net/oscnet//3b4bd434a677f25acf926bb323dcd224.jpg" width="600" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;p style="color:#000000; text-align:justify"&gt;&lt;strong&gt;以核心突破，锚定操作系统技术演进新航向&lt;/strong&gt;&lt;/p&gt; 
-&lt;p style="color:#000000; text-align:justify"&gt;作为大会的主场，主论坛将聚焦开源鸿蒙技术的年度核心进展，通过权威发声与重磅发布，勾勒智能终端操作系统全场景适配与技术深化的清晰路径。主论坛将邀请政府、产业界、学术界、开源界技术专家和权威代表，解读开源鸿蒙在数字基础设施建设中的核心价值。同时，应用生态伙伴与高校代表也将分享前沿实践成果，展现产学研用协同创新的生动实践，为开发者与企业伙伴提供可落地的技术方法论。&lt;/p&gt; 
-&lt;p style="color:#000000; text-align:justify"&gt;值得关注的是，本次主论坛将正式发布开源鸿蒙 6.0 Release 版本，该版本进一步增强了系统能力，提升了系统整体可用性与开发效率，生态适配更友好。此外，大会还将举办开源鸿蒙跨平台框架 PMC（筹）成立仪式，标志着开源鸿蒙在跨平台开发领域的重要布局，不断完善开源鸿蒙技术生态版图。&lt;/p&gt; 
-&lt;p style="color:#000000; text-align:justify"&gt;同时，本届大会共设置 21 场分论坛，无论在数量规模上，还是在领域覆盖广度上，均实现了近年来的新突破，展现出更全面的议题布局。分论坛将重点围绕开源鸿蒙相关技术垂域、行业与应用生态、教育及人才培养等多维度关键方向展开，全面覆盖从底层核心技术突破到前沿应用场景的全链条。大会旨在通过深入攻坚当前操作系统的核心技术难题、前瞻探索未来演进路径，并精准对接学术界研究、产业界应用与开发者实践需求，切实推动技术创新成为驱动产业转型升级的核心动力。&lt;/p&gt; 
-&lt;p style="color:#000000; text-align:left"&gt;&amp;nbsp;&lt;/p&gt; 
-&lt;p style="color:#000000; text-align:justify"&gt;&lt;strong&gt;交流区全景呈现生态成果，见证开源协同五年发展收获&lt;/strong&gt;&lt;/p&gt; 
-&lt;p style="color:#000000; text-align:justify"&gt;开源鸿蒙开源五年多以来，在全球开发者、生态伙伴的持续贡献下，生态不断繁荣。截至 2025 年 8 月 31 日，社区已汇聚超过 9200 名贡献者，累计贡献代码量超过 1.3 亿行，汇聚超 480 家伙伴参与共建，累计超 1300+款产品通过兼容性测评，覆盖金融、超高清、航天、教育、商显、工业、警务、城市、交通、医疗、电力等多个领域。基于这一丰硕的生态共建成果，大会同步设置的 6+N 板块互动交流区，将集中展示基于"Powered by OpenHarmony"开源鸿蒙生态产品的创新成果与商业进展。&lt;/p&gt; 
-&lt;p style="color:#000000; text-align:justify"&gt;作为这一繁荣生态的集中缩影，开源鸿蒙项目群技术指导委员会（TSC）交流区将呈现其在开源鸿蒙技术生态领域的阶段性创新成果；开源鸿蒙社区公共交流区全面展现开源鸿蒙在千行百业的最佳实践与开源生态的繁荣；华为终端将首次与众多生态伙伴联袂亮相，共同展示基于开源鸿蒙的实践与创新成果；三方社区交流区则将呈现更广泛更多维的商业生态和落地部署情况。同时，&lt;span&gt;仓颉编程语言&amp;amp;毕昇编译器&lt;/span&gt;&lt;span&gt;以及应用生态开源技术等关键基础软件与工具链的集中展出，也将进一步凸显开源鸿蒙的产业落地价值，助力参会者清晰感知从技术创新到千行百业赋能的扎实路径，切身感受到开源鸿蒙在不同领域的应用实践与商业价值。&lt;/span&gt;&lt;/p&gt; 
-&lt;p style="color:#000000; text-align:left"&gt;&amp;nbsp;&lt;/p&gt; 
-&lt;p style="color:#000000; text-align:justify"&gt;&lt;strong&gt;以致谢授牌，致敬贡献者，凝聚开源生态新合力&lt;/strong&gt;&lt;/p&gt; 
-&lt;p style="color:#000000; text-align:justify"&gt;开源生态的繁荣，离不开每一位共建者的坚守与付出。本次大会将延续对贡献者的致敬传统，通过多场致谢与授牌仪式为社区力量加冕：通过对 TSG、开源鸿蒙技术俱乐部的致谢授牌，肯定其在人才培育与技术推广中的杰出贡献；重磅发布开源鸿蒙年度课题，并为优秀技术课题成果授牌；开源鸿蒙项目群捐赠人授牌仪式，感谢生态伙伴为社区蓬勃发展所付出的努力；开源鸿蒙竞赛训练营颁奖，则将致敬在技术实践中表现卓越的开发者，进一步凝聚产学研用协同共进的开源生态新合力。&lt;/p&gt; 
-&lt;p style="color:#000000; text-align:justify"&gt;从底层技术突破到生态场景落地，从人才培养到全球协作，开源鸿蒙技术大会 2025 既是对过去一年技术进步与生态进展的盘点，更旨在展望以开源推动生态繁荣、以技术赋能产业转型的新未来。我们诚挚邀请全球技术领袖、高校学者、企业伙伴与开发者，于 9 月 27 日相聚长沙，在这场思想与技术创新交汇的盛会中共享成果、共探方向、共筑未来！&lt;/p&gt; 
-&lt;p&gt;&amp;nbsp;&lt;/p&gt;
-                                                                                &lt;/div&gt;
-                                                                            </description>
-      <link>https://www.oschina.net/news/372008</link>
-      <guid isPermaLink="false">https://www.oschina.net/news/372008</guid>
-      <pubDate>Fri, 12 Sep 2025 07:48:00 GMT</pubDate>
-      <author>作者: 开源科技</author>
     </item>
   </channel>
 </rss>
