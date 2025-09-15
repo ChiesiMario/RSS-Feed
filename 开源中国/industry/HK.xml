@@ -7,8 +7,547 @@
     <generator>RSSHub</generator>
     <webMaster>contact@rsshub.app (RSSHub)</webMaster>
     <language>zh-hk</language>
-    <lastBuildDate>Mon, 15 Sep 2025 07:40:30 GMT</lastBuildDate>
+    <lastBuildDate>Mon, 15 Sep 2025 12:40:50 GMT</lastBuildDate>
     <ttl>5</ttl>
+    <item>
+      <title>BentoML 發佈 llm-optimizer，LLM 推理和性能優化開源工具</title>
+      <description>&lt;div class="content"&gt;
+                                                                    
+                                                        &lt;p&gt;BentoML 近日發佈了&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fwww.bentoml.com%2Fblog%2Fannouncing-llm-optimizer" target="_blank"&gt;llm-optimizer&lt;/a&gt;，這是一個用於基準測試和優化 LLM 推理的開源工具。它支持多個推理框架，併兼容任何開源 LLM。&lt;/p&gt; 
+&lt;p&gt;&lt;img alt="" src="https://oscimg.oschina.net/oscnet/up-4e424ad07868e5d205d0e99984f6e8bf1b4.png" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p&gt;llm-optimizer 旨在將 LLM 性能優化的繁瑣手動工作自動化。您可以在一個地方運行結構化實驗、應用約束並可視化結果，只需幾個命令即可。&lt;/p&gt; 
+&lt;p&gt;使用示例&lt;/p&gt; 
+&lt;pre&gt;&lt;code&gt;llm-optimizer estimate \
+  --model meta-llama/Llama-3.1-8B-Instruct \
+  --input-len 1024 \
+  --output-len 512 \
+  --gpu A100 \
+  --num-gpus 2&lt;/code&gt;&lt;/pre&gt; 
+&lt;p&gt;預期輸出&lt;/p&gt; 
+&lt;pre&gt;&lt;code&gt;=== Configuration ===
+Model: meta-llama/Llama-3.1-8B-Instruct
+GPU: 2x A100
+Precision: fp16
+Input/Output: 1024/512 tokens
+Target: throughput
+
+Fetching model configuration...
+Model: 8029995008.0B parameters, 32 layers
+
+=== Performance Analysis ===
+Best Latency (concurrency=1):
+  TTFT: 43.1 ms
+  ITL: 2.6 ms
+  E2E: 1.39 s
+
+Best Throughput (concurrency=512):
+  Output: 18873.3 tokens/s
+  Input: 23767.8 tokens/s
+  Requests: 14.24 req/s
+  Bottleneck: Memory
+
+=== Roofline Analysis ===
+Hardware Ops/Byte Ratio: 142.5 ops/byte
+Prefill Arithmetic Intensity: 52205.5 ops/byte
+Decode Arithmetic Intensity: 50.9 ops/byte
+Prefill Phase: Compute Bound
+Decode Phase: Memory Bound
+
+=== Concurrency Analysis ===
+KV Cache Memory Limit: 688 concurrent requests
+Prefill Compute Limit: 8 concurrent requests
+Decode Capacity Limit: 13 concurrent requests
+Theoretical Overall Limit: 8 concurrent requests
+Empirical Optimal Concurrency: 16 concurrent requests
+
+=== Tuning Commands ===
+
+--- SGLANG ---
+Simple (concurrency + TP/DP):
+  llm-optimizer --framework sglang --model meta-llama/Llama-3.1-8B-Instruct --gpus 2 --host 127.0.0.1 --server-args "tp_size*dp_size=[(1, 2), (2, 1)]" --client-args "num_prompts=1000;dataset_name=sharegpt;random_input=1024;random_output=512;num_prompts=1000;max_concurrency=[256, 512, 768]" --output-dir tuning_results --output-json tuning_results/config_1_sglang.json
+Advanced (additional parameters):
+  llm-optimizer --framework sglang --model meta-llama/Llama-3.1-8B-Instruct --gpus 2 --host 127.0.0.1 --server-args "tp_size*dp_size=[(1, 2), (2, 1)];chunked_prefill_size=[1434, 2048, 2662];schedule_conservativeness=[0.3, 0.6, 1.0];schedule_policy=fcfs" --client-args "num_prompts=1000;dataset_name=sharegpt;random_input=1024;random_output=512;num_prompts=1000;max_concurrency=[256, 512, 768]" --output-dir tuning_results --output-json tuning_results/config_1_sglang.json
+
+--- VLLM ---
+Simple (concurrency + TP/DP):
+  llm-optimizer --framework vllm --model meta-llama/Llama-3.1-8B-Instruct --gpus 2 --host 127.0.0.1 --server-args "tensor_parallel_size*data_parallel_size=[(1, 2), (2, 1)]" --client-args "num_prompts=1000;dataset_name=sharegpt;random_input=1024;random_output=512;num_prompts=1000;max_concurrency=[256, 512, 768]" --output-dir tuning_results --output-json tuning_results/config_1_vllm.json
+Advanced (additional parameters):
+  llm-optimizer --framework vllm --model meta-llama/Llama-3.1-8B-Instruct --gpus 2 --host 127.0.0.1 --server-args "tensor_parallel_size*data_parallel_size=[(1, 2), (2, 1)];max_num_batched_tokens=[1024, 1177, 1331]" --client-args "num_prompts=1000;dataset_name=sharegpt;random_input=1024;random_output=512;num_prompts=1000;max_concurrency=[256, 512, 768]" --output-dir tuning_results --output-json tuning_results/config_1_vllm.json&lt;/code&gt;&lt;/pre&gt; 
+&lt;p&gt;該工具解決了 LLM 部署中的一個常見挑戰：在不依賴手動試錯的情況下，為延遲、吞吐量和成本找到最佳配置。llm-optimizer 為探索 LLM 性能景觀提供了一種結構化的方式。它通過實現系統基準和跨可能配置的自動搜索，消除了重複的猜測。&lt;/p&gt; 
+&lt;p&gt;開源地址：&lt;em&gt;https://github.com/bentoml/llm-optimizer&lt;/em&gt;&lt;/p&gt;
+                                                                                &lt;/div&gt;
+                                                                            </description>
+      <link>https://www.oschina.net/news/372359/bentoml-llm-optimizer</link>
+      <guid isPermaLink="false">https://www.oschina.net/news/372359/bentoml-llm-optimizer</guid>
+      <pubDate>Sun, 14 Sep 2025 11:26:00 GMT</pubDate>
+      <author>來源: OSCHINA</author>
+    </item>
+    <item>
+      <title>北京中小學全面開設人工智能通識課</title>
+      <description>&lt;div class="content"&gt;
+                                                                    
+                                                        &lt;p&gt;&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fmp.weixin.qq.com%2Fs%2FecvZHwNwJg6PafacKW5iEg" target="_blank"&gt;據報道&lt;/a&gt;，自 2025 年秋季學期起，北京市 1400 餘所中小學全面開設人工智能通識教育課程，覆蓋 183 萬餘名中小學生，成為全國首個省級全域推進人工智能通識教育的地區。&lt;/p&gt; 
+&lt;p&gt;報道稱，課程資源方面，首批覆蓋全學段的 160 套市級課程資源已上線，每套資源包含 15 分鐘左右的核心教學視頻、教學指南及活動任務單；&lt;/p&gt; 
+&lt;p&gt;通過「視頻 + 工具 + 任務單」模式滿足教師授課、備課及學生自主學習 3 類場景需求，搭建 AI「課程超市」和「應用超市」，為課堂教學提供基礎支撐。&lt;/p&gt; 
+&lt;p&gt;市教委相關負責人表示，北京市將持續優化人工智能教育課程資源，結合教學反饋迭代更新；開展應用示範校評選和優秀案例推廣，形成可複製經驗。&lt;/p&gt; 
+&lt;p&gt;同時，負責人還表示，要深化「京娃」系列智能體研發，拓展「AI + 教育」應用場景等，以首批課程資源為起點，力爭將北京中小學人工智能教育打造成全國標杆，真正讓數字技術賦能每一位師生，為培養擔當民族復興大任的時代新人奠定堅實基礎。&lt;/p&gt;
+                                                                                &lt;/div&gt;
+                                                                            </description>
+      <link>https://www.oschina.net/news/372356</link>
+      <guid isPermaLink="false">https://www.oschina.net/news/372356</guid>
+      <pubDate>Sun, 14 Sep 2025 11:09:00 GMT</pubDate>
+      <author>來源: OSCHINA</author>
+    </item>
+    <item>
+      <title>OpenAI Evals 新增原生音頻輸入和評估功能</title>
+      <description>&lt;div class="content"&gt;
+                                                                    
+                                                        &lt;p&gt;OpenAI 的 Evals 工具現已支持原生音頻輸入和音頻評分，無需文本轉錄即可直接評估模型的音頻響應。這項新功能極大簡化了語音識別和生成模型的評估過程，使得開發者能夠更高效地測試和優化其音頻應用。&lt;/p&gt; 
+&lt;p&gt;&lt;img alt="" src="https://oscimg.oschina.net/oscnet/up-9522f36b3f1e768600ee99a85f02e860156.png" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p&gt;通過使用 Evals 的原生音頻支持，用户可以上傳音頻文件，並直接在平台上進行性能評估。這一改進不僅減少了數據處理的複雜性，還提高了評估結果的準確性和可靠性。對於需要頻繁測試和調整音頻模型的開發者來説，這是一個重要的進步。&lt;/p&gt; 
+&lt;p&gt;應用場景包括但不限於：智能語音助手的開發與優化、語音識別系統的性能評估，以及音頻內容生成的質量控制。&lt;/p&gt; 
+&lt;p&gt;如需瞭解更多關於如何使用 Evals 的新功能，參考官方 Cookbook 指南：&lt;em&gt;https://cookbook.openai.com/examples/evaluation/use-cases/evalsapi_audio_inputs&lt;/em&gt;&lt;/p&gt;
+                                                                                &lt;/div&gt;
+                                                                            </description>
+      <link>https://www.oschina.net/news/372353</link>
+      <guid isPermaLink="false">https://www.oschina.net/news/372353</guid>
+      <pubDate>Sun, 14 Sep 2025 11:01:00 GMT</pubDate>
+      <author>來源: OSCHINA</author>
+    </item>
+    <item>
+      <title>微軟研究院發佈 RenderFormer，基於 Transformer 的神經渲染模型</title>
+      <description>&lt;div class="content"&gt;
+                                                                    
+                                                        &lt;p&gt;微軟研究院近日發佈了&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fwww.microsoft.com%2Fen-us%2Fresearch%2Fblog%2Frenderformer-how-neural-networks-are-reshaping-3d-rendering%2F" target="_blank"&gt;RenderFormer&lt;/a&gt;，這是一個純機器學習的神經架構，旨在通過機器學習完全替代傳統圖形計算，實現全功能 3D 渲染，無需傳統圖形計算。&lt;/p&gt; 
+&lt;p&gt;&lt;img alt="" src="https://oscimg.oschina.net/oscnet/up-973c5649e34320d01d3888bfd65c9a319d3.png" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;img alt="" src="https://oscimg.oschina.net/oscnet/up-2008d874aeabcfe09955bf61fd0b256737b.png" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p&gt;RenderFormer 整體架構如下：&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt;雙分支 Transformer 架構：分為視角無關（View-Independent）和視角相關（View-Dependent）兩個階段。視角無關階段通過自注意力機制捕捉陰影、漫反射等全局光照效果；視角相關階段通過交叉注意力機制建模可見性、反射等視角依賴效果。&lt;/li&gt; 
+ &lt;li&gt;相對空間位置編碼：創新性地採用改進的旋轉位置編碼（RoPE），基於三角形的 3D 空間位置而非序列索引，保持場景平移不變性。&lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;p&gt;&lt;img alt="" src="https://oscimg.oschina.net/oscnet/up-79adce0f291f87580ef10043c6928fce017.png" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p&gt;據介紹，RenderFormer 是首個證明神經網絡能學習完整圖形渲染流水線的模型，支持任意 3D 場景和全局光照效果，無需依賴光線追蹤或光柵化技術。它通過三角形令牌（triangle tokens）表示 3D 場景，編碼空間位置、表面法線及材質屬性，結合光線束令牌（ray bundle tokens）處理視角信息，實現端到端渲染。該成果已獲 SIGGRAPH 2025 接收並開源。&lt;/p&gt; 
+&lt;p&gt;&lt;em&gt;https://microsoft.github.io/renderformer&lt;/em&gt;&lt;/p&gt;
+                                                                                &lt;/div&gt;
+                                                                            </description>
+      <link>https://www.oschina.net/news/372349</link>
+      <guid isPermaLink="false">https://www.oschina.net/news/372349</guid>
+      <pubDate>Sun, 14 Sep 2025 10:38:00 GMT</pubDate>
+      <author>來源: OSCHINA</author>
+    </item>
+    <item>
+      <title>亞馬遜雲科技否認大中華區裁員</title>
+      <description>&lt;div class="content"&gt;
+                                                                    
+                                                        &lt;p&gt;&lt;span style="color:#000000"&gt;9 月 15 日，有消息稱亞馬遜雲科技（AWS）大中華區計劃裁員，預計將發生在 9 月底至 10 月之間，或涉及超 20% 的員工，目前 AWS 大中華區人員規模不到 1700 人。&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;span style="color:#000000"&gt;對此，亞馬遜雲科技發言人表示：「相關報道嚴重失實，亞馬遜雲科技持續在中國積極招聘人才，為中國企業提供全球領先、安全可靠的雲技術。」&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;span style="color:#000000"&gt;今年 7 月，亞馬遜發佈了 2025 年第二季度財報，二季度營收同比增長 13% 至 1677 億美元；淨利潤 181.64 億美元，與上年同期的 134.85 億美元相比大幅增長 35%；稀釋後每股收益為 1.68 美元。亞馬遜已承諾今年在 AI 領域的投資將高達 1000 億美元。亞馬遜 AWS 雲業務在二季度營收 308.73 億美元，略高於市場預期的 308 億美元，同比增長 17%，增速與上一季度持平。&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;span style="color:#000000"&gt;AWS 的增速仍低於其主要競爭對手微軟雲和谷歌雲。在電話會上，亞馬遜 CEO 安迪·賈西試圖向分析師保證，和其雲計算競爭對手相比，AWS 一直保持着「相當重要」的領導地位，他對公司 AI 產品的發展感到樂觀：「我們 AWS 領域的業務規模比其他公司的雲業務大得多，我認為第二位的規模約為 AWS 的 65%。」&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;span style="color:#000000"&gt;官網資料顯示，亞馬遜雲科技於 2013 年進入中國，通過本地合作伙伴北京光環新網科技股份有限公司（光環新網）和寧夏西雲數據科技有限公司（西雲數據），提供與全球一致的雲服務體驗和安全級別，API（應用程序接口）、SDK（軟件開發工具包）、CLI（命令行工具）與全球其他地區相同，開發者無需額外適配，即可實現全球化應用部署。&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;span style="color:#000000"&gt;目前，亞馬遜雲科技在中國雲計算市場面臨激烈的競爭。根據研究機構 Canalys 的報告顯示，2025 年第一季度中國大陸的雲計算支出達到 116 億美元，前三名阿里雲、華為雲和騰訊雲的市場份額分別為 33%、 18% 和 10%，三家巨頭合計佔領了整個中國雲計算市場的 61%。（澎湃新聞）&lt;/span&gt;&lt;/p&gt;
+                                                                                &lt;/div&gt;
+                                                                            </description>
+      <link>https://www.oschina.net/news/372348</link>
+      <guid isPermaLink="false">https://www.oschina.net/news/372348</guid>
+      <pubDate>Sun, 14 Sep 2025 10:31:00 GMT</pubDate>
+      <author>來源: OSCHINA</author>
+    </item>
+    <item>
+      <title>Roo Code 上線遠程連接功能 Roomote Control</title>
+      <description>&lt;div class="content"&gt;
+                                                                    
+                                                        &lt;p&gt;AI 編程工具 Roo Code 近期推出了名為 &lt;strong&gt;Roomote Control&lt;/strong&gt; 的新功能，旨在提升用户在 VS Code 中的編碼體驗。&lt;/p&gt; 
+&lt;p&gt;&lt;img src="https://static.oschina.net/uploads/space/2025/0915/181541_VqYx_2720166.png" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fx.com%2Froo_code%2Fstatus%2F1966280158031335625" target="_blank"&gt;據介紹&lt;/a&gt;，Roomote Control 允許用户通過手機或瀏覽器遠程連接和控制本地 VS Code 環境中的 Roo Code。該工具直接在用户的系統上運行，確保代碼庫保持私有和完全安全。&lt;/p&gt; 
+&lt;p&gt;用户可以在遠程設備上啓動新任務、選擇模式和模型，所有更新會實時同步回本地 IDE。即使暫時離開，用户也可以讓任務在後台繼續運行，提高工作效率。&lt;/p&gt; 
+&lt;p&gt;Roomote Control 作為 Roo Code Pro 訂閲的一部分，提供 14 天的免費試用期，之後每月收費 20 美元。&lt;/p&gt; 
+&lt;p&gt;使用方法如下&lt;/p&gt; 
+&lt;ul&gt; 
+ &lt;li&gt; &lt;p&gt;&lt;strong&gt;連接步驟&lt;/strong&gt;：&lt;/p&gt; 
+  &lt;ol&gt; 
+   &lt;li&gt; &lt;p&gt;在 Roo Code 中導航到 Cloud 菜單並點擊「Connect」。&lt;/p&gt; &lt;/li&gt; 
+   &lt;li&gt; &lt;p&gt;登錄 Roo Code 網站並在 IDE 中啓用遠程控制。&lt;/p&gt; &lt;/li&gt; 
+   &lt;li&gt; &lt;p&gt;在瀏覽器中訪問 Roo Code Cloud，確保遠程切換已啓用。&lt;/p&gt; &lt;/li&gt; 
+  &lt;/ol&gt; &lt;/li&gt; 
+ &lt;li&gt; &lt;p&gt;&lt;strong&gt;功能體驗&lt;/strong&gt;：用户可以在遠程部分查看 IDE 的開放目錄，點擊加號圖標啓動新任務，輸入提示並觀察任務的執行。&lt;/p&gt; &lt;/li&gt; 
+&lt;/ul&gt; 
+&lt;p&gt;通過 Roomote Control，Roo Code 進一步擴展了其作為 AI 驅動的自主編碼代理的功能，使用户能夠隨時隨地高效地管理編碼任務。&lt;/p&gt;
+                                                                                &lt;/div&gt;
+                                                                            </description>
+      <link>https://www.oschina.net/news/372344</link>
+      <guid isPermaLink="false">https://www.oschina.net/news/372344</guid>
+      <pubDate>Sun, 14 Sep 2025 10:17:00 GMT</pubDate>
+      <author>來源: OSCHINA</author>
+    </item>
+    <item>
+      <title>全球首個 AI 政府部長來了</title>
+      <description>&lt;div class="content"&gt;
+                                                                    
+                                                        &lt;p&gt;&lt;span style="color:#000000"&gt;綜合環球網等媒體報道，阿爾巴尼亞總理埃迪·拉馬當地時間 11 日宣佈新內閣名單，&lt;strong&gt;&lt;strong&gt;其中包括任命一個名為「迪埃拉」（在阿爾巴尼亞語中意為「太陽」）的人工智能擔任公共採購部長&lt;/strong&gt;&lt;/strong&gt;。&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;span style="color:#000000"&gt;&lt;strong&gt;&lt;strong&gt;這也使得阿爾巴尼亞成為世界上第一個任命非實體的人工智能擔任政府部長的國家。&lt;/strong&gt;&lt;/strong&gt;&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;img height="254" src="https://oscimg.oschina.net/oscnet/up-01dfab898dc0952c33998cbf206a06145f0.png" width="500" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;span style="color:#000000"&gt;2025 年 5 月，拉馬歷史性地第四次當選阿爾巴尼亞總理。今年夏天，拉馬曾暢想有朝一日該國能有一位數字部長，甚至是一位人工智能總理，不過當時幾乎沒人想到這一天會這麼快到來。&lt;/span&gt;&lt;/p&gt; 
+&lt;blockquote&gt; 
+ &lt;p&gt;&lt;span style="color:#000000"&gt;拉馬在週四宣佈新內閣的講話中表示：「迪埃拉是第一位並非以實體形式存在，而是由人工智能虛擬生成的內閣成員。」&lt;/span&gt;&lt;/p&gt; 
+&lt;/blockquote&gt; 
+&lt;p&gt;&lt;span style="color:#000000"&gt;拉馬還表示，招標決定權將從各部手中逐步移交給「迪埃拉」，「迪埃拉」將審查政府與私營公司簽訂的每一份招標合同，並客觀評估每一份招標合同的優點。&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;span style="color:#000000"&gt;拉馬強調，「迪埃拉」將幫助阿爾巴尼亞「成為一個公共招標 100% 沒有腐敗的國家」。長期以來，授予此類合同一直是這個巴爾幹國家腐敗醜聞的根源。&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;span style="color:#000000"&gt;這種形象對阿爾巴尼亞加入歐盟的夢想造成了打擊。阿爾巴尼亞目前是歐盟的候選國，拉馬希望在 2030 年之前成為歐盟正式成員國，但政治分析人士稱，這一目標過於雄心勃勃。&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;span style="color:#000000"&gt;拉馬還稱，將有一個專用部門為「迪埃拉」提供支持，並推動人工智能在政府各部門的應用。&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;span style="color:#000000"&gt;不過，阿爾巴尼亞政府並未提供有關「迪埃拉」可能會受到何種人類監督的詳細信息，也沒有就有人可能操縱這個人工智能機器人的風險作出説明。&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;span style="color:#000000"&gt;「迪埃拉」此前已經為阿爾巴尼亞公民所知，她的虛擬形象是一個身穿阿爾巴尼亞傳統服飾的女子，於今年年初在電子平台作為一款人工智能虛擬助手上線，該平台允許公民以數字方式訪問幾乎所有政府服務。「迪埃拉」負責幫助公民和企業獲取政府文件，通過語音指令提供幫助，以及簽發帶有電子印章的文件。&lt;/span&gt;&lt;/p&gt;
+                                                                                &lt;/div&gt;
+                                                                            </description>
+      <link>https://www.oschina.net/news/372341</link>
+      <guid isPermaLink="false">https://www.oschina.net/news/372341</guid>
+      <pubDate>Sun, 14 Sep 2025 10:11:00 GMT</pubDate>
+      <author>來源: OSCHINA</author>
+    </item>
+    <item>
+      <title>騰訊 AI 編程工具 CodeBuddy 推出個人訂閲方案</title>
+      <description>&lt;div class="content"&gt;
+                                                                    
+                                                        &lt;p&gt;騰訊旗下 AI 編程工具 CodeBuddy 正式公佈了其個人訂閲方案。用户每月支付 9.95 美元即可獲得 1000 credits，並且每日還會額外贈送 100 credits（於零點重置）。&lt;/p&gt; 
+&lt;p&gt;付費版功能&lt;br&gt; ✅1000 credits/month&lt;br&gt; ✅100 credits/day, reset daily&lt;br&gt; ✅All premium models&lt;br&gt; ✅Unlimited BuddyTab&lt;br&gt; ✅Unlimited Next Edit Prediction&lt;br&gt; ✅Previews&lt;/p&gt; 
+&lt;p&gt;免費版功能&lt;br&gt; ✅2 week pro trial with 500 credits&lt;br&gt; ✅50 credits/day, reset daily&lt;br&gt; ✅All premium models&lt;br&gt; ✅Unlimited BuddyTab&lt;br&gt; ✅Unlimited Next Edit Prediction&lt;/p&gt; 
+&lt;p&gt;&lt;img height="733" src="https://static.oschina.net/uploads/space/2025/0915/175958_W3lT_2720166.png" width="1080" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;em&gt;https://www.codebuddy.ai/profile/plan&lt;/em&gt;&lt;/p&gt; 
+&lt;p&gt;訂閲用户可以調用全部高級模型，並無限使用 BuddyTab 與 Next Edit Prediction 功能。對於新用户，CodeBuddy 提供一次性的為期 2 周，的 Pro 試用，其中包含 500 credits 以及每日 50 credits 的贈送。&lt;/p&gt;
+                                                                                &lt;/div&gt;
+                                                                            </description>
+      <link>https://www.oschina.net/news/372340</link>
+      <guid isPermaLink="false">https://www.oschina.net/news/372340</guid>
+      <pubDate>Sun, 14 Sep 2025 10:01:00 GMT</pubDate>
+      <author>來源: OSCHINA</author>
+    </item>
+    <item>
+      <title>xAI 正在測試 Grok 4 Fast，宣稱是「地球上最快思考模型」</title>
+      <description>&lt;div class="content"&gt;
+                                                                    
+                                                        &lt;p&gt;xAI 已開始對 Grok 4 Fast &lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fwww.testingcatalog.com%2Fxai-launches-grok-4-fast-in-early-access-beta-with-up-to-10x-speed%2F" target="_blank"&gt;進行灰度測試&lt;/a&gt;，並宣稱這是「目前地球上最快的思考模型」。&lt;/p&gt; 
+&lt;p&gt;&lt;img alt="" src="https://oscimg.oschina.net/oscnet/up-820d3dda386ef2105d157daacaa4058bcfd.png" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;img alt="" src="https://oscimg.oschina.net/oscnet/up-3fbbb5515d6180fa2258e4d055d8fdc166e.png" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p&gt;該模型據稱是 Grok 4 的加速版，已在 Grok 網頁端、iOS 應用以及 X 平台上向部分用户推送。&lt;/p&gt; 
+&lt;p&gt;&lt;img src="https://static.oschina.net/uploads/space/2025/0915/174413_VUST_2720166.jpg" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p&gt;新版本主打極速響應，同時力求保持高水平的智能密度。為了方便用户體驗，網頁端為訂閲用户新增了「Enable early access models」開關，允許他們提前試用尚在實驗階段的新模型。&lt;/p&gt;
+                                                                                &lt;/div&gt;
+                                                                            </description>
+      <link>https://www.oschina.net/news/372333</link>
+      <guid isPermaLink="false">https://www.oschina.net/news/372333</guid>
+      <pubDate>Sun, 14 Sep 2025 09:47:00 GMT</pubDate>
+      <author>來源: OSCHINA</author>
+    </item>
+    <item>
+      <title>Pantheon CLI - 科學 「聊天式分析」 類人框架</title>
+      <description>&lt;div class="content"&gt;
+                                                                                                                                                                        
+                                                                                    &lt;p style="color:#1f2328; text-align:start"&gt;Pantheon-CLI 是專為科學研究打造的&lt;strong&gt;首個完全開源的「聊天式分析」類人框架&lt;/strong&gt;。定義 AI 時代研究者與數據交互的新方式。&lt;/p&gt;
+
+&lt;div style="text-align:start"&gt;
+&lt;h3&gt;&lt;strong&gt;博士水平的科學助手&lt;/strong&gt;&lt;/h3&gt;
+&lt;/div&gt;
+
+&lt;ul&gt;
+&lt;li&gt;Pantheon-CLI 是首個用於複雜真實世界分析的命令行智能（CLI）Agent 助手，能夠像人類一樣處理博士級別的單細胞與空間組學任務。這不僅是一個工具——&lt;strong&gt;它是一位加入你科研團隊的 AI 科學家&lt;/strong&gt;。&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;div style="text-align:start"&gt;
+&lt;h3&gt;&lt;strong&gt;混合式編程&lt;/strong&gt;&lt;/h3&gt;
+&lt;/div&gt;
+
+&lt;ul&gt;
+&lt;li&gt;在同一個環境中，你可以：
+&lt;ul&gt;
+&lt;li&gt;第一行寫 Python 代碼&lt;/li&gt;
+&lt;li&gt;下一行使用自然語言描述&lt;/li&gt;
+&lt;li&gt;甚至混合使用 R/Julia 語言&lt;/li&gt;
+&lt;/ul&gt;
+&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;p style="color:#1f2328; text-align:start"&gt;科學家只需專注於&lt;strong&gt;探索&lt;/strong&gt;，無需在不同工具與環境之間來回切換。&lt;/p&gt;
+
+&lt;div style="text-align:start"&gt;
+&lt;h2&gt;功能特性&lt;/h2&gt;
+&lt;/div&gt;
+
+&lt;p style="color:#1f2328; text-align:start"&gt;用 Pantheon-CLI 的開源力量重塑你的數據分析工作流——它為多語言無縫集成、輕鬆數據分析與下一代科研發現而生。&lt;/p&gt;
+
+&lt;div style="text-align:start"&gt;
+&lt;h3&gt;3.1 與數據對話&lt;/h3&gt;
+&lt;/div&gt;
+
+&lt;ul&gt;
+&lt;li&gt;使用 Pantheon-CLI，你可以處理任何本地數據，不侷限於文本、CSV、Excel，還包括 anndata、pkl、torch，以及任何 Python/R/Julia 支持的數據格式。&lt;/li&gt;
+&lt;li&gt;你無需將任何數據上傳至服務器——分析能力完全依賴於你的計算機。也可以將 Pantheon-CLI 安裝在服務器上，解鎖無限分析可能。&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;div style="text-align:start"&gt;
+&lt;h3&gt;3.2 混合式編程&lt;/h3&gt;
+&lt;/div&gt;
+
+&lt;ul&gt;
+&lt;li&gt;在 Pantheon-CLI 中，所有變量都保存在環境中，突破了傳統編程的限制。你可以隨時用自然語言「編程」，CLI 會自動生成 Python/R/Julia 代碼並運行。&lt;/li&gt;
+&lt;li&gt;這是全球首個具備變量持久化支持的 Agent。在編碼過程中，你可以隨時輸入自然語言，Pantheon-CLI 將自動執行你想要的分析。&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;div style="text-align:start"&gt;
+&lt;h3&gt;3.3 MCP 集成&lt;a href="https://github.com/aristoteleo/pantheon-cli/blob/main/assets/feature_3.jpg" target="_blank"&gt;&lt;/a&gt;&lt;/h3&gt;
+&lt;/div&gt;
+
+&lt;ul&gt;
+&lt;li&gt;通過 Pantheon-CLI，構建了一個具備人機交互全棧能力的助手：讀寫文件、創建文件、運行命令、生成代碼、讀取網頁。&lt;/li&gt;
+&lt;li&gt;不同於傳統 Agent，該項目幾乎實現了 Claude Code 的所有能力，並進一步優化——致力於讓 Pantheon-CLI 更適合數據分析，而非純粹的代碼編程。&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;div style="text-align:start"&gt;
+&lt;h3&gt;3.4 類人行為&lt;/h3&gt;
+&lt;/div&gt;
+
+&lt;ul&gt;
+&lt;li&gt;像人類科學家一樣，Pantheon-CLI 可讀取網頁教程與 PDF 論文，然後開始規劃分析。&lt;/li&gt;
+&lt;li&gt;給 LLM 輸入教程常能得到更好的輸出，但並非所有網頁都易於訪問。項目重構了更強大的網頁抓取能力，儘可能復現人類在分析前會做的一切準備工作。&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;div style="text-align:start"&gt;
+&lt;h3&gt;3.5 任務規劃&lt;/h3&gt;
+&lt;/div&gt;
+
+&lt;ul&gt;
+&lt;li&gt;在 Pantheon-CLI 中，可從論文中學習並自動規劃、構建科學 Agent。學習論文的 Method 部分，像人類專家一樣搭建逐步執行的 Agent。&lt;/li&gt;
+&lt;li&gt;對於數據科學任務，現有 Agent 的通用做法是「計劃並逐步執行」，但這依賴於人類預先定義的步驟。Pantheon-CLI 則能從論文或教程中自動學習並規劃工作流。這與人類專家的做法有何不同？&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;div style="text-align:start"&gt;
+&lt;h3&gt;3.6 多模型提供商支持&lt;/h3&gt;
+&lt;/div&gt;
+
+&lt;ul&gt;
+&lt;li&gt;Pantheon-CLI 支持主流大模型提供商，包括 OpenAI、Anthropic、Gemini、Deepseek、Qwen 等，因此你不受制於任一模型。&lt;/li&gt;
+&lt;li&gt;這看似簡單，卻非常實用：支持任何大模型，且無需「Claude Code 風格」的專用 API——通用 LLM API 即可。&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;div style="text-align:start"&gt;
+&lt;h3&gt;3.7 本地 LLM 支持&lt;/h3&gt;
+&lt;/div&gt;
+
+&lt;ul&gt;
+&lt;li&gt;出於某些數據隱私合規需求，Pantheon-CLI 可基於 ollama 使用本地大模型離線完成數據分析。&lt;/li&gt;
+&lt;li&gt;在本地運行數據與本地運行模型，是 Pantheon-CLI 的另一個有趣優勢。&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;div style="text-align:start"&gt;
+&lt;h3&gt;3.8 多 RAG 支持&lt;/h3&gt;
+&lt;/div&gt;
+
+&lt;ul&gt;
+&lt;li&gt;提供完整的預學習 RAG 方案。通過強大的網頁爬蟲彙集文檔信息，構建一個「外置大腦」，隨後將用户意圖與之匹配，生成更可靠的輸出。&lt;/li&gt;
+&lt;li&gt;雖然 RAG 仍在爭論中，但很多時候用户找不到「合適教程」作為精確輸入。在這種情況下，RAG 就很有價值——畢竟極長上下文也會消耗大量 tokens。後續會釋放更大的 RAG 數據庫供下載。&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;div style="text-align:start"&gt;
+&lt;h3&gt;3.9 生物學支持&lt;/h3&gt;
+&lt;/div&gt;
+
+&lt;ul&gt;
+&lt;li&gt;藉助在生物組學分析方面的經驗，預置了系統級組學工具集，幫助你完成上游測序比對、下游註釋與差異分析，甚至完整復現一篇生物學論文中的全部分析。&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;div style="text-align:start"&gt;
+&lt;h3&gt;3.10 Notebook Support&lt;/h3&gt;
+&lt;/div&gt;
+
+&lt;ul&gt;
+&lt;li&gt;想象一下：從現在起，當你在筆記本中分析數據時，如果你有特定的需求，卻不想翻閲複雜的文檔，你只需要進行一次對話，分析工作就能瞬間完成。&lt;/li&gt;
+&lt;li&gt;它不僅用於編寫代碼，還能自動運行和修改代碼以生成正確結果，甚至能夠處理文件並從網站學習——這些功能是其他任何工具都無法比擬的。&lt;/li&gt;
+&lt;/ul&gt;
+
+                                                                    &lt;/div&gt;
+                                                                </description>
+      <link>https://www.oschina.net/p/pantheon-cli</link>
+      <guid isPermaLink="false">https://www.oschina.net/p/pantheon-cli</guid>
+      <pubDate>Sun, 14 Sep 2025 09:45:00 GMT</pubDate>
+    </item>
+    <item>
+      <title>《人工智能安全治理框架》2.0 版發佈</title>
+      <description>&lt;div class="content"&gt;
+                                                                    
+                                                        &lt;p&gt;&lt;span style="background-color:#ffffff; color:rgba(0, 0, 0, 0.9)"&gt;在國家互聯網信息辦公室的指導下，國家計算機網絡應急技術處理協調中心組織專業機構、科研院所、行業企業等持續跟蹤人工智能風險變化演進，梳理調整風險分類，研究形成風險分級方法，動態調整更新防範治理措施，制定&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fmp.weixin.qq.com%2Fs%2FaFGCdWSxHxGdxC9e76wuXw" target="_blank"&gt;《人工智能安全治理框架》2.0 版&lt;/a&gt;，&lt;/span&gt;&lt;span style="background-color:#ffffff; color:rgba(0, 0, 0, 0.9)"&gt;作為網安標委技術文件發佈。&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;span style="background-color:#ffffff; color:rgba(0, 0, 0, 0.9)"&gt;旨在&lt;/span&gt;&lt;span style="background-color:#ffffff; color:rgba(0, 0, 0, 0.9)"&gt;推動增進人工智能安全治理共識，促進協同共治、普惠共享，為應對人工智能快速發展的新⻛險新挑戰，安全有效地釋放應用需求，促進人工智能技術和產業發展提供參考指引。&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;span style="background-color:#ffffff; color:#222222"&gt;《人工智能安全治理框架》1.0 版（以下簡稱《框架》）於 2024 年 9 月發佈。國家互聯網應急中心負責同志表示，《框架》2.0 版的發佈，順應全球人工智能發展潮流，統籌技術創新與治理實踐，在人工智能安全、倫理、治理等方面不斷深化共識，促進形成安全、可信、可控的人工智能發展生態，構建跨國界、跨領域、跨行業的協同治理格局。同時，有助於推進多邊機制下人工智能安全治理合作，推動世界範圍內技術成果的普惠共享，確保人類社會共享人工智能發展的紅利。&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;img height="401" src="https://oscimg.oschina.net/oscnet/up-3e656b6a8b8754221ca5273024e8dfad42e.png" width="300" referrerpolicy="no-referrer"&gt;&lt;/p&gt;
+                                                                                &lt;/div&gt;
+                                                                            </description>
+      <link>https://www.oschina.net/news/372324</link>
+      <guid isPermaLink="false">https://www.oschina.net/news/372324</guid>
+      <pubDate>Sun, 14 Sep 2025 09:37:00 GMT</pubDate>
+      <author>來源: OSCHINA</author>
+    </item>
+    <item>
+      <title>​Cursor 升級 Tab 模型，實時強化學習提升開發者建議精準度</title>
+      <description>&lt;div class="content"&gt;
+                                                                    
+                                                        &lt;p style="color:#242424; margin-left:0; margin-right:0; text-align:left"&gt;Cursor 是一款基於人工智能的編程平台，最近宣佈對其 Tab 模型進行了升級。Tab 模型是為開發者提供自動補全建議的系統。此次升級顯著減少了低質量建議的數量，提高了建議的準確性。具體來説，新的 Tab 模型相比於之前的版本，建議數量減少了 21%，而接受率提高了 28%。&lt;/p&gt; 
+&lt;p style="color:#242424; margin-left:0; margin-right:0; text-align:left"&gt;&lt;img height="303" src="https://oscimg.oschina.net/oscnet/up-5f8f2f76b53766cb4cfaec598400aa74c36.png" width="500" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p style="color:#242424; margin-left:0; margin-right:0; text-align:left"&gt;Cursor 在其博客中表示，實現高接受率不僅僅是讓模型變得更智能，還需要懂得何時提供建議、何時不提供。為了應對這一挑戰，Cursor 考慮了訓練一個單獨的模型，用於預測某個建議是否會被接受。該公司引用了一項 2022 年的研究，指出這種方法在 GitHub Copilot 中取得了成功。研究中採用了邏輯迴歸過濾器，分析編程語言、最近的接受歷史和訓練字符等特徵，將那些得分較低的建議隱藏起來。&lt;/p&gt; 
+&lt;p style="color:#242424; margin-left:0; margin-right:0; text-align:left"&gt;然而，Cursor 認為這種解決方案雖然可以預測用户接受建議的概率，但希望有一個更通用的機制，能夠重用 Tab 模型學到的強大代碼表示。Cursor 希望通過改變 Tab 模型的結構，避免在最初就產生低質量建議，而不是後續再進行過濾。&lt;/p&gt; 
+&lt;p style="color:#242424; margin-left:0; margin-right:0; text-align:left"&gt;因此，Cursor 採用了策略梯度方法，這是一種強化學習的方法。當用户接受建議時，模型會得到獎勵;當建議被拒絕時，模型會受到懲罰;而在選擇保持沉默時則不會得到任何反饋。此方法需要 「在線」 數據，即從當前使用的模型收集的反饋。Cursor 通過每天多次向用户部署新的檢查點，並迅速基於新交互對模型進行再訓練，來解決這一問題。&lt;/p&gt; 
+&lt;p style="color:#242424; margin-left:0; margin-right:0; text-align:left"&gt;Cursor 表示，當前從部署檢查點到收集數據的過程僅需 1.5 到 2 小時，這在 AI 行業中已經算是較快，但仍有進一步加速的空間。該公司的 Tab 模型每天處理超過 4 億個請求，Cursor 希望這一改進能夠提升開發者的編碼體驗，並計劃在未來進一步開發這些方法。&lt;/p&gt; 
+&lt;p style="color:#242424; margin-left:0; margin-right:0; text-align:left"&gt;在線強化學習是該領域最令人興奮的方向之一，一位在 OpenAI 從事後訓練的工程師在社交媒體上對此表示讚賞，稱 Cursor 似乎是&lt;span&gt;第一&lt;/span&gt;個成功在大規模上實施該技術的公司。&amp;nbsp;&lt;/p&gt; 
+&lt;p style="color:#242424; margin-left:0; margin-right:0; text-align:left"&gt;不久前，Cursor 的母公司 Anysphere 宣佈融資 9 億美元，估值達 99 億美元，並推出了一項月費 200 美元的 「超值」 計劃，承諾提供 20 倍於 20 美元月費 「專業版」 的使用量。此外，Cursor 還在同月進行了平台更新，新增了自動代碼審查、記憶功能和一鍵設置模型上下文協議服務器的功能。&lt;/p&gt;
+                                                                                &lt;/div&gt;
+                                                                            </description>
+      <link>https://www.oschina.net/news/372315</link>
+      <guid isPermaLink="false">https://www.oschina.net/news/372315</guid>
+      <pubDate>Sun, 14 Sep 2025 08:57:00 GMT</pubDate>
+      <author>來源: OSCHINA</author>
+    </item>
+    <item>
+      <title>Genspark AI 瀏覽器正式發佈，支持本地運行開源模型</title>
+      <description>&lt;div class="content"&gt;
+                                                                    
+                                                        &lt;p&gt;Genspark AI 瀏覽器正式發佈，官方稱其&lt;strong&gt;為世界首個支持本地運行開源模型的 AI 瀏覽器&lt;/strong&gt;。使用大模型無需聯網，可在本地設備離線運行 169 款開源模型，包括 GPT-OSS、Gemma3 等，響應速度極快且完全免費，並集成了全能智能體、廣告攔截等功能。&lt;/p&gt; 
+&lt;p&gt;&lt;img alt="" src="https://oscimg.oschina.net/oscnet/up-205a66f89555bba425f98420cd70b1a0e86.png" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;img height="1636" src="https://static.oschina.net/uploads/space/2025/0915/164241_hahS_2720166.png" width="2988" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;blockquote&gt; 
+ &lt;p&gt;下載地址：&lt;em&gt;https://www.genspark.ai/browser&lt;/em&gt;&lt;/p&gt; 
+&lt;/blockquote&gt; 
+&lt;p&gt;除端側 AI 大模型外，Genspark AI 瀏覽器集成全能智能體，可在任意網頁實時比價、分析評論、尋找最優交易；購物站點一鍵「Find best deal」即可鎖定最低價格。Autopilot 模式允許 AI 自主瀏覽並收集信息；內置 MCP 商店供用户擴展功能；系統級廣告攔截提供無廣告純淨體驗。目前提供 Windows 版本下載，官網已開放獲取。&lt;/p&gt;
+                                                                                &lt;/div&gt;
+                                                                            </description>
+      <link>https://www.oschina.net/news/372311</link>
+      <guid isPermaLink="false">https://www.oschina.net/news/372311</guid>
+      <pubDate>Sun, 14 Sep 2025 08:43:00 GMT</pubDate>
+      <author>來源: OSCHINA</author>
+    </item>
+    <item>
+      <title>英偉達違反反壟斷法，市場監管總局依法決定實施進一步調查</title>
+      <description>&lt;div class="content"&gt;
+                                                                    
+                                                        &lt;p&gt;國家市場監管總局發佈公告稱，&lt;span style="background-color:#ffffff; color:#222222"&gt;近日，經初步調查，英偉達公司違反《中華人民共和國反壟斷法》和《市場監管總局關於附加限制性條件批准英偉達公司收購邁絡思科技有限公司股權案反壟斷審查決定的公告》，市場監管總局依法決定對其實施進一步調查。&lt;/span&gt;&lt;/p&gt; 
+&lt;p&gt;&lt;img height="291" src="https://oscimg.oschina.net/oscnet/up-05819d861c5fa6b672979b892bc20198c1c.png" width="500" referrerpolicy="no-referrer"&gt;&lt;/p&gt;
+                                                                                &lt;/div&gt;
+                                                                            </description>
+      <link>https://www.oschina.net/news/372305</link>
+      <guid isPermaLink="false">https://www.oschina.net/news/372305</guid>
+      <pubDate>Sun, 14 Sep 2025 08:28:00 GMT</pubDate>
+      <author>來源: OSCHINA</author>
+    </item>
+    <item>
+      <title>AI 編程工具 Cursor 升級 Tab 模型</title>
+      <description>&lt;div class="content"&gt;
+                                                                    
+                                                        &lt;p&gt;AI 編程工具 Cursor&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fcursor.com%2Fblog%2Ftab-rl" target="_blank"&gt;宣佈&lt;/a&gt;對其代碼自動補全系統 Tab 模型進行重大升級。此次升級聚焦於減少低質量建議，顯著提升準確性。據 Cursor 稱，新模型提供的建議數量比舊版減少 21%，但接受率提高了 28%。&lt;/p&gt; 
+&lt;p&gt;&lt;img alt="" src="https://oscimg.oschina.net/oscnet/up-7d38fa82207b8f8398156bf34ea4383041e.png" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p&gt;為解決此前模型存在的問題，Cursor 最初考慮訓練單獨模型預測建議接受度，參考 2022 年 GitHub Copilot 相關研究，採用邏輯迴歸過濾技術。但 Cursor 期望更通用機制，最終利用強化學習中的策略梯度方法，使模型因建議被接受獲獎勵，被拒則受懲罰。該方法需「在線策略」數據，Cursor 通過每日多次向用户部署新檢查點，並依據最新交互快速重新訓練模型來實現。&lt;/p&gt; 
+&lt;p&gt;Cursor 希望實現不只是事後過濾失敗建議，而是讓主模型本身在建議生成階段就儘量避免「壞建議」。他們用 policy gradient 方法來訓練 Tab 模型，讓模型在做出建議 vs 不建議的決策上，最大化一個定義好的 reward 函數。這個 reward 重在：&lt;/p&gt; 
+&lt;ol&gt; 
+ &lt;li&gt;鼓勵建議被接受（accept suggestions）&lt;/li&gt; 
+ &lt;li&gt;懲罰建議被拒絕&lt;/li&gt; 
+ &lt;li&gt;不建議（show nothing）在模型判斷不確定或建議被低接收率預計的情況下也給予中性或某種 reward。&lt;/li&gt; 
+&lt;/ol&gt; 
+&lt;p&gt;舉例來説，如果模型估計建議被接受的機會至少 25%，顯示建議會有正 reward；如果低於，則建議不被顯示以避免 negative reward。&lt;/p&gt; 
+&lt;p&gt;目前，Tab 模型在平台上響應用户每一次操作，每日處理超 4 億次請求。業內對此次升級反響積極，有 OpenAI 工程師稱讚 Cursor 在前沿技術規模化應用方面的領先嚐試。&lt;/p&gt; 
+&lt;p&gt;今年 6 月，Cursor 母公司 Anysphere 融資 9 億美元，估值達 99 億美元，並推出高端訂閲計劃，同時平台更新了自動代碼審查等功能。&lt;/p&gt;
+                                                                                &lt;/div&gt;
+                                                                            </description>
+      <link>https://www.oschina.net/news/372303</link>
+      <guid isPermaLink="false">https://www.oschina.net/news/372303</guid>
+      <pubDate>Sun, 14 Sep 2025 08:27:00 GMT</pubDate>
+      <author>來源: OSCHINA</author>
+    </item>
+    <item>
+      <title>OpenAI 董事會主席承認 AI 泡沫：有人會血賺也有人會血虧</title>
+      <description>&lt;div class="content"&gt;
+                                                                    
+                                                        &lt;div style="text-align:justify"&gt; 
+ &lt;p style="color:#222222; margin-left:0; margin-right:0; text-align:left"&gt;AI 領域的狂熱情緒正引發一場關於「泡沫」的激烈辯論，而 OpenAI 董事會主席 Bret Taylor 對此給出了一個明確但複雜的答案：我們確實身處泡沫之中，但這並不妨礙 AI 最終創造巨大的經濟價值。&lt;/p&gt; 
+&lt;/div&gt; 
+&lt;div style="text-align:justify"&gt;
+ 近日，在接受媒體 The Verge 採訪時，Bret Taylor 贊同了
+ &lt;span&gt;OpenAI 首席執行官 Sam Altman 先前的觀點&lt;/span&gt;，承認「我們正處於 AI 泡沫中，有人將損失一大筆錢」。
+&lt;/div&gt; 
+&lt;div style="text-align:justify"&gt; 
+ &lt;p style="color:#222222; margin-left:0; margin-right:0; text-align:left"&gt;Taylor 警告稱，&lt;strong&gt;與任何顛覆性技術浪潮一樣，這一過程將不可避免地產生巨大的贏家，同時也會讓許多人損失慘重。&lt;/strong&gt;他同時認為，AI 將改變經濟格局並創造巨大價值，這與市場存在泡沫，是兩個可以同時成立的事實。&lt;/p&gt; 
+&lt;/div&gt; 
+&lt;div style="text-align:justify"&gt; 
+ &lt;p style="color:#222222; margin-left:0; margin-right:0; text-align:left"&gt;Taylor 將當前的 AI 熱潮與上世紀 90 年代末的互聯網泡沫進行了直接比較。他指出，&lt;strong&gt;儘管當時無數公司在泡沫破裂中倒下，但從長遠來看，「1999 年的那些人（對互聯網未來的判斷）在某種程度上是正確的」。&lt;/strong&gt;&lt;/p&gt; 
+&lt;/div&gt; 
+&lt;div style="text-align:justify"&gt; 
+ &lt;p style="color:#222222; margin-left:0; margin-right:0; text-align:left"&gt;如今，亞馬遜和谷歌等誕生於那個時代的公司已成為全球市值最高的企業之一，證明瞭泡沫下的遠見最終能夠兑現：&lt;/p&gt; 
+&lt;/div&gt; 
+&lt;div style="text-align:justify"&gt; 
+ &lt;blockquote&gt; 
+  &lt;p style="color:#222222; margin-left:0; margin-right:0; text-align:left"&gt;「實際上，如果你看看世界的 GDP，互聯網的存在實際上創造了多少或影響了互聯網？有人可能會説，1999 年的所有人都是對的。它對幾乎所有指標都有同樣的影響。」&lt;/p&gt; 
+ &lt;/blockquote&gt; 
+&lt;/div&gt; 
+&lt;div style="text-align:justify"&gt; 
+ &lt;h2 style="margin-left:0; margin-right:0"&gt;&lt;strong&gt;關鍵在於區分泡沫的「方向性」&lt;/strong&gt;&lt;/h2&gt; 
+&lt;/div&gt; 
+&lt;div style="text-align:justify"&gt; 
+ &lt;p style="color:#222222; margin-left:0; margin-right:0; text-align:left"&gt;Taylor 詳細闡述了他對 AI 泡沫與互聯網泡沫的類比。他認為，&lt;strong&gt;關鍵在於區分方向的正確性與具體投資標的的成功率。&lt;/strong&gt;&lt;/p&gt; 
+&lt;/div&gt; 
+&lt;div style="text-align:justify"&gt; 
+ &lt;p style="color:#222222; margin-left:0; margin-right:0; text-align:left"&gt;互聯網泡沫時期，許多商業模式如 Webvan（網上生鮮配送）最終失敗，但其核心理念在互聯網基礎設施成熟後，由 Instacart 和 DoorDash 等公司成功實現。這表明，即便最初的嘗試失敗，其背後的趨勢和需求是真實存在的。&lt;/p&gt; 
+&lt;/div&gt; 
+&lt;div style="text-align:justify"&gt; 
+ &lt;p style="color:#222222; margin-left:0; margin-right:0; text-align:left"&gt;同樣，在互聯網早期，大量投資光纖網絡的公司破產，但這些基礎設施最終被後來者利用，支撐了整個數字經濟的繁榮。&lt;/p&gt; 
+&lt;/div&gt; 
+&lt;div style="text-align:justify"&gt; 
+ &lt;p style="color:#222222; margin-left:0; margin-right:0; text-align:left"&gt;Taylor 表示，「AI 將改變經濟」和「很多人會虧錢」這兩個論斷可以同時為真：&lt;/p&gt; 
+&lt;/div&gt; 
+&lt;div style="text-align:justify"&gt; 
+ &lt;blockquote&gt; 
+  &lt;p style="color:#222222; margin-left:0; margin-right:0; text-align:left"&gt;「我認為 AI 將改變經濟是事實，我認為它將像互聯網一樣，在未來創造巨大的經濟價值。同時我認為我們也處於泡沫之中，很多人會損失很多錢。&lt;strong&gt;我認為兩者同時是絕對正確的，而且這兩件事同時發生的歷史先例很多。」&lt;/strong&gt;&lt;/p&gt; 
+ &lt;/blockquote&gt; 
+&lt;/div&gt; 
+&lt;div style="text-align:justify"&gt; 
+ &lt;p style="color:#222222; margin-left:0; margin-right:0; text-align:left"&gt;這意味着當前的鉅額投資，無論最終流向哪家公司，都在為下一代 AI 應用鋪平道路，但並非所有參與者都能分享到最後的果實。&lt;/p&gt; 
+&lt;/div&gt; 
+&lt;div style="text-align:justify"&gt; 
+ &lt;h2 style="margin-left:0; margin-right:0"&gt;&lt;strong&gt;AI 如此「燒錢」的原因：市場尚不成熟&lt;/strong&gt;&lt;/h2&gt; 
+&lt;/div&gt; 
+&lt;div style="text-align:justify"&gt; 
+ &lt;p style="color:#222222; margin-left:0; margin-right:0; text-align:left"&gt;Taylor 並不同意「模型迭代已顯著放緩」的觀點，他以編碼任務為例，指出新模型在特定領域的性能仍有「階躍式」提升。但他同時認為，隨着模型能力的成熟和普及，對於許多任務而言，模型已達到「足夠好」的水平。&lt;/p&gt; 
+&lt;/div&gt; 
+&lt;div style="text-align:justify"&gt; 
+ &lt;p style="color:#222222; margin-left:0; margin-right:0; text-align:left"&gt;他預測，未來構建 AI 應用將更像是「如何使用數據庫」，而非「如何編寫數據庫」。&lt;/p&gt; 
+&lt;/div&gt; 
+&lt;div style="text-align:justify"&gt; 
+ &lt;p style="color:#222222; margin-left:0; margin-right:0; text-align:left"&gt;對於市場上關於 AI 投入產出比的質疑，例如一份 MIT 報告指出許多企業 AI 支出未見成效，Taylor 認為，&lt;strong&gt;這主要是因為市場尚不成熟。&lt;/strong&gt;許多公司正在進行「AI 觀光」（AI tourism），試圖自己構建解決方案，其過程複雜且容易失敗。&lt;/p&gt; 
+&lt;/div&gt; 
+&lt;div style="text-align:justify"&gt; 
+ &lt;p style="color:#222222; margin-left:0; margin-right:0; text-align:left"&gt;他相信，正確的路徑是購買像 Sierra（用於客服）或 Harvey（用於法律）這樣專注於特定領域的成熟 AI 解決方案。隨着更多「應用型 AI 公司」的出現，企業將能更直接地購買到解決其痛點 AI 代理，從而真正實現 AI 的價值。&lt;/p&gt; 
+&lt;/div&gt; 
+&lt;div style="text-align:justify"&gt; 
+ &lt;blockquote&gt; 
+  &lt;p style="color:#222222; margin-left:0; margin-right:0; text-align:left"&gt;「我認為我們正處於 AI 的早期階段，還沒有一個出色的供應商來解決您業務中遇到的每個問題。因此，您要麼必須等待，要麼必須自己構建它。」&lt;/p&gt; 
+ &lt;/blockquote&gt; 
+&lt;/div&gt;
+                                                                                &lt;/div&gt;
+                                                                            </description>
+      <link>https://www.oschina.net/news/372298</link>
+      <guid isPermaLink="false">https://www.oschina.net/news/372298</guid>
+      <pubDate>Sun, 14 Sep 2025 07:52:00 GMT</pubDate>
+      <author>來源: OSCHINA</author>
+    </item>
+    <item>
+      <title>Anthropic 發佈 LLM Agent 工具編寫指南</title>
+      <description>&lt;div class="content"&gt;
+                                                                    
+                                                        &lt;p&gt;Anthropic 官方博客近日發佈了一份詳細指南&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fwww.anthropic.com%2Fengineering%2Fwriting-tools-for-agents" target="_blank"&gt;&lt;em&gt;《Writing effective tools for LLM agents—using LLM agents》&lt;/em&gt;&lt;/a&gt;，闡述如何利用 Model Context Protocol（MCP）為 LLM Agent 設計高效工具，並提出了「原型-評估-協作」三步迭代流程，歸納了五大設計原則。&lt;/p&gt; 
+&lt;p&gt;1. 謹慎選擇工具&lt;br&gt; 2. 清晰的命名空間&lt;br&gt; 3. 讓工具返回更具意義的上下文&lt;br&gt; 4. 優化返回信息的 Token 效率&lt;br&gt; 5. 通過提示工程提升工具説明的質量&lt;/p&gt; 
+&lt;p&gt;&lt;img alt="" src="https://oscimg.oschina.net/oscnet/up-54ceebb7c490a4f1d803e1a0d17a5f1bf5f.png" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
+&lt;p&gt;文章指出，工具是「確定性系統與非確定性 Agent 之間的合約」，開發者需跳出傳統 API 思維，面向 Agent 的上下文限制與策略多樣性重新設計接口。&lt;/p&gt; 
+&lt;p&gt;作者透露，文中多數結論由 Claude Code 反覆分析評估腳本、重構工具描述與模式後自動得出，且仍在通過保留測試集防止過擬合。Anthropic 已同步開源工具評估 Cookbook，並預告未來 MCP 協議與底層 LLM 升級時，同樣方法可讓工具能力隨 Agent 同步演進。&lt;/p&gt;
+                                                                                &lt;/div&gt;
+                                                                            </description>
+      <link>https://www.oschina.net/news/372294/anthropic-writing-tools-for-agents</link>
+      <guid isPermaLink="false">https://www.oschina.net/news/372294/anthropic-writing-tools-for-agents</guid>
+      <pubDate>Sun, 14 Sep 2025 07:41:00 GMT</pubDate>
+      <author>來源: OSCHINA</author>
+    </item>
     <item>
       <title>阿里 Qoder 新升級，Repo Wiki 支持共享、編輯和導出</title>
       <description>&lt;div class="content"&gt;
@@ -24,7 +563,7 @@
                                                                             </description>
       <link>https://my.oschina.net/u/3874284/blog/18691841</link>
       <guid isPermaLink="false">https://my.oschina.net/u/3874284/blog/18691841</guid>
-      <pubDate>Mon, 15 Sep 2025 07:22:26 GMT</pubDate>
+      <pubDate>Sun, 14 Sep 2025 07:22:00 GMT</pubDate>
       <author>原創</author>
     </item>
     <item>
@@ -44,7 +583,7 @@
                                                                             </description>
       <link>https://www.oschina.net/news/372284</link>
       <guid isPermaLink="false">https://www.oschina.net/news/372284</guid>
-      <pubDate>Mon, 15 Sep 2025 07:17:26 GMT</pubDate>
+      <pubDate>Sun, 14 Sep 2025 07:16:00 GMT</pubDate>
       <author>來源: OSCHINA</author>
     </item>
     <item>
@@ -60,695 +599,8 @@
                                                                             </description>
       <link>https://www.oschina.net/news/372278</link>
       <guid isPermaLink="false">https://www.oschina.net/news/372278</guid>
-      <pubDate>Mon, 15 Sep 2025 07:01:26 GMT</pubDate>
+      <pubDate>Sun, 14 Sep 2025 07:01:00 GMT</pubDate>
       <author>來源: OSCHINA</author>
-    </item>
-    <item>
-      <title>🔥真寵物小精靈？還能智能操控傢俱？</title>
-      <description/>
-      <link>https://www.oschina.net/ai-creation/details/2208</link>
-      <guid isPermaLink="false">https://www.oschina.net/ai-creation/details/2208</guid>
-      <pubDate>Mon, 15 Sep 2025 07:00:26 GMT</pubDate>
-    </item>
-    <item>
-      <title>釘釘首款 AI 硬件 DingTalk A1 開售</title>
-      <description>&lt;div class="content"&gt;
-                                                                    
-                                                        &lt;p&gt;9 月 15 日，釘釘首款 AI 硬件 DingTalk A1 旗艦版正式在天貓釘釘官方旗艦店開售。&lt;/p&gt; 
-&lt;p&gt;DingTalk A1 旗艦版售價 799 元。購買產品的個人用户，將免費獲得每月 1000 分鐘語音轉文字時長和 10GB 個人雲存儲空間。也可以選擇開通 599 元/年的專業版和 1499 元/年尊享版會員，享受更長語音轉文字時長和更多 AI 權益。消費者下單後，產品 48 小時內即可發貨。&lt;/p&gt; 
-&lt;p&gt;&lt;img height="300" src="https://oscimg.oschina.net/oscnet/up-63a507278e97aa6453ed75aa78203221ab0.jpg" width="300" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;p&gt;DingTalk A1 厚度僅 3.8 毫米，只相當於幾張信用卡厚度。通過磁吸在手機背面，能夠記錄電話及日常溝通語音。依靠釘釘 AI 聽記能力，它能夠把語音轉換成文字，通過 AI 大模型總結分析。它還能實時翻譯和多語種互譯，特別是針對學習、跨國會議等場景。&lt;/p&gt; 
-&lt;p&gt;DingTalk A1 還內置了 30 多種 AI 場景化分析模板，在開會、採訪、心理諮詢、法律諮詢、客户拜訪、面試問答等工作場合，都能用它對語音溝通進行總結分析劃重點。&lt;/p&gt; 
-&lt;p&gt;這款產品主要面向銷售、人事、客服、律師、醫生、教師等崗位和職業，能夠幫助用户把溝通語音轉化為經過整理提煉的線上知識，在釘釘上分享、協作，同時這些工作過程數據會沉澱為高質量資產，助力企業經營和個人積累。&lt;/p&gt;
-                                                                                &lt;/div&gt;
-                                                                            </description>
-      <link>https://www.oschina.net/news/372276</link>
-      <guid isPermaLink="false">https://www.oschina.net/news/372276</guid>
-      <pubDate>Mon, 15 Sep 2025 07:00:26 GMT</pubDate>
-      <author>來源: OSCHINA</author>
-    </item>
-    <item>
-      <title>經濟日報：谷歌反壟斷案折射搜索行業變革</title>
-      <description>&lt;div class="content"&gt;
-                                                                    
-                                                        &lt;p&gt;近日，谷歌在一場持續 5 年的反壟斷案中取得階段性勝利，成功避免被強制拆分。令人關注的是，在這場危機中「救局」的，恰恰是被視為谷歌競爭對手的 OpenAI 等生成式人工智能（AI）公司。谷歌一案的判決讓業界更清晰地看到，AI 正在重塑全球搜索引擎市場的競爭格局。&lt;/p&gt; 
-&lt;p&gt;多年來，美國政府持續加強對硅谷巨頭的反壟斷審查，谷歌正是其中的代表性企業。2020 年，美國司法部及多個州對谷歌提起反壟斷訴訟，指控其搜索引擎年利潤達數十億美元、處理近 90% 的網絡搜索請求，要求拆分谷歌相關業務。&lt;/p&gt; 
-&lt;p&gt;經過長達 5 年的拉鋸，美國聯邦地區法院法官阿米特·梅塔近日裁定，谷歌無需剝離 Chrome 瀏覽器及安卓操作系統，只需向競爭對手開放更多搜索結果數據，並設立反壟斷技術委員會以監督公司運營。這一相對寬鬆的判決提振了市場信心，消息公佈後，谷歌盤後股價一度大漲超 8%。&lt;/p&gt; 
-&lt;p&gt;谷歌能夠避免被拆分，生成式 AI 意外成了「救命稻草」。梅塔在判決書中多次強調生成式 AI 的影響。判決書指出，越來越多的用户正通過 ChatGPT 等 AI 聊天機器人獲取信息，而非傳統搜索引擎。儘管生成式 AI 尚未完全取代谷歌搜索，但它顯著加劇了搜索市場的競爭，削弱了對谷歌進行徹底拆分的必要性。&lt;/p&gt; 
-&lt;p&gt;如判決書所言，當前已有一批 AI 瀏覽器新品發佈，讓沉寂多時的瀏覽器市場再次硝煙瀰漫。例如，AI 搜索引擎的獨角獸 Perplexity 已正式發佈了自己的瀏覽器 Comet。幾乎同一時間，OpenAI 也宣佈在未來幾周發佈新款 AI 瀏覽器。這些 AI 搜索並非傳統搜索引擎的簡單升級，而是藉助深度學習與自然語言處理技術，重新定義了信息獲取的方式。Perplexity 聯合創始人阿拉温德·斯里尼瓦斯將其稱為「答案引擎」——當用户提出問題，它會給出一個簡潔明確的答案，且所有的答案都標明瞭來源，給出系列聯想問題，可以讓用户連續追問，進一步拓展和延伸相關話題。&lt;/p&gt; 
-&lt;p&gt;但當前 AI 搜索完全取代傳統搜索引擎仍不現實。多年來，傳統搜索巨頭已構建起堅實的「護城河」。以谷歌為例，Chrome 瀏覽器背後有 YouTube、Gmail、地圖等生態服務支持。當用户使用 Chrome 登錄谷歌賬號，就能同步這些應用中的書籤、密碼、瀏覽記錄等，換個電腦也能無縫銜接。這種生態黏性是新興 AI 瀏覽器一時難以突破的。&lt;/p&gt; 
-&lt;p&gt;傳統搜索引擎還掌握着生成式 AI 發展的關鍵資源——算力與數據。例如，OpenAI 訓練 ChatGPT 需依賴龐大算力，而谷歌雲位居全球前三；模型優化需要海量數據，其中大量仍存儲於谷歌服務器中。而這些 AI 公司若想跳過這一枷鎖，自建數據索引庫，不僅技術門檻高，也意味着鉅額成本。&lt;/p&gt; 
-&lt;p&gt;無論如何，隨着 AI 技術不斷發展，全球搜索業務已站在轉型的十字路口。新興 AI 搜索能否突破成本與技術壁壘，開闢新格局？傳統搜索巨頭又能否擺脱固有商業模式的束縛，成功實現 AI 化轉型？答案尚未揭曉。可以確定的是，AI 不再只是技術革命的推動者，也正在成為塑造市場競爭與監管走向的關鍵力量。谷歌一案的判決，被業內稱為「本世紀科技行業最具深遠影響的法院裁決之一」，將為同樣面臨反壟斷訴訟的 Meta、亞馬遜和蘋果提供重要參考和借鑑。（經濟日報，楊嘯林）&lt;/p&gt;
-                                                                                &lt;/div&gt;
-                                                                            </description>
-      <link>https://www.oschina.net/news/372272</link>
-      <guid isPermaLink="false">https://www.oschina.net/news/372272</guid>
-      <pubDate>Mon, 15 Sep 2025 06:51:26 GMT</pubDate>
-      <author>來源: OSCHINA</author>
-    </item>
-    <item>
-      <title>築牢安全屏障，守護數字中國｜綠盟科技與您相約 2025 年國家網絡安全宣傳週</title>
-      <description>&lt;div class="content"&gt;
-                                                                    
-                                                        &lt;p style="text-align:center"&gt;&lt;img alt="" height="306" src="https://oscimg.oschina.net/oscnet//8cb988302e6cb3e8d8f73eea85da3fc5.jpg" width="600" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;p style="margin-left:0; margin-right:0; text-align:left"&gt;「網絡安全為人民，網絡安全靠人民——以高水平安全守護高質量發展。」&lt;strong&gt;2025 年國家網絡安全宣傳週將於 9 月 15 日至 21 日在全國範圍內隆重開展&lt;/strong&gt;，開幕式及高峯論壇等重要活動將在雲南昆明滇池國際會展中心盛大舉行。&lt;/p&gt; 
-&lt;p style="margin-left:0; margin-right:0; text-align:left"&gt;在數字化、網絡化、智能化深度融合的時代，安全不只是技術，更是推動經濟社會穩健前行的基石。沒有網絡安全，就沒有國家安全；沒有安全保障，就無「數字未來」可言。&lt;/p&gt; 
-&lt;p style="margin-left:0; margin-right:0; text-align:left"&gt;作為深耕行業二十餘年的網安企業，綠盟科技將重磅亮相 2025 年國家網絡安全宣傳週，參與開幕式、高峯論壇、專題分論壇及多場特色活動等，全面展示前沿研究與實踐成果。同時，積極投身全民網絡安全宣傳普及，攜手各界共築安全屏障，共創健康、清朗的網絡空間。&lt;/p&gt; 
-&lt;p style="margin-left:0; margin-right:0; text-align:left"&gt;&amp;nbsp;&lt;/p&gt; 
-&lt;p style="margin-left:0; margin-right:0; text-align:left"&gt;&amp;nbsp;&lt;/p&gt; 
-&lt;p style="margin-left:0; margin-right:0; text-align:center"&gt;&lt;span&gt;&lt;strong&gt;綠盟科技精彩亮點搶先看&lt;/strong&gt;&lt;/span&gt;&lt;/p&gt; 
-&lt;p style="margin-left:0; margin-right:0; text-align:left"&gt;&lt;strong&gt;2025 年國家網絡安全宣傳週主場信息&lt;/strong&gt;&lt;/p&gt; 
-&lt;p style="text-align:center"&gt;&lt;img alt="" height="256" src="https://oscimg.oschina.net/oscnet//d30ecb7c0a5ac26d14a7630d4cc267c6.jpg" width="600" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;p style="margin-left:0; margin-right:0; text-align:left"&gt;2025 年 9 月 15 日至 21 日&amp;nbsp;&lt;/p&gt; 
-&lt;p style="margin-left:0; margin-right:0; text-align:left"&gt;雲南省昆明市滇池國際會展中心&lt;/p&gt; 
-&lt;p style="margin-left:0; margin-right:0; text-align:left"&gt;綠盟科技將受邀參加 2025 年國家網絡安全宣傳週開幕式、網絡安全技術高峯論壇等活動，探討人工智能與網絡安全產業發展的新方向。&lt;/p&gt; 
-&lt;p style="margin-left:0; margin-right:0; text-align:left"&gt;&lt;strong&gt;網絡安全企業家座談會&lt;/strong&gt;&lt;/p&gt; 
-&lt;p style="margin-left:0; margin-right:0; text-align:left"&gt;綠盟科技集團黨委書記、董事長兼總裁胡忠華受邀發言&lt;/p&gt; 
-&lt;p style="margin-left:0; margin-right:0; text-align:left"&gt;&lt;strong&gt;網絡安全標準與產業促進座談會&lt;/strong&gt;&lt;/p&gt; 
-&lt;p style="margin-left:0; margin-right:0; text-align:left"&gt;9 月 16 日，下午&lt;/p&gt; 
-&lt;p style="margin-left:0; margin-right:0; text-align:left"&gt;綠盟科技集團董事、首席技術官、高級副總裁，葉曉虎&lt;/p&gt; 
-&lt;p style="margin-left:0; margin-right:0; text-align:left"&gt;主題演講：《智能體安全與標準化實踐探索》&lt;/p&gt; 
-&lt;p style="margin-left:0; margin-right:0; text-align:left"&gt;&lt;strong&gt;AI 賦能關鍵信息基礎設施安全保護會&lt;/strong&gt;&lt;/p&gt; 
-&lt;p style="margin-left:0; margin-right:0; text-align:left"&gt;9 月 16 日，下午&lt;/p&gt; 
-&lt;p style="margin-left:0; margin-right:0; text-align:left"&gt;綠盟科技集團方案與架構研究部總監，陳景妹&lt;/p&gt; 
-&lt;p style="margin-left:0; margin-right:0; text-align:left"&gt;主題演講：《智鑄安全——智能體協同大小模型的網絡安全應用測試與實踐》&lt;/p&gt; 
-&lt;p style="margin-left:0; margin-right:0; text-align:left"&gt;&lt;strong&gt;電信日｜雲南省信息通信網絡安全實網演練暨技能競賽總結&lt;/strong&gt;&lt;/p&gt; 
-&lt;p style="margin-left:0; margin-right:0; text-align:left"&gt;9 月 17 日，上午&lt;/p&gt; 
-&lt;p style="margin-left:0; margin-right:0; text-align:left"&gt;綠盟科技集團運營商事業部總經理，湯旭&lt;/p&gt; 
-&lt;p style="margin-left:0; margin-right:0; text-align:left"&gt;主題演講：《AI 智御攻防實戰：智能化安全防禦體系構建與實踐》&lt;/p&gt; 
-&lt;p style="margin-left:0; margin-right:0; text-align:left"&gt;&amp;nbsp;&lt;/p&gt; 
-&lt;p style="margin-left:0; margin-right:0; text-align:center"&gt;&lt;span&gt;&lt;strong&gt;全民網安·綠盟科技在行動&lt;/strong&gt;&lt;/span&gt;&lt;/p&gt; 
-&lt;p style="margin-left:0; margin-right:0; text-align:left"&gt;綠盟科技積極參與全國各地的安全周相關活動。除主會場外，還將參與大篷車巡迴之旅、「網絡安全守護計劃」系列直播、宣傳週驛站展、「雲嶺網安號」中老鐵路專列等行動，把網絡安全理念帶到羣眾身邊。&lt;/p&gt; 
-&lt;p style="margin-left:0; margin-right:0; text-align:left"&gt;同時，圍繞網絡安全意識教育開展宣傳，如「2025 網安周｜牢記‘十個凡是’，守好你的‘錢袋子’」，幫助提升公眾的安全防護意識。&lt;/p&gt; 
-&lt;p style="text-align:center"&gt;&lt;img alt="" height="505" src="https://oscimg.oschina.net/oscnet//d708b11673b504979de2ab43cfcb359d.jpg" width="600" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;p style="margin-left:0; margin-right:0; text-align:center"&gt;&lt;span&gt;「沒有網絡安全，就沒有國家安全」&lt;/span&gt;&lt;/p&gt; 
-&lt;p style="margin-left:0; margin-right:0; text-align:center"&gt;&lt;span&gt;綠盟科技將持續築牢國家網絡安全屏障&lt;/span&gt;&lt;/p&gt; 
-&lt;p style="margin-left:0; margin-right:0; text-align:center"&gt;&lt;span&gt;樹立正確的網絡安全觀&lt;/span&gt;&lt;/p&gt; 
-&lt;p style="margin-left:0; margin-right:0; text-align:center"&gt;&lt;span&gt;全面提升安全保障體系和能力建設&lt;/span&gt;&lt;/p&gt; 
-&lt;p style="margin-left:0; margin-right:0; text-align:center"&gt;&lt;span&gt;9 月 15 日—21 日&lt;/span&gt;&lt;/p&gt; 
-&lt;p style="margin-left:0; margin-right:0; text-align:center"&gt;&lt;span&gt;2025 年國家網絡安全宣傳週&lt;/span&gt;&lt;/p&gt; 
-&lt;p style="margin-left:0; margin-right:0; text-align:center"&gt;&lt;span&gt;綠盟科技與您相約，共話安全，共謀未來&lt;/span&gt;&lt;/p&gt; 
-&lt;p&gt;&amp;nbsp;&lt;/p&gt; 
-&lt;p&gt;&amp;nbsp;&lt;/p&gt;
-                                                                                &lt;/div&gt;
-                                                                            </description>
-      <link>https://www.oschina.net/news/372268</link>
-      <guid isPermaLink="false">https://www.oschina.net/news/372268</guid>
-      <pubDate>Sun, 14 Sep 2025 06:37:00 GMT</pubDate>
-      <author>作者: 開源科技</author>
-    </item>
-    <item>
-      <title>雙向賦能，生態共融——東軟 OneCoreGo®6.0 助力全球車企共贏未來</title>
-      <description>&lt;div class="content"&gt;
-                                                                    
-                                                        &lt;p style="text-align:left"&gt;&lt;span&gt;IAA MOBILITY 2025 期間，歐亞汽車創新論壇在慕尼黑成功舉辦。此次論壇由蓋世汽車與全球汽車行業數據洞察公司 A2MAC1 聯合主辦，匯聚歐洲與亞洲汽車行業領袖、高管與專家，聚焦「歐亞汽車產業協同升級路徑」、「跨區域市場共贏模式探索」等熱點議題，通過深度對話與案例分享，推動歐亞汽車產業邁向技術共研、生態共享、市場共拓的新發展格局。&lt;/span&gt;&lt;/p&gt; 
-&lt;p style="text-align:left"&gt;&lt;span&gt;東軟&lt;/span&gt;&lt;span&gt;NTS&lt;/span&gt;&lt;span&gt;首席技術官 Jochen Weihgold 受邀出席，並發表《東軟 OneCoreGo&lt;/span&gt;&lt;span&gt;®&lt;/span&gt;&lt;span&gt;：驅動全球智慧出行新篇章》主題演講&lt;/span&gt;&lt;span&gt;，全面展示了東軟 OneCoreGo&lt;/span&gt;&lt;span&gt;®&lt;/span&gt;&lt;span&gt;全球車載智能出行解決方案 6.0 的創新理念與強大產品力。他表示，在全球汽車產業加速向電動化、智能化轉型的浪潮中，中國汽車品牌正以前所未有的速度走向世界舞台。然而，不同國家和地區在市場需求、法規標準、消費習慣以及生態適配等方面存在差異，出海面臨諸多挑戰。在此背景下，東軟推出的 OneCoreGo&lt;/span&gt;&lt;span&gt;®&lt;/span&gt;&lt;span&gt;全球車載智能出行解決方案 6.0，能夠以高度集成化、智能化和定製化服務，助力汽車品牌在全球市場實現差異化競爭。聚焦導航族羣、AR For Car、生態、支付、智能交互等領域，東軟 OneCoreGo&lt;/span&gt;&lt;span&gt;®&lt;/span&gt;&lt;span&gt;全球車載智能出行解決方案 6.0 升級構建「One Map（全球導航產品族羣）、One Sight（AR For Car）、One Store（全球車載生態）、One Pay（車載支付中心）、One Mate（AI 交互中心）」五大核心能力體系。以 AI 技術創新進一步完善東軟車載生態，實現「導航+支付+交互」全鏈路升級，為全球汽車用户全方位打造智能出行體驗，引領出行方式新變革 。&lt;/span&gt;&lt;/p&gt; 
-&lt;p style="text-align:left"&gt;&lt;span&gt;在全球汽車工業的宏大敍事中，歐洲可以稱為「創新源頭」，憑藉百年品牌積澱、嚴苛技術標準與前沿探索，持續引領產業變革。而亞洲則依託龐大的消費市場、快速的技術迭代與完整的產業鏈，以「規模與速度」的雙重優勢，成為全球汽車產業格局中不可忽視的「增長極」。&lt;/span&gt;&lt;span&gt;在歐洲的精工基因與亞洲的創新勢能雙向奔赴的浪潮中，東軟正作為「智慧樞紐」，成為歐亞汽車產業深度融合的關鍵推動者。&lt;/span&gt;&lt;/p&gt; 
-&lt;p style="text-align:left"&gt;&lt;span&gt;Jochen Weihgold 表示，以東軟 OneCoreGo&lt;/span&gt;&lt;span&gt;®&lt;/span&gt;&lt;span&gt;全球車載智能出行解決方案 6.0 為載體，東軟將歐洲車企對品質與安全的極致追求，與亞洲市場對智能化、場景化的創新需求緊密銜接，通過 AI 驅動的交互革命、全場景生態覆蓋與標準化技術部署，助力歐洲品牌快速落地亞洲市場。同時，也幫助亞洲車企以「中國方案」叩開歐洲高端市場的大門。這種雙向賦能，不僅推動着汽車產業向電動化、智能化、網聯化加速演進，更讓歐亞大陸成為全球汽車工業「共生共榮」的典範。&lt;/span&gt;&lt;/p&gt; 
-&lt;p style="text-align:left"&gt;&lt;span&gt;全球化是深植於東軟汽車電子基因的長期戰略，未來，東軟將持續整合全球研發、市場與交付資源，構建敏捷高效的全球響應網絡，為客户提供標準統一、快速響應的優質服務，助力全球汽車產業實現智能化轉型與價值鏈升級。&lt;/span&gt;&lt;/p&gt;
-                                                                                &lt;/div&gt;
-                                                                            </description>
-      <link>https://www.oschina.net/news/372267</link>
-      <guid isPermaLink="false">https://www.oschina.net/news/372267</guid>
-      <pubDate>Sun, 14 Sep 2025 06:36:00 GMT</pubDate>
-      <author>作者: 開源科技</author>
-    </item>
-    <item>
-      <title>「Google Gemini」登頂 App Store 免費榜榜首</title>
-      <description>&lt;div class="content"&gt;
-                                                                    
-                                                        &lt;p&gt;谷歌旗下 AI 應用「Google Gemini」在美國 App Store 免費榜單上躍居第一，成為 iPhone 上最受歡迎的免費應用。這一成績部分得益於廣受歡迎的 Nano Banana 圖像編輯模型。&lt;/p&gt; 
-&lt;p&gt;&lt;img alt="" src="https://oscimg.oschina.net/oscnet/up-f32d258f67a978346ec2dba1fa5857c6603.png" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;p&gt;截至週五晚，Gemini 位列美國 App Store 免費榜第一位，OpenAI 的 ChatGPT 排名第二，社交應用 Threads 位居第三。Google 搜索 App 排在第六，Google 地圖第八，Chrome 第十三，Gmail 則排在第二十一。&lt;/p&gt; 
-&lt;p&gt;在加拿大與英國市場，Gemini 的表現同樣強勁，均居榜單第二位。&lt;/p&gt; 
-&lt;p&gt;自 8 月 26 日發佈至 9 月 9 日短短兩週，Gemini 應用已新增 2300 萬用户，Nano Banana 圖像編輯工具在此期間被使用超 5 億次。該編輯模型因能精準保持人物特徵一致性而走紅，支持多張照片混合生成、風格遷移及對話化編輯等功能。&lt;/p&gt; 
-&lt;p&gt;所有免費用户每天可生成或編輯最多 100 張圖片，付費訂閲用户（每月 19.99 美元起）每日額度則提升至 1000 張。&lt;/p&gt; 
-&lt;p&gt;據瞭解，Gemini 的火爆也帶動了谷歌在 iOS 生態中的各類應用整體排名上升，顯示出生成式 AI 工具在移動端繼續受到強烈關注。&lt;/p&gt;
-                                                                                &lt;/div&gt;
-                                                                            </description>
-      <link>https://www.oschina.net/news/372266</link>
-      <guid isPermaLink="false">https://www.oschina.net/news/372266</guid>
-      <pubDate>Sun, 14 Sep 2025 06:36:00 GMT</pubDate>
-      <author>來源: OSCHINA</author>
-    </item>
-    <item>
-      <title>蘋果 AI 領域人事調整：前 Siri 高管 Robby Walker 將於 10 月底離職</title>
-      <description>&lt;div class="content"&gt;
-                                                                    
-                                                        &lt;p&gt;據路透社報道，蘋果公司在人工智能（AI）領域再迎人事變動。消息披露，前 Siri 高管、曾負責「Apple Intelligence」版本 Siri 研發的 Robby Walker，計劃於 2025 年 10 月底正式離開蘋果。&lt;/p&gt; 
-&lt;p&gt;&lt;img height="248" src="https://oscimg.oschina.net/oscnet/up-48a88ba0ad3262605a5f5cbf1737efcb81c.png" width="500" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;p&gt;公開信息顯示，Walker 在蘋果 AI 業務推進中曾承擔重要角色。此前，在「Apple Intelligence」版 Siri 項目出現延期後，他曾在內部會議中以「挑戰游泳紀錄的失敗嘗試」作比，客觀評價團隊工作——既坦誠項目未達預期目標，也肯定了團隊在研發過程中取得的階段性成果。同時，Walker 還提及，儘管部分競爭對手已推出質量相對較低的類似功能，但蘋果始終堅持更高的質量標準，不急於推出未達標的產品。&lt;/p&gt; 
-&lt;p&gt;項目調整後，Walker 轉崗至蘋果「Answers」團隊，牽頭研發基於人工智能技術的搜索工具。目前，彭博社等多方信息顯示，「Answers」項目仍在正常推進中，預計將於 2026 年正式上線，此次 Walker 離職暫未對該項目整體進展造成公開披露的影響。&lt;/p&gt; 
-&lt;p&gt;值得關注的是，此次人事變動並非蘋果近期在 Siri 相關業務上的唯一調整。此前，蘋果已對 Siri 項目管理權進行調整，將其從 AI 主管 John Giannandrea 手中移交至曾主導打造 Vision Pro 及 visionOS 的 Mike Rockwell。按照當前規劃，新版 Siri 最早有望在 2026 年春季與用户見面。&lt;/p&gt;
-                                                                                &lt;/div&gt;
-                                                                            </description>
-      <link>https://www.oschina.net/news/372246</link>
-      <guid isPermaLink="false">https://www.oschina.net/news/372246</guid>
-      <pubDate>Sun, 14 Sep 2025 03:41:00 GMT</pubDate>
-      <author>來源: OSCHINA</author>
-    </item>
-    <item>
-      <title>共築智慧出行新生態，東軟於 IAA MOBILITY 詮釋開放共贏之道</title>
-      <description>&lt;div class="content"&gt;
-                                                                    
-                                                        &lt;p style="text-align:left"&gt;&lt;span&gt;隨着 IAA MOBILITY 2025 盛會正酣，慕尼黑再次成為全球汽車與出行產業的焦點。大會期間，&lt;/span&gt;&lt;span&gt;東軟集團高級副總裁兼董事會秘書王楠博士與論壇嘉賓就「世界經濟論壇：私家車智能化的下一個十年」展開專題討論&lt;/span&gt;&lt;span&gt;，深入分析智能出行時代的汽車產業趨勢，分享東軟在汽車電子領域的成果探索與創新實踐。&lt;/span&gt;&lt;/p&gt; 
-&lt;p style="text-align:left"&gt;&lt;span&gt;世界經濟論壇最近的一項研究預測，到 2035 年以後，L2 和 L2+系統將在主要市場的新一代私家車中佔據主導地位。在應對不同地區不同法規的同時，行業和監管機構應如何充分發揮 L2/L2+的潛力，確保安全性、明確性和進步性？對此，王楠博士指出：&lt;/span&gt;&lt;span&gt;「智能出行不僅是技術演進的結果，更是對用户需求、監管機制、產業生態的深度回應。」&lt;/span&gt;&lt;/p&gt; 
-&lt;p style="text-align:left"&gt;&lt;strong&gt;&lt;span&gt;中國 ADAS 市場：全球增速最快，滲透率領先&lt;/span&gt;&lt;/strong&gt;&lt;/p&gt; 
-&lt;p style="text-align:left"&gt;&lt;span&gt;近年來，在「新四化」產業理念持續推動、本土供應鏈日趨成熟、市場需求不斷增長的共同作用下，中國 ADAS 系統裝配率實現快速提升。&lt;/span&gt;&lt;span&gt;不僅增速和滲透率持續領先，更在應用場景豐富度、功能迭代速度和用户接受度方面顯著優於全球其他地區&lt;/span&gt;&lt;span&gt;，為後續 L2/L2+的漸進式落地奠定了全球最大、最活躍的市場基盤，也為智能駕駛技術的大規模實踐與優化提供了寶貴土壤。&lt;/span&gt;&lt;/p&gt; 
-&lt;p style="text-align:left"&gt;&lt;strong&gt;&lt;span&gt;監管敏捷務實，尋求安全與創新間的最優解&lt;/span&gt;&lt;/strong&gt;&lt;/p&gt; 
-&lt;p style="text-align:left"&gt;&lt;span&gt;而隨着 L2 級輔助駕駛逐漸成為主流技術路徑，為了避免消費者對技術「過度信任」帶來的潛在風險，中國監管機構及時響應，出台了一系列務實的應對策略。如對通用技術採取強制性標準、規範宣傳推廣、數據監管、安全評估、責任界定等。這些措施既有效防範了技術安全隱患，又明確了權責邊界，切實保障了消費者的知情權與選擇權。&lt;/span&gt;&lt;span&gt;監督管理不但並未抑制市場活力，反而通過建立清晰、可信的技術應用框架，增強了消費者對智能化產品的使用信心&lt;/span&gt;&lt;span&gt;，促進行業在安全規範的前提下有序發展，也為全球產業升級提供了實踐範本。&lt;/span&gt;&lt;/p&gt; 
-&lt;p style="text-align:left"&gt;&lt;strong&gt;&lt;span&gt;需求牽引與技術響應，中國市場的正向循環&lt;/span&gt;&lt;/strong&gt;&lt;/p&gt; 
-&lt;p style="text-align:left"&gt;&lt;span&gt;王楠博士表示，在過去移動互聯網蓬勃發展的十年中，中國市場逐步構建起技術供給與消費需求之間高效互動的創新生態。中國消費者展現出對新技術強烈的好奇心和極高的接受度，成為全球最具活力和探索精神的用户羣體之一。這種開放和渴望創新的市場環境，同樣為中國的汽車產業提供了豐富的應用場景和快速迭代的機會。以東軟為代表的全球化信息技術、產品和解決方案公司，憑藉對市場趨勢的敏鋭洞察與高效反饋，持續攻堅技術實現功能創新，助力車企不斷滿足消費者對智能體驗的前沿需求，從而&lt;/span&gt;&lt;span&gt;形成了「需求牽引新技術、技術激活新需求」&lt;/span&gt;&lt;span&gt;的正向循環。這一互動效應成為中國汽車市場在電動化、智能化浪潮中持續領先的核心動力。&lt;/span&gt;&lt;/p&gt; 
-&lt;p style="text-align:left"&gt;&lt;strong&gt;&lt;span&gt;面向未來：全球協作與標準共建是關鍵&lt;/span&gt;&lt;/strong&gt;&lt;/p&gt; 
-&lt;p style="text-align:left"&gt;&lt;span&gt;全球化競爭正在重構產業邏輯，單一市場的內生模式已難以應對多元化需求的挑戰。「我們愈發清晰地認識到，技術的進步不僅源於硬件升級與軟件迭代，更取決於全球協作的深度與廣度。」王楠博士呼籲，&lt;/span&gt;&lt;span&gt;真正的突破來自於跨地域、跨行業的協同合作與標準共建。&lt;/span&gt;&lt;span&gt;唯有打破壁壘、共享認知、整合資源、協同創新，才能在保障安全的前提下，讓智能駕駛真正服務於人、賦能於社會。&lt;/span&gt;&lt;/p&gt; 
-&lt;p style="text-align:left"&gt;&lt;span&gt;未來，東軟願將領先的產品、解決方案和服務能力開放給全球合作伙伴，共同推動智能出行從功能實現躍升至體驗優化，從技術領先邁向信任共識，從區域成功走向全球普惠。&lt;/span&gt;&lt;/p&gt;
-                                                                                &lt;/div&gt;
-                                                                            </description>
-      <link>https://www.oschina.net/news/372245</link>
-      <guid isPermaLink="false">https://www.oschina.net/news/372245</guid>
-      <pubDate>Sun, 14 Sep 2025 03:31:00 GMT</pubDate>
-      <author>作者: 開源科技</author>
-    </item>
-    <item>
-      <title>主流 AI 聊天機器人傳播虛假信息概率翻倍，高達 35%</title>
-      <description>&lt;div class="content"&gt;
-                                                                    
-                                                        &lt;p style="color:#242424; margin-left:0; margin-right:0; text-align:left"&gt;Newsguard 最近發佈了一項研究，顯示截至 2023 年 8 月，十大生成式 AI 工具在處理實時新聞時，有高達 35% 的概率傳播虛假信息。相比去年 8 月的 18%，這一數字幾乎翻了一番。&lt;/p&gt; 
-&lt;p style="color:#242424; margin-left:0; margin-right:0; text-align:left"&gt;研究指出，這一虛假信息傳播率的顯著上升與 AI 聊天機器人引入實時網絡搜索功能密切相關。隨着拒絕回答用户問題的比例從 31% 降至 0%，AI 開始接入一個充滿不實信息的網絡生態系統，導致虛假信息的傳播現象愈加嚴重。&lt;/p&gt; 
-&lt;p style="color:#242424; margin-left:0; margin-right:0; text-align:left"&gt;該研究發現，許多不良行為者利用 AI 的特性故意散佈虛假信息。去年，Newsguard 就曾標記出 966 個以 16 種語言運營的 AI 生成新聞網站，這些網站通過模仿正規媒體的名稱，如 「iBusiness Day」，向公眾傳播假消息。&lt;/p&gt; 
-&lt;p style="color:#242424; margin-left:0; margin-right:0; text-align:left"&gt;具體來看，Inflection 公司的 AI 模型傳播虛假信息的概率最高，達到了 56.67%;而 Perplexity 模型也不容樂觀，出錯率為 46.67%。ChatGPT 和 Meta 的 AI 模型則各自為 40%，而 Copilot（微軟必應聊天）和 Mistral 的虛假信息傳播率為 36.67%。表現最好的兩款模型是 Claude 和 Gemini，錯誤率分別為 10% 和 16.67%。&lt;/p&gt; 
-&lt;p style="color:#242424; margin-left:0; margin-right:0; text-align:left"&gt;值得注意的是，Perplexity 的表現大幅下滑，去年 8 月時該模型對虛假信息的揭穿率達到 100%，然而到今年 8 月，這一概率接近 50%。引入網絡搜索功能的初衷是解決 AI 回答內容過時的問題，但卻引發了新的挑戰。這些聊天機器人開始從不可靠的來源獲取信息，使得用户在判斷事實與假消息時愈發困難。&lt;/p&gt; 
-&lt;p style="color:#242424; margin-left:0; margin-right:0; text-align:left"&gt;Newsguard 指出，早期的 AI 通過拒絕回答問題來避免傳播虛假信息的風險，但如今網絡生態中虛假信息氾濫，辨別真偽愈發複雜。OpenAI 也承認，當前的語言模型總是可能產生 「幻覺內容」，即虛假或無根據的信息。該公司表示正在研發新技術，力圖讓未來的模型能夠更好地提示不確定性，而不是篤定地生成虛假信息。&lt;/p&gt;
-                                                                                &lt;/div&gt;
-                                                                            </description>
-      <link>https://www.oschina.net/news/372244</link>
-      <guid isPermaLink="false">https://www.oschina.net/news/372244</guid>
-      <pubDate>Sun, 14 Sep 2025 03:27:00 GMT</pubDate>
-      <author>來源: OSCHINA</author>
-    </item>
-    <item>
-      <title>VS 2026 最佳配置提升為 64GB 內存 16 核 CPU，微軟工程師給出原因：方便程序員申請高配機</title>
-      <description>&lt;div class="content"&gt;
-                                                                    
-                                                        &lt;p&gt;&lt;a href="https://www.oschina.net/news/371552/visual-studio-2026-insiders" target="_blank"&gt;微軟最近推出了 Visual Studio 2026 的預覽版&lt;/a&gt;，在硬件建議上推薦使用 64GB 內存和 16 核 CPU。在此前版本如 Visual Studio 2019 和 2022 中，硬件要求均為至少 4 核處理器和 4GB 內存，而到了 2026 版本，微軟則專門建議 64GB 內存和 16 核處理器。&lt;/p&gt; 
-&lt;p&gt;&lt;img src="https://static.oschina.net/uploads/space/2025/0915/111252_72AB_2720166.jpg" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;p&gt;對此 Visual Studio 團隊的性能架構師 David Kean 解釋了這一變化背後的原因，簡單來説就是一些公司看到最低內存要求 8G，就只肯給員工配 8G 的機器，乾脆寫個 64G 讓工程師更方便申請高配機。&lt;/p&gt; 
-&lt;p&gt;&lt;img alt="" src="https://oscimg.oschina.net/oscnet/up-9b11c480f0cc1c4434d99db8eb9508f39cf.png" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;p&gt;他指出，Visual Studio 2026 的最低和推薦配置與 2022 和 2019 版本相同，但新版本在相同硬件上的性能將顯著提升，新版本使用更少的資源，並在需要時更好地利用可用資源。&lt;/p&gt; 
-&lt;p&gt;David Kean 表示「我經常和開發者交流，他們的 IT 部門通常會嚴格按照最低/推薦配置來配備硬件。」因此他的目標之一就是為開發者提供依據，讓他們能夠與 IT 部門、經理或決策者交涉，爭取到更好更快的硬件。&lt;/p&gt; 
-&lt;p&gt;他提到，雖然 Visual Studio 可以在低配置上運行，但根據工作負載、項目大小或已安裝的擴展，少於 8GB 內存可能會導致體驗不佳。他還表示，64GB 內存和 16 核 CPU 的配置在硬件成本與性能之間達到了最佳平衡，如果使用更高配置，如 128GB 內存和 32 核 CPU，效果會更好。&lt;/p&gt;
-                                                                                &lt;/div&gt;
-                                                                            </description>
-      <link>https://www.oschina.net/news/372242</link>
-      <guid isPermaLink="false">https://www.oschina.net/news/372242</guid>
-      <pubDate>Sun, 14 Sep 2025 03:17:00 GMT</pubDate>
-      <author>來源: OSCHINA</author>
-    </item>
-    <item>
-      <title>0 基礎帶你精通 Java 對象序列化 -- 以 Hessian 為例</title>
-      <description>&lt;div class="content"&gt;
-                                                                                                                    
-                                                                                                                                                    &lt;span id="OSC_h1_1"&gt;&lt;/span&gt; 
-&lt;h1&gt;一、概述&lt;/h1&gt; 
-&lt;p&gt;在高級編程語言的世界中，開發者始終與**【object/struct】**這類高度抽象的數據結構打交道。然而在分佈式架構下，任何服務進程都不是數據孤島——跨進程數據交換是必然需求。&lt;/p&gt; 
-&lt;p&gt;以 Java 為例，業務邏輯的輸入輸出都是**【object】&lt;strong&gt;。但在 RPC 場景中，這些對象必須經由網絡傳輸。這裏出現了一個根本性矛盾：網絡介質 (網線/光纖) 對面向對象編程 (OOP) 一無所知，它們只會用光和電忠實地傳輸&lt;/strong&gt;扁平化**的字節流 (&lt;strong&gt;byte[]&lt;/strong&gt;)。&lt;/p&gt; 
-&lt;p&gt;&lt;img src="https://oscimg.oschina.net/oscnet//a0cedde6f9c31265f57bce8e896481f6.jpg" alt="" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;p&gt;軟件工程經典的分層理論驅使我們去添加一個&lt;strong&gt;轉換層&lt;/strong&gt;。&lt;/p&gt; 
-&lt;p&gt;&lt;img src="https://oscimg.oschina.net/oscnet//93923be5e7dee6b3519f0fbab774a8b5.jpg" alt="" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;p&gt;&lt;img src="https://oscimg.oschina.net/oscnet//8a35581e9f80f33e26df7eed4c78df53.jpg" alt="" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;p&gt;我們需要有個工具或者組件來協助進行**【object】&lt;strong&gt;和&lt;/strong&gt;【byte[]】&lt;strong&gt;之間的&lt;/strong&gt;雙向轉換**。這個過程包含兩個對稱的流程：&lt;/p&gt; 
-&lt;ol&gt; 
- &lt;li&gt;【&lt;strong&gt;object&lt;/strong&gt;】-&amp;gt;【&lt;strong&gt;byte[]&lt;/strong&gt;】：業界一般稱為&lt;strong&gt;序列化/serialize&lt;/strong&gt;，但是那個單詞念起來很拗口，本文我們都叫它【編碼/&lt;strong&gt;encode&lt;/strong&gt;】好了。&lt;/li&gt; 
- &lt;li&gt;【&lt;strong&gt;byte[]&lt;/strong&gt;】-&amp;gt;【&lt;strong&gt;object&lt;/strong&gt;】：業界一般稱為&lt;strong&gt;反序列化/deserialize&lt;/strong&gt;，但是那個單詞念起來很拗口，本文我們都叫它【解碼/&lt;strong&gt;decode&lt;/strong&gt;】好了。&lt;/li&gt; 
-&lt;/ol&gt; 
-&lt;p&gt;Hessian 作為 Java 生態中久經考驗的對象編解碼器，相較於同類產品具有以下兩大核心優勢：&lt;/p&gt; 
-&lt;ol&gt; 
- &lt;li&gt;&lt;strong&gt;深度 Java 生態適配&lt;/strong&gt;：與 JSON、Protobuf 等語言中立的通用協議不同，Hessian 專為 Java 深度優化，對泛型、多態等&lt;strong&gt;Java 特有語言特性提供原生支持&lt;/strong&gt;。&lt;/li&gt; 
- &lt;li&gt;&lt;strong&gt;高效二進制協議&lt;/strong&gt;：相較 JSON 等文本協議，Hessian 採用精心設計的二進制編碼方案，在編解碼效率和數據壓縮率方面表現更優。&lt;/li&gt; 
-&lt;/ol&gt; 
-&lt;p&gt;需要強調的是，軟件工程沒有銀彈——業務場景的差異決定了編解碼器的選擇必然需要權衡取捨。但就 Java RPC 而言，Hessian 應該是經過廣泛實踐驗證的穩健選擇。&lt;/p&gt; 
-&lt;p&gt;本文將系統解析 Hessian 的編碼流程，重點揭示其實現【&lt;strong&gt;object&lt;/strong&gt;】-&amp;gt;【&lt;strong&gt;byte[]&lt;/strong&gt;】轉換的核心機制。&lt;/p&gt; 
-&lt;span id="OSC_h1_2"&gt;&lt;/span&gt; 
-&lt;h1&gt;二、基礎編碼原理&lt;/h1&gt; 
-&lt;p&gt;對象編碼過程主要包含如下兩大核心：&lt;/p&gt; 
-&lt;ul&gt; 
- &lt;li&gt; &lt;p&gt;&lt;strong&gt;對象圖遍歷&lt;/strong&gt;：遍歷高級數據結構&lt;/p&gt; 
-  &lt;ul&gt; 
-   &lt;li&gt;通過反射或元編程技術遍歷對象圖（Object Graph）。&lt;/li&gt; 
-   &lt;li&gt;是同類產品的通用邏輯，不管 jackson、fastjson、hessian 都需要用&lt;strong&gt;不同的方式做類似的事情。&lt;/strong&gt;&lt;/li&gt; 
-  &lt;/ul&gt; &lt;/li&gt; 
- &lt;li&gt; &lt;p&gt;&lt;strong&gt;編碼格式&lt;/strong&gt;：將高級數據結構按協議拍平放到&lt;strong&gt;byte[]&lt;/strong&gt;&lt;/p&gt; 
-  &lt;ul&gt; 
-   &lt;li&gt;同類產品百家爭鳴，各有各的思路。&lt;/li&gt; 
-   &lt;li&gt;是同類產品的競技場，&lt;strong&gt;各個產品在這裏體現差異化的競爭力&lt;/strong&gt;。&lt;/li&gt; 
-   &lt;li&gt;設計權衡包括： 
-    &lt;ul&gt; 
-     &lt;li&gt;二進制效率 vs 可讀性（如 Hessian 二進制 vs JSON 文本）&lt;/li&gt; 
-     &lt;li&gt;編碼緊湊性 vs 擴展靈活性&lt;/li&gt; 
-     &lt;li&gt;跨語言支持 vs 語言特性深度優化&lt;/li&gt; 
-    &lt;/ul&gt; &lt;/li&gt; 
-  &lt;/ul&gt; &lt;/li&gt; 
-&lt;/ul&gt; 
-&lt;p&gt;&lt;strong&gt;對象圖遍歷&lt;/strong&gt;決定了編碼能力的下限 (能否正確處理對象結構)，而&lt;strong&gt;編碼格式&lt;/strong&gt;決定了編碼能力的上限 (傳輸效率、兼容性等)。&lt;/p&gt; 
-&lt;p&gt;&lt;strong&gt;對象圖遍歷&lt;/strong&gt;&lt;/p&gt; 
-&lt;p&gt;&lt;img src="https://oscimg.oschina.net/oscnet//be559029d05ec34091e74cb6e6141e9a.jpg" alt="" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;p&gt;對象圖遍歷的本質是&lt;strong&gt;按深度優先&lt;/strong&gt;進行&lt;strong&gt;對象屬性導航&lt;/strong&gt;。&lt;/p&gt; 
-&lt;p&gt;舉個例子：&lt;/p&gt; 
-&lt;p&gt;&lt;img src="https://oscimg.oschina.net/oscnet//b10fb4203811541f2408894498531740.jpg" alt="" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;p&gt;宏觀來看，A 類型的對象其實是&lt;strong&gt;一棵樹 (或圖)&lt;/strong&gt;，如果腦補不出來的話，我給你畫個圖：&lt;/p&gt; 
-&lt;p&gt;&lt;img src="https://oscimg.oschina.net/oscnet//3c6628413a7422c5be5773cef2612c75.jpg" alt="" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;p&gt;可以看到這棵樹的葉子結點都一定是 Java 內置的基本數據類型。換句話説，Java 的&lt;strong&gt;8 種基礎數據類型&lt;/strong&gt;和他們的&lt;strong&gt;數組變體&lt;/strong&gt;，支撐了 Java 豐富的預定義/自定義數據結構。&lt;/p&gt; 
-&lt;p&gt;&lt;em&gt;八股文：Java 的 8 種基礎數據類型是哪些？String 算不算基礎數據類型？&lt;/em&gt;&lt;/p&gt; 
-&lt;p&gt;編碼的本質就是深度優先的遍歷這棵樹，拍平它，然後放到**byte[]**裏。&lt;/p&gt; 
-&lt;p&gt;我舉個例子吧。&lt;/p&gt; 
-&lt;p&gt;&lt;strong&gt;偽代碼&lt;/strong&gt;&lt;/p&gt; 
-&lt;p&gt;為降低偽代碼複雜度，我們假設 Java 只有 1 種基礎數據類型 int，也就是説 Java 裏只有 int 和只包含 int 字段的自定義 POJO。&lt;/p&gt; 
-&lt;p&gt;&lt;em&gt;我們定義 POJO 指的是用於傳輸、存儲使用的簡單 Java Bean 或者常説的 DTO。&lt;/em&gt;&lt;/p&gt; 
-&lt;p&gt;&lt;em&gt;從某種意義上來説，Integer 也是基於 int 封裝的自定義 POJO。&lt;/em&gt;&lt;/p&gt; 
-&lt;p&gt;&lt;strong&gt;字節流抽象&lt;/strong&gt;&lt;/p&gt; 
-&lt;p&gt;我們使用標準庫裏的 java.io.DataOutput 來進行偽代碼説理，這個類提供了一些語義化的編碼 function。&lt;/p&gt; 
-&lt;p&gt;&lt;img src="https://oscimg.oschina.net/oscnet//239f91dfc543c0ff88fb90cf15e8fff5.jpg" alt="" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;p&gt;&lt;em&gt;java.io.DataOutput&lt;/em&gt;&lt;/p&gt; 
-&lt;p&gt;&lt;strong&gt;對象圖遍歷&lt;/strong&gt;&lt;/p&gt; 
-&lt;p&gt;&lt;img src="https://oscimg.oschina.net/oscnet//c9f64aaf28e83e372ea67c932db0937c.jpg" alt="" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;p&gt;&lt;strong&gt;字節流佈局&lt;/strong&gt;&lt;/p&gt; 
-&lt;p&gt;最終呈現出來的字節流層面的數據佈局會是這樣：&lt;/p&gt; 
-&lt;p&gt;&lt;img src="https://oscimg.oschina.net/oscnet//77ecb08f4d5f27695f0f76d7c10cbee6.jpg" alt="" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;p&gt;看起來沒毛病，唯一的問題就是不好解碼。&lt;/p&gt; 
-&lt;p&gt;當解碼端收到一個 16 字節的字節流以後，它分不清哪塊數據是 A 對象的，哪塊數據是 B 對象的。甚至都分不清這到底是 4 個 int32 還是 2 個 int64。&lt;/p&gt; 
-&lt;p&gt;這個問題需要&lt;strong&gt;編碼格式&lt;/strong&gt;來解決。&lt;/p&gt; 
-&lt;p&gt;&lt;strong&gt;編碼格式&lt;/strong&gt;&lt;/p&gt; 
-&lt;p&gt;上面遺留的問題，聰明的你肯定想到了答案。&lt;/p&gt; 
-&lt;p&gt;就是因為編碼產物太太太簡陋了，整個過程中只是一股腦的把樹拍平，把葉子節點的值寫入字節流，缺少&lt;strong&gt;結構元數據&lt;/strong&gt;。&lt;/p&gt; 
-&lt;p&gt;最最最重要的&lt;strong&gt;結構元數據&lt;/strong&gt;就是數據塊的邊界，上述 4 個數據塊，最起碼應該添加 3 個邊界標識。&lt;/p&gt; 
-&lt;p&gt;&lt;img src="https://oscimg.oschina.net/oscnet//01cadc75fb4261e8778896a92e5beca7.jpg" alt="" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;p&gt;我們先用我們耳熟能詳的 JSON 格式來理解下編碼格式這個事情。&lt;/p&gt; 
-&lt;p&gt;&lt;strong&gt;偽代碼&lt;/strong&gt;&lt;/p&gt; 
-&lt;p&gt;JSON 是這樣解決這個問題的：&lt;/p&gt; 
-&lt;p&gt;&lt;img src="https://oscimg.oschina.net/oscnet//457465c678f29743ca41d351dd932ab2.jpg" alt="" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;p&gt;JSON 協議在嵌套的 POJO 上用**{}&lt;strong&gt;來作為邊界，POJO 內部的字段鍵值用 &lt;strong&gt;,&lt;/strong&gt; 來做邊界，&lt;/strong&gt;:**拆分字段鍵值。&lt;/p&gt; 
-&lt;p&gt;&lt;strong&gt;字節流佈局&lt;/strong&gt;&lt;/p&gt; 
-&lt;p&gt;結果就變成這樣：&lt;/p&gt; 
-&lt;p&gt;&lt;img src="https://oscimg.oschina.net/oscnet//718a030c1291d7f86e7c4c886c3d01cd.jpg" alt="" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;p&gt;這樣在解碼的時候，可以通過**{&lt;strong&gt;、&lt;/strong&gt;}&lt;strong&gt;、&lt;/strong&gt;,&lt;strong&gt;、&lt;/strong&gt;:** 等&lt;strong&gt;token&lt;/strong&gt;來切割 JSON 字符串，判定&lt;strong&gt;數據塊邊界&lt;/strong&gt;並恢復出&lt;strong&gt;對象圖&lt;/strong&gt;。&lt;/p&gt; 
-&lt;span id="OSC_h1_3"&gt;&lt;/span&gt; 
-&lt;h1&gt;三、Hessian 編碼格式&lt;/h1&gt; 
-&lt;p&gt;接下來我們可以開始介紹 Hessian 的編碼魔法了。&lt;/p&gt; 
-&lt;p&gt;需要強調的是：Hessian 跟 JSON 不同，Hessian 是二進制格式。如果一個字節流直接按字符集解碼不能得到一個完整的、有意義的字符串，那它就是二進制編碼數據。&lt;/p&gt; 
-&lt;p&gt;Hessian 在編碼時，按&lt;strong&gt;數據塊類型&lt;/strong&gt;為每一個數據塊添加一個&lt;strong&gt;前綴字節 (byte)&lt;strong&gt;作為結構元數據，這些&lt;/strong&gt;元數據&lt;/strong&gt;和&lt;strong&gt;數據塊&lt;/strong&gt;一起，交給解碼端使用。&lt;/p&gt; 
-&lt;p&gt;&lt;strong&gt;數據塊&lt;/strong&gt;&lt;/p&gt; 
-&lt;p&gt;對象圖裏的每一個節點，都是一個數據塊。&lt;/p&gt; 
-&lt;p&gt;&lt;img src="https://oscimg.oschina.net/oscnet//3115085d696f405a881e61692a063b92.jpg" alt="" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;p&gt;如上圖所示，以 A 對象為根的對象圖，一共有 6 個&lt;strong&gt;數據塊&lt;/strong&gt;。&lt;/p&gt; 
-&lt;p&gt;&lt;strong&gt;數據塊標籤（tag）&lt;/strong&gt;&lt;/p&gt; 
-&lt;p&gt;Hessain 在編碼每一個數據塊時，都會根據數據塊的類型在字節流中寫入一個&lt;strong&gt;前綴字節&lt;/strong&gt;(&lt;strong&gt;0-255&lt;/strong&gt;)，這個字節説明瞭數據塊的&lt;strong&gt;語義和結構&lt;/strong&gt;。&lt;/p&gt; 
-&lt;p&gt;以&lt;strong&gt;int32&lt;/strong&gt;為例，其最基礎的編碼格式如下：&lt;/p&gt; 
-&lt;p&gt;&lt;img src="https://oscimg.oschina.net/oscnet//fb9f5e4ffbe04e67cc8526e86038ce87.jpg" alt="" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;p&gt;&lt;em&gt;除該基礎編碼格式外，int32 的編碼還有其他變體。&lt;/em&gt;&lt;/p&gt; 
-&lt;p&gt;上述 &lt;strong&gt;I&lt;/strong&gt; 就是整數類型的 tag。解碼端讀取 tag 後，按 tag 值來解碼數據。&lt;/p&gt; 
-&lt;p&gt;&lt;img src="https://oscimg.oschina.net/oscnet//6db73099018e0bb91d7b0eb8d7a998d7.jpg" alt="" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;p&gt;&lt;em&gt;com.alibaba.com.caucho.hessian.io.Hessian2Input#readObject(java.util.List&amp;lt;java.lang.Class&amp;lt;?&amp;gt;&amp;gt;)&lt;/em&gt;&lt;/p&gt; 
-&lt;p&gt;由此延伸、拓展，其他的數據類型都是類似的模式。常見數據類型及其對應的 tag 值如下：&lt;/p&gt; 
-&lt;p&gt;&lt;img src="https://oscimg.oschina.net/oscnet//bdc6fc4ca7b3d70f391b9ea328b36a26.jpg" alt="" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;p&gt;值得注意的是，&lt;strong&gt;N&lt;/strong&gt;、&lt;strong&gt;F&lt;/strong&gt;、&lt;strong&gt;T&lt;/strong&gt;三個 tag 是自解釋的，和固定值映射、綁定。&lt;/p&gt; 
-&lt;p&gt;&lt;strong&gt;POJO 編碼&lt;/strong&gt;&lt;/p&gt; 
-&lt;p&gt;POJO 是一種特殊的&lt;strong&gt;數據塊&lt;/strong&gt;，Hessian 將 POJO 的&lt;strong&gt;結構&lt;/strong&gt;和&lt;strong&gt;值&lt;/strong&gt;拆開，分別編碼。&lt;/p&gt; 
-&lt;p&gt;&lt;strong&gt;POJO 結構編碼&lt;/strong&gt;&lt;/p&gt; 
-&lt;p&gt;&lt;strong&gt;POJO 結構&lt;/strong&gt;的 tag 為&lt;strong&gt;C&lt;/strong&gt;，對照 int32 的編碼格式，POJO 結構的編碼格式如下：&lt;/p&gt; 
-&lt;p&gt;&lt;img src="https://oscimg.oschina.net/oscnet//f82feb9cef8ee37be26fa5e236e1cafc.jpg" alt="" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;p&gt;舉個例子：&lt;/p&gt; 
-&lt;p&gt;&lt;img src="https://oscimg.oschina.net/oscnet//57fce9ec2ed617db45fc440313c0c184.jpg" alt="" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;p&gt;編碼 POJO 時，Hessain 會將 POJO 的類名、字段名列表寫入字節流，供解碼端使用。後續編碼 POJO 字段值時，需要&lt;strong&gt;按照字段名列表&lt;/strong&gt;(如上述&lt;strong&gt;bb&lt;/strong&gt;、&lt;strong&gt;cc&lt;/strong&gt;)&lt;strong&gt;的順序&lt;/strong&gt;來編碼字段值。&lt;/p&gt; 
-&lt;p&gt;&lt;img src="https://oscimg.oschina.net/oscnet//e0478bcef5e562ad49afa590a79185ab.jpg" alt="" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;p&gt;&lt;strong&gt;POJO 字段值編碼&lt;/strong&gt;&lt;/p&gt; 
-&lt;p&gt;&lt;strong&gt;POJO 字段值&lt;/strong&gt;的 tag 為&lt;strong&gt;O&lt;/strong&gt;，對照 int32 的編碼格式，POJO 字段值的編碼格式如下：&lt;/p&gt; 
-&lt;p&gt;&lt;img src="https://oscimg.oschina.net/oscnet//147cb7b396ba5fcad0c15a00a5c6f6d6.jpg" alt="" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;p&gt;舉個例子：&lt;/p&gt; 
-&lt;p&gt;&lt;img src="https://oscimg.oschina.net/oscnet//1ec3dd805e8ba21d9cc0c7e64fca7824.jpg" alt="" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;p&gt;可以看到，編碼 POJO 字段值的時候，在 tag 後面有一個&lt;strong&gt;POJO 結構序號&lt;/strong&gt;。&lt;/p&gt; 
-&lt;p&gt;這是 Hessian 的一個&lt;strong&gt;數據複用&lt;/strong&gt;的小技巧。&lt;/p&gt; 
-&lt;p&gt;&lt;strong&gt;POJO 結構複用&lt;/strong&gt;&lt;/p&gt; 
-&lt;p&gt;JSON 協議有一個缺點，那就是重複數據帶來的存儲/傳輸開銷。舉個例子：&lt;/p&gt; 
-&lt;p&gt;&lt;img src="https://oscimg.oschina.net/oscnet//c0f290170c6fbe02c4a22668f81e31f0.jpg" alt="" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;p&gt;如上圖，B 類型的字段名 (&lt;strong&gt;dd&lt;/strong&gt;、&lt;strong&gt;ee&lt;/strong&gt;) 在編碼產物中&lt;strong&gt;重複出現&lt;/strong&gt;！&lt;/p&gt; 
-&lt;p&gt;Hessian 希望解決這個問題，同一類型的多個 POJO 對象在序列化時，只需要在第一次的時候編碼&lt;strong&gt;類名、字段名&lt;/strong&gt;等元數據，後續可以被重複的引用、使用，無需重複編碼。&lt;/p&gt; 
-&lt;p&gt;如果用 Hessian 來編碼，結果會是這樣：&lt;/p&gt; 
-&lt;p&gt;&lt;strong&gt;數據佈局&lt;/strong&gt;&lt;/p&gt; 
-&lt;p&gt;&lt;img src="https://oscimg.oschina.net/oscnet//ae454fbec4eae9f73efea262750e29f0.jpg" alt="" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;p&gt;&lt;strong&gt;數據佈局詳解&lt;/strong&gt;&lt;/p&gt; 
-&lt;p&gt;&lt;img src="https://oscimg.oschina.net/oscnet//d0f362d8687736273afdf6c9e45b04a6.jpg" alt="" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;p&gt;如上圖，APojo、BPojo 的字段名只會編碼一次。多個 BPojo 對象在編碼時會通過**結構引用序號 (1)**來引用它。相對 JSON，Hessian 避免了多次編碼 BPojo 字段名的開銷。&lt;/p&gt; 
-&lt;p&gt;為什麼 APojo 的序號是 1、BPojo 的序號是 2？&lt;/p&gt; 
-&lt;p&gt;Hessain 在編碼過程中，每次遇到一個新的、沒有處理過的新 POJO 類型時，會給它分配一個&lt;strong&gt;從 0 開始、單調遞增&lt;/strong&gt;的序號。&lt;/p&gt; 
-&lt;p&gt;遙相呼應的，&lt;strong&gt;解碼側&lt;/strong&gt;每次解碼一個 tag 為&lt;strong&gt;C&lt;/strong&gt;的 POJO 結構數據塊時，也會按&lt;strong&gt;解碼順序&lt;/strong&gt;維護好其索引序號。&lt;/p&gt; 
-&lt;span id="OSC_h1_4"&gt;&lt;/span&gt; 
-&lt;h1&gt;四、Hessian 編碼細節&lt;/h1&gt; 
-&lt;p&gt;到現在，我們已經對 Hessian 編碼有了一個的概括性的認識，接下來我們來看看一些值得注意的細節。&lt;/p&gt; 
-&lt;p&gt;&lt;strong&gt;重複對象複用&lt;/strong&gt;&lt;/p&gt; 
-&lt;p&gt;&lt;img src="https://oscimg.oschina.net/oscnet//77f9679e85811f93d0fcdb046ad714f3.jpg" alt="" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;p&gt;A 對象裏有兩個字段 (d、e) 指向同一個對象 B。如果不做處理，會因為重複編碼而帶來不必要的開銷。&lt;/p&gt; 
-&lt;p&gt;&lt;img src="https://oscimg.oschina.net/oscnet//7f723ff30877e885b2f4a5bbef0265a2.jpg" alt="" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;p&gt;相同的一個 B 對象，因為被兩個字段重複引用，導致&lt;strong&gt;2 次編碼&lt;/strong&gt;、產生&lt;strong&gt;2 份數據空間佔用！&lt;/strong&gt;&lt;/p&gt; 
-&lt;p&gt;如果只是有額外的開銷，沒有可用性問題那都還好。關鍵是在&lt;strong&gt;循環引用&lt;/strong&gt;場景下，會因為&lt;strong&gt;引用成環&lt;/strong&gt;導致&lt;strong&gt;遞歸&lt;/strong&gt;進行對象圖遍歷時觸發方法棧溢出！&lt;/p&gt; 
-&lt;p&gt;&lt;img src="https://oscimg.oschina.net/oscnet//4f959593079f42c81c5f5901540dd995.jpg" alt="" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;p&gt;&lt;strong&gt;循環引用是重複引用的特例&lt;/strong&gt;，只要將重複引用處理掉，循環引用也就沒問題了。&lt;/p&gt; 
-&lt;p&gt;Hessian 通過&lt;strong&gt;對象引用&lt;/strong&gt;來解決這個問題。在對象圖遍歷過程中，遇到一個之前沒有遇到過、處理過的 POJO 對象時，會給它分配一個&lt;strong&gt;從 0 開始、單調遞增&lt;/strong&gt;的序號。&lt;/p&gt; 
-&lt;p&gt;後續再次需要序列化相同的對象時，直接&lt;strong&gt;跳過&lt;/strong&gt;編碼流程，將這個對象的&lt;strong&gt;序號&lt;/strong&gt;寫入字節流。&lt;/p&gt; 
-&lt;p&gt;&lt;img src="https://oscimg.oschina.net/oscnet//7c90939b732ed84f63bcb8ea21b63546.jpg" alt="" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;p&gt;解碼時，解碼側按相同的順序來恢復出&lt;strong&gt;引用序號表&lt;/strong&gt;，解碼後續的對象引用。&lt;/p&gt; 
-&lt;p&gt;&lt;strong&gt;小整數內聯 (direct)&lt;/strong&gt;&lt;/p&gt; 
-&lt;p&gt;很多編碼類型，都需要在 tag 後再維護一個&lt;strong&gt;整數類型&lt;/strong&gt;的字段。比如：&lt;/p&gt; 
-&lt;ul&gt; 
- &lt;li&gt;POJO 的編碼 tag &lt;strong&gt;O&lt;/strong&gt;需要一個整數來引用 POJO 結構引用&lt;strong&gt;序號&lt;/strong&gt;。&lt;/li&gt; 
-&lt;/ul&gt; 
-&lt;p&gt;&lt;img src="https://oscimg.oschina.net/oscnet//60853c7e321632c599984c66b22cb8aa.jpg" alt="" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;ul&gt; 
- &lt;li&gt;類似 String 的變長類型需要一個整數來標識變長數據的&lt;strong&gt;長度&lt;/strong&gt;。&lt;/li&gt; 
-&lt;/ul&gt; 
-&lt;p&gt;&lt;img src="https://oscimg.oschina.net/oscnet//10f03bd8e5e43dd19a3484e1f1fee510.jpg" alt="" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;p&gt;當字符串很短，就比如**"hi"&lt;strong&gt;吧，短字符串編碼格式的&lt;/strong&gt;長度字段**可能比實際字符數據還大（用 4 字節存儲長度 2），效率低下。&lt;/p&gt; 
-&lt;p&gt;&lt;strong&gt;tag 分段&lt;/strong&gt;&lt;/p&gt; 
-&lt;p&gt;&lt;strong&gt;Hessian 將一些 tag 值的語義富化，讓它既體現數據類型，也體現小數值。&lt;/strong&gt;&lt;/p&gt; 
-&lt;p&gt;因為 tag 是一個&lt;strong&gt;byte(int8)&lt;/strong&gt;，取值範圍是&lt;strong&gt;0-255&lt;/strong&gt;，每個 tag 標識一種特定的數據類型 (int、boolean 等)，但是這些數據類型最多&lt;strong&gt;幾十種&lt;/strong&gt;，取值範圍內還有很大的數值區間沒有被使用，其實比較浪費。那我們就可以把這些空閒的 tag 值，挪作他用，提升 tag 數值空間利用率。&lt;/p&gt; 
-&lt;p&gt;我舉個例子，注意這個是參考 Hessian 思路的一個簡單示意，&lt;strong&gt;具體的 Tag 值和 Hessian 無關&lt;/strong&gt;。&lt;/p&gt; 
-&lt;p&gt;&lt;img src="https://oscimg.oschina.net/oscnet//3e4c45ee3365b0258eb67d931eff94c3.jpg" alt="" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;p&gt;&lt;strong&gt;長度內聯&lt;/strong&gt;&lt;/p&gt; 
-&lt;p&gt;對於&lt;strong&gt;長度≤31&lt;/strong&gt;的字符串，Hessian 用&lt;strong&gt;tag 同時編碼類型和長度&lt;/strong&gt;。&lt;/p&gt; 
-&lt;ol&gt; 
- &lt;li&gt;當 0 &amp;lt;= tag &amp;lt;= 31 時，標識後續的數據塊為字符串。&lt;/li&gt; 
- &lt;li&gt;tag 的數值即為後續數據塊的長度。&lt;/li&gt; 
-&lt;/ol&gt; 
-&lt;p&gt;示例如下：&lt;/p&gt; 
-&lt;p&gt;&lt;img src="https://oscimg.oschina.net/oscnet//6dd4c9e15c8208157f4a3e53320e3813.jpg" alt="" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;p&gt;&lt;strong&gt;序號內聯&lt;/strong&gt;&lt;/p&gt; 
-&lt;p&gt;當結構引用&lt;strong&gt;序號&amp;lt;=16&lt;/strong&gt;時，Hessain 用&lt;strong&gt;tag 同時編碼類型和序號&lt;/strong&gt;。&lt;/p&gt; 
-&lt;p&gt;1. 當 0x60 &amp;lt;= tag &amp;lt;= 0x70 時，標識後續的數據塊為 POJO 字段值。&lt;/p&gt; 
-&lt;p&gt;2. tag - 0x60 的值，即為 POJO 結構 (類名+字段名) 引用序號。&lt;/p&gt; 
-&lt;p&gt;示例如下：&lt;/p&gt; 
-&lt;p&gt;&lt;img src="https://oscimg.oschina.net/oscnet//08031efdb62b1e14cb8c6ade63888486.jpg" alt="" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;p&gt;相關源碼如下：&lt;/p&gt; 
-&lt;p&gt;&lt;img src="https://oscimg.oschina.net/oscnet//237bc12726766598c175abc821760060.jpg" alt="" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;p&gt;&lt;em&gt;com.alibaba.com.caucho.hessian.io.Hessian2Output#writeObjectBegin&lt;/em&gt;&lt;/p&gt; 
-&lt;p&gt;&lt;strong&gt;字符串編碼&lt;/strong&gt;&lt;/p&gt; 
-&lt;p&gt;Hessian 編碼字符串的關鍵流程是：&lt;strong&gt;字符串分段+不同長度的子串使用不同的 tag。&lt;/strong&gt;&lt;/p&gt; 
-&lt;ul&gt; 
- &lt;li&gt;&lt;strong&gt;分段原則&lt;/strong&gt;&lt;/li&gt; 
-&lt;/ul&gt; 
-&lt;p&gt;字符串會被分割為若干塊，每塊最大長度為 32768（0x8000）。前 N-1 塊均為完整長度的子串（32768 字節），使用固定 tag &lt;strong&gt;R&lt;/strong&gt;標識；最後一塊為剩餘部分，長度範圍為 0-32768 字節，根據實際長度選擇動態 tag。&lt;/p&gt; 
-&lt;ul&gt; 
- &lt;li&gt; &lt;p&gt;&lt;strong&gt;尾段 tag 的選擇基於尾塊的長度決定&lt;/strong&gt;&lt;/p&gt; 
-  &lt;ul&gt; 
-   &lt;li&gt;長度≤31（0x1F）：使用單字節 tag 0x00-0x1F 直接內聯長度值。&lt;/li&gt; 
-   &lt;li&gt;32≤長度≤1023（0x3FF）：使用 tag &lt;strong&gt;0&lt;/strong&gt;後跟 1 字節長度 (大端序)，&lt;strong&gt;10bit&lt;/strong&gt;的計數空間由 tag 字節和長度字節共同提供。這個地方有點繞，看下代碼吧。&lt;/li&gt; 
-   &lt;li&gt;長度≥1024：使用 tag &lt;strong&gt;S&lt;/strong&gt;後跟 2 字節長度（大端序）。&lt;/li&gt; 
-  &lt;/ul&gt; &lt;/li&gt; 
- &lt;li&gt; &lt;p&gt;&lt;strong&gt;相關源碼&lt;/strong&gt;&lt;/p&gt; &lt;/li&gt; 
-&lt;/ul&gt; 
-&lt;p&gt;&lt;img src="https://oscimg.oschina.net/oscnet//0d46a7cdf992687d78fc5d21f2bbccaa.jpg" alt="" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;p&gt;&lt;em&gt;com.alibaba.com.caucho.hessian.io.Hessian2Output#writeString(java.lang.String)&lt;/em&gt;&lt;/p&gt; 
-&lt;p&gt;這種設計通過減少長字符串的冗餘長度標記，在保持兼容性的同時顯著提升了編碼效率。&lt;/p&gt; 
-&lt;p&gt;&lt;strong&gt;整數壓縮&lt;/strong&gt;&lt;/p&gt; 
-&lt;p&gt;&lt;strong&gt;基礎編碼&lt;/strong&gt;&lt;/p&gt; 
-&lt;p&gt;整數 (int32) 的的取值範圍很大 (-23^31 - 2^31)，保守的編碼格式會用 4 個 byte 來編碼整數。&lt;/p&gt; 
-&lt;p&gt;&lt;img src="https://oscimg.oschina.net/oscnet//50ee2c14cb9e43fdbd52a30c58e19a1d.jpg" alt="" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;p&gt;但是日常使用中，我們會大量使用&lt;strong&gt;小整數&lt;/strong&gt;，比如 1、31。這時候如果還用 4 字節編碼就很不划算啦~&lt;/p&gt; 
-&lt;p&gt;&lt;strong&gt;變長編碼&lt;/strong&gt;&lt;/p&gt; 
-&lt;p&gt;Hessian 根據整數的值範圍，動態的選擇不同的編碼方式，且&lt;strong&gt;不同的編碼方式有不同的 tag&lt;/strong&gt;：&lt;/p&gt; 
-&lt;ul&gt; 
- &lt;li&gt;&lt;strong&gt;單字節整數編碼&lt;/strong&gt;：&lt;strong&gt;類似【長度壓縮】，tag 中直接內聯數值&lt;/strong&gt;&lt;/li&gt; 
-&lt;/ul&gt; 
-&lt;p&gt;適用範圍：-16 到 47（共 64 個值）&lt;/p&gt; 
-&lt;p&gt;編碼方式：使用單字節，值為 value + &lt;strong&gt;0x90&lt;/strong&gt;（144）&lt;/p&gt; 
-&lt;p&gt;例如：0 編碼為 0x90，-1 編碼為 0x8f，47 編碼為 0xbf&lt;/p&gt; 
-&lt;ul&gt; 
- &lt;li&gt;&lt;strong&gt;雙字節整數編碼&lt;/strong&gt;&lt;/li&gt; 
-&lt;/ul&gt; 
-&lt;p&gt;適用範圍：-2048 到 2047&lt;/p&gt; 
-&lt;p&gt;編碼方式：首字節為 &lt;strong&gt;0xc8&lt;/strong&gt; + (value &amp;gt;&amp;gt; 8)，後跟一個字節存儲 value 剩下的 bit。&lt;/p&gt; 
-&lt;p&gt;這種編碼可以表示&lt;strong&gt;12bit&lt;/strong&gt;有符號整數&lt;/p&gt; 
-&lt;ul&gt; 
- &lt;li&gt;&lt;strong&gt;三字節整數編碼&lt;/strong&gt;&lt;/li&gt; 
-&lt;/ul&gt; 
-&lt;p&gt;適用範圍：-262144 到 262143&lt;/p&gt; 
-&lt;p&gt;編碼方式：首字節為 &lt;strong&gt;0xd4&lt;/strong&gt; + (value &amp;gt;&amp;gt; 16)，後跟兩個字節存儲 value 的高 8 位和低 8 位。&lt;/p&gt; 
-&lt;p&gt;這種編碼可以表示&lt;strong&gt;19bit&lt;/strong&gt;有符號整數。&lt;/p&gt; 
-&lt;ul&gt; 
- &lt;li&gt;&lt;strong&gt;五字節整數編碼&lt;/strong&gt;&lt;/li&gt; 
-&lt;/ul&gt; 
-&lt;p&gt;適用範圍：超出上述範圍的所有 32 位整數&lt;/p&gt; 
-&lt;p&gt;編碼方式：以 &lt;strong&gt;'I'&lt;/strong&gt;（0x49）開頭，後跟 4 個字節表示完整的 32 位整數值。&lt;/p&gt; 
-&lt;ul&gt; 
- &lt;li&gt;&lt;strong&gt;相關源碼&lt;/strong&gt;：&lt;/li&gt; 
-&lt;/ul&gt; 
-&lt;p&gt;&lt;img src="https://oscimg.oschina.net/oscnet//a6fdb7cd76b7cd2cb3bb2130f078a10c.jpg" alt="" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;p&gt;&lt;em&gt;com.alibaba.com.caucho.hessian.io.Hessian2Output#writeInt&lt;/em&gt;&lt;/p&gt; 
-&lt;p&gt;&lt;strong&gt;收益&lt;/strong&gt;&lt;/p&gt; 
-&lt;ul&gt; 
- &lt;li&gt; &lt;p&gt;小整數（如 0、-1）僅需 1 字節 ，而傳統 int32 固定 4 字節。&lt;/p&gt; &lt;/li&gt; 
- &lt;li&gt; &lt;p&gt;大整數動態擴展，避免固定長度浪費（如 1000 僅需 2 字節）。&lt;/p&gt; &lt;/li&gt; 
-&lt;/ul&gt; 
-&lt;p&gt;其他的數值類型比如 int64 也有類似的機制。&lt;/p&gt; 
-&lt;span id="OSC_h1_5"&gt;&lt;/span&gt; 
-&lt;h1&gt;五、總結&lt;/h1&gt; 
-&lt;p&gt;Hessian 專為 Java 優化，採用高效二進制協議，通過對象圖遍歷和編碼協議實現對象與字節流的轉換，利用數據塊標籤、重複對象複用、數據壓縮等機制，提升編解碼效率和數據壓縮率。&lt;/p&gt; 
-&lt;p&gt;本文沒有去展開 Hessian 的代碼細節，而是儘可能深入淺出的介紹了 Hessain 的核心編碼原理，以幫助讀者建立對 Hessian 的宏觀認知，從而可以更好的去理解和使用它。&lt;/p&gt; 
-&lt;p&gt;儘管不同語言/生態的序列化框架選型讓人眼花繚亂，但是各自需要解決的問題和解決問題的思路都大同小異；我們對 Hessain 原理的認識可以遷移到其他序列化框架，甚至自己寫一個領域特定的序列化框架。&lt;/p&gt; 
-&lt;p&gt;相關內容均為筆者走讀源碼整理而來，如有疏漏，歡迎指正。&lt;/p&gt; 
-&lt;p&gt;&lt;strong&gt;參考：&lt;/strong&gt;&lt;/p&gt; 
-&lt;ul&gt; 
- &lt;li&gt;&lt;strong&gt;Hessian 2.0 Serialization Protocol&lt;/strong&gt;（&lt;em&gt;&lt;a href="https://www.oschina.net/action/GoToLink?url=http%3A%2F%2Fhessian.caucho.com%2Fdoc%2Fhessian-serialization.html" rel="nofollow" target="_blank"&gt;http://hessian.caucho.com/doc/hessian-serialization.html&lt;/a&gt;&lt;/em&gt;）&lt;/li&gt; 
- &lt;li&gt;&lt;strong&gt;Hessian 2.0 序列化協議（中文版）&lt;/strong&gt;&lt;em&gt;（&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fwww.diguage.com%2Fpost%2Fhessian-serialization-protocol%2F%25EF%25BC%2589" rel="nofollow" target="_blank"&gt;https://www.diguage.com/post/hessian-serialization-protocol/）&lt;/a&gt;&lt;/em&gt;&lt;/li&gt; 
- &lt;li&gt;&lt;strong&gt;Hessian 協議解釋與實戰（一）：布爾、日期、浮點數與整數&lt;/strong&gt;（&lt;em&gt;&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fwww.diguage.com%2Fpost%2Fhessian-protocol-interpretation-and-practice-1%2F" rel="nofollow" target="_blank"&gt;https://www.diguage.com/post/hessian-protocol-interpretation-and-practice-1/&lt;/a&gt;&lt;/em&gt;）&lt;/li&gt; 
- &lt;li&gt;&lt;strong&gt;Hessian 協議解釋與實戰（二）：長整型、二進制數據與 Null&lt;/strong&gt;（&lt;em&gt;&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fwww.diguage.com%2Fpost%2Fhessian-protocol-interpretation-and-practice-2%2F" rel="nofollow" target="_blank"&gt;https://www.diguage.com/post/hessian-protocol-interpretation-and-practice-2/&lt;/a&gt;&lt;/em&gt;）&lt;/li&gt; 
- &lt;li&gt;&lt;strong&gt;Hessian 協議解釋與實戰（三）：字符串&lt;/strong&gt;（&lt;em&gt;&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fwww.diguage.com%2Fpost%2Fhessian-protocol-interpretation-and-practice-3%2F" rel="nofollow" target="_blank"&gt;https://www.diguage.com/post/hessian-protocol-interpretation-and-practice-3/&lt;/a&gt;&lt;/em&gt;）&lt;/li&gt; 
- &lt;li&gt;&lt;strong&gt;Hessian 協議解釋與實戰（四）：數組與集合&lt;/strong&gt;（&lt;em&gt;&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fwww.diguage.com%2Fpost%2Fhessian-protocol-interpretation-and-practice-4%2F" rel="nofollow" target="_blank"&gt;https://www.diguage.com/post/hessian-protocol-interpretation-and-practice-4/&lt;/a&gt;&lt;/em&gt;）&lt;/li&gt; 
- &lt;li&gt;&lt;strong&gt;Hessian 協議解釋與實戰（五）：對象與映射&lt;/strong&gt;（&lt;em&gt;&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fwww.diguage.com%2Fpost%2Fhessian-protocol-interpretation-and-practice-5%2F" rel="nofollow" target="_blank"&gt;https://www.diguage.com/post/hessian-protocol-interpretation-and-practice-5/&lt;/a&gt;&lt;/em&gt;）&lt;/li&gt; 
- &lt;li&gt;&lt;strong&gt;Hessian 源碼分析（Java）&lt;/strong&gt;（&lt;em&gt;&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fwww.diguage.com%2Fpost%2Fhessian-source-analysis-for-java%2F" rel="nofollow" target="_blank"&gt;https://www.diguage.com/post/hessian-source-analysis-for-java/&lt;/a&gt;&lt;/em&gt;）&lt;/li&gt; 
-&lt;/ul&gt; 
-&lt;p&gt;&lt;strong&gt;往期回顧&lt;/strong&gt;&lt;/p&gt; 
-&lt;p&gt;1. 前端日誌回撈系統的性能優化實踐｜得物技術&lt;/p&gt; 
-&lt;p&gt;2. 得物靈犀搜索推薦詞分發平台演進 3.0&lt;/p&gt; 
-&lt;p&gt;3. R8 疑難雜症分析實戰：外聯優化設計缺陷引起的崩潰｜得物技術&lt;/p&gt; 
-&lt;p&gt;4. 可擴展系統設計的黃金法則與 Go 語言實踐｜得物技術&lt;/p&gt; 
-&lt;p&gt;5. 營銷會場預覽直通車實踐｜得物技術&lt;/p&gt; 
-&lt;p&gt;文 / 羊羽&lt;/p&gt; 
-&lt;p&gt;關注得物技術，每週更新技術乾貨&lt;/p&gt; 
-&lt;p&gt;要是覺得文章對你有幫助的話，歡迎評論轉發點贊～&lt;/p&gt; 
-&lt;p&gt;未經得物技術許可嚴禁轉載，否則依法追究法律責任。&lt;/p&gt;
-                                                                                    &lt;/div&gt;
-                                                                            </description>
-      <link>https://my.oschina.net/u/5783135/blog/18691458</link>
-      <guid isPermaLink="false">https://my.oschina.net/u/5783135/blog/18691458</guid>
-      <pubDate>Sun, 14 Sep 2025 03:06:00 GMT</pubDate>
-      <author>原創</author>
-    </item>
-    <item>
-      <title>彭斯克集團起訴 Google，指控 AI 摘要侵權並威脅數字媒體未來</title>
-      <description>&lt;div class="content"&gt;
-                                                                    
-                                                        &lt;p style="color:#242424; margin-left:0; margin-right:0; text-align:left"&gt;&lt;span&gt;彭斯克媒體集團（Penske Media）向美國華盛頓特區聯邦法院提起訴訟，控告科技巨頭 Google 在未經授權的情況下使用其新聞內容生成人工智能（AI）摘要。&lt;/span&gt;&lt;/p&gt; 
-&lt;p style="color:#242424; margin-left:0; margin-right:0; text-align:left"&gt;&lt;span&gt;這起訴訟標誌着美國主流出版商&lt;/span&gt;&lt;span&gt;&lt;span&gt;首次&lt;/span&gt;&lt;/span&gt;&lt;span&gt;就 Google 搜索結果中現有的 AI 生成摘要提起法律行動。彭斯克集團旗下包括《滾石》（RollingStone）、Billboard 和 Variety 等知名媒體，每月吸引 1.2 億的網絡訪問者。&lt;/span&gt;&lt;/p&gt; 
-&lt;p style="color:#242424; margin-left:0; margin-right:0; text-align:left"&gt;&lt;img height="274" src="https://oscimg.oschina.net/oscnet/up-6754ce01e89dc9798ddac2728e0f7784c02.png" width="700" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;p style="color:#242424; margin-left:0; margin-right:0; text-align:left"&gt;彭斯克集團在訴訟中指出，Google 在生成 AI 摘要時使用了出版商的文章，但並未支付任何費用。他們認為，如果沒有 Google 對出版商內容的使用，Google 本應向這些出版商支付相應的費用，以合法使用其內容或將其內容用於訓練自己的 AI 系統。&lt;/p&gt; 
-&lt;p style="color:#242424; margin-left:0; margin-right:0; text-align:left"&gt;彭斯克集團強調，Google 的行為不僅損害了出版商的廣告收入和訂閲收入，還使得其網站流量大幅下降，預計到 2024 年底，該集團的關聯收入將比峯值下降超過三分之一。&lt;/p&gt; 
-&lt;p style="color:#242424; margin-left:0; margin-right:0; text-align:left"&gt;Google 對這一訴訟做出回應，表示其 AI 摘要提升了用户的搜索體驗，實際上能夠為更多類型的網站帶來流量。Google 發言人何塞・卡斯塔涅達（Jose Castaneda）指出，AI 摘要使得搜索功能更實用，並創造了新的內容被發現的機會，Google 將會為這些 「毫無根據的指控」 進行辯護。&lt;/p&gt; 
-&lt;p style="color:#242424; margin-left:0; margin-right:0; text-align:left"&gt;在此之前，在線教育公司 Chegg 也曾起訴 Google，認為其 AI 生成摘要削弱了用户對原創內容的需求，損害了出版商的競爭力。彭斯克集團的訴訟反映了當前媒體行業對 Google 壟斷地位的擔憂，認為其在搜索市場接近 90% 的份額使得出版商處於弱勢地位。&lt;/p&gt; 
-&lt;p style="color:#242424; margin-left:0; margin-right:0; text-align:left"&gt;新聞 / 媒體聯盟（News/Media Alliance）也對此表示關注，認為這一情況導致出版商無法拒絕 Google 使用其內容進行 AI 摘要生成。&lt;/p&gt;
-                                                                                &lt;/div&gt;
-                                                                            </description>
-      <link>https://www.oschina.net/news/372231</link>
-      <guid isPermaLink="false">https://www.oschina.net/news/372231</guid>
-      <pubDate>Sun, 14 Sep 2025 02:49:00 GMT</pubDate>
-      <author>來源: OSCHINA</author>
-    </item>
-    <item>
-      <title>馬斯克旗下 xAI 數據標註團隊裁員 500 人</title>
-      <description>&lt;div class="content"&gt;
-                                                                    
-                                                        &lt;p&gt;&lt;a href="https://www.oschina.net/action/GoToLink?url=https%3A%2F%2Fwww.businessinsider.com%2Felon-musk-xai-layoffs-data-annotators-2025-9" target="_blank"&gt;據報道&lt;/a&gt;，馬斯克旗下 AI 初創公司 xAI 宣佈，已從其數據標註團隊裁員約 500 人，約佔該團隊三分之一。該團隊曾在訓練 xAI 聊天機器人 Grok 時，通過對數據進行分類和情境化處理發揮關鍵作用。&lt;/p&gt; 
-&lt;p&gt;在裁員前，xAI 數據標註團隊是其規模最大的一個工作組，成員超過 1500 人，涵蓋全職員工和合同工。 &amp;nbsp;&lt;/p&gt; 
-&lt;p&gt;xAI 在通知裁員之前，公司要求部分員工參加技能評估/測試，這些測試內容涉及 STEM（科學、技術、工程、數學）、編碼、金融、醫學、模型行為與安全性等多個領域。測試被用於判斷哪些通用導師或其主管可能被保留或轉為更「專才」的角色。 &amp;nbsp;&lt;/p&gt; 
-&lt;p&gt;&lt;img src="https://static.oschina.net/uploads/space/2025/0915/103652_R1Bm_2720166.jpg" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;p&gt;此次裁員是 xAI 戰略轉變的一部分，該公司現專注於招聘 STEM、金融、醫學和安全領域的專業 AI 導師，同時減少普通崗位。xAI 表示，計劃將專業導師團隊擴大 10 倍。這一舉措反映了更廣泛的行業趨勢，隨着 AI 處理日常任務能力的提升，企業正優先考慮能提供專業領域知識的員工。&lt;/p&gt;
-                                                                                &lt;/div&gt;
-                                                                            </description>
-      <link>https://www.oschina.net/news/372229</link>
-      <guid isPermaLink="false">https://www.oschina.net/news/372229</guid>
-      <pubDate>Sun, 14 Sep 2025 02:39:00 GMT</pubDate>
-      <author>來源: OSCHINA</author>
-    </item>
-    <item>
-      <title>OpenAI 擬將與微軟分成比例降至 8%，獲 500 億美元額外收入</title>
-      <description>&lt;div class="content"&gt;
-                                                                    
-                                                        &lt;p style="color:#242424; margin-left:0; margin-right:0; text-align:left"&gt;&lt;span style="color:#000000"&gt;據美國科技媒體《The Information》報道，人工智能公司 OpenAI 正尋求調整其與主要投資方微軟的財務協議，以期保留更多收入，用於支付其龐大的計算開銷。&lt;/span&gt;&lt;/p&gt; 
-&lt;p style="color:#242424; margin-left:0; margin-right:0; text-align:left"&gt;&lt;span style="color:#000000"&gt;報道援引知情人士透露，OpenAI 已向部分投資者表示，計劃將微軟獲得的收入分成比例從目前略低於 20% 的水平，到 2030 年逐步降至 8% 左右。根據最初的協議，到 2030 年，微軟將獲得 20% 的分成。&lt;/span&gt;&lt;/p&gt; 
-&lt;p style="color:#242424; margin-left:0; margin-right:0; text-align:left"&gt;&lt;img height="251" src="https://oscimg.oschina.net/oscnet/up-879eb71753d9c8a6f9579fa9d00e263ca1e.png" width="500" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;p style="color:#242424; margin-left:0; margin-right:0; text-align:left"&gt;&lt;span style="color:#000000"&gt;這一調整意義重大，預計將為 OpenAI 帶來超過 500 億美元的額外收入。這筆資金將成為其維持和擴展 AI 模型訓練所需的寶貴「彈藥」。&lt;/span&gt;&lt;/p&gt; 
-&lt;p style="color:#242424; margin-left:0; margin-right:0; text-align:left"&gt;&lt;span style="color:#000000"&gt;作為回報，微軟將獲得重組後 OpenAI 實體的三分之一股份，而剩餘部分將歸其非營利組織所有。不過，報道稱，微軟仍將不會在 OpenAI 董事會中擁有席位。&lt;/span&gt;&lt;/p&gt; 
-&lt;p style="color:#242424; margin-left:0; margin-right:0; text-align:left"&gt;&lt;span style="color:#000000"&gt;此外，兩家公司還在就通用人工智能（AGI）的潛在應用、服務器費用及合同條款進行深入談判。目前，尚不清楚這是否已體現在兩家公司近期宣佈的非約束性協議中。&lt;/span&gt;&lt;/p&gt; 
-&lt;p style="color:#242424; margin-left:0; margin-right:0; text-align:left"&gt;&lt;strong&gt;&lt;span style="color:#000000"&gt;相關閲讀：&lt;/span&gt;&lt;/strong&gt;&lt;/p&gt; 
-&lt;ul&gt; 
- &lt;li style="text-align:left"&gt;&lt;a href="https://www.oschina.net/news/371712" target="_blank"&gt;OpenAI 與微軟達成非約束性協議：允許將營利部門轉型公益股份公司&lt;/a&gt;&lt;/li&gt; 
-&lt;/ul&gt;
-                                                                                &lt;/div&gt;
-                                                                            </description>
-      <link>https://www.oschina.net/news/372214</link>
-      <guid isPermaLink="false">https://www.oschina.net/news/372214</guid>
-      <pubDate>Sun, 14 Sep 2025 02:04:00 GMT</pubDate>
-      <author>來源: OSCHINA</author>
-    </item>
-    <item>
-      <title>重塑研發組織形態：從「中心軟件工廠」到「移動軟件工廠」</title>
-      <description>&lt;div class="content"&gt;
-                                                                    
-                                                        &lt;p&gt;數字化轉型的加速，讓軟件研發從幕後走到前台，成為組織創新和產業升級的關鍵引擎。無論是科研攻關、產業製造，還是信息基礎設施建設，軟件都已經滲透到最核心的環節。 然而，在現實環境中，研發並非總是發生在高速網絡與開放環境下。&lt;/p&gt; 
-&lt;ul&gt; 
- &lt;li&gt; &lt;p&gt;有時，它需要在&lt;strong&gt;嚴格隔離的網絡&lt;/strong&gt;中完成；&lt;/p&gt; &lt;/li&gt; 
- &lt;li&gt; &lt;p&gt;有時，它需要跨越地域，在&lt;strong&gt;多團隊協作&lt;/strong&gt;中推進；&lt;/p&gt; &lt;/li&gt; 
- &lt;li&gt; &lt;p&gt;有時，它要面對&lt;strong&gt;安全與合規&lt;/strong&gt;的高壓要求，容不得半點鬆懈。&lt;/p&gt; &lt;/li&gt; 
-&lt;/ul&gt; 
-&lt;p&gt;這就是今天的研發新常態：複雜、分佈、受限，卻又必須高效、統一、可控。&lt;/p&gt; 
-&lt;p&gt;&amp;nbsp;&lt;/p&gt; 
-&lt;h2&gt;行業挑戰：研發必須跨越的三重門檻&lt;/h2&gt; 
-&lt;p&gt;面對這樣的新常態，研發組織普遍遭遇三道門檻：&lt;/p&gt; 
-&lt;ul&gt; 
- &lt;li&gt; &lt;p&gt;&lt;strong&gt;協同門檻&lt;/strong&gt;：不同地域、不同團隊之間，工具鏈與流程標準不一致，導致研發成果常常無法順暢對接。&lt;/p&gt; &lt;/li&gt; 
- &lt;li&gt; &lt;p&gt;&lt;strong&gt;網絡門檻&lt;/strong&gt;：在斷網或弱網的條件下，環境一致、基線相同、依賴拉取、製品共享、版本同步都成了奢望。&lt;/p&gt; &lt;/li&gt; 
- &lt;li&gt; &lt;p&gt;&lt;strong&gt;合規門檻&lt;/strong&gt;：即使是短期的現場研發，也必須滿足嚴格的標準與安全要求，否則創新成果難以落地。&lt;/p&gt; &lt;/li&gt; 
-&lt;/ul&gt; 
-&lt;p&gt;這三道門檻，幾乎成了所有組織共同面對的困境。&lt;/p&gt; 
-&lt;p&gt;&amp;nbsp;&lt;/p&gt; 
-&lt;h2&gt;新形態的亮相：中心與移動軟件工廠&lt;/h2&gt; 
-&lt;p&gt;&lt;img src="https://static.oschina.net/uploads/space/2025/0912/185857_1Zh5_2720166.png" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;p&gt;在這樣的背景下，軟件工廠的形態正在發生演進。&lt;/p&gt; 
-&lt;p&gt;Gitee 帶來了一個新的答案：&lt;strong&gt;中心軟件工廠與移動軟件工廠的雙重驅動模式&lt;/strong&gt;。&lt;/p&gt; 
-&lt;p&gt;它不是簡單的功能疊加，而是研發組織能力的一次重塑：&lt;/p&gt; 
-&lt;ul&gt; 
- &lt;li&gt; &lt;p&gt;&lt;strong&gt;中心軟件工廠&lt;/strong&gt;：承載統一的研發基線與標準，形成高效、安全、合規的研發中心；&lt;/p&gt; &lt;/li&gt; 
- &lt;li&gt; &lt;p&gt;&lt;strong&gt;移動軟件工廠&lt;/strong&gt;：作為靈活的延伸，將研發能力帶到任何需要的地方，讓創新不再受限。&lt;/p&gt; &lt;/li&gt; 
-&lt;/ul&gt; 
-&lt;p&gt;&amp;nbsp;&lt;/p&gt; 
-&lt;h2&gt;中心軟件工廠：標準的承載者&lt;/h2&gt; 
-&lt;p&gt;在中心軟件工廠裏，研發流程被整體化、規範化：&lt;/p&gt; 
-&lt;ul&gt; 
- &lt;li&gt; &lt;p&gt;統一的代碼管理與版本基線；&lt;/p&gt; &lt;/li&gt; 
- &lt;li&gt; &lt;p&gt;標準化的流水線與構建環境；&lt;/p&gt; &lt;/li&gt; 
- &lt;li&gt; &lt;p&gt;安全可控的製品倉庫與掃描規則；&lt;/p&gt; &lt;/li&gt; 
- &lt;li&gt; &lt;p&gt;全局適配的權限與合規策略。&lt;/p&gt; &lt;/li&gt; 
-&lt;/ul&gt; 
-&lt;p&gt;&lt;img src="https://static.oschina.net/uploads/space/2025/0912/185923_8uvl_2720166.png" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;p&gt;它是研發的「大本營」，確保所有成果都有跡可循、有規可依。&lt;/p&gt; 
-&lt;p&gt;&amp;nbsp;&lt;/p&gt; 
-&lt;h2&gt;移動軟件工廠：靈活的延伸者&lt;/h2&gt; 
-&lt;p&gt;移動軟件工廠的使命，是讓研發能力突破環境的限制。&lt;/p&gt; 
-&lt;p&gt;它並不是「縮減版」，而是&lt;strong&gt;完整工廠能力的便攜延伸&lt;/strong&gt;：&lt;/p&gt; 
-&lt;ul&gt; 
- &lt;li&gt; &lt;p&gt;&lt;strong&gt;攜帶基線&lt;/strong&gt;：將中心工廠中經過驗證的基線，帶到斷網或弱網的現場；&lt;/p&gt; &lt;/li&gt; 
- &lt;li&gt; &lt;p&gt;&lt;strong&gt;獨立運行&lt;/strong&gt;：在隔離條件下完成開發、構建與測試；&lt;/p&gt; &lt;/li&gt; 
- &lt;li&gt; &lt;p&gt;&lt;strong&gt;成果回傳&lt;/strong&gt;：生成資產包，回傳中心工廠，完成入庫、複用與追蹤；&lt;/p&gt; &lt;/li&gt; 
- &lt;li&gt; &lt;p&gt;&lt;strong&gt;快速部署&lt;/strong&gt;：無需長期建設，即插即用，滿足現場研發需求。&lt;/p&gt; &lt;/li&gt; 
-&lt;/ul&gt; 
-&lt;p&gt;一句話概括：移動軟件工廠讓研發隨時隨地發生，同時與中心保持標準一致。&lt;/p&gt; 
-&lt;p&gt;&lt;img src="https://static.oschina.net/uploads/space/2025/0912/185946_9FIg_2720166.png" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;p&gt;&amp;nbsp;&lt;/p&gt; 
-&lt;h2&gt;場景化小故事&lt;/h2&gt; 
-&lt;ul&gt; 
- &lt;li&gt;&lt;strong&gt;隔離環境中的創新&lt;/strong&gt;&lt;/li&gt; 
-&lt;/ul&gt; 
-&lt;p&gt;在一處無法連接外部網絡的現場，團隊依然能夠基於移動工廠的基線順利開發，研發成果在返回中心後快速入庫，形成統一管理。&lt;/p&gt; 
-&lt;ul&gt; 
- &lt;li&gt;&lt;strong&gt;弱網條件下的交付&lt;/strong&gt;&lt;/li&gt; 
-&lt;/ul&gt; 
-&lt;p&gt;在網絡條件不足的地區，移動工廠攜帶所需的依賴和製品，避免頻繁的遠程請求。研發節奏不再因網絡波動而停滯。&lt;/p&gt; 
-&lt;ul&gt; 
- &lt;li&gt;&lt;strong&gt;跨組織的協作&lt;/strong&gt;&lt;/li&gt; 
-&lt;/ul&gt; 
-&lt;p&gt;在大型項目中，不同組織以中心工廠為標準，各自研發成果通過移動工廠快速接入與同步，協作效率顯著提升。&lt;/p&gt; 
-&lt;p&gt;這些故事有一個共同點：&lt;strong&gt;研發不再因環境受限而止步&lt;/strong&gt;。&lt;/p&gt; 
-&lt;p&gt;&lt;img src="https://static.oschina.net/uploads/space/2025/0912/190005_a74I_2720166.png" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;p&gt;&amp;nbsp;&lt;/p&gt; 
-&lt;h2&gt;雙工廠模式的價值&lt;/h2&gt; 
-&lt;ol&gt; 
- &lt;li&gt; &lt;p&gt;&lt;strong&gt;效率不受限&lt;/strong&gt;：研發團隊可以在任何環境中持續迭代，項目進度更有保障。&lt;/p&gt; &lt;/li&gt; 
- &lt;li&gt; &lt;p&gt;&lt;strong&gt;標準不走樣&lt;/strong&gt;：中心工廠統一的基線與規則，讓所有研發成果始終符合合規與質量要求。&lt;/p&gt; &lt;/li&gt; 
- &lt;li&gt; &lt;p&gt;&lt;strong&gt;擴展不昂貴&lt;/strong&gt;：移動工廠以低成本實現靈活部署，避免重複建設與資源浪費。&lt;/p&gt; &lt;/li&gt; 
- &lt;li&gt; &lt;p&gt;&lt;strong&gt;成果可複用&lt;/strong&gt;：通過資產回傳機制，現場研發的成果也能納入中心，成為可追溯、可檢索、可複用的知識資產。&lt;/p&gt; &lt;/li&gt; 
-&lt;/ol&gt; 
-&lt;p&gt;這不僅僅是一種工具組合，而是一種新的研發組織能力。&lt;/p&gt; 
-&lt;p&gt;&amp;nbsp;&lt;/p&gt; 
-&lt;h2&gt;展望：研發的新未來&lt;/h2&gt; 
-&lt;p&gt;中心與移動雙工廠模式，正在成為下一代軟件研發體系的關鍵基石。 讓研發在複雜環境中依然順暢，讓創新在任何場景下都能發生。 未來，無論研發場景如何變化，這一模式都將持續釋放價值：&lt;/p&gt; 
-&lt;ul&gt; 
- &lt;li&gt; &lt;p&gt;讓效率與合規不再對立，而是並行；&lt;/p&gt; &lt;/li&gt; 
- &lt;li&gt; &lt;p&gt;讓組織在變化的環境中，依然保持穩健與敏捷；&lt;/p&gt; &lt;/li&gt; 
- &lt;li&gt; &lt;p&gt;讓創新真正隨時隨地、無處不在。&lt;/p&gt; &lt;/li&gt; 
-&lt;/ul&gt; 
-&lt;p&gt;&amp;nbsp;&lt;/p&gt; 
-&lt;h2 style="margin-left:0; margin-right:0; text-align:left"&gt;Gitee DevSecOps 的現代化研發生態&lt;/h2&gt; 
-&lt;p style="color:#333333; margin-left:0; margin-right:0; text-align:left"&gt;Gitee DevSecOps 是一站式國產化研發與交付平台，集成了代碼託管（Code）、項目協作（Team）、持續集成（CI）、持續部署（CD）、代碼安全（Scan）、數據洞察（Insight）等多項能力，致力於打造具備全生命週期管控能力的現代軟件工廠。&lt;/p&gt; 
-&lt;p style="color:#333333; margin-left:0; margin-right:0; text-align:left"&gt;&lt;img src="https://static.oschina.net/uploads/space/2025/0523/174619_MpFL_2720166.png" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;p style="color:#333333; margin-left:0; margin-right:0; text-align:left"&gt;平台設計充分考慮關鍵領域行業對安全性、可控性、合規性的極高要求，具備以下核心特徵：&lt;/p&gt; 
-&lt;ul style="list-style-type:disc; margin-left:0; margin-right:0"&gt; 
- &lt;li&gt; &lt;p style="margin-left:0; margin-right:0"&gt;國產化適配與私有化部署能力：全面兼容國產操作系統與基礎設施，支持靈活部署於內網環境，保障數據主權；&lt;/p&gt; &lt;/li&gt; 
- &lt;li&gt; &lt;p style="margin-left:0; margin-right:0"&gt;全流程 DevSecOps 管控體系：代碼從提交、審核、構建、掃描、部署到發佈全流程可視、可追溯、安全可控；&lt;/p&gt; &lt;/li&gt; 
- &lt;li&gt; &lt;p style="margin-left:0; margin-right:0"&gt;模塊化產品結構：各能力模塊（如 Code、Team、Repo、Pipe、Scan、Insight 等）可靈活組合、漸進集成，適配多樣化團隊與流程要求；&lt;/p&gt; &lt;/li&gt; 
- &lt;li&gt; &lt;p style="margin-left:0; margin-right:0"&gt;深度可觀測與度量體系：內置研發效能度量與數據洞察引擎，支撐管理者宏觀掌控項目態勢與交付健康度。&lt;/p&gt; &lt;/li&gt; 
-&lt;/ul&gt; 
-&lt;p style="color:#333333; margin-left:0; margin-right:0; text-align:left"&gt;&lt;img alt="162046_MD15_2720166.png" src="https://static.oschina.net/uploads/space/2025/0516/162046_MD15_2720166.png" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;p style="color:#333333; margin-left:0; margin-right:0; text-align:left"&gt;在多個國家級重大項目與關鍵領域單位落地實踐中，Gitee DevSecOps 已成為構建「自主、可控、高效、安全」的軟件工程體系的重要基石。&lt;/p&gt; 
-&lt;p style="color:#333333; margin-left:0; margin-right:0; text-align:left"&gt;&lt;img src="https://oscimg.oschina.net/oscnet/up-825957ffbed1798ea7b6a37079fd6c99d18.gif" referrerpolicy="no-referrer"&gt;&lt;/p&gt;
-                                                                                &lt;/div&gt;
-                                                                            </description>
-      <link>https://www.oschina.net/news/371860</link>
-      <guid isPermaLink="false">https://www.oschina.net/news/371860</guid>
-      <pubDate>Fri, 12 Sep 2025 11:00:00 GMT</pubDate>
-      <author>來源: OSCHINA</author>
-    </item>
-    <item>
-      <title>微軟正加大投資訓練自己的人工智能模型</title>
-      <description>&lt;div class="content"&gt;
-                                                                    
-                                                        &lt;p style="color:#242424; margin-left:0; margin-right:0; text-align:left"&gt;&lt;span&gt;微軟正在進行重大的投資，以增強其用於訓練自主 AI 模型的服務器能力。&lt;/span&gt;&lt;/p&gt; 
-&lt;p style="color:#242424; margin-left:0; margin-right:0; text-align:left"&gt;&lt;img height="334" src="https://oscimg.oschina.net/oscnet/up-85c73e1b3777c036f3526be295fc3e499f7.png" width="500" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;p style="color:#242424; margin-left:0; margin-right:0; text-align:left"&gt;微軟 AI 負責人穆斯塔法・蘇萊曼在公司內部會議上表示，微軟正在為未來的前沿模型進行 「顯著的投資」。他指出：「我們應該具備內部構建&lt;span&gt;世界級&lt;/span&gt;前沿模型的能力，涵蓋各種規模的模型，但在必要時也應理性地使用其他模型。」 這一戰略顯示出微軟的決心，希望在 AI 領域與 Meta、谷歌及 xAI 等公司並肩競爭。&lt;/p&gt; 
-&lt;p style="color:#242424; margin-left:0; margin-right:0; text-align:left"&gt;據悉，微軟目前正在建設自己的計算集羣。目前，MAI-1-preview 模型僅在 15000 個 H100GPU 上進行訓練，這在整體看來仍然是一個相對較小的集羣。蘇萊曼提到，微軟計劃訓練的模型集羣規模將是目前的 「六到十倍」，以增強其在 AI 研發中的實力。他表示:「還有很多工作要做，但邁出了&lt;span&gt;第一&lt;/span&gt;步，這很好。」&lt;/p&gt; 
-&lt;p style="color:#242424; margin-left:0; margin-right:0; text-align:left"&gt;在同一場會議上，微軟首席執行官薩提亞・納德拉也表達了他對未來模型能力建設的期待。他強調，微軟將 「&lt;span&gt;絕對&lt;/span&gt;支持多種模型」 的應用，並以 GitHub Copilot 為例，説明該戰略的成功。&lt;/p&gt; 
-&lt;p style="color:#242424; margin-left:0; margin-right:0; text-align:left"&gt;此外，微軟還計劃在即將推出的 Microsoft365 中引入 Anthropic 的 AI 模型。據《信息時報》報道，Microsoft365Copilot 將 「部分由 Anthropic 模型驅動」，因為這些模型在 Excel 和 PowerPoint 的性能上超過了 OpenAI。這表明微軟正在積極探索各種合作，以提升其產品的智能化水平。&lt;/p&gt;
-                                                                                &lt;/div&gt;
-                                                                            </description>
-      <link>https://www.oschina.net/news/371856</link>
-      <guid isPermaLink="false">https://www.oschina.net/news/371856</guid>
-      <pubDate>Fri, 12 Sep 2025 10:30:00 GMT</pubDate>
-      <author>來源: OSCHINA</author>
-    </item>
-    <item>
-      <title>開源鴻蒙技術大會 2025 即將啓幕，共繪數字底座新藍圖</title>
-      <description>&lt;div class="content"&gt;
-                                                                    
-                                                        &lt;p style="color:#000000; text-align:justify"&gt;當前，數字經濟已成為驅動全球經濟增長的重要力量，在這一進程中，操作系統作為數字基礎設施的關鍵組成部分，其發展水平與生態建設直接關係到眾多行業數字化轉型的進程。作為智能終端操作系統的開源根社區，開源鴻蒙依託其先進的技術架構與持續的智能化升級，正在為培育新質生產力提供重要支撐，並積極助力數字中國建設向縱深推進。&lt;/p&gt; 
-&lt;p style="color:#000000; text-align:justify"&gt;在萬物智聯從概念走向實踐的關鍵階段，開源操作系統如何突破技術瓶頸、構建成熟生態、賦能千行百業轉型？&lt;/p&gt; 
-&lt;p style="color:#000000; text-align:justify"&gt;答案，即將於 9 月 27 日在長沙國際會議中心揭開——由開源鴻蒙項目羣技術指導委員會（TSC,Technial Steering Committe）主辦，華為承辦，深開鴻、開鴻智谷、鴻湖萬聯、潤開鴻、九聯開鴻、中軟國際、誠邁科技、北理工、中科鴻略、中國南方電網、中國科學院軟件研究所、證通、國開鴻等合作單位支持舉辦的開源鴻蒙技術大會 2025 年度盛會，將面向全球開源操作系統領域，以更大規模、更高規格，迎接開源領袖、前沿實踐專家、高校學者及生態夥伴，為全球開源從業者呈現一場兼具戰略高度與實踐深度的技術盛宴。&lt;/p&gt; 
-&lt;p style="color:#000000; text-align:center"&gt;&lt;img alt="e73a250ea248c531e395ced0ae1954cd.jpg" height="338" src="https://oscimg.oschina.net/oscnet//3b4bd434a677f25acf926bb323dcd224.jpg" width="600" referrerpolicy="no-referrer"&gt;&lt;/p&gt; 
-&lt;p style="color:#000000; text-align:justify"&gt;&lt;strong&gt;以核心突破，錨定操作系統技術演進新航向&lt;/strong&gt;&lt;/p&gt; 
-&lt;p style="color:#000000; text-align:justify"&gt;作為大會的主場，主論壇將聚焦開源鴻蒙技術的年度核心進展，通過權威發聲與重磅發佈，勾勒智能終端操作系統全場景適配與技術深化的清晰路徑。主論壇將邀請政府、產業界、學術界、開源界技術專家和權威代表，解讀開源鴻蒙在數字基礎設施建設中的核心價值。同時，應用生態夥伴與高校代表也將分享前沿實踐成果，展現產學研用協同創新的生動實踐，為開發者與企業夥伴提供可落地的技術方法論。&lt;/p&gt; 
-&lt;p style="color:#000000; text-align:justify"&gt;值得關注的是，本次主論壇將正式發佈開源鴻蒙 6.0 Release 版本，該版本進一步增強了系統能力，提升了系統整體可用性與開發效率，生態適配更友好。此外，大會還將舉辦開源鴻蒙跨平台框架 PMC（籌）成立儀式，標誌着開源鴻蒙在跨平台開發領域的重要佈局，不斷完善開源鴻蒙技術生態版圖。&lt;/p&gt; 
-&lt;p style="color:#000000; text-align:justify"&gt;同時，本屆大會共設置 21 場分論壇，無論在數量規模上，還是在領域覆蓋廣度上，均實現了近年來的新突破，展現出更全面的議題佈局。分論壇將重點圍繞開源鴻蒙相關技術垂域、行業與應用生態、教育及人才培養等多維度關鍵方向展開，全面覆蓋從底層核心技術突破到前沿應用場景的全鏈條。大會旨在通過深入攻堅當前操作系統的核心技術難題、前瞻探索未來演進路徑，並精準對接學術界研究、產業界應用與開發者實踐需求，切實推動技術創新成為驅動產業轉型升級的核心動力。&lt;/p&gt; 
-&lt;p style="color:#000000; text-align:left"&gt;&amp;nbsp;&lt;/p&gt; 
-&lt;p style="color:#000000; text-align:justify"&gt;&lt;strong&gt;交流區全景呈現生態成果，見證開源協同五年發展收穫&lt;/strong&gt;&lt;/p&gt; 
-&lt;p style="color:#000000; text-align:justify"&gt;開源鴻蒙開源五年多以來，在全球開發者、生態夥伴的持續貢獻下，生態不斷繁榮。截至 2025 年 8 月 31 日，社區已匯聚超過 9200 名貢獻者，累計貢獻代碼量超過 1.3 億行，匯聚超 480 傢伙伴參與共建，累計超 1300+款產品通過兼容性測評，覆蓋金融、超高清、航天、教育、商顯、工業、警務、城市、交通、醫療、電力等多個領域。基於這一豐碩的生態共建成果，大會同步設置的 6+N 板塊互動交流區，將集中展示基於"Powered by OpenHarmony"開源鴻蒙生態產品的創新成果與商業進展。&lt;/p&gt; 
-&lt;p style="color:#000000; text-align:justify"&gt;作為這一繁榮生態的集中縮影，開源鴻蒙項目羣技術指導委員會（TSC）交流區將呈現其在開源鴻蒙技術生態領域的階段性創新成果；開源鴻蒙社區公共交流區全面展現開源鴻蒙在千行百業的最佳實踐與開源生態的繁榮；華為終端將首次與眾多生態夥伴聯袂亮相，共同展示基於開源鴻蒙的實踐與創新成果；三方社區交流區則將呈現更廣泛更多維的商業生態和落地部署情況。同時，&lt;span&gt;倉頡編程語言&amp;amp;畢昇編譯器&lt;/span&gt;&lt;span&gt;以及應用生態開源技術等關鍵基礎軟件與工具鏈的集中展出，也將進一步凸顯開源鴻蒙的產業落地價值，助力參會者清晰感知從技術創新到千行百業賦能的紮實路徑，切身感受到開源鴻蒙在不同領域的應用實踐與商業價值。&lt;/span&gt;&lt;/p&gt; 
-&lt;p style="color:#000000; text-align:left"&gt;&amp;nbsp;&lt;/p&gt; 
-&lt;p style="color:#000000; text-align:justify"&gt;&lt;strong&gt;以致謝授牌，致敬貢獻者，凝聚開源生態新合力&lt;/strong&gt;&lt;/p&gt; 
-&lt;p style="color:#000000; text-align:justify"&gt;開源生態的繁榮，離不開每一位共建者的堅守與付出。本次大會將延續對貢獻者的致敬傳統，通過多場致謝與授牌儀式為社區力量加冕：通過對 TSG、開源鴻蒙技術俱樂部的致謝授牌，肯定其在人才培育與技術推廣中的傑出貢獻；重磅發佈開源鴻蒙年度課題，併為優秀技術課題成果授牌；開源鴻蒙項目羣捐贈人授牌儀式，感謝生態夥伴為社區蓬勃發展所付出的努力；開源鴻蒙競賽訓練營頒獎，則將致敬在技術實踐中表現卓越的開發者，進一步凝聚產學研用協同共進的開源生態新合力。&lt;/p&gt; 
-&lt;p style="color:#000000; text-align:justify"&gt;從底層技術突破到生態場景落地，從人才培養到全球協作，開源鴻蒙技術大會 2025 既是對過去一年技術進步與生態進展的盤點，更旨在展望以開源推動生態繁榮、以技術賦能產業轉型的新未來。我們誠摯邀請全球技術領袖、高校學者、企業夥伴與開發者，於 9 月 27 日相聚長沙，在這場思想與技術創新交匯的盛會中共享成果、共探方向、共築未來！&lt;/p&gt; 
-&lt;p&gt;&amp;nbsp;&lt;/p&gt;
-                                                                                &lt;/div&gt;
-                                                                            </description>
-      <link>https://www.oschina.net/news/372008</link>
-      <guid isPermaLink="false">https://www.oschina.net/news/372008</guid>
-      <pubDate>Fri, 12 Sep 2025 07:48:00 GMT</pubDate>
-      <author>作者: 開源科技</author>
     </item>
   </channel>
 </rss>
